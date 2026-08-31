@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788206094662,
+  "lastUpdate": 1788209693285,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -4528,6 +4528,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 27,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "90fb4f0cc540d3ca017c48d60821cf3e8bb4f167",
+          "message": "feat(connect): add typed token revocation",
+          "timestamp": "2026-08-31T17:43:51-03:00",
+          "tree_id": "14f9bcbd20ea11daa9a7a2396d9a42aae389343a",
+          "url": "https://github.com/Rullst/Rullst/commit/90fb4f0cc540d3ca017c48d60821cf3e8bb4f167"
+        },
+        "date": 1788209692737,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 3434,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 411,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 6,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 3,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 19,
             "range": "± 0",
             "unit": "ns/iter"
           }
