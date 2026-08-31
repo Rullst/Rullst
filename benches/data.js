@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788139158198,
+  "lastUpdate": 1788140450703,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -11551,6 +11551,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2282,
             "range": "± 41",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "139065ff9fb026cf705b13dbf29ab7dd230db426",
+          "message": "feat(security): add bounded threat sentinel",
+          "timestamp": "2026-08-30T22:38:36-03:00",
+          "tree_id": "2dcff2f2ea710aaeed935df5e05c55402c40e233",
+          "url": "https://github.com/Rullst/Rullst/commit/139065ff9fb026cf705b13dbf29ab7dd230db426"
+        },
+        "date": 1788140449788,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 769,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1010,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 683,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2296,
+            "range": "± 32",
             "unit": "ns/iter"
           }
         ]
