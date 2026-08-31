@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788169909352,
+  "lastUpdate": 1788171332722,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -12523,6 +12523,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2366,
             "range": "± 48",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ae17f7b19bef8b7fcb2dff18822d4fa707f70bda",
+          "message": "feat(nexus): validate semantic admin forms",
+          "timestamp": "2026-08-31T07:13:16-03:00",
+          "tree_id": "e46c4a906b4add5b5894561a2a0985995119da55",
+          "url": "https://github.com/Rullst/Rullst/commit/ae17f7b19bef8b7fcb2dff18822d4fa707f70bda"
+        },
+        "date": 1788171330850,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 725,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1010,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 606,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2276,
+            "range": "± 47",
             "unit": "ns/iter"
           }
         ]
