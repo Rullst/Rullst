@@ -82,7 +82,7 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M18** | LiveView-style server-driven UI and `make:live` | `[~] Partial` *(worth hardening — a WebSocket component loop exists, but auth, reconnect, backpressure, diff semantics, and browser E2E coverage remain)* | v12.1 |
 | **M19** | AI/telemetry: Radar, agent tool schemas, spans, and Prometheus `/metrics` | `[x] Implemented (bounded)` — local telemetry and export surfaces exist; unavailable sources must remain unavailable rather than becoming invented values | v12 hardening |
 | **M20** | Persistence: zero-copy event streaming and immutable ledger engine | `[ ] Not implemented` *(interesting but lower priority — worth implementing only after defining persistence, consistency, recovery, and verification semantics; the HMAC audit chain is not a distributed ledger)* | v12.1 research |
-| **M21** | Omni-frontend protocol and mobile hypermedia bridge | `[ ] Not implemented` *(worth pursuing only with a real mobile client and versioned protocol contract; a universal frontend claim without interoperability tests is not worthwhile)* | v12.1 research |
+| **M21** | Omni-frontend protocol and mobile hypermedia bridge | `[~] Partial` *(the web-first Tauri shell, shared `rullst.client` v1 envelope and bounded native offline-state foundation exist; platform persistence/secure keys, concrete network/background orchestration, native capabilities, physical-device evidence and store publication remain open)* | v12.1 research |
 | **M22** | Agentic DevOps and autonomous infrastructure provisioning | `[~] Partial` *(worth keeping as human-reviewed recommendations — telemetry advice exists; unattended infrastructure mutation is not worth enabling by default without preview, scoped credentials, audit, rollback, and policy)* | v13 |
 | **M23** | Polymorphic core and auto-healing runtime/database | `[~] Partial` *(worth keeping as diagnostics — a schema-error suggestion helper exists; automatic code/schema mutation is not worth enabling by default without validated plans, approval, and rollback)* | v13 |
 | **M24** | Embedded IoT: `no_std` frames and an Ed25519 OTA manifest gate | `[~] Partial` *(worth expanding after target selection — the verification foundation exists; download, persistent anti-rollback, flashing, boot slots, HSM/PQC, and transport interoperability do not)* | v12 foundation / v13 integrations |
@@ -100,6 +100,42 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M36** | Natural-language-to-SQL Studio data copilot | `[ ] Not implemented` *(worth a read-only, explainable assistant with schema allowlists, parameterization, preview, limits, and approval; autonomous production writes are not worth the risk)* | v12.1 research |
 | **M37** | One-click AI error-console autofix | `[~] Partial` *(worth retaining as a local, reviewable patch workflow — an autofix endpoint exists, but autonomous edits need diff preview, workspace confinement, audit, tests, and rollback)* | v12.1 |
 | **M38** | In-memory/local-NVMe SQLite read replicas with background synchronization | `[ ] Not implemented` *(worth vendor-specific adapters when demanded; generic “transparent replication” is not worth claiming because consistency and failover semantics belong to the selected database)* | v13 research |
+
+## Quantified planning horizon through v13
+
+This second progress lens answers a different question from release readiness:
+how much of the **canonical long-term milestone programme through v13** remains
+if every milestone that is not yet `[x]` stays in scope?
+
+The snapshot below was recalculated on 31 August 2026 from M1–M38. It includes
+v12.x, next-SemVer, continuous, v13 and v13-research rows. M31 is excluded
+because the tracker explicitly assigns aerospace/autonomous/defence work to a
+separately governed future programme rather than the v12/v13 web framework.
+Detailed crate-roadmap checkboxes are not added again: they overlap with and
+decompose these canonical milestones, so a raw sum would double-count work.
+
+| State | Milestones | Share of the 37-milestone horizon |
+| :--- | ---: | ---: |
+| `[x]` bounded completion | **5** | **13.5%** |
+| `[~]` useful but incomplete foundation | **24** | **64.9%** |
+| `[ ]` not implemented | **8** | **21.6%** |
+| **Total in scope through v13** | **37** | **100%** |
+
+Two calculations are intentionally retained:
+
+- **Strict closure:** 5/37 are closed, so **86.5% remains open** (32
+  milestones). This is the correct answer when a partial milestone counts as
+  unfinished.
+- **Weighted engineering maturity:** `(5 + 24 × 0.5) / 37` is **45.9% complete**,
+  leaving **54.1% equivalent work**. That remainder is the eight untouched
+  milestones (21.6 percentage points) plus the unfinished half of the 24
+  partial milestones (32.4 points).
+
+This is a scope/maturity indicator, not a duration estimate. Provider accounts,
+physical hardware, store acceptance, fiscal homologation, independent audits
+and research-grade cryptography cannot be completed by repository code alone.
+The 54.1% must not be added to the historical-claim campaign or the v12 release
+checklist because those lenses substantially overlap.
 
 ## AI-native vision, without absolutes
 
