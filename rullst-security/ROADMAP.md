@@ -26,7 +26,7 @@
     inteligência e operação de um SOC não foram implementados.
   - **Ambição restante:** vale conectar fontes versionadas e mostrar saúde,
     atraso e proveniência de cada feed; a interface nunca deve inventar dados.
-- [ ] **AI Threat Sentinel (`rullst-security-ai`)**: An autonomous anomaly classifier and Proof-of-Work challenge protocol are not implemented. The heuristic prompt firewall and local counters are separate bounded controls.
+- [~] **Threat Sentinel (`rullst-security::sentinel`)**: A deterministic classifier now recognizes transparent credential-stuffing, API-scraping and distributed-automation thresholds over trusted caller-supplied aggregates, and an opt-in HMAC-authenticated, subject-bound, expiring, process-local one-shot Proof-of-Work gate is tested under concurrency. It is not AI, botnet attribution, traffic collection, autonomous blocking, distributed replay state or a DDoS guarantee.
 - [~] **RASP Deep Request Inspector (`rullst-security::rasp`)**: Bounded request/header/body heuristics block recognized SQLi, XSS, traversal, SSRF, RCE and JNDI patterns before the handler; this is not a complete parser or zero-latency guarantee.
 - [~] **Rullst Vault (`rullst-vault`)**: `VaultSecret` reduces secret lifetime and `FieldEncryptor` supplies authenticated AES-256-GCM envelopes with AAD and rotation. It cannot prevent process-memory capture; ChaCha20-Poly1305 is not implemented.
 - [x] **Secure Headers Suite (`rullst-security::headers`)**: Unified middleware applies HSTS, per-request CSP nonces, Permissions-Policy, COOP, COEP and CORP. Scanner grades still depend on the complete deployed application.

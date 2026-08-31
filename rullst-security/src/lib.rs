@@ -17,6 +17,7 @@ pub mod rbac;
 pub mod recovery_codes;
 pub mod sanitizer;
 pub mod schema_guard;
+pub mod sentinel;
 pub mod siem;
 pub mod sri;
 pub mod telemetry;
@@ -60,6 +61,11 @@ pub use sanitizer::{HtmlSanitizer, csp::CspSecurityLayer};
 pub use schema_guard::{
     JsonSchemaPolicy, SchemaPolicyError, inspect_json_payload, json_schema_guard_middleware,
     schema_guard_middleware,
+};
+pub use sentinel::{
+    ProofOfWorkChallenge, ProofOfWorkConfig, ProofOfWorkGate, SentinelAction, SentinelAssessment,
+    SentinelError, SentinelObservation, SentinelOutcome, SentinelPolicy, ThreatClassifier,
+    ThreatPattern, ThreatSentinel,
 };
 pub use siem::{SiemAlertPayload, dispatch_siem_alert, format_cef_event};
 pub use sri::{

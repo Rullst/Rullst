@@ -58,6 +58,17 @@
 - **SRI:** Generate escaped SHA-384 tags from bytes or bounded local JS/CSS
   files with `sri_script_tag_from_file` and `sri_link_tag_from_file`.
 
+### 🧩 8. Deterministic Threat Sentinel
+
+- **Explainable assessment:** Classifies caller-supplied aggregate windows
+  against explicit credential-stuffing, API-scraping and
+  distributed-automation thresholds; it does not claim AI attribution.
+- **Bounded proof of work:** Issues OS-random, HMAC-authenticated, subject-bound
+  challenges with bounded TTL, difficulty and local cardinality.
+- **One-shot verification:** Exactly one concurrent verifier consumes an active
+  challenge in the current process. Distributed replay state and traffic
+  identity remain application/deployment responsibilities.
+
 ---
 
 ## 📦 Installation
@@ -185,6 +196,34 @@ The compiled layer returns `415` for unsafe requests with a non-JSON media
 type, `400` for malformed/duplicate/oversized/deep JSON, and `422` for a valid
 JSON value that does not match the selected schema. Authentication,
 authorization, ownership and domain validation remain separate.
+
+### 7. Opt-in proof-of-work assessment
+
+```rust
+use rullst_security::{
+    ProofOfWorkConfig, SentinelObservation, SentinelPolicy, ThreatSentinel,
+};
+use std::time::Duration;
+
+fn assess_login_window() -> Result<bool, rullst_security::SentinelError> {
+    let sentinel = ThreatSentinel::try_new(
+        b"replace-with-at-least-32-high-entropy-secret-bytes",
+        SentinelPolicy::default(),
+        ProofOfWorkConfig::default(),
+    )?;
+    let signals = SentinelObservation::try_new(
+        Duration::from_secs(60), 25, 20, 8, 3, 1, 0,
+    )?;
+    Ok(sentinel
+        .assess("account-or-device:opaque-id", signals)?
+        .challenge()
+        .is_some())
+}
+```
+
+The host must derive the subject from trusted application state, provide an
+accessible alternative, limit issuance and explicitly verify the returned
+token/nonce before admitting the protected operation.
 
 ---
 

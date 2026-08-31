@@ -124,6 +124,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   retrieval, uses linear-time regexes and returns a value-free `422` on shape
   mismatch. Authentication, ownership, domain validation and non-JSON
   parameters remain separate application controls.
+- Security now includes a deterministic aggregate `ThreatClassifier` and an
+  opt-in proof-of-work gate. Challenges are OS-random, HMAC-authenticated,
+  subject-bound, expiring, capacity-limited and atomically one-shot within one
+  process. This does not claim AI/botnet attribution, traffic collection,
+  autonomous blocking, distributed replay protection or DDoS prevention.
 - `rullst-ai` now exposes static-dispatch `ChatMemory` and `StatefulChat`
   contracts. The bounded tenant-partitioned in-memory implementation supports
   deterministic offline work; opt-in `sql-memory` atomically persists each

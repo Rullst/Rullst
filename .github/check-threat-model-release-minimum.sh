@@ -38,6 +38,7 @@ jq -e '
     "NEXUS-05",
     "PAY-01",
     "PAY-06",
+    "SEC-07",
     "SEC-16",
     "STUDIO-01",
     "STUDIO-03",

@@ -84,6 +84,8 @@ inputs rather than deployment footnotes. Current bounded contracts include:
   telemetry primitives;
 - route-scoped JSON Schema 2020-12 or OpenAPI 3.1-component enforcement with
   bounded offline compilation, local-only references and linear-time regexes;
+- explainable aggregate threat assessment plus an opt-in authenticated,
+  subject-bound, expiring and locally one-shot proof-of-work gate;
 - Argon2id password hashing, expiring encrypted sessions, RBAC, model policies,
   and explicit owner-or-role guards;
 - a typed OAuth/OIDC session transaction that keeps PKCE verifiers and OIDC
@@ -98,6 +100,9 @@ inputs rather than deployment footnotes. Current bounded contracts include:
 
 These are defense-in-depth controls, not a claim that an application is secure
 without its own authorization model, deployment controls, reviews, and tests.
+The Sentinel is deliberately deterministic rather than marketed as autonomous
+AI: the host still owns aggregate collection, identity, accessible fallback,
+distributed replay state and enforcement.
 See the [security architecture](security-architecture.md) and
 [v12 security claims](v12-security-claims.md).
 

@@ -210,6 +210,15 @@
       "marker": "TM-SEC-16"
     },
     {
+      "id": "SEC-07",
+      "crate": "rullst-security",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "sentinel::tests::proof_of_work_is_subject_bound_tamper_evident_expiring_and_one_shot",
+      "source": "rullst-security/src/sentinel/tests.rs",
+      "marker": "TM-SEC-07"
+    },
+    {
       "id": "AI-01",
       "crate": "rullst-ai",
       "target_kind": "integration",

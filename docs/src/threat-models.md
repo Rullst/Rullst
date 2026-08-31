@@ -117,6 +117,19 @@ security telemetry.
 Trust boundaries are application schema configuration ↔ compiled validator and
 untrusted HTTP body ↔ route handler.
 
+## TM-SEC-2 — anomaly assessment and proof-of-work admission
+
+**Assets:** service availability, canonical client subjects, challenge key,
+challenge capacity and replay state.
+
+| Abuse case | Required disposition | Repository evidence or remaining work |
+| --- | --- | --- |
+| `SEC-07` forged, replayed, cross-subject or resource-exhausting challenge | Authenticate the complete challenge, bind it to one canonical subject, cap difficulty/TTL/cardinality, reject invalid work, expire it and atomically consume one successful proof. Classification must remain explainable and must not become authorization by itself. | The exact negative tampers with the token, changes the subject, submits invalid work, verifies concurrently and replays/expires the challenge; only one local verifier succeeds. Aggregate collection, proxy/device identity, accessible alternatives, distributed replay state, adaptive evaluation and enforcement remain application/deployment work. |
+
+Trust boundaries are host-supplied aggregates ↔ deterministic classifier,
+application subject ↔ challenge and process-local replay state ↔ distributed
+deployment.
+
 ## TM-PAY-1 — webhooks, billing, payouts and fiscal boundaries
 
 **Assets:** provider secrets, event IDs, subscription/payout state,
