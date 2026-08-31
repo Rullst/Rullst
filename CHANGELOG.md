@@ -47,6 +47,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added a compact canonical capability-status view and a SHA-bound CI quality
   scorecard artifact for every main push/PR. The score evaluates engineering
   evidence and explicitly excludes feature completeness and certification.
+- Added category-aware OAuth token revocation. `Provider::revoke_token` and
+  `revoke_refresh_token` reject malformed/oversized values before transport;
+  bounded protocol fixtures cover Google, GitHub, Discord, Apple, Auth0 and
+  Cognito with their provider-specific authentication and token-type rules.
+  `HttpRequest` and `HttpResponse` debug output now redacts credentials and
+  payloads, revocation errors omit provider bodies, arbitrary invalid HTTP
+  methods fail closed, and mock credentials stay network-free. Other
+  providers still report unsupported, and remote revocation does not clear the
+  host application's sessions or durable token state.
 - `cargo rullst upgrade` is now a transactional, version-aware assistant. It
   offers human or versioned JSON dry runs, updates the exact Cargo workspace
   release train while preserving TOML formatting, recognizes renamed
@@ -409,8 +418,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   redacted, provider calls cannot overlap, waiting callers reuse a successful
   refresh, rotated credentials replace prior state only after validation, and
   failure preserves the old generation. Encrypted persistence, cross-process
-  leasing, retry/backoff, revocation and reauthentication remain application
-  policy.
+  leasing, retry/backoff, local-session logout/reconciliation, reauthentication
+  and revocation outside the named adapter set remain application policy.
 - `#[derive(rullst::Billable)]` is now exported by the umbrella facade,
   preserves generic model parameters, and emits a focused compile error when a
   named e-mail field is absent. Invoice HTML escapes all application-supplied

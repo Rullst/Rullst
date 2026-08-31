@@ -93,6 +93,83 @@ async fn test_http_client_ext_methods() {
         assert_eq!(req.method, "POST");
         assert_eq!(req.url, "https://example.com/post");
     }
+
+    let delete_req = client.delete("https://example.com/delete");
+    let _ = delete_req.send().await;
+    {
+        let req = captured
+            .lock()
+            .await
+            .take()
+            .expect("Request should be captured");
+        assert_eq!(req.method, "DELETE");
+        assert_eq!(req.url, "https://example.com/delete");
+    }
+}
+
+#[test]
+fn http_request_debug_redacts_credentials_and_payloads() {
+    let request = HttpRequest {
+        method: "POST".into(),
+        url: "https://url-user-marker:url-password-marker@example.com/revoke?token=url-query-marker#url-fragment-marker".to_string(),
+        headers: reqwest::header::HeaderMap::new(),
+        form: Some("token=revocation-secret-marker".to_string()),
+        json: Some(json!({"access_token": "json-secret-marker"})),
+        basic_auth: Some((
+            "client-id-marker".to_string(),
+            Some("client-secret-marker".to_string()),
+        )),
+        bearer_auth: Some("bearer-secret-marker".to_string()),
+    };
+
+    let debug = format!("{request:?}");
+    assert!(debug.contains("has_form: true"));
+    assert!(debug.contains("has_json: true"));
+    assert!(debug.contains("has_basic_auth: true"));
+    assert!(debug.contains("has_bearer_auth: true"));
+    for secret in [
+        "revocation-secret-marker",
+        "json-secret-marker",
+        "client-id-marker",
+        "client-secret-marker",
+        "bearer-secret-marker",
+        "url-user-marker",
+        "url-password-marker",
+        "url-query-marker",
+        "url-fragment-marker",
+    ] {
+        assert!(!debug.contains(secret));
+    }
+    assert!(debug.contains("https://example.com/revoke"));
+
+    let response = HttpResponse {
+        status: 200,
+        body: json!({"access_token": "response-secret-marker"}),
+    };
+    let debug = format!("{response:?}");
+    assert!(debug.contains("body_kind: \"object\""));
+    assert!(!debug.contains("response-secret-marker"));
+}
+
+#[cfg(not(miri))]
+#[tokio::test]
+async fn reqwest_client_rejects_an_invalid_method_before_network() {
+    let request = HttpRequest {
+        method: "NOT A METHOD".into(),
+        url: "https://example.com".to_string(),
+        headers: reqwest::header::HeaderMap::new(),
+        form: None,
+        json: None,
+        basic_auth: None,
+        bearer_auth: None,
+    };
+    assert!(matches!(
+        ReqwestClient::new().execute(request).await,
+        Err(crate::ConnectError::InvalidConfiguration {
+            field: "http_method",
+            ..
+        })
+    ));
 }
 
 #[test]

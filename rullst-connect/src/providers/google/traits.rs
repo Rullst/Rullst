@@ -62,13 +62,18 @@ impl Provider for GoogleProvider {
         })
     }
 
-    async fn revoke_token(&self, token: &str) -> Result<(), crate::error::ConnectError> {
+    async fn revoke_token_with_kind(
+        &self,
+        token: &str,
+        _kind: crate::provider::RevocationTokenKind,
+    ) -> Result<(), crate::error::ConnectError> {
+        crate::provider::validate_revocation_token(token)?;
         self.http_client
             .post("https://oauth2.googleapis.com/revoke")
             .form(&[("token", token)])
             .send()
             .await?
-            .error_for_status()?;
+            .error_for_status_redacted("token revocation")?;
         Ok(())
     }
 

@@ -18,7 +18,7 @@ pub struct Auth0Provider {
 }
 
 impl Auth0Provider {
-    /// Note: domain should be the tenant domain, e.g., "dev-xxxx.us.auth0.com"
+    /// Creates a provider for a tenant domain such as `dev-example.us.auth0.com`.
     pub fn try_new(
         client_id: impl Into<String>,
         client_secret: secrecy::SecretString,
@@ -240,6 +240,25 @@ impl Provider for Auth0Provider {
         user.expires_in = token.expires_in;
         Ok(user)
     }
+
+    async fn revoke_token_with_kind(
+        &self,
+        token: &str,
+        kind: crate::provider::RevocationTokenKind,
+    ) -> Result<(), ConnectError> {
+        if kind != crate::provider::RevocationTokenKind::RefreshToken {
+            return Err(crate::provider::unsupported_revocation_kind("Auth0", kind));
+        }
+        crate::provider::revoke_form_with_body_credentials(
+            self.http_client.as_ref(),
+            format!("https://{}/oauth/revoke", self.domain),
+            &self.client_id,
+            secrecy::ExposeSecret::expose_secret(&self.client_secret),
+            token,
+            None,
+        )
+        .await
+    }
 }
 
 #[cfg(test)]
@@ -255,7 +274,6 @@ mod tests {
             "https://redirect.url".to_string(),
             "test.auth0.com".to_string(),
         );
-
         let url = provider.redirect_url();
         assert!(url.starts_with("https://test.auth0.com/authorize?"));
         assert!(url.contains("client_id=client_id"));
@@ -358,7 +376,6 @@ mod tests {
                 "email_verified": true
             }),
         }));
-
         let user = provider
             .get_user(crate::provider::ExchangeParams {
                 auth_code: "code",
@@ -366,7 +383,6 @@ mod tests {
             })
             .await
             .unwrap();
-
         assert_eq!(user.id, "user_123");
         assert_eq!(user.name, "Test User");
         assert_eq!(user.email.as_deref(), Some("test@example.com"));
@@ -386,7 +402,6 @@ mod tests {
             user_status: 200,
             user_body: json!({}),
         }));
-
         let err = provider
             .get_user(crate::provider::ExchangeParams {
                 auth_code: "code",
@@ -394,7 +409,6 @@ mod tests {
             })
             .await
             .unwrap_err();
-
         assert!(matches!(
             err,
             crate::error::ConnectError::ProviderApiError { .. }
@@ -415,7 +429,6 @@ mod tests {
             user_status: 200,
             user_body: json!({"name": "No ID User"}),
         }));
-
         let err = provider
             .get_user(crate::provider::ExchangeParams {
                 auth_code: "code",
@@ -423,7 +436,6 @@ mod tests {
             })
             .await
             .unwrap_err();
-
         assert!(matches!(err, crate::error::ConnectError::Provider(_)));
     }
 
@@ -474,15 +486,10 @@ mod tests {
         let original_client = provider.http_client.clone();
         let provider = provider.with_retry(3);
         assert_eq!(provider.client_id, "client_id");
-        // New client must differ from the one before calling with_retry.
         assert!(!std::sync::Arc::ptr_eq(
             &provider.http_client,
             &original_client
         ));
-        // Kills the mutant `replace with_retry -> Self with Default::default()`:
-        // Default::default() would clone the global DEFAULT_HTTP_CLIENT, so the
-        // new http_client would be ptr_eq to it. A real with_retry creates a
-        // fresh ReqwestClient, which is a distinct allocation.
         assert!(
             !std::sync::Arc::ptr_eq(&provider.http_client, &crate::client::DEFAULT_HTTP_CLIENT),
             "with_retry must create a new client, not reuse DEFAULT_HTTP_CLIENT"

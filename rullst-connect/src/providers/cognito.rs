@@ -230,6 +230,28 @@ impl Provider for CognitoProvider {
         user.expires_in = token.expires_in;
         Ok(user)
     }
+
+    async fn revoke_token_with_kind(
+        &self,
+        token: &str,
+        kind: crate::provider::RevocationTokenKind,
+    ) -> Result<(), ConnectError> {
+        if kind != crate::provider::RevocationTokenKind::RefreshToken {
+            return Err(crate::provider::unsupported_revocation_kind(
+                "Amazon Cognito",
+                kind,
+            ));
+        }
+        crate::provider::revoke_form_with_basic_credentials(
+            self.http_client.as_ref(),
+            format!("{}/oauth2/revoke", self.domain),
+            &self.client_id,
+            secrecy::ExposeSecret::expose_secret(&self.client_secret),
+            token,
+            None,
+        )
+        .await
+    }
 }
 
 #[cfg(test)]

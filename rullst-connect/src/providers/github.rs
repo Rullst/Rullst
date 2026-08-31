@@ -11,7 +11,6 @@ impl GithubProvider {
         &self,
         form_data: &crate::provider::TokenExchangeForm<'_>,
     ) -> Result<ConnectUser, crate::error::ConnectError> {
-        // 1. Exchange authorization code for access token
         let token_res = self
             .http_client
             .post("https://github.com/login/oauth/access_token")
@@ -69,19 +68,17 @@ impl Provider for GithubProvider {
         &self,
         access_token: &str,
     ) -> Result<ConnectUser, crate::error::ConnectError> {
-        // 2. Fetch user profile
         let user_res = self
             .http_client
             .get("https://api.github.com/user")
             .bearer_auth(access_token)
-            .header("User-Agent", "rullst-connect") // GitHub API requires User-Agent
+            .header("User-Agent", "rullst-connect")
             .send()
             .await?
             .error_for_status()?
             .json::<Value>()
             .await?;
 
-        // 3. Map to generic ConnectUser
         Ok(ConnectUser {
             id: user_res["id"]
                 .as_i64()
@@ -106,6 +103,28 @@ impl Provider for GithubProvider {
     }
 
     crate::impl_standard_refresh_token!();
+
+    async fn revoke_token_with_kind(
+        &self,
+        token: &str,
+        kind: crate::provider::RevocationTokenKind,
+    ) -> Result<(), crate::error::ConnectError> {
+        if kind != crate::provider::RevocationTokenKind::AccessToken {
+            return Err(crate::provider::unsupported_revocation_kind("GitHub", kind));
+        }
+        let endpoint = crate::provider::provider_url_with_segments(
+            "https://api.github.com/",
+            &["applications", &self.client_id, "token"],
+        )?;
+        crate::provider::revoke_json_with_basic_delete(
+            self.http_client.as_ref(),
+            endpoint,
+            &self.client_id,
+            secrecy::ExposeSecret::expose_secret(&self.client_secret),
+            token,
+        )
+        .await
+    }
 
     async fn request_device_code(
         &self,

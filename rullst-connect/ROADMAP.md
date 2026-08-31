@@ -17,9 +17,13 @@ identity sections remain roadmap work.
 
 - [x] **Boilerplate Reduction Macros:** Use `define_provider!` to drastically cut down repetitive code in provider structs, making it easier for the community to contribute new providers.
 - [x] **Native Framework Integration:** Create the optional `axum` and `actix` features, providing Extractors (like `AuthCallback`) so URL parsing of codes, states, and errors works magically.
-- [~] **Token Revocation (Logout):** The trait fails closed by default; Google
-  has a reviewed adapter and the mock implements a deterministic fixture. Other
-  providers remain unsupported until individually implemented and tested.
+- [~] **Typed Token Revocation (Logout):** `revoke_token` and
+  `revoke_refresh_token` distinguish token categories, reject malformed inputs
+  before transport and fail closed by default. Protocol contracts cover Google,
+  GitHub, Discord, Apple, Auth0 and Amazon Cognito, while the offline mock stays
+  network-free. Facebook, LinkedIn, Microsoft, X and generic OIDC remain
+  unsupported until their provider-specific semantics are implemented and
+  tested; remote success does not terminate the application's local session.
 - [x] **Mocking Tools (TDD):** A `MockProvider` to facilitate writing unit tests for end users of the library.
 - [x] **OIDC Support:** Cryptographic `id_token` validation for Google, Apple, and custom OIDC providers using refreshed JWKS material.
 - [~] **Security Audit & PKCE:** Strict URL parsing, PKCE builders and negative

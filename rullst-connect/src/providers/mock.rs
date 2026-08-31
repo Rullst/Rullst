@@ -51,7 +51,12 @@ impl Provider for MockProvider {
         Ok(self.mocked_user.clone())
     }
 
-    async fn revoke_token(&self, _token: &str) -> Result<(), crate::error::ConnectError> {
+    async fn revoke_token_with_kind(
+        &self,
+        token: &str,
+        _kind: crate::provider::RevocationTokenKind,
+    ) -> Result<(), crate::error::ConnectError> {
+        crate::provider::validate_revocation_token(token)?;
         if self.expect_revoke_success {
             Ok(())
         } else {

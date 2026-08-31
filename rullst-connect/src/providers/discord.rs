@@ -92,6 +92,22 @@ impl Provider for DiscordProvider {
         )
         .await
     }
+
+    async fn revoke_token_with_kind(
+        &self,
+        token: &str,
+        kind: crate::provider::RevocationTokenKind,
+    ) -> Result<(), crate::error::ConnectError> {
+        crate::provider::revoke_form_with_basic_credentials(
+            self.http_client.as_ref(),
+            "https://discord.com/api/oauth2/token/revoke",
+            &self.client_id,
+            secrecy::ExposeSecret::expose_secret(&self.client_secret),
+            token,
+            Some(kind),
+        )
+        .await
+    }
 }
 
 #[cfg(test)]

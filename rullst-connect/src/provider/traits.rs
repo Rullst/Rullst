@@ -1,5 +1,6 @@
 //! Core asynchronous Provider trait definition.
 
+use crate::provider::RevocationTokenKind;
 use crate::provider::types::ExchangeParams;
 use crate::user::ConnectUser;
 use async_trait::async_trait;
@@ -85,9 +86,27 @@ pub trait Provider: Send + Sync {
         ))
     }
 
-    /// Revokes an access token (or refresh token) directly on the provider's authorization server.
-    /// By default, this returns a `Token` error since not all providers support token revocation.
-    async fn revoke_token(&self, _token: &str) -> Result<(), crate::error::ConnectError> {
+    /// Revokes an access token directly on the provider's authorization server.
+    ///
+    /// Providers that only support refresh-token revocation fail explicitly; use
+    /// [`Self::revoke_refresh_token`] for that token category.
+    async fn revoke_token(&self, token: &str) -> Result<(), crate::error::ConnectError> {
+        self.revoke_token_with_kind(token, RevocationTokenKind::AccessToken)
+            .await
+    }
+
+    /// Revokes a refresh token directly on the provider's authorization server.
+    async fn revoke_refresh_token(&self, token: &str) -> Result<(), crate::error::ConnectError> {
+        self.revoke_token_with_kind(token, RevocationTokenKind::RefreshToken)
+            .await
+    }
+
+    /// Revokes a token with an explicit category for provider-specific protocol mapping.
+    async fn revoke_token_with_kind(
+        &self,
+        _token: &str,
+        _kind: RevocationTokenKind,
+    ) -> Result<(), crate::error::ConnectError> {
         Err(crate::error::ConnectError::Token(
             "Token revocation is not supported by this provider".to_string(),
         ))

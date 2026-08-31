@@ -48,6 +48,10 @@ state of those checks for the referenced commit; they are not an absolute securi
 - 🔄 **Bounded automatic refresh**: A user-bound, redacting static coordinator
   detects token expiry, prevents overlapping refresh calls and reuses a valid
   result for waiting callers.
+- 🚪 **Typed remote revocation**: Access and refresh tokens are distinct API
+  operations. Google, GitHub, Discord, Apple, Auth0 and Cognito have bounded
+  protocol adapters; unsupported providers fail explicitly and offline
+  credentials remain network-free.
 - 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, refresh on unknown `kid`, and bounded stale-if-error behavior.
 - 🏢 **Explicit Corporate Proxy**: First-class HTTP(S) proxy clients, including bounded Basic proxy authentication without credentials in the endpoint URL.
 - 📺 **Device Flow**: Native RFC 8628 support for headless CLI and Smart TV auth.
@@ -75,6 +79,16 @@ Official support for 11 core providers:
 9. **Discord**
 10. **LinkedIn**
 11. **OIDC (OpenID Connect Custom Provider)**
+
+Remote token revocation is deliberately narrower than login support. Use
+`Provider::revoke_token` for an access token and
+`Provider::revoke_refresh_token` for a refresh token; Auth0/Cognito accept only
+the latter through these adapters, while GitHub accepts only the former. A
+successful provider response does not clear application cookies, sessions,
+cached identity, or durable token records—the host must commit that local
+logout lifecycle. Provider revocation endpoints are intentionally idempotent in
+several ecosystems, so HTTP success is protocol acceptance, not proof that the
+token was valid immediately before the call.
 
 ## 🛠️ Installation
 
@@ -290,7 +304,8 @@ provider calls, lets waiters reuse a successful refresh, retains a provider that
 does not rotate its refresh token, adopts a validated rotation and binds every
 response to the original provider user. `state_snapshot` exists for an
 application-owned encrypted credential store. Cross-process leases,
-retry/backoff, revocation and reauthentication remain application policy;
+retry/backoff, local-session logout/reconciliation, reauthentication and
+revocation for providers outside the named adapter set remain application policy;
 providers without refresh support fail explicitly.
 
 ### 🔒 Manual PKCE Support

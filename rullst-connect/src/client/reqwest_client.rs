@@ -147,10 +147,12 @@ impl HttpClient for ReqwestClient {
         #[cfg(not(miri))]
         {
             tracing::debug!("Executing HTTP request");
-            let method = match req.method.as_ref() {
-                "POST" => reqwest::Method::POST,
-                _ => reqwest::Method::GET,
-            };
+            let method = reqwest::Method::from_bytes(req.method.as_bytes()).map_err(|_| {
+                crate::error::ConnectError::InvalidConfiguration {
+                    field: "http_method",
+                    reason: "HTTP method is invalid".to_string(),
+                }
+            })?;
 
             #[cfg(not(feature = "retry"))]
             let mut res = {

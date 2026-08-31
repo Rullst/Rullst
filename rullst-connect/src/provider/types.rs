@@ -1,5 +1,25 @@
 //! Parameters, forms, and token response types for OAuth2 providers.
 
+/// OAuth token category supplied to a provider revocation endpoint.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum RevocationTokenKind {
+    /// A bearer access token.
+    AccessToken,
+    /// A refresh token used to obtain new access tokens.
+    RefreshToken,
+}
+
+impl RevocationTokenKind {
+    /// Returns the RFC 7009 token type hint value.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::AccessToken => "access_token",
+            Self::RefreshToken => "refresh_token",
+        }
+    }
+}
+
 /// Helper to construct standard OAuth2 parameters to reduce boilerplate.
 pub fn build_oauth_params<'a>(
     base_url: &str,

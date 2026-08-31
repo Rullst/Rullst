@@ -109,6 +109,20 @@ impl ResponseWrapper {
         }
     }
 
+    pub(crate) fn error_for_status_redacted(
+        self,
+        operation: &'static str,
+    ) -> Result<Self, crate::error::ConnectError> {
+        if !(200..300).contains(&self.res.status) {
+            Err(crate::error::ConnectError::ProviderApiError {
+                code: format!("HTTP_{}", self.res.status),
+                message: format!("provider rejected the {operation} request"),
+            })
+        } else {
+            Ok(self)
+        }
+    }
+
     pub async fn json<T>(self) -> Result<T, crate::error::ConnectError>
     where
         T: serde::de::DeserializeOwned,
@@ -122,6 +136,7 @@ impl ResponseWrapper {
 pub trait HttpClientExt {
     fn get(&self, url: impl Into<String>) -> RequestBuilder<'_>;
     fn post(&self, url: impl Into<String>) -> RequestBuilder<'_>;
+    fn delete(&self, url: impl Into<String>) -> RequestBuilder<'_>;
 }
 
 impl HttpClientExt for dyn HttpClient + '_ {
@@ -130,5 +145,9 @@ impl HttpClientExt for dyn HttpClient + '_ {
     }
     fn post(&self, url: impl Into<String>) -> RequestBuilder<'_> {
         RequestBuilder::new(self, "POST", url.into())
+    }
+
+    fn delete(&self, url: impl Into<String>) -> RequestBuilder<'_> {
+        RequestBuilder::new(self, "DELETE", url.into())
     }
 }

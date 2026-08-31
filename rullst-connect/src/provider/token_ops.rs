@@ -5,6 +5,119 @@ use crate::provider::traits::Provider;
 use crate::provider::types::{Oauth2TokenResponse, TokenExchangeForm};
 use crate::user::ConnectUser;
 
+const MAX_REVOCATION_TOKEN_BYTES: usize = 16 * 1024;
+
+pub(crate) fn validate_revocation_token(token: &str) -> Result<(), crate::error::ConnectError> {
+    if token.is_empty()
+        || token.len() > MAX_REVOCATION_TOKEN_BYTES
+        || token.trim().len() != token.len()
+        || token.chars().any(char::is_control)
+    {
+        return Err(crate::error::ConnectError::Token(
+            "revocation token must be non-empty, bounded, and free of whitespace padding or control characters"
+                .to_string(),
+        ));
+    }
+    Ok(())
+}
+
+pub(crate) fn unsupported_revocation_kind(
+    provider: &'static str,
+    kind: crate::provider::RevocationTokenKind,
+) -> crate::error::ConnectError {
+    crate::error::ConnectError::Token(format!(
+        "{provider} does not support {} revocation through this adapter",
+        kind.as_str()
+    ))
+}
+
+pub(crate) fn provider_url_with_segments(
+    base: &str,
+    segments: &[&str],
+) -> Result<String, crate::error::ConnectError> {
+    let mut url = url::Url::parse(base).map_err(|_| {
+        crate::error::ConnectError::Provider("provider endpoint is invalid".to_string())
+    })?;
+    {
+        let mut path = url.path_segments_mut().map_err(|_| {
+            crate::error::ConnectError::Provider(
+                "provider endpoint cannot contain path segments".to_string(),
+            )
+        })?;
+        path.extend(segments.iter().copied());
+    }
+    Ok(url.to_string())
+}
+
+pub(crate) async fn revoke_form_with_body_credentials(
+    client: &dyn crate::client::HttpClient,
+    endpoint: impl Into<String>,
+    client_id: &str,
+    client_secret: &str,
+    token: &str,
+    kind: Option<crate::provider::RevocationTokenKind>,
+) -> Result<(), crate::error::ConnectError> {
+    validate_revocation_token(token)?;
+    let mut form = vec![
+        ("client_id", client_id),
+        ("client_secret", client_secret),
+        ("token", token),
+    ];
+    if let Some(kind) = kind {
+        form.push(("token_type_hint", kind.as_str()));
+    }
+    client
+        .post(endpoint)
+        .form(&form)
+        .send()
+        .await?
+        .error_for_status_redacted("token revocation")?;
+    Ok(())
+}
+
+pub(crate) async fn revoke_form_with_basic_credentials(
+    client: &dyn crate::client::HttpClient,
+    endpoint: impl Into<String>,
+    client_id: &str,
+    client_secret: &str,
+    token: &str,
+    kind: Option<crate::provider::RevocationTokenKind>,
+) -> Result<(), crate::error::ConnectError> {
+    validate_revocation_token(token)?;
+    let mut form = vec![("token", token)];
+    if let Some(kind) = kind {
+        form.push(("token_type_hint", kind.as_str()));
+    }
+    client
+        .post(endpoint)
+        .basic_auth(client_id, Some(client_secret))
+        .form(&form)
+        .send()
+        .await?
+        .error_for_status_redacted("token revocation")?;
+    Ok(())
+}
+
+pub(crate) async fn revoke_json_with_basic_delete(
+    client: &dyn crate::client::HttpClient,
+    endpoint: impl Into<String>,
+    client_id: &str,
+    client_secret: &str,
+    token: &str,
+) -> Result<(), crate::error::ConnectError> {
+    validate_revocation_token(token)?;
+    client
+        .delete(endpoint)
+        .header("Accept", "application/vnd.github+json")
+        .header("User-Agent", "rullst-connect")
+        .basic_auth(client_id, Some(client_secret))
+        .json(serde_json::json!({ "access_token": token }))
+        .send()
+        .await?
+        .error_for_status_redacted("token revocation")?;
+    Ok(())
+}
+
 /// Helper to exchange an authorization code for access tokens using standard OAuth2.
 pub async fn fetch_access_token(
     client: &dyn crate::client::HttpClient,

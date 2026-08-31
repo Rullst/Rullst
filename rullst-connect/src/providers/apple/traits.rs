@@ -111,4 +111,22 @@ impl Provider for AppleProvider {
             .or_else(|| token_res["expires_in"].as_i64().map(|v| v as u64));
         Ok(user)
     }
+
+    async fn revoke_token_with_kind(
+        &self,
+        token: &str,
+        kind: crate::provider::RevocationTokenKind,
+    ) -> Result<(), crate::error::ConnectError> {
+        crate::provider::validate_revocation_token(token)?;
+        let client_secret = self.generate_client_secret()?;
+        crate::provider::revoke_form_with_body_credentials(
+            self.http_client.as_ref(),
+            "https://appleid.apple.com/auth/revoke",
+            &self.client_id,
+            &client_secret,
+            token,
+            Some(kind),
+        )
+        .await
+    }
 }
