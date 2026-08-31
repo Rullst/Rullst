@@ -104,19 +104,34 @@ identity, authorization, TLS and network policy.
 
 ## Omni packaging
 
-`cargo rullst make:omni` scaffolds a Tauri-powered shell and commands for desktop
-and mobile targets. Deterministic generation pins the local Tauri CLI, requires
-an explicit validated backend URL for mobile, generates real platform icon
+Rullst uses a **web-first, platform-enhanced** model. The web application is the
+canonical universally reachable product; the server remains authoritative for
+domain rules, authentication, authorization, persistence, realtime and
+security. Omni may package that interface and later add scoped native
+capabilities, but it must not fork the business model or trust a client-side
+decision as authority.
+
+`cargo rullst make:omni` scaffolds a Tauri-powered shell and commands for
+desktop and mobile targets. Deterministic generation pins the local Tauri CLI,
+requires an explicit validated backend URL and application-owned identifier for
+mobile, derives or validates product metadata, generates real platform icon
 assets and fails when an explicitly requested platform cannot be initialized.
-The repository compiles a freshly generated iOS simulator shell on a macOS
-runner when this boundary changes.
+The packaged bootstrap exposes no remote IPC. A native navigation policy allows
+only Tauri's local origin and the configured backend's exact origin, leaving
+OAuth/external links for a reviewed system-browser/deep-link contract.
+
+Path-aware workflows generate disposable applications and check desktop on
+Linux/macOS/Windows, an Android debug APK and an iOS simulator target. Their
+configuration is not proof until each hosted run passes on the referenced SHA.
 
 That gate proves reproducible generation and simulator compilation only. It
 does not automatically implement offline synchronization, secure remote
 networking, platform signing, privacy declarations, physical-device behavior,
-store publication, native updater policy or every frontend profile. Treat the
-generated shell as application-owned packaging code that must be reviewed,
-signed and tested on each supported target.
+store publication, native updater policy or every frontend profile. Push,
+biometrics, OS secure storage, deep links and offline state must be opt-in,
+least-privilege additions with platform tests. Treat the generated shell as
+application-owned packaging code that must be reviewed, signed and tested on
+each supported target.
 
 ## Engineering invariants
 

@@ -56,6 +56,8 @@
 | **Bare-metal `no_std` matrix** | [![no_std](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/no_std-build.yml?branch=main&style=flat-square&label=no_std)](https://github.com/Rullst/Rullst/actions/workflows/no_std-build.yml?query=branch%3Amain) | Builds IoT helpers for Cortex-M and RISC-V targets; this is compile evidence, not hardware testing. |
 | **IoT integration** | [![IoT](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/iot-integration.yml?branch=main&style=flat-square&label=IoT)](https://github.com/Rullst/Rullst/actions/workflows/iot-integration.yml?query=branch%3Amain) | Host tests, signed OTA invariants, and a Cortex-M build. |
 | **IoT crypto containment** | [![IoT Crypto](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/pqc-compliance.yml?branch=main&style=flat-square&label=Crypto%20Boundary)](https://github.com/Rullst/Rullst/actions/workflows/pqc-compliance.yml?query=branch%3Amain) | Path-aware signed OTA, Vault, advisory, and simulator-boundary checks; no PQC/HSM certification claim. |
+| **Omni desktop matrix** | [![Omni Desktop](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/omni-desktop.yml?branch=main&style=flat-square&label=Omni%20Desktop)](https://github.com/Rullst/Rullst/actions/workflows/omni-desktop.yml?query=branch%3Amain) | Generates fresh web shells and checks their Tauri crates on Linux, macOS and Windows; no installer, signing or store claim. |
+| **Omni Android compile** | [![Omni Android](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/omni-android.yml?branch=main&style=flat-square&label=Omni%20Android)](https://github.com/Rullst/Rullst/actions/workflows/omni-android.yml?query=branch%3Amain) | Generates a fresh shell and compiles an unsigned Android debug APK; no physical-device, Play testing/signing or store claim. |
 | **Omni iOS simulator** | [![Omni iOS](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/omni-ios.yml?branch=main&style=flat-square&label=Omni%20iOS)](https://github.com/Rullst/Rullst/actions/workflows/omni-ios.yml?query=branch%3Amain) | Path-aware fresh scaffold generation and compilation on a macOS iOS simulator target; no device, signing or App Store claim. |
 | **PR security evidence** | [![PR Security](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ai-sentinel-pr.yml?branch=main&style=flat-square&label=PR%20Evidence)](https://github.com/Rullst/Rullst/actions/workflows/ai-sentinel-pr.yml?query=branch%3Amain) | Pull-request-only bounded IDOR/RBAC heuristics and CycloneDX SBOM artifact. |
 
@@ -77,7 +79,7 @@ green main gates:
 Scheduled events use the repository's default branch, so scheduled and
 continuous v12 evidence now refer to `main`. The recommended required-check
 profile and the exact scope of all
-34 workflow definitions are documented in [WORKFLOWS.md](WORKFLOWS.md).
+36 workflow definitions are documented in [WORKFLOWS.md](WORKFLOWS.md).
 
 > 📖 **[Read the detailed breakdown of all CI/CD and security workflows](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).**
 >
@@ -152,6 +154,13 @@ release or immutable tag in production.
 <p align="center">
   <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/Rullst-Omni.png" alt="Rullst Omni Mobile & Desktop Simulator" width="100%"/>
 </p>
+
+Rullst Omni follows a **web-first, platform-enhanced** architecture: the Rullst
+web application and server remain canonical, while a generated Tauri shell
+packages the same experience for desktop, Android and iOS behind an exact-origin
+navigation boundary and no privileged remote IPC. Native/offline capabilities
+remain explicit opt-ins, not automatic claims. See the
+[Omni tutorial](docs/src/tutorials/43-omni-web-first.md).
 
 ### 🔄 Assisted framework upgrades (v12 preview)
 

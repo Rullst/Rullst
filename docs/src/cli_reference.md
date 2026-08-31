@@ -227,25 +227,41 @@ more targets deterministically:
 
 ```bash
 cargo rullst make:omni --platform desktop
-cargo rullst make:omni --platform android --backend-url http://10.0.2.2:3000
-cargo rullst make:omni --platform ios --backend-url https://api.example.com
-cargo rullst make:omni --platform desktop,ios --backend-url https://api.example.com
+cargo rullst make:omni --platform android \
+  --backend-url http://10.0.2.2:3000 --identifier com.acme.myapp
+cargo rullst make:omni --platform ios \
+  --backend-url https://app.example.com --identifier com.acme.myapp
+cargo rullst make:omni --platform desktop,ios \
+  --backend-url https://app.example.com --identifier com.acme.myapp \
+  --product-name "Acme App" --app-version 1.2.3
 ```
 
 Mobile generation requires an explicit backend URL. HTTPS is required except
 for the bounded localhost/Android-emulator development hosts; embedded
-credentials are rejected. The generator installs an exact Tauri npm CLI,
-creates platform icons, initializes mobile targets non-interactively, emits a
-restrictive local CSP and fails if a requested prerequisite step fails. iOS
-initialization requires macOS and Xcode.
+credentials are rejected. Mobile also requires an application-owned lowercase
+reverse-DNS `--identifier`; reserved framework and `com.example` placeholders
+are rejected. `--product-name` and `--app-version` are optional validated
+overrides and otherwise inherit the host package metadata. Desktop-only
+development can derive a documented `com.example` placeholder, which must be
+replaced before distribution.
 
-The generated client wraps the Rullst web application; it does not by itself
+The generator installs an exact Tauri npm CLI, creates platform icons,
+initializes mobile targets non-interactively, emits a restrictive local CSP and
+fails if a requested prerequisite step fails. iOS initialization requires
+macOS and Xcode. Native-side navigation is restricted to the packaged
+bootstrap and the configured backend's exact origin. Remote pages receive no
+privileged Tauri IPC surface; cross-origin OAuth/external-link behavior needs a
+separate reviewed system-browser/deep-link integration.
+
+The canonical product remains the Rullst web application and the generated
+client packages that application; it does not by itself
 implement native plugins, offline synchronization, production network policy,
 release signing, privacy declarations, physical-device validation, Play
 Store/App Store publication or review acceptance. The generated README contains
-the application-owned distribution checklist. Repository CI compiles a fresh
-iOS simulator shell when the generator changes; that is packaging evidence, not
-an App Store or device guarantee.
+the application-owned distribution checklist. Path-aware repository workflows
+generate fresh desktop, Android and iOS shells and compile only their declared
+targets; those runs are packaging evidence, not store, physical-device or
+universal behavior guarantees.
 
 ### `cargo rullst make:iot <DeviceName>`
 Scaffolds and registers a telemetry-only IoT module in `src/iot/` using the

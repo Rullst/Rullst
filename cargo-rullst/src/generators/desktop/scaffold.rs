@@ -5,14 +5,75 @@ use colored::*;
 use std::fs;
 use std::path::Path;
 
+mod identity;
 mod templates;
 
+use identity::{OmniIdentity, resolve_identity};
 use templates::{generate_icon_source, write_omni_files};
+
+/// Application-owned values used by deterministic Omni scaffolding.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct OmniScaffoldOptions {
+    requested_platforms: Vec<String>,
+    backend_url: Option<String>,
+    product_name: Option<String>,
+    identifier: Option<String>,
+    app_version: Option<String>,
+}
+
+impl OmniScaffoldOptions {
+    pub fn new<I, S>(requested_platforms: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        Self {
+            requested_platforms: requested_platforms.into_iter().map(Into::into).collect(),
+            ..Self::default()
+        }
+    }
+
+    #[must_use]
+    pub fn backend_url(mut self, value: impl Into<String>) -> Self {
+        self.backend_url = Some(value.into());
+        self
+    }
+
+    #[must_use]
+    pub fn product_name(mut self, value: impl Into<String>) -> Self {
+        self.product_name = Some(value.into());
+        self
+    }
+
+    #[must_use]
+    pub fn identifier(mut self, value: impl Into<String>) -> Self {
+        self.identifier = Some(value.into());
+        self
+    }
+
+    #[must_use]
+    pub fn app_version(mut self, value: impl Into<String>) -> Self {
+        self.app_version = Some(value.into());
+        self
+    }
+}
 
 #[cfg_attr(mutants, mutants::skip)]
 pub fn scaffold_omni_system(
     requested_platforms: &[&str],
     backend_url: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut options = OmniScaffoldOptions::new(requested_platforms.iter().copied());
+    if let Some(backend_url) = backend_url {
+        options = options.backend_url(backend_url);
+    }
+    scaffold_omni_system_with_options(options)
+}
+
+#[cfg_attr(mutants, mutants::skip)]
+pub fn scaffold_omni_system_with_options(
+    options: OmniScaffoldOptions,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let theme = dialoguer::theme::ColorfulTheme::default();
 
@@ -36,11 +97,12 @@ pub fn scaffold_omni_system(
         format!("iOS {}", "(iPhone/iPad - Requires macOS)".red()),
     ];
 
-    let explicit_platforms = !requested_platforms.is_empty();
+    let explicit_platforms = !options.requested_platforms.is_empty();
     let selections = if explicit_platforms {
-        requested_platforms
+        options
+            .requested_platforms
             .iter()
-            .map(|platform| match *platform {
+            .map(|platform| match platform.as_str() {
                 "desktop" => Ok(0),
                 "android" => Ok(1),
                 "ios" => Ok(2),
@@ -82,7 +144,9 @@ pub fn scaffold_omni_system(
         has_desktop = true;
     }
     let _ = has_desktop;
-    let backend_url = validated_backend_url(backend_url, has_android || has_ios)?;
+    let backend_url =
+        validated_backend_url(options.backend_url.as_deref(), has_android || has_ios)?;
+    let identity = resolve_identity(Path::new("."), &options, has_android || has_ios)?;
 
     // Create Directories
     let omni_dir = Path::new("omni-app");
@@ -93,7 +157,7 @@ pub fn scaffold_omni_system(
     fs::create_dir_all(&src_dir)?;
     fs::create_dir_all(&icons_dir)?;
 
-    write_omni_files(omni_dir, &src_dir, &backend_url)?;
+    write_omni_files(omni_dir, &src_dir, &backend_url, &identity)?;
     generate_icon_source(&icons_dir)?;
     run_npm_install(omni_dir)?;
     generate_platform_icons(omni_dir)?;
@@ -259,7 +323,14 @@ mod tests {
         let src = root.join("src");
 
         fs::create_dir_all(&src).expect("temporary Omni source directory");
-        write_omni_files(&root, &src, "https://api.example.com").expect("Omni scaffold files");
+        let identity = OmniIdentity {
+            product_name: "Acme Chat".to_string(),
+            identifier: "com.acme.chat".to_string(),
+            version: "1.2.3".to_string(),
+            uses_placeholder_identifier: false,
+        };
+        write_omni_files(&root, &src, "https://api.example.com", &identity)
+            .expect("Omni scaffold files");
         let generated = fs::read_to_string(src.join("lib.rs")).expect("generated Omni runtime");
         let redirect = fs::read_to_string(src.join("redirect.js")).expect("generated redirect");
         let config = fs::read_to_string(root.join("tauri.conf.json")).expect("Tauri config");
@@ -276,7 +347,13 @@ mod tests {
         assert!(redirect.contains("https://api.example.com"));
         assert!(!config.contains("\"csp\": null"));
         assert!(config.contains("default-src 'self'"));
+        assert!(!config.contains("connect-src ipc: http://ipc.localhost https:"));
+        assert!(config.contains("https://api.example.com"));
+        assert!(config.contains("com.acme.chat"));
         assert!(!config.contains("withGlobalTauri"));
+        assert!(generated.contains("rullst-navigation-policy"));
+        assert!(generated.contains("eq_ignore_ascii_case(BACKEND_HOST)"));
+        assert!(generated.contains("const BACKEND_PORT: u16 = 443;"));
 
         let _ = fs::remove_dir_all(root);
     }

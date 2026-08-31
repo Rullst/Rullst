@@ -674,21 +674,49 @@ assistant, not a claim that compilation proves production compatibility.
 `cargo rullst make:omni` generates an application-owned Tauri packaging shell;
 it is not a native-runtime abstraction or store-publication service.
 
+The canonical product is the Rullst web application. Server-side domain rules,
+authentication, authorization, persistence, realtime policy and security
+controls remain authoritative and must work without trusting the platform
+shell. Omni is **web-first, platform-enhanced**: it may add narrowly scoped
+native capabilities, but it must not fork the business/security model or move
+authoritative secrets into JavaScript or an untrusted client.
+
 * 🟢 **`[Implemented / Bounded]` Deterministic Scaffold:** `--platform` accepts
   desktop, Android and iOS selections without a prompt. Mobile selections
   require `--backend-url`; HTTPS is required except for explicitly bounded
   loopback/emulator development hosts, and embedded credentials are rejected.
+  Product name and application version default to validated Cargo package
+  metadata. `--product-name`, `--app-version` and `--identifier` provide
+  deterministic overrides. Android/iOS require an application-owned lowercase
+  reverse-DNS identifier and reject framework/reserved example placeholders;
+  desktop-only development may use a clearly documented `com.example` value.
 * 🟢 **`[Implemented / Bounded]` Reproducible Tooling:** the generated manifest
   pins the Tauri CLI and Rust dependencies, emits a restrictive local CSP and
   real source-derived platform icons, and treats npm, icon generation or
   explicitly requested mobile initialization failures as command failures.
   Explicit iOS initialization requires macOS/Xcode.
-* 🟢 **`[Implemented / Bounded]` Compile Evidence:** the repository's
-  path-aware macOS workflow creates a disposable Rullst host, generates the iOS
-  shell and compiles it for the runner's simulator architecture.
+* 🟢 **`[Implemented / Bounded]` Remote-content Boundary:** the generated local
+  bootstrap exposes no Tauri IPC API to the remote application. A native
+  navigation callback permits only Tauri's packaged origin and the exact
+  scheme/host/effective-port tuple of the configured backend; cross-origin
+  links and OAuth must use a separately reviewed system-browser/deep-link flow.
+  The bootstrap provides an accessible initial offline/retry state, but this is
+  not offline application data or synchronization.
+* 🟢 **`[Implemented / Bounded]` Desktop Lifecycle:** the one-command local
+  `http://localhost:3000` development profile owns its child process, refuses a
+  pre-existing port rather than attaching to an unknown process, stops on early
+  child exit or timeout, and terminates only the child it spawned. HTTPS and
+  other configured origins are treated as externally operated backends.
+* 🟠 **`[Authored / Hosted Evidence Pending]` Compile Evidence:** path-aware
+  workflows create disposable hosts and compile fresh desktop shells on Linux,
+  macOS and Windows, an Android debug APK, and an iOS simulator target. A
+  workflow file is not evidence until its jobs pass on the referenced commit.
 * 🟠 **`[Application / Platform Boundary]`** bundle identity, signing and
   provisioning, privacy manifest and usage declarations, native capabilities,
   production endpoint/auth policy, physical-device testing, TestFlight,
-  metadata and App Store review belong to the generated application. Simulator
-  compilation must never be described as store acceptance or universal iPhone
+  Play testing, metadata and store review belong to the generated application.
+  Offline sync, push, biometrics, OS secure storage, deep links and signed
+  updates are not implied by the web shell and require opt-in capability scopes
+  plus platform tests. Simulator/APK compilation must never be described as
+  store acceptance or universal iPhone/Android
   compatibility.

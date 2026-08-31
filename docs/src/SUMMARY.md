@@ -66,6 +66,7 @@
 - [40. NFS-e Homologation Preparation](tutorials/40-nfse-homologation-preparation.md)
 - [41. Tenant-Bound RAG](tutorials/41-tenant-bound-rag.md)
 - [42. Server-Bound OAuth/OIDC Sessions](tutorials/42-server-bound-oauth-sessions.md)
+- [43. Omni Web-First Applications](tutorials/43-omni-web-first.md)
 
 # Reference
 - [📜 Framework Spec](spec.md)

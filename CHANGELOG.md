@@ -40,6 +40,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The declared v12 MSRV is Rust 1.96.0. The default umbrella dependency enables
   ORM and the SQLite queue; Nexus, Studio, AI, auth, security, and other domain
   crates remain opt-in features.
+- Rullst Omni now generates an application-identified, web-first Tauri shell.
+  Product/version metadata inherit the host package or accept validated CLI
+  overrides; mobile generation requires an application-owned reverse-DNS
+  identifier. The packaged bootstrap has an exact-origin CSP, exposes no remote
+  Tauri IPC and installs a native navigation policy that rejects cross-origin
+  destinations. Managed localhost desktop startup now refuses a pre-used port,
+  early backend exit and timeout instead of attaching to an unknown process or
+  launching anyway. New path-aware workflows cover desktop crate checks on
+  Linux/macOS/Windows and an Android debug APK alongside the existing iOS
+  simulator compile gate. Hosted jobs, physical devices, signing, offline sync,
+  native capabilities and store review remain explicit evidence boundaries.
 - `rullst-capital` now provides a bounded National NFS-e 1.01 preparation
   pipeline: checksum-pinned official production/restricted artifact manifests,
   strict ordinary-service DPS construction with integer money/rates, closed-
@@ -142,12 +153,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   cross-process writers without automatically repeating a provider call. Raw
   message encryption/retention, ownership within a tenant, provider audit,
   backups, migrations and conflict UX remain application concerns.
-- `cargo rullst make:omni` now supports deterministic `--platform` selection
-  and an explicit validated `--backend-url`, pins its local Tauri CLI, generates
-  real platform icons, applies a restrictive local CSP and fails when requested
-  setup commands fail. A path-aware macOS workflow generates the iOS target and
-  compiles it for the simulator. This is bounded packaging evidence, not device,
-  signing, privacy-manifest, TestFlight or App Store acceptance evidence.
 - Added an opt-in Polyglot persistence boundary to `rullst-orm`: typed document
   CRUD for MongoDB and SurrealDB, parameterized bounded OLAP queries for
   DuckDB, parameterized Turso/libSQL edge SQL with transactions and checksummed

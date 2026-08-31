@@ -78,8 +78,9 @@ Panics, no-std Build, IoT Integration, and PR Security Evidence.
 Do not configure a path-filtered, scheduled, manual, deployment, or tag-only
 workflow as a universal required check: an intentionally skipped workflow may
 never create the check context. In particular, IoT Cryptography Containment is
-blocking when relevant paths change, and Omni iOS Simulator is blocking when
-the Omni generator boundary changes. Pages, benchmarks, fuzzing, sanitizers,
+blocking when relevant paths change, and the Omni desktop, Android and iOS
+compile workflows are blocking only when the Omni generator boundary changes.
+Pages, benchmarks, fuzzing, sanitizers,
 Kani, Miri, mutation testing, udeps, ZAP, Scorecard, and release provenance
 belong to deeper evidence or release policy. GitHub repository rulesets remain
 the enforcement source; this document records the recommended profile and does
@@ -207,6 +208,8 @@ dependency graph make static estimates unreliable.
 | [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | manual | Informational | Miri package matrix with randomized layouts; failures are tolerated. |
 | [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | Eight cargo-mutants shards with uploaded results. |
 | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | main push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
+| [`omni-android.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-android.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh deterministic Omni shell, initializes Android and compiles an unsigned aarch64 debug APK. It does not test a physical device, Play testing, signing, privacy declarations or store acceptance. |
+| [`omni-desktop.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-desktop.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh deterministic HTTPS-backed shell and checks its Tauri crate on Linux, macOS and Windows. It does not build/sign every installer or exercise a GUI/WebView session. |
 | [`omni-ios.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-ios.yml) | relevant main changes, manual | Blocking | Generates a fresh deterministic Omni iOS shell on macOS and compiles it for the runner's simulator architecture. It does not test a physical device, signing, privacy declarations, TestFlight or App Store acceptance. |
 | [`pages.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pages.yml) | main push, manual | Deploy | Builds and deploys the unreleased v12 documentation preview to GitHub Pages. |
 | [`pqc-compliance.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pqc-compliance.yml) | relevant main changes, weekly, manual | Blocking | Signed OTA and Vault tests, RustSec audit, and simulator-boundary checks; explicitly no PQC/HSM certification. |

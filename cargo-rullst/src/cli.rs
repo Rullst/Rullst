@@ -14,7 +14,7 @@ use crate::generators::{
     controller::create_new_controller,
     cors_jwt::{create_cors_middleware, create_jwt_middleware},
     db::run_project_db_command,
-    desktop::{run_omni_app, scaffold_omni_system},
+    desktop::{OmniScaffoldOptions, run_omni_app, scaffold_omni_system_with_options},
     foundry::{run_foundry_deploy, scaffold_foundry_config},
     inspect::inspect_project,
     introspect::generate_models_from_db,
@@ -253,6 +253,15 @@ pub enum Commands {
         /// Backend URL embedded in the shell; required when a mobile platform is selected
         #[arg(long)]
         backend_url: Option<String>,
+        /// Human-readable product name; defaults to the Cargo package name
+        #[arg(long)]
+        product_name: Option<String>,
+        /// Application-owned reverse-DNS bundle/package identifier; required for mobile
+        #[arg(long)]
+        identifier: Option<String>,
+        /// Application SemVer; defaults to the Cargo package version
+        #[arg(long)]
+        app_version: Option<String>,
     },
     /// Scaffolds a local IoT telemetry module
     #[command(name = "make:iot")]
@@ -590,12 +599,28 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         Commands::MakeOmni {
             platform,
             backend_url,
+            product_name,
+            identifier,
+            app_version,
         } => {
             let platforms = platform
                 .iter()
                 .map(|platform| platform.as_str())
                 .collect::<Vec<_>>();
-            scaffold_omni_system(&platforms, backend_url.as_deref())?;
+            let mut options = OmniScaffoldOptions::new(platforms);
+            if let Some(backend_url) = backend_url {
+                options = options.backend_url(backend_url);
+            }
+            if let Some(product_name) = product_name {
+                options = options.product_name(product_name);
+            }
+            if let Some(identifier) = identifier {
+                options = options.identifier(identifier);
+            }
+            if let Some(app_version) = app_version {
+                options = options.app_version(app_version);
+            }
+            scaffold_omni_system_with_options(options)?;
         }
         Commands::MakeIot { name } => {
             crate::generators::iot::run_make_iot(name)?;
@@ -1083,6 +1108,12 @@ mod tests {
             "desktop,ios",
             "--backend-url",
             "https://api.example.com",
+            "--product-name",
+            "Acme Chat",
+            "--identifier",
+            "com.acme.chat",
+            "--app-version",
+            "1.2.3",
         ])
         .expect("deterministic Omni CLI flags");
 
@@ -1091,8 +1122,14 @@ mod tests {
             Commands::MakeOmni {
                 platform,
                 backend_url: Some(ref backend_url),
+                product_name: Some(ref product_name),
+                identifier: Some(ref identifier),
+                app_version: Some(ref app_version),
             } if platform == vec![OmniPlatformChoice::Desktop, OmniPlatformChoice::Ios]
                 && backend_url == "https://api.example.com"
+                && product_name == "Acme Chat"
+                && identifier == "com.acme.chat"
+                && app_version == "1.2.3"
         ));
     }
 }

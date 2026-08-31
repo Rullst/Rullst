@@ -1,3 +1,8 @@
+mod runtime;
+
+use super::OmniIdentity;
+use runtime::render_runtime;
+use serde_json::json;
 use std::fs;
 use std::path::Path;
 
@@ -5,51 +10,63 @@ pub(super) fn write_omni_files(
     omni_dir: &Path,
     src_dir: &Path,
     backend_url: &str,
+    identity: &OmniIdentity,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let parsed_backend = reqwest::Url::parse(backend_url)?;
+    let backend_origin = parsed_backend.origin().ascii_serialization();
     let backend_literal = serde_json::to_string(backend_url)?;
 
-    fs::write(
-        src_dir.join("index.html"),
-        r#"<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script defer src="redirect.js"></script>
-  </head>
-  <body style="background-color: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif;">
-    <h2 style="animation: pulse 1.5s infinite;">Starting Omni Engine...</h2>
-    <style>@keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }</style>
-  </body>
-</html>"#,
-    )?;
+    fs::write(src_dir.join("index.html"), bootstrap_html())?;
+    fs::write(src_dir.join("styles.css"), bootstrap_css())?;
     fs::write(
         src_dir.join("redirect.js"),
-        format!("const backendUrl = {backend_literal};\nwindow.location.replace(backendUrl);\n"),
+        format!(
+            r#"const backendUrl = {backend_literal};
+const status = document.querySelector("[data-status]");
+const retry = document.querySelector("[data-retry]");
+
+function openBackend() {{
+  retry.disabled = true;
+  status.textContent = "Opening the secure web application…";
+  window.location.assign(backendUrl);
+}}
+
+retry.addEventListener("click", openBackend);
+window.addEventListener("offline", () => {{
+  retry.disabled = false;
+  status.textContent = "This device is offline. Reconnect and try again.";
+}});
+window.addEventListener("online", openBackend);
+
+if (navigator.onLine) {{
+  openBackend();
+}} else {{
+  retry.disabled = false;
+  status.textContent = "This device is offline. Reconnect and try again.";
+}}
+"#,
+        ),
     )?;
 
+    let package_json = json!({
+        "name": "rullst-omni",
+        "version": identity.version,
+        "private": true,
+        "scripts": { "tauri": "tauri" },
+        "devDependencies": { "@tauri-apps/cli": "2.11.4" }
+    });
     fs::write(
         omni_dir.join("package.json"),
-        r#"{
-  "name": "rullst-omni",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "tauri": "tauri"
-  },
-  "devDependencies": {
-    "@tauri-apps/cli": "2.11.4"
-  }
-}
-"#,
+        format!("{}\n", serde_json::to_string_pretty(&package_json)?),
     )?;
 
     fs::write(
         omni_dir.join("Cargo.toml"),
-        r#"[package]
+        format!(
+            r#"[package]
 name = "rullst-omni"
-version = "0.1.0"
-description = "Rullst Omni Application"
+version = "{}"
+description = "Rullst Omni application shell"
 authors = ["Rullst Developer"]
 edition = "2021"
 
@@ -58,181 +75,122 @@ name = "rullst_omni"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "=2.6.3", features = [] }
+tauri-build = {{ version = "=2.6.3", features = [] }}
 
 [dependencies]
-tauri = { version = "=2.11.5", features = [] }
+tauri = {{ version = "=2.11.5", features = [] }}
 
 [workspace]
 "#,
+            identity.version
+        ),
     )?;
 
+    let csp = format!(
+        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' asset: http://asset.localhost blob: data:; connect-src 'self' ipc: http://ipc.localhost {backend_origin}; object-src 'none'; base-uri 'none'; frame-src 'none'"
+    );
+    let tauri_config = json!({
+        "$schema": "https://schema.tauri.app/config/2",
+        "productName": identity.product_name,
+        "version": identity.version,
+        "identifier": identity.identifier,
+        "build": { "frontendDist": "src" },
+        "app": {
+            "windows": [{
+                "title": identity.product_name,
+                "width": 1024,
+                "height": 768,
+                "resizable": true
+            }],
+            "security": { "csp": csp }
+        },
+        "bundle": {
+            "active": true,
+            "targets": "all",
+            "icon": [
+                "icons/32x32.png",
+                "icons/128x128.png",
+                "icons/128x128@2x.png",
+                "icons/icon.icns",
+                "icons/icon.ico"
+            ]
+        }
+    });
     fs::write(
         omni_dir.join("tauri.conf.json"),
-        r#"{
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "RullstOmni",
-  "version": "0.1.0",
-  "identifier": "com.rullst.omni",
-  "build": {
-    "frontendDist": "src"
-  },
-  "app": {
-    "windows": [
-      {
-        "title": "Rullst Omni",
-        "width": 1024,
-        "height": 768,
-        "resizable": true
-      }
-    ],
-    "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost blob: data:; connect-src ipc: http://ipc.localhost https: http://localhost:3000 http://127.0.0.1:3000 http://10.0.2.2:3000"
-    }
-  },
-  "bundle": {
-    "active": true,
-    "targets": "all",
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ]
-  }
-}
-"#,
+        format!("{}\n", serde_json::to_string_pretty(&tauri_config)?),
     )?;
 
     fs::write(
         omni_dir.join("build.rs"),
         "fn main() {\n    tauri_build::build();\n}\n",
     )?;
-    fs::write(src_dir.join("lib.rs"), GENERATED_RUNTIME)?;
+    fs::write(src_dir.join("lib.rs"), render_runtime(&parsed_backend)?)?;
     fs::write(
         src_dir.join("main.rs"),
         "#![cfg_attr(not(debug_assertions), windows_subsystem = \"windows\")]\n\nfn main() {\n    rullst_omni::run();\n}\n",
     )?;
-    fs::write(omni_dir.join("README.md"), GENERATED_README)?;
+    fs::write(
+        omni_dir.join("README.md"),
+        generated_readme(identity, backend_url),
+    )?;
 
     Ok(())
 }
 
-const GENERATED_RUNTIME: &str = r#"
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
-use std::process::{Command, Child};
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
-use std::net::TcpStream;
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
-use std::time::Duration;
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
-use std::thread;
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
-use std::sync::{Arc, Mutex};
-
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    #[cfg(not(any(target_os = "android", target_os = "ios")))]
-    {
-        let backend_process = Arc::new(Mutex::new(None::<Child>));
-        let backend_clone = Arc::clone(&backend_process);
-
-        thread::spawn(move || {
-            println!("🚀 Starting Rullst backend server...");
-
-            let mut cmd = if std::path::Path::new("../Cargo.toml").exists() {
-                let mut c = Command::new("cargo");
-                c.arg("run").arg("-q").current_dir("..");
-                c
-            } else {
-                let Some(exe_dir) = std::env::current_exe()
-                    .ok()
-                    .and_then(|path| path.parent().map(std::path::Path::to_path_buf))
-                else {
-                    eprintln!("❌ Failed to resolve the Omni executable directory.");
-                    return;
-                };
-                let server_bin = if cfg!(windows) { "server.exe" } else { "server" };
-                Command::new(exe_dir.join(server_bin))
-            };
-
-            match cmd.spawn() {
-                Ok(child) => {
-                    let mut lock = match backend_clone.lock() {
-                        Ok(lock) => lock,
-                        Err(poisoned) => {
-                            eprintln!("⚠️ Backend process state was poisoned; recovering ownership.");
-                            poisoned.into_inner()
-                        }
-                    };
-                    *lock = Some(child);
-                }
-                Err(error) => {
-                    eprintln!("❌ Failed to start Rullst backend: {error}");
-                }
-            }
-        });
-
-        println!("⏳ Waiting for Rullst server to bind on port 3000...");
-        let poll_interval = Duration::from_millis(100);
-        let timeout = Duration::from_secs(30);
-        let start_time = std::time::Instant::now();
-        let mut connected = false;
-
-        while start_time.elapsed() < timeout {
-            if TcpStream::connect("127.0.0.1:3000").is_ok() {
-                connected = true;
-                break;
-            }
-            thread::sleep(poll_interval);
-        }
-
-        if connected {
-            println!("✅ Rullst server is ready! Launching Omni interface...");
-        } else {
-            eprintln!("⚠️ Timeout waiting for port 3000 to open. Attempting window launch anyway...");
-        }
-
-        let backend_for_cleanup = Arc::clone(&backend_process);
-
-        if let Err(error) = tauri::Builder::default()
-            .on_window_event(move |_window, event| {
-                if let tauri::WindowEvent::Destroyed = event {
-                    println!("🛑 Omni window closed. Shutting down Rullst backend...");
-                    let mut lock = match backend_for_cleanup.lock() {
-                        Ok(lock) => lock,
-                        Err(poisoned) => {
-                            eprintln!("⚠️ Backend process state was poisoned; recovering ownership.");
-                            poisoned.into_inner()
-                        }
-                    };
-                    if let Some(mut child) = lock.take() {
-                        let _ = child.kill();
-                        println!("✅ Rullst backend terminated.");
-                    }
-                }
-            })
-            .run(tauri::generate_context!())
-        {
-            eprintln!("❌ Tauri application failed: {error}");
-        }
-    }
-
-    #[cfg(any(target_os = "android", target_os = "ios"))]
-    {
-        if let Err(error) = tauri::Builder::default().run(tauri::generate_context!()) {
-            eprintln!("❌ Tauri mobile application failed: {error}");
-        }
-    }
+fn bootstrap_html() -> &'static str {
+    r#"<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Starting Rullst Omni</title>
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="redirect.js"></script>
+  </head>
+  <body>
+    <main aria-live="polite">
+      <span class="mark" aria-hidden="true">R</span>
+      <h1>Starting your application</h1>
+      <p data-status>Checking the connection…</p>
+      <button type="button" data-retry disabled>Try again</button>
+      <noscript>JavaScript is required to open this application.</noscript>
+    </main>
+  </body>
+</html>
+"#
 }
-"#;
 
-const GENERATED_README: &str = r#"# Rullst Omni (Tauri packaging shell)
+fn bootstrap_css() -> &'static str {
+    r#":root { font-family: system-ui, sans-serif; color: #e2e8f0; background: #020617; }
+* { box-sizing: border-box; }
+body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 2rem; }
+main { width: min(32rem, 100%); padding: 2rem; text-align: center; border: 1px solid #334155; border-radius: 1.5rem; background: #0f172acc; box-shadow: 0 1.5rem 5rem #0008; }
+.mark { display: inline-grid; place-items: center; width: 4rem; height: 4rem; border-radius: 1rem; color: white; font-size: 2rem; font-weight: 800; background: linear-gradient(135deg, #2563eb, #7c3aed); }
+h1 { margin: 1.25rem 0 .5rem; font-size: clamp(1.5rem, 6vw, 2rem); }
+p, noscript { color: #94a3b8; }
+button { margin-top: 1rem; padding: .75rem 1.25rem; color: white; border: 0; border-radius: .75rem; background: #2563eb; font: inherit; font-weight: 700; cursor: pointer; }
+button:disabled { opacity: .45; cursor: wait; }
+button:focus-visible { outline: .2rem solid #93c5fd; outline-offset: .2rem; }
+"#
+}
 
-This directory is the generated desktop/Android/iOS packaging shell for a
-Rullst web application. The backend URL is fixed in `src/redirect.js` when the
-shell is scaffolded. Regenerate or review that file when environments change.
+fn generated_readme(identity: &OmniIdentity, backend_url: &str) -> String {
+    let identifier_note = if identity.uses_placeholder_identifier {
+        "The generated desktop identifier uses the `com.example` development namespace. Replace it with an application-owned identifier before distribution."
+    } else {
+        "The scaffold uses the application-owned identifier supplied to `make:omni`."
+    };
+    format!(
+        r#"# {} — Rullst Omni web shell
+
+This directory packages the canonical Rullst web application at `{backend_url}`
+for desktop, Android and iOS through Tauri. The local bootstrap contains no
+application data and exposes no Tauri IPC API to the remote page. Native-side
+navigation accepts only the packaged bootstrap and the exact backend origin.
+
+{identifier_note}
 
 ## Run locally
 
@@ -242,26 +200,34 @@ cargo rullst omni android
 cargo rullst omni ios
 ```
 
-Android requires its SDK/NDK; iOS requires macOS and Xcode. For Android emulator
-development, scaffold with `--backend-url http://10.0.2.2:3000`. Distributable
-mobile applications should use an HTTPS endpoint reachable from the device.
+Android requires its SDK/NDK; iOS requires macOS and Xcode. Distributable apps
+must use an HTTPS endpoint reachable from the real device. The web backend
+remains responsible for authentication, authorization, CSP, CSRF and data.
 
-## Distribution boundary
+## Intentional security boundary
 
-The generated shell and simulator build are packaging foundations, not proof of
-App Store acceptance. Before distributing an iOS app:
+- Cross-origin navigation is blocked. OAuth and external links must use a
+  reviewed system-browser/deep-link integration instead of weakening the
+  navigation allowlist.
+- Remote web content receives no privileged Tauri commands by default.
+- Offline synchronization, push, biometrics and secure device storage are not
+  implied by this web-shell profile; add and test only the capabilities used.
 
-1. replace `com.rullst.omni` with an application-owned bundle identifier;
-2. set the Apple developer team, signing certificate and provisioning profile;
-3. replace the generated placeholder icon and complete product metadata;
-4. add the app-owned privacy manifest and required usage descriptions;
-5. validate the real HTTPS backend, authentication and data-retention policy;
-6. test on supported simulators and physical devices, then use TestFlight;
-7. archive, notarize/sign where applicable, and submit through App Store Connect.
+## Distribution checklist
 
-Native plugins, offline synchronization, signing credentials, privacy answers,
-store publication and review remain application responsibilities.
-"#;
+1. confirm the application-owned identifier, version, icons and product metadata;
+2. configure platform signing, provisioning and privacy/usage declarations;
+3. test the production HTTPS backend and authentication on physical devices;
+4. complete accessibility, offline/error and data-retention testing;
+5. use the platform beta channel before production review and publication.
+
+The generated shell and CI compilation are packaging evidence, not proof of
+App Store or Play acceptance. Signing credentials, privacy answers, native
+capability policy, store publication and review remain application-owned.
+"#,
+        identity.product_name
+    )
+}
 
 pub(super) fn generate_icon_source(icons_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
     fs::write(
