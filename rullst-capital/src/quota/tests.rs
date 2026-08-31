@@ -160,9 +160,7 @@ async fn concurrent_members_cannot_overrun_the_shared_limit() {
 
 #[cfg(feature = "quota-sql")]
 async fn sqlite_store(label: &str) -> (SqlQuotaStore, std::path::PathBuf) {
-    let token = random_claim_token().expect("test file token");
-    let path = std::env::temp_dir().join(format!("rullst-quota-{label}-{token}.sqlite"));
-    let url = sqlite_test_url(&path);
+    let (url, path) = sqlite_test_location(label);
     let store = SqlQuotaStore::connect(url)
         .await
         .expect("SQLite quota store");
@@ -171,21 +169,23 @@ async fn sqlite_store(label: &str) -> (SqlQuotaStore, std::path::PathBuf) {
 }
 
 #[cfg(feature = "quota-sql")]
-fn sqlite_test_url(path: &std::path::Path) -> String {
-    format!(
-        "sqlite://{}?mode=rwc",
-        path.to_string_lossy().replace('\\', "/")
-    )
+fn sqlite_test_location(label: &str) -> (String, std::path::PathBuf) {
+    let token = random_claim_token().expect("test file token");
+    let directory = std::path::PathBuf::from("target").join("rullst-quota-tests");
+    std::fs::create_dir_all(&directory).expect("create quota fixture directory");
+    let path = directory.join(format!("rullst-quota-{label}-{token}.sqlite"));
+    let portable_path = path.to_string_lossy().replace('\\', "/");
+    (format!("sqlite://{portable_path}?mode=rwc"), path)
 }
 
 #[cfg(feature = "quota-sql")]
 #[test]
-fn sqlite_fixture_url_is_portable_to_windows_paths() {
-    let path = std::path::Path::new(r"C:\Users\runner\quota.sqlite");
-    assert_eq!(
-        sqlite_test_url(path),
-        "sqlite://C:/Users/runner/quota.sqlite?mode=rwc"
-    );
+fn sqlite_fixture_url_is_relative_and_portable() {
+    let (url, path) = sqlite_test_location("portable");
+    assert!(url.starts_with("sqlite://target/rullst-quota-tests/"));
+    assert!(url.ends_with(".sqlite?mode=rwc"));
+    assert!(!url.contains('\\'));
+    assert!(path.is_relative());
 }
 
 #[cfg(feature = "quota-sql")]

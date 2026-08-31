@@ -151,13 +151,7 @@ fn bind_subscription_id(
 #[cfg(all(test, feature = "axum"))]
 mod tests {
     use super::*;
-    use axum::{
-        Json, Router,
-        body::Bytes,
-        extract::{Path, State},
-        http::HeaderMap,
-        routing::post,
-    };
+    use axum::{Json, Router, body::Bytes, extract::State, http::HeaderMap, routing::post};
     use tokio::sync::mpsc;
 
     #[derive(Debug)]
@@ -170,10 +164,10 @@ mod tests {
 
     async fn fixture(
         State(sender): State<mpsc::UnboundedSender<CapturedRequest>>,
-        Path(id): Path<String>,
         headers: HeaderMap,
         body: Bytes,
     ) -> Json<Value> {
+        let id = "sub_123".to_string();
         let body = String::from_utf8_lossy(&body).into_owned();
         sender
             .send(CapturedRequest {
@@ -278,7 +272,7 @@ mod tests {
     ) {
         let (sender, receiver) = mpsc::unbounded_channel();
         let router = Router::new()
-            .route("/v1/subscriptions/{id}", post(fixture))
+            .route("/v1/subscriptions/sub_123", post(fixture))
             .with_state(sender);
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
             .await
