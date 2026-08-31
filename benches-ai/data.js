@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788171912333,
+  "lastUpdate": 1788173683473,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -3547,6 +3547,52 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 811,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Venelouis",
+            "username": "venelouis",
+            "email": "venelouistyago@gmail.com"
+          },
+          "committer": {
+            "name": "Venelouis",
+            "username": "venelouis",
+            "email": "venelouistyago@gmail.com"
+          },
+          "id": "e2eb03514e451be41f1f4b807c9a6cb5bba28a68",
+          "message": "feat(capital): add bounded direct charges",
+          "timestamp": "2026-08-31T10:41:41Z",
+          "url": "https://github.com/Rullst/Rullst/commit/e2eb03514e451be41f1f4b807c9a6cb5bba28a68"
+        },
+        "date": 1788173682710,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1460,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 260,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 547,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
