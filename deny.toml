@@ -11,6 +11,7 @@ ignore = [
 # We allow typical open-source licenses compatible with MIT framework
 allow = [
     "MIT",
+    "MIT-0",
     "Apache-2.0",
     "ISC",
     "BSD-2-Clause",
