@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788150930730,
+  "lastUpdate": 1788152821956,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -3067,6 +3067,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 719,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "04547b0ca776419ef25629ba37da464ae55cc692",
+          "message": "feat(core): orchestrate bounded offline sync",
+          "timestamp": "2026-08-31T01:53:48-03:00",
+          "tree_id": "c2971b9c06c7387d240b8f43a5cf0744d267f3cf",
+          "url": "https://github.com/Rullst/Rullst/commit/04547b0ca776419ef25629ba37da464ae55cc692"
+        },
+        "date": 1788152821233,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1675,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 366,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 779,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
