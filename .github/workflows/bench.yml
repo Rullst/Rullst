@@ -35,7 +35,9 @@ jobs:
 
       # ── rullst (core framework: router, html!, WAF) ─────────────────────────────
       - name: Run bench — rullst (router, html!, WAF middleware)
-        run: cargo bench -p rullst --bench rullst_bench -- --output-format bencher | tee bench_rullst.txt
+        run: |
+          set -o pipefail
+          cargo bench -p rullst --bench rullst_bench -- --output-format bencher | tee bench_rullst.txt
 
       - name: Reset Cargo.lock after bench
         run: git checkout Cargo.lock || true
@@ -55,7 +57,9 @@ jobs:
 
       # ── rullst-orm (query builder, schema, audit) ───────────────────────────────
       - name: Run bench — rullst-orm (query builder, schema, row mapping)
-        run: cargo bench -p rullst-orm --bench orm_bench -- --output-format bencher | tee bench_orm.txt
+        run: |
+          set -o pipefail
+          cargo bench -p rullst-orm --bench orm_bench -- --output-format bencher | tee bench_orm.txt
 
       - name: Reset Cargo.lock after bench
         run: git checkout Cargo.lock || true
@@ -75,7 +79,9 @@ jobs:
 
       # ── rullst-core (escape_str, mask_pii, generate_csrf_token) ─────────────────
       - name: Run bench — rullst-core (HTML escape, PII mask, CSRF token)
-        run: cargo bench -p rullst-core --bench core_bench -- --output-format bencher | tee bench_core.txt
+        run: |
+          set -o pipefail
+          cargo bench -p rullst-core --bench core_bench -- --output-format bencher | tee bench_core.txt
 
       - name: Reset Cargo.lock after bench
         run: git checkout Cargo.lock || true
@@ -95,7 +101,9 @@ jobs:
 
       # ── rullst-auth (AES-GCM session crypto) ────────────────────────────────────
       - name: Run bench — rullst-auth (AES-256-GCM session encrypt/decrypt)
-        run: cargo bench -p rullst-auth --bench auth_bench -- --output-format bencher | tee bench_auth.txt
+        run: |
+          set -o pipefail
+          cargo bench -p rullst-auth --bench auth_bench -- --output-format bencher | tee bench_auth.txt
 
       - name: Reset Cargo.lock after bench
         run: git checkout Cargo.lock || true
@@ -115,7 +123,9 @@ jobs:
 
       # ── rullst-connect (OAuth provider construction, PKCE) ──────────────────────
       - name: Run bench — rullst-connect (OAuth provider, PKCE)
-        run: cargo bench -p rullst-connect --bench provider_bench -- --output-format bencher | tee bench_connect.txt
+        run: |
+          set -o pipefail
+          cargo bench -p rullst-connect --bench provider_bench -- --output-format bencher | tee bench_connect.txt
 
       - name: Reset Cargo.lock after bench
         run: git checkout Cargo.lock || true
@@ -135,7 +145,9 @@ jobs:
 
       # ── rullst-security (RASP inspection, RbacGuard, Vault zeroization) ────────
       - name: Run bench — rullst-security (RASP, RBAC, Vault)
-        run: cargo bench -p rullst-security --bench security_bench -- --output-format bencher | tee bench_security.txt
+        run: |
+          set -o pipefail
+          cargo bench -p rullst-security --bench security_bench -- --output-format bencher | tee bench_security.txt
 
       - name: Reset Cargo.lock after bench
         run: git checkout Cargo.lock || true
@@ -155,7 +167,9 @@ jobs:
 
       # ── rullst-ai (AiGuardrails, PII masking, token context) ───────────────────
       - name: Run bench — rullst-ai (Guardrails, PII masking, Token context)
-        run: cargo bench -p rullst-ai --bench ai_bench -- --output-format bencher | tee bench_ai.txt
+        run: |
+          set -o pipefail
+          cargo bench -p rullst-ai --bench ai_bench -- --output-format bencher | tee bench_ai.txt
 
       - name: Reset Cargo.lock after bench
         run: git checkout Cargo.lock || true
@@ -175,7 +189,9 @@ jobs:
 
       # ── rullst-capital (Webhook validation, Subscription parsing) ───────────────
       - name: Run bench — rullst-capital (Webhooks, Subscription parsing)
-        run: cargo bench -p rullst-capital --bench capital_bench -- --output-format bencher | tee bench_capital.txt
+        run: |
+          set -o pipefail
+          cargo bench -p rullst-capital --bench capital_bench -- --output-format bencher | tee bench_capital.txt
 
       - name: Reset Cargo.lock after bench
         run: git checkout Cargo.lock || true
