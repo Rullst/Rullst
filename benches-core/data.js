@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788171719120,
+  "lastUpdate": 1788173499197,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -9499,6 +9499,76 @@ window.BENCHMARK_DATA = {
             "name": "generate_csrf_token_32_chars",
             "value": 125,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Venelouis",
+            "username": "venelouis",
+            "email": "venelouistyago@gmail.com"
+          },
+          "committer": {
+            "name": "Venelouis",
+            "username": "venelouis",
+            "email": "venelouistyago@gmail.com"
+          },
+          "id": "e2eb03514e451be41f1f4b807c9a6cb5bba28a68",
+          "message": "feat(capital): add bounded direct charges",
+          "timestamp": "2026-08-31T10:41:41Z",
+          "url": "https://github.com/Rullst/Rullst/commit/e2eb03514e451be41f1f4b807c9a6cb5bba28a68"
+        },
+        "date": 1788173498435,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 172,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 51,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 129,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 232,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 798,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 128,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 100,
+            "range": "± 0",
             "unit": "ns/iter"
           }
         ]
