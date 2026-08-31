@@ -131,6 +131,51 @@ fn matching_result_is_order_independent_bounded_and_server_scored() {
 }
 
 #[test]
+fn typed_result_normalizes_hashes_and_scores_without_retaining_raw_input() {
+    let owner = UserContext::new("7", vec!["student".to_string()]);
+    let policy = r#"{"schema_version":1,"mode":"typed_answer","case_sensitive":false,"accepted_answers":["ownership","borrow checker"]}"#;
+    let evaluator = TypedAnswerEvaluator::new(
+        vec!["ownership".to_string(), "borrow checker".to_string()],
+        false,
+        70,
+        "f".repeat(64),
+        policy,
+    )
+    .expect("trusted typed-answer policy");
+    let correct = evaluate_activity(
+        &owner,
+        attempt(),
+        "  OWNERSHIP  ",
+        1_100,
+        &evaluator,
+    )
+    .expect("normalized correct typed answer");
+    let normalized_replay = evaluate_activity(
+        &owner,
+        attempt(),
+        "ownership",
+        1_100,
+        &evaluator,
+    )
+    .expect("canonical typed answer");
+    assert_eq!(correct.result().points, 70);
+    assert_eq!(
+        correct.result().submission_key,
+        normalized_replay.result().submission_key
+    );
+    assert!(correct.result().submission_key.starts_with("text:"));
+    assert!(!correct.result().submission_key.contains("ownership"));
+    let wrong = evaluate_activity(&owner, attempt(), "borrowing", 1_100, &evaluator)
+        .expect("bounded incorrect typed answer");
+    assert_eq!(wrong.result().points, 0);
+    assert_ne!(wrong.result().submission_key, correct.result().submission_key);
+    assert!(matches!(
+        evaluate_activity(&owner, attempt(), "line\nbreak", 1_100, &evaluator),
+        Err(ActivityContractError::InvalidField("typed answer"))
+    ));
+}
+
+#[test]
 fn client_boundary_defaults_to_zero_bundle_and_bounds_opt_in_wasm() {
     let simple = ActivityClientManifest::ssr_htmx("/activities/2/play")
         .expect("same-origin SSR activity");

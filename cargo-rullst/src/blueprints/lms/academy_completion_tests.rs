@@ -178,6 +178,80 @@ pub const GENERATED_COMPLETION_TESTS_SUFFIX: &str = r##"
             .expect("HTTP matching transaction evidence");
         assert_eq!((matching_attempts, matching_scores, matching_events), (1, 1, 1));
 
+        let typed_payload = |answer: &str| {
+            rullst::server::Json(
+                crate::controllers::activity_typed_controller::TypedAnswerPayload {
+                    attempt_key: "typed-http-1".to_string(),
+                    answer: answer.to_string(),
+                },
+            )
+        };
+        let typed_response = crate::controllers::activity_typed_controller::submit(
+            rullst::server::Path(6),
+            rullst::server::Extension(7),
+            rullst::server::Extension(learner.clone()),
+            typed_payload("  OWNERSHIP  "),
+        )
+        .await;
+        assert_eq!(typed_response.status(), rullst::server::StatusCode::OK);
+        let typed_replay = crate::controllers::activity_typed_controller::submit(
+            rullst::server::Path(6),
+            rullst::server::Extension(7),
+            rullst::server::Extension(learner.clone()),
+            typed_payload("ownership"),
+        )
+        .await;
+        assert_eq!(typed_replay.status(), rullst::server::StatusCode::OK);
+        let conflicting_typed = crate::controllers::activity_typed_controller::submit(
+            rullst::server::Path(6),
+            rullst::server::Extension(7),
+            rullst::server::Extension(learner.clone()),
+            typed_payload("borrowing"),
+        )
+        .await;
+        assert_eq!(
+            conflicting_typed.status(),
+            rullst::server::StatusCode::CONFLICT
+        );
+        let invalid_typed = crate::controllers::activity_typed_controller::submit(
+            rullst::server::Path(6),
+            rullst::server::Extension(7),
+            rullst::server::Extension(learner.clone()),
+            rullst::server::Json(
+                crate::controllers::activity_typed_controller::TypedAnswerPayload {
+                    attempt_key: "typed-http-invalid".to_string(),
+                    answer: "line\nbreak".to_string(),
+                },
+            ),
+        )
+        .await;
+        assert_eq!(
+            invalid_typed.status(),
+            rullst::server::StatusCode::UNPROCESSABLE_ENTITY
+        );
+        let (typed_attempts, typed_scores, typed_events, typed_key, typed_state) =
+            rullst::db::sqlx::query_as::<_, (i64, i64, i64, String, String)>(
+                "SELECT (SELECT COUNT(*) FROM activity_attempts WHERE subject_user_id = ? AND activity_id = ? AND attempt_key = ?), (SELECT COUNT(*) FROM score_events WHERE idempotency_key = ?), (SELECT COUNT(*) FROM academy_outbox WHERE event_key = ?), (SELECT submission_key FROM activity_attempts WHERE subject_user_id = ? AND activity_id = ? AND attempt_key = ?), (SELECT state_json FROM activity_attempts WHERE subject_user_id = ? AND activity_id = ? AND attempt_key = ?)",
+            )
+            .bind(7_i32)
+            .bind(6_i32)
+            .bind("typed-http-1")
+            .bind("activity:7:6:typed-http-1")
+            .bind("score:activity:7:6:typed-http-1")
+            .bind(7_i32)
+            .bind(6_i32)
+            .bind("typed-http-1")
+            .bind(7_i32)
+            .bind(6_i32)
+            .bind("typed-http-1")
+            .fetch_one(Orm::pool().expect("Academy pool"))
+            .await
+            .expect("HTTP typed-answer transaction evidence");
+        assert_eq!((typed_attempts, typed_scores, typed_events), (1, 1, 1));
+        assert!(typed_key.starts_with("text:"));
+        assert!(!typed_key.contains("ownership"));
+        assert!(!typed_state.contains("ownership"));
+
         let expected_completion_key = format!(
             "course-completed:22:{}",
             scheduler_draft.id,
@@ -186,7 +260,7 @@ pub const GENERATED_COMPLETION_TESTS_SUFFIX: &str = r##"
             "certificate-revoked:certificate-revoke-22".to_string();
         let mut completion_delivered = false;
         let mut revocation_delivered = false;
-        for attempt in 0_i64..20 {
+        for attempt in 0_i64..32 {
             let pending = rullst::db::sqlx::query_scalar::<_, i64>(
                 "SELECT COUNT(*) FROM academy_outbox WHERE status = ?",
             )

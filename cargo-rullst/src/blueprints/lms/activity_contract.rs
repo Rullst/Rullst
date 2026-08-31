@@ -4,11 +4,13 @@ mod evaluator;
 mod matching;
 mod submit;
 mod test_template;
+mod typed;
 
 use evaluator::SINGLE_CHOICE_EVALUATOR;
 use matching::{MATCHING_ACTIVITY_CONTROLLER, MATCHING_ACTIVITY_SERVICE};
 use submit::{ACTIVITY_ATTEMPT_MODEL, ACTIVITY_CONTROLLER, ACTIVITY_SUBMISSION_SERVICE};
 use test_template::ACTIVITY_CONTRACT_TESTS;
+use typed::{TYPED_ACTIVITY_CONTROLLER, TYPED_ACTIVITY_SERVICE};
 
 pub fn get_files() -> Vec<(&'static str, String)> {
     vec![
@@ -23,6 +25,10 @@ pub fn get_files() -> Vec<(&'static str, String)> {
         (
             "src/services/activity_contract/matching.rs",
             MATCHING_ACTIVITY_SERVICE.to_string(),
+        ),
+        (
+            "src/services/activity_contract/typed.rs",
+            TYPED_ACTIVITY_SERVICE.to_string(),
         ),
         (
             "src/services/activity_contract/submit.rs",
@@ -44,6 +50,10 @@ pub fn get_files() -> Vec<(&'static str, String)> {
             "src/controllers/activity_matching_controller.rs",
             MATCHING_ACTIVITY_CONTROLLER.to_string(),
         ),
+        (
+            "src/controllers/activity_typed_controller.rs",
+            TYPED_ACTIVITY_CONTROLLER.to_string(),
+        ),
     ]
 }
 
@@ -55,6 +65,8 @@ mod matching;
 pub use matching::{MatchingEvaluator, MatchingPair, MatchingRequest, submit_matching};
 mod submit;
 pub use submit::{ActivitySubmissionError, SingleChoiceRequest, submit_single_choice};
+mod typed;
+pub use typed::{TypedAnswerEvaluator, TypedAnswerRequest, submit_typed_answer};
 
 #[cfg(test)]
 mod tests;

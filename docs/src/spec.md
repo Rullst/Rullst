@@ -73,23 +73,28 @@ The generated `ActivityEvaluator` boundary uses static dispatch and accepts an
 untrusted submission, never client-supplied points. It validates authenticated
 ownership, activity/ruleset identity, bounded object-shaped state, server-time
 ordering and a canonical evidence digest, then constructs `ActivityResult` from
-the evaluator's outcome. Built-in bounded evaluators cover single-choice and a
-complete permutation of at most eight matching pairs. The complete Academy
-starter's `record_activity_result`
-rechecks the authenticated actor, loads course/kind/maximum/ruleset/season and
+the evaluator's outcome. Built-in bounded evaluators cover single-choice, a
+complete permutation of at most eight matching pairs and typed recall with a
+closed answer set, 512-byte/control-character boundary, trim and optional
+Unicode lowercase comparison. Typed replay persists a policy-bound SHA-256
+digest rather than raw input; it does not perform Unicode normalization,
+accent/fuzzy matching or make the digest non-personal data. The complete
+Academy starter's `record_activity_result` rechecks the authenticated actor,
+loads course/kind/maximum/ruleset/season and
 the canonical evidence digest and exact evaluator configuration from persisted
 activity state, rejects any divergence, then atomically appends an exact-replay
 activity-attempt record,
 `ScoreEvent` v2, the leaderboard update and `score_recorded`. The generated
 owner-only `POST /activities/{id}/attempts` accepts only an idempotency key and
 selected option. `POST /activities/{id}/attempts/matching` accepts only an
-idempotency key and bounded pair IDs. Both derive learner/activity identity,
-policy, answers, points, evidence and time from authenticated/server state.
-Durable attempt identity is
-scoped by learner and activity, and the event idempotency key is derived by the
+idempotency key and bounded pair IDs, while
+`POST /activities/{id}/attempts/typed` accepts the key and bounded learner text.
+All derive learner/activity identity, policy, answers, points, evidence and time
+from authenticated/server state. Durable attempt identity is scoped by learner
+and activity, and the event idempotency key is derived by the
 server rather than trusted as a global client namespace. The application must
 keep evaluator answer rules in trusted state and include retained attempt state
-in its privacy lifecycle. Typed/listening/game evaluators and unification with
+in its privacy lifecycle. Listening/game evaluators and unification with
 the separately persisted quiz evaluator remain roadmap work.
 
 ---

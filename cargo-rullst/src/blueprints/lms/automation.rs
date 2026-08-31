@@ -122,7 +122,7 @@ pub fn plan_score_automations(
         }
         if !valid_key(&config.achievement_code, 64)
             || config.minimum_score < 0
-            || config.minimum_score > event.max_score
+            || config.minimum_score > 1_000_000
         {
             return Err(AutomationError::InvalidField("award_achievement config"));
         }
@@ -192,7 +192,7 @@ fn valid_key(value: &str, maximum: usize) -> bool {
 mod tests {
     use super::*;
 
-    fn event(points: i32) -> String {
+    fn event_with_max(points: i32, max_score: i32) -> String {
         serde_json::json!({
             "schema_version": 2,
             "idempotency_key": "score-1",
@@ -203,11 +203,15 @@ mod tests {
             "activity_id": 1,
             "attempt_key": "attempt-1",
             "points": points,
-            "max_score": 100,
+            "max_score": max_score,
             "ruleset_version": "rules-v1",
             "season_key": "season-2026",
             "evidence_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         }).to_string()
+    }
+
+    fn event(points: i32) -> String {
+        event_with_max(points, 100)
     }
 
     fn rule() -> AutomationRuleInput {
@@ -249,6 +253,18 @@ mod tests {
             &event(79),
             &[rule()],
         ).expect("below-threshold plan").is_empty());
+    }
+
+    #[test]
+    fn threshold_above_activity_max_is_a_valid_non_match() {
+        let plans = plan_score_automations(
+            "score:low-max",
+            "score_recorded",
+            &event_with_max(70, 70),
+            &[rule()],
+        )
+        .expect("a globally valid threshold may exceed one activity maximum");
+        assert!(plans.is_empty());
     }
 
     #[test]

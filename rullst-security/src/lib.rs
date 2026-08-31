@@ -5,6 +5,7 @@ pub mod ai_firewall;
 pub mod audit;
 pub mod cswsh;
 pub mod deception;
+pub mod digest;
 pub mod dlp;
 pub mod headers;
 pub mod honey;
@@ -34,6 +35,7 @@ pub use deception::{
     MAX_DECEPTION_TRAPS, deception_trap_middleware, register_deception_trap,
     try_register_deception_trap,
 };
+pub use digest::sha256_hex;
 pub use dlp::{DlpLayer, DlpResponseLayer, DlpResponseService, DlpService, mask_response_payload};
 pub use headers::{CspNonce, SecureHeadersConfig, SecureHeadersLayer, SecureHeadersService};
 pub use honey::{

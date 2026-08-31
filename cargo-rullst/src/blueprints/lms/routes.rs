@@ -99,6 +99,8 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
         post("/activities/{{id}}/attempts" => controllers::activity_controller::submit),
         // rullst-access: owner — pair IDs are bounded; matching rules and score remain server-derived.
         post("/activities/{{id}}/attempts/matching" => controllers::activity_matching_controller::submit),
+        // rullst-access: owner — typed input is bounded/digested; accepted answers and score remain server-derived.
+        post("/activities/{{id}}/attempts/typed" => controllers::activity_typed_controller::submit),
         // rullst-access: owner — assignment and learner are derived from path/session before entitlement checks.
         post("/assignments/{{id}}/submissions" => controllers::assignment_controller::submit),
         // rullst-access: role — a persisted evaluator/instructor/admin scores only server rubric criteria.
@@ -284,6 +286,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         post("/activities/{{id}}/attempts" => controllers::activity_controller::submit),
         // rullst-access: owner — pair IDs are bounded; matching rules and score remain server-derived.
         post("/activities/{{id}}/attempts/matching" => controllers::activity_matching_controller::submit),
+        // rullst-access: owner — typed input is bounded/digested; accepted answers and score remain server-derived.
+        post("/activities/{{id}}/attempts/typed" => controllers::activity_typed_controller::submit),
         // rullst-access: owner — assignment and learner are derived from path/session before entitlement checks.
         post("/assignments/{{id}}/submissions" => controllers::assignment_controller::submit),
         // rullst-access: role — a persisted evaluator/instructor/admin scores only server rubric criteria.

@@ -106,10 +106,30 @@ The request must be a complete permutation of two to eight pairs; unknown or
 duplicate IDs fail closed. Input order does not affect replay identity, partial
 credit uses integer server scoring, and no answer text crosses this endpoint.
 
+For typed recall, configure a closed `accepted_answers` array and submit to
+`POST /activities/{id}/attempts/typed`:
+
+```json
+{
+  "attempt_key": "attempt-recall-1",
+  "answer": "  Ownership  "
+}
+```
+
+The built-in evaluator caps UTF-8 input at 512 bytes, rejects control characters
+and trims it. When `case_sensitive` is false it applies Unicode lowercase before
+exact comparison. It does not perform NFC/NFKC normalization, accent folding,
+stemming or fuzzy matching; add a reviewed domain evaluator when your pedagogy
+requires those semantics. The durable submission key is SHA-256 over the exact
+policy binding plus normalized input, so the raw answer is absent from
+`activity_attempts`. A digest is not encryption and may remain personal data;
+retain/erase it under the same lifecycle as the attempt.
+
 The full Academy quiz service follows the same score-event invariants but is
 still a separate evaluator. Do not claim generic quiz or game integration until
 those paths are unified and their materialized tests pass.
 
-Implement another `ActivityEvaluator` when a spelling, listening or game
-exercise needs different trusted rules. Keep the concrete evaluator type
+Implement another `ActivityEvaluator` when spelling needs language-specific
+normalization or when a listening/game exercise needs different trusted rules.
+Keep the concrete evaluator type
 visible; do not use a runtime registry merely to hide domain differences.

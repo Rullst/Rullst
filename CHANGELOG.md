@@ -81,7 +81,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   complete permutation of at most eight server-owned pairs, scores it without
   trusting the client and canonicalizes order for exact replay. The
   complete-starter persistence and HTTP verticals are described immediately
-  below; typed/listening/game evaluator kinds remain open.
+  below; listening/game evaluator kinds remain open.
 - The complete Academy starter now closes that first activity path with an
   owner-only `POST /activities/{id}/attempts` boundary. Its JSON accepts only an
   idempotency key and selected option; server state supplies identity, answer,
@@ -91,7 +91,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   retries are no-ops, while a changed option under the same key fails closed;
   attempt/event deduplication is server-scoped by learner and activity so one
   learner cannot reserve another learner's client key.
-  Typed/listening/game evaluators and quiz-path unification remain open.
+  Listening/game evaluators and quiz-path unification remain open.
 - Academy now also generates owner-only
   `POST /activities/{id}/attempts/matching`. It accepts only bounded pair IDs and
   an attempt key, rejects missing/unknown/duplicate IDs, derives the answer map
@@ -99,6 +99,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   attempt/score/leaderboard/outbox transaction. Materialized tests cover order
   independence, partial server scoring, malformed input, exact retry and a
   changed pairing under the same key.
+- Academy now generates owner-only `POST /activities/{id}/attempts/typed` with
+  closed server-side accepted answers, a 512-byte/control-character boundary,
+  trim plus optional Unicode lowercase comparison and exact policy binding. The
+  durable replay key is a policy-bound SHA-256 digest, not the raw learner text;
+  normalized-equivalent retries are no-ops and changed text under the same key
+  conflicts. NFC/accent/fuzzy-language normalization remains application work.
+- Score automation now treats a globally valid achievement threshold above one
+  activity's maximum as a valid non-match instead of poisoning that activity's
+  outbox event. The generated regression covers the 70/80 boundary.
+- `rullst-security::sha256_hex` now provides canonical lowercase SHA-256 for
+  integrity identifiers without forcing an extra direct dependency into every
+  LMS profile; its docs explicitly prohibit password/MAC misuse.
 - `rullst-capital` now provides a bounded National NFS-e 1.01 preparation
   pipeline: checksum-pinned official production/restricted artifact manifests,
   strict ordinary-service DPS construction with integer money/rates, closed-

@@ -223,14 +223,17 @@ leaderboard, automation, notifications and school boundaries. Its accessible
 lesson presentation supports bounded video/audio metadata, mandatory WebVTT
 captions for video and escaped transcripts. Its generic activity boundary also
 keeps points out of untrusted submissions: static-dispatch evaluators construct
-server-authored results, with tested single-choice and bounded pair-matching
-exercises as the first examples. The complete starter then rederives the persisted activity policy and
-atomically projects that opaque result into a versioned score event, leaderboard
-and outbox. Its owner-only route accepts only the chosen option and idempotency
-key or pair IDs, while the same transaction locks the exact evaluator configuration and
-retains an exact-replay attempt; cross-user, actor/evidence/policy mismatch and
-conflicting replay are materialized negatives. That
-is a useful foundation for a
+server-authored results, with tested single-choice, bounded pair-matching and
+typed-recall exercises as the first examples. Typed recall retains a
+policy-bound digest rather than raw learner input, with deliberately narrow
+normalization semantics. The complete starter then rederives the persisted
+activity policy and
+atomically projects that opaque result into a versioned score event,
+leaderboard and outbox. Its owner-only routes accept only an idempotency key
+plus a chosen option, pair IDs or bounded typed text, while the same transaction
+locks the exact evaluator configuration and retains an exact-replay attempt;
+cross-user, actor/evidence/policy mismatch and conflicting replay are
+materialized negatives. That is a useful foundation for a
 language-learning product, not a claim that Rullst generates pedagogy, content,
 speech recognition, native-device behavior or a complete Duolingo equivalent.
 
