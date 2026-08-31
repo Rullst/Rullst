@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788158159738,
+  "lastUpdate": 1788158946191,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -3259,6 +3259,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 740,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "0d0c1128f0f254a0706b7da4004e5dbd8241b3f7",
+          "message": "feat(academy): add authoritative matching exercises",
+          "timestamp": "2026-08-31T03:39:31-03:00",
+          "tree_id": "1298b233f6b9c1130dd7d141c83258173c1b3a51",
+          "url": "https://github.com/Rullst/Rullst/commit/0d0c1128f0f254a0706b7da4004e5dbd8241b3f7"
+        },
+        "date": 1788158945804,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1646,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 367,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 714,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
