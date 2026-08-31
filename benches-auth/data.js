@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788160334072,
+  "lastUpdate": 1788161393916,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -5275,6 +5275,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4564,
             "range": "± 22",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "18e58b940a430f78593b825806295a85ee67f9ec",
+          "message": "feat(academy): add deterministic review scheduling",
+          "timestamp": "2026-08-31T04:22:24-03:00",
+          "tree_id": "c61ec69b9df27995660fa5a33c7864ffb9d06cce",
+          "url": "https://github.com/Rullst/Rullst/commit/18e58b940a430f78593b825806295a85ee67f9ec"
+        },
+        "date": 1788161393318,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1047,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 864,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1860,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4543,
+            "range": "± 16",
             "unit": "ns/iter"
           }
         ]
