@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788170538989,
+  "lastUpdate": 1788171772148,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -5419,6 +5419,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4028,
             "range": "± 18",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ae17f7b19bef8b7fcb2dff18822d4fa707f70bda",
+          "message": "feat(nexus): validate semantic admin forms",
+          "timestamp": "2026-08-31T07:13:16-03:00",
+          "tree_id": "e46c4a906b4add5b5894561a2a0985995119da55",
+          "url": "https://github.com/Rullst/Rullst/commit/ae17f7b19bef8b7fcb2dff18822d4fa707f70bda"
+        },
+        "date": 1788171771385,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 990,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 786,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1806,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3928,
+            "range": "± 37",
             "unit": "ns/iter"
           }
         ]
