@@ -48,7 +48,9 @@ state of those checks for the referenced commit; they are not an absolute securi
 - 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, refresh on unknown `kid`, and bounded stale-if-error behavior.
 - 🏢 **Explicit Corporate Proxy**: First-class HTTP(S) proxy clients, including bounded Basic proxy authentication without credentials in the endpoint URL.
 - 📺 **Device Flow**: Native RFC 8628 support for headless CLI and Smart TV auth.
-- 🛠️ **Testing**: Typed, network-free provider fallbacks plus an explicitly mounted embedded Mock IdP for local tests.
+- 🛠️ **Testing**: Typed network-free provider fallbacks plus an explicitly
+  mounted, loopback-only signed OIDC fixture with one-shot codes, PKCE, nonce,
+  EdDSA ID tokens and JWKS.
 
 > 📚 **Important Documents:**
 > - [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md): See what's new.
@@ -130,6 +132,34 @@ rullst-connect = { version = "12.0.0", features = ["mock"] }
 
 Mock-mode redirects use the reserved `example.invalid` domain and mock profiles use the
 reserved `example.invalid` email domain.
+
+### Signed local OIDC fixture
+
+With the `axum` feature, applications can mount a real local protocol fixture:
+
+```rust,no_run
+use rullst_connect::mock_idp::{MockIdpConfig, mock_router_with_config};
+
+# async fn run() -> Result<(), Box<dyn std::error::Error>> {
+let issuer = "http://127.0.0.1:8080";
+let config = MockIdpConfig::try_new(
+    issuer,
+    "local-test-client",
+    "local-test-secret",
+    "http://127.0.0.1:3000/auth/callback",
+)?;
+let listener = tokio::net::TcpListener::bind("127.0.0.1:8080").await?;
+axum::serve(listener, mock_router_with_config(config)).await?;
+# Ok(())
+# }
+```
+
+The fixture exercises discovery, exact client/callback binding, expiring
+one-shot codes, optional nonce, S256 PKCE, EdDSA ID-token verification, JWKS and
+bearer-protected userinfo. The signing seed and credentials are predictable test
+material. Keep the listener on loopback; this is not a login UI, consent server,
+refresh-token service, federation implementation or conformance suite. See the
+[local OIDC testing tutorial](https://rullst.github.io/tutorials/48-local-oidc-testing.html).
 
 ### Explicit corporate proxy
 

@@ -697,11 +697,22 @@ async fn test_mock_idp_router_execution() {
 
     // 1. Test GET /auth
     let req = Request::builder()
-        .uri("/auth?client_id=cid&redirect_uri=http://localhost/cb&response_type=code&state=xyz")
+        .uri("/auth?client_id=rullst-mock-client&redirect_uri=http%3A%2F%2F127.0.0.1%3A3000%2Fcallback&response_type=code&scope=openid%20profile&state=xyz")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert!(res.status().is_redirection());
+    let location = res
+        .headers()
+        .get(axum::http::header::LOCATION)
+        .and_then(|value| value.to_str().ok())
+        .unwrap();
+    let code = url::Url::parse(location)
+        .unwrap()
+        .query_pairs()
+        .find(|(key, _)| key == "code")
+        .map(|(_, value)| value.into_owned())
+        .unwrap();
 
     // 2. Test GET /.well-known/openid-configuration
     let req = Request::builder()
@@ -712,7 +723,9 @@ async fn test_mock_idp_router_execution() {
     assert_eq!(res.status(), StatusCode::OK);
 
     // 3. Test POST /token
-    let form = "client_id=cid&client_secret=sec&code=mock_code&grant_type=authorization_code&redirect_uri=http://localhost/cb";
+    let form = format!(
+        "client_id=rullst-mock-client&client_secret=rullst-mock-secret&code={code}&grant_type=authorization_code&redirect_uri=http%3A%2F%2F127.0.0.1%3A3000%2Fcallback"
+    );
     let req = Request::builder()
         .method("POST")
         .uri("/token")
@@ -722,10 +735,18 @@ async fn test_mock_idp_router_execution() {
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
+    let body = axum::body::to_bytes(res.into_body(), 64 * 1024)
+        .await
+        .unwrap();
+    let token: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(token["token_type"], "Bearer");
+    assert_eq!(token["id_token"].as_str().unwrap().split('.').count(), 3);
+    let access_token = token["access_token"].as_str().unwrap();
+
     // 4. Test GET /userinfo
     let req = Request::builder()
         .uri("/userinfo")
-        .header("Authorization", "Bearer mock_token")
+        .header("Authorization", format!("Bearer {access_token}"))
         .body(Body::empty())
         .unwrap();
     let res = app.oneshot(req).await.unwrap();

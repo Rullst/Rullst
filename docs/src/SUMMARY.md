@@ -71,6 +71,7 @@
 - [45. Accessible Academy Media](tutorials/45-accessible-academy-media.md)
 - [46. Server-Authoritative Learning Activities](tutorials/46-server-authoritative-learning-activities.md)
 - [47. Durable Spaced-Review Queue](tutorials/47-spaced-review-queue.md)
+- [48. Signed Local OIDC Testing](tutorials/48-local-oidc-testing.md)
 
 # Reference
 - [📜 Framework Spec](spec.md)

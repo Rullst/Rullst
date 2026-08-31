@@ -15,7 +15,7 @@ categories = ["web-programming", "authentication"]
 
 [features]
 default = []
-axum = ["dep:axum"]
+axum = ["dep:axum", "dep:ed25519-dalek"]
 actix = ["dep:actix-web"]
 # AuthCallback is framework-agnostic and needs no Leptos runtime dependency.
 leptos = []
@@ -29,6 +29,7 @@ mock = []
 async-trait = { workspace = true }
 base64 = { workspace = true }
 jsonwebtoken = { workspace = true }
+ed25519-dalek = { version = "2.2.0", optional = true }
 rand = { workspace = true }
 reqwest = { workspace = true, features = ["form", "json", "rustls"] }
 serde = { workspace = true }

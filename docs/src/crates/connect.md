@@ -55,7 +55,8 @@ state of those checks for the referenced commit; they are not an absolute securi
 - 🏢 **Explicit Corporate Proxy**: First-class HTTP(S) proxy clients, including bounded Basic proxy authentication without credentials in the endpoint URL.
 - 📺 **Device Flow**: Native RFC 8628 support for headless CLI and Smart TV auth.
 - 🛠️ **Testing**: Empty or `mock_*` credentials select a deterministic
-  offline transport, and `mock_idp` supplies a local protocol fixture.
+  offline transport, while `mock_idp` supplies a loopback-only signed OIDC
+  fixture with one-shot codes, PKCE, nonce, EdDSA ID tokens and JWKS.
 
 > 📚 **Important Documents:**
 > - [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md): See what's new.
@@ -119,6 +120,20 @@ let github = GithubProvider::try_new(
     "http://localhost:3000/auth/github/callback",
 )?;
 ```
+
+### Signed local OIDC fixture
+
+Enable `axum` and mount `mock_idp::mock_router_with_config` only on an exact
+loopback listener. `MockIdpConfig::try_new` also rejects non-loopback issuer and
+callback URLs. The resulting fixture exercises discovery, an exact registered
+client/callback, expiring one-shot authorization codes, optional nonce, S256
+PKCE, EdDSA ID-token validation through JWKS and bearer-protected userinfo.
+
+Its signing seed and credentials are deterministic public test material. It is
+not a production identity provider, interactive login/consent UI, refresh-token
+service, federation implementation or OIDC conformance suite. Follow the
+[local OIDC testing tutorial](../tutorials/48-local-oidc-testing.md) for a
+complete loopback setup.
 
 ### Explicit corporate proxy
 

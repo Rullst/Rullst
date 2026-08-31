@@ -65,9 +65,12 @@ messaging and enterprise identity sections remain roadmap work.
   session; durable session storage and cookie/deployment policy remain host
   responsibilities.
 - [x] **Native Apple Secret Generation:** Handle "Sign In with Apple" painlessly by accepting a `.p8` key and Key ID to generate the required JWT `client_secret` on-the-fly.
-- [~] **Embedded Local Mock IdP:** An explicitly mounted Axum
-  authorization/access-token/userinfo fixture. It does not issue a signed ID
-  token, expose JWKS or provide OIDC conformance and must remain local-only.
+- [x] **Embedded Local Mock IdP (bounded):** The explicitly mounted Axum
+  fixture validates an exact HTTP-loopback issuer, callback and client; issues
+  expiring one-shot authorization codes; verifies S256 PKCE; signs nonce-bound
+  EdDSA ID tokens; publishes JWKS/discovery; and protects userinfo with an
+  issued bearer token. Its deterministic credentials/key are public fixtures.
+  It is not a production IdP, login/consent product or OIDC conformance claim.
 - [x] **Enterprise-Grade Observability:** Native integration with the `tracing` crate. Emit detailed spans during token exchanges and profile fetching to simplify debugging in production and distributed systems.
 - [x] **OIDC Auto-Discovery (`.well-known`):** Create a generic `OidcProvider::discover("url")` that automatically downloads the OpenID configuration and sets up endpoints internally in a single line of code.
 - [x] **Device Authorization Flow (RFC 8628):** Support for CLI and Smart TV logins where users enter a code on a secondary device, a critical feature for headless Rust applications.
