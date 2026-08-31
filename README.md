@@ -84,6 +84,8 @@ profile and the exact scope of all
 > 📖 **[Read the detailed breakdown of all CI/CD and security workflows](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).**
 >
 > 🧭 **[Capability Status & Vision Decisions](https://github.com/Rullst/Rullst/blob/main/docs/src/capability-ledger.md)** preserves ambitious features that are partial or not implemented, with an explicit recommendation and rationale for each one.
+>
+> 📋 **[Simple Capability Status](https://github.com/Rullst/Rullst/blob/main/docs/src/capability-status.md)** and the **[per-commit quality scorecard](https://github.com/Rullst/Rullst/blob/main/docs/src/quality-scorecard.md)** keep feature progress separate from SHA-bound engineering evidence.
 <br>
 
 ## 💡 The Rullst Philosophy
@@ -372,6 +374,7 @@ Rullst is a unified monorepo. Core, ORM, Connect, and the domain crates are vers
 - 🤖 **[rullst-ai](https://github.com/Rullst/Rullst/tree/main/rullst-ai)**: Guarded provider-agnostic clients (Gemini, OpenAI, Claude, DeepSeek, Ollama), bounded tenant-aware audited RAG, structured output, and authorized local-tool foundations. See [Tenant-Bound RAG](docs/src/tutorials/41-tenant-bound-rag.md).
 - 💰 **[rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital)**: SaaS MRR/ARR analytics, payment-provider adapters, bounded provider-specific coupons/trial extensions, shared idempotent Team/Workspace quotas with opt-in four-dialect SQL accounting, and bounded checksum-pinned NFS-e DPS/XSD/XMLDSig/mTLS preparation; live Alipay RSA2 and official NFS-e authorization remain fail-closed roadmap/external-evidence work.
 - 🔌 **[rullst-connect](https://github.com/Rullst/Rullst/tree/main/rullst-connect)**: OAuth2/OIDC social login with strict discovery, rotating JWKS caches, bounded process-local automatic token refresh, offline provider fallbacks, an explicitly mounted signed loopback IdP fixture, and an opt-in one-active-challenge tower-sessions state/PKCE/nonce transaction. Queue transports currently live in Core.
+- 📨 **[rullst-messaging](https://github.com/Rullst/Rullst/tree/main/rullst-messaging)**: Versioned bounded envelopes, topic-scoped idempotent publication, consumer-group fan-out, expiring ACK leases, retry/DLQ, and a deterministic process-local broker. Remote Kafka/RabbitMQ/Redis Streams/NATS/cloud adapters remain roadmap work. See [Bounded Brokered Messaging](docs/src/tutorials/49-brokered-messaging.md).
 - 📡 **[rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot)**: `no_std` telemetry/frame helpers and Ed25519-signed OTA manifest verification; MQTT transport, HSM, and PQC remain roadmap work.
 - ✉️ **[rullst-mail](https://github.com/Rullst/Rullst/tree/main/rullst-mail)**: Transactional email drivers with message validation, bounded secret-pattern checks, background delivery, and safe scaffolds including evidence-aware fiscal receipts and explicit dunning stages.
 - 📊 **[rullst-studio](https://github.com/Rullst/Rullst/tree/main/rullst-studio)**: Developer Control Room (`:5555`) with live telemetry and data browser.

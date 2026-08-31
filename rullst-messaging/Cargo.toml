@@ -1,0 +1,28 @@
+[package]
+name = "rullst-messaging"
+version = "12.0.0"
+authors = ["Rullst Core Team"]
+edition = "2024"
+rust-version = "1.96.0"
+description = "Bounded brokered messaging contracts for the Rullst framework."
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/Rullst/Rullst"
+homepage = "https://rullst.github.io"
+documentation = "https://docs.rs/rullst-messaging"
+keywords = ["messaging", "events", "queue", "pubsub", "broker"]
+categories = ["asynchronous", "network-programming"]
+
+[features]
+default = []
+
+[dependencies]
+serde = { workspace = true, features = ["std"] }
+sha2 = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["sync"] }
+tracing = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

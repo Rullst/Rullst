@@ -128,6 +128,15 @@ relational transactions have identical semantics. Read the
 [transactional outbox](tutorials/38-transactional-outbox.md), and
 [Scout search](tutorials/39-scout-search.md) guides.
 
+The same boundary discipline now applies to messaging. `rullst-messaging`
+defines one versioned envelope, bounded topic/group metadata, idempotent
+publication, consumer groups, expiring acknowledgement leases, retry and
+dead-letter semantics, with a deterministic concurrent in-memory contract.
+That makes offline tests and future adapter conformance explicit without
+pretending the local broker is Kafka, RabbitMQ, NATS, Redis Streams, or a cloud
+service. Applications still own topic authorization and idempotency of remote
+side effects. See [Bounded Brokered Messaging](tutorials/49-brokered-messaging.md).
+
 ### 5. External services remain usable during offline development
 
 Supported AI, OAuth, mail, billing, search, and persistence adapters expose

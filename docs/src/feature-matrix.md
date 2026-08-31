@@ -1,6 +1,6 @@
 # Cargo feature matrix
 
-This page is the public feature contract for the 15 packages in the Rullst
+This page is the public feature contract for the 16 packages in the Rullst
 release train. The package manifests remain the machine-readable source of
 truth. The matrix explains the behavior those names select in v12 and makes
 the default build visible before an application adopts optional integrations.
@@ -48,6 +48,7 @@ rullst = { version = "12.0.0", default-features = false }
 | `mail` | no | `rullst-mail` with HTTP/offline transports and no SMTP dependency |
 | `mail-smtp` | no | `mail` plus the optional SMTP transport |
 | `mail-aws-ses` | no | `mail` plus native SES v2 delivery signed by the official AWS SDK |
+| `messaging` | no | Native bounded broker-neutral messaging contracts and the deterministic process-local broker |
 | `mailer` | no | Compatibility alias for `mail-smtp`; prefer `mail-smtp` in new manifests |
 | `queue-redis` | no | Redis dependency and Core's Redis queue backend |
 | `cache-redis` | no | Redis dependency and Core's Redis cache backend |
@@ -155,6 +156,13 @@ types remain available without a web-framework adapter.
 | `reqwest-middleware` | The optional middleware dependency alone; prefer `retry` for retry behavior |
 | `axum-session` | Axum plus a ten-minute, one-active-challenge `tower-sessions` state/PKCE/OIDC-nonce transaction and callback extractor |
 | `mock` | Deterministic offline provider modules outside test builds |
+
+### `rullst-messaging`
+
+Default features: none. The deterministic process-local broker, versioned
+envelope, idempotency, consumer groups, leases, retry, dead-letter, and purge
+contracts are available without optional dependencies. Remote broker adapters
+are not implemented and therefore are not represented by placeholder features.
 
 ### `rullst-iot`
 

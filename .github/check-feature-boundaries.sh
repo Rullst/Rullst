@@ -30,11 +30,12 @@ while IFS='|' read -r package features; do
   printf 'Checking %-20s features=%s\n' "$package" "${features:-<none>}"
   "${command[@]}"
 done <<'MATRIX'
-# All 15 publishable packages without default features.
+# All 16 publishable packages without default features.
 rullst-macros|
 rullst-orm-macros|
 rullst-orm|
 rullst-core|
+rullst-messaging|
 rullst-connect|
 rullst-iot|
 rullst-security|
@@ -96,6 +97,7 @@ rullst|queue-redis
 rullst|cache-redis
 rullst|offline-sync
 rullst|mail-smtp
+rullst|messaging
 rullst|auth-jwt
 rullst|oauth
 rullst|ai

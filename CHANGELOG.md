@@ -24,11 +24,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Upgrade and compatibility
 
-- Rullst v12 coordinates 15 publishable packages in one release train. Upgrade
+- Rullst v12 coordinates 16 publishable packages in one release train. Upgrade
   direct `rullst-*` dependencies together and review the
   [migration guides](docs/src/migration-v12.md),
   [feature matrix](docs/src/feature-matrix.md), and
   [compatibility policy](docs/src/compatibility-policy.md).
+- Added the first-class `rullst-messaging` crate and umbrella `messaging`
+  feature. Its bounded process-local broker provides a versioned envelope,
+  topic-scoped idempotency, consumer-group fan-out, expiring single-use ACK
+  leases, retry, dead-letter inspection, explicit purge, deterministic time,
+  redacted diagnostics, and concurrent contract tests. It does not yet claim a
+  durable transport or Kafka, RabbitMQ, Redis Streams, NATS/JetStream,
+  SQS/SNS, Google Pub/Sub, or Pulsar interoperability.
+- Added a compact canonical capability-status view and a SHA-bound CI quality
+  scorecard artifact for every main push/PR. The score evaluates engineering
+  evidence and explicitly excludes feature completeness and certification.
 - `cargo rullst upgrade` is now a transactional, version-aware assistant. It
   offers human or versioned JSON dry runs, updates the exact Cargo workspace
   release train while preserving TOML formatting, recognizes renamed

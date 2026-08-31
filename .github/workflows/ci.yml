@@ -294,3 +294,48 @@ jobs:
         # Use `cargo check` (no linking) to validate the MSRV without full build time.
         # If any crate uses a stabilized API newer than 1.96.0, this will fail.
         run: cargo check --workspace --all-features
+
+  quality-scorecard:
+    name: Evidence quality scorecard (observational)
+    if: always()
+    needs:
+      - check
+      - test
+      - strict-database-features
+      - redis-rate-limit
+      - feature-boundaries
+      - threat-model-release-minimum
+      - versioned-ai-evals
+      - generated-release-access
+      - msrv
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RULLST_SCORECARD_SHA: ${{ github.sha }}
+      RULLST_SCORECARD_TIME: ${{ github.event.head_commit.timestamp || github.event.pull_request.updated_at || 'workflow_dispatch' }}
+      RULLST_SCORECARD_CHECK: ${{ needs.check.result }}
+      RULLST_SCORECARD_TESTS: ${{ needs.test.result }}
+      RULLST_SCORECARD_STRICT_DB: ${{ needs.strict-database-features.result }}
+      RULLST_SCORECARD_REDIS: ${{ needs.redis-rate-limit.result }}
+      RULLST_SCORECARD_FEATURES: ${{ needs.feature-boundaries.result }}
+      RULLST_SCORECARD_THREAT: ${{ needs.threat-model-release-minimum.result }}
+      RULLST_SCORECARD_AI_EVALS: ${{ needs.versioned-ai-evals.result }}
+      RULLST_SCORECARD_LOCAL_ACCESS: ${{ needs.generated-release-access.result }}
+      RULLST_SCORECARD_MSRV: ${{ needs.msrv.result }}
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Generate SHA-bound scorecard
+        run: bash .github/generate-quality-scorecard.sh quality-scorecard.md
+
+      - name: Add report to workflow summary
+        run: cat quality-scorecard.md >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Upload scorecard artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: quality-scorecard-${{ github.sha }}
+          path: quality-scorecard.md
+          if-no-files-found: error
+          retention-days: 90

@@ -5,7 +5,7 @@ is not evidence that a workflow has passed for a particular commit. A green
 claim must always point to the GitHub Actions run, commit SHA, logs, and produced
 artifacts.
 
-Last source-level review: **2026-08-30**.
+Last source-level review: **2026-08-31**.
 
 ## Status language
 
@@ -66,6 +66,14 @@ feature-gated Scout adapter against a digest-pinned Meilisearch image; Algolia
 and Elasticsearch use bounded local protocol fixtures because no hosted
 provider account is part of CI. The same matrix runs typed, parameterized L2
 and cosine queries against a digest-pinned PostgreSQL + pgvector image.
+
+After those Rust CI jobs finish, an observational job always emits a
+SHA-bound per-crate quality scorecard into the workflow summary and a 90-day
+artifact. The score combines versioned expert-audit ceilings with the actual
+gate results; a failed/skipped/cancelled gate can remove the dimensions it was
+meant to prove, while a green gate cannot inflate a crate beyond its audited
+ceiling. This is engineering-evidence reporting, not capability completion or
+certification. See the [scorecard methodology](docs/src/quality-scorecard.md).
 
 ## Recommended `main` branch-protection profile
 
@@ -132,8 +140,10 @@ accurate; “90% of the whole repository is enforced” is not.
 - Mutation testing is manual, split into eight shards, and intentionally
   non-blocking while results are uploaded.
 - `cargo-udeps` is weekly/manual and explicitly non-blocking.
-- TSan and ASan run daily/manual across eleven library packages. There is no
-  MSan job in the current sanitizer workflow.
+- TSan and ASan run daily/manual across twelve runtime/domain packages;
+  Messaging runs its integration contract so its concurrent state is actually
+  exercised rather than reporting a zero-test library pass. There is no MSan
+  job in the current sanitizer workflow.
 - The ZAP baseline is manual. It exercises the blog example, not every possible
   Rullst application or deployment.
 - Property tests and benchmarks are scheduled/manual evidence. The eight
@@ -195,7 +205,7 @@ dependency graph make static estimates unreliable.
 | [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | main push and PR, daily, manual | Blocking | Cargo Audit with the governed exception list. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight benchmark groups with non-blocking 20% regression alerts and gh-pages history. Scheduled runs use the repository default branch. |
 | [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) | main push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main push and PR, manual | Blocking | Format, all-target/all-feature Clippy, multi-OS tests including the SQLite transactional outbox contract, relational/polyglot live matrices, isolated strict-DB compile/runtime boundaries, and MSRV. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main push and PR, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, multi-OS tests including the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and an always-generated SHA-bound per-crate quality scorecard artifact. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main push and PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check. |
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Attempts corpus minimization and uploads results; individual cmin failures are tolerated. |
 | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation and blocking OIDC-authenticated Codecov upload; scheduled/manual branch instrumentation is non-blocking. |

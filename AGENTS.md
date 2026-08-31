@@ -23,7 +23,8 @@ The Rullst framework is organized into decoupled, high-performance crates:
 | **`rullst-security`** | RASP/WAF defense-in-depth, strict secure headers, Login Jail, DLP, honeypots, RBAC, and security telemetry. |
 | **`rullst-ai`** | Provider-agnostic LLM client (Gemini, OpenAI, Claude, DeepSeek, Ollama), prompt injection filter, PII masking. |
 | **`rullst-capital`** | Multi-provider payment and payout adapters, webhook verification, SaaS analytics, and an offline-only NFS-e preview; live fiscal authorization is roadmap work. |
-| **`rullst-connect`** | OAuth2/OIDC and social-login providers. Message queues and real-time transports currently live in Core; Kafka, RabbitMQ, and Redis Streams adapters are roadmap work. |
+| **`rullst-connect`** | OAuth2/OIDC and social-login providers; brokered messaging is deliberately outside this identity-focused crate. |
+| **`rullst-messaging`** | Bounded broker-neutral envelopes, idempotent publication, consumer groups, leases, retry/DLQ, and a deterministic process-local broker; remote adapters are roadmap work. |
 | **`rullst-iot`** | `no_std` telemetry/frame helpers and Ed25519-signed OTA manifest verification. MQTT transport, HSM, PQC, flashing, and bootloader integration are roadmap work. |
 | **`rullst-mail`** | Templated transactional email engine (Resend, SendGrid, Postmark, SMTP) with background delivery. |
 | **`rullst-studio`** | Developer Control Room (`http://127.0.0.1:5555`), clean routes (`/studio/*`), dark glassmorphic UI, non-mocked telemetry. |
@@ -102,6 +103,7 @@ cargo publish -p rullst-orm-macros
 # Step 2: ORM then Core (Core has an optional ORM dependency)
 cargo publish -p rullst-orm
 cargo publish -p rullst-core
+cargo publish -p rullst-messaging
 
 # Step 3: Domain & Service Crates
 cargo publish -p rullst-connect

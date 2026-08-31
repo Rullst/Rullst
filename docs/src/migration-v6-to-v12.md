@@ -11,7 +11,7 @@ Follow the common [safe upgrade procedure](migration-v12.md).
 
 The v6 snapshot combined `rullst = 6.0.0`, `rullst-orm = 6.1.1`,
 `rullst-connect = 11.0.0`, path-based internal crates, and unversioned internal
-path requirements. V12 uses one synchronized version for all 15 publishable
+path requirements. V12 uses one synchronized version for all 16 publishable
 packages.
 
 For the old no-default behavior:

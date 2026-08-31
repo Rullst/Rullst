@@ -2,6 +2,8 @@
 
 - [Welcome to Rullst](index.md)
 - [Why Rullst?](why-Rullst.md)
+- [Simple Capability Status](capability-status.md)
+- [Per-Commit Quality Scorecard](quality-scorecard.md)
 - [💡 The Rullst Philosophy](philosophy.md)
 
 # Core Features
@@ -72,6 +74,7 @@
 - [46. Server-Authoritative Learning Activities](tutorials/46-server-authoritative-learning-activities.md)
 - [47. Durable Spaced-Review Queue](tutorials/47-spaced-review-queue.md)
 - [48. Signed Local OIDC Testing](tutorials/48-local-oidc-testing.md)
+- [49. Bounded Brokered Messaging](tutorials/49-brokered-messaging.md)
 
 # Reference
 - [📜 Framework Spec](spec.md)
@@ -110,6 +113,7 @@
 # 📦 Crates Ecosystem
 - [rullst-orm](crates/orm.md)
 - [rullst-connect](crates/connect.md)
+- [rullst-messaging](crates/messaging.md)
 - [rullst-mail](crates/mail.md)
 - [rullst-auth](crates/auth.md)
 - [rullst-core](crates/core.md)

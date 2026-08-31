@@ -118,7 +118,7 @@ verification.
 
 Recovery is complete only when:
 
-- all 15 expected versions are indexed with retained checksums;
+- all 16 expected versions are indexed with retained checksums;
 - a clean consumer resolves only registry packages and compiles;
 - documentation/index pages are reachable;
 - the incident timeline and any yanks/replacements are recorded;

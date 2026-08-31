@@ -165,11 +165,12 @@ still require narrow definitions and independent evidence.
 managed service.
 
 Kafka, RabbitMQ, Redis Streams, S3, and R2 are integrations with mature
-services. Rullst should first offer coherent `rullst-messaging` and remote
-storage boundaries with retry, idempotency, backpressure, multipart, path/key,
-and deterministic mock contracts. Building another broker or object store as a
-SaaS would add little value until Rullst applications reveal a concrete unmet
-need.
+services. Rullst now has a coherent bounded process-local `rullst-messaging`
+contract for idempotency, groups, leases, retry and dead letters; remote
+adapters and the remote-storage boundary still need provider-specific
+conformance, backpressure, multipart, path/key and deterministic mock evidence.
+Building another broker or object store as a SaaS would add little value until
+Rullst applications reveal a concrete unmet need.
 
 ## What should remain inside the framework
 

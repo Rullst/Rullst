@@ -6,7 +6,17 @@ members = [
     "rullst-orm",
     "rullst-orm-macros",
     "rullst-connect",
-    "examples/blog", "rullst-core", "rullst-auth", "rullst-mail", "rullst-ai", "rullst-nexus", "rullst-capital", "rullst-studio", "rullst-security", "rullst-iot",
+    "examples/blog",
+    "rullst-core",
+    "rullst-auth",
+    "rullst-mail",
+    "rullst-messaging",
+    "rullst-ai",
+    "rullst-nexus",
+    "rullst-capital",
+    "rullst-studio",
+    "rullst-security",
+    "rullst-iot",
 ]
 exclude = [
     "benchmark/rullst",
@@ -34,6 +44,7 @@ rullst-capital = { version = "12.0.0", path = "rullst-capital" }
 rullst-studio = { version = "12.0.0", path = "rullst-studio" }
 rullst-nexus = { version = "12.0.0", path = "rullst-nexus" }
 rullst-mail = { version = "12.0.0", path = "rullst-mail" }
+rullst-messaging = { version = "12.0.0", path = "rullst-messaging" }
 rullst-ai = { version = "12.0.0", path = "rullst-ai" }
 rullst-connect = { version = "12.0.0", path = "rullst-connect" }
 rullst-iot = { version = "12.0.0", path = "rullst-iot" }

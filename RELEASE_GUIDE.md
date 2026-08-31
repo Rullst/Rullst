@@ -106,11 +106,11 @@ Before releasing, make sure:
   [security-event v1 JSON Schema](rullst-security/schema/security-event-v1.schema.json)
   matches `LiveSecurityEvent`, and any incompatible event change uses a new
   schema version instead of silently changing v1.
-- [ ] All 15 publishable crate `Cargo.toml` versions and internal requirements
+- [ ] All 16 publishable crate `Cargo.toml` versions and internal requirements
   are synchronized (`12.0.0-rc.1` for the RC or `12.0.0` for stable):
   - `rullst-macros`, `rullst-orm-macros`
   - `rullst-core`, `rullst-orm`, `rullst-auth`, `rullst-security`
-  - `rullst-ai`, `rullst-capital`, `rullst-connect`, `rullst-iot`, `rullst-mail`
+  - `rullst-ai`, `rullst-capital`, `rullst-connect`, `rullst-messaging`, `rullst-iot`, `rullst-mail`
   - `rullst-studio`, `rullst-nexus`
   - `cargo-rullst`, `rullst`
 
@@ -140,7 +140,7 @@ opt in to it explicitly with a requirement such as `12.0.0-rc.1`.
 
 GitHub Actions will automatically execute the topological crate publish pipeline:
 1. ✅ `rullst-macros` & `rullst-orm-macros`
-2. 📦 Foundations: `rullst-orm`, `rullst-core`
+2. 📦 Foundations: `rullst-orm`, `rullst-core`, `rullst-messaging`
 3. 📦 Domain crates: `rullst-connect`, `rullst-iot`, `rullst-security`, `rullst-ai`, `rullst-capital`, `rullst-mail`, `rullst-auth`
 4. 📦 Dashboards: `rullst-nexus`, `rullst-studio`
 5. 📦 Main bundle & CLI: `rullst`, `cargo-rullst`

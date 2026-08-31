@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "audit_date": "2026-08-31",
+  "dimensions": {
+    "api_architecture": 20,
+    "verification": 25,
+    "security_failure_design": 20,
+    "documentation_dx": 15,
+    "operations_release": 20
+  },
+  "crates": [
+    {
+      "name": "rullst-macros",
+      "api_architecture": 17,
+      "verification": 21,
+      "security_failure_design": 13,
+      "documentation_dx": 11,
+      "operations_release": 13,
+      "specialist_gate": "none",
+      "finding": "Strong compile-time surface and UI tests; macro-specific docs and failure/security proof remain narrower than runtime crates.",
+      "evidence": ["rullst-macros/Cargo.toml", "rullst-macros/tests"]
+    },
+    {
+      "name": "rullst-orm-macros",
+      "api_architecture": 17,
+      "verification": 21,
+      "security_failure_design": 14,
+      "documentation_dx": 11,
+      "operations_release": 13,
+      "specialist_gate": "none",
+      "finding": "Typed derives have compile evidence; backend expansion breadth and dedicated user-facing macro documentation can improve.",
+      "evidence": ["rullst-orm-macros/Cargo.toml", "rullst-orm-macros/tests"]
+    },
+    {
+      "name": "rullst-orm",
+      "api_architecture": 18,
+      "verification": 23,
+      "security_failure_design": 18,
+      "documentation_dx": 14,
+      "operations_release": 17,
+      "specialist_gate": "strict-database-redis",
+      "finding": "Deep relational and capability-specific persistence evidence; uniform cross-store semantics and several operational integrations intentionally remain incomplete.",
+      "evidence": ["rullst-orm/README.md", "rullst-orm/tests", "docs/src/polyglot-persistence.md"]
+    },
+    {
+      "name": "rullst-core",
+      "api_architecture": 18,
+      "verification": 23,
+      "security_failure_design": 18,
+      "documentation_dx": 14,
+      "operations_release": 18,
+      "specialist_gate": "redis",
+      "finding": "Mature bounded runtime with broad negative/live evidence; distributed deployment and application authorization remain explicit host boundaries.",
+      "evidence": ["rullst-core/README.md", "rullst-core/tests", "docs/src/crates/core.md"]
+    },
+    {
+      "name": "rullst-messaging",
+      "api_architecture": 18,
+      "verification": 22,
+      "security_failure_design": 18,
+      "documentation_dx": 13,
+      "operations_release": 9,
+      "specialist_gate": "messaging-contract",
+      "finding": "Clear bounded concurrent contract; current broker is deliberately process-local and lacks durable/remote restart and fault evidence.",
+      "evidence": ["rullst-messaging/README.md", "rullst-messaging/tests", "docs/src/tutorials/49-brokered-messaging.md"]
+    },
+    {
+      "name": "rullst-connect",
+      "api_architecture": 18,
+      "verification": 23,
+      "security_failure_design": 18,
+      "documentation_dx": 14,
+      "operations_release": 15,
+      "specialist_gate": "threat-minimum",
+      "finding": "Substantial OAuth/OIDC protocol and negative evidence; durable token lifecycle, distributed refresh and formal provider conformance remain external/application work.",
+      "evidence": ["rullst-connect/README.md", "rullst-connect/tests", "docs/src/crates/connect.md"]
+    },
+    {
+      "name": "rullst-iot",
+      "api_architecture": 16,
+      "verification": 19,
+      "security_failure_design": 17,
+      "documentation_dx": 13,
+      "operations_release": 7,
+      "specialist_gate": "none",
+      "finding": "Useful no_std and signed-manifest boundary; real hardware, transport, bootloader and persistent anti-rollback evidence are still absent.",
+      "evidence": ["rullst-iot/README.md", "rullst-iot/tests", "docs/src/crates/iot.md"]
+    },
+    {
+      "name": "rullst-security",
+      "api_architecture": 18,
+      "verification": 23,
+      "security_failure_design": 18,
+      "documentation_dx": 14,
+      "operations_release": 16,
+      "specialist_gate": "redis-and-threat",
+      "finding": "Broad bounded defense-in-depth with negative contracts; no universal OWASP coverage, durable SIEM, external audit or certification is implied.",
+      "evidence": ["rullst-security/README.md", "rullst-security/tests", "docs/src/security-architecture.md"]
+    },
+    {
+      "name": "rullst-ai",
+      "api_architecture": 17,
+      "verification": 22,
+      "security_failure_design": 18,
+      "documentation_dx": 14,
+      "operations_release": 13,
+      "specialist_gate": "ai-evals",
+      "finding": "Strong guarded/offline/provider capability boundaries; live adaptive evals, durable provider loops and broad external retrievers remain partial.",
+      "evidence": ["rullst-ai/README.md", "rullst-ai/tests", "docs/src/ai-provider-capabilities.md"]
+    },
+    {
+      "name": "rullst-capital",
+      "api_architecture": 17,
+      "verification": 22,
+      "security_failure_design": 18,
+      "documentation_dx": 14,
+      "operations_release": 11,
+      "specialist_gate": "provider-matrix",
+      "finding": "Well-bounded payments, quotas and fiscal preparation; gateway parity, live fiscal authorization and homologation are intentionally unproven.",
+      "evidence": ["rullst-capital/README.md", "rullst-capital/tests", "docs/src/crates/capital.md"]
+    },
+    {
+      "name": "rullst-mail",
+      "api_architecture": 18,
+      "verification": 22,
+      "security_failure_design": 18,
+      "documentation_dx": 14,
+      "operations_release": 15,
+      "specialist_gate": "threat-minimum",
+      "finding": "Good transport, preflight and queue contracts; provider acceptance, inbox delivery, attachment parity and distributed breaker operations remain open.",
+      "evidence": ["rullst-mail/README.md", "rullst-mail/tests", "docs/src/crates/mail.md"]
+    },
+    {
+      "name": "rullst-auth",
+      "api_architecture": 18,
+      "verification": 22,
+      "security_failure_design": 19,
+      "documentation_dx": 14,
+      "operations_release": 14,
+      "specialist_gate": "threat-minimum",
+      "finding": "Strong password/session/RBAC/JWT primitives; WebAuthn conformance and shared durable revocation/device operations are not complete.",
+      "evidence": ["rullst-auth/README.md", "rullst-auth/tests", "docs/src/crates/auth.md"]
+    },
+    {
+      "name": "rullst-nexus",
+      "api_architecture": 17,
+      "verification": 21,
+      "security_failure_design": 18,
+      "documentation_dx": 13,
+      "operations_release": 12,
+      "specialist_gate": "release-local-access",
+      "finding": "Fail-closed admin foundation with generated CRUD tests; tenant policy, durable audit and broader production admin operations remain host work.",
+      "evidence": ["rullst-nexus/README.md", "rullst-nexus/tests", "docs/src/crates/nexus.md"]
+    },
+    {
+      "name": "rullst-studio",
+      "api_architecture": 17,
+      "verification": 22,
+      "security_failure_design": 17,
+      "documentation_dx": 14,
+      "operations_release": 13,
+      "specialist_gate": "release-local-access",
+      "finding": "Real local telemetry and guarded data tooling are well tested; distributed observability and several remote inspectors remain incomplete.",
+      "evidence": ["rullst-studio/README.md", "rullst-studio/tests", "docs/src/crates/studio.md"]
+    },
+    {
+      "name": "rullst",
+      "api_architecture": 18,
+      "verification": 22,
+      "security_failure_design": 17,
+      "documentation_dx": 14,
+      "operations_release": 17,
+      "specialist_gate": "none",
+      "finding": "Coherent optional facade and feature gates; release confidence still inherits the uneven maturity of opt-in domain capabilities.",
+      "evidence": ["rullst/Cargo.toml", "rullst/tests", "docs/src/feature-matrix.md"]
+    },
+    {
+      "name": "cargo-rullst",
+      "api_architecture": 18,
+      "verification": 22,
+      "security_failure_design": 17,
+      "documentation_dx": 14,
+      "operations_release": 14,
+      "specialist_gate": "none",
+      "finding": "Broad generator and upgrade verification; not every generated blueprint/provider combination yet has a full compile/runtime matrix.",
+      "evidence": ["cargo-rullst/Cargo.toml", "cargo-rullst/tests", "docs/src/cli_reference.md"]
+    }
+  ]
+}

@@ -35,6 +35,9 @@ pub use rullst_connect as connect;
 #[cfg(feature = "mail")]
 pub use rullst_mail as mail;
 
+#[cfg(all(feature = "messaging", not(target_arch = "wasm32")))]
+pub use rullst_messaging as messaging;
+
 #[cfg(feature = "ai")]
 pub use rullst_ai as ai;
 

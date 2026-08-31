@@ -3,6 +3,7 @@
   "rullst-orm-macros",
   "rullst-orm",
   "rullst-core",
+  "rullst-messaging",
   "rullst-connect",
   "rullst-iot",
   "rullst-security",

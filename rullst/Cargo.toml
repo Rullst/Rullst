@@ -38,6 +38,7 @@ cache-redis = ["dep:redis", "rullst-core/cache-redis"]
 offline-sync = ["rullst-core/offline-sync"]
 mail-smtp = ["mail", "rullst-mail/mail-smtp"]
 mail-aws-ses = ["mail", "rullst-mail/aws-ses"]
+messaging = ["dep:rullst-messaging"]
 oauth = ["dep:rullst-connect"]
 ai = ["dep:rullst-ai"]
 ai-sql-memory = ["ai", "rullst-ai/sql-memory"]
@@ -89,6 +90,7 @@ chrono = { workspace = true, features = ["clock"] }
 validator = { workspace = true, features = ["derive"] }
 rullst-auth = { workspace = true, optional = true }
 rullst-mail = { workspace = true, optional = true }
+rullst-messaging = { workspace = true, optional = true }
 rullst-ai = { workspace = true, optional = true }
 rullst-nexus = { workspace = true, optional = true }
 rullst-capital = { workspace = true, optional = true }

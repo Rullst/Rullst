@@ -6795,6 +6795,7 @@ dependencies = [
  "rullst-iot",
  "rullst-macros",
  "rullst-mail",
+ "rullst-messaging",
  "rullst-nexus",
  "rullst-orm",
  "rullst-security",
@@ -7055,6 +7056,18 @@ dependencies = [
  "sha2 0.11.0",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "rullst-messaging"
+version = "12.0.0"
+dependencies = [
+ "serde",
+ "sha2 0.11.0",
+ "thiserror 2.0.20",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

@@ -16,7 +16,7 @@ cargo metadata --format-version 1
 ```
 
 Save the output and list every direct or transitive `rullst-*` package. In v12,
-all 15 published packages must use the same release version. Do not update only
+all 16 published packages must use the same release version. Do not update only
 `rullst-connect` or only the umbrella crate.
 
 Example explicit selection:

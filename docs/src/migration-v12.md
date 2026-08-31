@@ -1,6 +1,6 @@
 # Migrating an application to Rullst v12
 
-Rullst v12 is a coordinated release train of 15 packages. Upgrade all direct
+Rullst v12 is a coordinated release train of 16 packages. Upgrade all direct
 `rullst-*` dependencies together; mixing v12 facade/runtime crates with older
 domain crates is outside the supported compatibility contract.
 

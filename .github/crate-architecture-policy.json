@@ -10,6 +10,7 @@
     { "from": "rullst", "to": "rullst-iot", "optional": true },
     { "from": "rullst", "to": "rullst-macros", "optional": false },
     { "from": "rullst", "to": "rullst-mail", "optional": true },
+    { "from": "rullst", "to": "rullst-messaging", "optional": true },
     { "from": "rullst", "to": "rullst-nexus", "optional": true },
     { "from": "rullst", "to": "rullst-orm", "optional": true },
     { "from": "rullst", "to": "rullst-security", "optional": true },

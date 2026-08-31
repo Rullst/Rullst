@@ -254,7 +254,7 @@ uma RC.
 ### Bloqueadores reais
 
 1. Congelar features e escolher o SHA exato da candidata.
-2. Fazer o bump atômico para `12.0.0-rc.1`, empacotar os 15 crates e testar
+2. Fazer o bump atômico para `12.0.0-rc.1`, empacotar os 16 crates e testar
    consumidores usando somente os pacotes empacotados/crates.io.
 3. Rodar formato, Clippy e testes all-features no SHA; obter CI Linux, macOS e
    Windows verde no mesmo commit.
@@ -317,7 +317,8 @@ A v13 pode receber mudanças arquiteturais que não cabem numa minor:
    uma única ordem e tipos compartilhados sem ciclo de dependências.
 2. Definir uma arquitetura de extensões first-party e comunitárias com
    compatibilidade, ownership, manutenção e conformance suites.
-3. Criar `rullst-messaging` para Kafka, RabbitMQ, NATS/JetStream e Redis Streams,
+3. Evoluir a fundação delimitada de `rullst-messaging` com codec estável,
+   persistência e adapters Kafka, RabbitMQ, NATS/JetStream e Redis Streams,
    em vez de misturar mensageria com OAuth em Connect.
 4. Evoluir SOC/SIEM como produto verificável: ingestão multi-source, regras,
    correlação, retenção, casos, evidências, RBAC, auditoria e intervenção humana.
@@ -367,7 +368,7 @@ que a implementação.
 | Observabilidade que explica o problema | M19, M35 e roadmap Studio | OTLP interoperável, trace waterfall, profiling SQL/N+1, jobs/cache e estado indisponível honesto; nenhum dado inventado. | v12.1–v13 |
 | SOC/SIEM operacional, não cenográfico | M12 e roadmap Security | Eventos versionados, redaction, spool/retry/dead-letter, ingestão e correlação, casos, retenção, RBAC e conectores opcionais testados. | v12.1 fundação; v13 produto |
 | AI segura e avaliável | Roadmap AI e M19/M36/M37 | Evals versionados, capability matrix por provider, tool authorization, egress/SSRF guard, budgets, aprovação humana e rollback de mudanças. | v12.1–v13 |
-| Mensageria por contrato | M15 e roadmap Connect | `rullst-messaging` separado, conformance suite comum e adapters Kafka/RabbitMQ/NATS/Redis Streams somente quando seus semantics forem comprovados. | v13 |
+| Mensageria por contrato | M15 e roadmap Messaging | A crate separada já possui envelope, limites, idempotência, grupos, leases, retry/DLQ, broker determinístico e conformance suite; adapters Kafka/RabbitMQ/NATS/Redis Streams entram somente quando seus semantics forem comprovados. | Fundação v12; remotos v13 |
 | Storage e media isolados | M17 | S3/R2 com assinatura oficial, multipart/retry, limites de path/pixels, mocks determinísticos e fuzzing de codecs em crate opcional. | v12.1+ |
 | Extensões sustentáveis | M13 e arquitetura de packages | Manifesto, capability permissions, compatibilidade SemVer, ownership e testes; sandbox Wasm apenas após limites reais de CPU/memória/I/O. | v13 |
 | Deploy e upgrades recuperáveis | M26 e M27 | Health/readiness, migrations coordenadas, secrets, canary/rollback e runbook testados; “one click” descreve automação guiada, não disponibilidade garantida. | v12.1–v13 |

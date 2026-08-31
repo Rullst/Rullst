@@ -3,14 +3,15 @@
 > **Status policy (2026-08-26):** this detailed design backlog is preserved.
 > Read legacy checkboxes through the audited
 > [`rullst-connect` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps) and
-> the [capability ledger](../docs/src/capability-ledger.md); messaging remains a
-> separate future boundary, not a shipped OAuth feature.
+> the [capability ledger](../docs/src/capability-ledger.md); messaging now has a
+> separate bounded `rullst-messaging` foundation and remains outside OAuth.
 
 Welcome to the official roadmap for `rullst-connect`! The library currently supports 11 robust core providers, dynamic token parsing, `get_user_from_token` extraction, CSRF protection (via `state`), and `scopes` customization.
 
 The crate is currently version 12. `[x]` means a bounded implementation exists;
 `[~]` means only part of the historical sentence is implemented. Unchecked
-messaging and enterprise identity sections remain roadmap work.
+The archived messaging ideas below moved to the Messaging roadmap; enterprise
+identity sections remain roadmap work.
 
 ## ⏳ In Progress (Phases 3 & 4)
 
@@ -104,7 +105,11 @@ messaging and enterprise identity sections remain roadmap work.
 - **Semantic Profile Normalization (NLP):** Using lightweight embedded natural language processing to automatically understand and map bizarre, undocumented JSON fields from obscure OAuth providers into the strictly typed `UniversalProfile` without needing explicit hardcoded mapping rules.
 - **Post-Quantum Cryptography (PQC) Readiness:** Future-proofing JWT verification and token exchange against quantum computer attacks by supporting NIST-approved post-quantum signature algorithms (e.g., CRYSTALS-Dilithium, SPHINCS+).
 
-## 📬 Phase 9: Cloud Message Queues & Distributed Event Streaming (`rullst_connect::queues`)
+## 📬 Phase 9: Archived broker vision — moved to `rullst-messaging`
+
+The items below are preserved as historical ideas. They are no longer planned
+under `rullst_connect::queues`; follow `../rullst-messaging/ROADMAP.md`. The
+current process-local Messaging foundation does not implement these transports.
 
 - **NATS & JetStream Driver (`rullst_connect::nats`):** Ultra-lightweight, sub-millisecond cloud-native pub/sub and distributed event persistence engine.
 - **AWS SQS & SNS Native Client (`rullst_connect::sqs`):** Native AWS managed message queues and multi-subscriber topic fan-out.

@@ -1,6 +1,6 @@
 # Compatibility, MSRV, deprecation, and support policy
 
-This policy applies to the 15 publishable Rullst packages. They are released as
+This policy applies to the 16 publishable Rullst packages. They are released as
 one synchronized release train even when a user depends on only one crate. The
 current supported-version table in [`SECURITY.md`](../../SECURITY.md) remains
 authoritative for releases that are actually available; a version in the
