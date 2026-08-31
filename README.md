@@ -220,7 +220,10 @@ are:
 
 Eight [Criterion benchmark suites](https://github.com/Rullst/Rullst/actions/workflows/bench.yml)
 track selected microbenchmarks. Their shared-runner history is regression
-evidence for those inputs, not a production throughput promise. The separate
+evidence for those inputs, not a production throughput promise. The ORM suite
+also runs five equivalent typed-SQLite operations through pinned Rullst,
+Diesel and SeaORM dependencies; it preserves unfavorable results and does not
+claim universal superiority. The separate
 [cross-framework harness](https://github.com/Rullst/Benchmarks) currently
 measures a historical Rullst 4.x application and must not be used as v12
 performance evidence until its versions and runs are refreshed.

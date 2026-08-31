@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rullst ORM — Query Builder Benchmarks</title>
-  <meta name="description" content="Criterion history for selected Rullst ORM CPU and local SQLite operations." />
+  <title>Rullst ORM — Local and Comparative Benchmarks</title>
+  <meta name="description" content="Criterion history for selected Rullst ORM paths and equivalent Rullst, Diesel and SeaORM SQLite operations." />
 
   <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -346,9 +346,9 @@
   <div class="container">
     <header>
       <div class="header-badge">🗄️ rullst-orm</div>
-      <h1>ORM Query Builder Benchmarks</h1>
+      <h1>ORM Local &amp; Comparative Benchmarks</h1>
       <p class="subtitle">
-        Pushes to <code style="background:rgba(167,139,250,0.1);padding:0.1em 0.4em;border-radius:4px;font-family:'JetBrains Mono',monospace;color:#a78bfa;">dev</code> run Criterion against selected ORM CPU paths and local SQLite round trips.
+        Pushes to <code style="background:rgba(167,139,250,0.1);padding:0.1em 0.4em;border-radius:4px;font-family:'JetBrains Mono',monospace;color:#a78bfa;">main</code> run Criterion against selected Rullst paths and equivalent Rullst, Diesel, and SeaORM SQLite operations.
         Results describe the exact commit, runner, and benchmark input; they are not production database latency claims.
       </p>
       <div class="header-links">
@@ -378,7 +378,7 @@
       <div class="info-card">
         <div class="icon">🔐</div>
         <h3>SQLite Round Trips</h3>
-        <p>Measures insert/delete and several read shapes against a local SQLite file created for the benchmark process.</p>
+        <p>Measures insert/delete and several read shapes locally. The comparative target gives the three pinned ORMs one typed connection and equivalent schema, index, seed, and SQLite policy.</p>
       </div>
     </div>
 
@@ -444,7 +444,7 @@
       const dashboard = document.getElementById('dashboard');
 
       if (!window.BENCHMARK_DATA) {
-        loading.textContent = 'No ORM benchmark data is available yet. Run bench.yml on dev.';
+        loading.textContent = 'No ORM benchmark data is available yet. Run bench.yml on main.';
         return;
       }
 

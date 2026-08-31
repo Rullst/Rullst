@@ -55,11 +55,12 @@ jobs:
           auto-push: ${{ github.event_name != 'pull_request' }}
           benchmark-data-dir-path: 'benches'
 
-      # ── rullst-orm (query builder, schema, audit) ───────────────────────────────
-      - name: Run bench — rullst-orm (query builder, schema, row mapping)
+      # ── rullst-orm (local regressions + equivalent cross-ORM SQLite shapes) ─────
+      - name: Run bench — rullst-orm (local paths, Diesel and SeaORM)
         run: |
           set -o pipefail
-          cargo bench -p rullst-orm --bench orm_bench -- --output-format bencher | tee bench_orm.txt
+          cargo bench --locked -p rullst-orm --bench orm_bench -- --output-format bencher | tee bench_orm.txt
+          cargo bench --locked -p rullst-orm --features strict-sqlite --bench orm_comparison -- --output-format bencher | tee -a bench_orm.txt
 
       - name: Reset Cargo.lock after bench
         run: git checkout Cargo.lock || true

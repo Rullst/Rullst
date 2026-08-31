@@ -30,6 +30,15 @@ pub fn test(_args: TokenStream, input: TokenStream) -> TokenStream {
             // Ensure DB is initialized (if already initialized in parallel, it ignores the error)
             let _ = ::rullst_orm::Orm::init(&::std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_string())).await;
 
+            // SQLite permits only one concurrent schema writer. Keep generated
+            // sandbox tests deterministic while preserving parallel execution
+            // for database servers that support it.
+            let _sqlite_sandbox_guard = if matches!(::rullst_orm::Orm::try_driver(), Ok("sqlite")) {
+                Some(::rullst_orm::TEST_SANDBOX_LOCK.lock().await)
+            } else {
+                None
+            };
+
             // Start transaction for Sandbox isolation
             let tx = ::rullst_orm::Orm::begin_transaction().await.expect("Failed to begin sandbox transaction");
             let tx_arc = ::std::sync::Arc::new(::tokio::sync::Mutex::new(Some(tx)));

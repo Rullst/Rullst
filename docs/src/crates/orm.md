@@ -90,6 +90,11 @@ generated API.
   outcomes, and Rullst-created pools emit checkout timing. Core's opt-in
   OpenTelemetry layer can export the standard tracing signals; subscriber,
   sampling, collector and separately configured SQLx logs remain host policy.
+- **Comparative SQLite evidence:** a lockfile-pinned Criterion harness gives
+  Rullst, Diesel and SeaORM one typed connection, the same indexed schema,
+  100-row seed, SQLite policy and five logical operations. The CI history is
+  scoped comparison evidence; it does not claim universal or negligible
+  overhead, networked-database throughput or complete-application performance.
 - **Durable opt-in outbox:** `Outbox::enqueue` commits a stream-scoped,
   idempotent event with relational domain state. Exact lease tokens, bounded
   retry and dead-letter are shared by SQLite, PostgreSQL, MySQL and MariaDB.

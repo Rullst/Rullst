@@ -57,6 +57,27 @@ model a production network, database, proxy or user journey. The separate
 cross-framework repository currently exercises historical Rullst 4.x and is not
 v12 evidence until refreshed.
 
+The repository now also contains a v12 cross-ORM SQLite harness:
+
+```bash
+cargo bench -p rullst-orm --features strict-sqlite \
+  --bench orm_comparison
+```
+
+It pins Diesel and SeaORM in the lockfile and gives all three ORMs one typed
+SQLite connection, separate database files, the same schema/unique index, 100
+equivalent rows and identical WAL/synchronous/busy-timeout policy. Criterion
+measures primary-key lookup, indexed filtered lookup, count, ordered list-ten
+and insert/delete. This makes the input inspectable; it does not make the
+architectures identical. Diesel's synchronous call path and the async
+Rullst/SeaORM executor paths remain part of what is measured.
+
+The first local smoke run contradicted the old “negligible overhead versus
+Diesel” wording: Diesel led these five SQLite shapes. Rullst was competitive
+with SeaORM on reads but did not lead every operation. Keep the per-commit CI
+history as regression/comparison evidence and never generalize it to networked
+PostgreSQL/MySQL, concurrency, memory use or complete applications.
+
 ## 4. Test failure behavior separately
 
 Availability requires deployment exercises: health/readiness semantics,

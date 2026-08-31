@@ -106,6 +106,11 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   transactions record bounded commit/rollback outcomes and every Rullst-owned
   pool reports checkout timing. The application's tracing/OpenTelemetry
   subscriber controls export, sampling and retention.
+- **Reproducible Comparative Benchmark**: A lockfile-pinned Criterion harness
+  gives Rullst, Diesel and SeaORM one typed SQLite connection, an equivalent
+  indexed schema/seed/policy and the same five operations. It records evidence
+  for that exact runner; the initial smoke did not support the historical
+  “negligible overhead versus Diesel” claim.
 - **Database-First Introspection**: The official framework CLI (`cargo rullst generate:models`) connects to legacy databases and generates your `#[derive(Orm)]` Rust structs automatically.
 - **Declarative Migration Preview**: `make:migration:auto` offers a bounded
   SQLite AST/schema diff; review generated SQL before applying it.

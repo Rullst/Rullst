@@ -59,6 +59,8 @@ mutants = "0.0.4"
 rand = { workspace = true }
 axum = { workspace = true }
 criterion = { workspace = true, features = ["async_tokio"] }
+diesel = { version = "=2.3.12", default-features = false, features = ["sqlite", "returning_clauses_for_sqlite_3_35"] }
+sea-orm = { version = "=2.0.2", default-features = false, features = ["macros", "runtime-tokio-rustls", "sqlx-sqlite", "sqlite-use-returning-for-3_35"] }
 testcontainers = "0.27.3"
 testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql", "mariadb", "mongo", "surrealdb"] }
 proptest = "1.11.0"
@@ -67,6 +69,11 @@ tracing-subscriber = { workspace = true }
 [[bench]]
 name = "orm_bench"
 harness = false
+
+[[bench]]
+name = "orm_comparison"
+harness = false
+required-features = ["strict-sqlite"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)', 'cfg(mutants)'] }

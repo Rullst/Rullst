@@ -71,7 +71,12 @@ retaining Rust typing, explicit escape hatches and parameterized values.
   events; external consumers must be idempotent and caller-owned raw SQLx
   transactions cannot expose their later decision.
 - [~] **Security & Performance Static Audit**: Current gates and targeted hardening are tracked; an old third-party audit cannot become a timeless “all findings resolved” guarantee.
-- [ ] **Continuous Performance Comparison with Diesel and SeaORM**: Rullst Criterion benchmarks exist, but the historical cross-ORM comparison/proof does not.
+- [x] **Continuous Performance Comparison with Diesel and SeaORM (bounded)**:
+  the pinned Criterion harness runs equivalent typed-SQLite find, filtered
+  read, count, list-ten and insert/delete shapes through one connection for
+  Rullst, Diesel and SeaORM. CI publishes per-commit history. It measures that
+  exact runner/schema/configuration and deliberately makes no universal or
+  “negligible overhead” claim.
 - [x] **Native OpenTelemetry (bounded)**: Generated/raw query and stream spans, managed transaction outcomes and SQLx pool-acquire timing use secret-free structured `tracing` metadata. Core's opt-in OpenTelemetry layer exports them; the host still owns subscriber setup, sampling, collector policy and direct SQLx/application logging.
 - [~] **Raw SQL Mapping Fallback**: `Orm::raw(...).bind(...).map_to::<T>()` maps rows, but raw SQL remains runtime-checked and caller-owned.
 
