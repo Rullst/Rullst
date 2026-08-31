@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788163465389,
+  "lastUpdate": 1788169909352,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -12469,6 +12469,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1737,
             "range": "± 25",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "45798985404c430d17ceda81b9afb1ba1fe9fe7b",
+          "message": "feat(connect): add signed local oidc fixture",
+          "timestamp": "2026-08-31T06:45:08-03:00",
+          "tree_id": "05e5646046e36859d7ccab14825f99da1ff146e8",
+          "url": "https://github.com/Rullst/Rullst/commit/45798985404c430d17ceda81b9afb1ba1fe9fe7b"
+        },
+        "date": 1788169908438,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 761,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1010,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 626,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2366,
+            "range": "± 48",
             "unit": "ns/iter"
           }
         ]
