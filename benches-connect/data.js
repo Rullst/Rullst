@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788158827033,
+  "lastUpdate": 1788160420339,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -3295,6 +3295,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 546,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "188a27b611a88f8b2697757f226acd11a57cf47a",
+          "message": "feat(academy): add authoritative typed recall",
+          "timestamp": "2026-08-31T03:59:04-03:00",
+          "tree_id": "22558fa92def02bbc5a48b876bd8f3a289eacf01",
+          "url": "https://github.com/Rullst/Rullst/commit/188a27b611a88f8b2697757f226acd11a57cf47a"
+        },
+        "date": 1788160419893,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 488,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
