@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788195513669,
+  "lastUpdate": 1788201951763,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -5801,6 +5801,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4559,
             "range": "± 68",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "b7efccc14bb05ea46fda842e1822b9f2742ee28e",
+          "message": "feat(messaging): add bounded broker foundation",
+          "timestamp": "2026-08-31T15:29:38-03:00",
+          "tree_id": "ef79dc5cff1c39ddbb4e30fe6d8b4ab72e633ccf",
+          "url": "https://github.com/Rullst/Rullst/commit/b7efccc14bb05ea46fda842e1822b9f2742ee28e"
+        },
+        "date": 1788201950974,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 966,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 783,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1749,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3689,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
