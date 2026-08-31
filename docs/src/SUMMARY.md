@@ -69,6 +69,7 @@
 - [43. Omni Web-First Applications](tutorials/43-omni-web-first.md)
 - [44. Omni Offline Synchronization](tutorials/44-omni-offline-sync.md)
 - [45. Accessible Academy Media](tutorials/45-accessible-academy-media.md)
+- [46. Server-Authoritative Learning Activities](tutorials/46-server-authoritative-learning-activities.md)
 
 # Reference
 - [📜 Framework Spec](spec.md)

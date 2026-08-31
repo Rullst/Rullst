@@ -72,6 +72,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Rullst still does not claim media hosting/transcoding, caption quality,
   speech recognition, browser/device conformance or a complete learning
   product.
+- Academy's generic activity contract no longer exposes a validator that can be
+  handed client-authored points. `evaluate_activity` accepts only an evaluator's
+  submission and uses static dispatch to build a result after owner, kind,
+  attempt/ruleset, object-shaped state, time, score bounds and canonical
+  SHA-256 evidence checks. The first built-in `SingleChoiceEvaluator` computes
+  correct/incorrect exercise points from server-supplied rules. Persistence,
+  `ScoreEvent`/outbox integration and the existing full quiz path remain
+  explicit application/scaffold work.
 - `rullst-capital` now provides a bounded National NFS-e 1.01 preparation
   pipeline: checksum-pinned official production/restricted artifact manifests,
   strict ordinary-service DPS construction with integer money/rates, closed-

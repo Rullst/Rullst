@@ -1,13 +1,26 @@
 // Versioned server-side activity/attempt/result contract templates.
 
+mod evaluator;
+
+use evaluator::SINGLE_CHOICE_EVALUATOR;
+
 pub fn get_files() -> Vec<(&'static str, String)> {
-    vec![(
-        "src/services/activity_contract.rs",
-        ACTIVITY_CONTRACT.to_string(),
-    )]
+    vec![
+        (
+            "src/services/activity_contract.rs",
+            ACTIVITY_CONTRACT.to_string(),
+        ),
+        (
+            "src/services/activity_contract/evaluator.rs",
+            SINGLE_CHOICE_EVALUATOR.to_string(),
+        ),
+    ]
 }
 
 const ACTIVITY_CONTRACT: &str = r##"use rullst_security::{RbacGuard, UserContext};
+
+mod evaluator;
+pub use evaluator::{SingleChoiceEvaluator, SingleChoiceSubmission};
 
 pub const ACTIVITY_SCHEMA_VERSION: i32 = 1;
 
@@ -150,6 +163,28 @@ pub struct ActivityResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthoritativeActivityOutcome {
+    pub points: i32,
+    pub max_score: i32,
+    pub evidence_sha256: String,
+}
+
+/// Static-dispatch boundary that turns an untrusted submission into a
+/// server-authored outcome. Implementations must load rules and answer keys
+/// from trusted application state rather than from the submission.
+pub trait ActivityEvaluator {
+    type Submission;
+
+    fn kind(&self) -> ActivityKind;
+
+    fn evaluate(
+        &self,
+        attempt: &ActivityAttempt,
+        submission: &Self::Submission,
+    ) -> Result<AuthoritativeActivityOutcome, ActivityContractError>;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ValidatedActivityResult {
     pub actor_user_id: i32,
     pub attempt: ActivityAttempt,
@@ -198,15 +233,21 @@ fn valid_same_origin_path(value: &str) -> bool {
         })
 }
 
-pub fn validate_activity_result(
+pub(super) fn valid_sha256(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
+}
+
+fn validate_attempt(
     context: &UserContext,
-    attempt: ActivityAttempt,
-    result: ActivityResult,
-) -> Result<ValidatedActivityResult, ActivityContractError> {
-    for version in [attempt.schema_version, result.schema_version] {
-        if version != ACTIVITY_SCHEMA_VERSION {
-            return Err(ActivityContractError::UnsupportedSchemaVersion(version));
-        }
+    attempt: &ActivityAttempt,
+) -> Result<i32, ActivityContractError> {
+    if attempt.schema_version != ACTIVITY_SCHEMA_VERSION {
+        return Err(ActivityContractError::UnsupportedSchemaVersion(
+            attempt.schema_version,
+        ));
     }
     let actor_user_id = context
         .user_id
@@ -221,18 +262,43 @@ pub fn validate_activity_result(
 
     if attempt.activity_id <= 0
         || attempt.subject_user_id <= 0
-        || attempt.attempt_key != result.attempt_key
-        || attempt.activity_id != result.activity_id
-        || attempt.subject_user_id != result.subject_user_id
-        || attempt.ruleset_version != result.ruleset_version
         || !valid_key(&attempt.attempt_key, 128)
         || !valid_key(&attempt.ruleset_version, 64)
     {
         return Err(ActivityContractError::InvalidField("identity binding"));
     }
-    if attempt.started_at_epoch_seconds <= 0
-        || result.finished_at_epoch_seconds < attempt.started_at_epoch_seconds
+    if attempt.started_at_epoch_seconds <= 0 {
+        return Err(ActivityContractError::InvalidField("time ordering"));
+    }
+    if attempt.state_json.is_empty()
+        || attempt.state_json.len() > 64 * 1024
+        || !matches!(
+            serde_json::from_str::<serde_json::Value>(&attempt.state_json),
+            Ok(serde_json::Value::Object(_))
+        )
     {
+        return Err(ActivityContractError::InvalidField("state_json"));
+    }
+    Ok(actor_user_id)
+}
+
+fn validate_result(
+    attempt: &ActivityAttempt,
+    result: &ActivityResult,
+) -> Result<(), ActivityContractError> {
+    if result.schema_version != ACTIVITY_SCHEMA_VERSION {
+        return Err(ActivityContractError::UnsupportedSchemaVersion(
+            result.schema_version,
+        ));
+    }
+    if attempt.attempt_key != result.attempt_key
+        || attempt.activity_id != result.activity_id
+        || attempt.subject_user_id != result.subject_user_id
+        || attempt.ruleset_version != result.ruleset_version
+    {
+        return Err(ActivityContractError::InvalidField("identity binding"));
+    }
+    if result.finished_at_epoch_seconds < attempt.started_at_epoch_seconds {
         return Err(ActivityContractError::InvalidField("time ordering"));
     }
     if result.points < 0
@@ -242,17 +308,36 @@ pub fn validate_activity_result(
     {
         return Err(ActivityContractError::InvalidField("score bounds"));
     }
-    if result.evidence_sha256.len() != 64
-        || !result
-            .evidence_sha256
-            .bytes()
-            .all(|byte| byte.is_ascii_hexdigit())
-    {
+    if !valid_sha256(&result.evidence_sha256) {
         return Err(ActivityContractError::InvalidField("evidence_sha256"));
     }
-    if attempt.state_json.len() > 64 * 1024 {
-        return Err(ActivityContractError::InvalidField("state_json"));
+    Ok(())
+}
+
+pub fn evaluate_activity<E: ActivityEvaluator>(
+    context: &UserContext,
+    attempt: ActivityAttempt,
+    submission: &E::Submission,
+    finished_at_epoch_seconds: i64,
+    evaluator: &E,
+) -> Result<ValidatedActivityResult, ActivityContractError> {
+    let actor_user_id = validate_attempt(context, &attempt)?;
+    if evaluator.kind() != attempt.kind {
+        return Err(ActivityContractError::InvalidField("activity kind"));
     }
+    let outcome = evaluator.evaluate(&attempt, submission)?;
+    let result = ActivityResult {
+        schema_version: ACTIVITY_SCHEMA_VERSION,
+        attempt_key: attempt.attempt_key.clone(),
+        activity_id: attempt.activity_id,
+        subject_user_id: attempt.subject_user_id,
+        ruleset_version: attempt.ruleset_version.clone(),
+        points: outcome.points,
+        max_score: outcome.max_score,
+        finished_at_epoch_seconds,
+        evidence_sha256: outcome.evidence_sha256,
+    };
+    validate_result(&attempt, &result)?;
 
     Ok(ValidatedActivityResult {
         actor_user_id,
@@ -271,43 +356,73 @@ mod tests {
             attempt_key: "attempt-1".to_string(),
             activity_id: 2,
             subject_user_id: 7,
-            kind: ActivityKind::Game,
+            kind: ActivityKind::Exercise,
             ruleset_version: "rules-v1".to_string(),
             started_at_epoch_seconds: 1_000,
             state_json: "{\"level\":1}".to_string(),
         }
     }
 
-    fn result() -> ActivityResult {
-        ActivityResult {
-            schema_version: ACTIVITY_SCHEMA_VERSION,
-            attempt_key: "attempt-1".to_string(),
-            activity_id: 2,
-            subject_user_id: 7,
-            ruleset_version: "rules-v1".to_string(),
-            points: 80,
-            max_score: 100,
-            finished_at_epoch_seconds: 1_100,
-            evidence_sha256: "a".repeat(64),
-        }
+    fn evaluator() -> SingleChoiceEvaluator {
+        SingleChoiceEvaluator::new(11, 100, "a".repeat(64))
+            .expect("trusted single-choice rules")
     }
 
     #[test]
-    fn attempt_result_and_evidence_are_bound_to_the_owner() {
+    fn single_choice_result_is_server_authored_and_bound_to_the_owner() {
         let owner = UserContext::new("7", vec!["student".to_string()]);
         let attacker = UserContext::new("8", vec!["student".to_string()]);
-        assert!(validate_activity_result(&owner, attempt(), result()).is_ok());
+        let correct = evaluate_activity(
+            &owner,
+            attempt(),
+            &SingleChoiceSubmission {
+                selected_option_id: 11,
+            },
+            1_100,
+            &evaluator(),
+        )
+        .expect("server-authored correct result");
+        assert_eq!(correct.result.points, 100);
+
+        let incorrect = evaluate_activity(
+            &owner,
+            attempt(),
+            &SingleChoiceSubmission {
+                selected_option_id: 12,
+            },
+            1_100,
+            &evaluator(),
+        )
+        .expect("server-authored incorrect result");
+        assert_eq!(incorrect.result.points, 0);
         assert!(matches!(
-            validate_activity_result(&attacker, attempt(), result()),
+            evaluate_activity(
+                &attacker,
+                attempt(),
+                &SingleChoiceSubmission {
+                    selected_option_id: 11,
+                },
+                1_100,
+                &evaluator(),
+            ),
             Err(ActivityContractError::Forbidden)
         ));
 
-        let mut tampered = result();
-        tampered.points = 101;
+        let mut mismatched_kind = attempt();
+        mismatched_kind.kind = ActivityKind::Game;
         assert!(matches!(
-            validate_activity_result(&owner, attempt(), tampered),
-            Err(ActivityContractError::InvalidField("score bounds"))
+            evaluate_activity(
+                &owner,
+                mismatched_kind,
+                &SingleChoiceSubmission {
+                    selected_option_id: 11,
+                },
+                1_100,
+                &evaluator(),
+            ),
+            Err(ActivityContractError::InvalidField("activity kind"))
         ));
+        assert!(SingleChoiceEvaluator::new(11, 100, "A".repeat(64)).is_err());
     }
 
     #[test]
@@ -350,10 +465,11 @@ mod tests {
 
 #[cfg(test)]
 mod tests {
-    use super::ACTIVITY_CONTRACT;
+    use super::{ACTIVITY_CONTRACT, SINGLE_CHOICE_EVALUATOR};
 
     #[test]
     fn generated_contract_binds_attempt_result_rules_and_evidence() {
+        let contract = format!("{ACTIVITY_CONTRACT}{SINGLE_CHOICE_EVALUATOR}");
         for field in [
             "attempt_key",
             "ruleset_version",
@@ -361,11 +477,14 @@ mod tests {
             "evidence_sha256",
             "finished_at_epoch_seconds",
             "ActivityClientManifest",
+            "ActivityEvaluator",
+            "evaluate_activity",
+            "SingleChoiceEvaluator",
             "SsrHtmx",
             "CanvasWasm",
             "artifact_size_bytes",
         ] {
-            assert!(ACTIVITY_CONTRACT.contains(field));
+            assert!(contract.contains(field));
         }
     }
 }

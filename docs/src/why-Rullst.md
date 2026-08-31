@@ -221,7 +221,10 @@ The Academy slice is already more than a landing-page mock: its generated
 SQLite journey exercises server-owned progress, assessment, score,
 leaderboard, automation, notifications and school boundaries. Its accessible
 lesson presentation supports bounded video/audio metadata, mandatory WebVTT
-captions for video and escaped transcripts. That is a useful foundation for a
+captions for video and escaped transcripts. Its generic activity boundary also
+keeps points out of untrusted submissions: static-dispatch evaluators construct
+server-authored results, with a tested single-choice exercise as the first
+example. That is a useful foundation for a
 language-learning product, not a claim that Rullst generates pedagogy, content,
 speech recognition, native-device behavior or a complete Duolingo equivalent.
 
