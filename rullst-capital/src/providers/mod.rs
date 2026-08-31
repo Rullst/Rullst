@@ -15,6 +15,7 @@ pub mod picpay;
 pub mod polar;
 pub mod razorpay;
 pub mod stripe;
+mod stripe_charge;
 pub mod wise;
 
 pub use alipay::AlipayProvider;
@@ -198,6 +199,7 @@ pub struct WebhookEvent {
 }
 
 use crate::error::CapitalError;
+use crate::{ChargeReceipt, ChargeRequest};
 
 /// Dynamic trait to handle billing provider interactions.
 #[async_trait]
@@ -223,6 +225,18 @@ pub trait BillingProvider: Send + Sync {
         plan_id: &str,
         redirect_url: &str,
     ) -> Result<String, CapitalError>;
+
+    /// Attempts one fully specified immediate off-session charge.
+    ///
+    /// Adapters must override this method only after forwarding the request's
+    /// idempotency key and binding the provider response to its amount and
+    /// currency. The default prevents adapter presence from implying support.
+    async fn charge(&self, _request: &ChargeRequest) -> Result<ChargeReceipt, CapitalError> {
+        Err(CapitalError::UnsupportedOperation(format!(
+            "{} does not provide reviewed direct-charge support",
+            self.name()
+        )))
+    }
 
     /// Verify the signature and extract subscription data from webhook request.
     fn handle_webhook(

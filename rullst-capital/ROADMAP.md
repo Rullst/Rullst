@@ -9,10 +9,15 @@ Rullst Capital simplifies the billing and subscription complexities of building 
 
 ## Phase 1: Payment Gateways Integration
 - [x] **Unified Payment Drivers**: First-class support for Stripe and LemonSqueezy with a standard Rust Trait interface.
-- [~] **The `Billable` Trait**: `#[derive(rullst::Billable)]` now preserves
-  generics and exposes checkout subscriptions through the facade. The historic
-  `charge(amount)` shorthand is not implemented because a safe charge also
-  needs currency, customer/payment-method identity and an idempotency policy.
+- [x] **The bounded `Billable` Trait**: `#[derive(rullst::Billable)]` preserves
+  generics and exposes checkout subscriptions plus immediate charges through
+  the facade. `charge_with`/`charge` require integer minor units, currency,
+  provider customer and tokenized payment-method IDs, and an idempotency key;
+  Stripe has reviewed live support and exact mock retries return a deterministic
+  receipt explicitly typed as non-success `Mock`.
+  Other adapters fail explicitly until their own direct-charge protocol is
+  reviewed. The intentionally absent unsafe `charge(amount)` shorthand cannot
+  guess currency, mandate, payment identity or retry policy.
 
 ## Phase 2: Billing Operations
 - [x] **Fail-closed Axum and Actix Webhooks**: Both framework adapters call one canonical verifier. Supported provider signatures reject empty secrets; timestamped protocols enforce freshness, bodies are bounded and middleware provides bounded TTL replay protection.

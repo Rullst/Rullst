@@ -34,3 +34,25 @@ fn billable_derive_is_available_from_facade_and_preserves_generics() {
     assert!(!account.can_access("enterprise"));
     assert!(account.grace_period().unwrap().is_some());
 }
+
+#[tokio::test]
+async fn billable_derive_exposes_the_bounded_direct_charge_helper() {
+    let account = Account::<u8> {
+        email: "owner@example.com".to_string(),
+        subscription_id: None,
+        tier: None,
+        grace_period_starts_at: None,
+        grace_period_ends_at: None,
+        marker: PhantomData,
+    };
+    let provider = rullst::capital::StripeProvider::new("mock_stripe", "mock_webhook");
+    let receipt = account
+        .charge_with(&provider, 1_099, "USD", "cus_1", "pm_1", "order_1")
+        .await
+        .expect("mock direct charge");
+
+    assert_eq!(receipt.status(), rullst::capital::ChargeStatus::Mock);
+    assert!(!receipt.is_succeeded());
+    assert_eq!(receipt.amount_minor(), 1_099);
+    assert_eq!(receipt.currency(), "usd");
+}

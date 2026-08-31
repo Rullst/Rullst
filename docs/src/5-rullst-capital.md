@@ -22,6 +22,45 @@ as deployment secrets. Empty credentials are configuration errors for live
 operations. Credentials deliberately prefixed with `mock_` select deterministic
 offline behavior where that adapter documents support for it.
 
+### Immediate charges without raw payment data
+
+`Billable::charge_with` accepts only a provider-tokenized customer and payment
+method. Amounts are integer minor units and every attempt needs an
+application-owned idempotency key. The reviewed live adapter is Stripe Payment
+Intents; other billing adapters fail with `UnsupportedOperation` instead of
+pretending to charge.
+
+```rust,no_run
+use rullst_capital::{Billable as _, CapitalError, StripeProvider};
+
+async fn collect_order(
+    account: &impl rullst_capital::Billable,
+    stripe: &StripeProvider,
+) -> Result<(), CapitalError> {
+    let receipt = account
+        .charge_with(
+            stripe,
+            4_990, // BRL 49.90 in cents
+            "BRL",
+            "cus_provider_owned",
+            "pm_provider_tokenized",
+            "order_42-attempt_1",
+        )
+        .await?;
+    if receipt.is_succeeded() {
+        // Reconcile durable order state; do not grant access from this alone.
+    }
+    Ok(())
+}
+```
+
+The application must establish the customer's authority over both provider
+IDs, retain the key with its order, reconcile signed webhooks and handle
+mandate/SCA rules. Empty/`mock_*` credentials produce a deterministic receipt
+with the distinct non-success `ChargeStatus::Mock`; it must never grant access
+or be booked as revenue. This API has no raw-card field and never guesses
+currency.
+
 Webhook endpoints must use the Capital verification middleware. Its Axum and
 opt-in Actix adapters call the same canonical verifier. For supported protocols
 it performs cryptographic verification, freshness checks, a two-megabyte body

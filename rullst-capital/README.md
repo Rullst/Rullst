@@ -24,7 +24,7 @@ provider sandbox.
 
 | Provider | Adapter category | Current boundary |
 | :--- | :--- | :--- |
-| **Stripe** | Billing | Checkout and documented webhook foundations; verify required live methods. |
+| **Stripe** | Billing | Checkout, bounded immediate Payment Intent charge, and documented webhook foundations; verify required live methods. |
 | **Lemon Squeezy** | Billing | Adapter with explicit mock path; verify required live methods. |
 | **InfinitePay** | Billing | Regional adapter foundation; pricing and settlement are external contracts. |
 | **Polar** | Billing | Adapter foundation; verify provider API coverage. |
@@ -82,6 +82,38 @@ authorize that state, enforce access, schedule provider changes, infer
 membership, read usage from a database, or choose currency/payment methods.
 Applications must establish those identities and policies before invoking a
 provider operation.
+
+An immediate charge is available without exposing a raw-card field. It requires
+minor units, currency, authoritative provider customer/payment-method IDs and a
+unique application retry key:
+
+```rust
+use rullst::capital::{Billable as _, CapitalError, StripeProvider};
+
+async fn collect(
+    workspace: &impl rullst::capital::Billable,
+    stripe: &StripeProvider,
+) -> Result<(), CapitalError> {
+    let receipt = workspace
+        .charge_with(
+            stripe,
+            4_990,
+            "BRL",
+            "cus_provider_owned",
+            "pm_provider_tokenized",
+            "order_42-attempt_1",
+        )
+        .await?;
+    assert_eq!(receipt.amount_minor(), 4_990);
+    Ok(())
+}
+```
+
+Stripe is the only reviewed live direct-charge adapter. Exact `mock_*` retries
+are deterministic but carry the distinct non-success `ChargeStatus::Mock`;
+other adapters return `UnsupportedOperation`. Mandate/SCA,
+durable idempotency, webhook reconciliation and entitlement changes remain
+application responsibilities.
 
 ### Initializing a Provider
 

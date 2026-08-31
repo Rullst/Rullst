@@ -42,6 +42,10 @@ pub enum CapitalError {
     #[error("Subscription error: {0}")]
     SubscriptionError(String),
 
+    /// A direct-charge request violates a local validation invariant.
+    #[error("Invalid charge request: {0}")]
+    InvalidCharge(String),
+
     /// Digital invoice or tax authority operation error.
     #[error("Fiscal error: {0}")]
     FiscalError(#[from] crate::fiscal::models::FiscalError),

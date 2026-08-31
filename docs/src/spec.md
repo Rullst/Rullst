@@ -478,6 +478,20 @@ exposes a validated half-open window of at most 366 days. A provider-bound
 persist ownership, team membership, entitlement, currency, payment methods,
 usage, provider scheduling or database-backed quotas.
 
+The same derive inherits the bounded `charge_with`/`charge` helpers for an
+immediate off-session charge. A charge requires a positive integer amount in
+currency minor units (maximum eight digits), a three-letter currency, explicit
+provider customer and tokenized payment-method IDs, the model e-mail and an
+application-owned idempotency key of at most 255 bytes. `BillingProvider::charge`
+defaults to `UnsupportedOperation`; the reviewed live implementation is Stripe
+Payment Intents, which forwards the idempotency key, confirms off-session and
+fails closed on an amount/currency mismatch or a status other than `succeeded`
+or `processing`. Empty/`mock_*` Stripe credentials return a deterministic local
+receipt with the distinct non-success `Mock` status for exact retries. Rullst
+does not model raw payment credentials, prove that a stored method has a valid
+mandate, persist idempotency, grant an entitlement, reconcile webhooks or imply
+direct-charge parity across adapters.
+
 ### 6.2. Invoice Rendering
 
 `Invoice::generate_html` escapes every application-supplied textual field. It

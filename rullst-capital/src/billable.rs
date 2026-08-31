@@ -1,5 +1,6 @@
 use crate::capital::{BillingProvider, provider};
 use crate::error::CapitalError;
+use crate::{ChargeReceipt, ChargeRequest};
 use async_trait::async_trait;
 
 const MAX_GRACE_PERIOD_SECONDS: i64 = 366 * 24 * 60 * 60;
@@ -153,6 +154,57 @@ pub trait Billable {
             })?
             .create_checkout_session(&self.email(), plan_id, redirect_url)
             .await
+    }
+
+    /// Performs one validated immediate charge through an explicit provider.
+    ///
+    /// `amount_minor` is expressed in the currency's smallest unit. The caller
+    /// must supply provider-tokenized customer/payment-method IDs and a unique
+    /// application retry key; raw payment credentials are outside this API.
+    async fn charge_with<Provider>(
+        &self,
+        selected_provider: &Provider,
+        amount_minor: u64,
+        currency: &str,
+        customer_id: &str,
+        payment_method_id: &str,
+        idempotency_key: &str,
+    ) -> Result<ChargeReceipt, CapitalError>
+    where
+        Provider: BillingProvider + ?Sized,
+    {
+        let request = ChargeRequest::new(
+            amount_minor,
+            currency,
+            customer_id,
+            self.email(),
+            payment_method_id,
+            idempotency_key,
+        )?;
+        selected_provider.charge(&request).await
+    }
+
+    /// Performs one validated immediate charge through the global provider.
+    async fn charge(
+        &self,
+        amount_minor: u64,
+        currency: &str,
+        customer_id: &str,
+        payment_method_id: &str,
+        idempotency_key: &str,
+    ) -> Result<ChargeReceipt, CapitalError> {
+        let selected_provider = provider().ok_or_else(|| {
+            CapitalError::ConfigurationError("BillingProvider not initialized".to_string())
+        })?;
+        self.charge_with(
+            selected_provider,
+            amount_minor,
+            currency,
+            customer_id,
+            payment_method_id,
+            idempotency_key,
+        )
+        .await
     }
 
     /// Retrieves the current subscription ID from the entity if available.

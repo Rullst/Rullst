@@ -376,6 +376,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   preserves generic model parameters, and emits a focused compile error when a
   named e-mail field is absent. Invoice HTML escapes all application-supplied
   text fields before rendering.
+- `Billable::charge_with` and the global-provider `charge` helper now provide a
+  bounded immediate-charge contract instead of the unsafe historical
+  `charge(amount)` shorthand. Requests use integer minor units and require
+  currency, provider customer/payment-method IDs and an application idempotency
+  key. Stripe Payment Intents forwards that key, confirms off-session, binds the
+  response to amount/currency and accepts only successful/processing states;
+  exact mock retries are deterministic with a distinct non-success `Mock` status
+  and sensitive identifiers are redacted. Other adapters fail explicitly until
+  their direct-charge path is reviewed.
 - `cargo rullst make:iot` now validates device identifiers, refuses traversal
   and collisions, enables the umbrella `iot` feature, registers generated
   modules, and is checked by compiling a materialized application. IoT HTML

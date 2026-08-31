@@ -56,14 +56,50 @@ owners. The application still owns the identity middleware, correct plan
 configuration, return-URL policy, durable provider-event
 idempotency/reconciliation, and provider sandbox validation.
 
-## 3. Verify webhooks before business processing
+## 3. Make a bounded immediate charge when checkout is not the right flow
+
+For a payment method already tokenized and authorized for off-session reuse at
+Stripe, the model deriving `Billable` can perform one fully specified charge:
+
+```rust,no_run
+use rullst_capital::{Billable as _, CapitalError, StripeProvider};
+
+async fn charge_saved_method(
+    account: &impl rullst_capital::Billable,
+    stripe: &StripeProvider,
+) -> Result<String, CapitalError> {
+    let receipt = account
+        .charge_with(
+            stripe,
+            2_500,
+            "BRL",
+            "cus_from_authoritative_state",
+            "pm_from_authoritative_state",
+            "order_2026_0001-attempt_1",
+        )
+        .await?;
+    Ok(receipt.charge_id().to_string())
+}
+```
+
+This deliberately is not `charge(amount)`: currency, provider customer,
+tokenized payment method and retry identity cannot be inferred safely. The
+Stripe adapter uses Payment Intents with immediate off-session confirmation and
+the provider idempotency header. Only `succeeded` and `processing` are accepted;
+an amount/currency mismatch or a flow requiring customer action fails closed.
+Credentials beginning with `mock_` return the same deterministic receipt with
+the distinct non-success `ChargeStatus::Mock` for an exact retry. The mock is
+not a mandate, durable idempotency store or live sandbox test. Other adapters
+return `UnsupportedOperation` until reviewed individually.
+
+## 4. Verify webhooks before business processing
 
 Mount `rullst_capital::verify_webhook` on the exact provider callback route as
 shown in the [Capital crate guide](../5-rullst-capital.md). Apply any CSRF
 exemption only to that exact signed route. Never update access or subscription
 state from an unverified request.
 
-## 4. Use a bounded subscription handle and grace period
+## 5. Use a bounded subscription handle and grace period
 
 ```rust,no_run
 use rullst_capital::{Billable as _, CapitalError, GracePeriod, StripeProvider};
@@ -85,7 +121,7 @@ it with authoritative subscription state, evaluate it against a trusted clock
 inside the entitlement check, and confirm the selected adapter's live pause or
 cancel semantics.
 
-## 5. Supply an optional local revenue snapshot
+## 6. Supply an optional local revenue snapshot
 
 `RevenueDashboardManager` does not derive money or subscribers from event names.
 After durable reconciliation, the application may call `update_metrics` with its

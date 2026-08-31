@@ -4,6 +4,7 @@ use super::{
     webhook_mode_from_secret,
 };
 use crate::error::CapitalError;
+use crate::{ChargeReceipt, ChargeRequest};
 use async_trait::async_trait;
 use ring::hmac;
 use serde_json::Value;
@@ -178,6 +179,10 @@ impl BillingProvider for StripeProvider {
         body["url"].as_str().map(|s| s.to_string()).ok_or_else(|| {
             CapitalError::PayloadParseError("Missing checkout URL in Stripe response".to_string())
         })
+    }
+
+    async fn charge(&self, request: &ChargeRequest) -> Result<ChargeReceipt, CapitalError> {
+        super::stripe_charge::execute(&self.api_key, request).await
     }
 
     fn handle_webhook(
