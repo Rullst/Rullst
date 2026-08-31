@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788121704640,
+  "lastUpdate": 1788150688730,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -3115,6 +3115,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 581,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "f94d500f146cc9f172f63b14dee94ce59108c74f",
+          "message": "fix(auth): use strong benchmark app key",
+          "timestamp": "2026-08-31T01:23:42-03:00",
+          "tree_id": "e2a39d8747d48cb226f949a6c7b336436d67190f",
+          "url": "https://github.com/Rullst/Rullst/commit/f94d500f146cc9f172f63b14dee94ce59108c74f"
+        },
+        "date": 1788150688321,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 558,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
