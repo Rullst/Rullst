@@ -8,6 +8,7 @@ pub use rullst_macros::{Billable, require_role};
 /// unambiguous while the security crates are consolidated in a future
 /// SemVer-planned architecture cycle.
 pub mod security {
+    #[cfg(not(target_arch = "wasm32"))]
     pub use rullst_core::security::*;
 
     #[cfg(all(feature = "security", not(target_arch = "wasm32")))]

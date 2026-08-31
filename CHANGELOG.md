@@ -49,7 +49,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   early backend exit and timeout instead of attaching to an unknown process or
   launching anyway. New path-aware workflows cover desktop crate checks on
   Linux/macOS/Windows and an Android debug APK alongside the existing iOS
-  simulator compile gate. Hosted jobs, physical devices, signing, offline sync,
+  simulator compile gate; all three passed on the implementation SHA. The new
+  portable `rullst.client` v1 boundary adds bounded positive-version
+  negotiation, typed request/success/failure JSON, correlation/idempotency
+  tokens, server time and stable message-free failure codes while excluding
+  client authority. Physical devices, signing, durable replay, offline sync,
   native capabilities and store review remain explicit evidence boundaries.
 - `rullst-capital` now provides a bounded National NFS-e 1.01 preparation
   pipeline: checksum-pinned official production/restricted artifact manifests,

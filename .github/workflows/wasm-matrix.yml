@@ -39,8 +39,9 @@ jobs:
         with:
           target: ${{ matrix.target }}
 
-      - name: Verify WebAssembly compilation for Island & Client Components
-        # Verify rullst core and wasm client components compile cleanly without OS syscalls
+      - name: Verify WebAssembly compilation for framework and client components
+        # Verify Core, the public facade, and macros compile without native OS APIs.
         run: |
           cargo check -p rullst-core --target ${{ matrix.target }} --no-default-features
+          cargo check -p rullst --target ${{ matrix.target }} --no-default-features
           cargo check -p rullst-macros --target ${{ matrix.target }}

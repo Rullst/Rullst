@@ -31,13 +31,13 @@ strict-sqlite = ["orm", "rullst-orm/strict-sqlite"]
 
 [dependencies]
 serde = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
 toml = { workspace = true }
 rullst-macros = { workspace = true }
 thiserror = { workspace = true }
 http = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-serde_json = { workspace = true, features = ["std"] }
 dotenvy = { workspace = true }
 redis = { workspace = true, features = ["tokio-comp", "aio"], optional = true }
 tracing-opentelemetry = { workspace = true, optional = true }

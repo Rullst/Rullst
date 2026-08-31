@@ -20,6 +20,8 @@ pub mod artisan;
 pub mod cache;
 /// Edge client components rendering module.
 pub mod client;
+/// Portable, versioned wire contract shared by web and platform clients.
+pub mod client_contract;
 #[cfg(not(target_arch = "wasm32"))]
 /// Agentic DevOps Engine & Infrastructure Tuning (Milestone 20).
 pub mod devops;

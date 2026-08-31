@@ -120,9 +120,17 @@ The packaged bootstrap exposes no remote IPC. A native navigation policy allows
 only Tauri's local origin and the configured backend's exact origin, leaving
 OAuth/external links for a reviewed system-browser/deep-link contract.
 
+`rullst::client_contract` supplies one shared `rullst.client` v1 JSON boundary
+for browser, server and future platform-enhanced code. It negotiates positive
+versions, rejects unknown outer fields and oversized bodies, and carries typed
+payloads, correlation, optional mutation idempotency, server time and bounded
+failure codes. It deliberately has no user/tenant/role claim: authentication,
+authorization, domain validation and durable replay handling remain server
+work. This is a transport foundation for rich clients, not offline sync.
+
 Path-aware workflows generate disposable applications and check desktop on
-Linux/macOS/Windows, an Android debug APK and an iOS simulator target. Their
-configuration is not proof until each hosted run passes on the referenced SHA.
+Linux/macOS/Windows, an Android debug APK and an iOS simulator target. All
+three passed for commit `755fbd61933bed04369e0eb5de50b11275db5e3d`.
 
 That gate proves reproducible generation and simulator compilation only. It
 does not automatically implement offline synchronization, secure remote

@@ -223,7 +223,7 @@ dependency graph make static estimates unreliable.
 | [`trufflehog.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/trufflehog.yml) | main push and PR, weekly, manual | Blocking | Verified-secret scan over the configured Git history range. |
 | [`udeps.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/udeps.yml) | weekly, manual | Informational | Nightly cargo-udeps signal; command failures are tolerated. |
 | [`unsafe-policy.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/unsafe-policy.yml) | main push and PR, manual | Blocking | Denies new production unsafe code and validates the reviewed exception allowlist. |
-| [`wasm-matrix.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/wasm-matrix.yml) | main push and PR, manual | Blocking | Compiles Core and macro crates for `wasm32-unknown-unknown` and `wasm32-wasip1`. |
+| [`wasm-matrix.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/wasm-matrix.yml) | main push and PR, manual | Blocking | Compiles Core, the public `rullst` facade and macros for `wasm32-unknown-unknown` and `wasm32-wasip1`. |
 | [`workflow-lint.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/workflow-lint.yml) | main push and PR, manual | Blocking | Actionlint checks workflow syntax, GitHub expressions, and embedded shell using an immutable container digest. |
 | [`zero-panics.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/zero-panics.yml) | main push and PR, manual | Blocking | Panic-family Clippy lints plus generated-code regression checks for published runtime targets. |
 

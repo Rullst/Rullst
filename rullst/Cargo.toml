@@ -54,9 +54,10 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 
 [dependencies]
 serde = { workspace = true }
-serde_json = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
 toml = { workspace = true }
 rullst-macros = { workspace = true }
+rullst-core = { workspace = true }
 # Optional features dependencies
 redis = { workspace = true, features = ["tokio-comp", "aio"], optional = true }
 rullst-connect = { workspace = true, optional = true }
@@ -80,7 +81,6 @@ async-trait = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 chrono = { workspace = true, features = ["clock"] }
 validator = { workspace = true, features = ["derive"] }
-rullst-core = { workspace = true }
 rullst-auth = { workspace = true, optional = true }
 rullst-mail = { workspace = true, optional = true }
 rullst-ai = { workspace = true, optional = true }

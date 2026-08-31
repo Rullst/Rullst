@@ -99,6 +99,49 @@ All normal web protections still apply. The server must enforce sessions,
 CSRF, secure headers, ownership/RBAC, input validation and rate limits. A mobile
 package does not make server-side authorization optional.
 
+## Share one typed wire contract
+
+`rullst::client_contract` is available to native server code and
+`wasm32-unknown-unknown` clients. Its `rullst.client` v1 envelope gives web and
+Omni code the same bounded JSON shape without inventing a second business API:
+
+```rust
+use rullst::client_contract::{
+    ClientContractPolicy, ClientRequest, IdempotencyKey, RequestId,
+    CURRENT_CLIENT_CONTRACT_VERSION,
+};
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct LessonAttempt {
+    lesson_id: String,
+    answer: String,
+}
+
+let request = ClientRequest::mutation(
+    CURRENT_CLIENT_CONTRACT_VERSION,
+    RequestId::new("req_01j8lesson")?,
+    IdempotencyKey::new("attempt_01j8lesson")?,
+    LessonAttempt {
+        lesson_id: "lesson_1".into(),
+        answer: "bonjour".into(),
+    },
+);
+let encoded = ClientContractPolicy::default().encode_request(&request)?;
+```
+
+The server decodes through `ClientContractPolicy`, derives the user and tenant
+from its authenticated session, requires the idempotency key before a mutation,
+and computes grading, points, streaks and server time itself. Do not put a role,
+`user_id`, trusted score or authorization decision in the client payload.
+
+The generic codec has a configurable ceiling no larger than 2 MiB, rejects
+unknown outer fields and selects only a mutually supported positive version.
+Its key proves request shape, not exactly-once execution: the application still
+needs a durable unique key plus an atomic result/effect transaction. This
+contract is a prerequisite for future offline queues, not an offline queue.
+
 ## Offline behavior
 
 The packaged bootstrap can explain that the device is offline and retry before
@@ -106,8 +149,8 @@ the first navigation. The current profile does **not** cache application data,
 queue writes or resolve synchronization conflicts. Calling it “offline-first”
 would be inaccurate.
 
-A future resilient-client profile needs a versioned typed contract and must
-define at least:
+A future resilient-client profile can build on the versioned typed contract but
+must still define at least:
 
 - encrypted local records without server/master secrets;
 - a bounded mutation queue with idempotency keys;
@@ -143,7 +186,9 @@ classes:
 - an iOS simulator build on macOS.
 
 A green run proves that a fresh generated shell compiled for that runner and
-commit. It does not prove physical-device behavior, accessibility, signing,
+commit. All three gates passed on
+`755fbd61933bed04369e0eb5de50b11275db5e3d`. This does not prove
+physical-device behavior, accessibility, signing,
 privacy declarations, TestFlight/Play testing or store acceptance.
 
 ## Before distribution
