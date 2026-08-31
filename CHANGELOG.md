@@ -77,12 +77,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   submission and uses static dispatch to build a result after owner, kind,
   attempt/ruleset, object-shaped state, time, score bounds and canonical
   SHA-256 evidence checks. The first built-in `SingleChoiceEvaluator` computes
-  correct/incorrect exercise points from server-supplied rules. The complete
-  Academy starter now accepts only its opaque validated result, rederives the
-  persisted activity policy and atomically writes `ScoreEvent` v2, leaderboard
-  and `score_recorded` outbox state with the canonical evidence digest. Raw
-  attempt retention, the HTTP boundary, additional exercise/game evaluators
-  and the existing full quiz path remain explicit application/scaffold work.
+  correct/incorrect exercise points from server-supplied rules and returns an
+  opaque validated result. The complete-starter persistence and HTTP vertical
+  is described immediately below; additional evaluator kinds remain open.
+- The complete Academy starter now closes that first activity path with an
+  owner-only `POST /activities/{id}/attempts` boundary. Its JSON accepts only an
+  idempotency key and selected option; server state supplies identity, answer,
+  policy, points, digest and time. The same transaction persists a bounded
+  read-only activity attempt, `ScoreEvent` v2, leaderboard and outbox after
+  revalidating the exact evaluator configuration under its policy lock. Identical
+  retries are no-ops, while a changed option under the same key fails closed;
+  attempt/event deduplication is server-scoped by learner and activity so one
+  learner cannot reserve another learner's client key.
+  Additional exercise/game evaluators and quiz-path unification remain open.
 - `rullst-capital` now provides a bounded National NFS-e 1.01 preparation
   pipeline: checksum-pinned official production/restricted artifact manifests,
   strict ordinary-service DPS construction with integer money/rates, closed-

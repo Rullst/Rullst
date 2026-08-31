@@ -117,8 +117,11 @@ mod tests {
         assert_eq!(fixture_count, 1);
 
         let learner = academy_context("7", vec!["student".to_string()]);
-        let evaluator = SingleChoiceEvaluator::new(11, 80, "a".repeat(64))
-            .expect("persisted single-choice rules");
+        let activity_policy =
+            r#"{"schema_version":1,"mode":"single_choice","correct_option_id":11}"#;
+        let evaluator =
+            SingleChoiceEvaluator::new(11, 80, "a".repeat(64), activity_policy)
+                .expect("persisted single-choice rules");
         let evaluate_score = || {
             evaluate_activity(
                 &learner,
@@ -162,8 +165,33 @@ mod tests {
         assert!(record_activity_result(&learner, evaluate_score()).await.expect("new score").applied);
         assert!(!record_activity_result(&learner, evaluate_score()).await.expect("score replay").applied);
 
-        let wrong_evidence_evaluator = SingleChoiceEvaluator::new(11, 80, "d".repeat(64))
-            .expect("syntactically valid but untrusted activity evidence");
+        let conflicting_replay = evaluate_activity(
+            &learner,
+            ActivityAttempt {
+                schema_version: ACTIVITY_SCHEMA_VERSION,
+                attempt_key: "event-sqlite-1".to_string(),
+                activity_id: 4,
+                subject_user_id: 7,
+                kind: ActivityKind::Exercise,
+                ruleset_version: "rules-v1".to_string(),
+                started_at_epoch_seconds: 1_000,
+                state_json: "{\"prompt_version\":1}".to_string(),
+            },
+            &SingleChoiceSubmission {
+                selected_option_id: 12,
+            },
+            1_031,
+            &evaluator,
+        )
+        .expect("well-formed but conflicting replay");
+        assert!(matches!(
+            record_activity_result(&learner, conflicting_replay).await,
+            Err(ScoreError::InvalidField("conflicting activity replay"))
+        ));
+
+        let wrong_evidence_evaluator =
+            SingleChoiceEvaluator::new(11, 80, "d".repeat(64), activity_policy)
+                .expect("syntactically valid but untrusted activity evidence");
         let wrong_evidence_result = evaluate_activity(
             &learner,
             ActivityAttempt {
@@ -187,6 +215,36 @@ mod tests {
             record_activity_result(&learner, wrong_evidence_result).await,
             Err(ScoreError::InvalidField("persisted activity policy"))
         ));
+        let stale_policy_evaluator = SingleChoiceEvaluator::new(
+            11,
+            80,
+            "a".repeat(64),
+            r#"{"schema_version":1,"mode":"single_choice","correct_option_id":12}"#,
+        )
+        .expect("syntactically valid but stale activity policy binding");
+        let stale_policy_result = evaluate_activity(
+            &learner,
+            ActivityAttempt {
+                schema_version: ACTIVITY_SCHEMA_VERSION,
+                attempt_key: "event-stale-policy".to_string(),
+                activity_id: 4,
+                subject_user_id: 7,
+                kind: ActivityKind::Exercise,
+                ruleset_version: "rules-v1".to_string(),
+                started_at_epoch_seconds: 1_000,
+                state_json: "{\"prompt_version\":1}".to_string(),
+            },
+            &SingleChoiceSubmission {
+                selected_option_id: 11,
+            },
+            1_030,
+            &stale_policy_evaluator,
+        )
+        .expect("locally well-formed outcome with stale policy binding");
+        assert!(matches!(
+            record_activity_result(&learner, stale_policy_result).await,
+            Err(ScoreError::InvalidField("persisted activity policy"))
+        ));
         assert!(matches!(
             record_activity_result(
                 &academy_context("8", vec!["student".to_string()]),
@@ -200,7 +258,7 @@ mod tests {
             rullst::db::sqlx::query_as::<_, (i32, String)>(
                 "SELECT schema_version, evidence_sha256 FROM score_events WHERE idempotency_key = ?",
             )
-            .bind("event-sqlite-1")
+            .bind("activity:7:4:event-sqlite-1")
             .fetch_one(Orm::pool().expect("Academy pool"))
             .await
             .expect("persisted activity score evidence");
@@ -214,6 +272,28 @@ mod tests {
         .await
         .expect("rejected activity scores leave no record");
         assert_eq!(score_count, 1);
+        let persisted_attempt = rullst::db::sqlx::query_as::<_, (String, i32, i32, String, i32, i32, i64, i64)>(
+            "SELECT submission_key, actor_user_id, subject_user_id, state_json, points, max_score, started_at_epoch, finished_at_epoch FROM activity_attempts WHERE attempt_key = ?",
+        )
+        .bind("event-sqlite-1")
+        .fetch_one(Orm::pool().expect("Academy pool"))
+        .await
+        .expect("durable authoritative activity attempt");
+        assert_eq!(persisted_attempt.0, "option:11");
+        assert_eq!((persisted_attempt.1, persisted_attempt.2), (7, 7));
+        assert_eq!(persisted_attempt.3, "{\"prompt_version\":1}");
+        assert!(!persisted_attempt.3.contains("correct_option"));
+        assert_eq!((persisted_attempt.4, persisted_attempt.5), (80, 80));
+        assert_eq!((persisted_attempt.6, persisted_attempt.7), (1_000, 1_030));
+        let rejected_attempts = rullst::db::sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM activity_attempts WHERE attempt_key IN (?, ?)",
+        )
+        .bind("event-wrong-evidence")
+        .bind("event-stale-policy")
+        .fetch_one(Orm::pool().expect("Academy pool"))
+        .await
+        .expect("rejected attempts leave no durable state");
+        assert_eq!(rejected_attempts, 0);
 
         let outbox_count = rullst::db::sqlx::query_scalar::<_, i64>(
             "SELECT COUNT(*) FROM academy_outbox WHERE event_kind = ?",
@@ -227,7 +307,7 @@ mod tests {
         let payload = rullst::db::sqlx::query_scalar::<_, String>(
             "SELECT payload_json FROM academy_outbox WHERE event_key = ?",
         )
-        .bind("score:event-sqlite-1")
+        .bind("score:activity:7:4:event-sqlite-1")
         .fetch_one(Orm::pool().expect("Academy pool"))
         .await
         .expect("Academy outbox payload");
@@ -240,7 +320,7 @@ mod tests {
             .await
             .expect("Academy automation fixture");
         let plans = plan_score_automations(
-            "score:event-sqlite-1",
+            "score:activity:7:4:event-sqlite-1",
             "score_recorded",
             &payload,
             &[AutomationRuleInput {
@@ -253,7 +333,10 @@ mod tests {
         )
         .expect("Academy automation dry-run");
         assert_eq!(plans.len(), 1);
-        assert_eq!(plans[0].execution_key, "automation:1:score:event-sqlite-1");
+        assert_eq!(
+            plans[0].execution_key,
+            "automation:1:score:activity:7:4:event-sqlite-1"
+        );
         assert_eq!(
             plans[0].action,
             PlannedAction::AwardAchievement {
@@ -292,7 +375,8 @@ mod tests {
         assert_eq!(
             notification_outcome,
             AutomationWorkerOutcome::Delivered {
-                event_key: "achievement:automation:1:score:event-sqlite-1".to_string(),
+                event_key: "achievement:automation:1:score:activity:7:4:event-sqlite-1"
+                    .to_string(),
                 planned_actions: 1,
             }
         );
@@ -357,7 +441,7 @@ mod tests {
             rullst::db::sqlx::query_as::<_, (i32, i32, String)>(
                 "SELECT id, school_id, status FROM notifications WHERE source_event_key = ?",
             )
-            .bind("achievement:automation:1:score:event-sqlite-1")
+            .bind("achievement:automation:1:score:activity:7:4:event-sqlite-1")
             .fetch_one(Orm::pool().expect("Academy pool"))
             .await
             .expect("in-app achievement notification");

@@ -203,15 +203,15 @@ pub const GENERATED_TESTS_SUFFIX: &str = r##"
         assert_eq!(
             worker_outcome,
             AutomationWorkerOutcome::Delivered {
-                event_key: "score:worker-score".to_string(),
+                event_key: "score:activity:7:4:worker-score".to_string(),
                 planned_actions: 1,
             }
         );
         let (delivered, execution_count) = rullst::db::sqlx::query_as::<_, (String, i64)>(
             "SELECT status, (SELECT COUNT(*) FROM automation_executions WHERE source_event_key = ?) FROM academy_outbox WHERE event_key = ?",
         )
-        .bind("score:worker-score")
-        .bind("score:worker-score")
+        .bind("score:activity:7:4:worker-score")
+        .bind("score:activity:7:4:worker-score")
         .fetch_one(Orm::pool().expect("Academy pool"))
         .await
         .expect("worker delivery state");

@@ -273,7 +273,7 @@ impl NexusModel for Lesson {
 
     manifest.push(("src/models/mod.rs", base_modules::MODELS_MODULE.to_string()));
 
-    let controllers_mod = r##"pub mod auth_controller;
+    let controllers_mod = r##"pub mod activity_controller; pub mod auth_controller;
 pub mod assessment_controller; pub mod assignment_controller; pub mod completion_controller;
 pub mod learning_controller;
 pub mod lms_controller;

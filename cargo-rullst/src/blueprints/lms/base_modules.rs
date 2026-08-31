@@ -1,5 +1,5 @@
 pub(super) const MODELS_MODULE: &str = r##"pub mod achievement; pub mod assignment; pub mod assignment_grade; pub mod assignment_grade_correction;
-pub mod assignment_submission; pub mod activity; pub mod rubric_criterion; pub mod rubric_score;
+pub mod assignment_submission; pub mod activity; pub mod activity_attempt; pub mod rubric_criterion; pub mod rubric_score;
 pub mod automation_execution;
 pub mod automation_rule;
 pub mod certificate; pub mod category;

@@ -16,7 +16,12 @@ fn attempt() -> ActivityAttempt {
 }
 
 fn evaluator() -> SingleChoiceEvaluator {
-    SingleChoiceEvaluator::new(11, 100, "a".repeat(64))
+    SingleChoiceEvaluator::new(
+        11,
+        100,
+        "a".repeat(64),
+        r#"{"schema_version":1,"mode":"single_choice","correct_option_id":11}"#,
+    )
         .expect("trusted single-choice rules")
 }
 
@@ -35,6 +40,7 @@ fn single_choice_result_is_server_authored_and_bound_to_the_owner() {
     )
     .expect("server-authored correct result");
     assert_eq!(correct.result().points, 100);
+    assert_eq!(correct.result().submission_key, "option:11");
 
     let incorrect = evaluate_activity(
         &owner,
@@ -74,7 +80,7 @@ fn single_choice_result_is_server_authored_and_bound_to_the_owner() {
         ),
         Err(ActivityContractError::InvalidField("activity kind"))
     ));
-    assert!(SingleChoiceEvaluator::new(11, 100, "A".repeat(64)).is_err());
+    assert!(SingleChoiceEvaluator::new(11, 100, "A".repeat(64), "{}").is_err());
 }
 
 #[test]

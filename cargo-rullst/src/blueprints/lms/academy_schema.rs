@@ -122,6 +122,24 @@ impl Migration for MigrationImpl {
             table.timestamps();
         }).await?;
 
+        Schema::create("activity_attempts", |table| {
+            table.id();
+            table.string("attempt_key").not_null();
+            table.integer("activity_id").not_null();
+            table.integer("actor_user_id").not_null();
+            table.integer("subject_user_id").not_null();
+            table.string("activity_kind").not_null();
+            table.string("ruleset_version").not_null();
+            table.string("state_json").not_null();
+            table.string("submission_key").not_null();
+            table.integer("points").not_null();
+            table.integer("max_score").not_null();
+            table.big_integer("started_at_epoch").not_null();
+            table.big_integer("finished_at_epoch").not_null();
+            table.string("evidence_sha256").not_null();
+            table.timestamps();
+        }).await?;
+
         Schema::create("achievements", |table| {
             table.id();
             table.string("code").not_null();
@@ -239,6 +257,8 @@ impl Migration for MigrationImpl {
             "CREATE INDEX quiz_attempt_sessions_subject_idx ON quiz_attempt_sessions(subject_user_id, quiz_id, ruleset_version, status)",
             "CREATE UNIQUE INDEX quiz_answers_attempt_question_unique ON quiz_answers(attempt_id, question_id)",
             "CREATE INDEX activities_lesson_kind_idx ON activities(lesson_id, activity_kind)",
+            "CREATE UNIQUE INDEX activity_attempts_key_unique ON activity_attempts(subject_user_id, activity_id, attempt_key)",
+            "CREATE INDEX activity_attempts_subject_idx ON activity_attempts(subject_user_id, activity_id, ruleset_version, finished_at_epoch)",
             "CREATE UNIQUE INDEX achievements_code_unique ON achievements(code)",
             "CREATE UNIQUE INDEX leaderboard_user_course_season_unique ON leaderboard_entries(user_id, course_id, season_key)",
             "CREATE INDEX leaderboard_course_season_score_idx ON leaderboard_entries(course_id, season_key, score)",
@@ -271,7 +291,7 @@ impl Migration for MigrationImpl {
             "INSERT INTO activities (id, lesson_id, title, activity_kind, max_score, ruleset_version, season_key, evidence_sha256, config_json) VALUES (1, 1, 'Borrow Checker Rescue', 'game', 100, 'rules-v1', 'season-2026', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '{\"schema_version\":1,\"mode\":\"offline\"}')",
             "INSERT INTO activities (id, lesson_id, title, activity_kind, max_score, ruleset_version, season_key, evidence_sha256, config_json) VALUES (2, 1, 'Memory Safety Checkpoint', 'quiz', 100, 'memory-rules-v1', 'season-2026', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', '{\"schema_version\":1,\"ruleset_version\":\"memory-rules-v1\"}')",
             "INSERT INTO activities (id, lesson_id, title, activity_kind, max_score, ruleset_version, season_key, evidence_sha256, config_json) VALUES (3, 1, 'Timed Ownership Checkpoint', 'quiz', 100, 'timed-rules-v1', 'season-2026', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '{\"schema_version\":1,\"ruleset_version\":\"timed-rules-v1\"}')",
-            "INSERT INTO activities (id, lesson_id, title, activity_kind, max_score, ruleset_version, season_key, evidence_sha256, config_json) VALUES (4, 1, 'Ownership Listening Choice', 'exercise', 80, 'rules-v1', 'season-2026', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '{\"schema_version\":1,\"mode\":\"single_choice\"}')",
+            "INSERT INTO activities (id, lesson_id, title, activity_kind, max_score, ruleset_version, season_key, evidence_sha256, config_json) VALUES (4, 1, 'Ownership Listening Choice', 'exercise', 80, 'rules-v1', 'season-2026', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '{\"schema_version\":1,\"mode\":\"single_choice\",\"correct_option_id\":11}')",
             "INSERT INTO achievements (id, code, name, description, xp_reward, enabled) VALUES (1, 'memory-guardian', 'Memory Guardian', 'Complete the offline memory-safety challenge.', 100, 1)",
             "INSERT INTO automation_rules (id, school_id, name, trigger_kind, action_kind, config_json, enabled) VALUES (1, 1, 'Award Memory Guardian', 'score_recorded', 'award_achievement', '{\"schema_version\":1,\"achievement_code\":\"memory-guardian\",\"minimum_score\":80}', 1)",
             "INSERT INTO automation_rules (id, school_id, name, trigger_kind, action_kind, config_json, enabled) VALUES (2, 2, 'Rival Memory Guardian', 'score_recorded', 'award_achievement', '{\"schema_version\":1,\"achievement_code\":\"memory-guardian\",\"minimum_score\":80}', 1)",
@@ -295,6 +315,7 @@ impl Migration for MigrationImpl {
         Schema::drop_if_exists("automation_rules").await?;
         Schema::drop_if_exists("leaderboard_entries").await?;
         Schema::drop_if_exists("achievements").await?;
+        Schema::drop_if_exists("activity_attempts").await?;
         Schema::drop_if_exists("activities").await?;
         Schema::drop_if_exists("quizzes").await
     }
@@ -349,6 +370,7 @@ mod tests {
             "quiz_attempts_key_unique",
             "quiz_attempt_sessions_key_unique",
             "quiz_answers_attempt_question_unique",
+            "activity_attempts_key_unique",
             "automation_school_trigger_enabled_idx",
             "user_achievements_school_user_achievement_unique",
             "automation_executions_key_unique",
@@ -361,6 +383,7 @@ mod tests {
         }
         assert!(MIGRATION.contains("Borrow Checker Rescue"));
         assert!(MIGRATION.contains("Memory Guardian"));
+        assert!(MIGRATION.contains("activity_attempts(subject_user_id, activity_id, attempt_key)"));
         assert!(!MIGRATION.contains("datetime("));
     }
 }

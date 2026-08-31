@@ -226,7 +226,10 @@ keeps points out of untrusted submissions: static-dispatch evaluators construct
 server-authored results, with a tested single-choice exercise as the first
 example. The complete starter then rederives the persisted activity policy and
 atomically projects that opaque result into a versioned score event, leaderboard
-and outbox; actor/evidence mismatch and replay are materialized negatives. That
+and outbox. Its owner-only route accepts only the chosen option and idempotency
+key, while the same transaction locks the exact evaluator configuration and
+retains an exact-replay attempt; cross-user, actor/evidence/policy mismatch and
+conflicting replay are materialized negatives. That
 is a useful foundation for a
 language-learning product, not a claim that Rullst generates pedagogy, content,
 speech recognition, native-device behavior or a complete Duolingo equivalent.

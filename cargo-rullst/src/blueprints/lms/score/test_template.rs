@@ -16,6 +16,12 @@ fn submission() -> ScoreSubmission {
         ruleset_version: "rules-v1".to_string(),
         season_key: "season-2026".to_string(),
         evidence_sha256: "a".repeat(64),
+        policy_binding: "{\"schema_version\":1}".to_string(),
+        activity_kind: "exercise".to_string(),
+        state_json: "{\"schema_version\":1}".to_string(),
+        submission_key: "option:11".to_string(),
+        started_at_epoch: 1_000,
+        finished_at_epoch: 1_030,
     }
 }
 

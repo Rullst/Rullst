@@ -76,12 +76,18 @@ ordering and a canonical evidence digest, then constructs `ActivityResult` from
 the evaluator's outcome. The built-in single-choice exercise evaluator is a
 bounded example. The complete Academy starter's `record_activity_result`
 rechecks the authenticated actor, loads course/kind/maximum/ruleset/season and
-the canonical evidence digest from persisted activity state, rejects any
-divergence, then atomically appends `ScoreEvent` v2, updates the leaderboard and
-emits `score_recorded`. The application must still load evaluator answer rules
-from trusted server state. Raw attempt/result retention, an authenticated HTTP
-handler, additional exercise/game evaluators and unification with the separately
-persisted quiz evaluator remain application or roadmap work.
+the canonical evidence digest and exact evaluator configuration from persisted
+activity state, rejects any
+divergence, then atomically appends an exact-replay activity-attempt record,
+`ScoreEvent` v2, the leaderboard update and `score_recorded`. The generated
+owner-only `POST /activities/{id}/attempts` accepts only an idempotency key and
+selected option; it derives learner/activity identity, policy, answer, points,
+evidence and time from authenticated/server state. Durable attempt identity is
+scoped by learner and activity, and the event idempotency key is derived by the
+server rather than trusted as a global client namespace. The application must keep
+evaluator answer rules in trusted state and include retained attempt state in
+its privacy lifecycle. Additional exercise/game evaluators and unification with
+the separately persisted quiz evaluator remain roadmap work.
 
 ---
 

@@ -22,12 +22,13 @@ pub async fn record_activity_result(
     let activity_id = validated.attempt().activity_id;
     let driver = rullst::db::Orm::driver()?;
     let policy_sql = match driver {
-        "postgres" => "SELECT lessons.course_id, activities.activity_kind, activities.max_score, activities.ruleset_version, activities.season_key, activities.evidence_sha256 FROM activities INNER JOIN lessons ON lessons.id = activities.lesson_id WHERE activities.id = $1",
-        _ => "SELECT lessons.course_id, activities.activity_kind, activities.max_score, activities.ruleset_version, activities.season_key, activities.evidence_sha256 FROM activities INNER JOIN lessons ON lessons.id = activities.lesson_id WHERE activities.id = ?",
+        "postgres" => "SELECT lessons.course_id, activities.activity_kind, activities.max_score, activities.ruleset_version, activities.season_key, activities.evidence_sha256, activities.config_json FROM activities INNER JOIN lessons ON lessons.id = activities.lesson_id WHERE activities.id = $1",
+        _ => "SELECT lessons.course_id, activities.activity_kind, activities.max_score, activities.ruleset_version, activities.season_key, activities.evidence_sha256, activities.config_json FROM activities INNER JOIN lessons ON lessons.id = activities.lesson_id WHERE activities.id = ?",
     };
-    let policy = rullst::db::sqlx::query_as::<_, (i32, String, i32, String, String, String)>(
-        policy_sql,
-    )
+    let policy = rullst::db::sqlx::query_as::<
+        _,
+        (i32, String, i32, String, String, String, String),
+    >(policy_sql)
     .bind(activity_id)
     .fetch_optional(rullst::db::Orm::pool()?)
     .await
@@ -45,6 +46,7 @@ pub async fn record_activity_result(
         || attempt.ruleset_version != policy.3
         || result.max_score != policy.2
         || result.evidence_sha256 != policy.5
+        || result.policy_binding != policy.6
         || result.attempt_key != attempt.attempt_key
         || result.activity_id != activity_id
         || result.subject_user_id != attempt.subject_user_id
@@ -54,10 +56,14 @@ pub async fn record_activity_result(
         return Err(ScoreError::InvalidField("persisted activity policy"));
     }
 
+    let idempotency_key = format!(
+        "activity:{}:{}:{}",
+        attempt.subject_user_id, activity_id, attempt.attempt_key
+    );
     record_score(
         context,
         ScoreSubmission {
-            idempotency_key: attempt.attempt_key.clone(),
+            idempotency_key,
             schema_version: SCORE_EVENT_SCHEMA_VERSION,
             origin: origin.to_string(),
             subject_user_id: attempt.subject_user_id,
@@ -69,6 +75,12 @@ pub async fn record_activity_result(
             ruleset_version: attempt.ruleset_version,
             season_key: policy.4,
             evidence_sha256: result.evidence_sha256,
+            policy_binding: result.policy_binding,
+            activity_kind: policy.1,
+            state_json: attempt.state_json,
+            submission_key: result.submission_key,
+            started_at_epoch: attempt.started_at_epoch_seconds,
+            finished_at_epoch: result.finished_at_epoch_seconds,
         },
     )
     .await

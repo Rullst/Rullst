@@ -1,9 +1,11 @@
 // Versioned server-side activity/attempt/result contract templates.
 
 mod evaluator;
+mod submit;
 mod test_template;
 
 use evaluator::SINGLE_CHOICE_EVALUATOR;
+use submit::{ACTIVITY_ATTEMPT_MODEL, ACTIVITY_CONTROLLER, ACTIVITY_SUBMISSION_SERVICE};
 use test_template::ACTIVITY_CONTRACT_TESTS;
 
 pub fn get_files() -> Vec<(&'static str, String)> {
@@ -17,8 +19,20 @@ pub fn get_files() -> Vec<(&'static str, String)> {
             SINGLE_CHOICE_EVALUATOR.to_string(),
         ),
         (
+            "src/services/activity_contract/submit.rs",
+            ACTIVITY_SUBMISSION_SERVICE.to_string(),
+        ),
+        (
+            "src/models/activity_attempt.rs",
+            ACTIVITY_ATTEMPT_MODEL.to_string(),
+        ),
+        (
             "src/services/activity_contract/tests.rs",
             ACTIVITY_CONTRACT_TESTS.to_string(),
+        ),
+        (
+            "src/controllers/activity_controller.rs",
+            ACTIVITY_CONTROLLER.to_string(),
         ),
     ]
 }
@@ -27,6 +41,8 @@ const ACTIVITY_CONTRACT: &str = r##"use rullst_security::{RbacGuard, UserContext
 
 mod evaluator;
 pub use evaluator::{SingleChoiceEvaluator, SingleChoiceSubmission};
+mod submit;
+pub use submit::{ActivitySubmissionError, SingleChoiceRequest, submit_single_choice};
 
 #[cfg(test)]
 mod tests;
@@ -169,6 +185,8 @@ pub struct ActivityResult {
     pub max_score: i32,
     pub finished_at_epoch_seconds: i64,
     pub evidence_sha256: String,
+    pub submission_key: String,
+    pub policy_binding: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -176,6 +194,8 @@ pub struct AuthoritativeActivityOutcome {
     pub points: i32,
     pub max_score: i32,
     pub evidence_sha256: String,
+    pub submission_key: String,
+    pub policy_binding: String,
 }
 
 /// Static-dispatch boundary that turns an untrusted submission into a
@@ -267,6 +287,15 @@ pub(super) fn valid_sha256(value: &str) -> bool {
             .all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
 }
 
+pub(super) fn valid_policy_binding(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 8_192
+        && matches!(
+            serde_json::from_str::<serde_json::Value>(value),
+            Ok(serde_json::Value::Object(_))
+        )
+}
+
 fn validate_attempt(
     context: &UserContext,
     attempt: &ActivityAttempt,
@@ -338,6 +367,12 @@ fn validate_result(
     if !valid_sha256(&result.evidence_sha256) {
         return Err(ActivityContractError::InvalidField("evidence_sha256"));
     }
+    if !valid_key(&result.submission_key, 128) {
+        return Err(ActivityContractError::InvalidField("submission_key"));
+    }
+    if !valid_policy_binding(&result.policy_binding) {
+        return Err(ActivityContractError::InvalidField("policy_binding"));
+    }
     Ok(())
 }
 
@@ -363,6 +398,8 @@ pub fn evaluate_activity<E: ActivityEvaluator>(
         max_score: outcome.max_score,
         finished_at_epoch_seconds,
         evidence_sha256: outcome.evidence_sha256,
+        submission_key: outcome.submission_key,
+        policy_binding: outcome.policy_binding,
     };
     validate_result(&attempt, &result)?;
 

@@ -51,6 +51,7 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
         .register::<models::quiz_attempt_session::QuizAttemptSession>()
         .register::<models::quiz_answer::QuizAnswer>()
         .register::<models::activity::Activity>()
+        .register::<models::activity_attempt::ActivityAttempt>()
         .register::<models::assignment::Assignment>()
         .register::<models::rubric_criterion::RubricCriterion>()
         .register::<models::assignment_submission::AssignmentSubmission>()
@@ -94,6 +95,8 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
         post("/quizzes/{{id}}/start" => controllers::assessment_controller::start),
         // rullst-access: owner — answers are graded against the server-side answer key.
         post("/quizzes/{{id}}/submit" => controllers::assessment_controller::submit),
+        // rullst-access: owner — only an option and idempotency key cross this boundary; policy and score are server-derived.
+        post("/activities/{{id}}/attempts" => controllers::activity_controller::submit),
         // rullst-access: owner — assignment and learner are derived from path/session before entitlement checks.
         post("/assignments/{{id}}/submissions" => controllers::assignment_controller::submit),
         // rullst-access: role — a persisted evaluator/instructor/admin scores only server rubric criteria.
@@ -231,6 +234,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         .register::<models::quiz_attempt_session::QuizAttemptSession>()
         .register::<models::quiz_answer::QuizAnswer>()
         .register::<models::activity::Activity>()
+        .register::<models::activity_attempt::ActivityAttempt>()
         .register::<models::assignment::Assignment>()
         .register::<models::rubric_criterion::RubricCriterion>()
         .register::<models::assignment_submission::AssignmentSubmission>()
@@ -274,6 +278,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         post("/quizzes/{{id}}/start" => controllers::assessment_controller::start),
         // rullst-access: owner — answers are graded against the server-side answer key.
         post("/quizzes/{{id}}/submit" => controllers::assessment_controller::submit),
+        // rullst-access: owner — only an option and idempotency key cross this boundary; policy and score are server-derived.
+        post("/activities/{{id}}/attempts" => controllers::activity_controller::submit),
         // rullst-access: owner — assignment and learner are derived from path/session before entitlement checks.
         post("/assignments/{{id}}/submissions" => controllers::assignment_controller::submit),
         // rullst-access: role — a persisted evaluator/instructor/admin scores only server rubric criteria.

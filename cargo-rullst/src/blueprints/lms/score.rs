@@ -1,11 +1,15 @@
 // Authenticated, versioned and idempotent score-event templates.
 
 mod activity;
+mod model;
 mod policy;
+mod replay;
 mod test_template;
 
 use activity::ACTIVITY_SCORE_SERVICE;
+use model::SCORE_EVENT_MODEL;
 use policy::SCORE_POLICY_SERVICE;
+use replay::SCORE_REPLAY_SERVICE;
 use test_template::SCORE_TESTS;
 
 pub fn get_files() -> Vec<(&'static str, String)> {
@@ -21,62 +25,15 @@ pub fn get_files() -> Vec<(&'static str, String)> {
             SCORE_POLICY_SERVICE.to_string(),
         ),
         (
+            "src/services/score_service/replay.rs",
+            SCORE_REPLAY_SERVICE.to_string(),
+        ),
+        (
             "src/services/score_service/tests.rs",
             SCORE_TESTS.to_string(),
         ),
     ]
 }
-
-const SCORE_EVENT_MODEL: &str = r##"use rullst::db::{FromRow, Orm};
-use rullst::nexus::{FieldKind, FieldMeta, NexusModel};
-
-#[derive(Debug, Clone, FromRow, Orm)]
-#[orm(table = "score_events")]
-pub struct ScoreEvent {
-    pub id: i32,
-    pub idempotency_key: String,
-    pub schema_version: i32,
-    pub origin: String,
-    pub actor_user_id: i32,
-    pub subject_user_id: i32,
-    pub course_id: i32,
-    pub activity_id: i32,
-    pub attempt_key: String,
-    pub points: i32,
-    pub max_score: i32,
-    pub occurred_at: String,
-    pub ruleset_version: String,
-    pub evidence_sha256: String,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
-impl NexusModel for ScoreEvent {
-    fn nexus_table() -> &'static str { "score_events" }
-    fn nexus_label() -> &'static str { "Score Events" }
-    fn nexus_icon() -> &'static str { "🧾" }
-    fn nexus_fields() -> Vec<FieldMeta> {
-        vec![
-            FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
-            FieldMeta { name: "idempotency_key", label: "Idempotency Key", kind: FieldKind::Text, hidden: false, readonly: true },
-            FieldMeta { name: "schema_version", label: "Schema Version", kind: FieldKind::Number, hidden: false, readonly: true },
-            FieldMeta { name: "origin", label: "Origin", kind: FieldKind::Text, hidden: false, readonly: true },
-            FieldMeta { name: "actor_user_id", label: "Actor", kind: FieldKind::ForeignKey { table: "users", label_col: "email" }, hidden: false, readonly: true },
-            FieldMeta { name: "subject_user_id", label: "Learner", kind: FieldKind::ForeignKey { table: "users", label_col: "email" }, hidden: false, readonly: true },
-            FieldMeta { name: "course_id", label: "Course", kind: FieldKind::ForeignKey { table: "courses", label_col: "title" }, hidden: false, readonly: true },
-            FieldMeta { name: "activity_id", label: "Activity", kind: FieldKind::ForeignKey { table: "activities", label_col: "title" }, hidden: false, readonly: true },
-            FieldMeta { name: "attempt_key", label: "Attempt", kind: FieldKind::Text, hidden: false, readonly: true },
-            FieldMeta { name: "points", label: "Points", kind: FieldKind::Number, hidden: false, readonly: true },
-            FieldMeta { name: "max_score", label: "Maximum Score", kind: FieldKind::Number, hidden: false, readonly: true },
-            FieldMeta { name: "occurred_at", label: "Occurred At", kind: FieldKind::DateTime, hidden: false, readonly: true },
-            FieldMeta { name: "ruleset_version", label: "Ruleset", kind: FieldKind::Text, hidden: false, readonly: true },
-            FieldMeta { name: "evidence_sha256", label: "Evidence SHA-256", kind: FieldKind::Text, hidden: false, readonly: true },
-            FieldMeta { name: "created_at", label: "Created At", kind: FieldKind::Text, hidden: false, readonly: true },
-            FieldMeta { name: "updated_at", label: "Updated At", kind: FieldKind::Text, hidden: false, readonly: true },
-        ]
-    }
-}
-"##;
 
 const SCORE_SERVICE: &str = r##"use crate::models::leaderboard_entry::LeaderboardEntry;
 use crate::services::school_service;
@@ -86,8 +43,10 @@ use std::sync::OnceLock;
 
 mod activity;
 mod policy;
+mod replay;
 pub use activity::record_activity_result;
 use policy::lock_activity_policy;
+use replay::persist_activity_attempt;
 
 pub const SCORE_EVENT_SCHEMA_VERSION: i32 = 2;
 
@@ -105,9 +64,15 @@ struct ScoreSubmission {
     pub ruleset_version: String,
     pub season_key: String,
     pub evidence_sha256: String,
+    pub policy_binding: String,
+    pub activity_kind: String,
+    pub state_json: String,
+    pub submission_key: String,
+    pub started_at_epoch: i64,
+    pub finished_at_epoch: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct ScoreReceipt {
     pub idempotency_key: String,
     pub applied: bool,
@@ -238,11 +203,15 @@ fn validate(
     if !matches!(submission.origin.as_str(), "quiz" | "activity" | "game") {
         return Err(ScoreError::InvalidField("origin"));
     }
+    if !matches!(submission.activity_kind.as_str(), "quiz" | "exercise" | "game") {
+        return Err(ScoreError::InvalidField("activity_kind"));
+    }
     for (name, value, maximum) in [
-        ("idempotency_key", submission.idempotency_key.as_str(), 128),
+        ("idempotency_key", submission.idempotency_key.as_str(), 192),
         ("attempt_key", submission.attempt_key.as_str(), 128),
         ("ruleset_version", submission.ruleset_version.as_str(), 64),
         ("season_key", submission.season_key.as_str(), 64),
+        ("submission_key", submission.submission_key.as_str(), 128),
     ] {
         if !valid_key(value, maximum) {
             return Err(ScoreError::InvalidField(name));
@@ -265,6 +234,26 @@ fn validate(
         || submission.max_score > 1_000_000
     {
         return Err(ScoreError::InvalidField("score bounds"));
+    }
+    if submission.started_at_epoch <= 0
+        || submission.finished_at_epoch < submission.started_at_epoch
+        || submission.state_json.is_empty()
+        || submission.state_json.len() > 64 * 1024
+        || !matches!(
+            serde_json::from_str::<serde_json::Value>(&submission.state_json),
+            Ok(serde_json::Value::Object(_))
+        )
+    {
+        return Err(ScoreError::InvalidField("activity attempt"));
+    }
+    if submission.policy_binding.is_empty()
+        || submission.policy_binding.len() > 8_192
+        || !matches!(
+            serde_json::from_str::<serde_json::Value>(&submission.policy_binding),
+            Ok(serde_json::Value::Object(_))
+        )
+    {
+        return Err(ScoreError::InvalidField("policy binding"));
     }
 
     Ok(ValidatedScore {
@@ -356,6 +345,23 @@ async fn record_score(
         .await
         .map_err(|error| ScoreError::Database(error.into()))?;
     lock_activity_policy(&mut transaction, driver, value).await?;
+    if !persist_activity_attempt(
+        &mut transaction,
+        driver,
+        validated.actor_user_id,
+        value,
+    )
+    .await?
+    {
+        transaction
+            .commit()
+            .await
+            .map_err(|error| ScoreError::Database(error.into()))?;
+        return Ok(ScoreReceipt {
+            idempotency_key: value.idempotency_key.clone(),
+            applied: false,
+        });
+    }
 
     let event_sql = match driver {
         "postgres" => "INSERT INTO score_events (idempotency_key, schema_version, origin, actor_user_id, subject_user_id, course_id, activity_id, attempt_key, points, max_score, occurred_at, ruleset_version, evidence_sha256, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, $11, $12, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING",
@@ -379,69 +385,67 @@ async fn record_score(
         .await
         .map_err(|error| ScoreError::Database(error.into()))?;
 
-    let applied = insertion.rows_affected() == 1;
-    if applied {
-        let leaderboard_sql = match driver {
-            "postgres" => "INSERT INTO leaderboard_entries (user_id, course_id, season_key, score, created_at, updated_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (user_id, course_id, season_key) DO UPDATE SET score = leaderboard_entries.score + EXCLUDED.score, updated_at = CURRENT_TIMESTAMP",
-            "mysql" => "INSERT INTO leaderboard_entries (user_id, course_id, season_key, score, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE score = score + VALUES(score), updated_at = CURRENT_TIMESTAMP",
-            _ => "INSERT INTO leaderboard_entries (user_id, course_id, season_key, score, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (user_id, course_id, season_key) DO UPDATE SET score = leaderboard_entries.score + excluded.score, updated_at = CURRENT_TIMESTAMP",
-        };
-        rullst::db::sqlx::query(leaderboard_sql)
-            .bind(value.subject_user_id)
-            .bind(value.course_id)
-            .bind(&value.season_key)
-            .bind(value.points)
-            .execute(&mut *transaction)
-            .await
-            .map_err(|error| ScoreError::Database(error.into()))?;
-
-        let outbox_key = format!("score:{}", value.idempotency_key);
-        let payload = serde_json::json!({
-            "schema_version": SCORE_EVENT_SCHEMA_VERSION,
-            "idempotency_key": value.idempotency_key,
-            "origin": value.origin,
-            "actor_user_id": validated.actor_user_id,
-            "subject_user_id": value.subject_user_id,
-            "course_id": value.course_id,
-            "activity_id": value.activity_id,
-            "attempt_key": value.attempt_key,
-            "points": value.points,
-            "max_score": value.max_score,
-            "ruleset_version": value.ruleset_version,
-            "season_key": value.season_key,
-            "evidence_sha256": value.evidence_sha256,
-        })
-        .to_string();
-        let outbox_sql = match driver {
-            "postgres" => "INSERT INTO academy_outbox (school_id, event_key, event_kind, subject_user_id, payload_json, status, attempts, claimed_by, claim_key, last_error, available_at, available_at_epoch, claim_expires_at_epoch, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-            _ => "INSERT INTO academy_outbox (school_id, event_key, event_kind, subject_user_id, payload_json, status, attempts, claimed_by, claim_key, last_error, available_at, available_at_epoch, claim_expires_at_epoch, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-        };
-        rullst::db::sqlx::query(outbox_sql)
-            .bind(school_id)
-            .bind(outbox_key)
-            .bind("score_recorded")
-            .bind(value.subject_user_id)
-            .bind(payload)
-            .bind("pending")
-            .bind(0_i32)
-            .bind("")
-            .bind("")
-            .bind("")
-            .execute(&mut *transaction)
-            .await
-            .map_err(|error| ScoreError::Database(error.into()))?;
+    if insertion.rows_affected() != 1 {
+        return Err(ScoreError::InvalidField("score event conflict"));
     }
+    let leaderboard_sql = match driver {
+        "postgres" => "INSERT INTO leaderboard_entries (user_id, course_id, season_key, score, created_at, updated_at) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (user_id, course_id, season_key) DO UPDATE SET score = leaderboard_entries.score + EXCLUDED.score, updated_at = CURRENT_TIMESTAMP",
+        "mysql" => "INSERT INTO leaderboard_entries (user_id, course_id, season_key, score, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE score = score + VALUES(score), updated_at = CURRENT_TIMESTAMP",
+        _ => "INSERT INTO leaderboard_entries (user_id, course_id, season_key, score, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (user_id, course_id, season_key) DO UPDATE SET score = leaderboard_entries.score + excluded.score, updated_at = CURRENT_TIMESTAMP",
+    };
+    rullst::db::sqlx::query(leaderboard_sql)
+        .bind(value.subject_user_id)
+        .bind(value.course_id)
+        .bind(&value.season_key)
+        .bind(value.points)
+        .execute(&mut *transaction)
+        .await
+        .map_err(|error| ScoreError::Database(error.into()))?;
+
+    let outbox_key = format!("score:{}", value.idempotency_key);
+    let payload = serde_json::json!({
+        "schema_version": SCORE_EVENT_SCHEMA_VERSION,
+        "idempotency_key": value.idempotency_key,
+        "origin": value.origin,
+        "actor_user_id": validated.actor_user_id,
+        "subject_user_id": value.subject_user_id,
+        "course_id": value.course_id,
+        "activity_id": value.activity_id,
+        "attempt_key": value.attempt_key,
+        "points": value.points,
+        "max_score": value.max_score,
+        "ruleset_version": value.ruleset_version,
+        "season_key": value.season_key,
+        "evidence_sha256": value.evidence_sha256,
+    })
+    .to_string();
+    let outbox_sql = match driver {
+        "postgres" => "INSERT INTO academy_outbox (school_id, event_key, event_kind, subject_user_id, payload_json, status, attempts, claimed_by, claim_key, last_error, available_at, available_at_epoch, claim_expires_at_epoch, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+        _ => "INSERT INTO academy_outbox (school_id, event_key, event_kind, subject_user_id, payload_json, status, attempts, claimed_by, claim_key, last_error, available_at, available_at_epoch, claim_expires_at_epoch, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+    };
+    rullst::db::sqlx::query(outbox_sql)
+        .bind(school_id)
+        .bind(outbox_key)
+        .bind("score_recorded")
+        .bind(value.subject_user_id)
+        .bind(payload)
+        .bind("pending")
+        .bind(0_i32)
+        .bind("")
+        .bind("")
+        .bind("")
+        .execute(&mut *transaction)
+        .await
+        .map_err(|error| ScoreError::Database(error.into()))?;
 
     transaction
         .commit()
         .await
         .map_err(|error| ScoreError::Database(error.into()))?;
-    if applied {
-        let _ = invalidate_leaderboard_cache(context, value.course_id, &value.season_key).await;
-    }
+    let _ = invalidate_leaderboard_cache(context, value.course_id, &value.season_key).await;
     Ok(ScoreReceipt {
         idempotency_key: value.idempotency_key.clone(),
-        applied,
+        applied: true,
     })
 }
 
@@ -458,7 +462,9 @@ mod tests;
 
 #[cfg(test)]
 mod tests {
-    use super::{ACTIVITY_SCORE_SERVICE, SCORE_POLICY_SERVICE, SCORE_SERVICE};
+    use super::{
+        ACTIVITY_SCORE_SERVICE, SCORE_POLICY_SERVICE, SCORE_REPLAY_SERVICE, SCORE_SERVICE,
+    };
 
     #[test]
     fn score_template_binds_every_dynamic_value() {
@@ -470,7 +476,9 @@ mod tests {
         assert!(SCORE_SERVICE.contains("ORDER BY score DESC, updated_at ASC, user_id ASC LIMIT"));
         assert!(ACTIVITY_SCORE_SERVICE.contains("ValidatedActivityResult"));
         assert!(ACTIVITY_SCORE_SERVICE.contains("persisted activity policy"));
+        assert!(ACTIVITY_SCORE_SERVICE.contains("activity:{}:{}:{}"));
         assert!(SCORE_POLICY_SERVICE.contains("FOR UPDATE"));
         assert!(SCORE_POLICY_SERVICE.contains("evidence_sha256"));
+        assert!(SCORE_REPLAY_SERVICE.contains("conflicting activity replay"));
     }
 }

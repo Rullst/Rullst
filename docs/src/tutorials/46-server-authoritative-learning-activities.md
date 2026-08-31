@@ -54,19 +54,43 @@ non-canonical evidence digests.
 In the complete Academy starter, pass the opaque `ValidatedActivityResult`
 directly to `record_activity_result`. Callers cannot construct that wrapper or
 replace its points. The bridge loads the persisted activity and rechecks its
-course, kind, maximum, ruleset, season and evidence digest before one
-transaction:
+course, kind, maximum, ruleset, season, evidence digest and exact evaluator
+configuration before one transaction:
 
 1. appends a deduplicated `ScoreEvent` v2;
 2. updates the authoritative leaderboard projection; and
 3. appends the strict `score_recorded` v2 outbox event before commit.
 
-The bridge does not retain raw attempt state or expose an HTTP handler; add
-those as application-owned boundaries without accepting points, policy or
-identity from the request. The full Academy quiz service follows the same score
-event invariants but is still a separate evaluator. Do not claim generic quiz
-or game integration until those paths are unified and their materialized tests
-pass.
+The configuration is checked again under the transaction's policy lock. A
+concurrent answer-policy edit therefore cannot commit a result graded against
+stale rules.
+
+The complete starter also persists the bounded attempt/result in that
+transaction. Identical retries are no-ops; changing the selected option under
+the same attempt key is a conflict. The database scopes that client key by
+learner and activity, while the score-event key is derived server-side, so keys
+chosen by different learners cannot reserve one another's attempts.
+
+## Submit through the authenticated route
+
+The generated owner-only route is `POST /activities/{id}/attempts`. After your
+normal authenticated session and CSRF ceremony, its JSON body contains only:
+
+```json
+{
+  "attempt_key": "attempt-language-1",
+  "selected_option_id": 7
+}
+```
+
+Do not add learner ID, ruleset, answer key, points, maximum, evidence or client
+time to this payload. The route and persisted activity supply them. The stored
+bounded `state_json` is hidden in Nexus but is still application data: include
+`activity_attempts` in retention, export and erasure policy where applicable.
+
+The full Academy quiz service follows the same score-event invariants but is
+still a separate evaluator. Do not claim generic quiz or game integration until
+those paths are unified and their materialized tests pass.
 
 Implement another `ActivityEvaluator` when a spelling, listening or matching
 exercise needs different trusted rules. Keep the concrete evaluator type

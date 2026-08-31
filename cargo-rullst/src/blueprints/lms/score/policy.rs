@@ -8,13 +8,14 @@ pub(super) async fn lock_activity_policy(
     value: &ScoreSubmission,
 ) -> Result<(), ScoreError> {
     let policy_sql = match driver {
-        "postgres" => "SELECT lessons.course_id, activities.activity_kind, activities.max_score, activities.ruleset_version, activities.season_key, activities.evidence_sha256 FROM activities INNER JOIN lessons ON lessons.id = activities.lesson_id WHERE activities.id = $1 FOR UPDATE",
-        "mysql" => "SELECT lessons.course_id, activities.activity_kind, activities.max_score, activities.ruleset_version, activities.season_key, activities.evidence_sha256 FROM activities INNER JOIN lessons ON lessons.id = activities.lesson_id WHERE activities.id = ? FOR UPDATE",
-        _ => "SELECT lessons.course_id, activities.activity_kind, activities.max_score, activities.ruleset_version, activities.season_key, activities.evidence_sha256 FROM activities INNER JOIN lessons ON lessons.id = activities.lesson_id WHERE activities.id = ?",
+        "postgres" => "SELECT lessons.course_id, activities.activity_kind, activities.max_score, activities.ruleset_version, activities.season_key, activities.evidence_sha256, activities.config_json FROM activities INNER JOIN lessons ON lessons.id = activities.lesson_id WHERE activities.id = $1 FOR UPDATE",
+        "mysql" => "SELECT lessons.course_id, activities.activity_kind, activities.max_score, activities.ruleset_version, activities.season_key, activities.evidence_sha256, activities.config_json FROM activities INNER JOIN lessons ON lessons.id = activities.lesson_id WHERE activities.id = ? FOR UPDATE",
+        _ => "SELECT lessons.course_id, activities.activity_kind, activities.max_score, activities.ruleset_version, activities.season_key, activities.evidence_sha256, activities.config_json FROM activities INNER JOIN lessons ON lessons.id = activities.lesson_id WHERE activities.id = ?",
     };
-    let policy = rullst::db::sqlx::query_as::<_, (i32, String, i32, String, String, String)>(
-        policy_sql,
-    )
+    let policy = rullst::db::sqlx::query_as::<
+        _,
+        (i32, String, i32, String, String, String, String),
+    >(policy_sql)
     .bind(value.activity_id)
     .fetch_optional(&mut **transaction)
     .await
@@ -27,11 +28,13 @@ pub(super) async fn lock_activity_policy(
         _ => return Err(ScoreError::InvalidField("persisted activity kind")),
     };
     if policy.0 != value.course_id
+        || policy.1 != value.activity_kind
         || origin != value.origin
         || policy.2 != value.max_score
         || policy.3 != value.ruleset_version
         || policy.4 != value.season_key
         || policy.5 != value.evidence_sha256
+        || policy.6 != value.policy_binding
     {
         return Err(ScoreError::InvalidField("persisted activity policy"));
     }
