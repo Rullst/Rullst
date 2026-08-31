@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788176695143,
+  "lastUpdate": 1788179141305,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -5561,6 +5561,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2144,
             "range": "± 48",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "4eb91eecd9cd5f541e3e8686ad71a72eba2d4a4b",
+          "message": "feat(capital): add provider-specific metered billing",
+          "timestamp": "2026-08-31T09:09:35-03:00",
+          "tree_id": "98d4e34fb3e37c579bfb88e461ff43fdd5498c7e",
+          "url": "https://github.com/Rullst/Rullst/commit/4eb91eecd9cd5f541e3e8686ad71a72eba2d4a4b"
+        },
+        "date": 1788179140531,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1112,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 893,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 2027,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2731,
+            "range": "± 9",
             "unit": "ns/iter"
           }
         ]
