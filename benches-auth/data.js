@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788158014687,
+  "lastUpdate": 1788158807972,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -5179,6 +5179,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2689,
             "range": "± 17",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "0d0c1128f0f254a0706b7da4004e5dbd8241b3f7",
+          "message": "feat(academy): add authoritative matching exercises",
+          "timestamp": "2026-08-31T03:39:31-03:00",
+          "tree_id": "1298b233f6b9c1130dd7d141c83258173c1b3a51",
+          "url": "https://github.com/Rullst/Rullst/commit/0d0c1128f0f254a0706b7da4004e5dbd8241b3f7"
+        },
+        "date": 1788158807574,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1010,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 794,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1873,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4001,
+            "range": "± 9",
             "unit": "ns/iter"
           }
         ]
