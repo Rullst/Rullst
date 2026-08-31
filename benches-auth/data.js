@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788158807972,
+  "lastUpdate": 1788160334072,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -5227,6 +5227,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4001,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "188a27b611a88f8b2697757f226acd11a57cf47a",
+          "message": "feat(academy): add authoritative typed recall",
+          "timestamp": "2026-08-31T03:59:04-03:00",
+          "tree_id": "22558fa92def02bbc5a48b876bd8f3a289eacf01",
+          "url": "https://github.com/Rullst/Rullst/commit/188a27b611a88f8b2697757f226acd11a57cf47a"
+        },
+        "date": 1788160333603,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1063,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 840,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1898,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4564,
+            "range": "± 22",
             "unit": "ns/iter"
           }
         ]
