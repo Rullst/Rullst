@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788186716871,
+  "lastUpdate": 1788189939251,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -3563,6 +3563,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 555,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fab3e03debb92286b67f0028c0ddf9a8bcc3dd5e",
+          "message": "feat(capital): complete coupon and trial contracts",
+          "timestamp": "2026-08-31T12:07:39-03:00",
+          "tree_id": "5bb23192d241b47537d93c14e91e7987b7404c01",
+          "url": "https://github.com/Rullst/Rullst/commit/fab3e03debb92286b67f0028c0ddf9a8bcc3dd5e"
+        },
+        "date": 1788189938506,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 569,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
