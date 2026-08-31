@@ -134,9 +134,11 @@ sandboxes run without silently contacting a third party.
 
 The Brazilian fiscal boundary applies the same evidence-first approach: its
 bounded DPS 1.01 builder, checksum-pinned official XSD catalogue, local
-PKCS#12 XMLDSig verification, and mTLS client preparation are testable without
+PKCS#12 XMLDSig verification, deterministic issuance JSON, strict
+signed-authorization and structured-rejection codec, and mTLS client
+preparation are testable without
 calling SEFIN, while tax authorization remains explicitly disabled until the
-external homologation gates pass.
+external trust and homologation gates pass.
 
 Mail scheduling follows the same bounded approach: SQLite and Redis persist a
 due time and never claim it early, while unsupported real direct transports

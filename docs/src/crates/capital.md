@@ -13,9 +13,9 @@
 | **Subscription Lifecycle** | 🟠 `[Partial]` | Checkout, portal, cancellation, pause, usage, coupon, trial, status, and webhook APIs exist, but not every provider implements and verifies every method end-to-end. |
 | **Webhook Processing** | 🟢 `[Implemented / Bounded]` | Axum and opt-in Actix middleware call one canonical bounded verifier; named adapters implement signature verification and freshness checks. Cross-instance durable replay/idempotency remains application or future framework work. Alipay RSA2 remains fail-closed. |
 | **SaaS MRR/ARR Analytics** | 🟢 `[Implemented / Bounded]` | In-memory revenue metrics and churn calculations for supplied records; this is not an accounting ledger or provider reconciliation engine. |
-| **NFS-e 1.01 Local Pipeline** | 🟢 `[Implemented / Bounded]` | Strict ordinary-service DPS builder, checksum-pinned closed-catalog validation of official XSD sources with one exact documented production regex-anchor compatibility normalization, protected PKCS#12 RSA-SHA256/inclusive-C14N XMLDSig, independent local signature verification, and bounded rustls mTLS client construction. |
+| **NFS-e 1.01 Local Pipeline** | 🟢 `[Implemented / Bounded]` | Strict ordinary-service DPS builder, checksum-pinned closed-catalog validation of official XSD sources with one exact documented production regex-anchor compatibility normalization, protected PKCS#12 RSA-SHA256/inclusive-C14N XMLDSig, independent local signature verification, deterministic `dpsXmlGZipB64` request JSON, bounded signed-authorization and structured-rejection parsing, and bounded rustls mTLS client construction. |
 | **NFS-e Offline Sandbox** | 🟡 `[Offline Mock]` | Deterministic offline mock fixtures (`NfseEnvironment::Mock`) for local development and CI testing. |
-| **SEFIN Live NFS-e Homologation** | 🔵 `[Roadmap / External Evidence]` | Official JSON request/response and rejection contracts, full emitter/ICP-Brasil certificate policy, durable idempotency/audit, real A1 restricted-environment tests, independent review, and official homologation. Transmission is disabled. |
+| **SEFIN Live NFS-e Homologation** | 🔵 `[Roadmap / External Evidence]` | Full emitter/ICP-Brasil certificate policy, durable idempotency/audit, retained official protocol fixtures, real A1 restricted-environment tests, independent review, and official homologation. Transmission is disabled. |
 
 ---
 
@@ -117,21 +117,21 @@ pub async fn handle_stripe_webhook(
 ## 🏛️ Brazilian Digital Invoicing (NFS-e Nacional)
 
 `rullst-capital` includes a dedicated fiscal module (`rullst_capital::fiscal`)
-shaped around the National NFS-e domain. Its local schema, signature, and mTLS
-preparation contracts are implemented and tested; it is not yet an officially
-homologated issuer.
+shaped around the National NFS-e domain. Its local schema, signature, bounded
+issuance-codec, and mTLS preparation contracts are implemented and tested; it
+is not yet an officially homologated issuer.
 
 Enable `rullst-capital/nfse` (or umbrella `rullst/capital-nfse`) for the pinned
-XSD, XMLDSig, and mTLS preparation dependencies. Selecting the feature does not
-enable SEFIN transmission.
+XSD, XMLDSig, GZip/Base64 protocol codec, and mTLS preparation dependencies.
+Selecting the feature does not enable SEFIN transmission.
 
 ### Architecture & Pipeline
 
 ```
-[SaaS Sale] ──► [NfseDpsV101] ──► [Pinned XSD] ──► [PKCS#12 XMLDSig] ──► [mTLS client]
+[SaaS Sale] ─► [NfseDpsV101] ─► [Pinned XSD] ─► [PKCS#12 XMLDSig] ─► [Bounded JSON codec]
                     │                                                    │
                     ▼                                                    ▼
-          [Offline deterministic fixture]                  [SEFIN transmission disabled]
+          [Offline deterministic fixture]                 [mTLS prepared; transmission disabled]
 ```
 
 ### Emitting an Invoicing Document (DPS)
@@ -194,5 +194,5 @@ transmission.
 ## 🔒 Security Invariants
 
 1. **Constant-Time Verification:** Webhook signatures use `subtle::ConstantTimeEq` to prevent side-channel timing attacks.
-2. **Fail-Closed Live Modes:** Local XMLDSig/XSD/mTLS preparation does not enable a request. `Homologation` and `Production` return a typed `FiscalError::Unsupported` without network I/O until the official envelope/response contract and external homologation gates pass.
+2. **Fail-Closed Live Modes:** Local XMLDSig/XSD/codec/mTLS preparation does not enable a request. `Homologation` and `Production` return a typed `FiscalError::Unsupported` without network I/O until the external trust, audit and homologation gates pass.
 3. **No Phantom Persistences:** All provider drivers use explicit connection pooling (`reqwest::Client`) with keep-alive to avoid socket storms.

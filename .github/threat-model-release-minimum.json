@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "TM-12.2",
+  "model_version": "TM-12.3",
   "cases": [
     {
       "id": "AUTH-01",
@@ -199,6 +199,15 @@
       "test_filter": "fiscal::client::tests::real_environments_fail_closed_even_with_mock_or_empty_certificate",
       "source": "rullst-capital/src/fiscal/client.rs",
       "marker": "TM-PAY-06"
+    },
+    {
+      "id": "PAY-07",
+      "crate": "rullst-capital",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "fiscal::protocol::tests::parser_rejects_confused_tampered_malformed_and_amplified_responses",
+      "source": "rullst-capital/src/fiscal/protocol/tests.rs",
+      "marker": "TM-PAY-07"
     },
     {
       "id": "SEC-16",

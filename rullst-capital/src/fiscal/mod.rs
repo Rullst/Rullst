@@ -4,6 +4,8 @@ pub mod dps;
 pub mod dps_v101;
 pub mod models;
 #[cfg(feature = "nfse")]
+pub mod protocol;
+#[cfg(feature = "nfse")]
 pub mod schema;
 pub mod signer;
 
@@ -18,6 +20,11 @@ pub use dps_v101::{IssRetention, IssTaxation, NfseDpsV101, build_dps_xml_v1_01};
 pub use models::{
     FiscalCertificate, FiscalCustomer, FiscalEmitter, FiscalError, FiscalResponse,
     FiscalResponseKind, NfseDps, TaxRegime,
+};
+#[cfg(feature = "nfse")]
+pub use protocol::{
+    NfseApiEnvironment, NfseIssueAuthorization, NfseIssueRejection, NfseIssueRequest,
+    NfseIssueResponse, NfseProcessingMessage,
 };
 #[cfg(feature = "nfse")]
 pub use schema::NfseDpsSchemaValidator;

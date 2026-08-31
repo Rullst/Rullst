@@ -58,8 +58,11 @@ do not constitute an authorization from the Brazilian National NFS-e service.
   with `FiscalError::Unsupported`.
 - `sign_dps_xml` rejects malformed, duplicate-ID, already-signed, non-RSA, and
   mismatched key/certificate inputs instead of returning partial signature XML.
-- the official request/response envelope and external homologation gates remain
-  deliberately disconnected from the network path.
+- `NfseIssueRequest` verifies the embedded DPS signature, produces the exact
+  deterministic `dpsXmlGZipB64` JSON object and parses bounded signed success or
+  structured rejection material without performing network I/O.
+- transmission and the external homologation gates remain deliberately
+  disconnected from the network path.
 
 ```rust,no_run
 use rullst_capital::fiscal::{
@@ -88,10 +91,27 @@ async fn offline_preview(
 }
 ```
 
-Live issuance remains disabled until the official JSON envelope, strict bounded
-response/rejection parser, full certificate/emitter and ICP-Brasil policy,
-durable idempotency/audit, real A1 restricted-environment tests, independent
-review, and official end-to-end homologation are complete. Follow the
+The offline protocol boundary is intentionally separate from transport:
+
+```rust,no_run
+use rullst_capital::fiscal::NfseIssueRequest;
+
+# fn prepare(signed_dps: &str) -> Result<Vec<u8>, rullst_capital::fiscal::FiscalError> {
+let request = NfseIssueRequest::try_from_signed_dps(signed_dps)?;
+let exact_json_body = request.to_json()?;
+# Ok(exact_json_body)
+# }
+```
+
+An application may retain this material for a reviewed homologation fixture,
+but the Rullst client does not send it. `parse_response` accepts only the
+documented 201/400/403/500 issuance outcomes, applies four-MiB/cardinality/text
+limits and never turns a rejection or unsigned/tampered XML into authorization.
+
+Live issuance remains disabled until full certificate/emitter and ICP-Brasil
+policy, durable idempotency/audit, retained official fixtures, real A1
+restricted-environment tests, independent review, and official end-to-end
+homologation are complete. Follow the
 [NFS-e homologation-preparation tutorial](tutorials/40-nfse-homologation-preparation.md)
 and never account an offline fixture as an issued invoice.
 

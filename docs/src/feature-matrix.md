@@ -166,7 +166,7 @@ Default feature: `axum`.
 | --- | --- |
 | `axum` | Axum middleware for the canonical bounded signed-webhook verifier |
 | `actix` | Actix Web middleware for the same verifier; it does not enable Axum when selected directly |
-| `nfse` | Checksum-pinned official XSD validation, PKCS#12 RSA-SHA256 XMLDSig, and rustls mTLS preparation; it does not enable live SEFIN transmission |
+| `nfse` | Checksum-pinned official XSD validation, PKCS#12 RSA-SHA256 XMLDSig, deterministic GZip/Base64 issuance JSON, bounded signed-authorization and structured-rejection parsing, and rustls mTLS preparation; it does not enable live SEFIN transmission or establish certificate trust/homologation |
 
 ### `rullst-mail`
 

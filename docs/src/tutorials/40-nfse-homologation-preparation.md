@@ -18,8 +18,8 @@ rullst-capital = { version = "12.0.0", features = ["nfse"] }
 ```
 
 Umbrella applications can select `rullst = { version = "12.0.0", features =
-["capital-nfse"] }`. The feature adds local schema/signature dependencies; it
-does not enable a live network path.
+["capital-nfse"] }`. The feature adds local schema/signature/codec dependencies;
+it does not enable a live network path.
 
 ## 1. Know the pinned contracts
 
@@ -147,26 +147,55 @@ RULLST_NFSE_RESTRICTED_XSD_DIR=/path/to/extracted/restricted/schemas \
   -- --ignored
 ```
 
-## 5. Do not enable live transmission yet
+## 5. Exercise the offline protocol boundary
+
+After producing the signed DPS, build the exact request body without sending it:
+
+```rust,no_run
+use rullst_capital::fiscal::NfseIssueRequest;
+
+# fn prepare(signed_dps: &str) -> Result<Vec<u8>, rullst_capital::fiscal::FiscalError> {
+let request = NfseIssueRequest::try_from_signed_dps(signed_dps)?;
+let body = request.to_json()?;
+# Ok(body)
+# }
+```
+
+Construction verifies that the document has one unique official DPS ID, one
+direct XMLDSig reference to that ID and a cryptographically valid embedded
+signature. GZip output fixes its timestamp to zero, so the JSON is deterministic
+for a given signed document.
+
+For retained protocol fixtures, call `request.parse_response(status,
+environment, body)`. HTTP 201 is represented only as
+`NfseIssueResponse::Authorized`; HTTP 400, 403 and 500 are represented as
+`Rejected`. The parser rejects unknown fields, wrong environments or DPS IDs,
+invalid access keys, malformed JSON/Base64/GZip/XML, unsigned or tampered NFS-e
+XML and decompressed material above four MiB. Embedded-signature verification
+proves document integrity against its declared certificate, not ICP-Brasil trust
+or emitter ownership.
+
+## 6. Do not enable live transmission yet
 
 The official endpoints are immutable in `NfseEnvironment`, and the live path
 can already build an HTTPS-only rustls mTLS client with redirects disabled and
 bounded connect/request timeouts. It deliberately performs no request.
 
-Before Rullst can enable restricted-production transmission, the exact source
-revision must still have:
+The exact request envelope and bounded response/rejection codec are now local,
+fixture-testable prerequisites. Before Rullst can enable restricted-production
+transmission, the exact source revision must still have:
 
-1. a fixture-backed implementation of the official JSON request envelope;
-2. bounded, strict parsing of every success, rejection, and malformed response;
-3. certificate validity, key-usage, emitter CPF/CNPJ, and ICP-Brasil chain
+1. retained fixtures from the current official restricted-production contract,
+   including every supported success/rejection shape;
+2. certificate validity, key-usage, emitter CPF/CNPJ, and ICP-Brasil chain
    policy reviewed against the current national rules;
-4. durable idempotency, protocol/audit records, redaction, retry policy, and
+3. durable idempotency, protocol/audit records, redaction, retry policy, and
    explicit operator reconciliation;
-5. positive and negative tests in the restricted environment using an
+4. positive and negative tests in the restricted environment using an
    authorized real A1 certificate and valid contributor/municipality data;
-6. independent fiscal/security review and retained evidence tied to an
+5. independent fiscal/security review and retained evidence tied to an
    immutable commit;
-7. successful official homologation before production can be considered.
+6. successful official homologation before production can be considered.
 
 Until those gates pass, `NfseEnvironment::Homologation` and
 `NfseEnvironment::Production` return `FiscalError::Unsupported`, while

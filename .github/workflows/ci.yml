@@ -214,7 +214,7 @@ jobs:
         run: bash .github/check-feature-boundaries.sh
 
   threat-model-release-minimum:
-    name: TM-12.2 release-negative minimum
+    name: TM-12.3 release-negative minimum
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:

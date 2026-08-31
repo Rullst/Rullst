@@ -168,21 +168,24 @@ side effects.
 The local pipeline now implements a bounded ordinary-service DPS 1.01 builder,
 checksum-pinned validation against official production/restricted XSD sources,
 PKCS#12 RSA-SHA256 XMLDSig with inclusive C14N 1.0, independent local
-signature verification, and rustls mTLS client construction. Certificate bytes,
-passphrases, and derived PEM are redacted and zeroized where owned by Rullst.
+signature verification, deterministic GZip/Base64 issuance JSON, bounded
+signed-authorization and structured-rejection parsing, and rustls mTLS client
+construction.
+Certificate bytes, passphrases, and derived PEM are redacted and zeroized where
+owned by Rullst.
 The production profile applies one exact, documented in-memory compatibility
 normalization after hash verification: it removes `.NET` `^...$` anchors from
 the known DPS-series pattern because XSD regex grammar treats them as literals.
 
 This is preparation for homologation, not live issuance. `Homologation` and
 `Production` still return `FiscalError::Unsupported` without network I/O until
-the official JSON envelope and bounded response/rejection parser, full
-certificate/emitter policy, durable idempotency/audit, real restricted-environment
-evidence, independent review, and official homologation are complete.
+full certificate/emitter and ICP-Brasil policy, durable idempotency/audit,
+retained official protocol fixtures, real restricted-environment evidence,
+independent review, and official homologation are complete.
 
 Enable the crate's `nfse` feature (or umbrella `rullst/capital-nfse`) for the
-XSD, XMLDSig, and mTLS preparation APIs. The strict DPS builder and unmistakable
-offline mock remain available through the base Capital crate.
+XSD, XMLDSig, protocol codec, and mTLS preparation APIs. The strict DPS builder
+and unmistakable offline mock remain available through the base Capital crate.
 
 The runnable [`nfse_v101_preview`](examples/nfse_v101_preview.rs) example emits
 the unsigned bounded DPS. When `RULLST_NFSE_XSD_DIR` points to an extracted

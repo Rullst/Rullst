@@ -46,10 +46,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   catalogue validation of checksum-pinned official XSD sources (including one
   exact documented production regex compatibility normalization), protected
   PKCS#12 handling, enveloped inclusive-C14N/RSA-SHA256 XMLDSig with independent
-  local verification, and bounded rustls mTLS client construction. Official JSON
-  request/response handling, durable idempotency/audit, real A1 restricted-
-  environment evidence, independent review and SEFIN homologation remain open;
-  live modes still perform no network I/O.
+  local verification, and bounded rustls mTLS client construction. The opt-in
+  offline protocol codec now emits deterministic GZip/Base64 in the exact
+  `dpsXmlGZipB64` request object and strictly separates bounded HTTP 201
+  authorization from 400/403/500 rejection. It binds environment, DPS ID,
+  50-digit access key, `infNFSe/@Id` and the embedded XMLDSig, rejecting unknown,
+  malformed, mismatched, tampered and decompression-amplified input. Durable
+  idempotency/audit, ICP-Brasil/emitter trust, real A1 restricted-environment
+  evidence, independent review and SEFIN homologation remain open; live modes
+  still perform no network I/O.
 - Capital's signed-webhook boundary now exposes both Axum and feature-gated
   Actix Web middleware over one canonical verifier. Both paths cap raw bodies
   at two megabytes, verify before dispatch, restore the exact payload, attach a
@@ -708,7 +713,7 @@ release gate has completed.
 - **Payment Gateways & Financial Infrastructure Guide (`docs/src/payment-gateways-guide.md`)**: Comprehensive architectural guide analyzing Direct Merchant vs Merchant of Record (MoR) vs Domestic Low-Fee vs Web3 Crypto vs International Payouts, complete fee comparison matrices, and step-by-step Rust configuration code.
 - **Monorepo Examples & Reference Apps Guide (`docs/src/examples.md`)**: Dedicated official book chapter detailing the role of the `examples/` directory in Rullst, contrasting monorepo showcases (`rullst-blog-example`) with interactive CLI scaffolding blueprints (`cargo rullst new ... --blueprint blog`).
 - **`examples/blog` Documentation (`examples/blog/README.md`)**: Complete architectural overview, local execution guide (`cargo run`), interactive route catalog (`/`, `/live-counter`, `/wasm-counter`), multi-tenant testing via `X-Tenant-ID` headers, and CI/CD integration details.
-- **Bounded NFS-e Preparation (`rullst-capital::fiscal`)**: Retained the unmistakably unauthorized deterministic mock and added the pinned DPS/XSD/XMLDSig/mTLS preparation pipeline described in the release summary. Homologation and production continue returning `Unsupported` until the official envelope/response contract and external evidence are complete.
+- **Bounded NFS-e Preparation (`rullst-capital::fiscal`)**: Retained the unmistakably unauthorized deterministic mock and added the pinned DPS/XSD/XMLDSig/protocol-codec/mTLS preparation pipeline described in the release summary. Homologation and production continue returning `Unsupported` until the remaining certificate-trust, durability and external homologation evidence is complete.
 - **Secure Headers Suite (`rullst-security::headers`)**: Unified middleware for HSTS, dynamic CSP nonces, Permissions-Policy, COOP, COEP, and CORP. Scanner grades depend on the deployed page and infrastructure; no A+ result is guaranteed.
 - **Anti-Bruteforce Tarpit & Login Jail Engine (`rullst-security::login_guard`)**: Bounded in-memory delay/jail engine; `record_login_failure_and_wait` applies the progressive async delay directly while the compatibility API returns the decision to the caller.
 - **RASP Deep Request & Header Inspector (`rullst-security::rasp`)**: Enhanced runtime application self-protection with `inspect_text` and `inspect_headers` intercepting JNDI/Log4j, RCE, and advanced SQL injection vectors before handler dispatch.

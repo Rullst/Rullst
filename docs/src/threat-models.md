@@ -1,6 +1,6 @@
 # Rullst v12 threat models
 
-> **Model version:** TM-12.2
+> **Model version:** TM-12.3
 > **Applies to:** the v12 release candidate source and generated applications
 > **Last source review:** 2026-08-30
 > **Status:** maintainer baseline; application owners must extend it for their
@@ -27,8 +27,8 @@ addresses are untrusted unless a separately reviewed proxy policy establishes
 the direct peer as trusted.
 
 The machine-readable release minimum in
-`.github/threat-model-release-minimum.json` binds 36 abuse-case IDs to 36 exact
-tests across ten crates. The gate rejects missing markers, missing tests and
+`.github/threat-model-release-minimum.json` binds 38 abuse-case IDs to 38 exact
+test executions across ten crates. The gate rejects missing markers, missing tests and
 zero-test filters before executing Auth, Nexus, Studio, tenant ownership,
 Capital, AI, IoT, generated-default and Academy negatives. Passing that bounded
 minimum does not imply that every case below is closed.
@@ -143,6 +143,7 @@ amount/currency, invoice identity, replay state and fiscal documents.
 | `PAY-04` duplicate/partial transition | Use a transactional idempotent state machine and reconcile with the provider. | Cross-instance atomic workflow remains open. |
 | `PAY-05` payout destination takeover | Require step-up authentication, allowlist/change delay and independent audit. | Application workflow remains open. |
 | `PAY-06` false fiscal authorization | Mock only explicitly; live/homologation fail `Unsupported` until XMLDSig, mTLS and SEFIN homologation exist. | Fail-closed fiscal tests. |
+| `PAY-07` forged or confused SEFIN issuance response | Bound body size, status, environment, submitted DPS ID, 50-digit access key and signed `infNFSe/@Id`; malformed, mismatched, unsigned, tampered or decompression-amplified material must never become authorization. | The feature-gated offline protocol codec emits deterministic GZip/Base64 request JSON and distinguishes HTTP 201 authorization from bounded 400/403/500 rejection. It verifies both embedded XMLDSig values locally. Certificate trust, durable idempotency, live restricted-environment evidence and homologation remain open. |
 
 Trust boundaries are provider ↔ webhook, user ↔ checkout, application ↔
 provider and application ↔ durable billing state.
@@ -249,6 +250,6 @@ registry and CLI ↔ filesystem/process/cloud.
 - New boundaries receive new IDs; IDs are never silently reused.
 - Closing residual risk requires code/configuration, a negative test and
   commit-bound evidence. Documentation alone cannot claim a control is deployed.
-- Before stable v12, maintainers must review TM-12.2 against the exact RC,
+- Before stable v12, maintainers must review TM-12.3 against the exact RC,
   applications must add topology/provider threats and an independent reviewer
   must cover the highest-impact paths.

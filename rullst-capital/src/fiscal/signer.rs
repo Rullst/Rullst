@@ -76,17 +76,23 @@ pub fn sign_dps_xml(xml: &str, certificate: &FiscalCertificate) -> Result<String
             "signed DPS exceeds the one MiB limit".to_string(),
         ));
     }
+    verify_embedded_xml_signature(&signed)?;
+    Ok(signed)
+}
+
+#[cfg(feature = "nfse")]
+pub(crate) fn verify_embedded_xml_signature(xml: &str) -> Result<(), FiscalError> {
     let resolver = DefaultKeyResolver::default();
     let verification = VerifyContext::new()
         .key_resolver(&resolver)
-        .verify(&signed)
-        .map_err(|error| signing_error("cannot verify the generated XMLDSig", &error))?;
+        .verify(xml)
+        .map_err(|error| signing_error("cannot verify embedded XMLDSig", &error))?;
     if verification.status != DsigStatus::Valid {
         return Err(FiscalError::XmlSigning(
-            "generated XMLDSig did not verify with its embedded certificate".to_string(),
+            "embedded XMLDSig did not verify with its declared certificate".to_string(),
         ));
     }
-    Ok(signed)
+    Ok(())
 }
 
 #[cfg(not(feature = "nfse"))]
