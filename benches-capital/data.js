@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788177075173,
+  "lastUpdate": 1788179557821,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -3178,6 +3178,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 17,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "4eb91eecd9cd5f541e3e8686ad71a72eba2d4a4b",
+          "message": "feat(capital): add provider-specific metered billing",
+          "timestamp": "2026-08-31T09:09:35-03:00",
+          "tree_id": "98d4e34fb3e37c579bfb88e461ff43fdd5498c7e",
+          "url": "https://github.com/Rullst/Rullst/commit/4eb91eecd9cd5f541e3e8686ad71a72eba2d4a4b"
+        },
+        "date": 1788179557057,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 20,
             "range": "± 0",
             "unit": "ns/iter"
           },
