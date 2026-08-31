@@ -45,14 +45,18 @@ Rullst Capital simplifies the billing and subscription complexities of building 
 - [ ] **Global Tax Management**: Simplified support for VAT / Sales Tax calculations at checkout time, natively integrating with Stripe Tax.
 
 ## Phase 6: B2B & Team Billing (Organizations)
-- [~] **Team Subscriptions**: Any suitable struct can derive `Billable`,
-  including a Team/Workspace, but membership lookup and shared usage accounting
-  remain application-owned.
+- [x] **Team Subscriptions**: A Team/Workspace may own `Billable`, while a
+  validated `BillingSubject` derived from trusted tenant context gives all
+  authorized members one shared quota namespace. Authentication still owns
+  membership establishment and provider webhooks still own plan reconciliation.
 
 ## Phase 7: Quotas & Feature Limits
-- [~] **Strict Resource Limits**: `check_quota(feature, current_usage)` is a
-  fail-closed pure entitlement check. It does not query the database or
-  automatically intercept resource creation.
+- [x] **Strict Resource Limits**: `Billable::quota_request` derives the
+  authoritative tier limit; `QuotaGate` blocks callbacks before over-limit or
+  replayed creation and compensates ordinary failures. The opt-in SQL store
+  atomically reserves idempotent units on SQLite/PostgreSQL/MySQL/MariaDB and
+  exposes a caller-owned transaction path for committing the domain insert and
+  quota together. It cannot intercept arbitrary writes made outside that gate.
 
 ## Phase 8: Coupons & Trial Management
 - [~] **Native Discount APIs**: The typed operation and Stripe adapter exist;

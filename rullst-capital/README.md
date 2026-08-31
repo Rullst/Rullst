@@ -23,6 +23,9 @@ provider sandbox.
 - **Provider-specific metered billing:** Current Stripe Meter Events and Lemon
   Squeezy Usage Records request/response contracts, bounded protocol parsing,
   deterministic non-live mocks and explicit retry evidence.
+- **Shared team/workspace quotas:** Bounded subject identities, idempotent
+  reservations, replay-safe execution and an opt-in transactional SQL store for
+  SQLite, PostgreSQL, MySQL and MariaDB.
 
 ---
 
@@ -66,6 +69,13 @@ using the umbrella crate:
 rullst = { version = "12.0.0", features = ["capital-mail"] }
 ```
 
+Durable relational quota accounting is separately opt-in:
+
+```toml
+rullst = { version = "12.0.0", features = ["capital-quota-sql"] }
+# Or directly: rullst-capital = { version = "12.0.0", features = ["quota-sql"] }
+```
+
 Applications using the umbrella crate can derive the bounded billing facade on
 any named struct with an `email: String` field. Optional
 `subscription_id: Option<String>` and `tier: Option<String>` fields enable the
@@ -92,10 +102,33 @@ fn has_pro_access(workspace: &Workspace) -> bool {
 `SubscriptionHandle` with `cancel()` and `pause()`. When both grace-period
 fields are present, the derive exposes a validated half-open window of at most
 366 days; an incomplete pair is a compile error. `Billable` does not persist or
-authorize that state, enforce access, schedule provider changes, infer
-membership, read usage from a database, or choose currency/payment methods.
-Applications must establish those identities and policies before invoking a
-provider operation.
+authorize provider state, schedule provider changes, infer membership, or
+choose currency/payment methods. Its explicit `quota_request` helper can derive
+a limit from the model's `tier_limit`; a separately configured quota store
+performs the accounting. Applications must establish identities and policies
+before invoking either boundary.
+
+### Shared Team and Workspace Quotas
+
+Use one `BillingSubject` for the authenticated tenant/workspace so every member
+consumes the same limit. `Billable::quota_request` derives the limit from the
+subscription owner's tier rather than a client payload. `QuotaGate` atomically
+reserves before calling the application operation, skips exact idempotent
+replays and releases a fresh reservation when the callback returns an error.
+
+The always-available `InMemoryQuotaStore` is deterministic and process-local.
+With `quota-sql`, `SqlQuotaStore` persists a unique event claim and conditionally
+increments the shared counter on SQLite, PostgreSQL, MySQL or MariaDB. For a
+relational create that must be atomic with accounting, open a transaction from
+`store.pool()`, call `reserve_with_transaction`, execute the domain insert on
+that same transaction and commit once. See the
+[SaaS billing tutorial](https://rullst.github.io/tutorials/19-saas-billing-capital.html#8-enforce-one-shared-workspace-quota-before-creation)
+for the complete flow.
+
+Membership/authentication, tier persistence and webhook reconciliation,
+migrations, cleanup policy for abandoned standalone reservations, and
+Turso/NoSQL adapters remain application responsibilities. Writes outside the
+gate are not intercepted automatically.
 
 An immediate charge is available without exposing a raw-card field. It requires
 minor units, currency, authoritative provider customer/payment-method IDs and a

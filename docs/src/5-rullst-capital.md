@@ -80,6 +80,28 @@ and derive quotas/entitlements from authoritative state. The old uniform
 `BillingProvider::report_usage` remains source-compatible for mocks but fails
 closed in live Stripe/Lemon configurations instead of guessing required fields.
 
+## Shared subscriptions and strict resource quotas
+
+One Team/Workspace model can own `Billable` and its tier policy while every
+authorized member uses the same bounded `BillingSubject`. Derive that subject
+from trusted `TenantContext`, never from a client-selected owner ID.
+`Billable::quota_request` derives the limit from `tier_limit`; `QuotaGate`
+reserves before invoking a create operation, suppresses an exact retry and
+compensates an ordinary callback error.
+
+`InMemoryQuotaStore` provides deterministic process-local behavior. Enable
+`quota-sql` directly or `capital-quota-sql` on the umbrella crate for a durable
+unique-claim and conditional-counter implementation on SQLite, PostgreSQL,
+MySQL and MariaDB. Use `reserve_with_transaction` and perform the domain insert
+in that same transaction whenever quota and creation must commit atomically.
+The [complete tutorial](tutorials/19-saas-billing-capital.md#8-enforce-one-shared-workspace-quota-before-creation)
+shows this path and its replay semantics.
+
+The application still owns membership, authoritative tier/webhook state,
+migrations, reconciliation of abandoned standalone reservations and adapters
+for Turso or non-relational stores. Rullst does not intercept writes performed
+outside the explicit quota boundary.
+
 ## Payment-bound invoice PDF and delivery
 
 Enable the umbrella `capital-mail` feature (or Capital's `invoice-pdf` and

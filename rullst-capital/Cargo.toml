@@ -23,9 +23,11 @@ axum = ["dep:axum"]
 actix = ["dep:actix-web", "dep:futures-util"]
 nfse = ["dep:flate2", "dep:oxixml-schema", "dep:p12-keystore", "dep:roxmltree", "dep:xml-sec"]
 invoice-pdf = ["dep:printpdf"]
+quota-sql = ["dep:rullst-orm"]
 
 [dependencies]
 rullst-core = { workspace = true }
+rullst-orm = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["json", "rustls"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -52,6 +54,8 @@ printpdf = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 criterion = { workspace = true, features = ["async_tokio"] }
 rcgen = { version = "=0.14.10", default-features = false, features = ["aws_lc_rs", "zeroize"] }
+testcontainers = "0.27.3"
+testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql", "mariadb"] }
 
 [[bench]]
 name = "capital_bench"

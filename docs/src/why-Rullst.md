@@ -251,6 +251,12 @@ The billing facade follows the same bounded design: an explicit generic
 subscription handle delegates pause/cancel without erasing the provider type,
 while its grace-period value validates time bounds but leaves persistence,
 authorization and entitlement policy visible in application code.
+Its shared-quota boundary likewise derives one subject from trusted tenant
+state, reserves idempotently before creation and can commit the counter and a
+relational domain insert in the same caller-owned transaction. SQLite plus live
+PostgreSQL/MySQL/MariaDB contention contracts prove that concurrent workspace
+members stop at the configured limit; membership and tier reconciliation remain
+visible host responsibilities.
 
 The same CLI includes inspection, toolchain diagnostics, migration assistance,
 SBOM generation, and a bounded static route-access scanner. Generated output

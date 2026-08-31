@@ -226,7 +226,89 @@ it with authoritative subscription state, evaluate it against a trusted clock
 inside the entitlement check, and confirm the selected adapter's live pause or
 cancel semantics.
 
-## 8. Supply an optional local revenue snapshot
+## 8. Enforce one shared workspace quota before creation
+
+Enable `quota-sql` directly, or `capital-quota-sql` on the umbrella crate. The
+authenticated middleware must first establish the active `TenantContext`; do
+not build a billing subject from an arbitrary header or request field.
+
+`Billable::quota_request` reads the limit from the subscription owner's
+`tier_limit` implementation. Give every attempted creation a stable event key,
+normally the ID of the application command/request rather than a random value
+generated on every retry.
+
+```rust,no_run
+use rullst::{
+    capital::{Billable as _, BillingSubject, QuotaError, SqlQuotaStore},
+    security::TenantContext,
+};
+
+async fn create_project(
+    workspace: &impl rullst::capital::Billable,
+    tenant: &TenantContext,
+    quotas: &SqlQuotaStore,
+    project_id: &str,
+) -> Result<bool, Box<dyn std::error::Error>> {
+    let subject = BillingSubject::from_tenant(tenant)?;
+    let request = workspace.quota_request(
+        subject,
+        "projects",
+        format!("create-project:{project_id}"),
+        1,
+    )?;
+
+    let mut transaction = quotas.pool().begin().await?;
+    let grant = match quotas
+        .reserve_with_transaction(&mut transaction, &request)
+        .await
+    {
+        Ok(grant) => grant,
+        Err(QuotaError::LimitExceeded { .. }) => {
+            transaction.rollback().await?;
+            return Ok(false);
+        }
+        Err(error) => {
+            transaction.rollback().await?;
+            return Err(error.into());
+        }
+    };
+
+    if grant.is_replay() {
+        transaction.rollback().await?;
+        return Ok(true);
+    }
+
+    let inserted = rullst::orm::sqlx::query(
+        "INSERT INTO projects (id, workspace_id) VALUES (?, ?)",
+    )
+    .bind(project_id)
+    .bind(tenant.tenant_id.as_str())
+    .execute(&mut *transaction)
+    .await;
+    if let Err(error) = inserted {
+        transaction.rollback().await?;
+        return Err(error.into());
+    }
+    transaction.commit().await?;
+    Ok(true)
+}
+```
+
+The placeholder above is SQLite/MySQL syntax; use `$1`, `$2` for a raw
+PostgreSQL insert, or use the ORM operation that participates in the same
+transaction. `SqlQuotaStore` uses a unique event claim plus a conditional
+counter update, so concurrent members cannot both pass the last available
+unit. An exact retry returns `is_replay()` without consuming again; reusing the
+same key with different units or a different limit fails closed.
+
+For work that cannot share the SQL transaction, `QuotaGate::execute` still
+blocks the callback before an over-limit/replayed operation and releases the
+reservation after an ordinary callback error. A process crash between a
+standalone reservation and the external side effect is intentionally
+conservative and needs application reconciliation; the framework never risks
+exceeding the quota to guess whether that external effect happened.
+
+## 9. Supply an optional local revenue snapshot
 
 `RevenueDashboardManager` does not derive money or subscribers from event names.
 After durable reconciliation, the application may call `update_metrics` with its

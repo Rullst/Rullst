@@ -18,6 +18,7 @@
     { "from": "rullst-auth", "to": "rullst-connect", "optional": true },
     { "from": "rullst-auth", "to": "rullst-core", "optional": false },
     { "from": "rullst-capital", "to": "rullst-core", "optional": false },
+    { "from": "rullst-capital", "to": "rullst-orm", "optional": true },
     { "from": "rullst-core", "to": "rullst-macros", "optional": false },
     { "from": "rullst-core", "to": "rullst-orm", "optional": true },
     { "from": "rullst-mail", "to": "rullst-capital", "optional": true },

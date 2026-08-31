@@ -74,6 +74,7 @@ rullst-ai|sql-memory
 rullst-capital|axum
 rullst-capital|actix
 rullst-capital|nfse
+rullst-capital|quota-sql
 rullst-mail|mail-smtp
 rullst-auth|jwt
 
@@ -102,6 +103,7 @@ rullst|ai-sql-memory
 rullst|capital
 rullst|capital-actix
 rullst|capital-nfse
+rullst|capital-quota-sql
 rullst|security
 rullst|security-redis
 rullst|iot

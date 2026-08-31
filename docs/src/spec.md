@@ -67,6 +67,17 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 | **`rullst-macros`** | Procedural macros (`html!`, `rullst::model`, `rullst::runtime::main`) and compatibility helpers. | 🟢 **`[Implemented / Bounded]`**: Compile-time `html!` escaping with explicit `RawHtml`, model/runtime macros, and `trybuild` diagnostics.<br/>🟠 **`[Partial]`**: `server_function` preserves typed signatures, but browser argument transport and matching server-side RPC registration are not end-to-end. |
 | **`cargo-rullst`** | Developer CLI toolkit, scaffolding generators (`make:*`), project blueprints, AST IDOR static route scanner. | 🟢 **`[Implemented / Bounded]`**: Interactive wizard, generators, heuristic IDOR scanner, CycloneDX exporter, toolchain doctor and a fail-closed Academy evidence diagnostic that explicitly does not certify a deployment. `make:chat-session` emits registered SQLx or Turso-primary models, reversible migrations and application-owned bounded chat memory; materialized contracts run persistent mock conversations on both backends and prove collision refusal. `make:billing --model` likewise emits SQLx/Turso-primary persistence plus Stripe/LemonSqueezy pricing, authenticated checkout/portal and mandatory signed-webhook code; its materialized contract compiles, migrates, persists, denies cross-owner subscription mutation before customer binding and refuses existing outputs on both backends.<br/>🟢 **`[Implemented / Bounded]`**: The LMS starter supplies bounded curriculum, school-scoped learning/assessment/publication/progress/completion, roles, leaderboard, automation/outbox/workers, localized in-app notifications and a minimized privacy-request foundation. Its SSR catalog performs limited, ORM-parameterized title/category filtering; generated auth/catalog/course/player shells consume the Core CSP nonce without remote page dependencies or inline style attributes and include keyboard landmarks, visible focus and reduced-motion handling. Lesson presentation distinguishes video/audio, rejects non-HTTPS non-local sources, requires a WebVTT track for video and a bounded transcript/language for both; materialized tests cover escaping and fail-closed negatives, not real-browser playback or caption quality. Privacy claims use exact leases, retry/dead-letter with a hard ten-attempt ceiling, actor/digest-bound completion and a supervised static-dispatch executor with an explicit protocol-only mock; the product must still supply the adapter that performs application-specific export/deletion/anonymization. Materialized SQLite exercises catalog/player escaping/nonce, privacy hard limits and the documented vertical/cross-school boundaries. Detached `--lms-modules auth`, `auth,learning` and `auth,learning,assessment` profiles remain small compiling foundations; the assessment profile grades versioned quizzes authoritatively without pulling score/leaderboard/outbox verticals. The complete starter is the default.<br/>🟠 **`[Partial]`**: Other detached combinations, profile hot reload, media upload/hosting/transcoding, advanced/localized search, caption/transcript quality and localization, WCAG/browser evidence, distributed failover, PostgreSQL/MySQL isolation, visual authoring, exported telemetry and the separately operated Academy remain roadmap or release-engineering work. |
 
+The Capital row also includes one implemented, feature-gated quota boundary:
+`BillingSubject` binds a shared team/workspace counter to trusted tenant state,
+`Billable::quota_request` derives the limit from the subscription owner, and
+`QuotaStore` atomically reserves idempotent units before resource creation. The
+deterministic local store is always available; `quota-sql` uses fixed-schema
+SQLx transactions on SQLite/PostgreSQL/MySQL/MariaDB, with exact replay/release
+and a caller-owned transaction path for atomic domain writes. Live container
+contracts exercise all four protocols. Membership establishment, plan state,
+migrations, reconciliation and non-relational adapters remain application
+boundaries.
+
 ### 3.1. Generated Academy activity boundary
 
 The generated `ActivityEvaluator` boundary uses static dispatch and accepts an
@@ -476,7 +487,8 @@ exposes a validated half-open window of at most 366 days. A provider-bound
 `SubscriptionHandle<P>` delegates cancellation and pausing; the explicit
 `subscription_with` path keeps static dispatch. These values do not infer or
 persist ownership, team membership, entitlement, currency, payment methods,
-usage, provider scheduling or database-backed quotas.
+usage or provider scheduling. Shared quota accounting is a separate explicit
+boundary described below.
 
 The same derive inherits the bounded `charge_with`/`charge` helpers for an
 immediate off-session charge. A charge requires a positive integer amount in
@@ -515,6 +527,30 @@ outbox storage, retries, reconciliation and entitlement/quota policy remain
 application/release evidence. The legacy uniform `BillingProvider::report_usage`
 is compatibility-only and fails closed for live Stripe/Lemon Squeezy rather
 than guessing the required provider-specific identity.
+
+#### Shared Team and Workspace Quotas
+
+`BillingSubject` identifies one authoritative user, team, workspace or trusted
+tenant as the owner of both the subscription and its shared counters.
+`Billable::quota_request` derives the limit from that owner's tier policy instead
+of accepting it from an HTTP payload. A `QuotaStore` then performs an atomic,
+idempotent reservation before the application creates the resource.
+
+`InMemoryQuotaStore` is the deterministic offline/process-local contract. The
+opt-in `quota-sql` feature supplies `SqlQuotaStore` for SQLite, PostgreSQL,
+MySQL and MariaDB. Its conditional counter update and unique event claim prevent
+concurrent members from exceeding the same limit. Exact retries return a replay
+grant without consuming or executing again; a key reused with different units
+or limit fails closed. `QuotaGate::execute` blocks the callback before an
+over-limit creation and compensates an ordinary callback error.
+
+The convenience gate cannot make two unrelated storage systems atomic. A
+relational application that needs exact quota/resource atomicity must open a
+transaction from `SqlQuotaStore::pool`, call `reserve_with_transaction`, perform
+the domain insert through that transaction and commit once. Trusted middleware
+must establish membership and active tenant before constructing the subject.
+Plan/webhook reconciliation, migrations and custom/non-relational stores remain
+explicit application work.
 
 ### 6.2. Invoice Rendering
 

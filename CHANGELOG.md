@@ -402,6 +402,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   deterministic/non-live. Stripe exposes rolling provider deduplication, while
   Lemon explicitly requires a caller-owned durable outbox key; live account
   acceptance, reconciliation and entitlement policy are not claimed.
+- Added shared Team/Workspace resource quotas. `BillingSubject::from_tenant`
+  binds accounting to trusted tenant state and `Billable::quota_request`
+  derives the limit from the subscription owner. `QuotaGate` reserves before
+  executing, suppresses exact replay and compensates ordinary operation
+  failures. The opt-in `quota-sql` store uses an idempotent claim plus atomic
+  conditional counter on SQLite, PostgreSQL, MySQL and MariaDB, and exposes a
+  caller-owned transaction path so the quota and domain insert can commit or
+  roll back together. Local and live-container concurrency tests prove the
+  shared limit; membership, tier/webhook reconciliation, migrations, abandoned
+  standalone reservation policy and Turso/NoSQL stores remain host boundaries.
 - `cargo rullst make:iot` now validates device identifiers, refuses traversal
   and collisions, enables the umbrella `iot` feature, registers generated
   modules, and is checked by compiling a materialized application. IoT HTML

@@ -54,6 +54,10 @@ pub enum CapitalError {
     #[error("Invalid metered usage: {0}")]
     InvalidUsage(String),
 
+    /// Shared quota validation, reservation, or durable accounting failed.
+    #[error(transparent)]
+    Quota(#[from] crate::quota::QuotaError),
+
     /// Digital invoice or tax authority operation error.
     #[error("Fiscal error: {0}")]
     FiscalError(#[from] crate::fiscal::models::FiscalError),
@@ -111,6 +115,16 @@ mod tests {
 
         let usage = CapitalError::InvalidUsage("quantity is zero".to_string());
         assert_eq!(usage.to_string(), "Invalid metered usage: quantity is zero");
+
+        let quota = CapitalError::from(crate::QuotaError::LimitExceeded {
+            used: 2,
+            requested: 1,
+            limit: 2,
+        });
+        assert_eq!(
+            quota.to_string(),
+            "quota exceeded: used 2, requested 1, limit 2"
+        );
 
         let f_err = FiscalError::XmlSigning("bad xml".to_string());
         let e8: CapitalError = f_err.into();

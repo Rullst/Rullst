@@ -310,6 +310,29 @@ pub trait Billable {
         }
     }
 
+    /// Builds a shared, idempotent quota request from this billable model's tier.
+    ///
+    /// Implement `Billable` on the subscription owner (for example a
+    /// Workspace), derive `subject` from trusted tenant membership, and pass
+    /// the result to a [`crate::QuotaStore`] before creating the resource.
+    fn quota_request(
+        &self,
+        subject: crate::BillingSubject,
+        feature: &str,
+        event_key: impl Into<String>,
+        units: u64,
+    ) -> Result<crate::QuotaRequest, crate::QuotaError> {
+        let limit = self.tier_limit(feature).ok_or_else(|| {
+            crate::QuotaError::InvalidRequest(
+                "billable tier does not define the requested feature".to_string(),
+            )
+        })?;
+        let limit = u64::try_from(limit).map_err(|_| {
+            crate::QuotaError::InvalidRequest("billable tier limit overflow".to_string())
+        })?;
+        crate::QuotaRequest::try_new(subject, feature, event_key, units, limit)
+    }
+
     /// Applies a coupon code to the active subscription.
     async fn apply_coupon(&self, coupon_code: &str) -> Result<(), CapitalError> {
         let sub_id = self.subscription_id().ok_or_else(|| {
@@ -426,6 +449,25 @@ mod tests {
         assert!(pro.check_quota("api_calls", 500));
         assert!(!pro.check_quota("api_calls", 1500));
         assert!(!pro.check_quota("unknown", 0));
+        let quota = pro
+            .quota_request(
+                crate::BillingSubject::try_new("workspace", "acme").unwrap(),
+                "api_calls",
+                "request-17",
+                5,
+            )
+            .unwrap();
+        assert_eq!(quota.limit(), 1_000);
+        assert_eq!(quota.units(), 5);
+        assert!(
+            pro.quota_request(
+                crate::BillingSubject::try_new("workspace", "acme").unwrap(),
+                "unknown",
+                "request-18",
+                1,
+            )
+            .is_err()
+        );
 
         let res = pro.cancel_subscription().await;
         assert!(matches!(res, Err(CapitalError::ConfigurationError(_))));

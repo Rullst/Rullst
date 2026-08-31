@@ -306,6 +306,7 @@ pub(super) fn capital_error_status_code(error: &CapitalError) -> u16 {
         | CapitalError::UnsupportedOperation(_)
         | CapitalError::MockWebhookNotAllowed(_)
         | CapitalError::SubscriptionError(_)
+        | CapitalError::Quota(_)
         | CapitalError::FiscalError(_) => 503,
     }
 }
