@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788139451523,
+  "lastUpdate": 1788140740422,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4819,6 +4819,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 501,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "139065ff9fb026cf705b13dbf29ab7dd230db426",
+          "message": "feat(security): add bounded threat sentinel",
+          "timestamp": "2026-08-30T22:38:36-03:00",
+          "tree_id": "2dcff2f2ea710aaeed935df5e05c55402c40e233",
+          "url": "https://github.com/Rullst/Rullst/commit/139065ff9fb026cf705b13dbf29ab7dd230db426"
+        },
+        "date": 1788140740002,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 526,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
