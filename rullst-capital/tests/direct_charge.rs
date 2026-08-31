@@ -30,6 +30,8 @@ async fn billable_charge_is_safe_deterministic_and_statically_dispatched() {
     assert!(!first.is_succeeded());
     assert_eq!(first.amount_minor(), 4_990);
     assert_eq!(first.currency(), "brl");
+    assert_eq!(first.customer_email(), "owner@example.com");
+    assert!(!format!("{first:?}").contains("owner@example.com"));
 }
 
 #[tokio::test]
