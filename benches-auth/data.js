@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788140740422,
+  "lastUpdate": 1788143991656,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4849,6 +4849,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 526,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "13f7a2a9fe6e0f47ef1a2da607fdcbad54eac81f",
+          "message": "feat(capital): add bounded nfse protocol codec",
+          "timestamp": "2026-08-30T23:28:07-03:00",
+          "tree_id": "18c4c31f9427d78f0a0d6b1cdb8784010fdf8a6c",
+          "url": "https://github.com/Rullst/Rullst/commit/13f7a2a9fe6e0f47ef1a2da607fdcbad54eac81f"
+        },
+        "date": 1788143990923,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 389,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
