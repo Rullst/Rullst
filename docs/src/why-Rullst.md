@@ -174,6 +174,16 @@ LiveView, selected Wasm islands, Tera, and packaging helpers are optional
 strategies with separate maturity and operational requirements. Rullst does
 not claim that every frontend mode is interchangeable or bundle-free.
 
+Omni extends that server-first model with a deterministic Tauri shell for
+desktop, Android, and iOS instead of creating a second business backend. Its
+portable versioned client envelope carries no local authority, and the opt-in
+native offline foundation adds bounded idempotent proposals, explicit
+conflict/resync state, and account-bound encrypted snapshots. Platform secure
+storage, background transport, physical-device behavior, signing, and store
+acceptance remain separate evidence gates; see the
+[web-first Omni guide](tutorials/43-omni-web-first.md) and
+[offline synchronization guide](tutorials/44-omni-offline-sync.md).
+
 ### 8. Local control surfaces use real application signals
 
 Studio is a local developer control room with explicit unavailable states when

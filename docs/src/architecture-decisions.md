@@ -128,12 +128,23 @@ failure codes. It deliberately has no user/tenant/role claim: authentication,
 authorization, domain validation and durable replay handling remain server
 work. This is a transport foundation for rich clients, not offline sync.
 
+The opt-in native `offline-sync` profile builds a bounded state machine on that
+transport boundary. It keeps cached server records separate from queued local
+proposals, requires unique idempotency keys, uses explicit server revisions and
+cursors, isolates conflicts from automatic replay, and makes incremental/full
+resync transitions atomic within the state value. Its encrypted v1 snapshot is
+AES-256-GCM authenticated to an exact account and rotation-key id. The framework
+does not choose client-wins, accept cached authorization, own a platform key, or
+silently write to an arbitrary filesystem/browser store. Keychain/Keystore,
+atomic platform persistence, network scheduling and later schema migrations
+remain application/platform decisions until dedicated adapters have evidence.
+
 Path-aware workflows generate disposable applications and check desktop on
 Linux/macOS/Windows, an Android debug APK and an iOS simulator target. All
 three passed for commit `755fbd61933bed04369e0eb5de50b11275db5e3d`.
 
 That gate proves reproducible generation and simulator compilation only. It
-does not automatically implement offline synchronization, secure remote
+does not automatically mount offline synchronization, secure remote
 networking, platform signing, privacy declarations, physical-device behavior,
 store publication, native updater policy or every frontend profile. Push,
 biometrics, OS secure storage, deep links and offline state must be opt-in,

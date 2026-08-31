@@ -53,8 +53,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   portable `rullst.client` v1 boundary adds bounded positive-version
   negotiation, typed request/success/failure JSON, correlation/idempotency
   tokens, server time and stable message-free failure codes while excluding
-  client authority. Physical devices, signing, durable replay, offline sync,
-  native capabilities and store review remain explicit evidence boundaries.
+  client authority. The new opt-in native `offline-sync` feature adds bounded
+  account state, FIFO idempotent proposals, server revision/cursor application,
+  explicit conflicts/full resync/recovery/logical erasure and randomized
+  account-bound AES-256-GCM snapshots with revalidated quotas and closed schema.
+  It does not automatically mount persistence or networking: Keychain/Keystore,
+  atomic platform storage, browser offline state, background orchestration,
+  future-schema migrations, physical devices, signing and store review remain
+  explicit evidence boundaries.
 - `rullst-capital` now provides a bounded National NFS-e 1.01 preparation
   pipeline: checksum-pinned official production/restricted artifact manifests,
   strict ordinary-service DPS construction with integer money/rates, closed-

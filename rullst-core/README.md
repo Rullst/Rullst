@@ -15,6 +15,10 @@
 - **Explicit Completion History:** SQLite deletes successful payloads by
   default. `Queue::sqlite_with_completed_history` opts into a bounded retained
   history for Studio/operations, with atomic pruning and an explicit purge API.
+- **Offline Sync Foundation:** The optional native `offline-sync` feature
+  provides bounded replay-safe mutations, explicit conflict resolution, and
+  account-bound AES-256-GCM snapshots. Applications still own Keychain/Keystore
+  access, atomic platform persistence, transport, and background scheduling.
 
 ## 🚀 Usage
 
@@ -31,11 +35,11 @@ application needs:
 
 ```toml
 [dependencies]
-rullst-core = { version = "12", features = ["orm", "queue-sqlite"] }
+rullst-core = { version = "12", features = ["orm", "queue-sqlite", "offline-sync"] }
 ```
 
-Enable `orm`, `queue-sqlite`, `queue-redis`, or `telemetry` only when that
-integration is required. The primary `rullst` crate keeps `orm` and
+Enable `orm`, `queue-sqlite`, `queue-redis`, `offline-sync`, or `telemetry` only
+when that integration is required. The primary `rullst` crate keeps `orm` and
 `queue-sqlite` in its default feature set for application compatibility.
 
 Both built-in queue drivers implement `Queue::dispatch_at` for schedules up to

@@ -145,18 +145,23 @@ contract is a prerequisite for future offline queues, not an offline queue.
 ## Offline behavior
 
 The packaged bootstrap can explain that the device is offline and retry before
-the first navigation. The current profile does **not** cache application data,
-queue writes or resolve synchronization conflicts. Calling it “offline-first”
-would be inaccurate.
+the first navigation. It still does **not** automatically cache application
+data or mount background synchronization.
 
-A future resilient-client profile can build on the versioned typed contract but
-must still define at least:
+The opt-in native `offline-sync` feature now supplies a bounded foundation:
+account-bound AES-256-GCM snapshots, FIFO idempotent mutations, authoritative
+server revisions/cursors, explicit conflicts, full resync, quotas, recovery and
+logical erasure. Follow the
+[offline synchronization tutorial](44-omni-offline-sync.md) to use it without
+moving authority into the client.
 
-- encrypted local records without server/master secrets;
-- a bounded mutation queue with idempotency keys;
-- conflict detection and explicit merge/retry policy;
-- authenticated resynchronization and tenant/user erasure;
-- migrations, storage quotas and corrupted-state recovery;
+Calling the generated shell itself “offline-first” remains inaccurate. A real
+application profile must still provide at least:
+
+- reviewed platform persistence and Keychain/Keystore integration;
+- network/background orchestration and application conflict UX;
+- concrete migrations beyond the current versioned fail-closed schema;
+- complete deletion of snapshots, backups and platform keys;
 - browser, Android and iOS tests for airplane mode and reconnection.
 
 ## Adding native capabilities safely

@@ -24,6 +24,7 @@ studio = []
 redis = ["queue-redis", "cache-redis"]
 queue-redis = ["dep:redis"]
 cache-redis = ["dep:redis"]
+offline-sync = ["dep:aes-gcm", "dep:zeroize"]
 telemetry = ["dep:tracing-opentelemetry", "dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk"]
 strict-postgres = ["orm", "rullst-orm/strict-postgres"]
 strict-mysql = ["orm", "rullst-orm/strict-mysql"]
@@ -69,6 +70,8 @@ ring = { workspace = true, features = ["std"] }
 tracing = { workspace = true }
 tracing-core = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
+aes-gcm = { version = "0.11.0", features = ["zeroize"], optional = true }
+zeroize = { workspace = true, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2.123"

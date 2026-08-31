@@ -67,6 +67,7 @@
 - [41. Tenant-Bound RAG](tutorials/41-tenant-bound-rag.md)
 - [42. Server-Bound OAuth/OIDC Sessions](tutorials/42-server-bound-oauth-sessions.md)
 - [43. Omni Web-First Applications](tutorials/43-omni-web-first.md)
+- [44. Omni Offline Synchronization](tutorials/44-omni-offline-sync.md)
 
 # Reference
 - [📜 Framework Spec](spec.md)

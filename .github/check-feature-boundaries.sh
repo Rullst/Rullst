@@ -61,6 +61,7 @@ rullst-core|orm
 rullst-core|queue-sqlite
 rullst-core|queue-redis
 rullst-core|cache-redis
+rullst-core|offline-sync
 rullst-core|telemetry
 rullst-connect|axum
 rullst-connect|actix
@@ -92,6 +93,7 @@ rullst|orm-redis
 rullst|queue-sqlite
 rullst|queue-redis
 rullst|cache-redis
+rullst|offline-sync
 rullst|mail-smtp
 rullst|auth-jwt
 rullst|oauth

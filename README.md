@@ -160,9 +160,13 @@ web application and server remain canonical, while a generated Tauri shell
 packages the same experience for desktop, Android and iOS behind an exact-origin
 navigation boundary and no privileged remote IPC. The portable
 `rullst.client` v1 contract gives web and platform code the same bounded typed
-JSON envelopes without trusting client-supplied roles or ownership.
-Native/offline capabilities remain explicit opt-ins, not automatic claims. See the
-[Omni tutorial](docs/src/tutorials/43-omni-web-first.md).
+JSON envelopes without trusting client-supplied roles or ownership. The opt-in
+native `offline-sync` foundation adds account-bound encrypted snapshots,
+idempotent FIFO proposals and explicit conflict/resync/recovery state; platform
+secure-key/storage/network integration remains application work, so the shell
+itself is not advertised as offline-first. See the
+[Omni tutorial](docs/src/tutorials/43-omni-web-first.md) and
+[offline-sync tutorial](docs/src/tutorials/44-omni-offline-sync.md).
 
 ### 🔄 Assisted framework upgrades (v12 preview)
 

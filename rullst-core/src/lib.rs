@@ -52,6 +52,9 @@ pub mod live;
 #[cfg(not(target_arch = "wasm32"))]
 /// Multitenancy request routing and tenant state isolation layers.
 pub mod multitenant;
+#[cfg(all(not(target_arch = "wasm32"), feature = "offline-sync"))]
+/// Encrypted, bounded offline synchronization foundations for platform clients.
+pub mod offline_sync;
 #[cfg(not(target_arch = "wasm32"))]
 /// Canonical production middleware ordering contract.
 pub mod production;

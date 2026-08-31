@@ -50,6 +50,7 @@ rullst = { version = "12.0.0", default-features = false }
 | `queue-redis` | no | Redis dependency and Core's Redis queue backend |
 | `cache-redis` | no | Redis dependency and Core's Redis cache backend |
 | `redis` | no | Convenience alias enabling `queue-redis`, `cache-redis` and `orm-redis` |
+| `offline-sync` | no | Native bounded offline queue, explicit conflict state machine, and account-bound encrypted snapshots; platform storage and transport remain application responsibilities |
 | `oauth` | no | OAuth2/OIDC providers from `rullst-connect` |
 | `ai` | no | Provider-agnostic AI clients and local safeguards from `rullst-ai` |
 | `ai-sql-memory` | no | `ai` plus tenant-aware durable chat memory for SQLite, PostgreSQL, MySQL, and MariaDB |
@@ -83,6 +84,7 @@ Default features: none.
 | `queue-redis` | Redis-backed queues |
 | `cache-redis` | Redis-backed cache storage |
 | `redis` | Convenience alias for both Redis queue and cache backends |
+| `offline-sync` | Native bounded offline synchronization state and AES-256-GCM encrypted snapshots; excludes platform storage and network orchestration |
 | `studio` | Integration marker used by the umbrella Studio boundary; it adds no dependency by itself |
 | `telemetry` | OpenTelemetry tracing and OTLP export dependencies |
 | `strict-postgres` | `orm` plus the ORM PostgreSQL backend selection |
