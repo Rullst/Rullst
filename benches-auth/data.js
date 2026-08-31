@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788130718331,
+  "lastUpdate": 1788139451523,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4789,6 +4789,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 503,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "9d664652023b08c79fe310524358ca00846c79bf",
+          "message": "feat(ai): add durable chat memory",
+          "timestamp": "2026-08-30T22:17:17-03:00",
+          "tree_id": "71a1dced9a53a2c4b0d2bbedc9413507329d3ea7",
+          "url": "https://github.com/Rullst/Rullst/commit/9d664652023b08c79fe310524358ca00846c79bf"
+        },
+        "date": 1788139451077,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 501,
+            "range": "± 29",
             "unit": "ns/iter"
           }
         ]
