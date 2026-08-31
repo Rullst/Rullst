@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788156078849,
+  "lastUpdate": 1788158033676,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -3235,6 +3235,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 544,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "57eb6abb6317fe4d503fd99ebb11664b44ad9fb5",
+          "message": "feat(academy): add durable activity submissions",
+          "timestamp": "2026-08-31T03:25:58-03:00",
+          "tree_id": "80a360bed4939c949533cad25d22ce8a5eb45adf",
+          "url": "https://github.com/Rullst/Rullst/commit/57eb6abb6317fe4d503fd99ebb11664b44ad9fb5"
+        },
+        "date": 1788158033107,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 494,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
