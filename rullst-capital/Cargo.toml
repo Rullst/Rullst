@@ -22,6 +22,7 @@ default = ["axum"]
 axum = ["dep:axum"]
 actix = ["dep:actix-web", "dep:futures-util"]
 nfse = ["dep:flate2", "dep:oxixml-schema", "dep:p12-keystore", "dep:roxmltree", "dep:xml-sec"]
+invoice-pdf = ["dep:printpdf"]
 
 [dependencies]
 rullst-core = { workspace = true }
@@ -45,6 +46,7 @@ axum = { workspace = true, optional = true }
 actix-web = { version = "4", optional = true, default-features = false }
 futures-util = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["sync"] }
+printpdf = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

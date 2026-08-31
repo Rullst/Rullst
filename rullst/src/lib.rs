@@ -32,7 +32,7 @@ pub use rullst_auth as auth;
 #[cfg(feature = "oauth")]
 pub use rullst_connect as connect;
 
-#[cfg(feature = "mailer")]
+#[cfg(feature = "mail")]
 pub use rullst_mail as mail;
 
 #[cfg(feature = "ai")]

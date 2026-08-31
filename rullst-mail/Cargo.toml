@@ -20,9 +20,11 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 [features]
 default = []
 mail-smtp = ["dep:lettre"]
+capital-invoice = ["dep:rullst-capital", "rullst-capital/invoice-pdf"]
 
 [dependencies]
 rullst-core = { workspace = true }
+rullst-capital = { workspace = true, optional = true }
 lettre = { workspace = true, optional = true, features = ["tokio1", "tokio1-rustls-tls", "builder", "smtp-transport", "hostname"] }
 reqwest = { workspace = true, features = ["json", "rustls"] }
 serde = { workspace = true }

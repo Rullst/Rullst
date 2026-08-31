@@ -130,7 +130,14 @@ fn parse_response(
         }
     }
 
-    ChargeReceipt::try_new("stripe", charge_id, status, amount_minor, currency)
+    ChargeReceipt::from_verified_provider_response(
+        "stripe",
+        charge_id,
+        status,
+        amount_minor,
+        currency,
+        request.customer_email(),
+    )
 }
 
 #[cfg(test)]

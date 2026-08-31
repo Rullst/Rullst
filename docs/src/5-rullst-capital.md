@@ -61,6 +61,20 @@ with the distinct non-success `ChargeStatus::Mock`; it must never grant access
 or be booked as revenue. This API has no raw-card field and never guesses
 currency.
 
+## Payment-bound invoice PDF and delivery
+
+Enable the umbrella `capital-mail` feature (or Capital's `invoice-pdf` and
+Mail's `capital-invoice` features separately). `Invoice::bind_succeeded_charge`
+rejects non-final/mock receipts and any recipient, minor-unit total or currency
+mismatch. `PaidInvoiceDelivery::prepare` then creates escaped HTML, a bounded
+native PDF attachment and a message that has already passed Mail pre-flight.
+It can use the configured facade, a tenant route or an explicit static driver.
+
+The returned stable `delivery_key` is for a unique durable outbox record owned
+by the application. Rullst does not infer a webhook, claim that key atomically,
+guarantee attachment support at every provider or promise exactly-once
+delivery. See the [SaaS billing tutorial](tutorials/19-saas-billing-capital.md#4-render-and-deliver-the-invoice-only-after-final-success).
+
 Webhook endpoints must use the Capital verification middleware. Its Axum and
 opt-in Actix adapters call the same canonical verifier. For supported protocols
 it performs cryptographic verification, freshness checks, a two-megabyte body

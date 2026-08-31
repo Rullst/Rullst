@@ -216,7 +216,19 @@ billing side effects in a multi-instance deployment, claim the provider event
 ID through a durable database or Redis uniqueness transaction and make the
 state transition idempotent.
 
-### 4. International Payouts with Wise
+### 4. Payment-Bound PDF Invoice Delivery
+
+With the umbrella `capital-mail` feature, bind an authoritative invoice to the
+final charge receipt and prepare a pipeline-validated HTML/PDF message through
+`rullst::mail::PaidInvoiceDelivery`. Non-final/mock receipts and mismatched
+recipient, minor-unit total or currency fail before delivery. Persist the
+stable delivery key under a unique constraint before calling `send`; the
+bridge is at-least-once and does not infer webhook reconciliation.
+
+The complete runnable shape and its outbox boundary are shown in
+[Tutorial 19](tutorials/19-saas-billing-capital.md#4-render-and-deliver-the-invoice-only-after-final-success).
+
+### 5. International Payouts with Wise
 
 ```rust
 use rullst_capital::{CapitalError, WiseProvider};

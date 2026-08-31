@@ -17,6 +17,9 @@ provider sandbox.
 - **Webhook verification:** Provider-specific signature/freshness/replay
   foundations for documented adapters. Durable reconciliation and database
   updates remain application responsibilities.
+- **Payment-bound invoices:** The opt-in `invoice-pdf` feature validates money
+  into exact minor units, renders bounded paginated PDF and binds delivery to a
+  final receipt matching recipient, amount and currency.
 
 ---
 
@@ -50,6 +53,14 @@ The heavier NFS-e schema/signature boundary is opt-in:
 
 ```toml
 rullst-capital = { version = "12.0.0", features = ["nfse"] }
+```
+
+Native invoice PDF is independently opt-in. One-call Mail delivery uses the
+downstream `rullst-mail/capital-invoice` feature, or `rullst/capital-mail` when
+using the umbrella crate:
+
+```toml
+rullst = { version = "12.0.0", features = ["capital-mail"] }
 ```
 
 Applications using the umbrella crate can derive the bounded billing facade on
@@ -114,6 +125,20 @@ are deterministic but carry the distinct non-success `ChargeStatus::Mock`;
 other adapters return `UnsupportedOperation`. Mandate/SCA,
 durable idempotency, webhook reconciliation and entitlement changes remain
 application responsibilities.
+
+### Payment-Bound Invoice Delivery
+
+`Invoice::bind_succeeded_charge` accepts only final `Succeeded` evidence with
+an exact recipient, minor-unit amount and currency match. The resulting
+`PaidInvoice` can be rendered as escaped HTML or a bounded A4 PDF. Mail's opt-in
+`PaidInvoiceDelivery` bridge attaches both formats, runs mandatory pre-flight
+and sends through the configured facade, a tenant route or an explicit static
+driver.
+
+Persist and atomically claim `PaidInvoice::delivery_key()` in an application
+outbox before retryable delivery. The bridge does not infer webhook state or
+promise provider acceptance/exactly-once behavior. See the
+[SaaS billing tutorial](https://rullst.github.io/tutorials/19-saas-billing-capital.html#4-render-and-deliver-the-invoice-only-after-final-success).
 
 ### Initializing a Provider
 

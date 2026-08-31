@@ -26,6 +26,9 @@
 - **📦 Async Background Worker Queues:** Native non-blocking dispatch via `rullst-core::queue`.
 - **🧪 Explicit offline provider mode:** empty or `mock_*` credentials select `DeliveryMode::OfflineMock`, never perform network I/O, and are inspectable through `OfflineMailMock`.
 - **🛠️ Safe CLI Scaffolding:** Generates registered, facade-based mailables for Welcome, Password Reset, OTP, Invoice, custom, evidence-aware NFS-e/international receipts, and explicit D+1/D+3/D+7 dunning; validates names, refuses collisions and escapes dynamic HTML.
+- **🧾 Payment-Bound PDF Delivery:** The opt-in `capital-invoice` bridge accepts
+  only Capital's final evidence-bound `PaidInvoice`, attaches bounded HTML/PDF,
+  applies pre-flight and preserves a stable key for the application outbox.
 
 ---
 
@@ -196,6 +199,13 @@ or XMLDSig validity into tax authorization. `make:mail-dunning` exposes three
 explicit stages, while due-date calculation, scheduling, entitlement changes,
 and account state remain application responsibilities. Both templates execute
 the mandatory pre-flight while building and fail on unsafe links.
+
+For a payment-bound native PDF rather than the scaffolded fiscal template,
+enable `rullst-mail/capital-invoice` (or umbrella `rullst/capital-mail`) and use
+`PaidInvoiceDelivery::prepare`. It rejects non-final/mock payment evidence and
+recipient/amount/currency substitution before sending. The host must atomically
+claim its stable delivery key in durable state; webhook orchestration,
+provider acceptance and exactly-once delivery are not implied.
 
 ---
 

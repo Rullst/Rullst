@@ -33,8 +33,8 @@ Important feature changes include:
 
 - `auth`, `ai`, `capital`, `nexus`, `studio`, `security`, and `iot` now select
   real optional crates rather than empty facade markers;
-- `mailer` is a compatibility alias for `mail-smtp`, which now selects
-  `rullst-mail` and its SMTP transport;
+- `mail` selects HTTP/offline transports without SMTP; `mailer` remains a
+  compatibility alias for `mail-smtp` when Lettre SMTP is required;
 - `redis` selects both queue and cache Redis boundaries;
 - `strict-postgres`, `strict-mysql`, and `strict-sqlite` select concrete ORM
   database types. Select at most one in an application.

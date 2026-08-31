@@ -145,15 +145,23 @@ pub struct ChargeReceipt {
     status: ChargeStatus,
     amount_minor: u64,
     currency: String,
+    customer_email: String,
 }
 
 impl ChargeReceipt {
-    pub(crate) fn try_new(
+    /// Constructs a receipt from a response already verified by a billing adapter.
+    ///
+    /// Custom [`crate::providers::BillingProvider`] implementations use this
+    /// boundary after binding the provider response to their original request.
+    /// This constructor performs structural validation; it does not contact or
+    /// authenticate the named provider.
+    pub fn from_verified_provider_response(
         provider: &'static str,
         charge_id: impl Into<String>,
         status: ChargeStatus,
         amount_minor: u64,
         currency: impl Into<String>,
+        customer_email: impl Into<String>,
     ) -> Result<Self, CapitalError> {
         if !reference_is_valid(provider, 64) {
             return Err(CapitalError::ProviderRequestFailed(
@@ -176,12 +184,15 @@ impl ChargeReceipt {
                 "provider returned invalid charge amount or currency".to_string(),
             ));
         }
+        let customer_email = customer_email.into();
+        validate_email(&customer_email)?;
         Ok(Self {
             provider,
             charge_id,
             status,
             amount_minor,
             currency,
+            customer_email,
         })
     }
 
@@ -210,6 +221,11 @@ impl ChargeReceipt {
         &self.currency
     }
 
+    /// Validated billing recipient bound to the originating charge request.
+    pub fn customer_email(&self) -> &str {
+        &self.customer_email
+    }
+
     /// Returns whether a live provider reported final success.
     pub fn is_succeeded(&self) -> bool {
         self.status == ChargeStatus::Succeeded
@@ -225,6 +241,7 @@ impl std::fmt::Debug for ChargeReceipt {
             .field("status", &self.status)
             .field("amount_minor", &self.amount_minor)
             .field("currency", &self.currency)
+            .field("customer_email", &"[REDACTED]")
             .finish()
     }
 }
@@ -252,12 +269,13 @@ pub(crate) fn mock_charge_receipt(
             "failed to construct deterministic mock charge ID".to_string(),
         )
     })?;
-    ChargeReceipt::try_new(
+    ChargeReceipt::from_verified_provider_response(
         provider,
         format!("ch_mock_{fingerprint}"),
         ChargeStatus::Mock,
         request.amount_minor(),
         request.currency(),
+        request.customer_email(),
     )
 }
 

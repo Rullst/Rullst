@@ -24,3 +24,10 @@ fn iot_feature_exposes_iot_crate() {
 fn mailer_feature_exposes_mail_with_smtp_enabled() {
     let _ = core::any::TypeId::of::<rullst::mail::SmtpDriver>();
 }
+
+#[cfg(feature = "capital-mail")]
+#[test]
+fn capital_mail_exposes_payment_bound_delivery_without_requiring_smtp() {
+    let _ = core::any::TypeId::of::<rullst::mail::PaidInvoiceDelivery>();
+    let _ = core::any::TypeId::of::<rullst::capital::PaidInvoice>();
+}

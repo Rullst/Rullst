@@ -494,9 +494,26 @@ direct-charge parity across adapters.
 
 ### 6.2. Invoice Rendering
 
-`Invoice::generate_html` escapes every application-supplied textual field. It
-renders HTML only: native PDF generation and automatic delivery after a payment
-event are not part of the current contract.
+`Invoice::generate_html` remains the source-compatible escaped HTML renderer.
+Trusted paths use `validate`/`try_generate_html`: the legacy public `f64` model
+accepts only bounded finite positive values with at most two decimal places,
+converts them to integer minor units, and requires the exact item sum.
+
+The opt-in `invoice-pdf` feature adds bounded paginated A4 rendering. Its
+embedded Helvetica subset supports WinAnsi text; other scripts require a
+caller-supplied TTF/OTF of at most eight MiB containing every used glyph. PDF
+output is capped at sixteen MiB. `Invoice::bind_succeeded_charge` creates an
+immutable `PaidInvoice` only when a final, non-mock receipt exactly matches the
+recipient, minor-unit amount and currency. It derives a stable non-secret key
+from the invoice and provider evidence for use by an application outbox.
+
+The downstream `rullst-mail/capital-invoice` feature converts that value into a
+pipeline-validated HTML message with the PDF attached and exposes one-call
+facade, tenant-aware or static-driver delivery. It does not infer a webhook
+event, atomically claim the delivery key, guarantee provider acceptance or
+promise exactly-once delivery. Applications processing retries or multiple
+instances must persist/claim the key and reconcile payment state durably before
+sending.
 
 ### 6.3. Webhook Signature Verification
 * The Axum and opt-in Actix middleware adapters call one canonical bounded

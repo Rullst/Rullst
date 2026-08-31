@@ -92,14 +92,60 @@ the distinct non-success `ChargeStatus::Mock` for an exact retry. The mock is
 not a mandate, durable idempotency store or live sandbox test. Other adapters
 return `UnsupportedOperation` until reviewed individually.
 
-## 4. Verify webhooks before business processing
+## 4. Render and deliver the invoice only after final success
+
+Enable `capital-mail` on the umbrella crate (or `invoice-pdf` on Capital plus
+`capital-invoice` on Mail). Build the invoice from authoritative order state,
+then bind it to the returned receipt:
+
+```rust,no_run
+use chrono::Utc;
+use rullst::capital::{ChargeReceipt, Invoice, InvoiceItem};
+use rullst::mail::PaidInvoiceDelivery;
+
+async fn deliver_invoice(receipt: &ChargeReceipt) -> Result<(), Box<dyn std::error::Error>> {
+    let invoice = Invoice {
+        invoice_id: "INV-2026-0001".to_string(),
+        customer_email: "customer@example.com".to_string(),
+        date: Utc::now(),
+        items: vec![InvoiceItem {
+            description: "Pro subscription".to_string(),
+            amount: 25.00,
+        }],
+        total: 25.00,
+        currency: "BRL".to_string(),
+    };
+
+    let paid = invoice.bind_succeeded_charge(receipt)?;
+    let delivery = PaidInvoiceDelivery::prepare(&paid)?;
+
+    // In production, atomically claim this stable key in a durable outbox.
+    let _delivery_key = delivery.delivery_key();
+    delivery.send().await?;
+    Ok(())
+}
+```
+
+The binding rejects `Processing`, `Mock`, a mismatched recipient, amount or
+currency. The default PDF is paginated, bounded to sixteen MiB and supports
+WinAnsi text (including common Portuguese characters); pass a checked TTF/OTF
+to Capital for other scripts. Mail applies its mandatory pre-flight before the
+facade queues or sends the HTML message and attachment.
+
+This helper does not subscribe to webhooks by itself. Reconcile the provider
+event, build the authoritative invoice and insert `delivery_key` under a unique
+database constraint in the same application workflow. Mail delivery remains
+at least once: a crash and retry can still require provider/application
+deduplication.
+
+## 5. Verify webhooks before business processing
 
 Mount `rullst_capital::verify_webhook` on the exact provider callback route as
 shown in the [Capital crate guide](../5-rullst-capital.md). Apply any CSRF
 exemption only to that exact signed route. Never update access or subscription
 state from an unverified request.
 
-## 5. Use a bounded subscription handle and grace period
+## 6. Use a bounded subscription handle and grace period
 
 ```rust,no_run
 use rullst_capital::{Billable as _, CapitalError, GracePeriod, StripeProvider};
@@ -121,7 +167,7 @@ it with authoritative subscription state, evaluate it against a trusted clock
 inside the entitlement check, and confirm the selected adapter's live pause or
 cancel semantics.
 
-## 6. Supply an optional local revenue snapshot
+## 7. Supply an optional local revenue snapshot
 
 `RevenueDashboardManager` does not derive money or subscribers from event names.
 After durable reconciliation, the application may call `update_metrics` with its

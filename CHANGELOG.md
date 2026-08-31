@@ -385,6 +385,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   exact mock retries are deterministic with a distinct non-success `Mock` status
   and sensitive identifiers are redacted. Other adapters fail explicitly until
   their direct-charge path is reviewed.
+- Added opt-in bounded paid-invoice delivery. `invoice-pdf` validates legacy
+  invoice money into exact minor units and renders paginated A4 PDF with an
+  embedded WinAnsi font or checked caller font. `PaidInvoice` requires final
+  `Succeeded` evidence matching e-mail, amount and currency; the downstream
+  `rullst-mail/capital-invoice` bridge attaches HTML/PDF, applies pre-flight and
+  sends through the facade or a static driver. Its stable key supports a
+  caller-owned durable outbox; webhook orchestration and exactly-once delivery
+  are not claimed.
 - `cargo rullst make:iot` now validates device identifiers, refuses traversal
   and collisions, enables the umbrella `iot` feature, registers generated
   modules, and is checked by compiling a materialized application. IoT HTML

@@ -15,6 +15,8 @@ pub mod error;
 pub mod facade;
 pub mod factory;
 pub mod message;
+#[cfg(feature = "capital-invoice")]
+pub mod paid_invoice;
 pub mod pipeline;
 pub mod resolver;
 pub mod security;
@@ -28,6 +30,8 @@ pub use error::*;
 pub use facade::*;
 pub use factory::*;
 pub use message::*;
+#[cfg(feature = "capital-invoice")]
+pub use paid_invoice::*;
 pub use pipeline::*;
 pub use resolver::*;
 pub use security::*;

@@ -55,8 +55,8 @@ same release train.
 - Update direct imports only when the corresponding feature is enabled.
 - Remove code that depended on empty facade features compiling without their
   domain crate.
-- For SMTP, use `rullst-mail` through `mail-smtp`; HTTP mail providers do not
-  require that feature.
+- Use the umbrella `mail` feature for HTTP/offline transports. Add
+  `mail-smtp` only when the SMTP dependency is required.
 - For OpenTelemetry export, enable `telemetry`; process-local Radar data does
   not require it.
 

@@ -84,6 +84,7 @@ opentelemetry_sdk = { version = "0.32.1", default-features = false }
 tracing-opentelemetry = { version = "0.33.0", default-features = false }
 zeroize = "1.8.2"
 flate2 = { version = "1.1.10", default-features = false, features = ["rust_backend"] }
+printpdf = { version = "=0.12.7", default-features = false }
 
 [workspace.metadata.cargo-machete]
 ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]

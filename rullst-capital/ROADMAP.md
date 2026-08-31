@@ -23,9 +23,13 @@ Rullst Capital simplifies the billing and subscription complexities of building 
 - [x] **Fail-closed Axum and Actix Webhooks**: Both framework adapters call one canonical verifier. Supported provider signatures reject empty secrets; timestamped protocols enforce freshness, bodies are bounded and middleware provides bounded TTL replay protection.
 - [ ] **Distributed Idempotency Store**: Persist accepted event keys across processes and deployments before billing side effects.
 - [ ] **Alipay RSA2**: Implement interoperable RSA-SHA256 request signing and notification verification against official contract tests; live Alipay remains disabled until then.
-- [~] **Invoicing Generation**: Generates escaped invoice HTML and converts a
-  paid invoice into an offline DPS preview. Native PDF rendering and automatic
-  delivery after payment are not implemented.
+- [~] **Payment-Bound Invoicing**: Validates the legacy invoice model into exact
+  minor units, renders escaped HTML and opt-in bounded native PDF, and binds a
+  delivery only to final `Succeeded` evidence matching recipient, amount and
+  currency. The downstream opt-in Mail bridge attaches that PDF and sends via
+  the mandatory pipeline while exposing a stable key for the application's
+  durable outbox. Automatic webhook orchestration, atomic cross-process
+  claiming, exactly-once provider delivery and attachment parity remain open.
 
 ## Phase 3: Advanced Subscription Management
 - [x] **Bounded Grace Periods & Subscription Handle**: `SubscriptionHandle<P>` validates/redacts the provider ID and exposes `cancel()`/`pause()` with static dispatch when the provider is explicit. `GracePeriod` is a validated half-open window of at most 366 days, and `#[derive(Billable)]` recognizes an all-or-none start/end field pair. Persistence, trusted clock, entitlement enforcement, provider semantics and scheduling remain application/provider boundaries.

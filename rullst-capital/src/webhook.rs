@@ -298,7 +298,9 @@ pub(super) fn capital_error_status_code(error: &CapitalError) -> u16 {
         | CapitalError::AuthenticationFailed(_)
         | CapitalError::StaleWebhook(_) => 401,
         CapitalError::WebhookReplay(_) => 409,
-        CapitalError::PayloadParseError(_) | CapitalError::InvalidCharge(_) => 400,
+        CapitalError::PayloadParseError(_)
+        | CapitalError::InvalidCharge(_)
+        | CapitalError::InvalidInvoice(_) => 400,
         CapitalError::ProviderRequestFailed(_)
         | CapitalError::UnsupportedOperation(_)
         | CapitalError::MockWebhookNotAllowed(_)

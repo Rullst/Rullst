@@ -45,7 +45,8 @@ rullst = { version = "12.0.0", default-features = false }
 | `studio` | no | Studio plus Core's Studio integration marker |
 | `auth` | no | Authentication, sessions, passkeys, and RBAC helpers from `rullst-auth` |
 | `auth-jwt` | no | `auth` plus the strict application-issued JWT policy |
-| `mail-smtp` | no | `rullst-mail` with its SMTP transport |
+| `mail` | no | `rullst-mail` with HTTP/offline transports and no SMTP dependency |
+| `mail-smtp` | no | `mail` plus the optional SMTP transport |
 | `mailer` | no | Compatibility alias for `mail-smtp`; prefer `mail-smtp` in new manifests |
 | `queue-redis` | no | Redis dependency and Core's Redis queue backend |
 | `cache-redis` | no | Redis dependency and Core's Redis cache backend |
@@ -57,6 +58,8 @@ rullst = { version = "12.0.0", default-features = false }
 | `capital` | no | Payment, payout, analytics, DPS builder, and offline fiscal APIs from `rullst-capital` |
 | `capital-actix` | no | `capital` plus the Actix Web adapter for the canonical signed-webhook verifier |
 | `capital-nfse` | no | `capital` plus checksum-pinned official XSD validation, PKCS#12 XMLDSig, and rustls mTLS preparation |
+| `capital-pdf` | no | `capital` plus bounded validated native invoice PDF rendering |
+| `capital-mail` | no | `capital-pdf` plus Mail's payment-bound HTML/PDF attachment delivery bridge |
 | `security` | no | RASP/WAF and application-security primitives from `rullst-security` |
 | `security-redis` | no | `security` plus the atomic Redis rate limiter |
 | `iot` | no | IoT models, frame helpers, and signed OTA verification from `rullst-iot` |
@@ -169,6 +172,7 @@ Default feature: `axum`.
 | `axum` | Axum middleware for the canonical bounded signed-webhook verifier |
 | `actix` | Actix Web middleware for the same verifier; it does not enable Axum when selected directly |
 | `nfse` | Checksum-pinned official XSD validation, PKCS#12 RSA-SHA256 XMLDSig, deterministic GZip/Base64 issuance JSON, bounded signed-authorization and structured-rejection parsing, and rustls mTLS preparation; it does not enable live SEFIN transmission or establish certificate trust/homologation |
+| `invoice-pdf` | Bounded paginated A4 invoice PDF with embedded WinAnsi or a validated caller-supplied TTF/OTF; payment/mail orchestration is separate |
 
 ### `rullst-mail`
 
@@ -177,6 +181,7 @@ Default features: none. HTTP mail providers remain available without SMTP.
 | Feature | Enables |
 | --- | --- |
 | `mail-smtp` | Lettre-based SMTP transport |
+| `capital-invoice` | Capital's native invoice PDF plus the final-payment-bound delivery bridge; durable outbox claiming remains application-owned |
 
 ### `rullst-auth`
 

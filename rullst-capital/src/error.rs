@@ -46,6 +46,10 @@ pub enum CapitalError {
     #[error("Invalid charge request: {0}")]
     InvalidCharge(String),
 
+    /// An invoice violates the bounded rendering or money contract.
+    #[error("Invalid invoice: {0}")]
+    InvalidInvoice(String),
+
     /// Digital invoice or tax authority operation error.
     #[error("Fiscal error: {0}")]
     FiscalError(#[from] crate::fiscal::models::FiscalError),

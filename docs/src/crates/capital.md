@@ -12,6 +12,7 @@
 | **Direct Gateways** | 🟠 `[Partial]` | 11 payment/payout adapter surfaces with pooled HTTP clients and deterministic mocks. Live method coverage, provider acceptance tests, retry semantics, and reconciliation are not uniform yet. |
 | **Subscription Lifecycle** | 🟠 `[Partial]` | Checkout, portal, cancellation, pause, usage, coupon, trial, status, and webhook APIs exist, but not every provider implements and verifies every method end-to-end. |
 | **Webhook Processing** | 🟢 `[Implemented / Bounded]` | Axum and opt-in Actix middleware call one canonical bounded verifier; named adapters implement signature verification and freshness checks. Cross-instance durable replay/idempotency remains application or future framework work. Alipay RSA2 remains fail-closed. |
+| **Paid Invoice Rendering** | 🟢 `[Implemented / Feature-gated]` | Exact validated minor units, escaped HTML, bounded paginated A4 PDF and a final-success e-mail/amount/currency binding. The downstream Mail bridge sends the attachment but durable outbox claiming and exactly-once delivery remain application work. |
 | **SaaS MRR/ARR Analytics** | 🟢 `[Implemented / Bounded]` | In-memory revenue metrics and churn calculations for supplied records; this is not an accounting ledger or provider reconciliation engine. |
 | **NFS-e 1.01 Local Pipeline** | 🟢 `[Implemented / Bounded]` | Strict ordinary-service DPS builder, checksum-pinned closed-catalog validation of official XSD sources with one exact documented production regex-anchor compatibility normalization, protected PKCS#12 RSA-SHA256/inclusive-C14N XMLDSig, independent local signature verification, deterministic `dpsXmlGZipB64` request JSON, bounded signed-authorization and structured-rejection parsing, and bounded rustls mTLS client construction. |
 | **NFS-e Offline Sandbox** | 🟡 `[Offline Mock]` | Deterministic offline mock fixtures (`NfseEnvironment::Mock`) for local development and CI testing. |
@@ -65,7 +66,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### 2. Verified Webhook Signature Handling
+### 2. Payment-Bound Invoice PDF and Mail
+
+Enable `rullst/capital-mail` or the separate `rullst-capital/invoice-pdf` and
+`rullst-mail/capital-invoice` features. A `PaidInvoice` can be constructed only
+from final `Succeeded` evidence matching the invoice recipient, exact
+minor-unit total and currency. `PaidInvoiceDelivery::prepare` generates escaped
+HTML and a bounded PDF attachment and runs Mail's mandatory pre-flight.
+
+The stable delivery key is an application outbox identity, not a distributed
+lock. The application must reconcile webhooks, claim that key atomically and
+own at-least-once retries/provider attachment policy.
+
+### 3. Verified Webhook Signature Handling
 
 The low-level provider contract below illustrates exact-byte verification. HTTP
 applications should normally mount `verify_webhook` on Axum or
