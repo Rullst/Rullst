@@ -410,17 +410,23 @@ pub async fn play_lesson(
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
-    rullst::response::Html(lms::video_player_page(
+    match lms::lesson_player_page(
         &lesson.title,
-        &lesson.video_url,
+        &lesson.media_kind,
+        &lesson.media_url,
+        &lesson.captions_url,
+        &lesson.transcript,
+        &lesson.language_tag,
         lesson.course_id,
         lesson.id,
         progress,
         csrf.as_str(),
         &progress_key,
         csp_nonce.as_str(),
-    ))
-    .into_response()
+    ) {
+        Ok(page) => rullst::response::Html(page).into_response(),
+        Err(_) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    }
 }
 
 pub async fn record_progress(

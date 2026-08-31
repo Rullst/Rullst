@@ -217,6 +217,14 @@ Rullst tests representative generated projects and maintains structural
 matrices instead of assuming that a template is correct because its source
 file compiles inside the CLI crate.
 
+The Academy slice is already more than a landing-page mock: its generated
+SQLite journey exercises server-owned progress, assessment, score,
+leaderboard, automation, notifications and school boundaries. Its accessible
+lesson presentation supports bounded video/audio metadata, mandatory WebVTT
+captions for video and escaped transcripts. That is a useful foundation for a
+language-learning product, not a claim that Rullst generates pedagogy, content,
+speech recognition, native-device behavior or a complete Duolingo equivalent.
+
 For example, `make:billing --model Workspace` now materializes distinct SQLx
 and Turso-primary persistence profiles. Both are generated, linted, migrated
 and exercised through subscription ownership and collision negatives; the

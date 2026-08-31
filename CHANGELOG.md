@@ -64,6 +64,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   storage, browser offline state, retry/backoff/background policy, future-schema
   migrations, physical devices, signing and store review remain explicit
   evidence boundaries.
+- The generated Academy/LMS lesson boundary now distinguishes video and audio,
+  accepts only HTTPS or absolute same-origin media sources, requires WebVTT
+  captions for video, requires bounded transcript/language metadata for every
+  lesson and keeps playback opt-in. Its materialized SQLite test verifies
+  escaping, CSP nonce identity and fail-closed invalid-source/metadata cases.
+  Rullst still does not claim media hosting/transcoding, caption quality,
+  speech recognition, browser/device conformance or a complete learning
+  product.
 - `rullst-capital` now provides a bounded National NFS-e 1.01 preparation
   pipeline: checksum-pinned official production/restricted artifact manifests,
   strict ordinary-service DPS construction with integer money/rates, closed-

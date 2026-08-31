@@ -110,6 +110,7 @@ fn selected_auth_learning_profile_passes_generated_cargo_tests() {
         &[LmsModule::Auth, LmsModule::Learning],
         &[
             "rullst-lms-modules.json",
+            "static/media/memory-safety.en.vtt",
             "src/models/course.rs",
             "src/models/enrollment.rs",
         ],

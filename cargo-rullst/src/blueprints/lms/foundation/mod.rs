@@ -15,6 +15,8 @@ use migrations::FOUNDATION_MIGRATIONS_MODULE;
 use service::FOUNDATION_SERVICE;
 
 const RETAINED_FILES: &[&str] = &[
+    "static/media/first-project.en.vtt",
+    "static/media/memory-safety.en.vtt",
     "src/controllers/auth_controller.rs",
     "src/controllers/lms_controller.rs",
     "src/migrations/m20260601000000_create_lms_tables.rs",
@@ -121,6 +123,11 @@ mod tests {
             manifest
                 .iter()
                 .any(|(path, _)| *path == "src/services/learning_service.rs")
+        );
+        assert!(
+            manifest
+                .iter()
+                .any(|(path, _)| *path == "static/media/memory-safety.en.vtt")
         );
         for excluded in [
             "src/models/quiz.rs",

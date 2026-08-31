@@ -63,4 +63,138 @@ pub const GENERATED_CATALOG_TESTS_SUFFIX: &str = r##"
         assert!(rendered_catalog.contains("&lt;script&gt;"));
         assert!(!rendered_catalog.contains("<script>alert(1)</script>"));
         assert!(!rendered_catalog.contains("https://"));
+
+        let rendered_video = crate::pages::lms::lesson_player_page(
+            "Memory safety <essentials>",
+            "video",
+            "https://media.example.test/lesson.webm",
+            "/static/media/lesson.en.vtt",
+            "Never render <script>alert('transcript')</script> as markup.",
+            "en",
+            1,
+            1,
+            50,
+            "csrf-token",
+            "progress-key",
+            "player-csp-nonce",
+        )
+        .expect("bounded accessible video player");
+        assert!(rendered_video.contains("<video"));
+        assert!(rendered_video.contains("kind=\"captions\""));
+        assert!(rendered_video.contains("default"));
+        assert!(rendered_video.contains("nonce=\"player-csp-nonce\""));
+        assert!(rendered_video.contains("&lt;script&gt;"));
+        assert!(!rendered_video.contains("<script>alert('transcript')</script>"));
+        assert!(!rendered_video.contains("autoplay"));
+
+        let rendered_audio = crate::pages::lms::lesson_player_page(
+            "Listening exercise",
+            "audio",
+            "/static/media/exercise.ogg",
+            "",
+            "An accessible listening exercise transcript.",
+            "pt-BR",
+            1,
+            2,
+            0,
+            "csrf-token",
+            "progress-key-audio",
+            "player-csp-nonce",
+        )
+        .expect("bounded accessible audio player");
+        assert!(rendered_audio.contains("<audio"));
+        assert!(rendered_audio.contains("Transcript (pt-BR)"));
+
+        for unsafe_source in [
+            "http://media.example.test/lesson.webm",
+            "javascript:alert(1)",
+            "//media.example.test/lesson.webm",
+            "/static/media/lesson\\evil.webm",
+        ] {
+            assert!(matches!(
+                crate::pages::lms::lesson_player_page(
+                    "Unsafe source",
+                    "audio",
+                    unsafe_source,
+                    "",
+                    "Bounded transcript.",
+                    "en",
+                    1,
+                    2,
+                    0,
+                    "csrf-token",
+                    "progress-key-unsafe",
+                    "player-csp-nonce",
+                ),
+                Err(crate::pages::lms::LessonMediaError::InvalidSource)
+            ));
+        }
+        assert!(matches!(
+            crate::pages::lms::lesson_player_page(
+                "Missing captions",
+                "video",
+                "/static/media/lesson.webm",
+                "",
+                "Bounded transcript.",
+                "en",
+                1,
+                1,
+                0,
+                "csrf-token",
+                "progress-key-captions",
+                "player-csp-nonce",
+            ),
+            Err(crate::pages::lms::LessonMediaError::MissingCaptions)
+        ));
+        assert!(matches!(
+            crate::pages::lms::lesson_player_page(
+                "Invalid language",
+                "audio",
+                "/static/media/lesson.ogg",
+                "",
+                "Bounded transcript.",
+                "en_US",
+                1,
+                1,
+                0,
+                "csrf-token",
+                "progress-key-language",
+                "player-csp-nonce",
+            ),
+            Err(crate::pages::lms::LessonMediaError::InvalidLanguage)
+        ));
+        assert!(matches!(
+            crate::pages::lms::lesson_player_page(
+                "Missing transcript",
+                "audio",
+                "/static/media/lesson.ogg",
+                "",
+                "",
+                "en",
+                1,
+                1,
+                0,
+                "csrf-token",
+                "progress-key-transcript",
+                "player-csp-nonce",
+            ),
+            Err(crate::pages::lms::LessonMediaError::InvalidTranscript)
+        ));
+        assert!(matches!(
+            crate::pages::lms::lesson_player_page(
+                "Unknown media",
+                "stream",
+                "/static/media/lesson.bin",
+                "",
+                "Bounded transcript.",
+                "en",
+                1,
+                1,
+                0,
+                "csrf-token",
+                "progress-key-kind",
+                "player-csp-nonce",
+            ),
+            Err(crate::pages::lms::LessonMediaError::InvalidKind)
+        ));
 "##;

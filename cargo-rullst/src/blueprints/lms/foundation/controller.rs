@@ -55,16 +55,23 @@ pub async fn play_lesson(
     let csrf_token = csrf.as_ref().map(|Extension(value)| value.as_str()).unwrap_or_default();
     let nonce = csp_nonce.as_ref().map(|Extension(value)| value.as_str()).unwrap_or_default();
     let progress_key = format!("progress:{user_id}:{lesson_id}:next");
-    rullst::response::Html(lms::video_player_page(
+    match lms::lesson_player_page(
         &lesson.title,
-        &lesson.video_url,
+        &lesson.media_kind,
+        &lesson.media_url,
+        &lesson.captions_url,
+        &lesson.transcript,
+        &lesson.language_tag,
         lesson.course_id,
         lesson.id,
         progress,
         csrf_token,
         &progress_key,
         nonce,
-    )).into_response()
+    ) {
+        Ok(page) => rullst::response::Html(page).into_response(),
+        Err(_) => StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    }
 }
 
 pub async fn record_progress(

@@ -121,7 +121,11 @@ impl Migration for MigrationImpl {
             table.integer("course_id").not_null();
             table.integer("module_id").not_null();
             table.string("title").not_null();
-            table.string("video_url").not_null();
+            table.string("media_kind").not_null();
+            table.string("media_url").not_null();
+            table.string("captions_url").not_null();
+            table.string("transcript").not_null();
+            table.string("language_tag").not_null();
             table.integer("duration").not_null(); // in minutes
             table.timestamps();
         }).await?;
@@ -143,11 +147,11 @@ impl Migration for MigrationImpl {
         ).execute(pool).await?;
         // Seed Lessons
         rullst::db::sqlx::query(
-            "INSERT INTO lessons (id, course_id, module_id, title, video_url, duration) VALUES
-             (1, 1, 1, 'Introduction to Memory Safety', 'https://www.w3schools.com/html/mov_bbb.mp4', 15),
-             (2, 1, 1, 'Deep Dive into Smart Pointers', 'https://media.w3.org/2010/05/sintel/trailer.mp4', 25),
-             (3, 2, 2, 'Setting up your first Rullst Project', 'https://www.w3schools.com/html/mov_bbb.mp4', 10),
-             (4, 2, 2, 'Building Interactive UIs with HTMX', 'https://media.w3.org/2010/05/sintel/trailer.mp4', 20)"
+            "INSERT INTO lessons (id, course_id, module_id, title, media_kind, media_url, captions_url, transcript, language_tag, duration) VALUES
+             (1, 1, 1, 'Introduction to Memory Safety', 'video', 'https://www.w3schools.com/html/mov_bbb.mp4', '/static/media/memory-safety.en.vtt', 'Rust ownership keeps one clear owner for each value and releases the value when that owner leaves scope.', 'en', 15),
+             (2, 1, 1, 'Deep Dive into Smart Pointers', 'audio', 'https://www.w3schools.com/html/horse.ogg', '', 'Smart pointers combine pointer behavior with metadata and ownership rules enforced by their types.', 'en', 25),
+             (3, 2, 2, 'Setting up your first Rullst Project', 'video', 'https://www.w3schools.com/html/mov_bbb.mp4', '/static/media/first-project.en.vtt', 'Create a project, inspect the generated files, run migrations and keep the server as the authority.', 'en', 10),
+             (4, 2, 2, 'Building Interactive UIs with HTMX', 'audio', 'https://www.w3schools.com/html/horse.ogg', '', 'HTMX can request server-rendered fragments while Rust keeps validation and authorization on the server.', 'en', 20)"
         ).execute(pool).await?;
 
         Ok(())
@@ -165,6 +169,16 @@ impl Migration for MigrationImpl {
     manifest.push((
         "src/migrations/m20260601000000_create_lms_tables.rs",
         migration.to_string(),
+    ));
+    manifest.push((
+        "static/media/memory-safety.en.vtt",
+        "WEBVTT\n\n00:00.000 --> 00:05.000\nRust ownership keeps one clear owner for each value.\n"
+            .to_string(),
+    ));
+    manifest.push((
+        "static/media/first-project.en.vtt",
+        "WEBVTT\n\n00:00.000 --> 00:05.000\nCreate a project, inspect its files, then run the migrations.\n"
+            .to_string(),
     ));
 
     manifest.push(("src/migrations/mod.rs", academy_schema::migrations_module()));
@@ -228,7 +242,11 @@ pub struct Lesson {
     pub course_id: i32,
     pub module_id: i32,
     pub title: String,
-    pub video_url: String,
+    pub media_kind: String,
+    pub media_url: String,
+    pub captions_url: String,
+    pub transcript: String,
+    pub language_tag: String,
     pub duration: i32,
 }
 impl NexusModel for Lesson {
@@ -241,7 +259,11 @@ impl NexusModel for Lesson {
             FieldMeta { name: "course_id", label: "Course", kind: FieldKind::ForeignKey { table: "courses", label_col: "title" }, hidden: false, readonly: false },
             FieldMeta { name: "module_id", label: "Module", kind: FieldKind::ForeignKey { table: "course_modules", label_col: "title" }, hidden: false, readonly: false },
             FieldMeta { name: "title", label: "Title", kind: FieldKind::Text, hidden: false, readonly: false },
-            FieldMeta { name: "video_url", label: "Video URL", kind: FieldKind::Url, hidden: false, readonly: false },
+            FieldMeta { name: "media_kind", label: "Media Kind", kind: FieldKind::Text, hidden: false, readonly: false },
+            FieldMeta { name: "media_url", label: "Media URL", kind: FieldKind::Url, hidden: false, readonly: false },
+            FieldMeta { name: "captions_url", label: "Captions URL", kind: FieldKind::Url, hidden: false, readonly: false },
+            FieldMeta { name: "transcript", label: "Transcript", kind: FieldKind::Textarea, hidden: false, readonly: false },
+            FieldMeta { name: "language_tag", label: "Language", kind: FieldKind::Text, hidden: false, readonly: false },
             FieldMeta { name: "duration", label: "Duration (mins)", kind: FieldKind::Number, hidden: false, readonly: false },
         ]
     }
