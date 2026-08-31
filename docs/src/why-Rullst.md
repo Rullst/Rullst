@@ -150,6 +150,13 @@ may retain that timestamp for assertions. Polling delay,
 at-least-once delivery, and provider acceptance remain visible operational
 boundaries.
 
+The optional native AWS SES v2 path follows the provider's real authentication
+model instead of disguising a bearer request as AWS support. It delegates
+regional SigV4 and credential-provider rotation to the official AWS SDK while
+retaining the same pre-flight, HTML/text, attachment/CID and RFC 8058 message
+contract. Its local signed-request fixture proves integration shape, not AWS
+account readiness, reputation or inbox delivery.
+
 Mocks prove the local application contract, not the live provider contract.
 Provider-specific production support still requires the applicable live or
 protocol tests, credentials, policy, and operational evidence.

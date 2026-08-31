@@ -11,14 +11,14 @@
   - **Resend** (`ResendDriver`) — Native REST API with scheduled delivery & RFC 8058.
   - **SendGrid** (`SendGridDriver`) — Native v3 REST API with personalization & attachments.
   - **Postmark** (`PostmarkDriver`) — High-deliverability transactional REST API with Message Streams.
-  - **AWS SES boundary** (`AwsSesDriver`) — deterministic offline fixture or an explicit trusted bearer-authenticated proxy. Direct SES v2 fails closed until SigV4 is implemented.
+  - **AWS SES v2** (`AwsSesDriver`, `aws-ses`) — official AWS SDK/SigV4 native transport with temporary/rotating credential support, plus deterministic offline fixture and an explicit legacy proxy boundary.
   - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with TLS.
   - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Zero-I/O in-memory harness with fluent assertions.
   - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
 - **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. Structured tracing exposes bounded decision fields without provider bodies.
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
 - **📎 Attachments & Inline CID Assets:** Fluent API for raw bytes, files, and Content-ID (`CID`) inline images; transports may copy and Base64-encode payloads.
-- **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend/SendGrid delivery uses provider scheduling. Real SMTP, Postmark, Log and SES-proxy paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
+- **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend/SendGrid delivery uses provider scheduling. Real SMTP, Postmark, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
 - **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters) and dangerous URI schemes (`javascript:`, `data:text/html`).
 - **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`).
 - **🔤 Automatic Plain-Text Fallback:** Automatic HTML-to-plain-text conversion without manual duplication.
@@ -281,6 +281,51 @@ let alert_msg = MailFactory::fake_security_alert("eve@example.com", "Unrecognize
 
 ---
 
+### 9. Native AWS SES v2 with SigV4
+
+Enable the opt-in official SDK transport:
+
+```toml
+[dependencies]
+rullst-mail = { version = "12", features = ["aws-ses"] }
+aws-config = "1.11"
+```
+
+`MAIL_DRIVER=ses` selects native mode when both `AWS_ACCESS_KEY_ID` and
+`AWS_SECRET_ACCESS_KEY` exist. `AWS_SESSION_TOKEN` is accepted for temporary
+credentials. Without those variables, the existing empty/`mock_*` token rule
+selects the offline fixture; a real `AWS_SES_BEARER_TOKEN` is usable only with
+an explicit trusted proxy URL.
+
+Long-running services should inject a refreshing credential provider or a
+caller-built SDK config instead of freezing credentials:
+
+```rust,no_run
+use rullst_mail::{AwsSesDriver, MailDriver, Message, aws_ses_sdk};
+
+# async fn deliver() -> Result<(), Box<dyn std::error::Error>> {
+let shared = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
+let config = aws_ses_sdk::Config::new(&shared);
+let driver = AwsSesDriver::from_native_config(config)?;
+driver.send(&Message::new()
+    .to("recipient@example.com")
+    .from("verified@example.com")
+    .subject("Signed by AWS SigV4")
+    .text("Hello from Rullst"))
+    .await?;
+# Ok(())
+# }
+```
+
+The application still owns AWS identity/domain verification, sandbox exit, IAM
+least privilege, quotas, reputation, bounce/complaint handling and monitoring.
+A successful `MessageId` is provider acceptance, not proof of inbox delivery.
+The native adapter rejects SES field limits and an encoded message estimate
+over 40 MiB before network I/O; provider 429 responses preserve a bounded
+delta-seconds `Retry-After` for failover/retry policy.
+
+---
+
 ## ⚙️ Configuration (`Rullst.toml` or Environment Variables)
 
 ```toml
@@ -293,15 +338,18 @@ Environment variables:
 - `RESEND_API_KEY`: API key for Resend.
 - `SENDGRID_API_KEY`: API key for SendGrid.
 - `POSTMARK_SERVER_TOKEN`: Server API token for Postmark.
-- `AWS_REGION`: Region metadata used by the SES proxy/mock adapter.
+- `AWS_REGION`: Region used by native SigV4 signing or SES proxy/mock metadata.
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`: Select native SES when the
+  `aws-ses` feature is enabled; both must be present.
+- `AWS_SESSION_TOKEN`: Optional temporary-credential session token.
 - `AWS_SES_BEARER_TOKEN`: Token for an explicitly configured trusted proxy;
-  it is not an AWS SigV4 credential implementation.
-- `AWS_SES_ENDPOINT`: Required HTTPS proxy endpoint for non-mock SES mode;
-  loopback HTTP is allowed for local integration tests.
+  it is never sent to AWS as a substitute for SigV4.
+- `AWS_SES_ENDPOINT`: Native SDK base endpoint or complete proxy send URL;
+  HTTPS is required except for loopback integration tests.
 - `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`: SMTP credentials.
 - `MAIL_LOG_PATH`: Path for log file (default: `storage/logs/mail.log`).
 
-For Resend, SendGrid, Postmark, the SES proxy fixture, and authenticated SMTP,
+For Resend, SendGrid, Postmark, the SES fixture/proxy, and authenticated SMTP,
 an empty credential or one beginning with `mock_` selects the deterministic
 offline fallback. Use `driver.delivery_mode()` and
 `OfflineMailMock::deliveries()` to assert this explicitly in tests.

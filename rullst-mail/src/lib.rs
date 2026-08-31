@@ -24,6 +24,10 @@ pub mod tracking;
 pub mod validator;
 pub mod worker;
 
+/// Official AWS SES v2 SDK re-export used by native driver configuration.
+#[cfg(feature = "aws-ses")]
+pub use aws_sdk_sesv2 as aws_ses_sdk;
+
 pub use attachment::*;
 pub use drivers::*;
 pub use error::*;

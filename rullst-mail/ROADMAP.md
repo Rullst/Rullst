@@ -47,7 +47,7 @@ flowchart TD
   generated application.
 - [x] **Async Background Job Integration**: Automatic non-blocking dispatch through `rullst-core::queue::Queue` with configurable retry backoff.
 - [x] **Typed In-Process Circuit Breaker & Automatic Failover (`FailoverDriver`)**: HTTP 5xx, 429 plus bounded `Retry-After`, transport errors, permanent provider responses, validation and configuration have explicit dispositions. Only transient/rate-limit failures open the circuit or reach a fallback; structured low-cardinality tracing records the decision without response bodies. SMTP distinguishes transient 4xx from permanent 5xx. Circuit state is fail-closed and poison-aware. Durable/distributed breaker state and an independently operated alert sink remain deployment concerns.
-- [~] **Postmark REST plus bounded AWS SES adapter**: Postmark uses its live HTTP API. `AwsSesDriver` is offline-mock or an explicit bearer-authenticated custom proxy; direct AWS SES fails closed until SigV4 is implemented.
+- [x] **Postmark REST plus bounded native AWS SES v2**: Postmark uses its live HTTP API. With `aws-ses`, `AwsSesDriver` uses the official AWS SDK and SigV4, supports temporary or caller-owned rotating credentials, attachments/CID and RFC 8058, and binds success to `MessageId`. Its loopback protocol contract is not live-account acceptance or inbox delivery. The legacy constructor remains only an offline mock or explicit bearer proxy.
 - [x] **Bounded Delayed & Scheduled Mail Dispatch (`.send_at(timestamp)` & `.send_in(duration)`)**: SQLite and Redis persist schedules up to 366 days and do not claim early; Redis has a digest-pinned live contract. A queue worker consumes the due timestamp before transport, while direct Resend/SendGrid use provider fields. Unsupported real direct transports fail closed; offline fixtures retain metadata for assertions. Execution remains poll-dependent and at-least-once.
 - [~] **Attachments & Inline CID Assets (`.attach_file()`, `.attach_bytes()`, `.attach_cid()`)**: Fluent owned-byte helpers and REST serialization exist for named providers; encoding copies memory and SMTP parity is incomplete.
 - [~] **Pre-Flight Syntax & Disposable Email Filter**: A bounded local syntax check and static list of 150+ domains run before dispatch. This is not DNS/MX verification or a deliverability guarantee.
@@ -170,5 +170,6 @@ evidence because external ecosystems change. The current Rullst-only status is:
 | Message API, mandatory pipeline, queue envelope, offline mocks, MailTrap and factories | Implemented in the bounded scopes above |
 | Resend, SendGrid and Postmark REST; optional SMTP | Implemented per provider, without universal method parity |
 | Failover, scheduling, attachments, tenant routing, URL/DLP checks and tracking | Useful partial foundations with the named limits above |
-| Direct AWS SES/SigV4, inbound MIME, suppression webhooks, DKIM/DMARC, Studio Mail Radar and AI dunning | Not implemented |
+| Native AWS SES v2/SigV4 | Implemented behind `aws-ses`; protocol-tested, without live-account/inbox claim |
+| Inbound MIME, suppression webhooks, DKIM/DMARC, Studio Mail Radar and AI dunning | Not implemented |
 | Universal deliverability, privacy/compliance, panic-freedom or competitor superiority | Not claimed |

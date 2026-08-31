@@ -368,6 +368,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Safer application and administration boundaries
 
+- Added native AWS SES v2 delivery behind `rullst-mail/aws-ses` and umbrella
+  `mail-aws-ses`. `AwsSesDriver` delegates regional SigV4 and transport to the
+  official AWS SDK, accepts static/temporary credentials, caller-owned rotating
+  providers or a complete SDK config, serializes HTML/text, attachments/CID and
+  RFC 8058 headers, rejects SES field/40 MiB encoded limits before network,
+  preserves bounded rate-limit metadata and requires a non-empty SES
+  `MessageId` on success. A loopback contract verifies the signed
+  `ses/aws4_request`, session token, payload and typed/redacted rejection
+  without contacting AWS. The facade uses
+  native mode only when both standard AWS credential variables are present;
+  the old constructor remains a deterministic mock or explicit trusted bearer
+  proxy and can never send an unsigned AWS request. Account identity/domain
+  verification, sandbox exit, IAM policy, quotas, reputation, suppression,
+  live acceptance and inbox delivery remain external evidence.
 - `rullst-connect::UniversalProfile` now provides the credential-free normalized
   OAuth identity projection. `ConnectUser` serialization no longer emits access
   or refresh tokens; applications must store credentials through an explicit
@@ -441,11 +455,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   public facade, enables `mailer`, validates identifiers, refuses traversal and
   collisions, registers modules and escapes dynamic HTML. A materialized
   application passes strict Clippy and adversarial rendering. `MailFactory`
-  fixtures use the same escaping primitive. The former direct AWS SES path now
-  fails closed before network I/O because it lacked required SigV4; the adapter
-  retains only deterministic offline mode and an explicit HTTPS/loopback bearer
-  proxy boundary. Tracking tokens are documented as authenticated but not
-  encrypted, and provider-specific scheduling/attachment limits stay explicit.
+  fixtures use the same escaping primitive. The former unsigned AWS SES path
+  fails closed; native SES v2 is now a separate opt-in path signed by the
+  official AWS SDK, while deterministic offline mode and the explicit
+  HTTPS/loopback bearer proxy remain available. Tracking tokens are documented
+  as authenticated but not encrypted, and provider-specific
+  scheduling/attachment limits stay explicit.
 - Nexus fails closed unless an access policy is selected. Its local convenience
   policy is limited to debug builds and a verified loopback peer; generated
   release applications require valid credentials. `#[derive(Nexus)]` now has
@@ -801,9 +816,10 @@ release gate has completed.
     authenticated `TenantContext` bridge and remains in-process. Failover now
     distinguishes permanent, transient and rate-limited outcomes rather than
     forwarding every error. The
-    Postmark path is live, while direct SES was not valid because AWS requires
-    SigV4. It now fails closed and exposes only offline fixtures or an explicit
-    trusted bearer proxy until a real signed adapter is implemented.
+    Postmark path is live. The former direct SES bearer request was invalid
+    because AWS requires SigV4 and remains fail-closed; the new `aws-ses`
+    transport delegates SigV4 to the official SDK and has a local protocol
+    contract, without claiming live-account acceptance or inbox delivery.
 - **Sovereign Modular Frontend Engines Matrix (`cargo-rullst` & `rullst-core::frontend`)**: Replaced third-party framework scaffolding wrappers with **5 clean, standalone, native frontend engines** in `cargo-rullst` wizard (`wizard.rs`) and `rullst-core`:
   - **1. Zero-Bundle HTMX + Tailwind SSR**: Declarative compile-time `rullst::html!` macro with 0 KB JavaScript bundle overhead.
   - **2. LiveView Server-Driven UI (`rullst::live`)**: Real-time state synchronization over persistent Tokio WebSockets (Phoenix & Dioxus pattern).

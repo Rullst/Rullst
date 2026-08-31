@@ -47,6 +47,7 @@ rullst = { version = "12.0.0", default-features = false }
 | `auth-jwt` | no | `auth` plus the strict application-issued JWT policy |
 | `mail` | no | `rullst-mail` with HTTP/offline transports and no SMTP dependency |
 | `mail-smtp` | no | `mail` plus the optional SMTP transport |
+| `mail-aws-ses` | no | `mail` plus native SES v2 delivery signed by the official AWS SDK |
 | `mailer` | no | Compatibility alias for `mail-smtp`; prefer `mail-smtp` in new manifests |
 | `queue-redis` | no | Redis dependency and Core's Redis queue backend |
 | `cache-redis` | no | Redis dependency and Core's Redis cache backend |
@@ -183,6 +184,7 @@ Default features: none. HTTP mail providers remain available without SMTP.
 | Feature | Enables |
 | --- | --- |
 | `mail-smtp` | Lettre-based SMTP transport |
+| `aws-ses` | Official AWS SES v2 SDK, regional SigV4, temporary/rotating credential providers and native attachments/CID; AWS account readiness and inbox delivery remain external |
 | `capital-invoice` | Capital's native invoice PDF plus the final-payment-bound delivery bridge; durable outbox claiming remains application-owned |
 
 ### `rullst-auth`

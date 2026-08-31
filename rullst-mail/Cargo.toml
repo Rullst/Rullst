@@ -20,6 +20,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 [features]
 default = []
 mail-smtp = ["dep:lettre"]
+aws-ses = ["dep:aws-sdk-sesv2"]
 capital-invoice = ["dep:rullst-capital", "rullst-capital/invoice-pdf"]
 
 [dependencies]
@@ -36,6 +37,8 @@ tracing = { workspace = true }
 base64 = { workspace = true }
 hmac = { workspace = true }
 sha2 = { workspace = true }
+secrecy = "0.10"
+aws-sdk-sesv2 = { workspace = true, optional = true }
 
 [package.metadata.cargo-machete]
 ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth", "tracing"]

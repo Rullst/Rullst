@@ -249,13 +249,44 @@ impl Mail {
                 Ok(Box::new(driver))
             }
             "ses" | "aws_ses" => {
-                let auth_token = std::env::var("AWS_SES_TOKEN")
-                    .or_else(|_| std::env::var("AWS_SES_BEARER_TOKEN"))
-                    .unwrap_or_default();
                 let region =
                     std::env::var("AWS_REGION").unwrap_or_else(|_| "us-east-1".to_string());
                 let endpoint_override = std::env::var("AWS_SES_ENDPOINT").ok();
-                let mut driver = AwsSesDriver::try_new(region, auth_token)?;
+                let access_key_id = std::env::var("AWS_ACCESS_KEY_ID").ok();
+                let secret_access_key = std::env::var("AWS_SECRET_ACCESS_KEY").ok();
+                let mut driver = match (access_key_id, secret_access_key) {
+                    (Some(access_key_id), Some(secret_access_key)) => {
+                        #[cfg(feature = "aws-ses")]
+                        {
+                            AwsSesDriver::try_native(
+                                region,
+                                access_key_id,
+                                secret_access_key,
+                                std::env::var("AWS_SESSION_TOKEN").ok(),
+                            )?
+                        }
+                        #[cfg(not(feature = "aws-ses"))]
+                        {
+                            let _ = (region, access_key_id, secret_access_key);
+                            return Err(MailError::ConfigError(
+                                "native AWS SES credentials require the `aws-ses` feature"
+                                    .to_string(),
+                            ));
+                        }
+                    }
+                    (None, None) => {
+                        let auth_token = std::env::var("AWS_SES_TOKEN")
+                            .or_else(|_| std::env::var("AWS_SES_BEARER_TOKEN"))
+                            .unwrap_or_default();
+                        AwsSesDriver::try_new(region, auth_token)?
+                    }
+                    _ => {
+                        return Err(MailError::ConfigError(
+                            "native AWS SES requires both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
+                                .to_string(),
+                        ));
+                    }
+                };
                 if let Some(endpoint) = endpoint_override {
                     driver = driver.try_with_endpoint(endpoint)?;
                 }

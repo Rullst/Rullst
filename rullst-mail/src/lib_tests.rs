@@ -313,7 +313,7 @@ async fn test_aws_ses_driver() {
         .unwrap()
         .try_with_endpoint("http://127.0.0.1:4566/v2/email/outbound-emails")
         .unwrap();
-    assert_eq!(driver.region, "sa-east-1");
+    assert_eq!(driver.region(), "sa-east-1");
     assert_eq!(
         driver.endpoint(),
         "http://127.0.0.1:4566/v2/email/outbound-emails"
