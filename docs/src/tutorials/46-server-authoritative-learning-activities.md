@@ -88,10 +88,28 @@ time to this payload. The route and persisted activity supply them. The stored
 bounded `state_json` is hidden in Nexus but is still application data: include
 `activity_attempts` in retention, export and erasure policy where applicable.
 
+For a bounded pair-matching activity, use
+`POST /activities/{id}/attempts/matching`:
+
+```json
+{
+  "attempt_key": "attempt-match-1",
+  "pairs": [
+    { "left_id": 1, "right_id": 11 },
+    { "left_id": 2, "right_id": 12 }
+  ]
+}
+```
+
+The persisted policy owns the complete left/right ID sets and correct mapping.
+The request must be a complete permutation of two to eight pairs; unknown or
+duplicate IDs fail closed. Input order does not affect replay identity, partial
+credit uses integer server scoring, and no answer text crosses this endpoint.
+
 The full Academy quiz service follows the same score-event invariants but is
 still a separate evaluator. Do not claim generic quiz or game integration until
 those paths are unified and their materialized tests pass.
 
-Implement another `ActivityEvaluator` when a spelling, listening or matching
+Implement another `ActivityEvaluator` when a spelling, listening or game
 exercise needs different trusted rules. Keep the concrete evaluator type
 visible; do not use a runtime registry merely to hide domain differences.

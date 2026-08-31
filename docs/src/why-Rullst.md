@@ -223,11 +223,11 @@ leaderboard, automation, notifications and school boundaries. Its accessible
 lesson presentation supports bounded video/audio metadata, mandatory WebVTT
 captions for video and escaped transcripts. Its generic activity boundary also
 keeps points out of untrusted submissions: static-dispatch evaluators construct
-server-authored results, with a tested single-choice exercise as the first
-example. The complete starter then rederives the persisted activity policy and
+server-authored results, with tested single-choice and bounded pair-matching
+exercises as the first examples. The complete starter then rederives the persisted activity policy and
 atomically projects that opaque result into a versioned score event, leaderboard
 and outbox. Its owner-only route accepts only the chosen option and idempotency
-key, while the same transaction locks the exact evaluator configuration and
+key or pair IDs, while the same transaction locks the exact evaluator configuration and
 retains an exact-replay attempt; cross-user, actor/evidence/policy mismatch and
 conflicting replay are materialized negatives. That
 is a useful foundation for a

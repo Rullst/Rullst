@@ -67,6 +67,117 @@ pub const GENERATED_COMPLETION_TESTS_SUFFIX: &str = r##"
             .expect("HTTP activity transaction evidence");
         assert_eq!((http_attempts, http_scores, http_events), (1, 1, 1));
 
+        let matching_payload = || {
+            rullst::server::Json(
+                crate::controllers::activity_matching_controller::MatchingPayload {
+                    attempt_key: "matching-http-1".to_string(),
+                    pairs: vec![
+                        crate::controllers::activity_matching_controller::MatchingPairPayload {
+                            left_id: 3,
+                            right_id: 13,
+                        },
+                        crate::controllers::activity_matching_controller::MatchingPairPayload {
+                            left_id: 1,
+                            right_id: 11,
+                        },
+                        crate::controllers::activity_matching_controller::MatchingPairPayload {
+                            left_id: 2,
+                            right_id: 12,
+                        },
+                    ],
+                },
+            )
+        };
+        let matching_response =
+            crate::controllers::activity_matching_controller::submit(
+                rullst::server::Path(5),
+                rullst::server::Extension(7),
+                rullst::server::Extension(learner.clone()),
+                matching_payload(),
+            )
+            .await;
+        assert_eq!(matching_response.status(), rullst::server::StatusCode::OK);
+        let matching_replay = crate::controllers::activity_matching_controller::submit(
+            rullst::server::Path(5),
+            rullst::server::Extension(7),
+            rullst::server::Extension(learner.clone()),
+            matching_payload(),
+        )
+        .await;
+        assert_eq!(matching_replay.status(), rullst::server::StatusCode::OK);
+        let conflicting_matching =
+            crate::controllers::activity_matching_controller::submit(
+                rullst::server::Path(5),
+                rullst::server::Extension(7),
+                rullst::server::Extension(learner.clone()),
+                rullst::server::Json(
+                    crate::controllers::activity_matching_controller::MatchingPayload {
+                        attempt_key: "matching-http-1".to_string(),
+                        pairs: vec![
+                            crate::controllers::activity_matching_controller::MatchingPairPayload {
+                                left_id: 1,
+                                right_id: 12,
+                            },
+                            crate::controllers::activity_matching_controller::MatchingPairPayload {
+                                left_id: 2,
+                                right_id: 11,
+                            },
+                            crate::controllers::activity_matching_controller::MatchingPairPayload {
+                                left_id: 3,
+                                right_id: 13,
+                            },
+                        ],
+                    },
+                ),
+            )
+            .await;
+        assert_eq!(
+            conflicting_matching.status(),
+            rullst::server::StatusCode::CONFLICT
+        );
+        let invalid_matching = crate::controllers::activity_matching_controller::submit(
+            rullst::server::Path(5),
+            rullst::server::Extension(7),
+            rullst::server::Extension(learner.clone()),
+            rullst::server::Json(
+                crate::controllers::activity_matching_controller::MatchingPayload {
+                    attempt_key: "matching-http-invalid".to_string(),
+                    pairs: vec![
+                        crate::controllers::activity_matching_controller::MatchingPairPayload {
+                            left_id: 1,
+                            right_id: 11,
+                        },
+                        crate::controllers::activity_matching_controller::MatchingPairPayload {
+                            left_id: 1,
+                            right_id: 12,
+                        },
+                        crate::controllers::activity_matching_controller::MatchingPairPayload {
+                            left_id: 3,
+                            right_id: 13,
+                        },
+                    ],
+                },
+            ),
+        )
+        .await;
+        assert_eq!(
+            invalid_matching.status(),
+            rullst::server::StatusCode::UNPROCESSABLE_ENTITY
+        );
+        let (matching_attempts, matching_scores, matching_events) =
+            rullst::db::sqlx::query_as::<_, (i64, i64, i64)>(
+                "SELECT (SELECT COUNT(*) FROM activity_attempts WHERE subject_user_id = ? AND activity_id = ? AND attempt_key = ?), (SELECT COUNT(*) FROM score_events WHERE idempotency_key = ?), (SELECT COUNT(*) FROM academy_outbox WHERE event_key = ?)",
+            )
+            .bind(7_i32)
+            .bind(5_i32)
+            .bind("matching-http-1")
+            .bind("activity:7:5:matching-http-1")
+            .bind("score:activity:7:5:matching-http-1")
+            .fetch_one(Orm::pool().expect("Academy pool"))
+            .await
+            .expect("HTTP matching transaction evidence");
+        assert_eq!((matching_attempts, matching_scores, matching_events), (1, 1, 1));
+
         let expected_completion_key = format!(
             "course-completed:22:{}",
             scheduler_draft.id,

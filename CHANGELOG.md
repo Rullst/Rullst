@@ -76,10 +76,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   handed client-authored points. `evaluate_activity` accepts only an evaluator's
   submission and uses static dispatch to build a result after owner, kind,
   attempt/ruleset, object-shaped state, time, score bounds and canonical
-  SHA-256 evidence checks. The first built-in `SingleChoiceEvaluator` computes
-  correct/incorrect exercise points from server-supplied rules and returns an
-  opaque validated result. The complete-starter persistence and HTTP vertical
-  is described immediately below; additional evaluator kinds remain open.
+  SHA-256 evidence checks. The built-in `SingleChoiceEvaluator` computes
+  correct/incorrect points, while the bounded `MatchingEvaluator` validates a
+  complete permutation of at most eight server-owned pairs, scores it without
+  trusting the client and canonicalizes order for exact replay. The
+  complete-starter persistence and HTTP verticals are described immediately
+  below; typed/listening/game evaluator kinds remain open.
 - The complete Academy starter now closes that first activity path with an
   owner-only `POST /activities/{id}/attempts` boundary. Its JSON accepts only an
   idempotency key and selected option; server state supplies identity, answer,
@@ -89,7 +91,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   retries are no-ops, while a changed option under the same key fails closed;
   attempt/event deduplication is server-scoped by learner and activity so one
   learner cannot reserve another learner's client key.
-  Additional exercise/game evaluators and quiz-path unification remain open.
+  Typed/listening/game evaluators and quiz-path unification remain open.
+- Academy now also generates owner-only
+  `POST /activities/{id}/attempts/matching`. It accepts only bounded pair IDs and
+  an attempt key, rejects missing/unknown/duplicate IDs, derives the answer map
+  and score from the locked activity policy, and shares the same durable
+  attempt/score/leaderboard/outbox transaction. Materialized tests cover order
+  independence, partial server scoring, malformed input, exact retry and a
+  changed pairing under the same key.
 - `rullst-capital` now provides a bounded National NFS-e 1.01 preparation
   pipeline: checksum-pinned official production/restricted artifact manifests,
   strict ordinary-service DPS construction with integer money/rates, closed-

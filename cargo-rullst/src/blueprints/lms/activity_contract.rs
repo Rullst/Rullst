@@ -1,10 +1,12 @@
 // Versioned server-side activity/attempt/result contract templates.
 
 mod evaluator;
+mod matching;
 mod submit;
 mod test_template;
 
 use evaluator::SINGLE_CHOICE_EVALUATOR;
+use matching::{MATCHING_ACTIVITY_CONTROLLER, MATCHING_ACTIVITY_SERVICE};
 use submit::{ACTIVITY_ATTEMPT_MODEL, ACTIVITY_CONTROLLER, ACTIVITY_SUBMISSION_SERVICE};
 use test_template::ACTIVITY_CONTRACT_TESTS;
 
@@ -17,6 +19,10 @@ pub fn get_files() -> Vec<(&'static str, String)> {
         (
             "src/services/activity_contract/evaluator.rs",
             SINGLE_CHOICE_EVALUATOR.to_string(),
+        ),
+        (
+            "src/services/activity_contract/matching.rs",
+            MATCHING_ACTIVITY_SERVICE.to_string(),
         ),
         (
             "src/services/activity_contract/submit.rs",
@@ -34,6 +40,10 @@ pub fn get_files() -> Vec<(&'static str, String)> {
             "src/controllers/activity_controller.rs",
             ACTIVITY_CONTROLLER.to_string(),
         ),
+        (
+            "src/controllers/activity_matching_controller.rs",
+            MATCHING_ACTIVITY_CONTROLLER.to_string(),
+        ),
     ]
 }
 
@@ -41,6 +51,8 @@ const ACTIVITY_CONTRACT: &str = r##"use rullst_security::{RbacGuard, UserContext
 
 mod evaluator;
 pub use evaluator::{SingleChoiceEvaluator, SingleChoiceSubmission};
+mod matching;
+pub use matching::{MatchingEvaluator, MatchingPair, MatchingRequest, submit_matching};
 mod submit;
 pub use submit::{ActivitySubmissionError, SingleChoiceRequest, submit_single_choice};
 
@@ -202,7 +214,7 @@ pub struct AuthoritativeActivityOutcome {
 /// server-authored outcome. Implementations must load rules and answer keys
 /// from trusted application state rather than from the submission.
 pub trait ActivityEvaluator {
-    type Submission;
+    type Submission: ?Sized;
 
     fn kind(&self) -> ActivityKind;
 

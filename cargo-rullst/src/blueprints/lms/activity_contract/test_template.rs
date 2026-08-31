@@ -84,6 +84,53 @@ fn single_choice_result_is_server_authored_and_bound_to_the_owner() {
 }
 
 #[test]
+fn matching_result_is_order_independent_bounded_and_server_scored() {
+    let owner = UserContext::new("7", vec!["student".to_string()]);
+    let policy = r#"{"schema_version":1,"mode":"matching","pairs":[{"left_id":1,"right_id":11},{"left_id":2,"right_id":12},{"left_id":3,"right_id":13}]}"#;
+    let evaluator = MatchingEvaluator::new(
+        vec![
+            MatchingPair { left_id: 1, right_id: 11 },
+            MatchingPair { left_id: 2, right_id: 12 },
+            MatchingPair { left_id: 3, right_id: 13 },
+        ],
+        90,
+        "e".repeat(64),
+        policy,
+    )
+    .expect("trusted matching policy");
+    let partially_correct = vec![
+        MatchingPair { left_id: 3, right_id: 13 },
+        MatchingPair { left_id: 1, right_id: 12 },
+        MatchingPair { left_id: 2, right_id: 11 },
+    ];
+    let result = evaluate_activity(
+        &owner,
+        attempt(),
+        partially_correct.as_slice(),
+        1_100,
+        &evaluator,
+    )
+    .expect("bounded matching result");
+    assert_eq!(result.result().points, 30);
+    assert_eq!(result.result().submission_key, "pairs:1-12.2-11.3-13");
+    let duplicate_left = vec![
+        MatchingPair { left_id: 1, right_id: 11 },
+        MatchingPair { left_id: 1, right_id: 12 },
+        MatchingPair { left_id: 3, right_id: 13 },
+    ];
+    assert!(matches!(
+        evaluate_activity(
+            &owner,
+            attempt(),
+            duplicate_left.as_slice(),
+            1_100,
+            &evaluator,
+        ),
+        Err(ActivityContractError::InvalidField("matching submission"))
+    ));
+}
+
+#[test]
 fn client_boundary_defaults_to_zero_bundle_and_bounds_opt_in_wasm() {
     let simple = ActivityClientManifest::ssr_htmx("/activities/2/play")
         .expect("same-origin SSR activity");

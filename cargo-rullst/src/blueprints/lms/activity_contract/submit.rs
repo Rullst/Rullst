@@ -204,7 +204,7 @@ pub async fn submit_single_choice_at(
         .map_err(ActivitySubmissionError::Score)
 }
 
-fn unix_now() -> Result<i64, ActivitySubmissionError> {
+pub(super) fn unix_now() -> Result<i64, ActivitySubmissionError> {
     let elapsed = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(|_| ActivitySubmissionError::Clock)?;
@@ -228,7 +228,7 @@ pub struct SingleChoicePayload {
     pub selected_option_id: i32,
 }
 
-fn error_response(error: ActivitySubmissionError) -> Response {
+pub(super) fn error_response(error: ActivitySubmissionError) -> Response {
     match error {
         ActivitySubmissionError::Access(LearningError::Database(error))
         | ActivitySubmissionError::Database(error)
