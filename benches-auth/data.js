@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788186697298,
+  "lastUpdate": 1788189850234,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -5657,6 +5657,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4025,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fab3e03debb92286b67f0028c0ddf9a8bcc3dd5e",
+          "message": "feat(capital): complete coupon and trial contracts",
+          "timestamp": "2026-08-31T12:07:39-03:00",
+          "tree_id": "5bb23192d241b47537d93c14e91e7987b7404c01",
+          "url": "https://github.com/Rullst/Rullst/commit/fab3e03debb92286b67f0028c0ddf9a8bcc3dd5e"
+        },
+        "date": 1788189849486,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 989,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 787,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1813,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4004,
+            "range": "± 24",
             "unit": "ns/iter"
           }
         ]
