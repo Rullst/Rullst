@@ -214,18 +214,37 @@ callback.verify_state(&expected)?;
 
 ### 🔄 Refreshing Tokens
 
-If the provider issued a refresh token and still accepts it, the provider
-adapter can request refreshed credentials. Rotation, revocation, secure storage,
-and reauthentication policy remain application concerns:
+If the provider returned `expires_in` plus a refresh token, bind the result to a
+statically dispatched, process-local coordinator when the callback receives it:
 
-```rust
-let refreshed_user = github.refresh_token("existing_refresh_token_string").await?;
-// Tokens are wrapped in `secrecy::SecretString` to prevent accidental log leakage ([REDACTED]).
-// When you need to send it to an API, expose it explicitly:
-use secrecy::ExposeSecret;
-let raw_token = refreshed_user.access_token.expose_secret();
-send_token_to_the_authorized_api(raw_token).await?;
+```rust,no_run
+use rullst_connect::{AutoRefreshingSession, ConnectError, ConnectUser};
+use secrecy::ExposeSecret as _;
+
+async fn call_provider_api(
+    github: &rullst_connect::providers::GithubProvider,
+    user: &ConnectUser,
+    token_received_at: u64,
+) -> Result<(), ConnectError> {
+    let session = AutoRefreshingSession::from_user_at(
+        github,
+        user,
+        token_received_at,
+    )?;
+    let lease = session.access_token().await?;
+    send_token_to_the_authorized_api(lease.access_token().expose_secret()).await?;
+    Ok(())
+}
 ```
+
+The default checks 60 seconds before expiration. Refresh calls cannot overlap;
+callers waiting behind a successful refresh reuse its state. A response can
+replace the refresh token only after the lifetime and original provider user ID
+validate. Use `access_token_at` in
+deterministic workers/tests and `state_snapshot` only to update a dedicated
+encrypted credential store. Persistence, cross-process refresh leases,
+retry/backoff, revocation and reauthentication remain application policy. A
+provider that does not support refresh continues to return a typed error.
 
 ### 🔒 Manual PKCE Support
 

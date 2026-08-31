@@ -15,12 +15,14 @@ pub mod pkce;
 pub mod prelude;
 pub mod provider;
 pub mod providers;
+pub mod refresh;
 pub mod user;
 
 pub use configuration::CredentialMode;
 pub use error::ConnectError;
 
 pub use provider::Provider;
+pub use refresh::{AccessTokenLease, AutoRefreshingSession, RefreshableTokenState};
 pub use user::{ConnectUser, UniversalProfile};
 
 /// The main entry point for the rullst-connect library.

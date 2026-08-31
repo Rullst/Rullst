@@ -91,6 +91,9 @@ inputs rather than deployment footnotes. Current bounded contracts include:
 - a typed OAuth/OIDC session transaction that keeps PKCE verifiers and OIDC
   nonces server-side, expires them after ten minutes, and consumes them before
   callback validation;
+- a provider-generic automatic token coordinator that binds refreshes to the
+  original user, redacts credentials, detects a bounded expiry window and
+  prevents overlapping provider calls while waiters reuse a valid transition;
 - an authenticated Nexus admin surface and a loopback/debug-constrained Studio;
 - one bounded signed-payment-webhook verifier exposed through both Axum and
   opt-in Actix middleware adapters;

@@ -45,6 +45,9 @@ state of those checks for the referenced commit; they are not an absolute securi
   Actix; `AuthCallback` remains a plain deserializable type for other hosts.
 - 🔐 **Managed callback transaction**: The optional Axum/tower-sessions path
   generates, stores, expires, validates, and consumes state + PKCE + OIDC nonce.
+- 🔄 **Bounded automatic refresh**: A user-bound, redacting static coordinator
+  detects token expiry, prevents overlapping refresh calls and reuses a valid
+  result for waiting callers.
 - 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, refresh on unknown `kid`, and bounded stale-if-error behavior.
 - 🏢 **Explicit Corporate Proxy**: First-class HTTP(S) proxy clients, including bounded Basic proxy authentication without credentials in the endpoint URL.
 - 📺 **Device Flow**: Native RFC 8628 support for headless CLI and Smart TV auth.
@@ -258,16 +261,37 @@ callback.verify_state(&expected)?;
 
 ### 🔄 Refreshing Tokens
 
-If an access token expires, you can seamlessly renew it without asking the user to login again by using their `refresh_token`:
+If the callback result contains a refresh token and `expires_in`, a bounded
+process-local coordinator can detect expiration and serialize concurrent
+refresh calls:
 
-```rust
-let refreshed_user = github.refresh_token("existing_refresh_token_string").await?;
-// Tokens are wrapped in `secrecy::SecretString` to prevent accidental log leakage ([REDACTED]).
-// When you need to send it to an API, expose it explicitly:
-use secrecy::ExposeSecret;
-let raw_token = refreshed_user.access_token.expose_secret();
-println!("Successfully refreshed token securely!");
+```rust,no_run
+use rullst_connect::{AutoRefreshingSession, ConnectError, ConnectUser};
+use secrecy::ExposeSecret as _;
+
+async fn authorized_call(
+    github: &rullst_connect::providers::GithubProvider,
+    user: &ConnectUser,
+    token_received_at: u64,
+) -> Result<(), ConnectError> {
+    let session = AutoRefreshingSession::from_user_at(
+        github,
+        user,
+        token_received_at,
+    )?;
+    let lease = session.access_token().await?;
+    send_token_to_the_authorized_api(lease.access_token().expose_secret()).await?;
+    Ok(())
+}
 ```
+
+The coordinator uses a 60-second early-refresh window, prevents overlapping
+provider calls, lets waiters reuse a successful refresh, retains a provider that
+does not rotate its refresh token, adopts a validated rotation and binds every
+response to the original provider user. `state_snapshot` exists for an
+application-owned encrypted credential store. Cross-process leases,
+retry/backoff, revocation and reauthentication remain application policy;
+providers without refresh support fail explicitly.
 
 ### 🔒 Manual PKCE Support
 

@@ -113,6 +113,39 @@ credential-free identity projection. If an application needs provider refresh
 tokens, place them in a dedicated encrypted store with explicit rotation and
 revocation policy.
 
+For a provider that returned both a refresh token and `expires_in`, construct a
+bounded process-local coordinator at the trusted time the token response was
+received:
+
+```rust,no_run
+use rullst_connect::{AutoRefreshingSession, ConnectError, ConnectUser};
+use secrecy::ExposeSecret as _;
+
+async fn provider_request(
+    github: &rullst_connect::providers::GithubProvider,
+    user: &ConnectUser,
+    token_received_at: u64,
+) -> Result<(), ConnectError> {
+    let tokens = AutoRefreshingSession::from_user_at(
+        github,
+        user,
+        token_received_at,
+    )?;
+    let lease = tokens.access_token().await?;
+    call_authorized_endpoint(lease.access_token().expose_secret()).await?;
+    Ok(())
+}
+```
+
+`AutoRefreshingSession<P>` checks a bounded early-expiration window and holds
+one async process-local refresh gate, so provider refresh calls cannot overlap
+and waiters reuse the first valid result. It keeps the old refresh credential if
+the provider does not rotate, adopts a valid rotation, requires the same provider
+user ID and changes state only after full validation. Persist `state_snapshot()` through a dedicated
+encrypted credential store. Multi-process deployments still need an
+application-owned distributed lease; retry/backoff, revocation, reauthentication
+and replay of the original API request are deliberately not inferred.
+
 ## Lifecycle and failure semantics
 
 The managed contract is intentionally small:

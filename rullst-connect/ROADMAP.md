@@ -40,9 +40,12 @@ messaging and enterprise identity sections remain roadmap work.
   proxies. A local protocol fixture proves absolute-form routing and Basic proxy
   authorization; PAC/WPAD, SOCKS, mTLS proxy identity and enterprise-product
   certification remain outside this contract.
-- [~] **Refresh Token Module:** All named provider adapters expose explicit
-  refresh operations where supported; automatic expiry detection, storage and
-  rotation remain application-owned.
+- [x] **Refresh Token Module:** All named provider adapters expose explicit
+  refresh operations where supported. `AutoRefreshingSession<P>` additionally
+  detects a bounded expiration window, serializes concurrent in-process refresh,
+  preserves or rotates the refresh credential, binds the returned provider user
+  and replaces state only after complete validation. Encrypted persistence,
+  cross-process leases, retry/backoff and reauthentication remain host policy.
 - [~] **Universal Avatar Standardization:** Provider parsers normalize known
   avatar fields, but availability and optimal resolution cannot be guaranteed.
 - [~] **Leptos & Dioxus Integration:** `AuthCallback` is framework-neutral and

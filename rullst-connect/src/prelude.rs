@@ -9,6 +9,7 @@
 pub use crate::error::ConnectError;
 pub use crate::provider::Provider;
 pub use crate::providers::*;
+pub use crate::refresh::{AccessTokenLease, AutoRefreshingSession, RefreshableTokenState};
 pub use crate::user::{ConnectUser, UniversalProfile};
 pub use secrecy::{ExposeSecret, SecretString};
 

@@ -372,6 +372,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   OAuth identity projection. `ConnectUser` serialization no longer emits access
   or refresh tokens; applications must store credentials through an explicit
   encrypted lifecycle.
+- `rullst-connect::AutoRefreshingSession<P>` now turns provider `expires_in`
+  into a bounded process-local refresh boundary. Token state is user-bound and
+  redacted, provider calls cannot overlap, waiting callers reuse a successful
+  refresh, rotated credentials replace prior state only after validation, and
+  failure preserves the old generation. Encrypted persistence, cross-process
+  leasing, retry/backoff, revocation and reauthentication remain application
+  policy.
 - `#[derive(rullst::Billable)]` is now exported by the umbrella facade,
   preserves generic model parameters, and emits a focused compile error when a
   named e-mail field is absent. Invoice HTML escapes all application-supplied
@@ -419,8 +426,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   conditional counter on SQLite, PostgreSQL, MySQL and MariaDB, and exposes a
   caller-owned transaction path so the quota and domain insert can commit or
   roll back together. Local and live-container concurrency tests prove the
-  shared limit. SQLite fixtures normalize temporary paths into portable URLs,
-  including a Windows-path regression test. Membership, tier/webhook
+  shared limit. SQLite fixtures use normalized repository-relative URLs so the
+  same file-backed concurrency contract runs on Windows. Membership, tier/webhook
   reconciliation, migrations, abandoned standalone reservation policy and
   Turso/NoSQL stores remain host boundaries.
 - `cargo rullst make:iot` now validates device identifiers, refuses traversal
