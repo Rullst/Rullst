@@ -1,6 +1,25 @@
 #![cfg(feature = "capital")]
 
 use rullst::capital::{BillingProvider, StripeProvider, SubscriptionStatus};
+
+#[tokio::test]
+async fn facade_exposes_provider_specific_metered_usage() {
+    use rullst::capital::{
+        MeteredBillingProvider as _, StripeMeterEvent, UsageDeduplication, UsageStatus,
+    };
+
+    let provider = StripeProvider::new("mock_usage", "mock_webhook");
+    let event = StripeMeterEvent::new("cus_123", "lesson_minutes", 15, "usage-event-123")
+        .expect("valid metered event");
+    let receipt = provider
+        .report_metered_usage(&event)
+        .await
+        .expect("deterministic mock usage receipt");
+
+    assert_eq!(receipt.status(), UsageStatus::Mock);
+    assert_eq!(receipt.deduplication(), UsageDeduplication::Mock);
+    assert!(!receipt.is_live_accepted());
+}
 use std::string::ToString;
 
 #[tokio::test]

@@ -35,6 +35,10 @@ impl StripeProvider {
         self
     }
 
+    pub(super) fn usage_api_key(&self) -> &str {
+        &self.api_key
+    }
+
     /// Verifies the `Stripe-Signature` header signature (`t=1492774577,v1=604956efe...`).
     pub fn verify_signature(
         &self,
@@ -335,26 +339,16 @@ impl BillingProvider for StripeProvider {
                 "Metric name cannot be empty".to_string(),
             ));
         }
+        if quantity == 0 {
+            return Err(CapitalError::InvalidUsage(
+                "quantity must be greater than zero".to_string(),
+            ));
+        }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = crate::providers::http_client();
-            let body = format!("quantity={}&action=increment", quantity);
-            let res = client
-                .post(format!(
-                    "https://api.stripe.com/v1/subscription_items/{}/usage_records",
-                    subscription_id
-                ))
-                .bearer_auth(&self.api_key)
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .body(body)
-                .send()
-                .await
-                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
-            if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!(
-                    "HTTP {}",
-                    res.status()
-                )));
-            }
+            return Err(CapitalError::UnsupportedOperation(
+                "Stripe's current meter-event API requires a customer, event name, timestamp and idempotency identifier; use StripeMeterEvent with MeteredBillingProvider"
+                    .to_string(),
+            ));
         }
         Ok(())
     }

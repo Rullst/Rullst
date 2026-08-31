@@ -9,6 +9,7 @@ pub mod alipay;
 pub mod coinbase;
 pub mod infinitepay;
 pub mod lemonsqueezy;
+mod lemonsqueezy_usage;
 pub mod mercadopago;
 pub mod paddle;
 pub mod picpay;
@@ -16,6 +17,7 @@ pub mod polar;
 pub mod razorpay;
 pub mod stripe;
 mod stripe_charge;
+mod stripe_usage;
 pub mod wise;
 
 pub use alipay::AlipayProvider;

@@ -138,14 +138,73 @@ database constraint in the same application workflow. Mail delivery remains
 at least once: a crash and retry can still require provider/application
 deduplication.
 
-## 5. Verify webhooks before business processing
+## 5. Report metered usage without confusing provider identities
+
+Use the provider-specific static trait for new code. Stripe Meter Events need a
+customer ID and configured event name, not a subscription-item ID:
+
+```rust,no_run
+use rullst_capital::{
+    CapitalError, MeteredBillingProvider as _, StripeMeterEvent, StripeProvider,
+};
+
+async fn report_ai_exercises(stripe: &StripeProvider) -> Result<(), CapitalError> {
+    let event = StripeMeterEvent::new(
+        "cus_from_authoritative_state",
+        "ai_exercises",
+        3,
+        "usage:school-7:attempt-99",
+    )?;
+    let receipt = stripe.report_metered_usage(&event).await?;
+    assert_eq!(receipt.quantity(), 3);
+    Ok(())
+}
+```
+
+Lemon Squeezy instead needs its numeric subscription-item relationship and an
+aggregation action:
+
+```rust,no_run
+use rullst_capital::{
+    CapitalError, LemonSqueezyProvider, LemonSqueezyUsageAction,
+    LemonSqueezyUsageRecord, MeteredBillingProvider as _,
+};
+
+async fn report_lesson_minutes(
+    lemon: &LemonSqueezyProvider,
+) -> Result<(), CapitalError> {
+    let record = LemonSqueezyUsageRecord::new(
+        "42",
+        "lesson_minutes",
+        15,
+        LemonSqueezyUsageAction::Increment,
+        "usage:school-7:lesson-session-123",
+    )?;
+
+    // Atomically claim record.event_key() in a durable outbox before this call.
+    let receipt = lemon.report_metered_usage(&record).await?;
+    assert_eq!(receipt.quantity(), 15);
+    Ok(())
+}
+```
+
+Use `Increment` only with a sum-of-usage aggregation and `Set` only with the
+matching latest-value aggregation. Stripe receives the identifier but enforces
+it only within a rolling window. Lemon's request does not receive the
+application event key at all, so durable application deduplication is mandatory.
+The adapters cap and bind responses, while provider sandbox/live acceptance,
+retry, invoice reconciliation and entitlement updates remain release and
+application work. Empty or `mock_*` API keys produce a deterministic
+`UsageStatus::Mock`, never billable evidence.
+
+## 6. Verify webhooks before business processing
 
 Mount `rullst_capital::verify_webhook` on the exact provider callback route as
 shown in the [Capital crate guide](../5-rullst-capital.md). Apply any CSRF
 exemption only to that exact signed route. Never update access or subscription
 state from an unverified request.
 
-## 6. Use a bounded subscription handle and grace period
+## 7. Use a bounded subscription handle and grace period
 
 ```rust,no_run
 use rullst_capital::{Billable as _, CapitalError, GracePeriod, StripeProvider};
@@ -167,7 +226,7 @@ it with authoritative subscription state, evaluate it against a trusted clock
 inside the entitlement check, and confirm the selected adapter's live pause or
 cancel semantics.
 
-## 7. Supply an optional local revenue snapshot
+## 8. Supply an optional local revenue snapshot
 
 `RevenueDashboardManager` does not derive money or subscribers from event names.
 After durable reconciliation, the application may call `update_metrics` with its

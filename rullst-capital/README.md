@@ -20,6 +20,9 @@ provider sandbox.
 - **Payment-bound invoices:** The opt-in `invoice-pdf` feature validates money
   into exact minor units, renders bounded paginated PDF and binds delivery to a
   final receipt matching recipient, amount and currency.
+- **Provider-specific metered billing:** Current Stripe Meter Events and Lemon
+  Squeezy Usage Records request/response contracts, bounded protocol parsing,
+  deterministic non-live mocks and explicit retry evidence.
 
 ---
 
@@ -125,6 +128,40 @@ are deterministic but carry the distinct non-success `ChargeStatus::Mock`;
 other adapters return `UnsupportedOperation`. Mandate/SCA,
 durable idempotency, webhook reconciliation and entitlement changes remain
 application responsibilities.
+
+### Provider-Specific Metered Usage
+
+Use `MeteredBillingProvider` instead of the legacy uniform `report_usage`
+method. Stripe requires a customer, configured event name, timestamp and
+provider-forwarded identifier:
+
+```rust,no_run
+use rullst_capital::{
+    CapitalError, MeteredBillingProvider as _, StripeMeterEvent, StripeProvider,
+};
+
+async fn report_lesson_minutes(stripe: &StripeProvider) -> Result<(), CapitalError> {
+    let event = StripeMeterEvent::new(
+        "cus_from_authoritative_state",
+        "lesson_minutes",
+        15,
+        "usage:school-7:attempt-99",
+    )?;
+    let receipt = stripe.report_metered_usage(&event).await?;
+    if receipt.is_live_accepted() {
+        // Reconcile the provider meter; do not infer an entitlement from this alone.
+    }
+    Ok(())
+}
+```
+
+`LemonSqueezyUsageRecord` instead requires the provider's numeric subscription
+item ID and an explicit `Increment` or `Set` action. The action must match the
+aggregation configured for that variant. Lemon Squeezy's request does not carry
+the application's event key, so atomically claim `event_key()` in a durable
+outbox before submission. Stripe's identifier is provider-forwarded but only
+has a rolling deduplication guarantee. Empty or `mock_*` keys return a stable
+`UsageStatus::Mock`, never a live acceptance.
 
 ### Payment-Bound Invoice Delivery
 

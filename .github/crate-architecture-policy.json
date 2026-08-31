@@ -20,6 +20,7 @@
     { "from": "rullst-capital", "to": "rullst-core", "optional": false },
     { "from": "rullst-core", "to": "rullst-macros", "optional": false },
     { "from": "rullst-core", "to": "rullst-orm", "optional": true },
+    { "from": "rullst-mail", "to": "rullst-capital", "optional": true },
     { "from": "rullst-mail", "to": "rullst-core", "optional": false },
     { "from": "rullst-nexus", "to": "rullst-ai", "optional": false },
     { "from": "rullst-nexus", "to": "rullst-auth", "optional": false },

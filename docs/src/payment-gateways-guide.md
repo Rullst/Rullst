@@ -216,7 +216,22 @@ billing side effects in a multi-instance deployment, claim the provider event
 ID through a durable database or Redis uniqueness transaction and make the
 state transition idempotent.
 
-### 4. Payment-Bound PDF Invoice Delivery
+### 4. Provider-Specific Metered Usage
+
+Use `MeteredBillingProvider` with `StripeMeterEvent` or
+`LemonSqueezyUsageRecord`. The Stripe request carries customer, configured
+event name, positive value, bounded timestamp and an identifier forwarded to
+the provider and HTTP idempotency header. The Lemon Squeezy request carries the
+numeric subscription-item relationship, positive quantity and an explicit
+`increment`/`set` action matching the provider-side aggregation.
+
+Do not retry Lemon submissions from memory alone: its reviewed request has no
+application event-key field. Claim the request key durably before sending and
+make reconciliation idempotent. Stripe's provider identifier also has only a
+rolling uniqueness window. Protocol fixtures verify request/response shape and
+bounds; they do not replace live provider-account testing.
+
+### 5. Payment-Bound PDF Invoice Delivery
 
 With the umbrella `capital-mail` feature, bind an authoritative invoice to the
 final charge receipt and prepare a pipeline-validated HTML/PDF message through
@@ -228,7 +243,7 @@ bridge is at-least-once and does not infer webhook reconciliation.
 The complete runnable shape and its outbox boundary are shown in
 [Tutorial 19](tutorials/19-saas-billing-capital.md#4-render-and-deliver-the-invoice-only-after-final-success).
 
-### 5. International Payouts with Wise
+### 6. International Payouts with Wise
 
 ```rust
 use rullst_capital::{CapitalError, WiseProvider};

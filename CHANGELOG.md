@@ -393,6 +393,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   sends through the facade or a static driver. Its stable key supports a
   caller-owned durable outbox; webhook orchestration and exactly-once delivery
   are not claimed.
+- Replaced live use of the ambiguous legacy metered-usage method with the
+  static-dispatch `MeteredBillingProvider` boundary. `StripeMeterEvent` now
+  emits the current Meter Events form contract and binds customer, meter name,
+  value, timestamp and identifier; `LemonSqueezyUsageRecord` emits the current
+  JSON:API subscription-item relationship and binds quantity/action. Responses
+  are capped at one MiB, identities are redacted and offline mocks are
+  deterministic/non-live. Stripe exposes rolling provider deduplication, while
+  Lemon explicitly requires a caller-owned durable outbox key; live account
+  acceptance, reconciliation and entitlement policy are not claimed.
 - `cargo rullst make:iot` now validates device identifiers, refuses traversal
   and collisions, enables the umbrella `iot` feature, registers generated
   modules, and is checked by compiling a materialized application. IoT HTML

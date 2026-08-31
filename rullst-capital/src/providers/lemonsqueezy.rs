@@ -23,6 +23,10 @@ impl LemonSqueezyProvider {
         }
     }
 
+    pub(super) fn usage_api_key(&self) -> &str {
+        &self.api_key
+    }
+
     /// Verifies the `X-Signature` header signature using HMAC-SHA256 of the raw body.
     pub fn verify_signature(
         &self,
@@ -305,33 +309,16 @@ impl BillingProvider for LemonSqueezyProvider {
                 "Metric name cannot be empty".to_string(),
             ));
         }
+        if quantity == 0 {
+            return Err(CapitalError::InvalidUsage(
+                "quantity must be greater than zero".to_string(),
+            ));
+        }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = crate::providers::http_client();
-            let payload = serde_json::json!({
-                "data": {
-                    "type": "usage-records",
-                    "attributes": {
-                        "quantity": quantity,
-                        "action": "increment"
-                    }
-                }
-            });
-            let res = client
-                .post(format!(
-                    "https://api.lemonsqueezy.com/v1/subscription-items/{}/usage-records",
-                    subscription_id
-                ))
-                .bearer_auth(&self.api_key)
-                .json(&payload)
-                .send()
-                .await
-                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
-            if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!(
-                    "HTTP {}",
-                    res.status()
-                )));
-            }
+            return Err(CapitalError::UnsupportedOperation(
+                "Lemon Squeezy usage requires a subscription-item relationship, aggregation action and application event key; use LemonSqueezyUsageRecord with MeteredBillingProvider"
+                    .to_string(),
+            ));
         }
         Ok(())
     }

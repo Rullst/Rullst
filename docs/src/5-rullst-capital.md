@@ -61,6 +61,25 @@ with the distinct non-success `ChargeStatus::Mock`; it must never grant access
 or be booked as revenue. This API has no raw-card field and never guesses
 currency.
 
+## Provider-specific metered usage
+
+Use the static-dispatch `MeteredBillingProvider` boundary for new code.
+`StripeMeterEvent` requires the authoritative `cus_*` customer, configured
+meter event name, positive quantity, timestamp and a unique visible identifier;
+the adapter sends the default `stripe_customer_id`/`value` payload and binds all
+of those fields in the accepted response. `LemonSqueezyUsageRecord` requires
+the provider's numeric subscription-item ID plus the explicit `Increment` or
+`Set` action and binds item/quantity/action from the JSON:API response.
+
+Both responses are capped at one MiB and offline credentials return a
+deterministic `UsageStatus::Mock`. Stripe provides only rolling identifier
+deduplication. The reviewed Lemon request has no provider event-key field, so
+the application must atomically claim `event_key()` in a durable outbox before
+sending. It must also configure the matching aggregation, reconcile invoices
+and derive quotas/entitlements from authoritative state. The old uniform
+`BillingProvider::report_usage` remains source-compatible for mocks but fails
+closed in live Stripe/Lemon configurations instead of guessing required fields.
+
 ## Payment-bound invoice PDF and delivery
 
 Enable the umbrella `capital-mail` feature (or Capital's `invoice-pdf` and

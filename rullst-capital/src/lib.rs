@@ -6,6 +6,7 @@ pub mod error;
 pub mod fiscal;
 pub mod invoice;
 pub mod providers;
+pub mod usage;
 
 #[cfg(any(feature = "axum", feature = "actix"))]
 pub mod webhook;
@@ -17,6 +18,7 @@ pub use dashboard::*;
 pub use error::*;
 pub use fiscal::*;
 pub use invoice::*;
+pub use usage::*;
 
 #[cfg(any(feature = "axum", feature = "actix"))]
 pub use webhook::*;

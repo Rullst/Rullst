@@ -50,6 +50,10 @@ pub enum CapitalError {
     #[error("Invalid invoice: {0}")]
     InvalidInvoice(String),
 
+    /// A metered-usage request violates its provider-specific contract.
+    #[error("Invalid metered usage: {0}")]
+    InvalidUsage(String),
+
     /// Digital invoice or tax authority operation error.
     #[error("Fiscal error: {0}")]
     FiscalError(#[from] crate::fiscal::models::FiscalError),
@@ -104,6 +108,9 @@ mod tests {
 
         let e7 = CapitalError::SubscriptionError("sub not found".to_string());
         assert_eq!(e7.to_string(), "Subscription error: sub not found");
+
+        let usage = CapitalError::InvalidUsage("quantity is zero".to_string());
+        assert_eq!(usage.to_string(), "Invalid metered usage: quantity is zero");
 
         let f_err = FiscalError::XmlSigning("bad xml".to_string());
         let e8: CapitalError = f_err.into();
