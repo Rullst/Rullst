@@ -1,9 +1,29 @@
 // Authenticated, versioned and idempotent score-event templates.
 
+mod activity;
+mod policy;
+mod test_template;
+
+use activity::ACTIVITY_SCORE_SERVICE;
+use policy::SCORE_POLICY_SERVICE;
+use test_template::SCORE_TESTS;
+
 pub fn get_files() -> Vec<(&'static str, String)> {
     vec![
         ("src/models/score_event.rs", SCORE_EVENT_MODEL.to_string()),
         ("src/services/score_service.rs", SCORE_SERVICE.to_string()),
+        (
+            "src/services/score_service/activity.rs",
+            ACTIVITY_SCORE_SERVICE.to_string(),
+        ),
+        (
+            "src/services/score_service/policy.rs",
+            SCORE_POLICY_SERVICE.to_string(),
+        ),
+        (
+            "src/services/score_service/tests.rs",
+            SCORE_TESTS.to_string(),
+        ),
     ]
 }
 
@@ -26,6 +46,7 @@ pub struct ScoreEvent {
     pub max_score: i32,
     pub occurred_at: String,
     pub ruleset_version: String,
+    pub evidence_sha256: String,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -49,6 +70,7 @@ impl NexusModel for ScoreEvent {
             FieldMeta { name: "max_score", label: "Maximum Score", kind: FieldKind::Number, hidden: false, readonly: true },
             FieldMeta { name: "occurred_at", label: "Occurred At", kind: FieldKind::DateTime, hidden: false, readonly: true },
             FieldMeta { name: "ruleset_version", label: "Ruleset", kind: FieldKind::Text, hidden: false, readonly: true },
+            FieldMeta { name: "evidence_sha256", label: "Evidence SHA-256", kind: FieldKind::Text, hidden: false, readonly: true },
             FieldMeta { name: "created_at", label: "Created At", kind: FieldKind::Text, hidden: false, readonly: true },
             FieldMeta { name: "updated_at", label: "Updated At", kind: FieldKind::Text, hidden: false, readonly: true },
         ]
@@ -62,10 +84,15 @@ use rullst::{Cache, TenantCache};
 use rullst_security::{RbacGuard, UserContext};
 use std::sync::OnceLock;
 
-pub const SCORE_EVENT_SCHEMA_VERSION: i32 = 1;
+mod activity;
+mod policy;
+pub use activity::record_activity_result;
+use policy::lock_activity_policy;
+
+pub const SCORE_EVENT_SCHEMA_VERSION: i32 = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ScoreSubmission {
+struct ScoreSubmission {
     pub idempotency_key: String,
     pub schema_version: i32,
     pub origin: String,
@@ -77,6 +104,7 @@ pub struct ScoreSubmission {
     pub max_score: i32,
     pub ruleset_version: String,
     pub season_key: String,
+    pub evidence_sha256: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -220,6 +248,14 @@ fn validate(
             return Err(ScoreError::InvalidField(name));
         }
     }
+    if submission.evidence_sha256.len() != 64
+        || !submission
+            .evidence_sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
+    {
+        return Err(ScoreError::InvalidField("evidence_sha256"));
+    }
     if submission.subject_user_id <= 0
         || submission.course_id <= 0
         || submission.activity_id <= 0
@@ -284,7 +320,7 @@ pub async fn leaderboard(
     Ok(entries)
 }
 
-pub async fn record_score(
+async fn record_score(
     context: &UserContext,
     submission: ScoreSubmission,
 ) -> Result<ScoreReceipt, ScoreError> {
@@ -319,11 +355,12 @@ pub async fn record_score(
         .begin()
         .await
         .map_err(|error| ScoreError::Database(error.into()))?;
+    lock_activity_policy(&mut transaction, driver, value).await?;
 
     let event_sql = match driver {
-        "postgres" => "INSERT INTO score_events (idempotency_key, schema_version, origin, actor_user_id, subject_user_id, course_id, activity_id, attempt_key, points, max_score, occurred_at, ruleset_version, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING",
-        "mysql" => "INSERT IGNORE INTO score_events (idempotency_key, schema_version, origin, actor_user_id, subject_user_id, course_id, activity_id, attempt_key, points, max_score, occurred_at, ruleset_version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-        _ => "INSERT INTO score_events (idempotency_key, schema_version, origin, actor_user_id, subject_user_id, course_id, activity_id, attempt_key, points, max_score, occurred_at, ruleset_version, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING",
+        "postgres" => "INSERT INTO score_events (idempotency_key, schema_version, origin, actor_user_id, subject_user_id, course_id, activity_id, attempt_key, points, max_score, occurred_at, ruleset_version, evidence_sha256, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, $11, $12, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING",
+        "mysql" => "INSERT IGNORE INTO score_events (idempotency_key, schema_version, origin, actor_user_id, subject_user_id, course_id, activity_id, attempt_key, points, max_score, occurred_at, ruleset_version, evidence_sha256, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+        _ => "INSERT INTO score_events (idempotency_key, schema_version, origin, actor_user_id, subject_user_id, course_id, activity_id, attempt_key, points, max_score, occurred_at, ruleset_version, evidence_sha256, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING",
     };
     let insertion = rullst::db::sqlx::query(event_sql)
         .bind(&value.idempotency_key)
@@ -337,6 +374,7 @@ pub async fn record_score(
         .bind(value.points)
         .bind(value.max_score)
         .bind(&value.ruleset_version)
+        .bind(&value.evidence_sha256)
         .execute(&mut *transaction)
         .await
         .map_err(|error| ScoreError::Database(error.into()))?;
@@ -359,7 +397,7 @@ pub async fn record_score(
 
         let outbox_key = format!("score:{}", value.idempotency_key);
         let payload = serde_json::json!({
-            "schema_version": 1,
+            "schema_version": SCORE_EVENT_SCHEMA_VERSION,
             "idempotency_key": value.idempotency_key,
             "origin": value.origin,
             "actor_user_id": validated.actor_user_id,
@@ -371,6 +409,7 @@ pub async fn record_score(
             "max_score": value.max_score,
             "ruleset_version": value.ruleset_version,
             "season_key": value.season_key,
+            "evidence_sha256": value.evidence_sha256,
         })
         .to_string();
         let outbox_sql = match driver {
@@ -414,61 +453,12 @@ fn unix_now() -> Result<i64, ScoreError> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn submission() -> ScoreSubmission {
-        ScoreSubmission {
-            idempotency_key: "event-1".to_string(),
-            schema_version: SCORE_EVENT_SCHEMA_VERSION,
-            origin: "activity".to_string(),
-            subject_user_id: 7,
-            course_id: 2,
-            activity_id: 3,
-            attempt_key: "attempt-1".to_string(),
-            points: 80,
-            max_score: 100,
-            ruleset_version: "rules-v1".to_string(),
-            season_key: "season-2026".to_string(),
-        }
-    }
-
-    #[test]
-    fn actor_comes_from_authenticated_context_and_cross_user_is_denied() {
-        let owner = UserContext::new("7", vec!["student".to_string()]);
-        let attacker = UserContext::new("8", vec!["student".to_string()]);
-
-        let validated = validate(&owner, submission()).expect("owner score should validate");
-        assert_eq!(validated.actor_user_id, 7);
-        assert!(matches!(
-            validate(&attacker, submission()),
-            Err(ScoreError::Forbidden)
-        ));
-    }
-
-    #[test]
-    fn invalid_schema_keys_and_scores_fail_closed() {
-        let owner = UserContext::new("7", vec!["student".to_string()]);
-        let mut invalid = submission();
-        invalid.points = 101;
-        assert!(matches!(
-            validate(&owner, invalid),
-            Err(ScoreError::InvalidField("score bounds"))
-        ));
-
-        let mut future = submission();
-        future.schema_version = 2;
-        assert!(matches!(
-            validate(&owner, future),
-            Err(ScoreError::UnsupportedSchemaVersion(2))
-        ));
-    }
-}
+mod tests;
 "##;
 
 #[cfg(test)]
 mod tests {
-    use super::SCORE_SERVICE;
+    use super::{ACTIVITY_SCORE_SERVICE, SCORE_POLICY_SERVICE, SCORE_SERVICE};
 
     #[test]
     fn score_template_binds_every_dynamic_value() {
@@ -478,5 +468,9 @@ mod tests {
         assert!(SCORE_SERVICE.contains("execute(&mut *transaction)"));
         assert!(SCORE_SERVICE.contains("INSERT INTO academy_outbox"));
         assert!(SCORE_SERVICE.contains("ORDER BY score DESC, updated_at ASC, user_id ASC LIMIT"));
+        assert!(ACTIVITY_SCORE_SERVICE.contains("ValidatedActivityResult"));
+        assert!(ACTIVITY_SCORE_SERVICE.contains("persisted activity policy"));
+        assert!(SCORE_POLICY_SERVICE.contains("FOR UPDATE"));
+        assert!(SCORE_POLICY_SERVICE.contains("evidence_sha256"));
     }
 }

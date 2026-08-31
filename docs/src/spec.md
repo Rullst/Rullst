@@ -74,9 +74,14 @@ untrusted submission, never client-supplied points. It validates authenticated
 ownership, activity/ruleset identity, bounded object-shaped state, server-time
 ordering and a canonical evidence digest, then constructs `ActivityResult` from
 the evaluator's outcome. The built-in single-choice exercise evaluator is a
-bounded example; the application must load its answer/rules/digest from trusted
-server state and transactionally persist score/outbox effects. The separately
-persisted quiz evaluator is not yet implemented through this generic boundary.
+bounded example. The complete Academy starter's `record_activity_result`
+rechecks the authenticated actor, loads course/kind/maximum/ruleset/season and
+the canonical evidence digest from persisted activity state, rejects any
+divergence, then atomically appends `ScoreEvent` v2, updates the leaderboard and
+emits `score_recorded`. The application must still load evaluator answer rules
+from trusted server state. Raw attempt/result retention, an authenticated HTTP
+handler, additional exercise/game evaluators and unification with the separately
+persisted quiz evaluator remain application or roadmap work.
 
 ---
 

@@ -174,20 +174,26 @@ pub const GENERATED_TESTS_SUFFIX: &str = r##"
         .execute(Orm::pool().expect("Academy pool"))
         .await
         .expect("isolate worker fixture");
-        let worker_score = ScoreSubmission {
-            idempotency_key: "worker-score".to_string(),
-            schema_version: SCORE_EVENT_SCHEMA_VERSION,
-            origin: "game".to_string(),
-            subject_user_id: 7,
-            course_id: 1,
-            activity_id: 1,
-            attempt_key: "worker-attempt".to_string(),
-            points: 80,
-            max_score: 100,
-            ruleset_version: "rules-v1".to_string(),
-            season_key: "season-2026".to_string(),
-        };
-        assert!(record_score(&learner, worker_score)
+        let worker_score = evaluate_activity(
+            &learner,
+            ActivityAttempt {
+                schema_version: ACTIVITY_SCHEMA_VERSION,
+                attempt_key: "worker-score".to_string(),
+                activity_id: 4,
+                subject_user_id: 7,
+                kind: ActivityKind::Exercise,
+                ruleset_version: "rules-v1".to_string(),
+                started_at_epoch_seconds: 11_000,
+                state_json: "{\"prompt_version\":1}".to_string(),
+            },
+            &SingleChoiceSubmission {
+                selected_option_id: 11,
+            },
+            11_030,
+            &evaluator,
+        )
+        .expect("worker authoritative activity outcome");
+        assert!(record_activity_result(&learner, worker_score)
             .await
             .expect("worker score fixture")
             .applied);

@@ -14,12 +14,13 @@ use crate::services::activity_contract::{
     ActivityAttempt, ActivityKind, SingleChoiceEvaluator,
     SingleChoiceSubmission, ACTIVITY_SCHEMA_VERSION, evaluate_activity,
 };
+use crate::services::score_service::{ScoreReceipt, record_activity_result};
 use rullst_security::UserContext;
 
-fn grade(
+async fn grade(
     context: &UserContext,
     selected_option_id: i32,
-) -> Result<i32, Box<dyn std::error::Error>> {
+) -> Result<ScoreReceipt, Box<dyn std::error::Error>> {
     // These three values represent data loaded from trusted server state.
     let evaluator = SingleChoiceEvaluator::new(7, 100, "a".repeat(64))?;
     let attempt = ActivityAttempt {
@@ -32,14 +33,14 @@ fn grade(
         started_at_epoch_seconds: 1_800_000_000,
         state_json: r#"{"prompt_version":3}"#.to_string(),
     };
-    let result = evaluate_activity(
+    let validated = evaluate_activity(
         context,
         attempt,
         &SingleChoiceSubmission { selected_option_id },
         1_800_000_030,
         &evaluator,
     )?;
-    Ok(result.result.points)
+    Ok(record_activity_result(context, validated).await?)
 }
 ```
 
@@ -50,17 +51,22 @@ non-canonical evidence digests.
 
 ## Persist one authoritative transaction
 
-`evaluate_activity` deliberately does not choose your database or domain
-effects. After it succeeds, use one application transaction to:
+In the complete Academy starter, pass the opaque `ValidatedActivityResult`
+directly to `record_activity_result`. Callers cannot construct that wrapper or
+replace its points. The bridge loads the persisted activity and rechecks its
+course, kind, maximum, ruleset, season and evidence digest before one
+transaction:
 
-1. insert the unique attempt/result;
-2. append a deduplicated `ScoreEvent`;
-3. update the authoritative leaderboard projection; and
-4. append an outbox event before commit.
+1. appends a deduplicated `ScoreEvent` v2;
+2. updates the authoritative leaderboard projection; and
+3. appends the strict `score_recorded` v2 outbox event before commit.
 
-The full Academy quiz service already demonstrates those persistence rules but
-is still a separate evaluator. Do not claim generic quiz/game integration until
-the paths are unified and their materialized tests pass.
+The bridge does not retain raw attempt state or expose an HTTP handler; add
+those as application-owned boundaries without accepting points, policy or
+identity from the request. The full Academy quiz service follows the same score
+event invariants but is still a separate evaluator. Do not claim generic quiz
+or game integration until those paths are unified and their materialized tests
+pass.
 
 Implement another `ActivityEvaluator` when a spelling, listening or matching
 exercise needs different trusted rules. Keep the concrete evaluator type

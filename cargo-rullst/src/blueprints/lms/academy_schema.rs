@@ -115,6 +115,9 @@ impl Migration for MigrationImpl {
             table.string("title").not_null();
             table.string("activity_kind").not_null();
             table.integer("max_score").not_null();
+            table.string("ruleset_version").not_null();
+            table.string("season_key").not_null();
+            table.string("evidence_sha256").not_null();
             table.string("config_json").not_null();
             table.timestamps();
         }).await?;
@@ -187,6 +190,7 @@ impl Migration for MigrationImpl {
             table.integer("max_score").not_null();
             table.string("occurred_at").not_null();
             table.string("ruleset_version").not_null();
+            table.string("evidence_sha256").not_null();
             table.timestamps();
         }).await?;
 
@@ -264,9 +268,10 @@ impl Migration for MigrationImpl {
             "INSERT INTO quiz_options (id, question_id, label, position, is_correct) VALUES (2, 1, 'Unchecked shared mutation', 2, 0)",
             "INSERT INTO quiz_options (id, question_id, label, position, is_correct) VALUES (3, 2, 'The authenticated owner or authorized admin', 1, 1)",
             "INSERT INTO quiz_options (id, question_id, label, position, is_correct) VALUES (4, 2, 'Any submitted user identifier', 2, 0)",
-            "INSERT INTO activities (id, lesson_id, title, activity_kind, max_score, config_json) VALUES (1, 1, 'Borrow Checker Rescue', 'game', 100, '{\"schema_version\":1,\"mode\":\"offline\"}')",
-            "INSERT INTO activities (id, lesson_id, title, activity_kind, max_score, config_json) VALUES (2, 1, 'Memory Safety Checkpoint', 'quiz', 100, '{\"schema_version\":1,\"ruleset_version\":\"memory-rules-v1\"}')",
-            "INSERT INTO activities (id, lesson_id, title, activity_kind, max_score, config_json) VALUES (3, 1, 'Timed Ownership Checkpoint', 'quiz', 100, '{\"schema_version\":1,\"ruleset_version\":\"timed-rules-v1\"}')",
+            "INSERT INTO activities (id, lesson_id, title, activity_kind, max_score, ruleset_version, season_key, evidence_sha256, config_json) VALUES (1, 1, 'Borrow Checker Rescue', 'game', 100, 'rules-v1', 'season-2026', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '{\"schema_version\":1,\"mode\":\"offline\"}')",
+            "INSERT INTO activities (id, lesson_id, title, activity_kind, max_score, ruleset_version, season_key, evidence_sha256, config_json) VALUES (2, 1, 'Memory Safety Checkpoint', 'quiz', 100, 'memory-rules-v1', 'season-2026', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', '{\"schema_version\":1,\"ruleset_version\":\"memory-rules-v1\"}')",
+            "INSERT INTO activities (id, lesson_id, title, activity_kind, max_score, ruleset_version, season_key, evidence_sha256, config_json) VALUES (3, 1, 'Timed Ownership Checkpoint', 'quiz', 100, 'timed-rules-v1', 'season-2026', 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc', '{\"schema_version\":1,\"ruleset_version\":\"timed-rules-v1\"}')",
+            "INSERT INTO activities (id, lesson_id, title, activity_kind, max_score, ruleset_version, season_key, evidence_sha256, config_json) VALUES (4, 1, 'Ownership Listening Choice', 'exercise', 80, 'rules-v1', 'season-2026', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '{\"schema_version\":1,\"mode\":\"single_choice\"}')",
             "INSERT INTO achievements (id, code, name, description, xp_reward, enabled) VALUES (1, 'memory-guardian', 'Memory Guardian', 'Complete the offline memory-safety challenge.', 100, 1)",
             "INSERT INTO automation_rules (id, school_id, name, trigger_kind, action_kind, config_json, enabled) VALUES (1, 1, 'Award Memory Guardian', 'score_recorded', 'award_achievement', '{\"schema_version\":1,\"achievement_code\":\"memory-guardian\",\"minimum_score\":80}', 1)",
             "INSERT INTO automation_rules (id, school_id, name, trigger_kind, action_kind, config_json, enabled) VALUES (2, 2, 'Rival Memory Guardian', 'score_recorded', 'award_achievement', '{\"schema_version\":1,\"achievement_code\":\"memory-guardian\",\"minimum_score\":80}', 1)",

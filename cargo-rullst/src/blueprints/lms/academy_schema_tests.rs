@@ -10,6 +10,10 @@ mod tests {
     use crate::services::assessment_timing_service::{
         QuizStartError, QuizStartRequest, start_quiz_at,
     };
+    use crate::services::activity_contract::{
+        ACTIVITY_SCHEMA_VERSION, ActivityAttempt, ActivityKind, SingleChoiceEvaluator,
+        SingleChoiceSubmission, evaluate_activity,
+    };
     use crate::services::automation_execution_service::apply_claimed_plan;
     use crate::services::automation_service::{
         AutomationRuleInput, PlannedAction, plan_score_automations,
@@ -32,9 +36,7 @@ mod tests {
     use crate::services::role_service::{RoleError, active_roles_at, grant_role};
     use crate::services::scheduler_lease_service::{acquire_at, release, renew_at, snapshot};
     use crate::services::score_correction_service::correct_score;
-    use crate::services::score_service::{
-        SCORE_EVENT_SCHEMA_VERSION, ScoreSubmission, leaderboard, record_score,
-    };
+    use crate::services::score_service::{ScoreError, leaderboard, record_activity_result};
     use rullst::db::Orm;
     use rullst_security::UserContext;
 
@@ -114,20 +116,30 @@ mod tests {
         .expect("Academy fixture query");
         assert_eq!(fixture_count, 1);
 
-        let submission = ScoreSubmission {
-            idempotency_key: "event-sqlite-1".to_string(),
-            schema_version: SCORE_EVENT_SCHEMA_VERSION,
-            origin: "game".to_string(),
-            subject_user_id: 7,
-            course_id: 1,
-            activity_id: 1,
-            attempt_key: "attempt-sqlite-1".to_string(),
-            points: 80,
-            max_score: 100,
-            ruleset_version: "rules-v1".to_string(),
-            season_key: "season-2026".to_string(),
-        };
         let learner = academy_context("7", vec!["student".to_string()]);
+        let evaluator = SingleChoiceEvaluator::new(11, 80, "a".repeat(64))
+            .expect("persisted single-choice rules");
+        let evaluate_score = || {
+            evaluate_activity(
+                &learner,
+                ActivityAttempt {
+                    schema_version: ACTIVITY_SCHEMA_VERSION,
+                    attempt_key: "event-sqlite-1".to_string(),
+                    activity_id: 4,
+                    subject_user_id: 7,
+                    kind: ActivityKind::Exercise,
+                    ruleset_version: "rules-v1".to_string(),
+                    started_at_epoch_seconds: 1_000,
+                    state_json: "{\"prompt_version\":1}".to_string(),
+                },
+                &SingleChoiceSubmission {
+                    selected_option_id: 11,
+                },
+                1_030,
+                &evaluator,
+            )
+            .expect("authoritative activity outcome")
+        };
         let localized = render_notification(
             "pt-BR",
             "academy.achievement.awarded",
@@ -147,8 +159,61 @@ mod tests {
             render_notification("en", "academy.unknown", "{}"),
             Err(NotificationTemplateError::UnsupportedKey),
         ));
-        assert!(record_score(&learner, submission.clone()).await.expect("new score").applied);
-        assert!(!record_score(&learner, submission).await.expect("score replay").applied);
+        assert!(record_activity_result(&learner, evaluate_score()).await.expect("new score").applied);
+        assert!(!record_activity_result(&learner, evaluate_score()).await.expect("score replay").applied);
+
+        let wrong_evidence_evaluator = SingleChoiceEvaluator::new(11, 80, "d".repeat(64))
+            .expect("syntactically valid but untrusted activity evidence");
+        let wrong_evidence_result = evaluate_activity(
+            &learner,
+            ActivityAttempt {
+                schema_version: ACTIVITY_SCHEMA_VERSION,
+                attempt_key: "event-wrong-evidence".to_string(),
+                activity_id: 4,
+                subject_user_id: 7,
+                kind: ActivityKind::Exercise,
+                ruleset_version: "rules-v1".to_string(),
+                started_at_epoch_seconds: 1_000,
+                state_json: "{\"prompt_version\":1}".to_string(),
+            },
+            &SingleChoiceSubmission {
+                selected_option_id: 11,
+            },
+            1_030,
+            &wrong_evidence_evaluator,
+        )
+        .expect("locally well-formed outcome with mismatched persisted evidence");
+        assert!(matches!(
+            record_activity_result(&learner, wrong_evidence_result).await,
+            Err(ScoreError::InvalidField("persisted activity policy"))
+        ));
+        assert!(matches!(
+            record_activity_result(
+                &academy_context("8", vec!["student".to_string()]),
+                evaluate_score(),
+            )
+            .await,
+            Err(ScoreError::Forbidden)
+        ));
+
+        let (score_schema_version, persisted_evidence) =
+            rullst::db::sqlx::query_as::<_, (i32, String)>(
+                "SELECT schema_version, evidence_sha256 FROM score_events WHERE idempotency_key = ?",
+            )
+            .bind("event-sqlite-1")
+            .fetch_one(Orm::pool().expect("Academy pool"))
+            .await
+            .expect("persisted activity score evidence");
+        assert_eq!(score_schema_version, 2);
+        assert_eq!(persisted_evidence, "a".repeat(64));
+        let score_count = rullst::db::sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM score_events WHERE origin = ?",
+        )
+        .bind("activity")
+        .fetch_one(Orm::pool().expect("Academy pool"))
+        .await
+        .expect("rejected activity scores leave no record");
+        assert_eq!(score_count, 1);
 
         let outbox_count = rullst::db::sqlx::query_scalar::<_, i64>(
             "SELECT COUNT(*) FROM academy_outbox WHERE event_kind = ?",

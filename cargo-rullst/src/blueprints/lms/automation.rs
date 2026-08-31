@@ -10,6 +10,7 @@ pub fn get_files() -> Vec<(&'static str, String)> {
 const AUTOMATION_SERVICE: &str = r##"use serde::Deserialize;
 
 pub const AUTOMATION_SCHEMA_VERSION: i32 = 1;
+pub const SCORE_RECORDED_SCHEMA_VERSION: i32 = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AutomationRuleInput {
@@ -64,7 +65,7 @@ impl std::error::Error for AutomationError {}
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct ScoreRecordedV1 {
+struct ScoreRecordedV2 {
     schema_version: i32,
     idempotency_key: String,
     origin: String,
@@ -77,6 +78,7 @@ struct ScoreRecordedV1 {
     max_score: i32,
     ruleset_version: String,
     season_key: String,
+    evidence_sha256: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -98,7 +100,7 @@ pub fn plan_score_automations(
     if !valid_key(event_key, 160) || event_kind != "score_recorded" || payload_json.len() > 16_384 {
         return Err(AutomationError::InvalidField("event envelope"));
     }
-    let event: ScoreRecordedV1 =
+    let event: ScoreRecordedV2 =
         serde_json::from_str(payload_json).map_err(AutomationError::InvalidJson)?;
     validate_event(&event)?;
 
@@ -141,8 +143,8 @@ pub fn plan_score_automations(
     Ok(plans)
 }
 
-fn validate_event(event: &ScoreRecordedV1) -> Result<(), AutomationError> {
-    if event.schema_version != AUTOMATION_SCHEMA_VERSION {
+fn validate_event(event: &ScoreRecordedV2) -> Result<(), AutomationError> {
+    if event.schema_version != SCORE_RECORDED_SCHEMA_VERSION {
         return Err(AutomationError::UnsupportedSchemaVersion(event.schema_version));
     }
     for (field, value, maximum) in [
@@ -164,10 +166,18 @@ fn validate_event(event: &ScoreRecordedV1) -> Result<(), AutomationError> {
         || event.max_score <= 0
         || event.points > event.max_score
         || event.max_score > 1_000_000
+        || !valid_sha256(&event.evidence_sha256)
     {
         return Err(AutomationError::InvalidField("score event"));
     }
     Ok(())
+}
+
+fn valid_sha256(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
 }
 
 fn valid_key(value: &str, maximum: usize) -> bool {
@@ -184,7 +194,7 @@ mod tests {
 
     fn event(points: i32) -> String {
         serde_json::json!({
-            "schema_version": 1,
+            "schema_version": 2,
             "idempotency_key": "score-1",
             "origin": "game",
             "actor_user_id": 7,
@@ -196,6 +206,7 @@ mod tests {
             "max_score": 100,
             "ruleset_version": "rules-v1",
             "season_key": "season-2026",
+            "evidence_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         }).to_string()
     }
 
@@ -254,15 +265,29 @@ mod tests {
             Err(AutomationError::UnsupportedAction(_))
         ));
 
-        let future = event(80).replace("\"schema_version\":1", "\"schema_version\":2");
+        let future = event(80).replace("\"schema_version\":2", "\"schema_version\":3");
         assert!(matches!(
             plan_score_automations("score:event-1", "score_recorded", &future, &[rule()]),
-            Err(AutomationError::UnsupportedSchemaVersion(2))
+            Err(AutomationError::UnsupportedSchemaVersion(3))
         ));
 
         let impossible = event(101);
         assert!(matches!(
             plan_score_automations("score:event-1", "score_recorded", &impossible, &[rule()]),
+            Err(AutomationError::InvalidField("score event"))
+        ));
+
+        let invalid_evidence = event(80).replace(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        );
+        assert!(matches!(
+            plan_score_automations(
+                "score:event-1",
+                "score_recorded",
+                &invalid_evidence,
+                &[rule()],
+            ),
             Err(AutomationError::InvalidField("score event"))
         ));
     }

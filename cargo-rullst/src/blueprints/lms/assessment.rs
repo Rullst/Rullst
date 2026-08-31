@@ -1,5 +1,4 @@
 // Authoritative server-side quiz grading templates.
-
 pub fn get_files() -> Vec<(&'static str, String)> {
     vec![(
         "src/services/assessment_service.rs",
@@ -123,12 +122,12 @@ pub async fn grade_quiz_at(
     let pool = rullst::db::Orm::pool()?;
     let driver = rullst::db::Orm::driver()?;
     let quiz_sql = match driver {
-        "postgres" => "SELECT quizzes.lesson_id, quizzes.passing_score, quizzes.max_attempts, quizzes.time_limit_seconds, quizzes.ruleset_version, quizzes.status, lessons.course_id, quizzes.activity_id, quizzes.season_key FROM quizzes INNER JOIN lessons ON lessons.id = quizzes.lesson_id WHERE quizzes.id = $1",
-        _ => "SELECT quizzes.lesson_id, quizzes.passing_score, quizzes.max_attempts, quizzes.time_limit_seconds, quizzes.ruleset_version, quizzes.status, lessons.course_id, quizzes.activity_id, quizzes.season_key FROM quizzes INNER JOIN lessons ON lessons.id = quizzes.lesson_id WHERE quizzes.id = ?",
+        "postgres" => "SELECT quizzes.lesson_id, quizzes.passing_score, quizzes.max_attempts, quizzes.time_limit_seconds, quizzes.ruleset_version, quizzes.status, lessons.course_id, quizzes.activity_id, quizzes.season_key, activities.activity_kind, activities.max_score, activities.ruleset_version, activities.evidence_sha256 FROM quizzes INNER JOIN lessons ON lessons.id = quizzes.lesson_id INNER JOIN activities ON activities.id = quizzes.activity_id WHERE quizzes.id = $1",
+        _ => "SELECT quizzes.lesson_id, quizzes.passing_score, quizzes.max_attempts, quizzes.time_limit_seconds, quizzes.ruleset_version, quizzes.status, lessons.course_id, quizzes.activity_id, quizzes.season_key, activities.activity_kind, activities.max_score, activities.ruleset_version, activities.evidence_sha256 FROM quizzes INNER JOIN lessons ON lessons.id = quizzes.lesson_id INNER JOIN activities ON activities.id = quizzes.activity_id WHERE quizzes.id = ?",
     };
     let quiz = rullst::db::sqlx::query_as::<
         _,
-        (i32, i32, i32, i32, String, String, i32, i32, String),
+        (i32, i32, i32, i32, String, String, i32, i32, String, String, i32, String, String),
     >(quiz_sql)
     .bind(submission.quiz_id)
     .fetch_optional(pool)
@@ -151,6 +150,11 @@ pub async fn grade_quiz_at(
         || quiz.6 <= 0
         || quiz.7 <= 0
         || !valid_key(&quiz.8, 64)
+        || quiz.9 != "quiz"
+        || !(1..=1_000_000).contains(&quiz.10)
+        || quiz.11 != quiz.4
+        || quiz.12.len() != 64
+        || !quiz.12.bytes().all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
     {
         return Err(AssessmentError::InvalidField("quiz rules"));
     }
@@ -321,6 +325,9 @@ pub async fn grade_quiz_at(
         .checked_mul(100)
         .ok_or(AssessmentError::InvalidField("score calculation"))?
         / max_points;
+    if max_points != quiz.10 {
+        return Err(AssessmentError::InvalidField("activity maximum score"));
+    }
     let attempt_sql = match driver {
         "postgres" => "INSERT INTO quiz_attempts (attempt_key, quiz_id, actor_user_id, subject_user_id, ruleset_version, status, score_percent, points_awarded, max_points, graded_at_epoch, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
         _ => "INSERT INTO quiz_attempts (attempt_key, quiz_id, actor_user_id, subject_user_id, ruleset_version, status, score_percent, points_awarded, max_points, graded_at_epoch, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
@@ -367,8 +374,8 @@ pub async fn grade_quiz_at(
 
     let score_idempotency_key = format!("quiz:{}", submission.attempt_key);
     let score_sql = match driver {
-        "postgres" => "INSERT INTO score_events (idempotency_key, schema_version, origin, actor_user_id, subject_user_id, course_id, activity_id, attempt_key, points, max_score, occurred_at, ruleset_version, created_at, updated_at) VALUES ($1, 1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-        _ => "INSERT INTO score_events (idempotency_key, schema_version, origin, actor_user_id, subject_user_id, course_id, activity_id, attempt_key, points, max_score, occurred_at, ruleset_version, created_at, updated_at) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+        "postgres" => "INSERT INTO score_events (idempotency_key, schema_version, origin, actor_user_id, subject_user_id, course_id, activity_id, attempt_key, points, max_score, occurred_at, ruleset_version, evidence_sha256, created_at, updated_at) VALUES ($1, 2, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+        _ => "INSERT INTO score_events (idempotency_key, schema_version, origin, actor_user_id, subject_user_id, course_id, activity_id, attempt_key, points, max_score, occurred_at, ruleset_version, evidence_sha256, created_at, updated_at) VALUES (?, 2, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
     };
     rullst::db::sqlx::query(score_sql)
         .bind(&score_idempotency_key)
@@ -381,6 +388,7 @@ pub async fn grade_quiz_at(
         .bind(points_awarded)
         .bind(max_points)
         .bind(&submission.ruleset_version)
+        .bind(&quiz.12)
         .execute(&mut *transaction)
         .await
         .map_err(|error| AssessmentError::Database(error.into()))?;
@@ -400,7 +408,7 @@ pub async fn grade_quiz_at(
 
     let score_event_key = format!("score:{score_idempotency_key}");
     let score_payload = serde_json::json!({
-        "schema_version": 1,
+        "schema_version": 2,
         "idempotency_key": &score_idempotency_key,
         "origin": "quiz",
         "actor_user_id": actor_user_id,
@@ -412,6 +420,7 @@ pub async fn grade_quiz_at(
         "max_score": max_points,
         "ruleset_version": &submission.ruleset_version,
         "season_key": &quiz.8,
+        "evidence_sha256": &quiz.12,
     })
     .to_string();
     let event_key = format!("quiz-graded:{}", submission.attempt_key);

@@ -224,7 +224,10 @@ lesson presentation supports bounded video/audio metadata, mandatory WebVTT
 captions for video and escaped transcripts. Its generic activity boundary also
 keeps points out of untrusted submissions: static-dispatch evaluators construct
 server-authored results, with a tested single-choice exercise as the first
-example. That is a useful foundation for a
+example. The complete starter then rederives the persisted activity policy and
+atomically projects that opaque result into a versioned score event, leaderboard
+and outbox; actor/evidence mismatch and replay are materialized negatives. That
+is a useful foundation for a
 language-learning product, not a claim that Rullst generates pedagogy, content,
 speech recognition, native-device behavior or a complete Duolingo equivalent.
 
