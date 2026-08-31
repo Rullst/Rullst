@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788171332722,
+  "lastUpdate": 1788173117372,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -12577,6 +12577,58 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2276,
             "range": "± 47",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Venelouis",
+            "username": "venelouis",
+            "email": "venelouistyago@gmail.com"
+          },
+          "committer": {
+            "name": "Venelouis",
+            "username": "venelouis",
+            "email": "venelouistyago@gmail.com"
+          },
+          "id": "e2eb03514e451be41f1f4b807c9a6cb5bba28a68",
+          "message": "feat(capital): add bounded direct charges",
+          "timestamp": "2026-08-31T10:41:41Z",
+          "url": "https://github.com/Rullst/Rullst/commit/e2eb03514e451be41f1f4b807c9a6cb5bba28a68"
+        },
+        "date": 1788173115398,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 583,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 765,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 501,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1677,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
