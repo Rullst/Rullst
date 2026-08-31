@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788195603198,
+  "lastUpdate": 1788202129972,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -4420,6 +4420,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 28,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "b7efccc14bb05ea46fda842e1822b9f2742ee28e",
+          "message": "feat(messaging): add bounded broker foundation",
+          "timestamp": "2026-08-31T15:29:38-03:00",
+          "tree_id": "ef79dc5cff1c39ddbb4e30fe6d8b4ab72e633ccf",
+          "url": "https://github.com/Rullst/Rullst/commit/b7efccc14bb05ea46fda842e1822b9f2742ee28e"
+        },
+        "date": 1788202129185,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4444,
+            "range": "± 210",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 530,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 22,
             "range": "± 0",
             "unit": "ns/iter"
           }
