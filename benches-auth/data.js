@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788209609870,
+  "lastUpdate": 1788219221390,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -5945,6 +5945,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1684,
             "range": "± 83",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "4453782a995e8f9b648eea80a1bd00819369f965",
+          "message": "feat(orm): add auditable revision restore",
+          "timestamp": "2026-08-31T20:18:06-03:00",
+          "tree_id": "b7949e65930ef4fee994a45bc3cc9427923ee425",
+          "url": "https://github.com/Rullst/Rullst/commit/4453782a995e8f9b648eea80a1bd00819369f965"
+        },
+        "date": 1788219220670,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 989,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 784,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1797,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4020,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
