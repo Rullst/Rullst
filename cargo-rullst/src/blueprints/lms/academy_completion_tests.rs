@@ -251,6 +251,54 @@ pub const GENERATED_COMPLETION_TESTS_SUFFIX: &str = r##"
         assert!(typed_key.starts_with("text:"));
         assert!(!typed_key.contains("ownership"));
         assert!(!typed_state.contains("ownership"));
+        let (review_state_count, repetition_count, lapse_count) =
+            rullst::db::sqlx::query_as::<_, (i64, i64, i64)>(
+                "SELECT COUNT(*), COALESCE(SUM(repetitions), 0), COALESCE(SUM(lapses), 0) FROM activity_review_states WHERE school_id = ? AND subject_user_id = ?",
+            )
+            .bind(1_i32)
+            .bind(7_i32)
+            .fetch_one(Orm::pool().expect("Academy pool"))
+            .await
+            .expect("durable spaced-review state");
+        assert_eq!((review_state_count, repetition_count, lapse_count), (3, 5, 0));
+        let due = due_reviews_at(&learner, 7, 2_000_000_000, 10)
+            .await
+            .expect("future due-review queue");
+        let mut due_activity_ids = due
+            .iter()
+            .map(|review| review.activity_id)
+            .collect::<Vec<_>>();
+        due_activity_ids.sort_unstable();
+        assert_eq!(due_activity_ids, vec![4, 5, 6]);
+        assert!(due.iter().all(|review| review.course_id == 1));
+        assert!(matches!(
+            due_reviews_at(
+                &academy_context("8", vec!["student".to_string()]),
+                7,
+                2_000_000_000,
+                10,
+            )
+            .await,
+            Err(ScoreError::Forbidden)
+        ));
+        let rival_due = due_reviews_at(
+            &tenant_context("41", vec!["admin".to_string()], "academy-rival"),
+            7,
+            2_000_000_000,
+            10,
+        )
+        .await
+        .expect("rival-school review queue stays isolated");
+        assert!(rival_due.is_empty());
+        let due_http = crate::controllers::review_controller::index(
+            rullst::server::Extension(7),
+            rullst::server::Extension(learner.clone()),
+            rullst::server::Query(crate::controllers::review_controller::DueReviewQuery {
+                limit: Some(10),
+            }),
+        )
+        .await;
+        assert_eq!(due_http.status(), rullst::server::StatusCode::OK);
 
         let expected_completion_key = format!(
             "course-completed:22:{}",

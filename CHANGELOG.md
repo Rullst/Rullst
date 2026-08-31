@@ -105,6 +105,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   durable replay key is a policy-bound SHA-256 digest, not the raw learner text;
   normalized-equivalent retries are no-ops and changed text under the same key
   conflicts. NFC/accent/fuzzy-language normalization remains application work.
+- Academy activities can now opt into durable deterministic spaced review with
+  the versioned `rullst-box-v1` policy. A newly applied authoritative score
+  updates the learner/activity schedule inside the score transaction, while an
+  exact replay cannot advance it. Owner-only `GET /reviews/due` derives learner
+  and time server-side and rechecks school membership, course scope and active
+  enrollment before returning a bounded queue. This inspectable algorithm is a
+  foundation, not FSRS/SM-2 compatibility, efficacy evidence, speech learning
+  or AI-personalized pedagogy; real PostgreSQL/MySQL contention remains open.
 - Score automation now treats a globally valid achievement threshold above one
   activity's maximum as a valid non-match instead of poisoning that activity's
   outbox event. The generated regression covers the 70/80 boundary.

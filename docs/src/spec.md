@@ -97,6 +97,19 @@ keep evaluator answer rules in trusted state and include retained attempt state
 in its privacy lifecycle. Listening/game evaluators and unification with
 the separately persisted quiz evaluator remain roadmap work.
 
+Activities may opt into the exact `rullst-box-v1` review policy. For a newly
+applied score, the score transaction locks and validates that versioned policy,
+loads the learner/activity review state, applies a deterministic bounded
+pass/lapse transition and upserts the next due time before commit. An exact
+activity replay exits before this transition and therefore cannot advance the
+schedule. The owner-only `GET /reviews/due` derives the learner and current time
+from server state and returns at most 50 due activities after rechecking active
+school membership, course scope and enrollment. Invalid policy/state or a
+changed algorithm version fails the score transaction closed. This is a simple
+inspectable scheduling foundation, not FSRS/SM-2 compatibility, efficacy proof,
+AI personalization, generated pedagogy or a complete adaptive-learning system;
+PostgreSQL/MySQL contention evidence also remains open.
+
 ---
 
 ## ⚡ 4. Core API Specifications (`rullst-core`)

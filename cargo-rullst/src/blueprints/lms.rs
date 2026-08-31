@@ -279,6 +279,7 @@ pub mod learning_controller;
 pub mod lms_controller;
 pub mod notification_controller;
 pub mod publication_controller; pub mod publication_rollback_controller;
+pub mod review_controller;
 pub mod role_controller;
 "##;
     manifest.push(("src/controllers/mod.rs", controllers_mod.to_string()));

@@ -4,6 +4,7 @@ mod activity;
 mod model;
 mod policy;
 mod replay;
+mod review;
 mod test_template;
 
 use activity::ACTIVITY_SCORE_SERVICE;
@@ -13,7 +14,7 @@ use replay::SCORE_REPLAY_SERVICE;
 use test_template::SCORE_TESTS;
 
 pub fn get_files() -> Vec<(&'static str, String)> {
-    vec![
+    let mut files = vec![
         ("src/models/score_event.rs", SCORE_EVENT_MODEL.to_string()),
         ("src/services/score_service.rs", SCORE_SERVICE.to_string()),
         (
@@ -32,7 +33,9 @@ pub fn get_files() -> Vec<(&'static str, String)> {
             "src/services/score_service/tests.rs",
             SCORE_TESTS.to_string(),
         ),
-    ]
+    ];
+    files.extend(review::get_files());
+    files
 }
 
 const SCORE_SERVICE: &str = r##"use crate::models::leaderboard_entry::LeaderboardEntry;
@@ -44,9 +47,12 @@ use std::sync::OnceLock;
 mod activity;
 mod policy;
 mod replay;
+mod review;
 pub use activity::record_activity_result;
 use policy::lock_activity_policy;
 use replay::persist_activity_attempt;
+pub use review::{DueReview, due_reviews, due_reviews_at};
+use review::apply_review_schedule;
 
 pub const SCORE_EVENT_SCHEMA_VERSION: i32 = 2;
 
@@ -401,6 +407,7 @@ async fn record_score(
         .execute(&mut *transaction)
         .await
         .map_err(|error| ScoreError::Database(error.into()))?;
+    apply_review_schedule(&mut transaction, driver, school_id, value).await?;
 
     let outbox_key = format!("score:{}", value.idempotency_key);
     let payload = serde_json::json!({
@@ -462,6 +469,7 @@ mod tests;
 
 #[cfg(test)]
 mod tests {
+    use super::review::REVIEW_SERVICE;
     use super::{
         ACTIVITY_SCORE_SERVICE, SCORE_POLICY_SERVICE, SCORE_REPLAY_SERVICE, SCORE_SERVICE,
     };
@@ -480,5 +488,6 @@ mod tests {
         assert!(SCORE_POLICY_SERVICE.contains("FOR UPDATE"));
         assert!(SCORE_POLICY_SERVICE.contains("evidence_sha256"));
         assert!(SCORE_REPLAY_SERVICE.contains("conflicting activity replay"));
+        assert!(REVIEW_SERVICE.contains("rullst-box-v1"));
     }
 }

@@ -233,7 +233,11 @@ leaderboard and outbox. Its owner-only routes accept only an idempotency key
 plus a chosen option, pair IDs or bounded typed text, while the same transaction
 locks the exact evaluator configuration and retains an exact-replay attempt;
 cross-user, actor/evidence/policy mismatch and conflicting replay are
-materialized negatives. That is a useful foundation for a
+materialized negatives. Opt-in `rullst-box-v1` policies also update a durable,
+bounded learner/activity review schedule in that transaction; a replay cannot
+move it, and an owner-only due queue rechecks school membership, course scope
+and enrollment. The algorithm is deliberately inspectable and does not claim
+FSRS/SM-2 compatibility or learning efficacy. That is a useful foundation for a
 language-learning product, not a claim that Rullst generates pedagogy, content,
 speech recognition, native-device behavior or a complete Duolingo equivalent.
 

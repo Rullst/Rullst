@@ -70,6 +70,7 @@
 - [44. Omni Offline Synchronization](tutorials/44-omni-offline-sync.md)
 - [45. Accessible Academy Media](tutorials/45-accessible-academy-media.md)
 - [46. Server-Authoritative Learning Activities](tutorials/46-server-authoritative-learning-activities.md)
+- [47. Durable Spaced-Review Queue](tutorials/47-spaced-review-queue.md)
 
 # Reference
 - [📜 Framework Spec](spec.md)

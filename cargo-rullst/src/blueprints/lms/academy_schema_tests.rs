@@ -36,7 +36,9 @@ mod tests {
     use crate::services::role_service::{RoleError, active_roles_at, grant_role};
     use crate::services::scheduler_lease_service::{acquire_at, release, renew_at, snapshot};
     use crate::services::score_correction_service::correct_score;
-    use crate::services::score_service::{ScoreError, leaderboard, record_activity_result};
+    use crate::services::score_service::{
+        ScoreError, due_reviews_at, leaderboard, record_activity_result,
+    };
     use rullst::db::Orm;
     use rullst_security::UserContext;
 
