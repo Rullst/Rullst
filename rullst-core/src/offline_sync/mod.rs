@@ -10,6 +10,7 @@ mod conflict;
 mod crypto;
 mod error;
 mod json_limit;
+mod orchestration;
 mod policy;
 mod snapshot;
 mod state;
@@ -21,6 +22,10 @@ pub use conflict::{
 };
 pub use crypto::OfflineSnapshotCipher;
 pub use error::OfflineSyncError;
+pub use orchestration::{
+    AuthoritativePull, AuthoritativePush, OfflineSyncCoordinator, OfflineSyncReport,
+    OfflineSyncRunError, OfflineSyncRunPolicy, OfflineSyncTransport,
+};
 pub use policy::OfflineSyncPolicy;
 pub use state::OfflineSyncState;
 pub use types::{

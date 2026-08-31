@@ -151,7 +151,9 @@ data or mount background synchronization.
 The opt-in native `offline-sync` feature now supplies a bounded foundation:
 account-bound AES-256-GCM snapshots, FIFO idempotent mutations, authoritative
 server revisions/cursors, explicit conflicts, full resync, quotas, recovery and
-logical erasure. Follow the
+logical erasure. A bounded foreground coordinator can drive an
+application-owned authenticated transport with request budgets, timeout and
+cursor-stall protection. Follow the
 [offline synchronization tutorial](44-omni-offline-sync.md) to use it without
 moving authority into the client.
 
@@ -159,7 +161,7 @@ Calling the generated shell itself “offline-first” remains inaccurate. A rea
 application profile must still provide at least:
 
 - reviewed platform persistence and Keychain/Keystore integration;
-- network/background orchestration and application conflict UX;
+- concrete authenticated HTTP, retry/background scheduling and application conflict UX;
 - concrete migrations beyond the current versioned fail-closed schema;
 - complete deletion of snapshots, backups and platform keys;
 - browser, Android and iOS tests for airplane mode and reconnection.

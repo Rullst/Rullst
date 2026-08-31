@@ -134,10 +134,13 @@ proposals, requires unique idempotency keys, uses explicit server revisions and
 cursors, isolates conflicts from automatic replay, and makes incremental/full
 resync transitions atomic within the state value. Its encrypted v1 snapshot is
 AES-256-GCM authenticated to an exact account and rotation-key id. The framework
-does not choose client-wins, accept cached authorization, own a platform key, or
-silently write to an arbitrary filesystem/browser store. Keychain/Keystore,
-atomic platform persistence, network scheduling and later schema migrations
-remain application/platform decisions until dedicated adapters have evidence.
+adds a static-dispatch foreground coordinator with request budgets, mandatory
+timeouts and cursor-progress checks, but does not choose client-wins, accept
+cached authorization, own a platform key, or silently write/contact an arbitrary
+filesystem, browser store or endpoint. Keychain/Keystore, atomic platform
+persistence, concrete authenticated HTTP, retry/background scheduling and later
+schema migrations remain application/platform decisions until dedicated adapters
+have evidence.
 
 Path-aware workflows generate disposable applications and check desktop on
 Linux/macOS/Windows, an Android debug APK and an iOS simulator target. All

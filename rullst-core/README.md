@@ -17,8 +17,10 @@
   history for Studio/operations, with atomic pruning and an explicit purge API.
 - **Offline Sync Foundation:** The optional native `offline-sync` feature
   provides bounded replay-safe mutations, explicit conflict resolution, and
-  account-bound AES-256-GCM snapshots. Applications still own Keychain/Keystore
-  access, atomic platform persistence, transport, and background scheduling.
+  account-bound AES-256-GCM snapshots. Its static-dispatch coordinator bounds
+  requests, times them out, and detects stalled cursors. Applications still own
+  Keychain/Keystore access, atomic platform persistence, authenticated HTTP,
+  retry, and background scheduling.
 
 ## 🚀 Usage
 

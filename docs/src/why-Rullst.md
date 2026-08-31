@@ -178,9 +178,10 @@ Omni extends that server-first model with a deterministic Tauri shell for
 desktop, Android, and iOS instead of creating a second business backend. Its
 portable versioned client envelope carries no local authority, and the opt-in
 native offline foundation adds bounded idempotent proposals, explicit
-conflict/resync state, and account-bound encrypted snapshots. Platform secure
-storage, background transport, physical-device behavior, signing, and store
-acceptance remain separate evidence gates; see the
+conflict/resync state, account-bound encrypted snapshots, and a coordinator with
+request budgets, timeouts, and cursor checks over application transports.
+Platform secure storage, concrete HTTP/background transport, physical-device
+behavior, signing, and store acceptance remain separate evidence gates; see the
 [web-first Omni guide](tutorials/43-omni-web-first.md) and
 [offline synchronization guide](tutorials/44-omni-offline-sync.md).
 

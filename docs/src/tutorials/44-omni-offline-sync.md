@@ -95,6 +95,48 @@ either accept server state or retry the original proposal against the latest
 server revision with a **new** idempotency key. There is no automatic
 client-wins mode.
 
+## Coordinate a bounded foreground sync
+
+Implement `OfflineSyncTransport` on an application adapter that already owns
+its authenticated session, TLS policy and endpoint. The trait uses static
+dispatch: it does not box a provider or place credentials in offline state.
+The `account_id` argument is only a local binding/routing hint; the server must
+derive the real account, tenant, ownership and authorization from the
+authenticated request.
+
+Map the response's versioned client-contract envelope into
+`AuthoritativePush` or `AuthoritativePull`, including server-authored time, then
+run one bounded foreground attempt:
+
+```rust
+use rullst::offline_sync::{
+    OfflineSyncCoordinator, OfflineSyncRunPolicy,
+};
+
+let run_policy = OfflineSyncRunPolicy::new(
+    25,     // mutations per push
+    4,      // push requests this run
+    20,     // pull pages this run
+    15_000, // timeout for every transport request
+)?;
+
+let report = OfflineSyncCoordinator::synchronize(
+    &authenticated_transport,
+    &mut state,
+    policy,
+    run_policy,
+).await?;
+```
+
+The coordinator pushes before pulling, stops retrying a batch that produced no
+local progress, bounds page/request counts, times out every transport future and
+rejects `has_more` when the opaque cursor does not advance. It does not invent
+retry delays or silently start an OS background task. Successfully accepted
+pages remain in `state` if a later request fails, so seal and atomically persist
+the state after both success and error paths. The server must persist replay
+decisions atomically so a request accepted before a client crash can safely
+return the same result later.
+
 ## Pull, reconnect and full resync
 
 Apply incremental `SyncPullPage` values in order. If a newer server revision
@@ -134,8 +176,8 @@ prior clones, filesystem snapshots, cloud backups or server data.
 
 - reviewed Keychain/Keystore and atomic file/SQLite adapters per platform;
 - schema migration implementations beyond the current fail-closed v1 marker;
-- authenticated network orchestration, backoff, cancellation and background
-  execution;
+- a concrete authenticated HTTP adapter plus application retry/backoff,
+  cancellation and OS background execution around the bounded coordinator;
 - browser storage support where the web product needs offline data;
 - airplane-mode, process-kill, quota, corrupt-state, account-switch and
   reconnection tests on physical Android/iOS devices;

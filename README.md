@@ -162,9 +162,10 @@ navigation boundary and no privileged remote IPC. The portable
 `rullst.client` v1 contract gives web and platform code the same bounded typed
 JSON envelopes without trusting client-supplied roles or ownership. The opt-in
 native `offline-sync` foundation adds account-bound encrypted snapshots,
-idempotent FIFO proposals and explicit conflict/resync/recovery state; platform
-secure-key/storage/network integration remains application work, so the shell
-itself is not advertised as offline-first. See the
+idempotent FIFO proposals, explicit conflict/resync/recovery state and a bounded
+push/pull coordinator over application-owned authenticated transports; platform
+secure-key/storage, concrete HTTP/background integration and device evidence
+remain application work, so the shell itself is not advertised as offline-first. See the
 [Omni tutorial](docs/src/tutorials/43-omni-web-first.md) and
 [offline-sync tutorial](docs/src/tutorials/44-omni-offline-sync.md).
 

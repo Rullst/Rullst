@@ -4,6 +4,7 @@ use super::*;
 use crate::client_contract::{FailureCode, IdempotencyKey};
 use serde_json::json;
 
+mod orchestration;
 mod recovery;
 
 fn policy() -> OfflineSyncPolicy {

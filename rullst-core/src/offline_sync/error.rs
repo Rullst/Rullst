@@ -58,6 +58,9 @@ pub enum OfflineSyncError {
     /// Push batches must remain within configured and hard limits.
     #[error("offline push batch limit is invalid")]
     InvalidBatchLimit,
+    /// Orchestration counts and request timeout must remain within hard limits.
+    #[error("offline synchronization run policy is outside the supported safety bounds")]
+    InvalidRunPolicy,
     /// A server record did not correspond to the mutation it resolved.
     #[error("offline server record key does not match its mutation")]
     RecordKeyMismatch,
