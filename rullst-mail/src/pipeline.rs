@@ -1,5 +1,6 @@
 //! Mandatory pre-flight pipeline shared by every official delivery path.
 
+use crate::attachment::validate_attachment_set;
 use crate::error::MailError;
 use crate::message::Message;
 use crate::security::is_crlf_safe;
@@ -131,13 +132,7 @@ impl DeliveryPipeline {
             )));
         }
 
-        for attachment in &message.attachments {
-            validate_header("attachment filename", &attachment.filename)?;
-            validate_header("attachment MIME type", &attachment.mime_type)?;
-            if let Some(cid) = attachment.cid.as_deref() {
-                validate_header("attachment Content-ID", cid)?;
-            }
-        }
+        validate_attachment_set(&message.attachments, message.body_html.as_deref())?;
 
         message.validate_security()?;
 

@@ -36,6 +36,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   redacted diagnostics, and concurrent contract tests. It does not yet claim a
   durable transport or Kafka, RabbitMQ, Redis Streams, NATS/JetStream,
   SQS/SNS, Google Pub/Sub, or Pulsar interoperability.
+- Hardened the shared mail attachment contract: messages now fail closed above
+  32 attachments, 20 MiB per item or 25 MiB aggregate; unsafe basenames,
+  ambiguous MIME values, duplicate/unreferenced inline CIDs and inline assets
+  without HTML are rejected. SMTP now emits the proper mixed/alternative/related
+  MIME tree with attachments and inline Content-ID parts, bringing the named
+  REST, native SES and SMTP transports onto the same bounded owned-byte model.
+  Encoding may copy data, provider limits can be lower, and opaque file bytes
+  are not malware- or DLP-inspected.
 - Added a compact canonical capability-status view and a SHA-bound CI quality
   scorecard artifact for every main push/PR. The score evaluates engineering
   evidence and explicitly excludes feature completeness and certification.
@@ -820,9 +828,13 @@ release gate has completed.
   - **Multi-Driver Circuit Breaker & Automatic Failover (`FailoverDriver`)**: Primary driver dispatch with automatic cascading failover across secondary backends, atomic failure counters (`AtomicUsize`), threshold triggering, cooldown circuit breakers, and telemetry warnings (`tracing::warn!`).
   - **Dynamic Multi-Tenancy Resolver (`TenantMailResolver`)**: Dynamic per-tenant email driver routing engine (`register`, `send_for_tenant`) enabling dedicated API keys, SMTP credentials, and custom domains per organization.
   - **Native REST Delivery Drivers for Postmark & AWS SES v2**: Native `PostmarkDriver` and `AwsSesDriver` implementations with zero C-bindings, full RFC 8058 One-Click List-Unsubscribe compliance, and runtime environment resolution.
-  - **v12 audited scope:** attachments own/copy bytes and REST transports
-    Base64-encode them; scheduling fields are implemented only where the
-    provider consumes them; tenant selection now has a direct, explicit
+  - **v12 audited scope:** attachments own/copy bytes and transports encode
+    them as required; a shared pre-flight caps count/bytes and validates safe
+    filenames, MIME and unique referenced CID metadata. Resend, SendGrid,
+    Postmark, native SES and SMTP consume the bounded model, with SMTP emitting
+    nested MIME and the REST paths Base64-encoding. Provider limits may be
+    tighter and opaque bytes are not malware/DLP inspected. Scheduling fields
+    are implemented only where the provider consumes them; tenant selection now has a direct, explicit
     authenticated `TenantContext` bridge and remains in-process. Failover now
     distinguishes permanent, transient and rate-limited outcomes rather than
     forwarding every error. The

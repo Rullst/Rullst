@@ -27,7 +27,7 @@ async fn native_driver_signs_ses_v2_payload_and_preserves_message_capabilities()
         .to("recipient@example.com")
         .from("sender@example.com")
         .subject("Native SES")
-        .html("<strong>Hello</strong>")
+        .html("<strong>Hello</strong><img src=\"cid:logo\" alt=\"Logo\">")
         .unsubscribe_url("https://example.com/unsubscribe")
         .attach_cid("logo", "logo.txt", b"icon".to_vec(), "text/plain");
 

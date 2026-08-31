@@ -127,7 +127,7 @@
       "documentation_dx": 14,
       "operations_release": 15,
       "specialist_gate": "threat-minimum",
-      "finding": "Good transport, preflight and queue contracts; provider acceptance, inbox delivery, attachment parity and distributed breaker operations remain open.",
+      "finding": "Good transport, preflight, bounded attachment and queue contracts; provider acceptance, inbox delivery, opaque-file inspection and distributed breaker operations remain open.",
       "evidence": ["rullst-mail/README.md", "rullst-mail/tests", "docs/src/crates/mail.md"]
     },
     {

@@ -43,7 +43,7 @@ applies the real gate outcomes and includes the full finding for every row.
 | `rullst-connect` | 88 | B | Durable/distributed token lifecycle and provider conformance |
 | `rullst` | 88 | B | Inherits uneven maturity from opt-in domain crates |
 | `rullst-auth` | 87 | B | WebAuthn conformance and durable shared revocation/devices |
-| `rullst-mail` | 87 | B | Inbox/provider evidence, attachment parity and distributed operations |
+| `rullst-mail` | 87 | B | Inbox/provider evidence, opaque-file inspection and distributed operations |
 | `cargo-rullst` | 85 | B | Complete generated-project matrix across every blueprint |
 | `rullst-ai` | 84 | B | Live adaptive evals, provider loops and external retrievers |
 | `rullst-studio` | 83 | B | Distributed observability and remote inspectors |

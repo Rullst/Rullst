@@ -21,7 +21,7 @@
   - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
 - **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. Structured tracing exposes bounded decision fields without provider bodies.
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
-- **📎 Attachments & Inline CID Assets:** Fluent API for raw bytes, files, and Content-ID (`CID`) inline images; transports may copy and Base64-encode payloads.
+- **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, SendGrid, Postmark, native SES and SMTP serialize the same owned-byte model; transports copy or Base64-encode as required.
 - **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend/SendGrid delivery uses provider scheduling. Real SMTP, Postmark, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
 - **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters) and dangerous URI schemes (`javascript:`, `data:text/html`).
 - **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`).
@@ -385,3 +385,8 @@ Choose a delivery provider and operational policy based on measured volume,
 region, data processing terms, bounce/complaint handling, retention, cost, and
 failover tests. Rullst publishes no universal latency, price, or feature
 comparison against commercial platforms.
+
+Attachment limits are 32 items, 20 MiB per item and 25 MiB of raw bytes in
+aggregate before transport encoding. Provider/account limits can be lower.
+Attachment bytes are treated as opaque: the pipeline does not parse archives,
+scan malware, or apply the body/subject DLP heuristics to file content.
