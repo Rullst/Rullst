@@ -326,12 +326,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   conformance, including rollback evidence. This removes the obsolete
   Hyper/Rustls chain responsible for the five RustSec failures without adding
   audit exceptions.
-- Auditable SQLx models now persist each generated instance save/delete and its
-  bounded audit row in one savepoint inside the explicit, implicit, or
-  task-scoped transaction. Audit failures reject and roll back the model
-  mutation even when the outer caller catches the error. Bulk per-row history,
-  actor identity, revision restore, and durable post-commit delivery remain
-  outside this contract.
+- Auditable SQLx models now require a validated user/service/system
+  `AuditContext`, derive active-tenant metadata, retain optional correlation,
+  and persist recursively redacted bounded create/update/delete records in the
+  model savepoint. The v2 audit schema upgrades legacy tables while retaining
+  legacy version identity. Eligible update revisions expose compensating
+  restore with reason/source linkage, exact model/ID/tenant binding, stale-state
+  checks, PostgreSQL/MySQL row locking, and fail-closed refusal for redacted,
+  legacy, create/delete, malformed, or oversized revisions. Audit failure still
+  rolls back the model mutation even when an outer caller catches it. Bulk
+  per-row history, disaster recovery, trusted host identity derivation, and
+  durable external export remain outside this contract.
 - Hardened generated `.remember(seconds)` Redis query caching with versioned
   SHA-256 keys bound to an explicit application namespace, opaque tenant scope,
   table, SQL and typed bindings. Explicit and task-scoped transactions bypass
@@ -349,6 +354,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   queued callbacks are attempted, and `PostCommit` distinguishes effect failure
   after durable persistence. These generated callbacks remain process-local,
   and caller-owned raw SQLx transactions cannot expose their eventual commit.
+  Nested generated savepoints now promote callbacks only after their own
+  mutation succeeds, so a caught audit/savepoint failure cannot emit a later
+  committed event when the outer transaction continues.
 - Added an explicit database-backed transactional outbox to `rullst-orm`.
   Enqueue participates in the domain transaction, deduplicates exact payloads
   by stream/event key, rejects conflicting key reuse, and exposes bounded

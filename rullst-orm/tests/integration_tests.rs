@@ -854,13 +854,18 @@ async fn scenario_audit() {
         .await
         .expect("create audit table");
 
-    rullst_orm::audit::log_audit(
-        "User",
-        99,
-        "created",
-        None,
-        Some(r#"{"name":"test"}"#.to_string()),
-    )
+    let context =
+        rullst_orm::audit::AuditContext::system("integration-suite").expect("valid audit actor");
+    rullst_orm::audit::with_audit_context(context, async {
+        rullst_orm::audit::log_audit(
+            "User",
+            99,
+            "created",
+            None,
+            Some(r#"{"name":"test"}"#.to_string()),
+        )
+        .await
+    })
     .await
     .expect("log audit");
 

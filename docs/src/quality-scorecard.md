@@ -38,7 +38,7 @@ applies the real gate outcomes and includes the full finding for every row.
 | Crate | Ceiling | Grade | Principal remaining evidence boundary |
 | :--- | ---: | :---: | :--- |
 | `rullst-core` | 91 | A | Distributed deployment and host authorization |
-| `rullst-orm` | 90 | A | Cross-store semantics and remaining operational adapters |
+| `rullst-orm` | 91 | A | Cross-store semantics, disaster recovery and remaining operational adapters |
 | `rullst-security` | 89 | B | Durable SIEM, external audit and certification |
 | `rullst-connect` | 88 | B | Durable/distributed token lifecycle and provider conformance |
 | `rullst` | 88 | B | Inherits uneven maturity from opt-in domain crates |

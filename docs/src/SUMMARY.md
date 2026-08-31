@@ -75,6 +75,7 @@
 - [47. Durable Spaced-Review Queue](tutorials/47-spaced-review-queue.md)
 - [48. Signed Local OIDC Testing](tutorials/48-local-oidc-testing.md)
 - [49. Bounded Brokered Messaging](tutorials/49-brokered-messaging.md)
+- [50. Auditable Revisions](tutorials/50-auditable-revisions.md)
 
 # Reference
 - [📜 Framework Spec](spec.md)

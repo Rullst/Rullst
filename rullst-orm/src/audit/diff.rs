@@ -23,7 +23,7 @@ pub(super) fn is_sensitive(key: &str) -> bool {
     .any(|marker| normalized.contains(marker))
 }
 
-fn mask_nested(value: Value) -> Value {
+pub(super) fn mask_nested(value: Value) -> Value {
     match value {
         Value::Object(object) => Value::Object(
             object

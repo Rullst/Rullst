@@ -173,32 +173,35 @@ async fn integration_extra_suite() {
         .await
         .expect("create_audit_table should succeed");
 
-    rullst_orm::audit::log_audit(
-        "User",
-        1,
-        "create",
-        None,
-        Some(r#"{"name":"Alice"}"#.to_string()),
-    )
-    .await
-    .expect("log_audit should succeed");
-
-    // log_audit_diff with normal values
-    rullst_orm::audit::log_audit_diff(
-        "User",
-        1,
-        "update",
-        r#"{"name":"Alice"}"#,
-        r#"{"name":"Bob"}"#,
-    )
-    .await
-    .expect("log_audit_diff should succeed");
-
-    // log_audit_diff with large values (> 5MB)
-    let large_json = format!(r#"{{"data":"{}"}}"#, "A".repeat(5 * 1024 * 1024 + 1));
-    rullst_orm::audit::log_audit_diff("User", 1, "update", &large_json, r#"{"name":"Bob"}"#)
+    let context =
+        rullst_orm::audit::AuditContext::system("integration-extra").expect("valid audit actor");
+    rullst_orm::audit::with_audit_context(context, async {
+        rullst_orm::audit::log_audit(
+            "User",
+            1,
+            "create",
+            None,
+            Some(r#"{"name":"Alice"}"#.to_string()),
+        )
         .await
-        .expect("log_audit_diff with large payload should succeed");
+        .expect("log_audit should succeed");
+
+        rullst_orm::audit::log_audit_diff(
+            "User",
+            1,
+            "update",
+            r#"{"name":"Alice"}"#,
+            r#"{"name":"Bob"}"#,
+        )
+        .await
+        .expect("log_audit_diff should succeed");
+
+        let large_json = format!(r#"{{"data":"{}"}}"#, "A".repeat(5 * 1024 * 1024 + 1));
+        rullst_orm::audit::log_audit_diff("User", 1, "update", &large_json, r#"{"name":"Bob"}"#)
+            .await
+            .expect("log_audit_diff with large payload should succeed");
+    })
+    .await;
 
     // Clean up
     let _ = fs::remove_file(DB_FILE);

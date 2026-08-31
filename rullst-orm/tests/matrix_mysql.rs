@@ -9,7 +9,7 @@ use testcontainers::runners::AsyncRunner;
 use testcontainers_modules::mysql::Mysql;
 
 #[derive(Debug, Clone, FromRow, Orm)]
-#[orm(table = "mysql_users")]
+#[orm(table = "mysql_users", auditable)]
 struct User {
     pub id: i32,
     pub name: String,
@@ -55,6 +55,11 @@ async fn test_matrix_mysql_crud() {
     })
     .await
     .expect("create mysql_users");
+    rullst_orm::audit::create_audit_table()
+        .await
+        .expect("create MySQL audit table");
+    let audit_context =
+        rullst_orm::audit::AuditContext::system("mysql-matrix").expect("valid audit context");
 
     // 4. Executa um CRUD básico
     let mut user = User {
@@ -64,7 +69,9 @@ async fn test_matrix_mysql_crud() {
     };
 
     // INSERT
-    user.save().await.expect("save new user to mysql");
+    rullst_orm::audit::with_audit_context(audit_context.clone(), user.save())
+        .await
+        .expect("save new user to mysql");
     assert!(
         user.id > 0,
         "id must be assigned after save (LAST_INSERT_ID)"
@@ -79,13 +86,32 @@ async fn test_matrix_mysql_crud() {
 
     // UPDATE
     user.name = "Alice MySQL Updated".into();
-    user.save().await.expect("update user in mysql");
+    rullst_orm::audit::with_audit_context(audit_context.clone(), user.save())
+        .await
+        .expect("update user in mysql");
 
     let updated = User::find(user.id).await.unwrap().unwrap();
     assert_eq!(updated.name, "Alice MySQL Updated");
+    let audit_id: (i32,) = sqlx::query_as(
+        "SELECT id FROM rullst_audits WHERE model_type = ? AND model_id = ? AND event = 'updated' ORDER BY id DESC LIMIT 1",
+    )
+    .bind("mysql_users")
+    .bind(user.id)
+    .fetch_one(Orm::pool().expect("MySQL pool"))
+    .await
+    .expect("read MySQL audit revision");
+    user = rullst_orm::audit::with_audit_context(
+        audit_context.clone(),
+        user.restore_revision(audit_id.0, "matrix rollback"),
+    )
+    .await
+    .expect("restore MySQL revision");
+    assert_eq!(user.name, "Alice MySQL");
 
     // DELETE
-    user.delete().await.expect("delete executed");
+    rullst_orm::audit::with_audit_context(audit_context, user.delete())
+        .await
+        .expect("delete executed");
 
     let not_found = User::find(user.id).await.unwrap();
     assert!(not_found.is_none());

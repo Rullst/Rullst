@@ -546,13 +546,16 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         pub async fn delete_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
             use rullst_orm::_sqlx::Acquire;
             let mut savepoint = (&mut **tx).begin().await?;
-            let delete_result = async {
-                let tx = &mut savepoint;
-                self.delete_with_tx_internal(&mut **tx).await?;
-                #cascade_deletes_with_tx
-                #audit_after_delete_with_tx
-                Ok::<(), rullst_orm::Error>(())
-            }.await;
+            let operation_callbacks = rullst_orm::post_commit::PostCommitScope::new();
+            let delete_result = operation_callbacks
+                .run(async {
+                    let tx = &mut savepoint;
+                    self.delete_with_tx_internal(&mut **tx).await?;
+                    #cascade_deletes_with_tx
+                    #audit_after_delete_with_tx
+                    Ok::<(), rullst_orm::Error>(())
+                })
+                .await;
             if let Err(delete_error) = delete_result {
                 return match savepoint.rollback().await {
                     Ok(()) => Err(delete_error),
@@ -564,6 +567,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
                 };
             }
             savepoint.commit().await?;
+            operation_callbacks.promote_to_parent().await?;
             Ok(())
         }
 

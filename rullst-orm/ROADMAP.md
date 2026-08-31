@@ -95,7 +95,7 @@ compile-time schema verified.
 - [~] **Strict Lazy Loading Prevention**: Explicit generated relationship access fails while prevention is enabled; it cannot prove absence of every application-level N+1 pattern.
 - [~] **Type-Safe Partial Updates**: A typed explicit builder emits only selected fields and preserves policy/tenant checks; it is not automatic dirty tracking or a zero-overhead proof.
 - [~] **Compliance & Data Governance Foundations**: `PersonalData`, redacted `SecretString`, and AES-GCM encrypted model fields are separate bounded primitives, not automatic GDPR/LGPD compliance.
-- [~] **Audit Trails**: Diff history is fail-closed and savepoint-coupled to generated auditable instance saves/deletes; bulk per-row history, actor identity, revision restore, and durable post-commit external effects remain incomplete.
+- [x] **Audit Trails (bounded)**: Generated auditable instance mutations require a typed actor context, derive active-tenant metadata, recursively redact bounded payloads and share their savepoint with the audit row. Eligible v2 updates support guarded compensating restore with stale/cross-tenant/sensitive refusal. Bulk per-row history and durable external export remain explicit outbox/application work.
 - [~] **Full-Text Search (Scout)**: The `scout-http` feature supplies bounded
   Meilisearch, Algolia and Elasticsearch update/delete/search adapters with
   deterministic offline fallbacks. A digest-pinned Meilisearch lifecycle is

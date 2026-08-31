@@ -63,11 +63,14 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   instance mutations, and reserve explicit `unscoped()` for reviewed global
   paths. Authentication and permission to use that escape hatch remain the
   application's responsibility.
-- **Audit Log Foundation**: Opt-in auditable models can record bounded
-  `old_values`/`new_values` diffs. Generated instance saves/deletes and their
-  audit row now commit or roll back one savepoint together and audit failures
-  reject the mutation. Bulk builders do not synthesize per-row history; actor
-  identity and revision restore remain application/roadmap work.
+- **Actor-Bound Audit Revisions**: Opt-in auditable models require a validated
+  user/service/system `AuditContext`, derive tenant metadata from `with_tenant`,
+  and persist recursively redacted bounded changes in the model transaction.
+  Eligible v2 update revisions can be restored with stale-state, tenant, model,
+  identity, and sensitive-field guards; the compensating update records its
+  actor, reason, and source revision. Bulk per-row history and durable external
+  export remain explicit application/outbox work. See the
+  [audit revision guide](../docs/src/tutorials/50-auditable-revisions.md).
 - **Bounded Post-Commit Effects**: `after_commit` and the generated observer
   `committed` callback run only after `Orm::transaction` or a direct generated
   save/delete commits. Rollback discards them, and post-commit failures use a

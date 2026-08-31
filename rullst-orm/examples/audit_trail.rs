@@ -1,4 +1,7 @@
-use rullst_orm::Orm;
+use rullst_orm::{
+    Orm,
+    audit::{AuditContext, with_audit_context},
+};
 
 #[derive(Clone, Debug, Default, rullst_orm::Orm, rullst_orm::FromRow)]
 #[orm(table = "users", auditable)]
@@ -11,7 +14,7 @@ pub struct User {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = std::fs::remove_file("test_audit.db");
-    std::fs::File::create("test_audit.db").unwrap();
+    std::fs::File::create("test_audit.db")?;
     Orm::init("sqlite:test_audit.db").await?;
     let pool = Orm::pool()?;
 
@@ -22,6 +25,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     rullst_orm::audit::create_audit_table().await?;
+    let audit_context =
+        AuditContext::user("audit-example-user")?.with_correlation_id("audit-example-run")?;
 
     println!("--- Creating user ---");
     let mut user = User {
@@ -29,11 +34,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         email: "john@example.com".to_string(),
         status: "active".to_string(),
     };
-    user.save().await.unwrap();
+    with_audit_context(audit_context.clone(), user.save()).await?;
 
     println!("--- Updating user ---");
     user.status = "banned".to_string();
-    user.save().await.unwrap();
+    with_audit_context(audit_context, user.save()).await?;
 
     println!("--- Querying audit logs ---");
     let audits: Vec<(String, String, Option<String>, Option<String>)> = sqlx::query_as(

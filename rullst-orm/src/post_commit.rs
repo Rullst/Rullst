@@ -105,6 +105,32 @@ impl PostCommitScope {
         };
         run_callbacks(callbacks).await
     }
+
+    /// Promotes callbacks into an enclosing commit boundary after a nested
+    /// savepoint succeeds. Without an enclosing managed transaction, the
+    /// callbacks run immediately, matching the raw-transaction limitation.
+    #[doc(hidden)]
+    pub async fn promote_to_parent(self) -> Result<(), Error> {
+        let parent = CALLBACKS.try_with(Clone::clone).ok();
+        if parent
+            .as_ref()
+            .is_some_and(|parent| Arc::ptr_eq(parent, &self.callbacks))
+        {
+            return Err(Error::Internal(
+                "post-commit scope cannot promote into itself".to_string(),
+            ));
+        }
+        let callbacks = {
+            let mut callbacks = self.callbacks.lock().await;
+            std::mem::take(&mut *callbacks)
+        };
+        if let Some(parent) = parent {
+            parent.lock().await.extend(callbacks);
+            Ok(())
+        } else {
+            run_callbacks(callbacks).await
+        }
+    }
 }
 
 impl Default for PostCommitScope {
@@ -215,6 +241,29 @@ mod tests {
             .await
             .expect_err("failed callback must be reported");
         assert!(matches!(error, Error::PostCommit(_)));
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn nested_scope_promotes_only_after_its_operation_succeeds() {
+        let calls = Arc::new(AtomicUsize::new(0));
+        let outer = PostCommitScope::new();
+        outer
+            .run(async {
+                let inner = PostCommitScope::new();
+                let callback_calls = calls.clone();
+                inner
+                    .run(after_commit(move || async move {
+                        callback_calls.fetch_add(1, Ordering::SeqCst);
+                        Ok(())
+                    }))
+                    .await?;
+                inner.promote_to_parent().await
+            })
+            .await
+            .expect("promote nested callbacks");
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+        outer.commit().await.expect("commit outer callbacks");
         assert_eq!(calls.load(Ordering::SeqCst), 1);
     }
 }

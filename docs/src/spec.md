@@ -258,9 +258,25 @@ new_user.delete().await?;
   their bounded audit entry through the same explicit, implicit, or task-scoped
   transaction as the model mutation. Audit write errors fail the mutation and
   roll its savepoint back; direct `log_audit` calls also honor a task-scoped
-  transaction. Bulk builders do not synthesize per-row history. Actor/tenant
-  identity and revision restore remain separate application or roadmap
-  contracts.
+  transaction. Every recorded mutation requires an `AuditContext` naming a
+  validated user, service, or system principal; the record also carries the
+  optional correlation identifier and derives its typed tenant key from the
+  active `with_tenant(...)` scope. The host remains responsible for deriving
+  both contexts from authenticated authority rather than client assertions.
+* `create_audit_table` creates the v2 schema and adds its columns to a legacy
+  table without presenting legacy rows as v2 evidence. JSON payloads are
+  bounded and recursively mask sensitive names for create, update, and delete;
+  audit/debug output does not expose principal, tenant, correlation, reason, or
+  payload values.
+* An auditable model exposes `restore_revision(audit_id, reason)` and its
+  caller-owned transaction variant. Only a bounded v2 update patch for the
+  exact model, ID, and active tenant is eligible. The current row must still
+  match the revision's recorded post-state; PostgreSQL and MySQL/MariaDB also
+  lock that row during restoration. A successful restore is a compensating
+  audited update referencing the restored audit ID and reason. Legacy,
+  create/delete, oversized, stale, malformed, cross-tenant, or redacted-field
+  revisions fail closed. Bulk builders still do not synthesize per-row history,
+  and durable external export remains an explicit outbox/application contract.
 
 ### 5.5. Process-Local Post-Commit Contract
 
@@ -274,6 +290,10 @@ new_user.delete().await?;
   `committed(ModelCommittedEvent)` callback receives an owned, hidden-field-
   aware snapshot after the managed commit. Generated Redis invalidation/pub-sub
   and Scout projections use this same post-commit boundary.
+* Savepoint-scoped generated saves/deletes and revision restores collect their
+  callbacks in a nested scope. The callbacks are promoted to the enclosing
+  commit boundary only after that savepoint succeeds, so catching a failed
+  auditable mutation cannot leak a later `committed` effect.
 * Every queued callback is attempted. A failure is returned as `PostCommit`,
   whose contract explicitly means the database mutation is already durable.
   Applications must not retry the database mutation blindly from this error.
