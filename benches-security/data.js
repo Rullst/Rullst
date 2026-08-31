@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788154478478,
+  "lastUpdate": 1788156198586,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -3595,6 +3595,60 @@ window.BENCHMARK_DATA = {
             "name": "html_sanitizer/sanitize_text_escape",
             "value": 675,
             "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 26,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "859d8bc84131c195ee71a94269c3680e9fb77c5e",
+          "message": "feat(academy): persist authoritative activity scores",
+          "timestamp": "2026-08-31T02:46:44-03:00",
+          "tree_id": "225b8d34cc33cf19058a54cf2f660d8058c49278",
+          "url": "https://github.com/Rullst/Rullst/commit/859d8bc84131c195ee71a94269c3680e9fb77c5e"
+        },
+        "date": 1788156197822,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 6021,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 684,
+            "range": "± 65",
             "unit": "ns/iter"
           },
           {
