@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788170948277,
+  "lastUpdate": 1788171962376,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -3043,6 +3043,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/45798985404c430d17ceda81b9afb1ba1fe9fe7b"
         },
         "date": 1788170947854,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ae17f7b19bef8b7fcb2dff18822d4fa707f70bda",
+          "message": "feat(nexus): validate semantic admin forms",
+          "timestamp": "2026-08-31T07:13:16-03:00",
+          "tree_id": "e46c4a906b4add5b5894561a2a0985995119da55",
+          "url": "https://github.com/Rullst/Rullst/commit/ae17f7b19bef8b7fcb2dff18822d4fa707f70bda"
+        },
+        "date": 1788171961646,
         "tool": "cargo",
         "benches": [
           {
