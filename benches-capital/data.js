@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788151007720,
+  "lastUpdate": 1788152894757,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -2665,6 +2665,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/f94d500f146cc9f172f63b14dee94ce59108c74f"
         },
         "date": 1788151007328,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "04547b0ca776419ef25629ba37da464ae55cc692",
+          "message": "feat(core): orchestrate bounded offline sync",
+          "timestamp": "2026-08-31T01:53:48-03:00",
+          "tree_id": "c2971b9c06c7387d240b8f43a5cf0744d267f3cf",
+          "url": "https://github.com/Rullst/Rullst/commit/04547b0ca776419ef25629ba37da464ae55cc692"
+        },
+        "date": 1788152894010,
         "tool": "cargo",
         "benches": [
           {
