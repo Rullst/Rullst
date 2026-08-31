@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788205879066,
+  "lastUpdate": 1788209609870,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -5897,6 +5897,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2552,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "90fb4f0cc540d3ca017c48d60821cf3e8bb4f167",
+          "message": "feat(connect): add typed token revocation",
+          "timestamp": "2026-08-31T17:43:51-03:00",
+          "tree_id": "14f9bcbd20ea11daa9a7a2396d9a42aae389343a",
+          "url": "https://github.com/Rullst/Rullst/commit/90fb4f0cc540d3ca017c48d60821cf3e8bb4f167"
+        },
+        "date": 1788209609347,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 709,
+            "range": "± 49",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 584,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1341,
+            "range": "± 69",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1684,
+            "range": "± 83",
             "unit": "ns/iter"
           }
         ]
