@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788143991656,
+  "lastUpdate": 1788146793615,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -4879,6 +4879,36 @@ window.BENCHMARK_DATA = {
             "name": "session_crypto/encrypt_session",
             "value": 389,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "4776f584b4f42b810fe6e7e955797207efbf6829",
+          "message": "fix(ci): restore cargo deny dependency gate",
+          "timestamp": "2026-08-31T00:19:14-03:00",
+          "tree_id": "25579edf808ed3bdb177973826d6d5f653474ae7",
+          "url": "https://github.com/Rullst/Rullst/commit/4776f584b4f42b810fe6e7e955797207efbf6829"
+        },
+        "date": 1788146792941,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 499,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
