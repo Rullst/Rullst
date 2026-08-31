@@ -3,7 +3,7 @@ use rullst_auth::{decrypt_session, encrypt_session, make_login_cookie};
 use std::hint::black_box;
 
 /// A 32-byte app key for benchmarks (AES-256 requires exactly 32 bytes).
-const TEST_KEY: &[u8; 32] = b"rullst-bench-key-32-bytes-exact!";
+const TEST_KEY: &[u8; 32] = b"0123456789abcdefghijklmnopqrstuv";
 
 /// Benchmarks AES-256-GCM session encryption.
 /// `encrypt_session` runs on every successful login and session cookie refresh.
@@ -39,7 +39,7 @@ fn bench_login_cookie(c: &mut Criterion) {
         // Temporarily set APP_KEY env var for the bench
         // SAFETY: This is a single-threaded benchmark setup, no race conditions can occur.
         unsafe {
-            std::env::set_var("APP_KEY", "cmxzdC1iZW5jaC1rZXktMzItYnl0ZXMt");
+            std::env::set_var("APP_KEY", "0123456789abcdefghijklmnopqrstuv");
         }
         b.iter(|| make_login_cookie(black_box(42_i32)))
     });
