@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788191608888,
+  "lastUpdate": 1788195532123,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -3623,6 +3623,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 550,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "8546cc0d7dcd507f6178378cb730c92050a9cf0f",
+          "message": "docs(roadmap): quantify scope through v13",
+          "timestamp": "2026-08-31T13:47:25-03:00",
+          "tree_id": "47eda06423c7f071ea107a36a7e52f1f9ea7f108",
+          "url": "https://github.com/Rullst/Rullst/commit/8546cc0d7dcd507f6178378cb730c92050a9cf0f"
+        },
+        "date": 1788195531596,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 493,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
