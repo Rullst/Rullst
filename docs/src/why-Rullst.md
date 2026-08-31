@@ -257,6 +257,11 @@ relational domain insert in the same caller-owned transaction. SQLite plus live
 PostgreSQL/MySQL/MariaDB contention contracts prove that concurrent workspace
 members stop at the configured limit; membership and tier reconciliation remain
 visible host responsibilities.
+Coupon and trial management follows the same evidence boundary: coupon IDs are
+bounded/redacted, Stripe binds the expanded applied discount, and 1–730-day
+relative trial updates have stable explicit-clock retries plus bound Stripe and
+Lemon Squeezy protocol fixtures. Providers without a reviewed live operation
+fail explicitly instead of presenting a local no-op as remote success.
 
 The same CLI includes inspection, toolchain diagnostics, migration assistance,
 SBOM generation, and a bounded static route-access scanner. Generated output

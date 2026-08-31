@@ -59,11 +59,15 @@ Rullst Capital simplifies the billing and subscription complexities of building 
   quota together. It cannot intercept arbitrary writes made outside that gate.
 
 ## Phase 8: Coupons & Trial Management
-- [~] **Native Discount APIs**: The typed operation and Stripe adapter exist;
-  live support is provider-specific and LemonSqueezy currently exposes only a
-  validated mock/foundation path.
-- [~] **Trial Extensions**: The typed timestamp operation and Stripe adapter
-  exist; live support is provider-specific rather than uniform.
+- [x] **Native Discount APIs**: `CouponCode` validates and redacts provider
+  coupon identifiers. Stripe sends the current `discounts[0][coupon]` contract,
+  requests an expanded discount and binds the returned subscription and coupon.
+  Lemon Squeezy discount codes remain checkout-only; it and unreviewed adapters
+  return `UnsupportedOperation` in live mode instead of reporting false success.
+- [x] **Trial Extensions**: `extend_trial(15)` now means 15 bounded whole days,
+  with an explicit-clock variant for stable retries. Stripe and Lemon Squeezy
+  send their current form/JSON:API update contracts and bind the returned
+  subscription and expiration; unreviewed live adapters fail explicitly.
 
 ## Phase 9: Multi-Currency (Localized Pricing)
 - [ ] **Dynamic Geolocation Checkout**: Automatically detect a user's country/IP and resolve the correct gateway Price ID (e.g., charging in BRL for Brazil and USD for the USA) natively through the `Billable` trait.

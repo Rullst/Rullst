@@ -1,6 +1,6 @@
 use crate::capital::{BillingProvider, provider};
 use crate::error::CapitalError;
-use crate::{ChargeReceipt, ChargeRequest};
+use crate::{ChargeReceipt, ChargeRequest, TrialExtension};
 use async_trait::async_trait;
 
 const MAX_GRACE_PERIOD_SECONDS: i64 = 366 * 24 * 60 * 60;
@@ -122,6 +122,34 @@ where
     pub async fn pause(&self) -> Result<(), CapitalError> {
         self.provider
             .pause_subscription(&self.subscription_id)
+            .await
+    }
+
+    /// Validates and applies a provider coupon to this subscription.
+    pub async fn apply_coupon(&self, coupon_code: &str) -> Result<(), CapitalError> {
+        let coupon = crate::CouponCode::try_new(coupon_code)?;
+        self.provider
+            .apply_coupon(&self.subscription_id, coupon.as_str())
+            .await
+    }
+
+    /// Extends the trial by whole days resolved against the current UTC clock.
+    pub async fn extend_trial(&self, days: u16) -> Result<(), CapitalError> {
+        let extension = TrialExtension::from_days(days)?;
+        self.set_trial_end(extension.ends_at()).await
+    }
+
+    /// Extends the trial against an explicit trusted clock for workers and tests.
+    pub async fn extend_trial_days_at(&self, days: u16, now: i64) -> Result<(), CapitalError> {
+        let extension = TrialExtension::from_days_at(days, now)?;
+        self.set_trial_end(extension.ends_at()).await
+    }
+
+    /// Sets an explicit provider trial end after local timestamp validation.
+    pub async fn set_trial_end(&self, trial_ends_at: i64) -> Result<(), CapitalError> {
+        crate::subscription::validate_trial_end(trial_ends_at)?;
+        self.provider
+            .extend_trial(&self.subscription_id, trial_ends_at)
             .await
     }
 }
@@ -335,192 +363,25 @@ pub trait Billable {
 
     /// Applies a coupon code to the active subscription.
     async fn apply_coupon(&self, coupon_code: &str) -> Result<(), CapitalError> {
-        let sub_id = self.subscription_id().ok_or_else(|| {
-            CapitalError::SubscriptionError("No subscription ID available".to_string())
-        })?;
-        provider()
-            .ok_or_else(|| {
-                CapitalError::ConfigurationError("BillingProvider not initialized".to_string())
-            })?
-            .apply_coupon(&sub_id, coupon_code)
-            .await
+        self.subscription()?.apply_coupon(coupon_code).await
     }
 
-    /// Extends a trial by setting a new expiration timestamp.
-    async fn extend_trial(&self, trial_ends_at: i64) -> Result<(), CapitalError> {
-        let sub_id = self.subscription_id().ok_or_else(|| {
-            CapitalError::SubscriptionError("No subscription ID available".to_string())
-        })?;
-        provider()
-            .ok_or_else(|| {
-                CapitalError::ConfigurationError("BillingProvider not initialized".to_string())
-            })?
-            .extend_trial(&sub_id, trial_ends_at)
-            .await
+    /// Extends a trial by 1 to 730 whole days from the current UTC clock.
+    async fn extend_trial(&self, days: u16) -> Result<(), CapitalError> {
+        self.subscription()?.extend_trial(days).await
+    }
+
+    /// Extends a trial by whole days from an explicit trusted clock.
+    async fn extend_trial_days_at(&self, days: u16, now: i64) -> Result<(), CapitalError> {
+        self.subscription()?.extend_trial_days_at(days, now).await
+    }
+
+    /// Sets an explicit provider timestamp for compatibility and reconciliation.
+    async fn set_trial_end(&self, trial_ends_at: i64) -> Result<(), CapitalError> {
+        self.subscription()?.set_trial_end(trial_ends_at).await
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::providers::StripeProvider;
-
-    struct TestUser;
-
-    #[async_trait]
-    impl Billable for TestUser {
-        fn email(&self) -> String {
-            "test@example.com".to_string()
-        }
-    }
-
-    struct ProUser;
-
-    #[async_trait]
-    impl Billable for ProUser {
-        fn email(&self) -> String {
-            "pro@example.com".to_string()
-        }
-        fn subscription_id(&self) -> Option<String> {
-            Some("sub_12345".to_string())
-        }
-        fn tier(&self) -> Option<String> {
-            Some("pro".to_string())
-        }
-        fn grace_period(&self) -> Result<Option<GracePeriod>, CapitalError> {
-            GracePeriod::new(1_700_000_000, 1_700_086_400).map(Some)
-        }
-        fn tier_limit(&self, feature: &str) -> Option<usize> {
-            match feature {
-                "api_calls" => Some(1000),
-                _ => None,
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn test_billable_defaults() {
-        let u = TestUser;
-        assert_eq!(u.email(), "test@example.com");
-        assert_eq!(u.subscription_id(), None);
-        assert_eq!(u.tier(), None);
-        assert_eq!(u.tier_limit("cpu"), None);
-        assert!(!u.check_quota("cpu", 10));
-        assert!(!u.can_access("pro"));
-
-        let res = u.subscribe("pro", "http://return").await;
-        assert!(res.is_err());
-        assert_eq!(
-            res.unwrap_err(),
-            crate::error::CapitalError::ConfigurationError(
-                "BillingProvider not initialized".to_string()
-            )
-        );
-
-        let res = u.billing_portal_url("http://return").await;
-        assert!(res.is_err());
-
-        let res = u.cancel_subscription().await;
-        assert!(matches!(res, Err(CapitalError::SubscriptionError(_))));
-
-        let res = u.pause_subscription().await;
-        assert!(matches!(res, Err(CapitalError::SubscriptionError(_))));
-
-        let res = u.report_usage("api_calls", 5).await;
-        assert!(matches!(res, Err(CapitalError::SubscriptionError(_))));
-
-        let res = u.apply_coupon("DISCOUNT10").await;
-        assert!(matches!(res, Err(CapitalError::SubscriptionError(_))));
-
-        let res = u.extend_trial(1700000000).await;
-        assert!(matches!(res, Err(CapitalError::SubscriptionError(_))));
-    }
-
-    #[tokio::test]
-    async fn test_billable_custom_implementation() {
-        let pro = ProUser;
-        assert_eq!(pro.subscription_id().as_deref(), Some("sub_12345"));
-        assert_eq!(pro.tier().as_deref(), Some("pro"));
-        assert!(pro.can_access("pro"));
-        assert!(!pro.can_access("enterprise"));
-
-        assert_eq!(pro.tier_limit("api_calls"), Some(1000));
-        assert_eq!(pro.tier_limit("unknown"), None);
-        assert!(pro.check_quota("api_calls", 500));
-        assert!(!pro.check_quota("api_calls", 1500));
-        assert!(!pro.check_quota("unknown", 0));
-        let quota = pro
-            .quota_request(
-                crate::BillingSubject::try_new("workspace", "acme").unwrap(),
-                "api_calls",
-                "request-17",
-                5,
-            )
-            .unwrap();
-        assert_eq!(quota.limit(), 1_000);
-        assert_eq!(quota.units(), 5);
-        assert!(
-            pro.quota_request(
-                crate::BillingSubject::try_new("workspace", "acme").unwrap(),
-                "unknown",
-                "request-18",
-                1,
-            )
-            .is_err()
-        );
-
-        let res = pro.cancel_subscription().await;
-        assert!(matches!(res, Err(CapitalError::ConfigurationError(_))));
-
-        let res = pro.pause_subscription().await;
-        assert!(matches!(res, Err(CapitalError::ConfigurationError(_))));
-
-        let res = pro.report_usage("api_calls", 10).await;
-        assert!(matches!(res, Err(CapitalError::ConfigurationError(_))));
-
-        let res = pro.apply_coupon("DISCOUNT").await;
-        assert!(matches!(res, Err(CapitalError::ConfigurationError(_))));
-
-        let res = pro.extend_trial(1700000000).await;
-        assert!(matches!(res, Err(CapitalError::ConfigurationError(_))));
-    }
-
-    #[test]
-    fn grace_period_is_bounded_and_uses_half_open_clock_semantics() {
-        let grace = GracePeriod::new(1_000, 1_100).unwrap();
-        assert_eq!(grace.starts_at(), 1_000);
-        assert_eq!(grace.ends_at(), 1_100);
-        assert!(!grace.contains(999));
-        assert!(grace.contains(1_000));
-        assert!(grace.contains(1_099));
-        assert!(!grace.contains(1_100));
-        assert_eq!(grace.remaining_seconds(1_050), 50);
-        assert_eq!(grace.remaining_seconds(999), 0);
-        assert_eq!(grace.remaining_seconds(1_100), 0);
-
-        assert!(GracePeriod::new(-1, 1).is_err());
-        assert!(GracePeriod::new(1_000, 1_000).is_err());
-        assert!(GracePeriod::new(1_000, 999).is_err());
-        assert!(GracePeriod::new(1_000, 1_000 + MAX_GRACE_PERIOD_SECONDS + 1).is_err());
-    }
-
-    #[tokio::test]
-    async fn explicit_subscription_handle_uses_static_provider_and_redacts_its_id() {
-        let provider = StripeProvider::new("mock_api", "mock_webhook");
-        let pro = ProUser;
-        let handle = pro.subscription_with(&provider).unwrap();
-
-        assert_eq!(handle.id(), "sub_12345");
-        assert!(handle.grace_period().is_some());
-        assert!(handle.cancel().await.is_ok());
-        assert!(handle.pause().await.is_ok());
-        let debug = format!("{handle:?}");
-        assert!(debug.contains("stripe"));
-        assert!(debug.contains("[REDACTED]"));
-        assert!(!debug.contains("sub_12345"));
-
-        assert!(SubscriptionHandle::new(&provider, "").is_err());
-        assert!(SubscriptionHandle::new(&provider, "line\nbreak").is_err());
-        assert!(SubscriptionHandle::new(&provider, "x".repeat(513)).is_err());
-    }
-}
+#[path = "billable_tests.rs"]
+mod tests;

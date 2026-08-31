@@ -7,6 +7,7 @@ pub mod fiscal;
 pub mod invoice;
 pub mod providers;
 pub mod quota;
+pub mod subscription;
 pub mod usage;
 
 #[cfg(any(feature = "axum", feature = "actix"))]
@@ -20,6 +21,7 @@ pub use error::*;
 pub use fiscal::*;
 pub use invoice::*;
 pub use quota::*;
+pub use subscription::*;
 pub use usage::*;
 
 #[cfg(any(feature = "axum", feature = "actix"))]

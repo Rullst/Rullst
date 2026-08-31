@@ -528,6 +528,28 @@ application/release evidence. The legacy uniform `BillingProvider::report_usage`
 is compatibility-only and fails closed for live Stripe/Lemon Squeezy rather
 than guessing the required provider-specific identity.
 
+#### Coupons and Relative Trial Extensions
+
+`CouponCode` accepts at most 256 ASCII identifier bytes and redacts its value
+from `Debug`. The Stripe adapter uses `discounts[0][coupon]`, requests expanded
+discount evidence and accepts only a response bound to both the subscription
+and requested coupon. Lemon Squeezy documents discount codes for checkout, not
+post-checkout subscription mutation; it and every adapter without a reviewed
+live contract return `UnsupportedOperation` rather than a false success. Empty
+or `mock_*` credentials retain the deterministic offline no-op required for
+local applications and tests.
+
+`TrialExtension` resolves 1 to 730 whole days against a trusted clock.
+`Billable` and `SubscriptionHandle` expose the historical ergonomic
+`extend_trial(15)` meaning plus `extend_trial_days_at` for a stable persisted
+command clock and `set_trial_end` for explicit reconciliation. Stripe sends
+`trial_end`; Lemon Squeezy sends `trial_ends_at` through its JSON:API PATCH.
+Both cap provider responses and bind the returned subscription and expiration.
+The host must authorize the subscription owner, persist a stable command time
+before retry, serialize conflicting changes, reconcile signed webhooks and
+evaluate provider-specific billing-cycle effects. Live-account acceptance is
+release evidence, not inferred from protocol fixtures.
+
 #### Shared Team and Workspace Quotas
 
 `BillingSubject` identifies one authoritative user, team, workspace or trusted

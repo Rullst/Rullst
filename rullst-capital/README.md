@@ -26,6 +26,9 @@ provider sandbox.
 - **Shared team/workspace quotas:** Bounded subject identities, idempotent
   reservations, replay-safe execution and an opt-in transactional SQL store for
   SQLite, PostgreSQL, MySQL and MariaDB.
+- **Coupons and relative trials:** A bounded/redacted coupon value, current
+  Stripe discount binding, and 1–730-day trial updates for Stripe/Lemon Squeezy
+  with explicit-clock retries and fail-closed provider capability boundaries.
 
 ---
 
@@ -161,6 +164,37 @@ are deterministic but carry the distinct non-success `ChargeStatus::Mock`;
 other adapters return `UnsupportedOperation`. Mandate/SCA,
 durable idempotency, webhook reconciliation and entitlement changes remain
 application responsibilities.
+
+### Coupons and Relative Trials
+
+The provider-bound handle validates coupon IDs before dispatch. Stripe uses the
+current expanded subscription-discount update and checks that the response
+contains both the requested subscription and coupon. Lemon Squeezy discount
+codes are checkout-only, so applying one to an existing live subscription
+returns `UnsupportedOperation`; unreviewed live adapters do the same.
+
+```rust,no_run
+use rullst_capital::{Billable as _, CapitalError, StripeProvider};
+
+async fn retention_offer(
+    workspace: &impl rullst_capital::Billable,
+    stripe: &StripeProvider,
+    command_created_at: i64,
+) -> Result<(), CapitalError> {
+    let subscription = workspace.subscription_with(stripe)?;
+    subscription.apply_coupon("RETENTION_25").await?;
+    subscription
+        .extend_trial_days_at(15, command_created_at)
+        .await
+}
+```
+
+`extend_trial(15)` uses current UTC for convenience; persist a trusted command
+time and use `extend_trial_days_at` for retry stability. `set_trial_end` remains
+the explicit absolute operation. Stripe and Lemon Squeezy bind trial-update
+responses, but authorization, concurrent-command serialization, billing-cycle
+policy, signed-webhook reconciliation and real-account acceptance remain host
+or release work.
 
 ### Provider-Specific Metered Usage
 

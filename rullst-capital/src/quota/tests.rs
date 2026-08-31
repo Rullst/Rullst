@@ -162,12 +162,30 @@ async fn concurrent_members_cannot_overrun_the_shared_limit() {
 async fn sqlite_store(label: &str) -> (SqlQuotaStore, std::path::PathBuf) {
     let token = random_claim_token().expect("test file token");
     let path = std::env::temp_dir().join(format!("rullst-quota-{label}-{token}.sqlite"));
-    let url = format!("sqlite://{}?mode=rwc", path.display());
+    let url = sqlite_test_url(&path);
     let store = SqlQuotaStore::connect(url)
         .await
         .expect("SQLite quota store");
     store.prepare_schema().await.expect("quota schema");
     (store, path)
+}
+
+#[cfg(feature = "quota-sql")]
+fn sqlite_test_url(path: &std::path::Path) -> String {
+    format!(
+        "sqlite://{}?mode=rwc",
+        path.to_string_lossy().replace('\\', "/")
+    )
+}
+
+#[cfg(feature = "quota-sql")]
+#[test]
+fn sqlite_fixture_url_is_portable_to_windows_paths() {
+    let path = std::path::Path::new(r"C:\Users\runner\quota.sqlite");
+    assert_eq!(
+        sqlite_test_url(path),
+        "sqlite://C:/Users/runner/quota.sqlite?mode=rwc"
+    );
 }
 
 #[cfg(feature = "quota-sql")]

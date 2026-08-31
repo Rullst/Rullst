@@ -328,17 +328,15 @@ impl BillingProvider for LemonSqueezyProvider {
         subscription_id: &str,
         coupon_code: &str,
     ) -> Result<(), CapitalError> {
-        if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError(
-                "Subscription ID cannot be empty".to_string(),
-            ));
+        crate::subscription::validate_provider_subscription_id(subscription_id)?;
+        let _coupon = crate::subscription::validate_coupon_code(coupon_code)?;
+        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
+            return Ok(());
         }
-        if coupon_code.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError(
-                "Coupon code cannot be empty".to_string(),
-            ));
-        }
-        Ok(())
+        Err(CapitalError::UnsupportedOperation(
+            "Lemon Squeezy discounts are checkout codes; the reviewed subscription update API does not apply a code to an existing subscription"
+                .to_string(),
+        ))
     }
 
     async fn extend_trial(
@@ -346,17 +344,12 @@ impl BillingProvider for LemonSqueezyProvider {
         subscription_id: &str,
         trial_ends_at: i64,
     ) -> Result<(), CapitalError> {
-        if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError(
-                "Subscription ID cannot be empty".to_string(),
-            ));
-        }
-        if trial_ends_at <= 0 {
-            return Err(CapitalError::SubscriptionError(
-                "Trial end timestamp must be positive".to_string(),
-            ));
-        }
-        Ok(())
+        super::lemonsqueezy_subscription::extend_trial(
+            &self.api_key,
+            subscription_id,
+            trial_ends_at,
+        )
+        .await
     }
 }
 

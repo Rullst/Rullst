@@ -346,14 +346,11 @@ impl BillingProvider for MercadoPagoProvider {
         subscription_id: &str,
         coupon_code: &str,
     ) -> Result<(), CapitalError> {
-        if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError(
-                "Subscription ID cannot be empty".to_string(),
-            ));
-        }
-        if coupon_code.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError(
-                "Coupon code cannot be empty".to_string(),
+        crate::subscription::validate_provider_subscription_id(subscription_id)?;
+        let _coupon = crate::subscription::validate_coupon_code(coupon_code)?;
+        if !self.access_token.is_empty() && !self.access_token.starts_with("mock_") {
+            return Err(CapitalError::UnsupportedOperation(
+                "Mercado Pago coupon application has no reviewed live contract".to_string(),
             ));
         }
         Ok(())
@@ -364,14 +361,11 @@ impl BillingProvider for MercadoPagoProvider {
         subscription_id: &str,
         trial_ends_at: i64,
     ) -> Result<(), CapitalError> {
-        if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError(
-                "Subscription ID cannot be empty".to_string(),
-            ));
-        }
-        if trial_ends_at <= 0 {
-            return Err(CapitalError::SubscriptionError(
-                "Trial end timestamp must be positive".to_string(),
+        crate::subscription::validate_provider_subscription_id(subscription_id)?;
+        crate::subscription::validate_trial_end(trial_ends_at)?;
+        if !self.access_token.is_empty() && !self.access_token.starts_with("mock_") {
+            return Err(CapitalError::UnsupportedOperation(
+                "Mercado Pago trial extension has no reviewed live contract".to_string(),
             ));
         }
         Ok(())

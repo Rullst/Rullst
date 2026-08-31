@@ -80,6 +80,24 @@ and derive quotas/entitlements from authoritative state. The old uniform
 `BillingProvider::report_usage` remains source-compatible for mocks but fails
 closed in live Stripe/Lemon configurations instead of guessing required fields.
 
+## Coupons and relative trial extensions
+
+`CouponCode` validates/redacts the provider coupon identifier, while a
+statically dispatched `SubscriptionHandle` applies it. Stripe uses the current
+expanded `discounts[0][coupon]` update and binds the response to the requested
+subscription/coupon. Lemon Squeezy codes are checkout-only; Lemon and adapters
+without reviewed subscription-discount contracts return `UnsupportedOperation`
+for live credentials instead of silently succeeding.
+
+`handle.extend_trial(15)` resolves a bounded 15-day expiration from the current
+UTC clock. Retryable workers should persist the command creation time and call
+`extend_trial_days_at(15, command_created_at)`; this emits the same absolute
+expiration on every attempt. `set_trial_end` is available for explicit
+reconciliation. Stripe and Lemon Squeezy have bounded protocol/response-binding
+tests for trial updates. Authorization, command serialization, billing-cycle
+policy, webhook reconciliation and live account acceptance remain host/release
+responsibilities. See the [billing tutorial](tutorials/19-saas-billing-capital.md#7-use-a-bounded-subscription-handle-and-grace-period).
+
 ## Shared subscriptions and strict resource quotas
 
 One Team/Workspace model can own `Billable` and its tier policy while every

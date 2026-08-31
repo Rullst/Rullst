@@ -226,6 +226,37 @@ it with authoritative subscription state, evaluate it against a trusted clock
 inside the entitlement check, and confirm the selected adapter's live pause or
 cancel semantics.
 
+The same statically dispatched handle validates coupon IDs and gives the
+historical relative-trial API its intended meaning:
+
+```rust,no_run
+use rullst_capital::{Billable as _, CapitalError, StripeProvider};
+
+async fn grant_a_retention_offer(
+    workspace: &impl rullst_capital::Billable,
+    stripe: &StripeProvider,
+    command_created_at: i64,
+) -> Result<(), CapitalError> {
+    let subscription = workspace.subscription_with(stripe)?;
+    subscription.apply_coupon("RETENTION_25").await?;
+
+    // Fifteen whole days. Persist command_created_at and reuse it on retries.
+    subscription
+        .extend_trial_days_at(15, command_created_at)
+        .await
+}
+```
+
+`extend_trial(15)` uses the current UTC time for interactive convenience.
+Workers should persist their command time and use `extend_trial_days_at` so a
+retry sends the identical expiration; `set_trial_end` is the explicit absolute
+timestamp operation. Stripe has the reviewed live coupon path. Lemon Squeezy
+discount codes belong to checkout and therefore fail explicitly when applied
+to an existing live subscription; both Stripe and Lemon Squeezy have reviewed
+trial-update protocol fixtures. Authorize the subscription owner before
+building the handle, serialize conflicting updates, and reconcile the signed
+provider webhook because trial changes can affect billing anchors and charges.
+
 ## 8. Enforce one shared workspace quota before creation
 
 Enable `quota-sql` directly, or `capital-quota-sql` on the umbrella crate. The

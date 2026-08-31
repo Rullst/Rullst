@@ -74,6 +74,10 @@ Every baseline must review these contracts:
 - ownership checks on parameterized data routes;
 - exact CSRF webhook exemptions, WAF/body limits, and trusted proxy identity;
 - deterministic offline provider credentials versus live provider validation;
+- Capital subscription calls: `Billable::extend_trial(15)` is a relative
+  15-day operation in v12; use `set_trial_end(unix_timestamp)` for an absolute
+  provider timestamp and persist a command clock with `extend_trial_days_at`
+  when a worker may retry;
 - the [AI provider capability matrix](ai-provider-capabilities.md).
 
 Do not deploy v12 solely because `cargo check` succeeds. Compilation does not

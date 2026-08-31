@@ -321,14 +321,11 @@ impl BillingProvider for PaddleProvider {
         subscription_id: &str,
         coupon_code: &str,
     ) -> Result<(), CapitalError> {
-        if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError(
-                "Subscription ID cannot be empty".to_string(),
-            ));
-        }
-        if coupon_code.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError(
-                "Coupon code cannot be empty".to_string(),
+        crate::subscription::validate_provider_subscription_id(subscription_id)?;
+        let _coupon = crate::subscription::validate_coupon_code(coupon_code)?;
+        if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
+            return Err(CapitalError::UnsupportedOperation(
+                "Paddle coupon application has no reviewed live contract".to_string(),
             ));
         }
         Ok(())
@@ -339,14 +336,11 @@ impl BillingProvider for PaddleProvider {
         subscription_id: &str,
         trial_ends_at: i64,
     ) -> Result<(), CapitalError> {
-        if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError(
-                "Subscription ID cannot be empty".to_string(),
-            ));
-        }
-        if trial_ends_at <= 0 {
-            return Err(CapitalError::SubscriptionError(
-                "Trial end timestamp must be positive".to_string(),
+        crate::subscription::validate_provider_subscription_id(subscription_id)?;
+        crate::subscription::validate_trial_end(trial_ends_at)?;
+        if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
+            return Err(CapitalError::UnsupportedOperation(
+                "Paddle trial extension has no reviewed live contract".to_string(),
             ));
         }
         Ok(())

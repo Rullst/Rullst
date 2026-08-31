@@ -358,38 +358,7 @@ impl BillingProvider for StripeProvider {
         subscription_id: &str,
         coupon_code: &str,
     ) -> Result<(), CapitalError> {
-        if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError(
-                "Subscription ID cannot be empty".to_string(),
-            ));
-        }
-        if coupon_code.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError(
-                "Coupon code cannot be empty".to_string(),
-            ));
-        }
-        if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = crate::providers::http_client();
-            let body = format!("coupon={}", coupon_code);
-            let res = client
-                .post(format!(
-                    "https://api.stripe.com/v1/subscriptions/{}",
-                    subscription_id
-                ))
-                .bearer_auth(&self.api_key)
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .body(body)
-                .send()
-                .await
-                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
-            if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!(
-                    "HTTP {}",
-                    res.status()
-                )));
-            }
-        }
-        Ok(())
+        super::stripe_subscription::apply_coupon(&self.api_key, subscription_id, coupon_code).await
     }
 
     async fn extend_trial(
@@ -397,38 +366,8 @@ impl BillingProvider for StripeProvider {
         subscription_id: &str,
         trial_ends_at: i64,
     ) -> Result<(), CapitalError> {
-        if subscription_id.trim().is_empty() {
-            return Err(CapitalError::SubscriptionError(
-                "Subscription ID cannot be empty".to_string(),
-            ));
-        }
-        if trial_ends_at <= 0 {
-            return Err(CapitalError::SubscriptionError(
-                "Trial end timestamp must be positive".to_string(),
-            ));
-        }
-        if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = crate::providers::http_client();
-            let body = format!("trial_end={}", trial_ends_at);
-            let res = client
-                .post(format!(
-                    "https://api.stripe.com/v1/subscriptions/{}",
-                    subscription_id
-                ))
-                .bearer_auth(&self.api_key)
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .body(body)
-                .send()
-                .await
-                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
-            if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!(
-                    "HTTP {}",
-                    res.status()
-                )));
-            }
-        }
-        Ok(())
+        super::stripe_subscription::extend_trial(&self.api_key, subscription_id, trial_ends_at)
+            .await
     }
 }
 
