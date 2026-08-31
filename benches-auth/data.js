@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788179141305,
+  "lastUpdate": 1788186697298,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -5609,6 +5609,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2731,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "40de8fb554e5bb837bc0daf43bc77d7ced2ac26e",
+          "message": "feat(capital): add shared transactional quotas",
+          "timestamp": "2026-08-31T11:20:53-03:00",
+          "tree_id": "44ae582dc622e45242c2e96f9b297e6696fdf4d2",
+          "url": "https://github.com/Rullst/Rullst/commit/40de8fb554e5bb837bc0daf43bc77d7ced2ac26e"
+        },
+        "date": 1788186696878,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 990,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 784,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1808,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4025,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
