@@ -54,7 +54,7 @@ jobs:
       - name: Validate repository-local links
         run: >-
           lychee --offline --no-progress --include-fragments=anchor-only
-          README.md 'docs/src/**/*.md'
+          '**/*.md'
 
       - name: Inspect external links
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -62,7 +62,7 @@ jobs:
         run: >-
           lychee --no-progress --include-fragments=none --max-concurrency 32
           --host-concurrency 4 --max-retries 3 --retry-wait-time 2 --timeout 30
-          --output lychee-external.txt README.md 'docs/src/**/*.md'
+          --output lychee-external.txt '**/*.md'
 
       - name: Upload external-link report
         if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
