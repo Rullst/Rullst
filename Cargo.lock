@@ -6929,6 +6929,7 @@ dependencies = [
  "testcontainers-modules",
  "thiserror 2.0.20",
  "tokio",
+ "tower",
  "xml-sec",
  "zeroize",
 ]

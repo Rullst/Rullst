@@ -874,4 +874,120 @@ mod tests_additional {
         assert_eq!(attempts, 0);
         assert!(error.is_none());
     }
+
+    #[tokio::test]
+    async fn sqlite_driver_reports_closed_pool_errors_for_every_database_boundary() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+        driver.pool.close().await;
+
+        assert!(driver.push("id", "job", "{}").await.is_err());
+        assert!(
+            driver
+                .push_at("id", "job", "{}", SystemTime::now())
+                .await
+                .is_err()
+        );
+        assert!(driver.pop().await.is_err());
+        assert!(driver.mark_complete("id").await.is_err());
+        assert!(driver.mark_failed("id", "failed").await.is_err());
+        assert!(driver.requeue("id", "retry").await.is_err());
+        assert!(driver.recover_stalled(Duration::ZERO).await.is_err());
+        assert!(driver.pending_count().await.is_err());
+        assert!(driver.list_all_jobs(1).await.is_err());
+        assert!(driver.retry_failed_job("id").await.is_err());
+        assert!(driver.purge_failed_jobs().await.is_err());
+        assert!(driver.purge_completed_history().await.is_err());
+
+        let retained = SqliteDriver::new("sqlite::memory:")
+            .await
+            .unwrap()
+            .try_with_completed_history_limit(1)
+            .unwrap();
+        retained.pool.close().await;
+        assert!(retained.mark_complete("id").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn sqlite_driver_rejects_duplicate_overflow_and_corrupt_state_transitions() {
+        let driver = SqliteDriver::new("sqlite::memory:").await.unwrap();
+        driver.push("duplicate", "job", "{}").await.unwrap();
+        assert!(matches!(
+            driver.push("duplicate", "job", "{}").await,
+            Err(QueueError::Driver(message)) if message.contains("Failed to push")
+        ));
+
+        if let Some(beyond_sqlite) =
+            std::time::UNIX_EPOCH.checked_add(Duration::from_millis(i64::MAX as u64 + 1))
+        {
+            assert!(matches!(
+                driver.push_at("overflow", "job", "{}", beyond_sqlite).await,
+                Err(QueueError::InvalidConfiguration(message))
+                    if message.contains("SQLite integer range")
+            ));
+        }
+
+        let duplicate = driver.pop().await.unwrap().unwrap();
+        assert_eq!(duplicate.id, "duplicate");
+        driver.mark_complete(&duplicate.id).await.unwrap();
+
+        sqlx::query(
+            "CREATE TRIGGER reject_failed_transition BEFORE UPDATE OF status ON rullst_jobs WHEN NEW.status = 'failed' BEGIN SELECT RAISE(ABORT, 'failed transition blocked'); END",
+        )
+        .execute(&driver.pool)
+        .await
+        .unwrap();
+        driver
+            .push("invalid-json", "job", "{invalid")
+            .await
+            .unwrap();
+        assert!(matches!(
+            driver.pop().await,
+            Err(QueueError::StateTransition {
+                operation: "reject_invalid_payload",
+                ..
+            })
+        ));
+
+        sqlx::query(
+            "INSERT INTO rullst_jobs (id, name, payload, status, attempts, available_at_ms) VALUES ('negative-attempts', 'job', '{}', 'pending', -2, 0)",
+        )
+        .execute(&driver.pool)
+        .await
+        .unwrap();
+        assert!(matches!(
+            driver.pop().await,
+            Err(QueueError::StateTransition {
+                operation: "reject_invalid_attempts",
+                ..
+            })
+        ));
+    }
+
+    #[tokio::test]
+    async fn sqlite_retained_completion_rolls_back_when_the_status_update_fails() {
+        let driver = SqliteDriver::new("sqlite::memory:")
+            .await
+            .unwrap()
+            .try_with_completed_history_limit(1)
+            .unwrap();
+        driver.push("blocked", "job", "{}").await.unwrap();
+        assert_eq!(driver.pop().await.unwrap().unwrap().id, "blocked");
+        sqlx::query(
+            "CREATE TRIGGER reject_completed_transition BEFORE UPDATE OF status ON rullst_jobs WHEN NEW.status = 'completed' BEGIN SELECT RAISE(ABORT, 'completion blocked'); END",
+        )
+        .execute(&driver.pool)
+        .await
+        .unwrap();
+
+        assert!(matches!(
+            driver.mark_complete("blocked").await,
+            Err(QueueError::Driver(message)) if message.contains("retain completed")
+        ));
+        let status: String =
+            sqlx::query_scalar("SELECT status FROM rullst_jobs WHERE id = 'blocked'")
+                .fetch_one(&driver.pool)
+                .await
+                .unwrap();
+        assert_eq!(status, "processing");
+    }
 }

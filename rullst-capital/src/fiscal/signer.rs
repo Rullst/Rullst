@@ -370,3 +370,7 @@ mod tests {
         validator.validate(&signed).unwrap();
     }
 }
+
+#[cfg(test)]
+#[path = "signer_contract_tests.rs"]
+mod contract_tests;
