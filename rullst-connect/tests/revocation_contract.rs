@@ -312,7 +312,7 @@ async fn revocation_rejects_malformed_tokens_before_transport_and_maps_provider_
 }
 
 #[tokio::test]
-async fn offline_credentials_revoke_without_installing_a_live_transport() {
+async fn offline_credentials_never_install_a_live_revocation_transport() {
     let provider = Auth0Provider::try_new(
         "mock_client",
         SecretString::from("mock_secret".to_string()),
@@ -320,8 +320,11 @@ async fn offline_credentials_revoke_without_installing_a_live_transport() {
         "tenant.auth0.com",
     )
     .expect("offline provider");
-    provider
-        .revoke_refresh_token("offline-refresh-token")
-        .await
-        .expect("deterministic offline revocation");
+    let result = provider.revoke_refresh_token("offline-refresh-token").await;
+
+    #[cfg(feature = "mock")]
+    result.expect("explicit mock feature enables deterministic offline revocation");
+
+    #[cfg(not(feature = "mock"))]
+    assert!(matches!(result, Err(ConnectError::Offline(_))));
 }

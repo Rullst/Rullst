@@ -49,6 +49,10 @@ fn build_studio_router() -> axum::Router {
         .expect("debug Studio router")
         .layer(axum::middleware::from_fn(
             |mut request: axum::extract::Request, next: axum::middleware::Next| async move {
+                request.headers_mut().insert(
+                    axum::http::header::HOST,
+                    axum::http::HeaderValue::from_static("127.0.0.1:5555"),
+                );
                 request.extensions_mut().insert(axum::extract::ConnectInfo(
                     "127.0.0.1:42000"
                         .parse::<std::net::SocketAddr>()
@@ -106,8 +110,8 @@ async fn test_studio_table_not_found() {
     let app = TestApp::new(build_studio_router());
 
     let response = app.get("/tables/nonexistent_table").await;
-    response.assert_status(200); // Handled error returns 200 with error message
-    response.assert_see("Table 'nonexistent_table' not found.");
+    response.assert_status(404);
+    response.assert_see("The requested table is unavailable or uses an unsupported identifier.");
 }
 
 #[tokio::test]

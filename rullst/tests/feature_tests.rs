@@ -1,12 +1,24 @@
-#[cfg(feature = "orm")]
+#[cfg(all(
+    feature = "orm",
+    not(feature = "strict-postgres"),
+    not(feature = "strict-mysql")
+))]
 use rullst::feature::DbFeatureDriver;
 use rullst::feature::{
     self, EnvFeatureDriver, FeatureDriver, FeatureManager, MemoryFeatureDriver, TomlFeatureDriver,
 };
-#[cfg(feature = "orm")]
+#[cfg(all(
+    feature = "orm",
+    not(feature = "strict-postgres"),
+    not(feature = "strict-mysql")
+))]
 use rullst_orm::Orm;
 use std::fs;
-#[cfg(feature = "orm")]
+#[cfg(all(
+    feature = "orm",
+    not(feature = "strict-postgres"),
+    not(feature = "strict-mysql")
+))]
 use std::time::Duration;
 
 #[tokio::test]
@@ -158,11 +170,12 @@ invalid-split = "variant:not-a-number,variant2:50"
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-#[cfg(feature = "orm")]
-#[cfg_attr(
-    any(miri, test),
-    ignore = "Disabled in workspace tests due to sqlx AnyPool resolving to PgPool under --all-features"
-)]
+#[cfg(all(
+    feature = "orm",
+    not(feature = "strict-postgres"),
+    not(feature = "strict-mysql")
+))]
+#[cfg_attr(miri, ignore = "SQLx database integration is outside Miri")]
 async fn test_database_feature_driver() {
     // 1. Initialize SQLite in-memory database (pool size 1 to avoid sqlx connection pool timeouts)
     // We use a private memory database (`sqlite::memory:`) with a single connection.

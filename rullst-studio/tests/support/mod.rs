@@ -362,7 +362,7 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
     assert!(null_update.status().is_redirection());
 
     let mut typed_select = rullst_orm::_sqlx::QueryBuilder::<rullst_orm::RullstDatabase>::new(
-        "SELECT active, score FROM ",
+        "SELECT CASE WHEN active THEN 'true' ELSE 'false' END AS active_text, score FROM ",
     );
     typed_select
         .push(&quoted_table)
@@ -373,11 +373,11 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
         .fetch_one(pool)
         .await
         .expect("read Studio typed updates");
-    let active: bool =
-        rullst_orm::_sqlx::Row::try_get(&typed_row, 0).expect("Studio-updated boolean value");
+    let active: String =
+        rullst_orm::_sqlx::Row::try_get(&typed_row, 0).expect("Studio-updated boolean projection");
     let score: Option<f64> =
         rullst_orm::_sqlx::Row::try_get(&typed_row, 1).expect("Studio-updated nullable value");
-    assert!(!active);
+    assert_eq!(active, "false");
     assert_eq!(score, None);
 
     let invalid = app

@@ -132,6 +132,8 @@ where
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use axum::extract::FromRequestParts;
+    use axum::http::Request;
 
     struct DatabaseService {
         connection_string: String,
@@ -156,5 +158,52 @@ mod tests {
 
         let resolved_user_svc = container.resolve::<UserService>().unwrap();
         assert_eq!(resolved_user_svc.db.connection_string, "sqlite::memory:");
+    }
+
+    #[tokio::test]
+    async fn extractor_resolves_container_direct_extension_and_missing_state() {
+        let mut container = Container::new();
+        container.register(DatabaseService {
+            connection_string: "sqlite://container".to_string(),
+        });
+        let mut parts = Request::new(()).into_parts().0;
+        parts.extensions.insert(Arc::new(container));
+
+        let injected = Inject::<DatabaseService>::from_request_parts(&mut parts, &())
+            .await
+            .expect("registered container service");
+        assert_eq!(injected.connection_string, "sqlite://container");
+
+        let direct = Arc::new(DatabaseService {
+            connection_string: "sqlite://extension".to_string(),
+        });
+        let mut direct_parts = Request::new(()).into_parts().0;
+        direct_parts.extensions.insert(direct.clone());
+        let injected = Inject::<DatabaseService>::from_request_parts(&mut direct_parts, &())
+            .await
+            .expect("direct typed extension");
+        assert!(Arc::ptr_eq(&injected.0, &direct));
+
+        let mut missing_parts = Request::new(()).into_parts().0;
+        let Err((status, message)) =
+            Inject::<DatabaseService>::from_request_parts(&mut missing_parts, &()).await
+        else {
+            panic!("missing dependency must fail closed");
+        };
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(message.contains(std::any::type_name::<DatabaseService>()));
+        assert!(!message.contains("sqlite://"));
+    }
+
+    #[test]
+    fn typed_errors_do_not_hide_the_requested_dependency() {
+        let missing = DiError::NotRegistered(std::any::type_name::<DatabaseService>());
+        assert!(missing.to_string().contains("DatabaseService"));
+
+        let injection = DiError::InjectionFailed("invalid service graph".to_string());
+        assert_eq!(
+            injection.to_string(),
+            "Dependency injection failed: invalid service graph"
+        );
     }
 }

@@ -4,6 +4,9 @@
 
 use super::*;
 use crate::artisan::runner::translate_artisan_args;
+use crate::artisan::studio_server::{
+    handle_rollback_migrations, handle_run_migrations, handle_run_seeders,
+};
 use crate::artisan::studio_views::{
     is_ai_configured, studio_ai_handler, studio_capital_handler, studio_data_handler,
     studio_home_handler, studio_security_handler, studio_telemetry_handler, studio_traces_handler,
@@ -88,4 +91,43 @@ async fn test_all_studio_views_and_api_handlers() {
     let trace_html = studio_traces_handler().await;
     assert!(trace_html.0.contains("Local Span Records"));
     assert!(trace_html.0.contains("SpanCollector"));
+}
+
+async fn assert_registry_operation_fails_closed(
+    response: impl axum::response::IntoResponse,
+    operation: &str,
+) {
+    let response = response.into_response();
+    assert_eq!(response.status(), axum::http::StatusCode::NOT_IMPLEMENTED);
+    assert_eq!(
+        response.headers().get(axum::http::header::CONTENT_TYPE),
+        Some(&axum::http::HeaderValue::from_static("application/json"))
+    );
+    let body = axum::body::to_bytes(response.into_body(), 4 * 1024)
+        .await
+        .expect("bounded Studio registry error body");
+    let payload: serde_json::Value =
+        serde_json::from_slice(&body).expect("Studio registry error JSON");
+    assert_eq!(payload["success"], false);
+    assert!(
+        payload["message"]
+            .as_str()
+            .is_some_and(|message| message.contains(operation))
+    );
+    assert!(
+        payload["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("explicitly supplied application registry"))
+    );
+}
+
+#[tokio::test]
+async fn studio_mutations_never_claim_success_without_an_application_registry() {
+    assert_registry_operation_fails_closed(handle_run_migrations().await, "run migrations").await;
+    assert_registry_operation_fails_closed(
+        handle_rollback_migrations().await,
+        "roll back migrations",
+    )
+    .await;
+    assert_registry_operation_fails_closed(handle_run_seeders().await, "run seeders").await;
 }
