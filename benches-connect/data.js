@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788228590548,
+  "lastUpdate": 1788231319689,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -3803,6 +3803,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 573,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "04006e822c7c7f7482bb5c29e097efec9e678b40",
+          "message": "test(messaging): expand bounded input coverage",
+          "timestamp": "2026-08-31T23:38:03-03:00",
+          "tree_id": "0a85cd2cd6eda95e697de84dfb9a68927f4c9995",
+          "url": "https://github.com/Rullst/Rullst/commit/04006e822c7c7f7482bb5c29e097efec9e678b40"
+        },
+        "date": 1788231319054,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 567,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
