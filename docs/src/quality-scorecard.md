@@ -36,12 +36,12 @@ ignored and do not count as compiled examples.
 Grades use the following fixed bands: A+ 97–100, A 90–96, B 80–89, C 70–79,
 D 60–69, and F below 60.
 
-The v12 RC quality objective is **no crate below B**, with the central Core and
-ORM crates at A. A+ is an evidence threshold, not a value to assign by intent.
-The audited ceilings below now satisfy that floor after dedicated macro
-contracts and negative compiler cases plus an IoT durable-counter boundary with
-restart/failure proof. This does not pre-approve a commit: the exact SHA still
-earns those ceilings only when every constraining gate succeeds.
+The v12 RC quality objective is **A (90) or better for every crate except
+`rullst-iot`, whose approved floor is B (80)**. A+ is an evidence threshold,
+not a value to assign by intent. This owner-approved gate is deliberately
+stricter than the earlier all-B floor and reopens bounded implementation work
+before the feature freeze. It does not pre-approve a commit: the exact SHA
+still earns each ceiling only when every constraining gate succeeds.
 
 ## Audited green-gate ceilings — 1 September 2026
 
@@ -66,8 +66,42 @@ applies the real gate outcomes and includes the full finding for every row.
 | `rullst-orm-macros` | 82 | B | Runtime protocol semantics remain evidence owned by `rullst-orm` |
 | `rullst-nexus` | 81 | B | Host tenant policy, durable audit and production operations |
 | `rullst-macros` | 81 | B | Experimental browser/runtime integration remains bounded |
-| `rullst-iot` | 81 | B | Concrete hardware storage, transport, flashing and bootloader evidence |
-| **Repository (equal-crate aggregate)** | **85** | **B** | **Exact score remains conditional on the SHA's gates** |
+| `rullst-iot` | 83 | B | Concrete transport/hardware storage, flashing and bootloader evidence |
+| **Repository (equal-crate aggregate)** | **86** | **B** | **Exact score remains conditional on the SHA's gates** |
+
+## Measured gap to the v12 quality gate
+
+At the ceilings above, Core and ORM already meet A and IoT already meets its
+approved B exception. Thirteen crates remain below their required grade. Their
+individual gaps total **67 audited points**. This is not a count of tasks and
+cannot be closed by editing the policy: every point requires a commensurate
+change in implementation, verification, security/failure design,
+documentation/DX, or operational evidence.
+
+If the thirteen crates reach exactly 90 while Core and ORM remain at 91 and
+IoT remains at 83, the equal-crate aggregate becomes 1,435/1,600, which rounds
+to **90/A**.
+
+| Crate | Current | Gap to required grade | Next evidence cluster to audit |
+| :--- | ---: | ---: | :--- |
+| `rullst-security` | 89/B | +1 | Durable/restart-aware security telemetry and its failure contract |
+| `rullst-connect` | 88/B | +2 | Durable token lifecycle plus provider conformance boundaries |
+| `rullst` | 88/B | +2 | Cross-feature facade contracts across the published domain crates |
+| `rullst-auth` | 87/B | +3 | Durable revocation/device lifecycle and broader WebAuthn vectors |
+| `rullst-mail` | 87/B | +3 | Attachment-inspection policy and durable delivery/failure operations |
+| `rullst-messaging` | 86/B | +4 | Remote adapter or encrypted durable-state contracts and fault matrices |
+| `cargo-rullst` | 85/B | +5 | Broader compile/runtime verification of generated blueprint combinations |
+| `rullst-ai` | 84/B | +6 | Cancellation/streaming, durable retrieval/memory and adaptive eval evidence |
+| `rullst-studio` | 83/B | +7 | Distributed trace ingestion and authenticated remote-inspector boundaries |
+| `rullst-capital` | 82/B | +8 | Shared gateway contracts and fiscal/provider evidence without invented homologation |
+| `rullst-orm-macros` | 82/B | +8 | Complete parser/UI contracts for generated invariants and runtime cross-evidence |
+| `rullst-nexus` | 81/B | +9 | Tenant authorization, durable audit and production admin operation contracts |
+| `rullst-macros` | 81/B | +9 | Public grammar/diagnostic coverage and the remaining generated runtime protocols |
+
+The final point allocation may differ from these candidate clusters after code
+review. External provider acceptance, fiscal homologation, device testing,
+store publication, and independent audit must stay explicitly external even
+when enough repository-owned evidence exists to reach A.
 
 ## What the score does not measure
 

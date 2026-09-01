@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 > certification, benchmark, or test evidence. The current capability contract is
 > `docs/src/spec.md`; CI artifacts tied to the eventual tag are authoritative for
 > tests and provenance. Absolute wording in older development notes must not be
-> interpreted as a guarantee. In particular, live NFS-e, MQTT/HSM/PQC, Alipay
+> interpreted as a guarantee. In particular, live NFS-e, MQTT transport/HSM/PQC, Alipay
 > RSA2, Connect message-broker adapters, S3/R2 storage, and database replication
 > remain fail-closed or roadmap capabilities as documented by the SST.
 >
@@ -51,6 +51,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added a compact canonical capability-status view and a SHA-bound CI quality
   scorecard artifact for every main push/PR. The score evaluates engineering
   evidence and explicitly excludes feature completeness and certification.
+- Raised the v12 RC quality gate to A (90) for every publishable crate except
+  the approved IoT floor of B (80). The audited plan records thirteen crates
+  below A and a 67-point aggregate gap; policy values may move only with real
+  implementation and evidence, never to make the release table look greener.
 - Added a `no_std` OTA rollback-counter adapter to `rullst-iot`. The manager can
   load durable state and require an exact, strictly increasing compare-and-set
   before changing local state; public tests cover restart/replay, transient
@@ -433,6 +437,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   are built as explicit targets and asserted executable before any server is
   started. A package-wide `--bin cargo-rullst` filter previously skipped the
   blog executable while still returning a successful Cargo build.
+- Pass each DAST rule file explicitly to `zap-baseline.py`. The pinned baseline
+  action forwards its `rules_file_name` input only when at least one rule is
+  `IGNORE`; Rullst intentionally uses auditable `INFO` explanations instead,
+  so the former input silently left those configs inactive. Unlisted warnings
+  remain blocking for the generated REST and LMS surfaces.
+- Corrected the Capital Actix guide URL to the deployed mdBook path and excluded
+  intentional localhost tutorial endpoints from the external-link probe; local
+  repository links remain covered by the blocking offline fragment check.
 - Added native AWS SES v2 delivery behind `rullst-mail/aws-ses` and umbrella
   `mail-aws-ses`. `AwsSesDriver` delegates regional SigV4 and transport to the
   official AWS SDK, accepts static/temporary credentials, caller-owned rotating
@@ -516,6 +528,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   online state; anomaly evaluation fails closed for non-finite inputs and
   Digital Twin serialization exposes a fallible API with a safe JSON fallback.
   These changes do not add hardware, network, firmware or realtime drivers.
+- `rullst-iot` now provides bounded `no_std` MQTT 5 PUBLISH and RFC 7252 CoAP
+  base-request encoders with typed failures, official-format vectors, public API
+  and deterministic robustness tests. MQTT topic/QoS/packet-ID/length rules and
+  CoAP token/option/payload ordering fail closed under local 1 MiB/1152-byte
+  ceilings. This is packet construction only: connections, TLS/DTLS, broker
+  negotiation, acknowledgements, retries, LwM2M and interoperability remain
+  outside the implemented scope.
 - `cargo rullst make:mail` now generates all five exposed variants through the
   public facade, enables `mailer`, validates identifiers, refuses traversal and
   collisions, registers modules and escapes dynamic HTML. A materialized
