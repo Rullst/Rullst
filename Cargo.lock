@@ -6996,6 +6996,7 @@ dependencies = [
  "serde_urlencoded",
  "sqlx",
  "subtle",
+ "testcontainers",
  "thiserror 2.0.20",
  "tokio",
  "toml",

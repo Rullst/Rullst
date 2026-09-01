@@ -537,3 +537,7 @@ pub async fn shutdown_signal() {
         },
     }
 }
+
+#[cfg(test)]
+#[path = "builder_tests.rs"]
+mod tests;

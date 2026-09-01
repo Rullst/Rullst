@@ -10,6 +10,9 @@ pub mod hotswap;
 pub mod server_middleware;
 
 #[cfg(test)]
+pub(crate) static TEST_ENV_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+#[cfg(test)]
 mod tests;
 
 pub use crate::Router;

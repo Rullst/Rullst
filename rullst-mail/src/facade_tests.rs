@@ -1,6 +1,11 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex};
 
 use super::*;
+use async_trait::async_trait;
+use rullst_core::queue::{QueueDriver, QueueError, QueuedJob};
 
 struct EnvironmentGuard {
     original: BTreeMap<&'static str, Option<String>>,
@@ -163,4 +168,131 @@ fn schedule_conversion_rejects_pre_epoch_values() {
         datetime_to_system_time(&before_epoch),
         Err(MailError::ValidationError(message)) if message.contains("predates")
     ));
+}
+
+#[derive(Default)]
+struct CapturedQueue {
+    jobs: Arc<Mutex<Vec<CapturedJob>>>,
+    failure: Option<QueueError>,
+}
+
+type CapturedJob = (String, String, Option<SystemTime>);
+
+#[async_trait]
+impl QueueDriver for CapturedQueue {
+    async fn push(&self, _id: &str, job_name: &str, payload: &str) -> Result<(), QueueError> {
+        if let Some(error) = &self.failure {
+            return Err(QueueError::Driver(error.to_string()));
+        }
+        self.jobs
+            .lock()
+            .unwrap()
+            .push((job_name.to_string(), payload.to_string(), None));
+        Ok(())
+    }
+
+    async fn push_at(
+        &self,
+        _id: &str,
+        job_name: &str,
+        payload: &str,
+        available_at: SystemTime,
+    ) -> Result<(), QueueError> {
+        if let Some(error) = &self.failure {
+            return Err(QueueError::Driver(error.to_string()));
+        }
+        self.jobs.lock().unwrap().push((
+            job_name.to_string(),
+            payload.to_string(),
+            Some(available_at),
+        ));
+        Ok(())
+    }
+
+    async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
+        Ok(None)
+    }
+
+    async fn mark_complete(&self, _job_id: &str) -> Result<(), QueueError> {
+        Ok(())
+    }
+
+    async fn mark_failed(&self, _job_id: &str, _error: &str) -> Result<(), QueueError> {
+        Ok(())
+    }
+
+    async fn pending_count(&self) -> Result<u64, QueueError> {
+        Ok(self.jobs.lock().unwrap().len() as u64)
+    }
+}
+
+fn valid_message() -> Message {
+    Message::new()
+        .to("recipient@example.com")
+        .from("sender@example.com")
+        .subject("facade contract")
+        .text("bounded body")
+}
+
+#[tokio::test]
+async fn explicit_queue_preserves_tenant_and_schedule_and_maps_driver_errors() {
+    let jobs = Arc::new(Mutex::new(Vec::new()));
+    let queue = Queue::custom(Box::new(CapturedQueue {
+        jobs: jobs.clone(),
+        failure: None,
+    }));
+    Mail::enqueue(&queue, valid_message()).await.unwrap();
+
+    let scheduled_at = chrono::Utc::now() + chrono::Duration::seconds(30);
+    Mail::enqueue_for_tenant(&queue, "tenant_acme", valid_message().send_at(scheduled_at))
+        .await
+        .unwrap();
+
+    {
+        let captured = jobs.lock().unwrap();
+        assert_eq!(captured.len(), 2);
+        assert_eq!(captured[0].0, "rullst_mail_send");
+        assert!(captured[0].2.is_none());
+        let unscoped: QueuedMail = serde_json::from_str(&captured[0].1).unwrap();
+        assert_eq!(unscoped.schema_version, MAIL_JOB_SCHEMA_VERSION);
+        assert!(unscoped.tenant_id.is_none());
+
+        assert!(captured[1].2.is_some());
+        let scoped: QueuedMail = serde_json::from_str(&captured[1].1).unwrap();
+        assert_eq!(scoped.tenant_id.as_deref(), Some("tenant_acme"));
+    }
+
+    let failing = Queue::custom(Box::new(CapturedQueue {
+        jobs: Arc::new(Mutex::new(Vec::new())),
+        failure: Some(QueueError::Driver("offline failure".to_string())),
+    }));
+    assert!(matches!(
+        Mail::enqueue(&failing, valid_message()).await,
+        Err(MailError::SendError(message)) if message.contains("offline failure")
+    ));
+}
+
+#[tokio::test]
+async fn synchronous_tenant_facade_uses_custom_and_resolved_offline_drivers() {
+    let _lock = MAIL_ENV_LOCK.lock().await;
+    let (driver, store) = MemoryDriver::isolated();
+    Mail::set_driver(Box::new(driver));
+    Mail::send_now_for_tenant("tenant_acme", valid_message())
+        .await
+        .unwrap();
+    assert_eq!(store.lock().unwrap().len(), 1);
+    Mail::reset_driver();
+
+    let mut environment = EnvironmentGuard::new();
+    clear_provider_environment(&mut environment);
+    environment.set("MAIL_DRIVER", "memory");
+    Mail::send_now_for_tenant("tenant_globex", valid_message())
+        .await
+        .unwrap();
+
+    assert!(
+        Mail::send_now_for_tenant("../invalid", valid_message())
+            .await
+            .is_err()
+    );
 }

@@ -1,4 +1,48 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+
 use super::*;
+use std::collections::BTreeMap;
+
+struct EnvironmentGuard {
+    values: BTreeMap<&'static str, Option<String>>,
+}
+
+impl EnvironmentGuard {
+    fn new() -> Self {
+        Self {
+            values: BTreeMap::new(),
+        }
+    }
+
+    fn remember(&mut self, key: &'static str) {
+        self.values
+            .entry(key)
+            .or_insert_with(|| std::env::var(key).ok());
+    }
+
+    fn set(&mut self, key: &'static str, value: &str) {
+        self.remember(key);
+        unsafe { std::env::set_var(key, value) };
+    }
+
+    fn clear(&mut self, key: &'static str) {
+        self.remember(key);
+        unsafe { std::env::remove_var(key) };
+    }
+}
+
+impl Drop for EnvironmentGuard {
+    fn drop(&mut self) {
+        for (key, value) in &self.values {
+            unsafe {
+                match value {
+                    Some(value) => std::env::set_var(key, value),
+                    None => std::env::remove_var(key),
+                }
+            }
+        }
+    }
+}
 
 fn generate_test_key_32() -> String {
     let mut bytes = [0u8; 16];
@@ -87,6 +131,36 @@ fn versioned_envelope_rejects_invalid_and_future_formats() {
             .expect("foreign envelope prefixes must fail"),
         PrivacyError::InvalidEnvelope
     );
+
+    for malformed in [
+        "RULLST",
+        "RULLST:v2",
+        "RULLST:v2:default",
+        "RULLST:v2:default:AA",
+        "RULLST:v2::AA:AA",
+        "RULLST:v2:bad/key:AA:AA",
+    ] {
+        assert!(parse_envelope(malformed).is_err(), "{malformed}");
+    }
+
+    let tag = URL_SAFE_NO_PAD.encode([0_u8; TAG_LENGTH]);
+    assert!(matches!(
+        parse_envelope(&format!("RULLST:v2:default:not-base64!:{tag}")),
+        Err(PrivacyError::Base64Error(_))
+    ));
+    assert_eq!(
+        parse_envelope(&format!("RULLST:v2:default:AA:{tag}"))
+            .err()
+            .unwrap(),
+        PrivacyError::PayloadTooShort
+    );
+    let nonce = URL_SAFE_NO_PAD.encode([0_u8; NONCE_LENGTH]);
+    assert_eq!(
+        parse_envelope(&format!("RULLST:v2:default:{nonce}:AA"))
+            .err()
+            .unwrap(),
+        PrivacyError::PayloadTooShort
+    );
 }
 
 #[test]
@@ -112,6 +186,18 @@ fn configured_keys_accept_raw_base64_and_hex_material() {
     assert_eq!(
         decode_configured_key("hex:not-hex").expect_err("invalid hex must fail"),
         PrivacyError::InvalidKeyEncoding("hex")
+    );
+    assert_eq!(
+        decode_configured_key("base64:!").unwrap_err(),
+        PrivacyError::InvalidKeyEncoding("base64")
+    );
+    assert_eq!(
+        decode_configured_key("hex:0").unwrap_err(),
+        PrivacyError::InvalidKeyEncoding("hex")
+    );
+    assert_eq!(
+        decode_configured_key("base64:c2hvcnQ=").unwrap_err(),
+        PrivacyError::InvalidKeyLength
     );
 }
 
@@ -159,5 +245,87 @@ fn privacy_errors_and_key_validation_are_typed() {
         PrivacyError::EnvError("err".to_string())
             .to_string()
             .contains("Environment variable")
+    );
+}
+
+#[test]
+fn legacy_ciphertext_decrypts_and_invalid_utf8_is_typed() {
+    let key = b"0123456789abcdef0123456789abcdef";
+    let cipher = Aes256Gcm::new_from_slice(key).unwrap();
+    let nonce_bytes = [7_u8; NONCE_LENGTH];
+    let nonce = Nonce::<Aes256Gcm>::try_from(nonce_bytes.as_slice()).unwrap();
+
+    let ciphertext = cipher.encrypt(&nonce, b"legacy secret".as_slice()).unwrap();
+    let mut payload = nonce_bytes.to_vec();
+    payload.extend_from_slice(&ciphertext);
+    assert_eq!(
+        decrypt_aes_gcm(&STANDARD.encode(payload), std::str::from_utf8(key).unwrap()).unwrap(),
+        "legacy secret"
+    );
+
+    let invalid_utf8 = cipher.encrypt(&nonce, [0xff].as_slice()).unwrap();
+    let mut invalid_payload = nonce_bytes.to_vec();
+    invalid_payload.extend_from_slice(&invalid_utf8);
+    assert!(matches!(
+        decrypt_aes_gcm(
+            &STANDARD.encode(invalid_payload),
+            std::str::from_utf8(key).unwrap()
+        ),
+        Err(PrivacyError::Utf8Error(_))
+    ));
+}
+
+#[test]
+fn environment_key_selection_rotation_and_context_fail_closed() {
+    let mut environment = EnvironmentGuard::new();
+    for key in [KEY_ENV, KEY_ID_ENV, KEYRING_ENV] {
+        environment.clear(key);
+    }
+
+    assert_eq!(current_key_id().unwrap(), DEFAULT_KEY_ID);
+    assert!(matches!(current_key(), Err(PrivacyError::EnvError(_))));
+    environment.set(KEY_ID_ENV, "bad/id");
+    assert_eq!(current_key_id().unwrap_err(), PrivacyError::InvalidKeyId);
+
+    let primary = "0123456789abcdef0123456789abcdef";
+    let rotated = "abcdef0123456789abcdef0123456789";
+    environment.set(KEY_ID_ENV, "primary-2026");
+    environment.set(KEY_ENV, primary);
+    assert_eq!(current_key().unwrap(), primary.as_bytes());
+
+    let encrypted = encrypt_model_field("secret", "accounts", "token").unwrap();
+    assert_eq!(
+        decrypt_model_field(&encrypted, "accounts", "token").unwrap(),
+        "secret"
+    );
+    assert!(decrypt_model_field(&encrypted, "accounts", "other").is_err());
+
+    environment.set(KEY_ID_ENV, "rotated-2027");
+    environment.set(KEY_ENV, rotated);
+    environment.clear(KEYRING_ENV);
+    assert!(matches!(
+        decrypt_model_field(&encrypted, "accounts", "token"),
+        Err(PrivacyError::EnvError(_))
+    ));
+    environment.set(KEYRING_ENV, "not-json");
+    assert!(matches!(
+        decrypt_model_field(&encrypted, "accounts", "token"),
+        Err(PrivacyError::EnvError(_))
+    ));
+    environment.set(KEYRING_ENV, "{}");
+    assert_eq!(
+        decrypt_model_field(&encrypted, "accounts", "token").unwrap_err(),
+        PrivacyError::KeyNotFound("primary-2026".to_string())
+    );
+    environment.set(KEYRING_ENV, &format!(r#"{{"primary-2026":"{primary}"}}"#));
+    assert_eq!(
+        decrypt_model_field(&encrypted, "accounts", "token").unwrap(),
+        "secret"
+    );
+
+    let configured = encrypt_configured_secret("configured").unwrap();
+    assert_eq!(
+        decrypt_configured_secret(&configured).unwrap(),
+        "configured"
     );
 }

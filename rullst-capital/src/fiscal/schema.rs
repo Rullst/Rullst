@@ -284,40 +284,5 @@ fn bounded(value: &str, maximum: usize) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn unknown_manifest_fails_before_touching_the_filesystem() {
-        static UNKNOWN: NfseArtifactManifest = NfseArtifactManifest {
-            profile: "unknown",
-            schema_version: "1.01",
-            artifact_date: "1970-01-01",
-            schema_archive: "unknown.zip",
-            schema_archive_sha256: "00",
-            dps_root_schema: "DPS.xsd",
-            nfse_root_schema: "NFSe.xsd",
-            documentation_url: "https://example.invalid",
-        };
-        assert!(
-            NfseDpsSchemaValidator::from_pinned_directory("/does/not/matter", &UNKNOWN).is_err()
-        );
-    }
-
-    #[test]
-    fn compatibility_rewrite_is_hash_and_occurrence_bound() {
-        let mut production = format!("<pattern {OFFICIAL_SERIES_PATTERN}/>");
-        apply_pinned_regex_compatibility(&mut production, PRODUCTION_SIMPLE_TYPES_SHA256).unwrap();
-        assert!(production.contains(XSD_COMPATIBLE_SERIES_PATTERN));
-        assert!(!production.contains(OFFICIAL_SERIES_PATTERN));
-
-        let mut unrelated = format!("<pattern {OFFICIAL_SERIES_PATTERN}/>");
-        apply_pinned_regex_compatibility(&mut unrelated, "different-hash").unwrap();
-        assert!(unrelated.contains(OFFICIAL_SERIES_PATTERN));
-
-        let mut missing = "<schema/>".to_string();
-        assert!(
-            apply_pinned_regex_compatibility(&mut missing, PRODUCTION_SIMPLE_TYPES_SHA256).is_err()
-        );
-    }
-}
+#[path = "schema_tests.rs"]
+mod tests;

@@ -174,6 +174,7 @@ async fn test_hot_swap_service_reload_route() {
 
 #[tokio::test]
 async fn test_inject_hmr_script() {
+    let _environment = TEST_ENV_LOCK.lock().await;
     let router = axum::Router::new()
         .route(
             "/",
@@ -199,6 +200,9 @@ async fn test_inject_hmr_script() {
     assert!(body_str.contains("Hello"));
     assert!(body_str.contains("Rullst Hybrid Hot-Reloading"));
     assert!(body_str.contains("3001/_rullst_hmr"));
+    unsafe {
+        std::env::remove_var("PORT");
+    }
 }
 
 #[tokio::test]
