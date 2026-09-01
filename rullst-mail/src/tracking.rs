@@ -248,6 +248,7 @@ impl TrackingEngine {
             let href_start = last_index + start + pattern.len();
             output.push_str(&html[last_index..href_start]);
             let Some(end) = html[href_start..].find('"') else {
+                last_index = href_start;
                 break;
             };
             let url_end = href_start + end;
