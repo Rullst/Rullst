@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788232623289,
+  "lastUpdate": 1788236886083,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -3863,6 +3863,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 546,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "8b93a4d397fba07d346b0b04d649e155c4163fb2",
+          "message": "fix(security): generate recovery salts directly",
+          "timestamp": "2026-09-01T01:10:07-03:00",
+          "tree_id": "f5c5abb55243e8b511f143ee9f5b09e24606ae05",
+          "url": "https://github.com/Rullst/Rullst/commit/8b93a4d397fba07d346b0b04d649e155c4163fb2"
+        },
+        "date": 1788236885353,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 580,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
