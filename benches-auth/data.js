@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788295828321,
+  "lastUpdate": 1788298507052,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -7001,6 +7001,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1686,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "683e2b2eccbd40d0896138746f62447850896c77",
+          "message": "docs(release): record v12 quality gate",
+          "timestamp": "2026-09-01T18:24:55-03:00",
+          "tree_id": "c41db748a230ea1db3ae5d1b0a7bb9522f10fd96",
+          "url": "https://github.com/Rullst/Rullst/commit/683e2b2eccbd40d0896138746f62447850896c77"
+        },
+        "date": 1788298506271,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1048,
+            "range": "± 105",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 844,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1915,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4562,
+            "range": "± 31",
             "unit": "ns/iter"
           }
         ]
