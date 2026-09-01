@@ -52,7 +52,7 @@ impl LiveSecurityEvent {
         .normalized()
     }
 
-    pub(super) fn normalized(mut self) -> Self {
+    pub(crate) fn normalized(mut self) -> Self {
         self.schema_version = SECURITY_EVENT_SCHEMA_VERSION;
         if !valid_event_type(&self.event_type) {
             self.event_type = "SECURITY_EVENT".to_string();

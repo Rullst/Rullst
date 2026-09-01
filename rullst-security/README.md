@@ -73,6 +73,19 @@
   challenge in the current process. Distributed replay state and traffic
   identity remain application/deployment responsibilities.
 
+### 💾 9. Durable Local SIEM Spool
+
+- **Restart validation:** `DurableSiemSpool` synchronously appends normalized,
+  unsigned `LiveSecurityEvent` v1 records and validates the whole bounded file
+  when it is reopened.
+- **Fail-closed framing:** A version header, exact length and SHA-256 digest
+  detect truncation and accidental modification; byte and record ceilings stop
+  unbounded growth.
+- **Explicit boundary:** This is a single-process local spool. SHA-256 is not
+  source authentication, and the application still owns trusted directories,
+  permissions, rotation, retention, backup, delivery, retry, acknowledgement,
+  dead-letter policy and any Splunk/Datadog/Elastic/Syslog adapter.
+
 ---
 
 ## 📦 Installation
@@ -228,6 +241,27 @@ fn assess_login_window() -> Result<bool, rullst_security::SentinelError> {
 The host must derive the subject from trusted application state, provide an
 accessible alternative, limit issuance and explicitly verify the returned
 token/nonce before admitting the protected operation.
+
+### 8. Persist a bounded local SIEM event
+
+```rust
+use rullst_security::{DurableSiemSpool, LiveSecurityEvent, SiemSpoolError};
+
+fn persist_denial() -> Result<u64, SiemSpoolError> {
+    let spool = DurableSiemSpool::try_open("var/security-events.spool")?;
+    let receipt = spool.append_local(LiveSecurityEvent::local(
+        "RBAC_ACCESS_DENIED",
+        "owner mismatch",
+        "192.0.2.50",
+    ))?;
+    Ok(receipt.sequence())
+}
+```
+
+Create and permission the parent directory before opening the spool, use only
+one writer process per file, and deliver/rotate it through an application-owned
+operator. Reopening validates frames but does not authenticate the event source
+or confirm remote receipt.
 
 ---
 

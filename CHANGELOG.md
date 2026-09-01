@@ -52,9 +52,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   scorecard artifact for every main push/PR. The score evaluates engineering
   evidence and explicitly excludes feature completeness and certification.
 - Raised the v12 RC quality gate to A (90) for every publishable crate except
-  the approved IoT floor of B (80). The audited plan records thirteen crates
-  below A and a 67-point aggregate gap; policy values may move only with real
-  implementation and evidence, never to make the release table look greener.
+  the approved IoT floor of B (80). After Security reached its bounded A
+  evidence ceiling, the audited plan records twelve crates below A and a
+  66-point aggregate gap; policy values may move only with real implementation
+  and evidence, never to make the release table look greener.
 - Added a `no_std` OTA rollback-counter adapter to `rullst-iot`. The manager can
   load durable state and require an exact, strictly increasing compare-and-set
   before changing local state; public tests cover restart/replay, transient
@@ -535,6 +536,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   ceilings. This is packet construction only: connections, TLS/DTLS, broker
   negotiation, acknowledgements, retries, LwM2M and interoperability remain
   outside the implemented scope.
+- `rullst-security` now provides `DurableSiemSpool`, a bounded single-process
+  local persistence boundary for normalized unsigned security-event v1 frames.
+  Exact byte/record quotas, a version/length/SHA-256 frame, `sync_data`, restart,
+  quota, corruption, symlink and external-change tests make local failure
+  observable. SHA-256 is not source authentication, and directory trust,
+  rotation, retention, multi-process exclusion, retry, acknowledgement,
+  dead-letter handling and external SIEM delivery remain operator work.
 - `cargo rullst make:mail` now generates all five exposed variants through the
   public facade, enables `mailer`, validates identifiers, refuses traversal and
   collisions, registers modules and escapes dynamic HTML. A materialized
@@ -724,7 +732,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   verified, and detector results are not presented as production guarantees.
 - Local security telemetry now has a frozen `LiveSecurityEvent` v1 envelope, a
   packaged JSON Schema, bounded normalized fields, and CEF extension escaping.
-  It is explicitly process-local and does not claim durable SIEM delivery.
+  `DurableSiemSpool` can persist that envelope locally; neither API claims
+  external SIEM delivery.
 - Newly generated `.env`, Kubernetes and Foundry configurations now use
   `RULLST_ENV`; generated billing follows the same canonical-first precedence.
   Existing `APP_ENV` configurations remain supported as a legacy fallback.

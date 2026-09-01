@@ -53,7 +53,7 @@ applies the real gate outcomes and includes the full finding for every row.
 | :--- | ---: | :---: | :--- |
 | `rullst-core` | 91 | A | Distributed deployment and host authorization |
 | `rullst-orm` | 91 | A | Cross-store semantics, disaster recovery and remaining operational adapters |
-| `rullst-security` | 89 | B | Durable SIEM, external audit and certification |
+| `rullst-security` | 90 | A | External SIEM delivery, independent audit and certification |
 | `rullst-connect` | 88 | B | Durable/distributed token lifecycle and provider conformance |
 | `rullst` | 88 | B | Inherits uneven maturity from opt-in domain crates |
 | `rullst-auth` | 87 | B | WebAuthn conformance and durable shared revocation/devices |
@@ -71,20 +71,19 @@ applies the real gate outcomes and includes the full finding for every row.
 
 ## Measured gap to the v12 quality gate
 
-At the ceilings above, Core and ORM already meet A and IoT already meets its
-approved B exception. Thirteen crates remain below their required grade. Their
-individual gaps total **67 audited points**. This is not a count of tasks and
+At the ceilings above, Core, ORM and Security meet A and IoT meets its approved
+B exception. Twelve crates remain below their required grade. Their individual
+gaps total **66 audited points**. This is not a count of tasks and
 cannot be closed by editing the policy: every point requires a commensurate
 change in implementation, verification, security/failure design,
 documentation/DX, or operational evidence.
 
-If the thirteen crates reach exactly 90 while Core and ORM remain at 91 and
-IoT remains at 83, the equal-crate aggregate becomes 1,435/1,600, which rounds
-to **90/A**.
+If the twelve crates reach exactly 90 while Core and ORM remain at 91, Security
+remains at 90 and IoT remains at 83, the equal-crate aggregate becomes
+1,435/1,600, which rounds to **90/A**.
 
 | Crate | Current | Gap to required grade | Next evidence cluster to audit |
 | :--- | ---: | ---: | :--- |
-| `rullst-security` | 89/B | +1 | Durable/restart-aware security telemetry and its failure contract |
 | `rullst-connect` | 88/B | +2 | Durable token lifecycle plus provider conformance boundaries |
 | `rullst` | 88/B | +2 | Cross-feature facade contracts across the published domain crates |
 | `rullst-auth` | 87/B | +3 | Durable revocation/device lifecycle and broader WebAuthn vectors |

@@ -1,6 +1,12 @@
 use crate::telemetry::{LiveSecurityEvent, SecurityStore};
 use serde::{Deserialize, Serialize};
 
+mod spool;
+pub use spool::{
+    DurableSiemSpool, MAX_SIEM_SPOOL_BYTES, MAX_SIEM_SPOOL_RECORDS, SiemSpoolError,
+    SiemSpoolReceipt, SiemSpoolSnapshot,
+};
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SiemAlertPayload {
     pub version: String,

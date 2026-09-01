@@ -92,10 +92,10 @@
       "verification": 23,
       "security_failure_design": 18,
       "documentation_dx": 14,
-      "operations_release": 16,
+      "operations_release": 17,
       "specialist_gate": "redis-and-threat",
-      "finding": "Broad bounded defense-in-depth with negative contracts; no universal OWASP coverage, durable SIEM, external audit or certification is implied.",
-      "evidence": ["rullst-security/README.md", "rullst-security/tests", "docs/src/security-architecture.md"]
+      "finding": "Broad bounded defense-in-depth plus a synchronized local SIEM spool with restart, quota, corruption and external-change evidence; no external SIEM delivery, universal OWASP coverage, audit or certification is implied.",
+      "evidence": ["rullst-security/README.md", "rullst-security/src/siem", "rullst-security/tests", "docs/src/security-architecture.md"]
     },
     {
       "name": "rullst-ai",

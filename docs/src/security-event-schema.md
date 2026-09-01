@@ -7,9 +7,10 @@ The package also embeds and exports the JSON Schema 2020-12 document as
 `LIVE_SECURITY_EVENT_V1_JSON_SCHEMA`; its packaged source is
 [`security-event-v1.schema.json`](../../rullst-security/schema/security-event-v1.schema.json).
 
-This is an application telemetry envelope, not a durable SIEM transport. The
-schema does not provide delivery, retention, correlation, acknowledgement,
-retry, dead-letter handling, source authentication, or regulatory evidence.
+This is an application telemetry envelope, not a remote SIEM transport. The
+optional local spool provides bounded persistence but the schema itself does
+not provide delivery, retention, correlation, acknowledgement, retry,
+dead-letter handling, source authentication, or regulatory evidence.
 
 ## JSON fields
 
@@ -62,8 +63,10 @@ Within the stable v12 line:
 - all compatibility claims apply to JSON, not field order in serialized text.
 
 The version-one contract has source-controlled serialization, legacy-input,
-normalization, size, UTF-8, and CEF-injection tests. Release evidence still
-belongs to the exact RC tag SHA.
+normalization, size, UTF-8, and CEF-injection tests. `DurableSiemSpool` can
+persist normalized unsigned v1 values in a local single-process file with exact
+byte/record quotas, versioned length/digest frames and restart validation.
+Release evidence still belongs to the exact RC tag SHA.
 
 ## CEF boundary
 
@@ -71,6 +74,17 @@ belongs to the exact RC tag SHA.
 and CR/LF in extension values so event details cannot inject fields or records.
 Calling `dispatch_siem_alert` records a local SIEM-candidate event; it does not
 send or acknowledge an external alert.
+
+## Durable local spool boundary
+
+`DurableSiemSpool` serializes one local event per bounded frame, calls
+`sync_data` before returning a receipt, validates every frame on reopen and
+rejects truncation, digest mismatch, invalid event JSON and external length
+changes. The SHA-256 digest detects corruption; it is not an authentication tag.
+The spool deliberately supplies no directory creation, multi-process lock,
+rotation, retention, backup, retry, dead-letter handling or remote adapter.
+Operators must provide a trusted, permissioned directory and one writer process
+per file.
 
 A future operational sink should consume the versioned JSON envelope and define
 redaction, backpressure, authentication, durable spool/retry/dead-letter,

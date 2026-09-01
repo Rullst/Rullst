@@ -69,7 +69,10 @@ pub use sentinel::{
     SentinelError, SentinelObservation, SentinelOutcome, SentinelPolicy, ThreatClassifier,
     ThreatPattern, ThreatSentinel,
 };
-pub use siem::{SiemAlertPayload, dispatch_siem_alert, format_cef_event};
+pub use siem::{
+    DurableSiemSpool, MAX_SIEM_SPOOL_BYTES, MAX_SIEM_SPOOL_RECORDS, SiemAlertPayload,
+    SiemSpoolError, SiemSpoolReceipt, SiemSpoolSnapshot, dispatch_siem_alert, format_cef_event,
+};
 pub use sri::{
     MAX_SRI_ASSET_BYTES, SriError, compute_sri_hash, sri_link_tag, sri_link_tag_from_file,
     sri_script_tag, sri_script_tag_from_file,
