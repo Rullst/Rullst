@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788295396113,
+  "lastUpdate": 1788298038669,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -14681,6 +14681,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1258,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "683e2b2eccbd40d0896138746f62447850896c77",
+          "message": "docs(release): record v12 quality gate",
+          "timestamp": "2026-09-01T18:24:55-03:00",
+          "tree_id": "c41db748a230ea1db3ae5d1b0a7bb9522f10fd96",
+          "url": "https://github.com/Rullst/Rullst/commit/683e2b2eccbd40d0896138746f62447850896c77"
+        },
+        "date": 1788298036507,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 758,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 983,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 625,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2290,
+            "range": "± 29",
             "unit": "ns/iter"
           }
         ]
