@@ -11,6 +11,8 @@ cryptographic implementations.
 ## Available
 
 - [x] `no_std` telemetry models and deterministic state helpers.
+- [x] Bounded `no_std` MQTT 5 PUBLISH and RFC 7252 CoAP base-request encoders,
+  with protocol vectors, malformed/boundary tests, and no transport claim.
 - [x] Modbus CRC/frame construction, I2C frame construction, BLE GATT data
   structures, anomaly evaluation, power policy, and topology models.
 - [x] Strict Ed25519 verification over a domain-separated firmware manifest.
@@ -36,8 +38,9 @@ cryptographic implementations.
 
 ## Protocol and hardware integrations
 
-- [ ] MQTT 5 client and broker interoperability tests.
-- [ ] CoAP/LwM2M and LoRaWAN transports.
+- [ ] MQTT 5 client, acknowledgement state machines, and broker interoperability
+  tests.
+- [ ] CoAP retransmission/block-wise/LwM2M and LoRaWAN transports.
 - [ ] Real GPIO, I2C, BLE, Modbus, and mesh hardware adapters.
 - [ ] Audited ATECC608A, TPM 2.0, and STSAFE backends.
 - [ ] Audited ML-KEM implementation with published test vectors.

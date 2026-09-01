@@ -31,6 +31,45 @@ fn test_modbus_frame_encoding() {
 }
 
 #[test]
+fn public_mqtt_publish_encoder_is_bounded_and_protocol_shaped() {
+    let packet = MqttPublish::reliable(
+        "factory/line-1/temperature",
+        b"24.5".to_vec(),
+        MqttQos::AtLeastOnce,
+        9,
+    )
+    .unwrap()
+    .encode()
+    .unwrap();
+
+    assert_eq!(packet[0], 0x32);
+    assert!(packet.len() <= MAX_MQTT_PACKET_BYTES);
+    assert!(packet.ends_with(b"24.5"));
+}
+
+#[test]
+fn public_coap_request_encoder_orders_path_format_and_payload() {
+    let packet = CoapRequest::new(
+        CoapMessageType::Confirmable,
+        CoapMethod::Post,
+        42,
+        [0x01, 0x02],
+    )
+    .unwrap()
+    .path_segment("telemetry")
+    .unwrap()
+    .content_format(50)
+    .payload(br#"{"temperature":24.5}"#.to_vec())
+    .unwrap()
+    .encode()
+    .unwrap();
+
+    assert_eq!(&packet[..6], &[0x42, 0x02, 0x00, 0x2a, 0x01, 0x02]);
+    assert!(packet.contains(&0xff));
+    assert!(packet.len() <= MAX_COAP_DATAGRAM_BYTES);
+}
+
+#[test]
 fn test_ota_partition_manager() {
     let firmware = b"integration-test-firmware-v12.1.0";
     let signing_key = SigningKey::from_bytes(&[42_u8; 32]);

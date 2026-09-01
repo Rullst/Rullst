@@ -1,8 +1,9 @@
 //! Rullst IoT data models, protocol frame helpers, and signed firmware gate.
 //!
-//! This crate does not currently provide MQTT network transport, hardware HSM
-//! bindings, or post-quantum cryptography. Deterministic fixtures resembling
-//! those capabilities require the explicit `experimental-simulators` feature.
+//! This crate does not currently provide MQTT/CoAP network transport, hardware
+//! HSM bindings, or post-quantum cryptography. It does provide bounded MQTT 5
+//! PUBLISH and CoAP request encoders. Deterministic fixtures resembling other
+//! capabilities require the explicit `experimental-simulators` feature.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -10,8 +11,8 @@ extern crate alloc;
 use alloc::string::String;
 use serde::{Deserialize, Serialize};
 
-// Explicitly simulated protocol fixtures.
-#[cfg(feature = "experimental-simulators")]
+// Bounded protocol encoders (not network clients or transports).
+pub mod coap;
 pub mod mqtt;
 
 // State models and protocol frame helpers (not hardware drivers).
@@ -41,6 +42,7 @@ pub mod twin;
 // Re-exports
 pub use anomaly::{AnomalyDetector, AnomalyState};
 pub use ble::{GattCharacteristic, GattService};
+pub use coap::{CoapCodecError, CoapMessageType, CoapMethod, CoapRequest, MAX_COAP_DATAGRAM_BYTES};
 pub use gpio::{GpioPin, PinMode, PinState};
 #[cfg(feature = "experimental-simulators")]
 pub use hsm::{SimulatedHsmDevice, SimulatedHsmProfile};
@@ -49,6 +51,7 @@ pub use mesh::{MeshNode, MeshTopology, NodeStatus};
 pub use modbus::{ModbusFrame, ModbusFunction};
 #[cfg(feature = "experimental-simulators")]
 pub use mqtt::SimulatedMqttPayloadFormatter;
+pub use mqtt::{MAX_MQTT_PACKET_BYTES, MqttCodecError, MqttPublish, MqttQos};
 pub use ota::{
     BootPartition, OtaCommit, OtaError, OtaManager, OtaManifest, OtaStatus, RollbackCounterError,
     RollbackCounterStore,

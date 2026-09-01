@@ -362,8 +362,9 @@ Evaluate only the features you intend to enable. In particular:
   and compilation in the target application;
 - Studio is a local developer tool and Nexus requires an explicit authenticated
   access policy;
-- live NFS-e, Alipay RSA2, MQTT/HSM/PQC, S3/R2, and Connect message brokers are
-  not stable capabilities in version 12.
+- live NFS-e, Alipay RSA2, MQTT/CoAP transports, HSM/PQC, S3/R2, and Connect
+  message brokers are not stable capabilities in version 12. IoT packet
+  encoders do not imply those network or hardware integrations.
 - persistence support is capability-specific: SQLx Active Record targets
   SQLite/PostgreSQL/MySQL/MariaDB; the bounded blank/API profile can use
   Turso/libSQL as a typed primary; MongoDB, DuckDB, SurrealDB, Qdrant and Redis

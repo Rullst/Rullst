@@ -12,6 +12,9 @@ builders, deterministic edge helpers, and a fail-closed signed firmware gate.
 - `SensorTelemetry` and `DigitalTwin` in-memory state models.
 - Modbus frame/CRC helpers, BLE GATT data structures, I2C frame builders, and
   simulated GPIO state. These are not operating-system or hardware drivers.
+- Bounded `no_std` MQTT 5 PUBLISH and RFC 7252 CoAP request encoders. They
+  produce protocol bytes only; the application still owns sockets, TLS/DTLS,
+  broker limits, acknowledgements, retries, congestion control, and identity.
 - Statistical anomaly evaluation, power policy helpers, and topology models.
 - An escaped HTML snapshot-card renderer. It deliberately labels the card as a
   snapshot rather than inferring device connectivity.
@@ -40,6 +43,45 @@ cargo rullst make:iot TemperatureSensor
 The command validates Rust identifiers, refuses path traversal and existing
 files, and generates code through `rullst::iot::SensorTelemetry`. It does not
 install a HAL, MQTT/CoAP transport, firmware or broker configuration.
+
+## Bounded protocol encoders
+
+The packet helpers are useful at a transport adapter boundary without pulling a
+network runtime into the embedded crate:
+
+```rust
+use rullst_iot::{
+    CoapMessageType, CoapMethod, CoapRequest, MqttPublish, MqttQos,
+};
+
+let mqtt = MqttPublish::reliable(
+    "factory/line-1/temperature",
+    b"24.5".to_vec(),
+    MqttQos::AtLeastOnce,
+    7,
+)?
+.encode()?;
+
+let coap = CoapRequest::new(
+    CoapMessageType::Confirmable,
+    CoapMethod::Post,
+    42,
+    [0x01, 0x02],
+)?
+.path_segment("telemetry")?
+.content_format(50)
+.payload(br#"{"temperature":24.5}"#.to_vec())?
+.encode()?;
+
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+`MqttPublish` emits one MQTT 5 PUBLISH packet with an empty property section and
+a 1 MiB local ceiling. It does not implement CONNECT, broker negotiation,
+PUBACK/PUBREC/PUBREL/PUBCOMP, or retries. `CoapRequest` emits base GET/POST/PUT/
+DELETE requests with ordered URI-Path and Content-Format options under a
+conservative 1152-byte datagram ceiling; token uniqueness, message correlation,
+retransmission, block-wise transfer, UDP and DTLS remain caller responsibilities.
 
 ## Signed OTA gate
 
@@ -107,9 +149,10 @@ rullst-iot = { version = "12.0.0-rc.1", features = ["experimental-simulators"] }
 ```
 
 They do **not** provide hardware-backed keys, signatures, ML-KEM/Kyber,
-confidentiality, quantum resistance, MQTT packet encoding, or broker transport.
-There are intentionally no aliases named `HsmDevice`, `PqcKeyPair`, or
-`MqttDriver`.
+confidentiality, quantum resistance, or broker transport. The MQTT encoder
+above is independent of the simulated numeric-value formatter and remains only
+a packet helper. There are intentionally no aliases named `HsmDevice`,
+`PqcKeyPair`, or `MqttDriver`.
 
 ## Not implemented
 

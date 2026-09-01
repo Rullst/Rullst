@@ -40,7 +40,7 @@ features.
 | M21 | Omni frontend protocol and mobile bridge | 🟡 Still to implement — partial |
 | M22 | Human-reviewed agentic DevOps recommendations | 🟡 Still to implement — partial |
 | M23 | Diagnostic auto-healing recommendations | 🟡 Still to implement — partial |
-| M24 | `no_std` IoT frames, signed OTA gate, and durable-counter CAS boundary | 🟡 Still to implement — partial |
+| M24 | `no_std` IoT frames/packet encoders, signed OTA gate, and durable-counter CAS boundary | 🟡 Still to implement — partial |
 | M25 | Embassy-based async embedded integration | ⏳ Still to implement — not started |
 | M26 | Guided PaaS/VPS deployment | 🟡 Still to implement — partial |
 | M27 | Kubernetes scaffolding and health/readiness probes | ✅ Implemented — scaffolding scope |

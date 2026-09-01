@@ -6,7 +6,9 @@
 > request it from crates.io before it is published; use a path dependency from
 > this source checkout during development.
 
-`rullst-iot` provides high-assurance telemetry models, bare-metal `#![no_std]` data structures, and a cryptographically verified Over-The-Air (OTA) firmware update state machine.
+`rullst-iot` provides high-assurance telemetry models, bare-metal `#![no_std]`
+data structures and packet encoders, and a cryptographically verified
+Over-The-Air (OTA) firmware update state machine.
 
 ---
 
@@ -16,9 +18,9 @@
 | :--- | :---: | :--- |
 | **Ed25519 OTA Manifest Gate** | 🟢 `[Implemented / Bounded]` | Verifies a domain-separated signed manifest, target, firmware length/hash, and monotonic counter. A `no_std` store trait adds durable compare-and-set coordination; its concrete persistence, flashing, bootloader handoff, and hardware validation remain external. |
 | **`no_std` Telemetry Models** | 🟢 `[Implemented / Bounded]` | Allocation-conscious telemetry, digital-twin, and sensor models are available without `std`; board- and toolchain-specific builds must still be validated in the release matrix. |
-| **Protocol Frame Helpers** | 🟢 `[Implemented / Bounded]` | Modbus CRC, I2C frame packing, BLE GATT data models, and power-policy abstractions; these are protocol/state helpers, not physical bus or radio drivers. |
+| **Protocol Frame Helpers** | 🟢 `[Implemented / Bounded]` | MQTT 5 PUBLISH, RFC 7252 CoAP base requests, Modbus CRC, I2C frame packing, BLE GATT data models, and power-policy abstractions; these are bounded packet/state helpers, not network, bus, or radio drivers. |
 | **Experimental Fixtures** | 🟡 `[Simulador Dev]` | The opt-in feature exposes explicitly named deterministic MQTT formatting, HSM-byte, and PQC-byte fixtures. GPIO/I2C/BLE types are always-available state/frame helpers, not hardware simulators. |
-| **Native MQTT 5.0 Transport** | 🔵 `[Roadmap]` | High-performance asynchronous MQTT 5.0 client integrated via `rumqttc` with QoS 0/1/2. |
+| **Native MQTT/CoAP Transport** | 🔵 `[Roadmap]` | Connections, TLS/DTLS, broker negotiation, acknowledgement/retransmission state, subscriptions, block-wise transfer, and interoperability. |
 | **Hardware Security Module (HSM)** | 🔵 `[Roadmap]` | Native secure-element driver interfaces (ATECC608A, TPM 2.0, SE050). |
 
 ---
@@ -113,6 +115,40 @@ fn sample_reading() -> SensorTelemetry {
     )
 }
 ```
+
+### MQTT and CoAP packet boundaries
+
+```rust
+use rullst_iot::{
+    CoapMessageType, CoapMethod, CoapRequest, MqttPublish, MqttQos,
+};
+
+let publish = MqttPublish::reliable(
+    "nodes/node-1/temperature",
+    b"24.5".to_vec(),
+    MqttQos::AtLeastOnce,
+    7,
+)?
+.encode()?;
+
+let request = CoapRequest::new(
+    CoapMessageType::Confirmable,
+    CoapMethod::Post,
+    42,
+    [0x01, 0x02],
+)?
+.path_segment("telemetry")?
+.content_format(50)
+.payload(br#"{"temperature":24.5}"#.to_vec())?
+.encode()?;
+
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+These helpers follow the local [OASIS MQTT 5 PUBLISH](https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html)
+and [RFC 7252 CoAP](https://www.rfc-editor.org/rfc/rfc7252.html) packet shapes.
+They deliberately stop before any socket or session state; the transport owns
+security, identity, timing, correlation, retry and peer interoperability.
 
 ---
 

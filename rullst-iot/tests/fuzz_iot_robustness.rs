@@ -1,11 +1,14 @@
 use ed25519_dalek::SigningKey;
-use rullst_iot::SensorTelemetry;
 use rullst_iot::anomaly::AnomalyDetector;
 use rullst_iot::modbus::ModbusFrame;
 use rullst_iot::ota::{OtaManager, OtaManifest};
 #[cfg(feature = "experimental-simulators")]
 use rullst_iot::pqc::SimulatedPqcFixture;
 use rullst_iot::twin::DigitalTwin;
+use rullst_iot::{
+    CoapMessageType, CoapMethod, CoapRequest, MAX_COAP_DATAGRAM_BYTES, MAX_MQTT_PACKET_BYTES,
+    MqttPublish, SensorTelemetry,
+};
 
 #[test]
 fn test_fuzz_modbus_crc_zero_panics() {
@@ -58,6 +61,47 @@ fn test_fuzz_anomaly_detector_floats() {
         let bits = ((lcg() as u64) << 32) | (lcg() as u64);
         let val = f64::from_bits(bits);
         let _ = detector.evaluate(val);
+    }
+}
+
+#[test]
+fn deterministic_protocol_encoder_robustness() {
+    let mut rng_seed: u64 = 0xfeed_beef_7252_5000;
+    let mut lcg = || {
+        rng_seed = rng_seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+        (rng_seed >> 32) as u32
+    };
+
+    for iteration in 0..2_000_u16 {
+        let topic_len = (lcg() % 48) as usize;
+        let topic: String = (0..topic_len)
+            .map(|_| match lcg() % 40 {
+                0 => '+',
+                1 => '#',
+                value => char::from(b'a' + (value % 26) as u8),
+            })
+            .collect();
+        let payload = vec![(lcg() & 0xff) as u8; (lcg() % 512) as usize];
+        if let Ok(publish) = MqttPublish::new(topic, payload)
+            && let Ok(packet) = publish.encode()
+        {
+            assert!(packet.len() <= MAX_MQTT_PACKET_BYTES);
+            assert_eq!(packet[0] & 0xf0, 0x30);
+        }
+
+        let token = vec![(lcg() & 0xff) as u8; (lcg() % 12) as usize];
+        if let Ok(request) = CoapRequest::new(
+            CoapMessageType::NonConfirmable,
+            CoapMethod::Post,
+            iteration,
+            token,
+        ) && let Ok(request) =
+            request.payload(vec![(lcg() & 0xff) as u8; (lcg() % 128) as usize])
+        {
+            let datagram = request.encode().expect("bounded request should encode");
+            assert!(datagram.len() <= MAX_COAP_DATAGRAM_BYTES);
+            assert_eq!(datagram[0] >> 6, 1);
+        }
     }
 }
 

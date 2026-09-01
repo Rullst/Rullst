@@ -77,14 +77,14 @@
     },
     {
       "name": "rullst-iot",
-      "api_architecture": 17,
-      "verification": 22,
+      "api_architecture": 18,
+      "verification": 23,
       "security_failure_design": 18,
       "documentation_dx": 14,
       "operations_release": 10,
       "specialist_gate": "none",
-      "finding": "The no_std signed-manifest gate now has an explicit durable monotonic-CAS adapter plus restart, retry, corruption and stale-writer evidence; concrete hardware storage, transport, flashing, bootloader and device fault-injection remain absent.",
-      "evidence": ["rullst-iot/README.md", "rullst-iot/src/ota/counter.rs", "rullst-iot/tests/ota_counter_store.rs", "docs/src/crates/iot.md"]
+      "finding": "The no_std surface now includes typed bounded MQTT 5 PUBLISH and CoAP request encoders plus a signed-manifest gate with an explicit durable monotonic-CAS adapter; deterministic protocol vectors and OTA restart/failure evidence do not replace concrete transport, hardware storage, flashing, bootloader or device fault-injection.",
+      "evidence": ["rullst-iot/README.md", "rullst-iot/src/mqtt.rs", "rullst-iot/src/coap.rs", "rullst-iot/src/ota/counter.rs", "rullst-iot/tests", "docs/src/crates/iot.md"]
     },
     {
       "name": "rullst-security",
