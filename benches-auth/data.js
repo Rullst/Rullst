@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788267723030,
+  "lastUpdate": 1788270507228,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -6665,6 +6665,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3812,
             "range": "± 72",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "de49be4afc3ecf2073a539c750b34749edc64efd",
+          "message": "docs(audit): correct framework usage contracts",
+          "timestamp": "2026-09-01T10:38:33-03:00",
+          "tree_id": "3d64a82a6bd3ea4025004ea716178ab62617f410",
+          "url": "https://github.com/Rullst/Rullst/commit/de49be4afc3ecf2073a539c750b34749edc64efd"
+        },
+        "date": 1788270506754,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1052,
+            "range": "± 42",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 860,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1931,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4527,
+            "range": "± 34",
             "unit": "ns/iter"
           }
         ]
