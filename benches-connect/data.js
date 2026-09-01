@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788236886083,
+  "lastUpdate": 1788238052841,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -3893,6 +3893,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 580,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "c01e7b183ef56438fe271165d669ea5227304931",
+          "message": "docs(api): add runnable REST quickstart",
+          "timestamp": "2026-09-01T01:37:49-03:00",
+          "tree_id": "3259948933367b79137e9159090e766245934254",
+          "url": "https://github.com/Rullst/Rullst/commit/c01e7b183ef56438fe271165d669ea5227304931"
+        },
+        "date": 1788238052311,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 314,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
