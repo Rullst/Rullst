@@ -35,6 +35,8 @@ jq -r '
   | select(.publish != []) as $package
   | $package.dependencies[]
   | select(
+      .kind != "dev"
+      and
       .path != null
       and (.name == "cargo-rullst" or (.name | startswith("rullst")))
     )
