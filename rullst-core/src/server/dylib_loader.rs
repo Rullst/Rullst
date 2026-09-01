@@ -120,10 +120,10 @@ pub fn load_dylib_router(
     // exactly once here.
     let rullst_router = unsafe { *Box::from_raw(router_ptr.as_ptr()) };
 
-    // Convert Rullst Router to Axum Router and mount built-in Scalar API docs (/docs)
-    let mut axum_router = rullst_router
-        .into_axum()
-        .merge(crate::scalar::scalar_docs_router("/openapi.json"));
+    // Convert the application-owned Rullst router to Axum. Optional surfaces
+    // such as Scalar docs must be mounted explicitly so application routes are
+    // never shadowed or duplicated by the server runtime.
+    let mut axum_router = rullst_router.into_axum();
 
     // Serve static files from "static" directory if it exists
     if std::path::Path::new("static").exists() {

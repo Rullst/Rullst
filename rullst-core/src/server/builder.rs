@@ -401,10 +401,7 @@ impl Server {
         environment: crate::config::Environment,
     ) -> Result<(), ServerError> {
         let is_dev = environment.allows_development_tools();
-        let mut app = self
-            .router
-            .into_axum()
-            .merge(crate::scalar::scalar_docs_router("/openapi.json"));
+        let mut app = self.router.into_axum();
 
         app = app.layer(axum::middleware::from_fn(
             |req: axum::extract::Request, next: axum::middleware::Next| async move {
