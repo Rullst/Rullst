@@ -154,3 +154,7 @@ pub fn load_dylib_router(
 
     Ok((axum_router, lib))
 }
+
+#[cfg(test)]
+#[path = "dylib_loader_tests.rs"]
+mod tests;

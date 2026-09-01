@@ -188,3 +188,7 @@ impl Service<axum::extract::Request> for HotSwapService {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "hotswap_tests.rs"]
+mod tests;

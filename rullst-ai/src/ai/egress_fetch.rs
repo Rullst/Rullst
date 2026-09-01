@@ -255,6 +255,31 @@ mod tests {
         }
     }
 
+    #[derive(Clone)]
+    struct FailingResolver;
+
+    #[async_trait]
+    impl EgressResolver for FailingResolver {
+        type Error = std::io::Error;
+
+        async fn resolve(&self, _host: &str, _port: u16) -> Result<Vec<IpAddr>, Self::Error> {
+            Err(std::io::Error::other("deterministic DNS failure"))
+        }
+    }
+
+    #[derive(Clone)]
+    struct SlowResolver;
+
+    #[async_trait]
+    impl EgressResolver for SlowResolver {
+        type Error = std::io::Error;
+
+        async fn resolve(&self, _host: &str, _port: u16) -> Result<Vec<IpAddr>, Self::Error> {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            Ok(vec![IpAddr::V4(Ipv4Addr::new(93, 184, 216, 34))])
+        }
+    }
+
     #[tokio::test]
     // TM-AI-05: a connector cannot proceed when any DNS answer crosses policy.
     async fn fetcher_rejects_private_or_mixed_dns_before_transport() {
@@ -304,5 +329,103 @@ mod tests {
         assert!(source.contains("Policy::none()"));
         assert!(source.contains("no_proxy()"));
         assert!(source.contains("bytes_stream()"));
+    }
+
+    #[tokio::test]
+    async fn hop_resolution_distinguishes_literal_error_empty_and_timeout_outcomes() {
+        let public = IpAddr::V4(Ipv4Addr::new(93, 184, 216, 34));
+        let literal_policy = EgressPolicy::strict()
+            .with_allowed_hosts(["93.184.216.34"])
+            .unwrap();
+        let literal_url = literal_policy
+            .validate_url("https://93.184.216.34/resource")
+            .unwrap();
+        let literal = EgressFetcher::with_resolver(literal_policy, FailingResolver)
+            .resolve_hop(&literal_url)
+            .await
+            .expect("literal address bypasses DNS resolver");
+        assert_eq!(literal.0, "93.184.216.34");
+        assert_eq!(literal.1, 443);
+        assert_eq!(literal.2, vec![public]);
+
+        let base_policy = || {
+            EgressPolicy::strict()
+                .with_allowed_hosts(["example.test"])
+                .unwrap()
+                .with_request_timeout(Duration::from_millis(5))
+                .unwrap()
+        };
+        let empty_policy = base_policy();
+        let empty_url = empty_policy
+            .validate_url("https://example.test/resource")
+            .unwrap();
+        let empty = EgressFetcher::with_resolver(empty_policy, FixedResolver(Vec::new()))
+            .resolve_hop(&empty_url)
+            .await;
+        assert!(matches!(
+            empty,
+            Err(EgressFetchError::Policy(
+                EgressPolicyError::ResolutionRequired
+            ))
+        ));
+
+        let failure_policy = base_policy();
+        let failure_url = failure_policy
+            .validate_url("https://example.test/resource")
+            .unwrap();
+        assert!(matches!(
+            EgressFetcher::with_resolver(failure_policy, FailingResolver)
+                .resolve_hop(&failure_url)
+                .await,
+            Err(EgressFetchError::Resolution(message)) if message.contains("deterministic DNS failure")
+        ));
+
+        let slow_policy = base_policy();
+        let slow_url = slow_policy
+            .validate_url("https://example.test/resource")
+            .unwrap();
+        assert!(matches!(
+            EgressFetcher::with_resolver(slow_policy, SlowResolver)
+                .resolve_hop(&slow_url)
+                .await,
+            Err(EgressFetchError::ResolutionTimeout)
+        ));
+    }
+
+    #[tokio::test]
+    async fn system_resolver_deduplicates_localhost_answers() {
+        let addresses = SystemEgressResolver
+            .resolve("localhost", 443)
+            .await
+            .expect("system localhost resolution");
+        assert!(!addresses.is_empty());
+        let unique = addresses.iter().copied().collect::<HashSet<_>>();
+        assert_eq!(addresses.len(), unique.len());
+    }
+
+    #[test]
+    fn constructors_and_error_messages_keep_policy_explicit() {
+        let strict = EgressFetcher::strict();
+        assert!(strict.policy.validate_url("https://example.com").is_err());
+        let configured = EgressPolicy::strict()
+            .with_allowed_hosts(["example.com"])
+            .unwrap();
+        let fetcher = EgressFetcher::new(configured);
+        assert!(fetcher.policy.validate_url("https://example.com").is_ok());
+
+        let errors = [
+            EgressFetchError::ResolutionTimeout,
+            EgressFetchError::Resolution("redacted".to_owned()),
+            EgressFetchError::ClientBuild,
+            EgressFetchError::Transport,
+            EgressFetchError::InvalidRedirect,
+            EgressFetchError::PeerAddressUnavailable,
+            EgressFetchError::PeerAddressMismatch,
+            EgressFetchError::HttpStatus(503),
+            EgressFetchError::BufferAllocation,
+        ];
+        for error in errors {
+            assert!(!error.to_string().is_empty());
+        }
     }
 }
