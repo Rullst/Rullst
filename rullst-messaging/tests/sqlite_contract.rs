@@ -1,5 +1,6 @@
 #![cfg(feature = "sqlite")]
 
+mod sqlite_support;
 mod support;
 
 use rullst_messaging::{
@@ -7,33 +8,9 @@ use rullst_messaging::{
     PublishRequest, PurgeRequest, ReceiveRequest, RetryDisposition, SqliteBroker, StartPosition,
     SubscriptionRequest,
 };
-use std::path::{Path, PathBuf};
+use sqlite_support::{cleanup, config, fixture};
 use std::time::Duration;
 use support::{ManualClock, run_core_contract};
-
-fn fixture(label: &str) -> (PathBuf, String) {
-    let directory = PathBuf::from("target").join("rullst-messaging-tests");
-    std::fs::create_dir_all(&directory).expect("create messaging fixture directory");
-    let path = directory.join(format!("{label}-{}.sqlite", uuid::Uuid::new_v4().simple()));
-    let absolute = std::fs::canonicalize(&directory)
-        .expect("canonical fixture directory")
-        .join(path.file_name().expect("fixture file name"));
-    let url = format!("sqlite://{}", absolute.display());
-    (absolute, url)
-}
-
-fn config(namespace: &str) -> BrokerConfig {
-    BrokerConfig::try_new(namespace)
-        .expect("valid config")
-        .with_limits(64, 16, 3, 4 * 1024)
-        .expect("valid limits")
-}
-
-fn cleanup(path: &Path) {
-    let _ = std::fs::remove_file(path);
-    let _ = std::fs::remove_file(format!("{}-wal", path.display()));
-    let _ = std::fs::remove_file(format!("{}-shm", path.display()));
-}
 
 #[tokio::test]
 async fn sqlite_broker_passes_the_shared_contract() {
