@@ -429,6 +429,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   request-scoped token and rejects missing or mismatched submissions. The same
   audited contract now protects the state-changing Blank and ERP generated
   forms, including their HTMX requests, in development as well as production.
+- Fixed the DAST build selector so `cargo-rullst` and the release blog binary
+  are built as explicit targets and asserted executable before any server is
+  started. A package-wide `--bin cargo-rullst` filter previously skipped the
+  blog executable while still returning a successful Cargo build.
 - Added native AWS SES v2 delivery behind `rullst-mail/aws-ses` and umbrella
   `mail-aws-ses`. `AwsSesDriver` delegates regional SigV4 and transport to the
   official AWS SDK, accepts static/temporary credentials, caller-owned rotating

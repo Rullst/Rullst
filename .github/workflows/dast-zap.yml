@@ -55,8 +55,11 @@ jobs:
         run: |
           cargo fetch --locked
           cargo build --release --locked \
-            -p cargo-rullst --bin cargo-rullst \
-            -p rullst-blog-example
+            -p cargo-rullst --bin cargo-rullst
+          cargo build --release --locked \
+            -p rullst-blog-example --bin rullst-blog-example
+          test -x target/release/cargo-rullst
+          test -x target/release/rullst-blog-example
 
       - name: Materialize representative generated applications
         run: |
