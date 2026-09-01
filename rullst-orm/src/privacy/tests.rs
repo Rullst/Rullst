@@ -250,8 +250,8 @@ fn privacy_errors_and_key_validation_are_typed() {
 
 #[test]
 fn legacy_ciphertext_decrypts_and_invalid_utf8_is_typed() {
-    let key = b"0123456789abcdef0123456789abcdef";
-    let cipher = Aes256Gcm::new_from_slice(key).unwrap();
+    let key = generate_test_key_32();
+    let cipher = Aes256Gcm::new_from_slice(key.as_bytes()).unwrap();
     let nonce_bytes = [7_u8; NONCE_LENGTH];
     let nonce = Nonce::<Aes256Gcm>::try_from(nonce_bytes.as_slice()).unwrap();
 
@@ -259,7 +259,7 @@ fn legacy_ciphertext_decrypts_and_invalid_utf8_is_typed() {
     let mut payload = nonce_bytes.to_vec();
     payload.extend_from_slice(&ciphertext);
     assert_eq!(
-        decrypt_aes_gcm(&STANDARD.encode(payload), std::str::from_utf8(key).unwrap()).unwrap(),
+        decrypt_aes_gcm(&STANDARD.encode(payload), &key).unwrap(),
         "legacy secret"
     );
 
@@ -267,10 +267,7 @@ fn legacy_ciphertext_decrypts_and_invalid_utf8_is_typed() {
     let mut invalid_payload = nonce_bytes.to_vec();
     invalid_payload.extend_from_slice(&invalid_utf8);
     assert!(matches!(
-        decrypt_aes_gcm(
-            &STANDARD.encode(invalid_payload),
-            std::str::from_utf8(key).unwrap()
-        ),
+        decrypt_aes_gcm(&STANDARD.encode(invalid_payload), &key),
         Err(PrivacyError::Utf8Error(_))
     ));
 }
