@@ -4,6 +4,9 @@ language = "en"
 src = "src"
 title = "Rullst Framework Documentation"
 
+[rust]
+edition = "2024"
+
 [output.html]
 git-repository-url = "https://github.com/Rullst/Rullst"
 edit-url-template = "https://github.com/Rullst/Rullst/edit/main/docs/{path}"

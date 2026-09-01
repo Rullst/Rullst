@@ -76,4 +76,4 @@ application supplies distributed invalidation.
 ## 📚 Documentation
 
 For supported usage and security boundaries, see this book and the
-[capability ledger](../capability-ledger.md#studio-nexus-and-operational-surfaces).
+[capability ledger](../capability-ledger.md#security-authentication-studio-and-nexus).

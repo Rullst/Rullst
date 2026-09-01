@@ -1,0 +1,74 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "23 7 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  LYCHEE_VERSION: "0.24.2"
+  LYCHEE_SHA256: "1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a"
+
+jobs:
+  book-and-local-links:
+    name: Build book and validate local links
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install mdBook 0.5.4
+        run: cargo install mdbook --version 0.5.4 --locked
+
+      - name: Install checksum-pinned lychee
+        shell: bash
+        run: |
+          archive="$RUNNER_TEMP/lychee.tar.gz"
+          install_dir="$RUNNER_TEMP/lychee"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "$archive" \
+            "https://github.com/lycheeverse/lychee/releases/download/lychee-v${LYCHEE_VERSION}/lychee-x86_64-unknown-linux-gnu.tar.gz"
+          echo "${LYCHEE_SHA256}  ${archive}" | sha256sum --check --strict
+          mkdir -p "$install_dir"
+          tar --extract --gzip --file "$archive" --directory "$install_dir"
+          echo "$install_dir" >>"$GITHUB_PATH"
+
+      - name: Build the documentation book
+        run: mdbook build docs
+
+      - name: Validate repository-local links
+        run: >-
+          lychee --offline --no-progress --include-fragments=anchor-only
+          README.md 'docs/src/**/*.md'
+
+      - name: Inspect external links
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
+        run: >-
+          lychee --no-progress --include-fragments=none --max-concurrency 32
+          --host-concurrency 4 --max-retries 3 --retry-wait-time 2 --timeout 30
+          --output lychee-external.txt README.md 'docs/src/**/*.md'
+
+      - name: Upload external-link report
+        if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: documentation-external-links-${{ github.sha }}
+          path: lychee-external.txt
+          if-no-files-found: warn
+          retention-days: 30

@@ -195,4 +195,4 @@ We recently launched a brand-new **Interactive Documentation Hub**!
 Rullst ORM uses SQLx prepared-statement bindings for values accepted by its query builders. Structural identifiers are restricted to a bounded ASCII identifier grammar before interpolation. Raw SQL and application authorization remain the caller's responsibility; these controls reduce injection risk but are not an absolute safety guarantee.
 
 ## 📄 License
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](../../../LICENSE).

@@ -56,7 +56,7 @@ These workflows are **periodic and manually runnable**:
 | Cadence | Workflows | Mode |
 | :--- | :--- | :--- |
 | Daily | `audit.yml`, `sanitizers.yml` | Cargo Audit is blocking; TSan/ASan are blocking when executed. |
-| Weekly | `bench.yml`, `cargo-deny.yml`, `codeql.yml`, `corpus-sync.yml`, `coverage.yml`, `pqc-compliance.yml`, `proptest.yml`, `scorecards.yml`, `security-audit.yml`, `trufflehog.yml`, `udeps.yml` | The inventory below identifies which results are blocking, automated evidence, or informational. |
+| Weekly | `bench.yml`, `cargo-deny.yml`, `codeql.yml`, `corpus-sync.yml`, `coverage.yml`, `documentation.yml`, `pqc-compliance.yml`, `proptest.yml`, `scorecards.yml`, `security-audit.yml`, `trufflehog.yml`, `udeps.yml` | The inventory below identifies which results are blocking, automated evidence, or informational. |
 
 All remaining test/build workflows run on the documented push, pull-request or
 path filters and also expose a manual rerun. For an RC checkpoint, first use the
@@ -112,7 +112,7 @@ certification. See the [scorecard methodology](docs/src/quality-scorecard.md).
 ## Recommended `main` branch-protection profile
 
 Require every job emitted by the following workflows before merging into
-`main`: Rust CI, GitHub Actions Lint, End-to-End Smoke Tests, Cargo Audit,
+`main`: Rust CI, GitHub Actions Lint, Documentation, End-to-End Smoke Tests, Cargo Audit,
 Security Audit, Cargo Deny, CodeQL, Test Coverage, Cargo Machete, SemVer Checks,
 Spellcheck, Crate Architecture Policy, TruffleHog, Unsafe Policy, WebAssembly Matrix, Zero
 Panics, no-std Build, IoT Integration, and PR Security Evidence.
@@ -168,8 +168,9 @@ components, but is excluded from the blocking framework-library status because
 its stronger evidence comes from materialized scaffolds and compile contracts.
 Therefore “90% project and patch targets over the measured framework scope” is
 accurate; “90% of the whole repository is enforced” is not. The public README
-badge shows Codecov's aggregate for `main`, which can differ from the scoped
-blocking status and remains below the new gate until the test suite raises it.
+badge shows Codecov's `framework_libraries` component so that it matches the
+blocking status. Codecov still publishes the lower whole-repository aggregate
+and the informational CLI/proc-macro components rather than hiding them.
 
 ### Formal, dynamic, and stress analysis
 
@@ -238,7 +239,7 @@ was removed because its composite action downloaded an unversioned `latest`
 binary without a repository-pinned checksum, which was unsuitable for a
 blocking supply-chain gate.
 
-## Workflow inventory (36 definitions)
+## Workflow inventory (37 definitions)
 
 Durations are intentionally omitted because runner load, cache state, and the
 dependency graph make static estimates unreliable.
@@ -255,6 +256,7 @@ dependency graph make static estimates unreliable.
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Attempts corpus minimization and uploads results; individual cmin failures are tolerated. |
 | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation and blocking OIDC-authenticated Codecov upload; scheduled/manual branch instrumentation is non-blocking. |
 | [`dast-zap.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/dast-zap.yml) | manual | On-demand | OWASP ZAP baseline against the blog example. |
+| [`documentation.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/documentation.yml) | main push and PR, weekly, manual | Blocking plus informational external scan | Builds the mdBook and rejects broken repository-local links. Scheduled/manual runs also upload a non-blocking external-link report because third-party availability and rate limits are not deterministic contribution gates. |
 | [`e2e-smoke.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/e2e-smoke.yml) | main push and PR, manual | Blocking | Boots the release blog example and checks HTTP, headers, form flow, and SQLite persistence. |
 | [`fuzzing.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/fuzzing.yml) | manual | On-demand | Forty libFuzzer matrix jobs, each capped below six hours. |
 | [`iot-integration.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/iot-integration.yml) | main push and PR, manual | Blocking | Host IoT tests, signed OTA invariants, and one Cortex-M no-std build; no hardware claim. |
