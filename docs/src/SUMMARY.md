@@ -111,6 +111,7 @@
 - [🗺️ Blueprints Roadmap](blueprints_roadmap.md)
 - [🗺️ Rullst Official Roadmap](roadmap.md)
 - [💻 CLI Reference](cli_reference.md)
+- [GitHub CLI Installation & Safe Login](gh-install.md)
 - [🛡️ CI/CD & Security Workflows](workflows.md)
 
 # 📦 Crates Ecosystem

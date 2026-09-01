@@ -201,6 +201,8 @@ features your application intends to enable:
 
 👉 **[Explore the Official Website & Docs](https://rullst.github.io)**
 
+🔑 **[Maintainer GitHub CLI installation & safe login](docs/src/gh-install.md)**
+
 💬 **[Join the Community on Discord](https://discord.gg/2ntKFtsSjw)**
 
 > **Found a bug?** [Report an Issue](https://github.com/Rullst/Rullst/issues)
