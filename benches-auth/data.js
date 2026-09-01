@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788298507052,
+  "lastUpdate": 1788299240215,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -7049,6 +7049,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4562,
             "range": "± 31",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fa9216bda0cfa4a07a62c48549353b0399e18c20",
+          "message": "feat(security): add durable local SIEM spool",
+          "timestamp": "2026-09-01T18:37:17-03:00",
+          "tree_id": "26d6dc22f32939eb4e37d2f3b0913ee4b907b9fb",
+          "url": "https://github.com/Rullst/Rullst/commit/fa9216bda0cfa4a07a62c48549353b0399e18c20"
+        },
+        "date": 1788299239777,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1000,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 793,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1793,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4036,
+            "range": "± 44",
             "unit": "ns/iter"
           }
         ]
