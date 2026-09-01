@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788295212278,
+  "lastUpdate": 1788296006994,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -4355,6 +4355,48 @@ window.BENCHMARK_DATA = {
             "name": "capital_subscription/parse_status_past_due",
             "value": 15,
             "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": false,
+          "id": "ba11f6dde724ae9e2863c6cb3d4ab600fa0acdac",
+          "message": "fix(ci): build the DAST blog target explicitly",
+          "timestamp": "2026-09-01T17:40:23-03:00",
+          "tree_id": "981b8f7ac12e91db4759641fe0100bae1ec67983",
+          "url": "https://github.com/Rullst/Rullst/commit/ba11f6dde724ae9e2863c6cb3d4ab600fa0acdac"
+        },
+        "date": 1788296006417,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 14,
+            "range": "± 0",
             "unit": "ns/iter"
           },
           {
