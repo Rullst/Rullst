@@ -53,7 +53,7 @@
 
 ---
 
-## ⚡ Phase 3: Enterprise SaaS & Zero-Trust Deepening (v12.0.0 / v12.1.0)
+## ⚡ Phase 3: Enterprise SaaS & Zero-Trust Deepening (v12 hardening / v13)
 - [~] **Anti-Timing User Enumeration Guard (`rullst-security::timing_guard`)**: Minimum-duration padding, jitter and optional synthetic work reduce coarse timing differences; scheduler, network and statistical side channels are not eliminated.
 - [~] **LLM Security Firewall & Prompt Injection Shield (`rullst-security::ai_firewall`)**: Bounded recursive JSON prompt inspection recognizes documented jailbreak/exfiltration patterns and fails closed for malformed declared JSON. It is a heuristic layer, not an LLM safety guarantee.
 - [x] **Automated SBOM Exporter (`cargo rullst audit --sbom`)**: Parses Cargo metadata into CycloneDX 1.5 JSON with a valid UUID serial, unique component references, package URLs and valid available checksums.

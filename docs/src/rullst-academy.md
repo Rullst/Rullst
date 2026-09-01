@@ -121,25 +121,25 @@ PII masking and secret-minimized audit remain mandatory.
 | Media | bounded accessible lesson metadata, captions and transcripts | upload, storage, scanning, transcoding, caption quality and retention |
 | Operations | health/readiness, telemetry, deploy scaffolds and upgrade assistant | production topology, TLS/proxy identity, backup/restore, rollback, alerts and incident response |
 
-## Release-train split
+## Repository and release boundary
 
-This product does not reopen the v12 framework feature list.
+Academy will be developed in a separate repository and conversation. This
+document records only the intended boundary and the reusable framework
+foundation that already exists; it does not authorize further Academy work in
+the Rullst repository and it is not a framework release gate.
 
-- **v12.0:** freeze framework features; raise framework-library and patch line
-  coverage to at least 90%; keep the full CI/package/security gates green;
-  prove packaged LMS generation and the assisted v5-to-v12 upgrade; publish an
-  RC and run Academy against that exact public artifact.
-- **v12.1:** accept backward-compatible improvements demonstrated by Academy,
-  such as detached LMS modules, authorship DX, selected media/storage support,
-  stronger auth/session operation or one demand-backed remote messaging
-  adapter. Each addition still needs its own bounded contract.
-- **v13:** reserve breaking or research-heavy contracts for a major cycle,
-  including broad client-SDK architecture, portable edge/replica semantics,
-  audited PQC, autonomous operations and other work that cannot be added
-  honestly as a compatible minor release.
+- **v12.0:** close the framework independently through its coverage,
+  CI/package/security, upgrade and release-candidate gates. Academy does not
+  need to exist or run against the RC.
+- **v12.0.x:** maintenance only for confirmed framework defects and security
+  fixes, without an Academy capability programme.
+- **v13:** the next feature line. Reusable improvements discovered by the
+  future external Academy may be proposed with their own bounded contracts;
+  research-heavy or breaking work remains explicitly governed by v13 criteria.
 
-The 32 canonical milestones that are not fully closed are the long-term v12.x
-through v13 horizon. They are not 32 release blockers for v12.0.
+The 32 canonical milestones that are not fully closed belong to the long-term
+v13 horizon. They are not release blockers for v12.0, and Academy itself is not
+part of that milestone denominator.
 
 ## Acceptance evidence
 

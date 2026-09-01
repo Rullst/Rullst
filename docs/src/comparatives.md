@@ -285,9 +285,11 @@ Topcoat, novos protocolos, conectores enterprise, uma nova UI reativa, NFS-e ao
 vivo, hardware IoT e grandes reformulações de Auth **não pertencem à RC**. Cada
 uma aumenta a superfície justamente quando a prioridade deve ser estabilizar.
 
-## Recomendações para v12.1
+## Prioridades aditivas para v13
 
-Uma versão 12.1 deve privilegiar melhorias aditivas e compatíveis:
+A próxima linha de funcionalidades será a v13. Ela deve privilegiar primeiro
+melhorias aditivas e compatíveis, antes de usar a nova major para contratos que
+realmente precisem mudar:
 
 1. **OpenAPI e SDK:** gerar contrato tipado a partir das rotas/extractors,
    validar breaking changes e produzir clientes testados. FastAPI, Salvo e o
@@ -308,7 +310,7 @@ Uma versão 12.1 deve privilegiar melhorias aditivas e compatíveis:
 8. **DX mensurável:** medir tempo até primeiro CRUD seguro, qualidade dos erros,
    rebuild incremental e número de passos até deploy local.
 
-## Recomendações para v13
+## Mudanças arquiteturais para v13
 
 A v13 pode receber mudanças arquiteturais que não cabem numa minor:
 
@@ -359,18 +361,18 @@ que a implementação.
 
 | Implementação sugerida | Origem preservada | Entrega realista e critério de sucesso | Janela |
 |---|---|---|---|
-| Contrato de API tipado e SDKs | M5, M29 e M34 do roadmap | Um schema canônico gera OpenAPI e clientes TypeScript/Dart/Swift; golden tests provam serialization e CI detecta breaking changes. | v12.1–v13 |
-| Perfil oficial Rullst + Dioxus | M14, M16 e visão Omni | Template opcional para web/desktop/mobile, auth compartilhada, client gerado e um app Android E2E. Rullst permanece dono do backend; Dioxus, da UI. | v12.1 experimental; v13 suportado |
-| Auth de referência completa | M9 e roadmaps Auth/Security | JWT com issuer/audience/rotação/revogação, sessões por dispositivo, TOTP/recovery e WebAuthn por biblioteca auditada/conformance suite. | v12.1–v13 |
-| Multi-tenancy e entitlements seguros | M11 e M33 | Tenant derivado de identidade autenticada, filtros SQL verificáveis, gates server-side, auditoria e negativos cross-tenant em todos os blueprints SaaS. | v12.1 |
-| Idempotência e limites distribuídos | M10 e roadmap Capital | A quota de recursos do Capital já possui reserva SQL atômica/idempotente por tenant em quatro protocolos. Ainda faltam stores compartilhados uniformes, expiração/reconciliação e cobertura multi-instância para login, APIs e webhooks. | Capital delimitado na v12; demais em v12.1 |
-| Observabilidade que explica o problema | M19, M35 e roadmap Studio | OTLP interoperável, trace waterfall, profiling SQL/N+1, jobs/cache e estado indisponível honesto; nenhum dado inventado. | v12.1–v13 |
-| SOC/SIEM operacional, não cenográfico | M12 e roadmap Security | Eventos versionados, redaction, spool/retry/dead-letter, ingestão e correlação, casos, retenção, RBAC e conectores opcionais testados. | v12.1 fundação; v13 produto |
-| AI segura e avaliável | Roadmap AI e M19/M36/M37 | Evals versionados, capability matrix por provider, tool authorization, egress/SSRF guard, budgets, aprovação humana e rollback de mudanças. | v12.1–v13 |
+| Contrato de API tipado e SDKs | M5, M29 e M34 do roadmap | Um schema canônico gera OpenAPI e clientes TypeScript/Dart/Swift; golden tests provam serialization e CI detecta breaking changes. | v13 |
+| Perfil oficial Rullst + Dioxus | M14, M16 e visão Omni | Template opcional para web/desktop/mobile, auth compartilhada, client gerado e um app Android E2E. Rullst permanece dono do backend; Dioxus, da UI. | v13, primeiro experimental |
+| Auth de referência completa | M9 e roadmaps Auth/Security | JWT com issuer/audience/rotação/revogação, sessões por dispositivo, TOTP/recovery e WebAuthn por biblioteca auditada/conformance suite. | v13 |
+| Multi-tenancy e entitlements seguros | M11 e M33 | Tenant derivado de identidade autenticada, filtros SQL verificáveis, gates server-side, auditoria e negativos cross-tenant em todos os blueprints SaaS. | v13 |
+| Idempotência e limites distribuídos | M10 e roadmap Capital | A quota de recursos do Capital já possui reserva SQL atômica/idempotente por tenant em quatro protocolos. Ainda faltam stores compartilhados uniformes, expiração/reconciliação e cobertura multi-instância para login, APIs e webhooks. | Capital delimitado na v12; demais na v13 |
+| Observabilidade que explica o problema | M19, M35 e roadmap Studio | OTLP interoperável, trace waterfall, profiling SQL/N+1, jobs/cache e estado indisponível honesto; nenhum dado inventado. | v13 |
+| SOC/SIEM operacional, não cenográfico | M12 e roadmap Security | Eventos versionados, redaction, spool/retry/dead-letter, ingestão e correlação, casos, retenção, RBAC e conectores opcionais testados. | v13 em etapas |
+| AI segura e avaliável | Roadmap AI e M19/M36/M37 | Evals versionados, capability matrix por provider, tool authorization, egress/SSRF guard, budgets, aprovação humana e rollback de mudanças. | v13 |
 | Mensageria por contrato | M15 e roadmap Messaging | A crate separada já possui envelope, limites, idempotência, grupos, leases, retry/DLQ, broker determinístico e conformance suite; adapters Kafka/RabbitMQ/NATS/Redis Streams entram somente quando seus semantics forem comprovados. | Fundação v12; remotos v13 |
-| Storage e media isolados | M17 | S3/R2 com assinatura oficial, multipart/retry, limites de path/pixels, mocks determinísticos e fuzzing de codecs em crate opcional. | v12.1+ |
+| Storage e media isolados | M17 | S3/R2 com assinatura oficial, multipart/retry, limites de path/pixels, mocks determinísticos e fuzzing de codecs em crate opcional. | v13+ |
 | Extensões sustentáveis | M13 e arquitetura de packages | Manifesto, capability permissions, compatibilidade SemVer, ownership e testes; sandbox Wasm apenas após limites reais de CPU/memória/I/O. | v13 |
-| Deploy e upgrades recuperáveis | M26 e M27 | Health/readiness, migrations coordenadas, secrets, canary/rollback e runbook testados; “one click” descreve automação guiada, não disponibilidade garantida. | v12.1–v13 |
+| Deploy e upgrades recuperáveis | M26 e M27 | Health/readiness, migrations coordenadas, secrets, canary/rollback e runbook testados; “one click” descreve automação guiada, não disponibilidade garantida. | v13 |
 | Performance demonstrada | M2 e benchmarks do ORM | Repositório público de workloads, hardware fixado, throughput, p50/p95/p99, memória e regressões; comparar aplicações completas, não uma função isolada. | contínuo |
 | Confiança externa | Programa v12 e governança | RC pública, auditoria independente, política de suporte, mantenedores externos, apps reais e divulgação coordenada de vulnerabilidades. | começa na v12 RC |
 

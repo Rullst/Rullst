@@ -158,11 +158,11 @@ git switch main
 git pull --ff-only origin main
 git switch -c chore/start-next-version
 
-# Update versions to next iteration (e.g., 12.1.0-dev)
+# Update versions to the next feature line (e.g., 13.0.0-dev)
 # Add new [Unreleased] section to CHANGELOG.md
 
 git add .
-git commit -m "chore(release): start 12.1 development"
+git commit -m "chore(release): start 13.0 development"
 git push -u origin chore/start-next-version
 ```
 
