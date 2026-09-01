@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788255844860,
+  "lastUpdate": 1788256756254,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -4457,6 +4457,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 730,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "2754d75c632953d59231e5a772afab6f63e3be03",
+          "message": "test(coverage): exercise provider and safety contracts",
+          "timestamp": "2026-09-01T06:46:52-03:00",
+          "tree_id": "c0a34ff31fa47c5d787e6c8af2b1c9280f505f52",
+          "url": "https://github.com/Rullst/Rullst/commit/2754d75c632953d59231e5a772afab6f63e3be03"
+        },
+        "date": 1788256755834,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 2002,
+            "range": "± 81",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 375,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 710,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
