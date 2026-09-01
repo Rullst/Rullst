@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788248923084,
+  "lastUpdate": 1788255625359,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -3983,6 +3983,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 313,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": false,
+          "id": "e14e3ef58cf082ee3e9b07b750278a36f4c51cbe",
+          "message": "test(security): exercise guarded adapter failures",
+          "timestamp": "2026-09-01T06:27:09-03:00",
+          "tree_id": "e8266da871527daff3ac0759b85877fd77b0e157",
+          "url": "https://github.com/Rullst/Rullst/commit/e14e3ef58cf082ee3e9b07b750278a36f4c51cbe"
+        },
+        "date": 1788255624912,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 554,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
