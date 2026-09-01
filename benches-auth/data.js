@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788235762218,
+  "lastUpdate": 1788236794710,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -6185,6 +6185,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4011,
             "range": "± 62",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "8b93a4d397fba07d346b0b04d649e155c4163fb2",
+          "message": "fix(security): generate recovery salts directly",
+          "timestamp": "2026-09-01T01:10:07-03:00",
+          "tree_id": "f5c5abb55243e8b511f143ee9f5b09e24606ae05",
+          "url": "https://github.com/Rullst/Rullst/commit/8b93a4d397fba07d346b0b04d649e155c4163fb2"
+        },
+        "date": 1788236794011,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 989,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 787,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1807,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4063,
+            "range": "± 42",
             "unit": "ns/iter"
           }
         ]
