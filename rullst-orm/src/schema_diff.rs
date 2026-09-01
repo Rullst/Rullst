@@ -1,4 +1,5 @@
 use std::fs;
+use std::path::Path;
 use walkdir::WalkDir;
 
 #[derive(Debug)]
@@ -17,8 +18,12 @@ pub struct ParsedTable {
 
 #[cfg_attr(mutants, mutants::skip)]
 pub fn extract_tables_from_ast() -> Vec<ParsedTable> {
+    extract_tables_from_root("src")
+}
+
+fn extract_tables_from_root(root: impl AsRef<Path>) -> Vec<ParsedTable> {
     let mut tables = Vec::new();
-    let walker = WalkDir::new("src").into_iter().filter_map(|e| e.ok());
+    let walker = WalkDir::new(root).into_iter().filter_map(|e| e.ok());
 
     for entry in walker {
         if entry.path().extension().is_some_and(|ext| ext == "rs") {
@@ -158,5 +163,60 @@ mod tests {
     #[test]
     fn test_extract_tables_from_ast_call() {
         let _ = extract_tables_from_ast();
+    }
+
+    #[test]
+    fn extracts_explicit_default_optional_and_skipped_model_fields() {
+        let directory =
+            std::env::temp_dir().join(format!("rullst-schema-diff-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&directory).unwrap();
+        std::fs::write(
+            directory.join("models.rs"),
+            r#"
+                #[derive(Debug, Orm)]
+                #[orm(table = "people")]
+                struct Person {
+                    id: i64,
+                    name: Option<String>,
+                    #[orm(skip)]
+                    transient: String,
+                    #[sqlx(skip)]
+                    computed: i32,
+                }
+
+                #[derive(Orm)]
+                struct BlogPost {
+                    id: u64,
+                    payload: Vec<u8>,
+                }
+
+                #[derive(Debug)]
+                struct NotAModel { id: i64 }
+            "#,
+        )
+        .unwrap();
+        std::fs::write(directory.join("malformed.rs"), "struct {").unwrap();
+        std::fs::write(
+            directory.join("ignored.txt"),
+            "#[derive(Orm)] struct Hidden;",
+        )
+        .unwrap();
+
+        let mut tables = extract_tables_from_root(&directory);
+        tables.sort_by(|left, right| left.table_name.cmp(&right.table_name));
+        assert_eq!(tables.len(), 2);
+        assert_eq!(tables[0].table_name, "blogposts");
+        assert_eq!(tables[0].struct_name, "BlogPost");
+        assert_eq!(tables[0].fields.len(), 2);
+        assert_eq!(tables[0].fields[1].rust_type, "Vec");
+        assert!(!tables[0].fields[1].is_option);
+
+        assert_eq!(tables[1].table_name, "people");
+        assert_eq!(tables[1].fields.len(), 2);
+        assert_eq!(tables[1].fields[1].name, "name");
+        assert_eq!(tables[1].fields[1].rust_type, "String");
+        assert!(tables[1].fields[1].is_option);
+
+        std::fs::remove_dir_all(&directory).unwrap();
     }
 }
