@@ -5,7 +5,7 @@ is not evidence that a workflow has passed for a particular commit. A green
 claim must always point to the GitHub Actions run, commit SHA, logs, and produced
 artifacts.
 
-Last source-level review: **2026-08-31**.
+Last source-level review: **2026-09-01**.
 
 ## Status language
 
@@ -31,6 +31,40 @@ not spend runner capacity proving an obsolete commit.
 GitHub executes `schedule` events from the repository's default branch, so
 scheduled and continuous v12 evidence now share the active `main` source line.
 Tag publication remains deliberately unavailable through a manual button.
+
+## Manual and periodic execution map
+
+Every verification workflow except the PR-context-only `ai-sentinel-pr.yml`
+and tag-only `release.yml` can now be started from **Actions → select workflow
+→ Run workflow**. A manual run checks the selected branch's current SHA; record
+that SHA and the run URL before treating it as release evidence. The release
+workflow intentionally has no button because its publication authority begins
+only with an exact version tag.
+
+The workflows below run **only when requested manually**:
+
+| Workflow | Evidence | RC interpretation |
+| :--- | :--- | :--- |
+| `dast-zap.yml` | OWASP ZAP baseline against the blog example | The job must succeed; it does not cover every generated application or deployment. |
+| `fuzzing.yml` | All 40 declared libFuzzer targets | Every matrix job must finish without a crash for the configured time budget; this is bounded evidence, not proof for every input. |
+| `kani.yml` | Bounded formal harnesses per supported package | Informational: commands currently use `continue-on-error`, so inspect each step rather than equating a green outer job with proof. |
+| `miri.yml` | Randomized-layout Miri package matrix | Informational for the same reason; unsupported paths and tolerated step failures must be recorded explicitly. |
+| `mutants.yml` | Eight mutation-testing shards and their artifacts | Informational: review survived/timed-out mutants and the measured score. “Pass” does not honestly mean every possible mutant was killed. |
+
+These workflows are **periodic and manually runnable**:
+
+| Cadence | Workflows | Mode |
+| :--- | :--- | :--- |
+| Daily | `audit.yml`, `sanitizers.yml` | Cargo Audit is blocking; TSan/ASan are blocking when executed. |
+| Weekly | `bench.yml`, `cargo-deny.yml`, `codeql.yml`, `corpus-sync.yml`, `coverage.yml`, `pqc-compliance.yml`, `proptest.yml`, `scorecards.yml`, `security-audit.yml`, `trufflehog.yml`, `udeps.yml` | The inventory below identifies which results are blocking, automated evidence, or informational. |
+
+All remaining test/build workflows run on the documented push, pull-request or
+path filters and also expose a manual rerun. For an RC checkpoint, first use the
+automatic mainline suite, then manually run the five manual-only workflows and
+any periodic/platform matrix whose latest successful run does not point to the
+same candidate SHA. Physical devices, store approval, live provider accounts,
+external security review and human release approval remain outside GitHub
+Actions.
 
 ## Required local and release baseline
 
@@ -237,7 +271,7 @@ dependency graph make static estimates unreliable.
 | [`proptest.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/proptest.yml) | weekly, manual | Blocking run | Release-mode property and workspace tests with configured case counts. |
 | [`release.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/release.yml) | exact-looking version tags | Release | Tag validation, full verification, package-all, evidence bundle, checksums, attestations, dependency-order publish, and release provenance. |
 | [`sanitizers.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/sanitizers.yml) | daily, manual | Blocking run | TSan and ASan library matrices on nightly Rust. |
-| [`scorecards.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/scorecards.yml) | main push, weekly | Automated evidence | OpenSSF Scorecard analysis and SARIF/artifact upload; not SLSA certification. |
+| [`scorecards.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/scorecards.yml) | main push, weekly, manual | Automated evidence | OpenSSF Scorecard analysis and SARIF/artifact upload; not SLSA certification. |
 | [`security-audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/security-audit.yml) | main push and PR, weekly, manual | Blocking | Cross-checks active advisory IDs and expiry metadata across the ledger, Cargo Deny, and scanner workflows, then independently reruns Cargo Audit. |
 | [`semver.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/semver.yml) | main push and PR, manual | Blocking | Compares each supported, already-published library API with its exact latest non-yanked crates.io baseline. Never-published packages and proc-macro/binary API surfaces unsupported by `cargo-semver-checks` are reported explicitly. |
 | [`spellcheck.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/spellcheck.yml) | main push and PR, manual | Blocking | Repository typo scan. |
