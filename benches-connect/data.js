@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788298527175,
+  "lastUpdate": 1788299260069,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -4403,6 +4403,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 506,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fa9216bda0cfa4a07a62c48549353b0399e18c20",
+          "message": "feat(security): add durable local SIEM spool",
+          "timestamp": "2026-09-01T18:37:17-03:00",
+          "tree_id": "26d6dc22f32939eb4e37d2f3b0913ee4b907b9fb",
+          "url": "https://github.com/Rullst/Rullst/commit/fa9216bda0cfa4a07a62c48549353b0399e18c20"
+        },
+        "date": 1788299259652,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 573,
+            "range": "± 36",
             "unit": "ns/iter"
           }
         ]
