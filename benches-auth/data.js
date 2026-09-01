@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788295036084,
+  "lastUpdate": 1788295828321,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -6953,6 +6953,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1670,
             "range": "± 101",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": false,
+          "id": "ba11f6dde724ae9e2863c6cb3d4ab600fa0acdac",
+          "message": "fix(ci): build the DAST blog target explicitly",
+          "timestamp": "2026-09-01T17:40:23-03:00",
+          "tree_id": "981b8f7ac12e91db4759641fe0100bae1ec67983",
+          "url": "https://github.com/Rullst/Rullst/commit/ba11f6dde724ae9e2863c6cb3d4ab600fa0acdac"
+        },
+        "date": 1788295827767,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 708,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 584,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1306,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1686,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
