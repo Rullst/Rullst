@@ -453,3 +453,7 @@ mod tests {
         ));
     }
 }
+
+#[cfg(test)]
+#[path = "uploads_contract_tests.rs"]
+mod contract_tests;

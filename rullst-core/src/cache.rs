@@ -475,3 +475,7 @@ impl Cache {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "cache_contract_tests.rs"]
+mod contract_tests;

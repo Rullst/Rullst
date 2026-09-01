@@ -721,6 +721,10 @@ mod tests {
     }
 }
 
+#[cfg(test)]
+#[path = "resilience_contract_tests.rs"]
+mod contract_tests;
+
 #[cfg(kani)]
 #[cfg_attr(mutants, mutants::skip)]
 mod kani_proofs {

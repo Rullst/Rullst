@@ -509,3 +509,7 @@ mod tests {
         .unwrap();
     }
 }
+
+#[cfg(test)]
+#[path = "scheduler_contract_tests.rs"]
+mod contract_tests;

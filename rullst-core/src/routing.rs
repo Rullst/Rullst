@@ -368,3 +368,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 }
+
+#[cfg(test)]
+#[path = "routing_contract_tests.rs"]
+mod contract_tests;
