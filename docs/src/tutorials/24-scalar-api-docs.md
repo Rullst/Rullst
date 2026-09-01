@@ -19,7 +19,7 @@ the returned router; the command does not edit route registration automatically.
 
 ```rust
 use rullst::{Router, Server};
-use rullst_core::scalar::scalar_docs_router;
+use rullst::scalar::scalar_docs_router;
 
 #[tokio::main]
 async fn main() -> Result<(), rullst::ServerError> {

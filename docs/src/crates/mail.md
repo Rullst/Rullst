@@ -1,5 +1,9 @@
 # Rullst Mail 📬
 
+> [!IMPORTANT]
+> This page documents the unreleased v12 source. Use a path dependency from
+> this checkout until the planned `12.0.0-rc.1` is published.
+
 > **Vision preserved:** additional providers and air-gapped/zero-leak ambitions
 > were not silently removed; see their status and recommendation in the
 > [capability ledger](../capability-ledger.md#ai-and-mail).
@@ -289,7 +293,7 @@ Enable the opt-in official SDK transport:
 
 ```toml
 [dependencies]
-rullst-mail = { version = "12", features = ["aws-ses"] }
+rullst-mail = { version = "12.0.0-rc.1", features = ["aws-ses"] }
 aws-config = "1.11"
 ```
 

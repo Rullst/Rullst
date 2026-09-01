@@ -1,5 +1,9 @@
 # Rullst Studio 📊
 
+> **v12 development notice:** This README documents the unreleased v12 source.
+> Use a path dependency from this checkout until an immutable v12 RC exists on
+> crates.io.
+
 `rullst-studio` is the built-in, local-first administration and monitoring
 dashboard for Rullst. It exposes bounded database, queue and in-process
 telemetry views from the sources explicitly supplied by the application.
@@ -29,9 +33,8 @@ telemetry views from the sources explicitly supplied by the application.
 
 Add `rullst-studio` to your project:
 
-```bash
-cargo add rullst-studio
-```
+After that RC is published, install its exact train with
+`cargo add rullst-studio@12.0.0-rc.1`.
 
 ### Launching the Studio
 
@@ -87,5 +90,5 @@ audit history, rollback, or a supported shared-production admin surface.
 ## 📚 Documentation
 
 For supported usage and security boundaries, see the
-**[Rullst Book](https://rullst.github.io/book/)** and its
+**[Rullst Book](https://rullst.github.io/Rullst/book/)** and its
 capability ledger. A production/shared Studio mode is not currently supplied.

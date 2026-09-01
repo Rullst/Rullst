@@ -32,9 +32,9 @@ impl Connect {
     /// Factory method to dynamically instantiate an OAuth provider by name.
     ///
     /// Available providers (case-insensitive):
-    /// "github", "google", "facebook", "gitlab", "discord", "linkedin", "x", "microsoft"
+    /// "github", "google", "facebook", "discord", "linkedin", "x", "microsoft"
     ///
-    /// Note: Providers requiring specialized configuration (like Apple, Auth0, Cognito, and Okta)
+    /// Note: Providers requiring specialized configuration (Apple, Auth0, Cognito, and generic OIDC)
     /// must be instantiated manually.
     pub fn driver(
         name: impl Into<String>,

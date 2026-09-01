@@ -1,5 +1,10 @@
 # Preparing a National NFS-e 1.01 homologation candidate
 
+> [!IMPORTANT]
+> Dependency examples use `12.0.0-rc.1`, the planned first v12 RC. Do not
+> request it from crates.io before it is published; use path dependencies from
+> this source checkout during development.
+
 This guide exercises the part of the Brazilian National NFS-e pipeline that can
 be proved safely without sending a fiscal document. It builds a bounded DPS,
 checks checksum-pinned government schema sources, signs the document with an
@@ -14,10 +19,10 @@ Enable the isolated dependency boundary before following the signing steps:
 
 ```toml
 [dependencies]
-rullst-capital = { version = "12.0.0", features = ["nfse"] }
+rullst-capital = { version = "12.0.0-rc.1", features = ["nfse"] }
 ```
 
-Umbrella applications can select `rullst = { version = "12.0.0", features =
+Umbrella applications can select `rullst = { version = "12.0.0-rc.1", features =
 ["capital-nfse"] }`. The feature adds local schema/signature/codec dependencies;
 it does not enable a live network path.
 

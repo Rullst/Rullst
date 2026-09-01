@@ -17,11 +17,27 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 **For Windows:**
 Download and run `rustup-init.exe` from the website.
 
-Next, install the **Rullst CLI**. The CLI is the heart of the developer experience, handling scaffolding, database migrations, dev server, and more.
+Next, install the **Rullst CLI** from the same release train as the framework.
+The registry command installs the latest published release; it does not install
+the unreleased v12 source documented by this branch:
 
 ```bash
 cargo install cargo-rullst
 ```
+
+To evaluate v12 before its first RC is published, clone this repository and
+install the CLI from that exact checkout instead:
+
+```bash
+git clone --branch main https://github.com/Rullst/Rullst.git
+cd Rullst
+cargo install --locked --path cargo-rullst
+```
+
+Run the following project-creation steps from the repository root during this
+source-only phase. The generator will then use the sibling framework crates as
+path dependencies. Once an immutable v12 RC exists on crates.io, install that
+exact CLI version and use its matching registry packages instead.
 
 ## 2. Creating Your First Project
 
@@ -31,7 +47,8 @@ We have completely redesigned the project creation experience. Instead of rememb
 cargo rullst
 ```
 
-The **Rullst App Creator** will launch an interactive wizard. Let's create a beautiful Portfolio:
+The **Rullst App Creator** will launch an interactive wizard. The example below
+creates a Portfolio inside the source checkout while v12 remains unpublished:
 1. Select **Create New App**.
 2. **App Name**: Provide a simple lowercase name (e.g., `my_portfolio`).
 3. **Starter Blueprint**: Choose **Portfolio 🔥 (showcase for Rullst/AI developers) - HOT**.

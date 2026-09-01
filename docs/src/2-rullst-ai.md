@@ -1,8 +1,13 @@
 # Rullst AI: Developing with Autonomous Agents
 
-Rullst was designed from the ground up to be the first **"AI-native"** Rust framework. What does this mean in practice?
+Rullst is designed as an **AI-native** Rust framework. Here that term describes
+inspectable code-generation and explicit compile-time contracts; it is not a
+claim of historical priority or proof that an AI will produce correct code.
 
-Traditional frameworks rely heavily on runtime "magic" (reflection, dynamic string-based dependency injection, weak typing, and heavy metaprogramming). While this is great for humans writing short scripts, it is **terrible for AI Agents**, as it prevents the AI from validating whether the code is correct before running it.
+Some framework designs use runtime reflection, string-based dependency
+injection, or conventions that are harder to discover through static source
+inspection. Rullst instead favors visible types and generated Rust, while still
+retaining ordinary runtime state and framework abstractions where appropriate.
 
 Rullst favors strong typing and compile-time diagnostics. The compiler catches
 type and ownership errors in generated code, but it cannot validate requirements,
@@ -42,7 +47,8 @@ Example of the default content:
 
 ## 2. Rullst's AI-Friendly Patterns
 
-Rullst's API was designed so that the AI rarely hallucinates:
+Rullst's API is designed to give coding tools more explicit source landmarks;
+this can reduce ambiguity but does not measure or guarantee hallucination rates:
 
 - **Explicit Routes:** The `routes![ ... ]` macro is visual and delimited. The AI knows exactly where to add a new route without having to search across scattered files.
 - **Rullst ORM:** Based on Pure SQL (via SQLx) + Derives. AIs are much better at writing pure, correct SQL queries than learning an obscure query builder. Rullst takes advantage of this by using the database in a pure relational way.

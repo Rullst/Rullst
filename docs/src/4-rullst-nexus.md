@@ -42,7 +42,7 @@ application needs metadata that cannot be derived.
 Then select an explicit access policy in your routing file (usually `src/lib.rs`
 or `src/main.rs`) and mount the resulting router:
 
-```rust
+```rust,ignore
 let nexus_auth =
     rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
 let nexus = rullst::nexus::Nexus::new()
@@ -64,7 +64,9 @@ the production authentication flow.
 
 ## 👤 Example: Dynamic Profile Settings in Blueprints
 
-Starter blueprints like **Portfolio** use Nexus reflection to expose single-row or multi-row site configuration settings (such as developer name, title, bio, email, personal website, avatar photo, and social links).
+Starter blueprints like **Portfolio** use explicit Nexus metadata to expose
+single-row or multi-row site configuration settings (such as developer name,
+title, bio, email, personal website, avatar photo, and social links).
 
 ```rust
 use rullst::db::{Orm, FromRow, Nexus};
@@ -85,7 +87,7 @@ pub struct Profile {
 ```
 
 When registered in Nexus:
-```rust
+```rust,ignore
 let nexus_auth =
     rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
 let nexus = rullst::nexus::Nexus::new()

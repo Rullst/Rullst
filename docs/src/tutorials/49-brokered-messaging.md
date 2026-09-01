@@ -1,5 +1,10 @@
 # 49. Bounded Brokered Messaging
 
+> [!IMPORTANT]
+> Dependency examples use `12.0.0-rc.1`, the planned first v12 RC. Do not
+> request it from crates.io before it is published; use path dependencies from
+> this source checkout during development.
+
 This tutorial starts with `rullst-messaging`'s deterministic in-memory broker
 and then switches the same trait contract to the durable local SQLite adapter.
 Remote broker protocols remain separate adapters.
@@ -8,11 +13,11 @@ Remote broker protocols remain separate adapters.
 
 ```toml
 [dependencies]
-rullst = { version = "12.0.0", features = ["messaging"] }
+rullst = { version = "12.0.0-rc.1", features = ["messaging"] }
 ```
 
 Use `messaging-sqlite` instead of `messaging` for durable local state. A direct
-dependency uses `rullst-messaging = { version = "12.0.0", features =
+dependency uses `rullst-messaging = { version = "12.0.0-rc.1", features =
 ["sqlite"] }`.
 
 ## 2. Create a bounded broker

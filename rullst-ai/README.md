@@ -1,5 +1,9 @@
 # Rullst AI
 
+> **v12 development notice:** This README documents the unreleased v12 source.
+> Use a path dependency from this checkout until an immutable v12 RC exists on
+> crates.io.
+
 `rullst-ai` is a provider-agnostic LLM client with mandatory outbound prompt-injection checks,
 PII masking, deterministic offline fixtures, JSON mode, explicit JSON Schema output, and a bounded
 tenant-aware RAG pipeline.

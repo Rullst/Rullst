@@ -1,5 +1,9 @@
 # Rullst Capital 💳
 
+> **v12 development notice:** This README documents the unreleased v12 source.
+> Use a path dependency from this checkout until an immutable v12 RC exists on
+> crates.io. The version below is the planned first RC, not a published claim.
+
 `rullst-capital` provides payment/payout adapter foundations, normalized billing
 types, bounded webhook verification helpers, application-supplied revenue
 snapshots, and a bounded National NFS-e preparation pipeline. Provider method
@@ -55,13 +59,13 @@ Add `rullst-capital` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rullst-capital = "12.0.0"
+rullst-capital = "12.0.0-rc.1"
 ```
 
 The heavier NFS-e schema/signature boundary is opt-in:
 
 ```toml
-rullst-capital = { version = "12.0.0", features = ["nfse"] }
+rullst-capital = { version = "12.0.0-rc.1", features = ["nfse"] }
 ```
 
 Native invoice PDF is independently opt-in. One-call Mail delivery uses the
@@ -69,14 +73,14 @@ downstream `rullst-mail/capital-invoice` feature, or `rullst/capital-mail` when
 using the umbrella crate:
 
 ```toml
-rullst = { version = "12.0.0", features = ["capital-mail"] }
+rullst = { version = "12.0.0-rc.1", features = ["capital-mail"] }
 ```
 
 Durable relational quota accounting is separately opt-in:
 
 ```toml
-rullst = { version = "12.0.0", features = ["capital-quota-sql"] }
-# Or directly: rullst-capital = { version = "12.0.0", features = ["quota-sql"] }
+rullst = { version = "12.0.0-rc.1", features = ["capital-quota-sql"] }
+# Or directly: rullst-capital = { version = "12.0.0-rc.1", features = ["quota-sql"] }
 ```
 
 Applications using the umbrella crate can derive the bounded billing facade on
@@ -125,7 +129,7 @@ increments the shared counter on SQLite, PostgreSQL, MySQL or MariaDB. For a
 relational create that must be atomic with accounting, open a transaction from
 `store.pool()`, call `reserve_with_transaction`, execute the domain insert on
 that same transaction and commit once. See the
-[SaaS billing tutorial](https://rullst.github.io/tutorials/19-saas-billing-capital.html#8-enforce-one-shared-workspace-quota-before-creation)
+[SaaS billing tutorial](https://rullst.github.io/Rullst/book/tutorials/19-saas-billing-capital.html#8-enforce-one-shared-workspace-quota-before-creation)
 for the complete flow.
 
 Membership/authentication, tier persistence and webhook reconciliation,
@@ -242,7 +246,7 @@ driver.
 Persist and atomically claim `PaidInvoice::delivery_key()` in an application
 outbox before retryable delivery. The bridge does not infer webhook state or
 promise provider acceptance/exactly-once behavior. See the
-[SaaS billing tutorial](https://rullst.github.io/tutorials/19-saas-billing-capital.html#4-render-and-deliver-the-invoice-only-after-final-success).
+[SaaS billing tutorial](https://rullst.github.io/Rullst/book/tutorials/19-saas-billing-capital.html#4-render-and-deliver-the-invoice-only-after-final-success).
 
 ### Initializing a Provider
 

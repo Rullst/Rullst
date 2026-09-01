@@ -7,8 +7,9 @@ pub use session::{AuthSession, OAuthAuthorization, begin_oauth_session, begin_oi
 
 /// Standard OAuth2 callback query parameters.
 ///
-/// Most web frameworks (like Axum, Actix, Leptos, Rocket) can automatically
-/// deserialize URL query strings into this struct.
+/// Axum and Actix integrations provide native extractors behind their features.
+/// Other hosts can deserialize their bounded callback query into this plain
+/// Serde type and must still validate the managed state/session lifecycle.
 ///
 /// # Example (Axum)
 /// ```rust,no_run

@@ -2,7 +2,7 @@ AGENTS: Recommended agent context for rullst-orm
 
 Purpose: provide quick context and example prompts for AI agents and contributors.
 
-Reference spec: see [docs/spec.md](docs/spec.md#L1-L200)
+Reference spec: see [`docs/src/spec.md`](../docs/src/spec.md)
 
 Suggested prompts:
 - "Summarize the macro expansion for `#[derive(Orm)]` in one paragraph."

@@ -102,7 +102,7 @@ audit event without logging prompts or secrets verbatim.
 
 ## 4. Inspect capabilities before optional operations
 
-```rust
+```rust,ignore
 let capabilities = client.capabilities();
 
 if capabilities.vision {
@@ -121,7 +121,7 @@ select a model that supports less than its provider transport.
 enforcement. Use `structured_prompt_with_schema` only when the reported provider
 capability and configured model support it:
 
-```rust
+```rust,ignore
 use rullst::ai::StructuredOutputSchema;
 
 let schema = StructuredOutputSchema::new(

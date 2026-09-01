@@ -1,5 +1,9 @@
 # Rullst Auth
 
+> **v12 development notice:** This README documents the unreleased v12 source.
+> Use a path dependency from this checkout until an immutable v12 RC exists on
+> crates.io.
+
 `rullst-auth` provides Argon2id password hashing, versioned AES-GCM cookie sessions,
 role-based authorization middleware, WebAuthn/passkey ceremony verification, and
 an opt-in application JWT policy.

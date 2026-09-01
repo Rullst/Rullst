@@ -1,6 +1,9 @@
 # Tutorial 02: CLI Automation & Generators ⚡
 
-Rullst provides opinionated code generators (`make:*`) that scaffold controllers, models, migrations, and resources while automatically updating route files and AI context.
+Rullst provides opinionated code generators (`make:*`) for controllers, models,
+migrations, and resources. The current generators register generated Rust
+modules when possible; they do not silently add application routes or rewrite
+AI context. Review every generated file and mount the intended routes yourself.
 
 ---
 
@@ -10,7 +13,8 @@ Rullst provides opinionated code generators (`make:*`) that scaffold controllers
 ```bash
 cargo rullst make:controller ProductsController
 ```
-Creates `src/controllers/products_controller.rs` with standard CRUD handlers (`index`, `show`, `create`, `update`, `delete`).
+Creates `src/controllers/products_controller.rs` with placeholder `index`,
+`show`, `store`, `update`, and `delete` handlers and registers the module.
 
 ### 2. Generate a Model & Migration
 ```bash
@@ -22,7 +26,9 @@ Creates the Model struct in `src/models/product.rs` and a timestamped migration 
 ```bash
 cargo rullst make:resource Product
 ```
-Scaffolds Model, Migration, Controller, and HTML views (`views/product/index.html` & `views/product/form.html`) in a single command.
+Scaffolds a model, Rust migration, controller, and HTML view placeholders
+(`views/product/index.html` and `views/product/form.html`) in one command. The
+generated controller is not a complete authorized CRUD implementation.
 
 ---
 
@@ -42,4 +48,7 @@ cargo rullst inspect model
 
 ## 💡 Key Takeaways
 - Scaffolding generators maintain architectural consistency across team members.
-- `cargo rullst inspect` statically analyzes proc-macros and routing AST without runtime overhead.
+- `cargo rullst inspect` performs bounded source-text inspection. Route output
+  recognizes explicit single-line `routes!` entries; model output lists public
+  declarations from `src/models`. It is not complete macro expansion or a Rust
+  semantic analysis.

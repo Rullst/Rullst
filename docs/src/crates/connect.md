@@ -1,5 +1,9 @@
 # Rullst Connect 🦀
 
+> [!IMPORTANT]
+> This page documents the unreleased v12 source. Use a path dependency from
+> this checkout until the planned `12.0.0-rc.1` is published.
+
 > **Vision preserved:** message brokers, additional queue transports, remote
 > storage, and media work are retained with explicit status and recommendations in
 > the [capability ledger](../capability-ledger.md#connect-real-time-queues-storage-and-data).
@@ -65,7 +69,7 @@ state of those checks for the referenced commit; they are not an absolute securi
 > 📚 **Important Documents:**
 > - [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md): See what's new.
 > - [ISSUES](https://github.com/Rullst/Rullst/issues): Any issue? Please report.
-> - [AUDIT.md](https://github.com/Rullst/Rullst/blob/main/AUDIT.md): Complete security, performance, and maintainability audit report.
+> - [AUDIT.md](https://github.com/Rullst/Rullst/blob/main/AUDIT.md): Repository audit record; current workflow evidence remains authoritative.
 
 ## 📦 Supported Providers
 
@@ -95,12 +99,12 @@ token was valid immediately before the call.
 
 ## 🛠️ Installation
 
-Add the published package to an application with `cargo add`. Inside a checkout
-of the unreleased v12 workspace, examples use its path dependency instead.
+Inside a checkout of the unreleased v12 workspace, use its path dependency.
+After the RC is published, install that exact release train instead.
 
-You can either run:
+Published RC command:
 ```bash
-cargo add rullst-connect
+cargo add rullst-connect@12.0.0-rc.1
 cargo add secrecy
 ```
 

@@ -11,7 +11,11 @@
   </p>
 </div>
 
-🚀 **[Visit the Official Website & Documentation Hub](https://rullst.github.io/book/)** 🚀
+> [!IMPORTANT]
+> This page documents the unreleased v12 source. Use a path dependency from
+> this checkout until the planned `12.0.0-rc.1` is published.
+
+🚀 **[Visit the Official Website & Documentation Hub](https://rullst.github.io/Rullst/book/)** 🚀
 
 Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightful, fluent syntax of Active Record frameworks directly to the high-performance Rust ecosystem.
 
@@ -24,7 +28,7 @@ Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightf
 | **OpenSSF Scorecard** | <a href="https://scorecard.dev/viewer/?uri=github.com/Rullst/Rullst"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FRullst%2FRullst&query=%24.score&label=OpenSSF%20Scorecard&style=flat-square" alt="OpenSSF Scorecard" /></a> | Current public supply-chain practice score; not a security certification |
 | **Release Provenance** | <a href="https://github.com/Rullst/Rullst/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/release.yml?style=flat-square&label=" alt="Release provenance" /></a> | Provenance attestations for release artifacts; no SLSA level is claimed here |
 | **Codecov** | <a href="https://codecov.io/gh/Rullst/Rullst"><img src="https://codecov.io/github/Rullst/Rullst/branch/main/graph/badge.svg?component=framework_libraries" alt="Framework library coverage" /></a> | Blocking 90% target for the measured framework-library scope; repository aggregate remains separately visible |
-| **Matrix DB Tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=flat-square&label=" alt="Testcontainers" /></a> | Dockerized PostgreSQL & MySQL integration tests |
+| **Matrix DB Tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=flat-square&label=" alt="Testcontainers" /></a> | Live PostgreSQL, MySQL, MariaDB, MongoDB, SurrealDB and libSQL contracts, plus in-process DuckDB tests |
 | **OpenSSF** | <a href="https://www.bestpractices.dev/projects/13359"><img src="https://img.shields.io/cii/level/13359?style=flat-square&label=" alt="OpenSSF Best Practices" /></a> | Open source security standards |
 | **Property tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/proptest.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/proptest.yml?branch=main&style=flat-square&label=Proptest" alt="Proptest" /></a> | Scheduled/manual bounded invariant evidence |
 | **Miri research matrix** | <a href="https://github.com/Rullst/Rullst/actions/workflows/miri.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/miri.yml?branch=main&style=flat-square&label=Miri" alt="Miri" /></a> | Manual, partly non-blocking evidence for the targets actually exercised |
@@ -129,10 +133,10 @@ generated API.
 
 ### Installation
 
-Add the library to your `Cargo.toml`:
+After the RC is published, install its exact train with:
 
 ```bash
-cargo add rullst-orm
+cargo add rullst-orm@12.0.0-rc.1
 cargo add tokio -F full
 ```
 
@@ -164,7 +168,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         password: "secret_password".to_string(),
     };
     
-    user.save().await?; // Runs INSERT and hydrates the ID automatically!
+    user.save().await?; // Runs INSERT and hydrates the generated ID.
 
     // 4. Fluent Queries
     let active_users = User::query()
@@ -186,7 +190,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
 
 We recently launched a brand-new **Interactive Documentation Hub**! 
 
-👉 **[Explore the Full Documentation in the Rullst Book](https://rullst.github.io/book/)**
+👉 **[Explore the Full Documentation in the Rullst Book](https://rullst.github.io/Rullst/book/)**
 
 ---
 

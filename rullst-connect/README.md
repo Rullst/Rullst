@@ -1,5 +1,9 @@
 # Rullst Connect 🦀
 
+> **v12 development notice:** This README documents the unreleased v12 source.
+> Use a path dependency from this checkout until an immutable v12 RC exists on
+> crates.io. The version below is the planned first RC, not a published claim.
+
 [![Crates.io](https://img.shields.io/crates/v/rullst-connect.svg?style=for-the-badge&logo=rust)](https://crates.io/crates/rullst-connect)
 [![Downloads](https://img.shields.io/crates/d/rullst-connect.svg?style=for-the-badge)](https://crates.io/crates/rullst-connect)
 [![Documentation](https://img.shields.io/docsrs/rullst-connect?style=for-the-badge&logo=docs.rs)](https://docs.rs/rullst-connect)
@@ -61,7 +65,7 @@ state of those checks for the referenced commit; they are not an absolute securi
 > 📚 **Important Documents:**
 > - [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md): See what's new.
 > - [ISSUES](https://github.com/Rullst/Rullst/issues): Any issue? Please report.
-> - [AUDIT.md](https://github.com/Rullst/Rullst/blob/main/AUDIT.md): Complete security, performance, and maintainability audit report.
+> - [AUDIT.md](https://github.com/Rullst/Rullst/blob/main/AUDIT.md): Repository audit record; current workflow evidence remains authoritative.
 
 ## 📦 Supported Providers
 
@@ -91,24 +95,27 @@ token was valid immediately before the call.
 
 ## 🛠️ Installation
 
-Add the package to your `Cargo.toml`. If you use **Rullst**, **Axum**, **Actix**, or **Leptos**, you can enable their specific features for native Extractor support!
+Add the package to your `Cargo.toml`. Native callback extractors are implemented
+for Axum and Actix. Other hosts can deserialize the framework-neutral
+`AuthCallback`; the compatibility `leptos` feature adds no Leptos runtime or
+extractor.
 
-You can either run:
+After the RC is published, install its exact version with:
 ```bash
-cargo add rullst-connect
+cargo add rullst-connect@12.0.0-rc.1
 ```
 
 For the recommended Axum flow:
 
 ```toml
-rullst-connect = { version = "12.0.0", features = ["axum-session"] }
+rullst-connect = { version = "12.0.0-rc.1", features = ["axum-session"] }
 tower-sessions = "0.15"
 ```
 
 Or manually add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-rullst-connect = "12.0.0"
+rullst-connect = "12.0.0-rc.1"
 tokio = { version = "1.52", features = ["full"] }
 ```
 
@@ -143,7 +150,7 @@ a working authentication bypass.
 
 ```toml
 [dev-dependencies]
-rullst-connect = { version = "12.0.0", features = ["mock"] }
+rullst-connect = { version = "12.0.0-rc.1", features = ["mock"] }
 ```
 
 Mock-mode redirects use the reserved `example.invalid` domain and mock profiles use the
@@ -175,7 +182,7 @@ one-shot codes, optional nonce, S256 PKCE, EdDSA ID-token verification, JWKS and
 bearer-protected userinfo. The signing seed and credentials are predictable test
 material. Keep the listener on loopback; this is not a login UI, consent server,
 refresh-token service, federation implementation or conformance suite. See the
-[local OIDC testing tutorial](https://rullst.github.io/tutorials/48-local-oidc-testing.html).
+[local OIDC testing tutorial](https://rullst.github.io/Rullst/book/tutorials/48-local-oidc-testing.html).
 
 ### Explicit corporate proxy
 
@@ -236,7 +243,7 @@ login deliberately invalidates the earlier tab. The application must configure
 a durable production session store, Secure/HttpOnly/SameSite cookies, TLS,
 registered redirect URLs, account-linking policy, and post-login session
 rotation. See the
-[server-bound OAuth/OIDC tutorial](https://rullst.github.io/tutorials/42-server-bound-oauth-sessions.html).
+[server-bound OAuth/OIDC tutorial](https://rullst.github.io/Rullst/book/tutorials/42-server-bound-oauth-sessions.html).
 
 ### Safe profile serialization
 
@@ -359,21 +366,12 @@ cargo run --example axum_server
 
 ## 📦 Releasing a New Version
 
-This project uses `cargo-release` to automate version bumps, README synchronization, and CHANGELOG management.
-The publish workflow in `.github/workflows/publish.yml` runs when a `vX.Y.Z` tag is pushed, and it can also be triggered manually from GitHub Actions.
-
-To release a new version, simply run:
-
-```bash
-# install it first if you haven't: cargo install cargo-release
-cargo release patch --execute  # for v1.0.x patches
-cargo release minor --execute  # for v1.x.0 features
-cargo release major --execute  # for vX.0.0 breaking changes
-```
-
-This will automatically bump versions, tag the release, and push to GitHub, triggering the crates.io publish workflow.
-
-For the exact release checklist and what to do next time, see [RELEASE_GUIDE.md](https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md).
+`rullst-connect` is released only as part of the synchronized Rullst monorepo
+train. Do not run `cargo release` or publish this crate manually. The protected,
+tag-only `release.yml` workflow verifies and publishes every crate in
+topological order after an exact `vX.Y.Z[-pre]` tag is approved. Follow the
+[root release guide](https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md)
+and machine-readable `.github/release-order.json`.
 
 ## 🤝 Contributing
 

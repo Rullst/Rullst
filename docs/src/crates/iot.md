@@ -1,6 +1,11 @@
 # Rullst IoT 📡
 ### *"Embedded Sensor Protocols, Ed25519 OTA Gate & Edge Computing for Rust"*
 
+> [!IMPORTANT]
+> The dependency example uses `12.0.0-rc.1`, the planned first v12 RC. Do not
+> request it from crates.io before it is published; use a path dependency from
+> this source checkout during development.
+
 `rullst-iot` provides high-assurance telemetry models, bare-metal `#![no_std]` data structures, and a cryptographically verified Over-The-Air (OTA) firmware update state machine.
 
 ---
@@ -85,15 +90,16 @@ fn process_incoming_ota(
 `rullst-iot` exposes a `no_std` model layer intended for constrained microcontrollers. Compatibility is feature-, target-, allocator-, and toolchain-dependent and must be confirmed for the actual board:
 
 ```rust
-#![no_std]
 use rullst_iot::telemetry::SensorReading;
 
-let reading = SensorReading {
-    sensor_id: 1,
-    temperature_celsius: 24.5,
-    humidity_percent: 60.2,
-    timestamp_epoch: 1724500000,
-};
+fn sample_reading() -> SensorReading {
+    SensorReading {
+        sensor_id: 1,
+        temperature_celsius: 24.5,
+        humidity_percent: 60.2,
+        timestamp_epoch: 1724500000,
+    }
+}
 ```
 
 ---
@@ -104,7 +110,7 @@ For local integration tests without physical hardware attached, enable the simul
 
 ```toml
 [dependencies]
-rullst-iot = { version = "12.0.0", features = ["experimental-simulators"] }
+rullst-iot = { version = "12.0.0-rc.1", features = ["experimental-simulators"] }
 ```
 
 This exposes `SimulatedMqttPayloadFormatter`, `SimulatedHsmDevice`, and `SimulatedPqcFixture` for deterministic sandbox execution.

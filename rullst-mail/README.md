@@ -1,5 +1,9 @@
 # Rullst Mail 📬
 
+> **v12 development notice:** This README documents the unreleased v12 source.
+> Use a path dependency from this checkout until an immutable v12 RC exists on
+> crates.io. `12.0.0-rc.1` below is the planned first RC.
+
 `rullst-mail` is Rullst's transactional email and mailables engine. Every official dispatch path now passes through one pre-flight pipeline for CRLF protection, recipient deliverability checks, content security scanning, and DLP sanitization before queueing or transport delivery.
 
 ---
@@ -287,7 +291,7 @@ Enable the opt-in official SDK transport:
 
 ```toml
 [dependencies]
-rullst-mail = { version = "12", features = ["aws-ses"] }
+rullst-mail = { version = "12.0.0-rc.1", features = ["aws-ses"] }
 aws-config = "1.11"
 ```
 

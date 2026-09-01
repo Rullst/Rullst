@@ -1,5 +1,9 @@
 # Rullst Messaging
 
+> **v12 development notice:** This README documents the unreleased v12 source.
+> Use a path dependency from this checkout until an immutable v12 RC exists on
+> crates.io.
+
 `rullst-messaging` defines bounded, broker-neutral messaging contracts for
 Rullst applications. It provides a deterministic in-memory broker and an
 opt-in durable SQLite adapter. Remote broker interoperability is roadmap work.

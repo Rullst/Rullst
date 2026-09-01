@@ -1,5 +1,9 @@
 # Rullst Security 🛡️⚡
 
+> **v12 development notice:** This README documents the unreleased v12 source.
+> Use a path dependency from this checkout until an immutable v12 RC exists on
+> crates.io. The version below is the planned first RC, not a published claim.
+
 `rullst-security` is the dedicated security suite for the **Rullst Framework**. It uses bounded in-memory state, established cryptographic primitives, and defense-in-depth middleware. Its WAF/RASP rules are heuristic controls and must be combined with secure application design, authentication, authorization, TLS, monitoring, and timely dependency updates.
 
 ---
@@ -77,7 +81,7 @@ Add `rullst-security` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rullst-security = "12.0.0"
+rullst-security = "12.0.0-rc.1"
 ```
 
 ---

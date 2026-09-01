@@ -1,5 +1,10 @@
 # Bounded Offline Synchronization for Omni
 
+> [!IMPORTANT]
+> Dependency examples use `12.0.0-rc.1`, the planned first v12 RC. Do not
+> request it from crates.io before it is published; use path dependencies from
+> this source checkout during development.
+
 Rullst's opt-in `offline-sync` feature supplies the native state and encrypted
 snapshot boundary needed to build a resilient Omni client. It is not mounted
 automatically by `make:omni`: the generated shell remains a minimal web shell,
@@ -13,7 +18,7 @@ entitlements and trusted time must be recomputed or revalidated by the server.
 
 ```toml
 [dependencies]
-rullst = { version = "12.0.0", features = ["offline-sync"] }
+rullst = { version = "12.0.0-rc.1", features = ["offline-sync"] }
 ```
 
 The encrypted snapshot codec is native-only. A browser offline implementation

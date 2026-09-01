@@ -43,9 +43,15 @@ middleware deliberately does not trust arbitrary forwarding headers.
 - `SecurityStore` is local telemetry. An event is not HMAC-verified or durably
   delivered merely because it appears in Studio.
 
-No built-in path automatically asks an LLM to ban a peer or issues a dynamic
-proof-of-work challenge. Sensitive automated actions require authenticated
-policy, limits, durable audit and human approval where appropriate.
+No built-in path asks an LLM to ban a peer or automatically mounts a blocking
+policy. The opt-in `ThreatSentinel` can classify three bounded,
+caller-supplied aggregate patterns and issue an HMAC-authenticated,
+subject-bound, expiring, one-shot **process-local** proof-of-work challenge.
+The application must supply trustworthy observations and subject identity,
+translate the outcome into an HTTP protocol, and decide where that gate belongs.
+It is not AI attribution, a distributed replay store, or an autonomous ban.
+Sensitive automated actions still require authenticated policy, limits,
+durable audit and human approval where appropriate.
 
 ## 3. Inspect the local Studio view
 

@@ -24,7 +24,7 @@ version. Add a `SessionManagerLayer` to the Axum router. `MemoryStore` is useful
 for local examples and tests, but it is process-local and is not a production
 durability or horizontal-scaling strategy.
 
-```rust
+```rust,ignore
 use tower_sessions::{cookie::SameSite, MemoryStore, SessionManagerLayer};
 
 let sessions = SessionManagerLayer::new(MemoryStore::default())
@@ -67,7 +67,7 @@ The returned URL contains the random state and the SHA-256 PKCE challenge. The
 
 Use the OIDC variant for Google, Apple, or a discovered custom OIDC provider:
 
-```rust
+```rust,ignore
 let authorization = begin_oidc_session(&session, &oidc_provider).await?;
 Ok(Redirect::temporary(authorization.url()))
 ```

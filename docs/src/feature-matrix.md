@@ -1,5 +1,10 @@
 # Cargo feature matrix
 
+> [!IMPORTANT]
+> Dependency examples use `12.0.0-rc.1`, the planned first v12 RC. Do not
+> request it from crates.io before it is published; use path dependencies from
+> this source checkout during development.
+
 This page is the public feature contract for the 16 packages in the Rullst
 release train. The package manifests remain the machine-readable source of
 truth. The matrix explains the behavior those names select in v12 and makes
@@ -25,7 +30,7 @@ that only need the HTTP runtime can opt out:
 
 ```toml
 [dependencies]
-rullst = { version = "12.0.0", default-features = false }
+rullst = { version = "12.0.0-rc.1", default-features = false }
 ```
 
 | Feature | Default | Enables |
@@ -257,20 +262,20 @@ documented deterministic offline behavior for empty or `mock_*` credentials.
 Minimal HTTP runtime:
 
 ```toml
-rullst = { version = "12.0.0", default-features = false }
+rullst = { version = "12.0.0-rc.1", default-features = false }
 ```
 
 SQLite application using the release default:
 
 ```toml
-rullst = "12.0.0"
+rullst = "12.0.0-rc.1"
 ```
 
 PostgreSQL application with explicit domain integrations:
 
 ```toml
 rullst = {
-    version = "12.0.0",
+    version = "12.0.0-rc.1",
     default-features = false,
     features = ["strict-postgres", "auth", "security", "telemetry"]
 }
@@ -279,14 +284,14 @@ rullst = {
 Embedded IoT model without the standard library:
 
 ```toml
-rullst-iot = { version = "12.0.0", default-features = false }
+rullst-iot = { version = "12.0.0-rc.1", default-features = false }
 ```
 
 Experimental IoT fixtures are deliberately separate:
 
 ```toml
 rullst-iot = {
-    version = "12.0.0",
+    version = "12.0.0-rc.1",
     default-features = false,
     features = ["experimental-simulators"]
 }

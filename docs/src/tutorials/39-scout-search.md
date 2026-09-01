@@ -1,5 +1,10 @@
 # 39. Scout Search Providers
 
+> [!IMPORTANT]
+> Dependency examples use `12.0.0-rc.1`, the planned first v12 RC. Do not
+> request it from crates.io before it is published; use path dependencies from
+> this source checkout during development.
+
 Scout connects a `#[orm(searchable)]` SQLx model to one search backend. The
 model database remains authoritative; the search index is a projection updated
 only after a successful managed commit.
@@ -10,7 +15,7 @@ With the umbrella crate:
 
 ```toml
 [dependencies]
-rullst = { version = "12.0.0", features = ["orm-scout"] }
+rullst = { version = "12.0.0-rc.1", features = ["orm-scout"] }
 ```
 
 Or enable `scout-http` directly on `rullst-orm`. The feature supplies bounded

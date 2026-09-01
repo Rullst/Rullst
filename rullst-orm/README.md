@@ -11,7 +11,11 @@
   </p>
 </div>
 
-🚀 **[Visit the Official Website & Documentation Hub](https://rullst.github.io/book/)** 🚀
+> **v12 development notice:** This README documents the unreleased v12 source.
+> Use a path dependency from this checkout until an immutable v12 RC exists on
+> crates.io. `12.0.0-rc.1` below is the planned first RC.
+
+🚀 **[Visit the Official Website & Documentation Hub](https://rullst.github.io/Rullst/book/)** 🚀
 
 Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightful, fluent syntax of Active Record frameworks directly to the high-performance Rust ecosystem.
 
@@ -156,8 +160,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
 
 Add the library to your `Cargo.toml`:
 
+After that RC is published, install its exact train with:
+
 ```bash
-cargo add rullst-orm
+cargo add rullst-orm@12.0.0-rc.1
 cargo add tokio -F full
 ```
 
@@ -181,7 +187,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
     // 2. Initialize the connection pool (SQLite, Postgres, MySQL/MariaDB)
     Orm::init("sqlite::memory:").await?;
 
-    // 3. Create a new user magically
+    // 3. Create a new user through the generated Active Record API
     let mut user = User {
         id: 0,
         name: "Alice".to_string(),
@@ -189,7 +195,7 @@ async fn main() -> Result<(), rullst_orm::Error> {
         password: "secret_password".to_string(),
     };
     
-    user.save().await?; // Runs INSERT and hydrates the ID automatically!
+    user.save().await?; // Runs INSERT and hydrates the generated ID.
 
     // 4. Fluent Queries
     let active_users = User::query()
@@ -278,7 +284,7 @@ if let Some(event) = Outbox::claim_next("tenant-42", "mail-worker-1", 30, 8).awa
 `OutboxMigration` through the application's normal migration runner in
 production. Generated observers are not silently persisted, and an ACK lost
 after the external effect can cause redelivery; see the
-[transactional outbox tutorial](https://rullst.github.io/book/tutorials/38-transactional-outbox.html).
+[transactional outbox tutorial](https://rullst.github.io/Rullst/book/tutorials/38-transactional-outbox.html).
 
 ---
 
@@ -286,7 +292,7 @@ after the external effect can cause redelivery; see the
 
 We recently launched a brand-new **Interactive Documentation Hub**! 
 
-👉 **[Explore the Full Documentation in the Rullst Book](https://rullst.github.io/book/)**
+👉 **[Explore the Full Documentation in the Rullst Book](https://rullst.github.io/Rullst/book/)**
 
 ---
 
