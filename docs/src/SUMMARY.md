@@ -22,6 +22,7 @@
 
 ## 🟢 Level 1: Basic (Foundations & CRUD)
 - [01. Hello Rullst!](tutorials/01-hello-world.md)
+- [REST API Quickstart](tutorials/rest-api-quickstart.md)
 - [02. CLI Automation & Generators](tutorials/02-cli-generators.md)
 - [03. Active Record CRUD Operations](tutorials/03-active-record-crud.md)
 - [04. Data Mapper & Repository Pattern](tutorials/04-repository-pattern.md)

@@ -105,6 +105,10 @@ v12 preview dependency, the first typed route, error handling, and running the
 server on Linux, macOS, and Windows:
 
 > 📖 **[Build your first Rullst application with the Zero-to-Hero tutorial](docs/src/tutorials/01-hello-world.md)**
+>
+> 🌐 **[Create and verify your first JSON REST API](docs/src/tutorials/rest-api-quickstart.md)**
+> includes a complete `main.rs`, secure-header middleware, the run command,
+> and a `curl` request.
 
 Already have Rust? Start the unreleased v12 preview and continue with the
 documented `src/main.rs`:
