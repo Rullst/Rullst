@@ -1453,6 +1453,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "syn 3.0.4",
+ "tempfile",
  "tera",
  "thiserror 2.0.20",
  "tokio",

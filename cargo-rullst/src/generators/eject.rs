@@ -1,6 +1,102 @@
 use colored::Colorize;
 use std::fs;
-use std::path::Path;
+use std::io::{self, ErrorKind, Write};
+use std::path::{Component, Path, PathBuf};
+
+fn resolve_target(force: bool, output_path: Option<&str>) -> Result<PathBuf, io::Error> {
+    let target = PathBuf::from(output_path.unwrap_or(if force {
+        "src/main.rs"
+    } else {
+        "src/ejected_main.rs"
+    }));
+    if target.is_absolute()
+        || target.extension().and_then(|extension| extension.to_str()) != Some("rs")
+        || target
+            .components()
+            .any(|component| !matches!(component, Component::Normal(_)))
+        || target.components().next() != Some(Component::Normal("src".as_ref()))
+    {
+        return Err(io::Error::new(
+            ErrorKind::InvalidInput,
+            "eject output must be a relative Rust file below src/",
+        ));
+    }
+    if target == Path::new("src/main.rs") && !force {
+        return Err(io::Error::new(
+            ErrorKind::PermissionDenied,
+            "overwriting src/main.rs requires --force",
+        ));
+    }
+
+    let source_root = fs::canonicalize("src")?;
+    let parent = target.parent().ok_or_else(|| {
+        io::Error::new(
+            ErrorKind::InvalidInput,
+            "eject output has no parent directory",
+        )
+    })?;
+    let canonical_parent = fs::canonicalize(parent)?;
+    if !canonical_parent.starts_with(source_root) {
+        return Err(io::Error::new(
+            ErrorKind::InvalidInput,
+            "eject output resolves outside src/",
+        ));
+    }
+    Ok(target)
+}
+
+fn preserve_backup(source: &Path, backup: &Path) -> Result<(), io::Error> {
+    let mut input = fs::File::open(source)?;
+    let mut output = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(backup)
+        .map_err(|error| {
+            if error.kind() == ErrorKind::AlreadyExists {
+                io::Error::new(
+                    ErrorKind::AlreadyExists,
+                    format!(
+                        "backup '{}' already exists; move or review it before --force",
+                        backup.display()
+                    ),
+                )
+            } else {
+                error
+            }
+        })?;
+    if let Err(error) = io::copy(&mut input, &mut output) {
+        drop(output);
+        let _ = fs::remove_file(backup);
+        return Err(error);
+    }
+    Ok(())
+}
+
+fn write_new_file(path: &Path, contents: &[u8]) -> Result<(), io::Error> {
+    let mut output = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(|error| {
+            if error.kind() == ErrorKind::AlreadyExists {
+                io::Error::new(
+                    ErrorKind::AlreadyExists,
+                    format!(
+                        "refusing to overwrite existing eject output '{}'",
+                        path.display()
+                    ),
+                )
+            } else {
+                error
+            }
+        })?;
+    if let Err(error) = output.write_all(contents) {
+        drop(output);
+        let _ = fs::remove_file(path);
+        return Err(error);
+    }
+    Ok(())
+}
 
 pub fn run_eject_project(
     force: bool,
@@ -13,11 +109,7 @@ pub fn run_eject_project(
             .bold()
     );
 
-    let target_file = output_path.unwrap_or(if force {
-        "src/main.rs"
-    } else {
-        "src/ejected_main.rs"
-    });
+    let target_file = resolve_target(force, output_path)?;
     let main_rs_path = Path::new("src/main.rs");
 
     if !main_rs_path.exists() {
@@ -25,10 +117,24 @@ pub fn run_eject_project(
             "{}",
             "❌ Error: src/main.rs not found in current directory.".red()
         );
-        return Ok(());
+        return Err(io::Error::new(ErrorKind::NotFound, "src/main.rs not found").into());
     }
 
-    let original_code = fs::read_to_string(main_rs_path)?;
+    if fs::symlink_metadata(main_rs_path)?.file_type().is_symlink() {
+        return Err(io::Error::new(
+            ErrorKind::InvalidInput,
+            "refusing to replace a symlinked src/main.rs",
+        )
+        .into());
+    }
+
+    let backup = if target_file == main_rs_path {
+        let backup = PathBuf::from("src/main.rs.rullst-backup");
+        preserve_backup(main_rs_path, &backup)?;
+        Some(backup)
+    } else {
+        None
+    };
 
     let mut ejected = String::from(
         "// ==========================================================================\n",
@@ -41,39 +147,103 @@ pub fn run_eject_project(
     ejected.push_str("use axum::{Router, routing::get, response::Html};\n");
     ejected.push_str("use std::net::SocketAddr;\n\n");
 
-    if original_code.contains("pub async fn") || original_code.contains("async fn main") {
-        ejected.push_str("#[tokio::main]\n");
-        ejected.push_str("async fn main() -> Result<(), Box<dyn std::error::Error>> {\n");
-        ejected.push_str("    let app = Router::new()\n");
-        ejected.push_str(
-            "        .route(\"/\", get(|| async { Html(\"<h1>Ejected Axum Server</h1>\") }));\n\n",
-        );
-        ejected.push_str("    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));\n");
-        ejected
-            .push_str("    println!(\"🚀 Ejected Axum server listening on http://{}\", addr);\n");
-        ejected.push_str("    let listener = tokio::net::TcpListener::bind(addr).await?;\n");
-        ejected.push_str("    axum::serve(listener, app).await?;\n");
-        ejected.push_str("    Ok(())\n");
-        ejected.push_str("}\n");
-    } else {
-        ejected.push_str(&original_code);
-    }
+    ejected.push_str("#[tokio::main]\n");
+    ejected.push_str("async fn main() -> Result<(), Box<dyn std::error::Error>> {\n");
+    ejected.push_str("    let app = Router::new()\n");
+    ejected.push_str(
+        "        .route(\"/\", get(|| async { Html(\"<h1>Ejected Axum Server</h1>\") }));\n\n",
+    );
+    ejected.push_str("    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));\n");
+    ejected.push_str("    println!(\"🚀 Ejected Axum server listening on http://{}\", addr);\n");
+    ejected.push_str("    let listener = tokio::net::TcpListener::bind(addr).await?;\n");
+    ejected.push_str("    axum::serve(listener, app).await?;\n");
+    ejected.push_str("    Ok(())\n");
+    ejected.push_str("}\n");
 
-    fs::write(target_file, ejected)?;
+    if target_file == main_rs_path {
+        fs::write(&target_file, ejected)?;
+    } else {
+        write_new_file(&target_file, ejected.as_bytes())?;
+    }
 
     println!(
         "{}",
         format!(
             "✅ Generated a reviewable Axum/Tokio entry point at '{}'!",
-            target_file
+            target_file.display()
         )
         .green()
         .bold()
     );
 
-    if !force {
-        println!("ℹ️ Original 'src/main.rs' was preserved as backup.");
+    if let Some(backup) = backup {
+        println!(
+            "ℹ️ Original 'src/main.rs' preserved at '{}'.",
+            backup.display()
+        );
+    } else {
+        println!("ℹ️ Original 'src/main.rs' was not modified.");
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    #[test]
+    fn eject_target_is_confined_and_force_gated() {
+        assert_eq!(
+            resolve_target(false, None).unwrap(),
+            PathBuf::from("src/ejected_main.rs")
+        );
+        assert!(resolve_target(false, Some("src/main.rs")).is_err());
+        assert_eq!(
+            resolve_target(true, Some("src/main.rs")).unwrap(),
+            PathBuf::from("src/main.rs")
+        );
+        for invalid in [
+            "../outside.rs",
+            "/tmp/outside.rs",
+            "Cargo.toml",
+            "src/../outside.rs",
+        ] {
+            assert!(resolve_target(false, Some(invalid)).is_err());
+        }
+    }
+
+    #[test]
+    fn generated_output_and_backup_never_overwrite_existing_files() {
+        let directory = tempdir().expect("temporary directory");
+        let source = directory.path().join("main.rs");
+        let backup = directory.path().join("main.rs.rullst-backup");
+        let generated = directory.path().join("ejected_main.rs");
+        fs::write(&source, "fn original() {}\n").expect("source fixture");
+
+        preserve_backup(&source, &backup).expect("first backup");
+        assert_eq!(
+            fs::read_to_string(&backup).expect("backup contents"),
+            "fn original() {}\n"
+        );
+        assert_eq!(
+            preserve_backup(&source, &backup)
+                .expect_err("backup collision must fail")
+                .kind(),
+            ErrorKind::AlreadyExists
+        );
+
+        write_new_file(&generated, b"fn generated() {}\n").expect("first output");
+        assert_eq!(
+            write_new_file(&generated, b"fn overwritten() {}\n")
+                .expect_err("output collision must fail")
+                .kind(),
+            ErrorKind::AlreadyExists
+        );
+        assert_eq!(
+            fs::read_to_string(generated).expect("generated contents"),
+            "fn generated() {}\n"
+        );
+    }
 }

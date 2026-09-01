@@ -63,6 +63,7 @@ uuid = { workspace = true }
 
 [dev-dependencies]
 insta = { version = "1.41", features = ["yaml"] }
+tempfile = "3.27.0"
 # Keeps the generated Tera blueprint dependency locked and cached for the
 # packaged-distribution compile gate without adding it to the CLI runtime graph.
 tera = "2.2"

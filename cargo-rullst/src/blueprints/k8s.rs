@@ -93,7 +93,7 @@ data:
 
 pub fn hpa_yaml(app_name: &str) -> String {
     format!(
-        r###"apiVersion: autoscaling/2.2
+        r###"apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: {app_name}-hpa
@@ -168,5 +168,12 @@ mod tests {
         let manifest = configmap_yaml("demo", 3000);
         assert!(manifest.contains("RULLST_ENV: \"production\""));
         assert!(!manifest.contains("APP_ENV:"));
+    }
+
+    #[test]
+    fn hpa_uses_the_stable_autoscaling_api() {
+        let manifest = hpa_yaml("demo");
+        assert!(manifest.starts_with("apiVersion: autoscaling/v2\n"));
+        assert!(!manifest.contains("autoscaling/2.2"));
     }
 }
