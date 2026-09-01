@@ -72,6 +72,11 @@ pub(crate) fn build_reverse_patch(
     if operations.is_empty() {
         return Ok(None);
     }
+    if operations.len() > MAX_PATCH_OPERATIONS {
+        return Err(crate::Error::Validation(
+            "audit restore patch exceeds its operation bound".to_string(),
+        ));
+    }
     let encoded = serde_json::to_string(&ReversePatch {
         version: PATCH_VERSION,
         operations,
@@ -304,32 +309,5 @@ pub async fn load_restorable_revision_with_tx(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn reverse_patch_restores_nested_values_and_rejects_stale_state() {
-        let before = json!({"name":"before","profile":{"locale":"en","theme":"dark"}});
-        let after = json!({"name":"after","profile":{"locale":"pt","theme":"dark"}});
-        let patch = build_reverse_patch(&before.to_string(), &after.to_string())
-            .expect("build patch")
-            .expect("changed values");
-        assert_eq!(
-            apply_reverse_patch(after.clone(), &patch).expect("restore"),
-            before
-        );
-        let stale = json!({"name":"later","profile":{"locale":"pt","theme":"dark"}});
-        assert!(apply_reverse_patch(stale, &patch).is_err());
-    }
-
-    #[test]
-    fn reverse_patch_refuses_redacted_sensitive_changes() {
-        let patch = build_reverse_patch(r#"{"password":"before"}"#, r#"{"password":"after"}"#)
-            .expect("build patch")
-            .expect("changed values");
-        assert!(apply_reverse_patch(json!({"password":"after"}), &patch).is_err());
-        assert!(!patch.contains(r#"\"before\""#));
-        assert!(!patch.contains(r#"\"after\""#));
-    }
-}
+#[path = "revision_tests.rs"]
+mod tests;
