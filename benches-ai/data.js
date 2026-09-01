@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788238169881,
+  "lastUpdate": 1788245866389,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -4313,6 +4313,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 483,
             "range": "± 32",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "1bb6537ff58c5caba796415ff330d12f5bb1e32f",
+          "message": "test(runtime): exercise default feature contracts",
+          "timestamp": "2026-09-01T03:35:42-03:00",
+          "tree_id": "453cf3c74e339ab6a9b2ae185fc49c3e4b287bd5",
+          "url": "https://github.com/Rullst/Rullst/commit/1bb6537ff58c5caba796415ff330d12f5bb1e32f"
+        },
+        "date": 1788245865920,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1848,
+            "range": "± 46",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 330,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 714,
+            "range": "± 9",
             "unit": "ns/iter"
           }
         ]
