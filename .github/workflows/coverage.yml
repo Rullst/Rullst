@@ -44,6 +44,20 @@ jobs:
         run: |
           cargo llvm-cov --no-report --all-features --workspace
 
+      - name: Run cargo-llvm-cov (default feature profiles)
+        # The all-feature graph deliberately enables mutually exclusive
+        # strict-* compile profiles. A second real workspace pass exercises
+        # default SQLite integration tests that are cfg-excluded from that
+        # graph; cargo-llvm-cov merges both sets of profile data. The CLI and
+        # proc-macro crates have no database profile split and were already
+        # exercised above, so do not repeat their expensive generated-project
+        # verification here.
+        run: |
+          cargo llvm-cov --no-report --workspace \
+            --exclude cargo-rullst \
+            --exclude rullst-macros \
+            --exclude rullst-orm-macros
+
       - name: Run cargo-llvm-cov (outbox and DB matrix contracts)
         # Must run without strict-* features so the cfg gates are satisfied.
         # The outbox test uses SQLite; PostgreSQL/MySQL use testcontainers.

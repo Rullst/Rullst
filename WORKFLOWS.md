@@ -238,7 +238,7 @@ was removed because its composite action downloaded an unversioned `latest`
 binary without a repository-pinned checksum, which was unsuitable for a
 blocking supply-chain gate.
 
-## Workflow inventory (34 definitions)
+## Workflow inventory (36 definitions)
 
 Durations are intentionally omitted because runner load, cache state, and the
 dependency graph make static estimates unreliable.
