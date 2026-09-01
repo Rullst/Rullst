@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788292989562,
+  "lastUpdate": 1788295168712,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -4937,6 +4937,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 693,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "7cc12a2edac0a984c7c036e0e12624e37e0b1712",
+          "message": "feat(quality): strengthen macro and IoT release evidence",
+          "timestamp": "2026-09-01T17:26:54-03:00",
+          "tree_id": "27558ff1e280654e26a77a3e7dd650ddc0082d3f",
+          "url": "https://github.com/Rullst/Rullst/commit/7cc12a2edac0a984c7c036e0e12624e37e0b1712"
+        },
+        "date": 1788295168159,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1078,
+            "range": "± 44",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 207,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 468,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
