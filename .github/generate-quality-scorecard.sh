@@ -3,6 +3,7 @@ set -euo pipefail
 
 output_path="${1:-quality-scorecard.md}"
 policy_path=".github/quality-scorecard-policy.json"
+targets_path=".github/quality-scorecard-targets.json"
 release_order_path=".github/release-order.json"
 sha="${RULLST_SCORECARD_SHA:-unknown}"
 checked_at="${RULLST_SCORECARD_TIME:-unknown}"
@@ -78,14 +79,65 @@ jq -e '
   exit 1
 }
 
+jq -e '
+  .schema_version == 1
+  and .scope == "v12-maximum-local-campaign"
+  and (.targets | length > 0)
+  and (.targets | length == ([.[].name] | unique | length))
+  and all(
+    .targets[];
+    . as $target
+    | ($target.name | test("^[a-z0-9_-]+$"))
+    and ($target.rc_floor | type == "number" and . >= 0 and . <= 100)
+    and ($target.local_target | type == "number" and . >= $target.rc_floor and . <= 100)
+  )
+' "$targets_path" >/dev/null || {
+  echo "The quality scorecard targets are malformed." >&2
+  exit 1
+}
+
 mapfile -t packages < <(jq -r '.[]' "$release_order_path")
 mapfile -t audited_packages < <(jq -r '.crates[].name' "$policy_path")
+mapfile -t targeted_packages < <(jq -r '.targets[].name' "$targets_path")
 if ! diff -u \
   <(printf '%s\n' "${packages[@]}" | sort) \
   <(printf '%s\n' "${audited_packages[@]}" | sort); then
   echo "The scorecard must audit exactly the publishable release train." >&2
   exit 1
 fi
+if ! diff -u \
+  <(printf '%s\n' "${packages[@]}" | sort) \
+  <(printf '%s\n' "${targeted_packages[@]}" | sort); then
+  echo "The scorecard targets must cover exactly the publishable release train." >&2
+  exit 1
+fi
+
+while IFS=$'\t' read -r package current_ceiling floor local_target; do
+  if ((current_ceiling > local_target)); then
+    echo "The current ceiling for $package exceeds its stale local target." >&2
+    exit 1
+  fi
+  if [[ "$package" == "rullst-iot" ]]; then
+    ((floor == 80)) || {
+      echo "The approved rullst-iot RC floor must remain 80." >&2
+      exit 1
+    }
+  elif ((floor != 90)); then
+    echo "The RC floor for $package must remain 90." >&2
+    exit 1
+  fi
+done < <(jq -r --slurpfile targets "$targets_path" '
+  .crates[]
+  | . as $crate
+  | ($targets[0].targets[] | select(.name == $crate.name)) as $target
+  | [
+      $crate.name,
+      ($crate.api_architecture + $crate.verification + $crate.security_failure_design + $crate.documentation_dx + $crate.operations_release),
+      $target.rc_floor,
+      $target.local_target
+    ]
+  | @tsv
+' "$policy_path")
 
 while IFS= read -r evidence_path; do
   [[ -e "$evidence_path" ]] || {
@@ -102,10 +154,10 @@ done < <(jq -r '.crates[].evidence[]' "$policy_path" | sort -u)
   echo "- Audit policy date: $(jq -r '.audit_date' "$policy_path")"
   echo "- Scope: audited per-crate ceilings constrained by this exact workflow run"
   echo
-  echo "> A score is not feature completeness, production readiness, security certification, provider homologation, or a comparison with another framework. A green gate cannot award more than the committed audited ceiling."
+  echo "> A score is not feature completeness, production readiness, security certification, provider homologation, or a comparison with another framework. A green gate cannot award more than the committed audited ceiling. Local targets are planning values, never awarded scores."
   echo
-  echo "| Crate | Score | Grade | API /20 | Verification /25 | Security /20 | Docs /15 | Operations /20 | Specialist gate | Audited finding |"
-  echo "| :--- | ---: | :---: | ---: | ---: | ---: | ---: | ---: | :--- | :--- |"
+  echo "| Crate | Score | Grade | RC floor | Local target | Target gap | API /20 | Verification /25 | Security /20 | Docs /15 | Operations /20 | Specialist gate | Audited finding |"
+  echo "| :--- | ---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :--- | :--- |"
 } >"$output_path"
 
 repository_achieved=0
@@ -118,6 +170,9 @@ for package in "${packages[@]}"; do
   operations_ceiling="$(jq -r '.operations_release' <<<"$record")"
   specialist="$(jq -r '.specialist_gate' <<<"$record")"
   finding="$(jq -r '.finding' <<<"$record" | tr '|' '/')"
+  target_record="$(jq -c --arg package "$package" '.targets[] | select(.name == $package)' "$targets_path")"
+  rc_floor="$(jq -r '.rc_floor' <<<"$target_record")"
+  local_target="$(jq -r '.local_target' <<<"$target_record")"
 
   api_score=0
   api_mark="fail"
@@ -175,9 +230,11 @@ for package in "${packages[@]}"; do
   score=$((api_score + verification_score + security_score + docs_score + operations_score))
   grade="$(grade_for "$score")"
   repository_achieved=$((repository_achieved + score))
+  target_gap=$((local_target - score))
 
-  printf '| `%s` | **%d/100** | **%s** | %d (%s) | %d (%s) | %d (%s) | %d | %d (%s) | %s: %s | %s |\n' \
-    "$package" "$score" "$grade" "$api_score" "$api_mark" \
+  printf '| `%s` | **%d/100** | **%s** | %d | %d | %d | %d (%s) | %d (%s) | %d (%s) | %d | %d (%s) | %s: %s | %s |\n' \
+    "$package" "$score" "$grade" "$rc_floor" "$local_target" "$target_gap" \
+    "$api_score" "$api_mark" \
     "$verification_score" "$verification_mark" "$security_score" \
     "$security_mark" "$docs_score" "$operations_score" "$operations_mark" \
     "$specialist" "$(status_mark "$specialist_status")" "$finding" >>"$output_path"
@@ -186,12 +243,16 @@ done
 repository_denominator=$((${#packages[@]} * 100))
 repository_score=$(((repository_achieved * 100 + repository_denominator / 2) / repository_denominator))
 repository_grade="$(grade_for "$repository_score")"
+repository_target="$(jq '[.targets[].local_target] | add' "$targets_path")"
+repository_target_gap=$((repository_target - repository_achieved))
 
 {
   echo
   echo "## Repository score"
   echo
   echo "**$repository_score/100 ($repository_grade)** — $repository_achieved/$repository_denominator audited points across ${#packages[@]} crates."
+  echo
+  echo "The provisional maximum-local v12 target is $repository_target/$repository_denominator; this run remains $repository_target_gap planning points away. Targets never increase achieved scores."
   echo
   echo "The repository score is the equal-crate aggregate. Capability progress is reported separately. Failed/cancelled/skipped applicable gates suppress the dimensions they are meant to prove; they never increase a ceiling."
   echo

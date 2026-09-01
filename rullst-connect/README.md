@@ -51,6 +51,9 @@ state of those checks for the referenced commit; they are not an absolute securi
 - 🔄 **Bounded automatic refresh**: A user-bound, redacting static coordinator
   detects token expiry, prevents overlapping refresh calls and reuses a valid
   result for waiting callers.
+- 🔏 **Encrypted token snapshots**: AES-256-GCM envelopes preserve validated
+  refresh generations across restarts, authenticate provider/account ownership,
+  support explicit key IDs, and keep durable storage under application control.
 - 🚪 **Typed remote revocation**: Access and refresh tokens are distinct API
   operations. Google, GitHub, Discord, Apple, Auth0 and Cognito have bounded
   protocol adapters; unsupported providers fail explicitly and offline
@@ -308,8 +311,32 @@ async fn authorized_call(
 The coordinator uses a 60-second early-refresh window, prevents overlapping
 provider calls, lets waiters reuse a successful refresh, retains a provider that
 does not rotate its refresh token, adopts a validated rotation and binds every
-response to the original provider user. `state_snapshot` exists for an
-application-owned encrypted credential store. Cross-process leases,
+response to the original provider user. Seal `state_snapshot()` with
+`EncryptedTokenSnapshot` before writing it to application-owned storage:
+
+```rust
+use rullst_connect::{
+    EncryptedTokenSnapshot, RefreshableTokenState, TokenSnapshotBinding,
+    TokenSnapshotError, TokenSnapshotKey,
+};
+
+fn seal_for_storage(
+    state: &RefreshableTokenState,
+    key_bytes: [u8; 32],
+    local_account_id: &str,
+) -> Result<EncryptedTokenSnapshot, TokenSnapshotError> {
+    let binding = TokenSnapshotBinding::try_new("github", local_account_id)?;
+    let key = TokenSnapshotKey::try_new("oauth-primary-2026", key_bytes)?;
+    EncryptedTokenSnapshot::seal(state, &key, &binding)
+}
+```
+
+Persist only `snapshot.as_str()`. On restart, validate it with
+`try_from_envelope`, select the secret-manager key named by `key_id()`, and call
+`open` with the same trusted binding before constructing a new session. The
+32-byte key must come from a secret manager or CSPRNG, not a human password.
+The envelope is bounded, versioned, redacting, and authenticated; it does not
+provide a database transaction or distributed refresh lock. Cross-process leases,
 retry/backoff, local-session logout/reconciliation, reauthentication and
 revocation for providers outside the named adapter set remain application policy;
 providers without refresh support fail explicitly.

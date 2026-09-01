@@ -39,6 +39,7 @@ application/operator's responsibility.
 | State/nonce comparison | `src/extractors.rs`, `src/provider/mod.rs` | Constant-time comparison is one control; the application must still generate, store, expire, and consume transaction state correctly. |
 | Response-size limit | `src/client/reqwest_client.rs` | The built-in client enforces its configured bound. A custom `HttpClient` is a separate trust boundary and must enforce equivalent limits. |
 | Secret wrappers | provider/user types using `secrecy::SecretString` | Debug redaction reduces accidental disclosure; it is not a complete secret-management or memory-erasure guarantee for every copy and dependency. |
+| Encrypted refresh snapshots | `src/refresh/snapshot.rs` | AES-256-GCM authenticates version/key/provider/account binding and restores validated state. The application must supply high-entropy key custody, transactional storage, rotation and distributed refresh coordination. |
 
 ## Reproduce evidence for a commit
 
@@ -58,8 +59,9 @@ available. Temporary advisory exceptions, their scope, owner, compensating contr
 are tracked in [`../docs/src/security-advisory-exceptions.md`](../docs/src/security-advisory-exceptions.md).
 
 Relevant regression tests currently live alongside configuration/JWKS modules and in
-`tests/integration_tests.rs`. Test counts are deliberately omitted because they change as the
-suite evolves.
+`tests/integration_tests.rs`, `tests/revocation_contract.rs` and
+`tests/token_snapshot_contract.rs`. Test counts are deliberately omitted because they change as
+the suite evolves.
 
 ## Review checklist
 

@@ -22,7 +22,10 @@ pub use configuration::CredentialMode;
 pub use error::ConnectError;
 
 pub use provider::Provider;
-pub use refresh::{AccessTokenLease, AutoRefreshingSession, RefreshableTokenState};
+pub use refresh::{
+    AccessTokenLease, AutoRefreshingSession, EncryptedTokenSnapshot, RefreshableTokenState,
+    TokenSnapshotBinding, TokenSnapshotError, TokenSnapshotKey,
+};
 pub use user::{ConnectUser, UniversalProfile};
 
 /// The main entry point for the rullst-connect library.

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "scope": "v12-maximum-local-campaign",
+  "targets": [
+    { "name": "rullst-macros", "rc_floor": 90, "local_target": 94 },
+    { "name": "rullst-orm-macros", "rc_floor": 90, "local_target": 95 },
+    { "name": "rullst-orm", "rc_floor": 90, "local_target": 96 },
+    { "name": "rullst-core", "rc_floor": 90, "local_target": 96 },
+    { "name": "rullst-messaging", "rc_floor": 90, "local_target": 96 },
+    { "name": "rullst-connect", "rc_floor": 90, "local_target": 95 },
+    { "name": "rullst-iot", "rc_floor": 80, "local_target": 88 },
+    { "name": "rullst-security", "rc_floor": 90, "local_target": 96 },
+    { "name": "rullst-ai", "rc_floor": 90, "local_target": 95 },
+    { "name": "rullst-capital", "rc_floor": 90, "local_target": 93 },
+    { "name": "rullst-mail", "rc_floor": 90, "local_target": 95 },
+    { "name": "rullst-auth", "rc_floor": 90, "local_target": 95 },
+    { "name": "rullst-nexus", "rc_floor": 90, "local_target": 95 },
+    { "name": "rullst-studio", "rc_floor": 90, "local_target": 94 },
+    { "name": "rullst", "rc_floor": 90, "local_target": 96 },
+    { "name": "cargo-rullst", "rc_floor": 90, "local_target": 95 }
+  ]
+}

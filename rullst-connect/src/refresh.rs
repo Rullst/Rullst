@@ -1,5 +1,11 @@
 //! Bounded, process-local coordination for automatic OAuth token refresh.
 
+mod snapshot;
+
+pub use snapshot::{
+    EncryptedTokenSnapshot, TokenSnapshotBinding, TokenSnapshotError, TokenSnapshotKey,
+};
+
 use crate::{ConnectError, ConnectUser, Provider};
 use secrecy::{ExposeSecret, SecretString};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -135,6 +141,36 @@ impl RefreshableTokenState {
         )?;
         state.generation = generation;
         Ok(state)
+    }
+
+    fn try_restore(
+        provider_user_id: String,
+        access_token: String,
+        refresh_token: String,
+        issued_at: u64,
+        expires_at: u64,
+        generation: u64,
+    ) -> Result<Self, ConnectError> {
+        let access_token = SecretString::from(access_token);
+        let refresh_token = SecretString::from(refresh_token);
+        validate_provider_user_id(&provider_user_id)?;
+        validate_token("access token", &access_token)?;
+        validate_token("refresh token", &refresh_token)?;
+        if expires_at <= issued_at
+            || expires_at.saturating_sub(issued_at) > MAX_TOKEN_LIFETIME_SECONDS
+        {
+            return Err(ConnectError::Token(
+                "restored token expiration is outside the supported lifetime".to_string(),
+            ));
+        }
+        Ok(Self {
+            provider_user_id,
+            access_token,
+            refresh_token,
+            issued_at,
+            expires_at,
+            generation,
+        })
     }
 }
 

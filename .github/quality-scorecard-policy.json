@@ -68,12 +68,12 @@
       "name": "rullst-connect",
       "api_architecture": 18,
       "verification": 23,
-      "security_failure_design": 18,
+      "security_failure_design": 19,
       "documentation_dx": 14,
-      "operations_release": 15,
+      "operations_release": 16,
       "specialist_gate": "threat-minimum",
-      "finding": "Substantial OAuth/OIDC protocol and negative evidence; durable token lifecycle, distributed refresh and formal provider conformance remain external/application work.",
-      "evidence": ["rullst-connect/README.md", "rullst-connect/tests", "docs/src/crates/connect.md"]
+      "finding": "Substantial OAuth/OIDC protocol and negative evidence plus bounded provider/account-bound encrypted refresh snapshots; durable transactions, key operations, distributed refresh and formal provider conformance remain external/application work.",
+      "evidence": ["rullst-connect/README.md", "rullst-connect/src/refresh/snapshot.rs", "rullst-connect/tests/token_snapshot_contract.rs", "docs/src/crates/connect.md"]
     },
     {
       "name": "rullst-iot",

@@ -24,6 +24,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Upgrade and compatibility
 
+- `rullst-connect` adds storage-neutral `EncryptedTokenSnapshot` envelopes for
+  refresh state. AES-256-GCM authenticates the version, rotation key ID,
+  provider and trusted local-account binding; decryption revalidates every
+  token/lifetime field and preserves the refresh generation. The application
+  still owns durable writes, key custody/rotation, account authorization and
+  cross-process compare-and-set or leases.
 - Rullst v12 coordinates 16 publishable packages in one release train. Upgrade
   direct `rullst-*` dependencies together and review the
   [migration guides](docs/src/migration-v12.md),

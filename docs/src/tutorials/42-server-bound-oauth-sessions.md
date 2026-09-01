@@ -145,10 +145,48 @@ async fn provider_request(
 one async process-local refresh gate, so provider refresh calls cannot overlap
 and waiters reuse the first valid result. It keeps the old refresh credential if
 the provider does not rotate, adopts a valid rotation, requires the same provider
-user ID and changes state only after full validation. Persist `state_snapshot()` through a dedicated
-encrypted credential store. Multi-process deployments still need an
-application-owned distributed lease; retry/backoff, revocation, reauthentication
-and replay of the original API request are deliberately not inferred.
+user ID and changes state only after full validation.
+
+## Persist refresh state without storing plaintext tokens
+
+Rullst supplies a storage-neutral authenticated envelope. The application still
+chooses its database/file/secret manager, but the stored token record need not
+invent its own cryptographic format:
+
+```rust
+use rullst_connect::{
+    AutoRefreshingSession, EncryptedTokenSnapshot, Provider,
+    TokenSnapshotBinding, TokenSnapshotError, TokenSnapshotKey,
+};
+
+async fn seal_current_state<P: Provider + ?Sized>(
+    session: &AutoRefreshingSession<'_, P>,
+    key_bytes: [u8; 32],
+    local_account_id: &str,
+) -> Result<EncryptedTokenSnapshot, TokenSnapshotError> {
+    let state = session.state_snapshot().await;
+    let binding = TokenSnapshotBinding::try_new("github", local_account_id)?;
+    let key = TokenSnapshotKey::try_new("oauth-primary-2026", key_bytes)?;
+    EncryptedTokenSnapshot::seal(&state, &key, &binding)
+}
+```
+
+Write only `EncryptedTokenSnapshot::as_str()` to durable storage. On restart:
+
+1. parse the stored string with `EncryptedTokenSnapshot::try_from_envelope`;
+2. read its non-secret `key_id()` and select that 32-byte key in a secret
+   manager;
+3. rebuild the same binding from trusted provider and local-account state;
+4. call `open`, then pass the restored state to `AutoRefreshingSession::new`.
+
+The AES-256-GCM authentication tag covers the envelope version, key ID,
+provider and local account, so a copied record fails for another owner. The
+payload is bounded and revalidated after decryption. Debug output is redacted,
+and the envelope itself does not implement `Display` or Serde. The application
+must still commit each new generation transactionally, rotate/retain keys,
+authorize the account and revoke local state. Multi-process deployments also
+need a distributed compare-and-set/lease; retry/backoff, reauthentication and
+replay of the original API request are deliberately not inferred.
 
 ## Lifecycle and failure semantics
 

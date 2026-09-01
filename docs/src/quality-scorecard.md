@@ -43,18 +43,23 @@ stricter than the earlier all-B floor and reopens bounded implementation work
 before the feature freeze. It does not pre-approve a commit: the exact SHA
 still earns each ceiling only when every constraining gate succeeds.
 
-## Audited green-gate ceilings — 1 September 2026
+## Current audited green-gate ceilings — 1 September 2026
 
 These are the maximum current scores when every referenced Rust CI gate passes.
 They are not presumed results for a new commit; the exact per-SHA artifact
 applies the real gate outcomes and includes the full finding for every row.
+They are also not the highest scores that future repository-owned work can
+earn. Here, **current ceiling** means the score supported by code and evidence
+already present; **local campaign ceiling** means a planning target that must
+still be earned. Keeping those columns separate prevents a desired score from
+being published as an achieved one.
 
 | Crate | Ceiling | Grade | Principal remaining evidence boundary |
 | :--- | ---: | :---: | :--- |
 | `rullst-core` | 91 | A | Distributed deployment and host authorization |
 | `rullst-orm` | 91 | A | Cross-store semantics, disaster recovery and remaining operational adapters |
 | `rullst-security` | 90 | A | External SIEM delivery, independent audit and certification |
-| `rullst-connect` | 88 | B | Durable/distributed token lifecycle and provider conformance |
+| `rullst-connect` | 90 | A | Durable transaction/key operations, distributed refresh and provider conformance |
 | `rullst` | 88 | B | Inherits uneven maturity from opt-in domain crates |
 | `rullst-auth` | 87 | B | WebAuthn conformance and durable shared revocation/devices |
 | `rullst-mail` | 87 | B | Inbox/provider evidence, opaque-file inspection and distributed operations |
@@ -71,20 +76,19 @@ applies the real gate outcomes and includes the full finding for every row.
 
 ## Measured gap to the v12 quality gate
 
-At the ceilings above, Core, ORM and Security meet A and IoT meets its approved
-B exception. Twelve crates remain below their required grade. Their individual
-gaps total **66 audited points**. This is not a count of tasks and
+At the ceilings above, Core, ORM, Security and Connect meet A and IoT meets its
+approved B exception. Eleven crates remain below their required grade. Their
+individual gaps total **64 audited points**. This is not a count of tasks and
 cannot be closed by editing the policy: every point requires a commensurate
 change in implementation, verification, security/failure design,
 documentation/DX, or operational evidence.
 
-If the twelve crates reach exactly 90 while Core and ORM remain at 91, Security
-remains at 90 and IoT remains at 83, the equal-crate aggregate becomes
-1,435/1,600, which rounds to **90/A**.
+If the eleven remaining crates reach exactly 90 while Core and ORM remain at
+91, Security and Connect remain at 90 and IoT remains at 83, the equal-crate
+aggregate becomes 1,435/1,600, which rounds to **90/A**.
 
 | Crate | Current | Gap to required grade | Next evidence cluster to audit |
 | :--- | ---: | ---: | :--- |
-| `rullst-connect` | 88/B | +2 | Durable token lifecycle plus provider conformance boundaries |
 | `rullst` | 88/B | +2 | Cross-feature facade contracts across the published domain crates |
 | `rullst-auth` | 87/B | +3 | Durable revocation/device lifecycle and broader WebAuthn vectors |
 | `rullst-mail` | 87/B | +3 | Attachment-inspection policy and durable delivery/failure operations |
@@ -96,6 +100,51 @@ remains at 90 and IoT remains at 83, the equal-crate aggregate becomes
 | `rullst-orm-macros` | 82/B | +8 | Complete parser/UI contracts for generated invariants and runtime cross-evidence |
 | `rullst-nexus` | 81/B | +9 | Tenant authorization, durable audit and production admin operation contracts |
 | `rullst-macros` | 81/B | +9 | Public grammar/diagnostic coverage and the remaining generated runtime protocols |
+
+## Maximum-local v12 campaign
+
+The release floor is not the stopping target. The table below records the
+provisional highest score that the current campaign can responsibly pursue
+with repository-owned implementation, deterministic fixtures, local services,
+CI and documentation. These targets do **not** alter the scorecard policy and
+must not appear as achieved scores until their evidence is implemented and
+green on the exact commit.
+
+The campaign is scoped to v12 quality and the historically promised `[x]`
+capabilities. It does not pull every open v13 idea into the RC. External
+provider acceptance, app-store/device testing, fiscal homologation, independent
+audit and production operation remain external even when a bounded
+implementation earns a high A.
+
+| Crate | Current audited | Provisional local ceiling | Points remaining | Repository-owned evidence cluster | External boundary retained |
+| :--- | ---: | ---: | ---: | :--- | :--- |
+| `rullst-core` | 91/A | 96/A | 5 | Graceful/distributed runtime contracts, authorization composition and recovery evidence | Production topology and host domain authorization |
+| `rullst-orm` | 91/A | 96/A | 5 | Cross-store semantics, recovery rehearsal and remaining bounded adapter matrices | Vendor operations and application tenant policy |
+| `rullst-security` | 90/A | 96/A | 6 | SIEM rotation/acknowledgement contracts, broader threat negatives and recovery/SBOM evidence | Independent audit, certification and real SOC operation |
+| `rullst-connect` | 90/A | 95/A | 5 | Transactional token-generation CAS, remaining revocation fixtures and lifecycle recovery | Live-provider conformance and IdP operations |
+| `rullst` | 88/B | 96/A | 8 | Cross-feature facade and crates-only consumer contracts over published domains | Maturity inherited from external provider/device evidence |
+| `rullst-auth` | 87/B | 95/A | 8 | Durable shared revocation/device lifecycle and broader WebAuthn ceremony vectors | Normative external WebAuthn conformance |
+| `rullst-mail` | 87/B | 95/A | 8 | Inspection policy, durable suppression/failure lifecycle and transport observability | Inbox placement, DNS reputation and live-provider acceptance |
+| `rullst-messaging` | 86/B | 96/A | 10 | Encrypted local durability, stable codec/outbox/trace contracts and fault matrices | Remote broker operation, replication and cloud acceptance |
+| `cargo-rullst` | 85/B | 95/A | 10 | Complete generated-blueprint/upgrade compile and runtime matrix | Production deployment/account acceptance |
+| `rullst-ai` | 84/B | 95/A | 11 | Explicit OpenAI-compatible local/cloud adapter, cancellation/streaming, durable retrieval/tool audit and adaptive evaluations | Non-compatible protocols need adapters; model-provider behavior and corpus quality remain external |
+| `rullst-studio` | 83/B | 94/A | 11 | Distributed trace ingestion plus authenticated cache/query inspection boundaries | Production topology and operator authorization |
+| `rullst-iot` | 83/B | 88/B | 5 | Authenticated manifest wire, streaming hash and key-rotation/recovery contracts | Physical hardware, flashing/bootloader, broker/device interoperability and certification |
+| `rullst-capital` | 82/B | 93/A | 11 | Durable idempotency, shared gateway fault contracts and local fiscal audit/recovery | Live gateway acceptance and official fiscal homologation |
+| `rullst-orm-macros` | 82/B | 95/A | 13 | Full parser/UI diagnostic matrix and generated runtime cross-evidence | Compiler/ecosystem compatibility beyond the tested matrix |
+| `rullst-nexus` | 81/B | 95/A | 14 | Tenant authorization, durable audit and bounded admin operation contracts | Host identity/domain policy and production operation |
+| `rullst-macros` | 81/B | 94/A | 13 | Public grammar/diagnostics and generated browser/server protocol contracts | Compiler/browser ecosystem matrix beyond CI |
+| **Repository** | **1,371/1,600 = 85.7/B** | **1,514/1,600 = 94.6/A** | **143** | **Every gain still requires reviewed evidence** | **A+ remains outside this local planning ceiling** |
+
+On this planning scale, **90.6% of the eventual score total is already
+evidenced and 9.4% remains**. That percentage describes point distance, not
+elapsed effort: the remaining points are concentrated in integration,
+durability, failure recovery and generated-project matrices and are therefore
+more expensive than early API/documentation points. `rullst-iot` is the only
+projected local ceiling below A; its approved B exception reflects missing
+physical/device evidence rather than lowering the release gate for other
+crates. This table must be re-audited whenever implementation reveals a
+stronger or weaker boundary.
 
 The final point allocation may differ from these candidate clusters after code
 review. External provider acceptance, fiscal homologation, device testing,

@@ -55,6 +55,9 @@ state of those checks for the referenced commit; they are not an absolute securi
   optional extractor features cover the integrations declared in the crate.
 - 🔐 **Managed callback transaction**: The optional Axum/tower-sessions path
   generates, stores, expires, validates, and consumes state + PKCE + OIDC nonce.
+- 🔏 **Encrypted token snapshots**: Versioned AES-256-GCM envelopes bind a
+  refresh generation to one trusted provider/account pair and an explicit key
+  rotation ID before application-owned persistence.
 - 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, refresh on unknown `kid`, and bounded stale-if-error behavior.
 - 🚪 **Typed remote revocation**: Access and refresh tokens are distinct API
   operations. Google, GitHub, Discord, Apple, Auth0 and Cognito have bounded
@@ -258,9 +261,33 @@ async fn call_provider_api(
 The default checks 60 seconds before expiration. Refresh calls cannot overlap;
 callers waiting behind a successful refresh reuse its state. A response can
 replace the refresh token only after the lifetime and original provider user ID
-validate. Use `access_token_at` in
-deterministic workers/tests and `state_snapshot` only to update a dedicated
-encrypted credential store. Persistence, cross-process refresh leases,
+validate. Use `access_token_at` in deterministic workers/tests. Seal
+`state_snapshot()` with `EncryptedTokenSnapshot` before writing it to a
+dedicated application store:
+
+```rust
+use rullst_connect::{
+    EncryptedTokenSnapshot, RefreshableTokenState, TokenSnapshotBinding,
+    TokenSnapshotError, TokenSnapshotKey,
+};
+
+fn seal_for_storage(
+    state: &RefreshableTokenState,
+    key_bytes: [u8; 32],
+    local_account_id: &str,
+) -> Result<EncryptedTokenSnapshot, TokenSnapshotError> {
+    let binding = TokenSnapshotBinding::try_new("github", local_account_id)?;
+    let key = TokenSnapshotKey::try_new("oauth-primary-2026", key_bytes)?;
+    EncryptedTokenSnapshot::seal(state, &key, &binding)
+}
+```
+
+Persist only `snapshot.as_str()`. On restart, validate it with
+`try_from_envelope`, select the secret-manager key named by `key_id()`, and call
+`open` with the same trusted binding. Keys must be 32 bytes from a secret
+manager or CSPRNG; human passwords require an application-selected KDF. The
+envelope authenticates confidentiality, ownership binding and generation but
+does not provide a database transaction. Cross-process refresh leases,
 retry/backoff, local-session logout/reconciliation, reauthentication and
 revocation outside the named adapter set remain application policy. A
 provider that does not support refresh continues to return a typed error.
