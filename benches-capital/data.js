@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788265069017,
+  "lastUpdate": 1788266623649,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -4019,6 +4019,48 @@ window.BENCHMARK_DATA = {
             "name": "capital_subscription/parse_status_past_due",
             "value": 22,
             "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": false,
+          "id": "25787fa9e84e1025e41ec2e73513486ddd5ff97a",
+          "message": "docs(release): record coverage and gh login",
+          "timestamp": "2026-09-01T09:30:50-03:00",
+          "tree_id": "c659e5b958c007ea7d43fef8fc306f9a213be754",
+          "url": "https://github.com/Rullst/Rullst/commit/25787fa9e84e1025e41ec2e73513486ddd5ff97a"
+        },
+        "date": 1788266623245,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 1",
             "unit": "ns/iter"
           },
           {
