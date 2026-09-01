@@ -1,0 +1,10 @@
+error: Turso-primary models do not yet support #[orm(...)] relation attributes
+  --> tests/ui/turso_relation.rs:6:1
+   |
+ 6 | / #[orm(table = "accounts", backend = "turso")]
+ 7 | | struct Account {
+ 8 | |     id: i64,
+ 9 | |     #[orm(has_many = "Post")]
+10 | |     posts: Vec<Post>,
+11 | | }
+   | |_^

@@ -17,6 +17,8 @@ cryptographic implementations.
 - [x] Manifest binding for target, version, firmware length, SHA-256 digest, and
   monotonic anti-rollback counter.
 - [x] Fail-closed OTA state transition: commit is rejected until verification.
+- [x] `no_std` rollback-counter adapter contract with exact monotonic
+  compare-and-set, typed failure, restart/replay, retry, and stale-writer tests.
 - [x] Negative tests and fuzz coverage for malformed/untrusted OTA input.
 - [x] Safe `make:iot` telemetry scaffold with feature/module registration,
   collision refusal, identifier validation, and a materialized compile test.
@@ -28,7 +30,8 @@ cryptographic implementations.
 - [ ] Authenticated manifest transport and a stable wire format.
 - [ ] Streaming firmware hashing with bounded memory.
 - [ ] Platform flash writer, read-back validation, and power-loss-safe A/B state.
-- [ ] Durable monotonic counter storage and atomic bootloader selection.
+- [ ] A concrete hardware-backed durable counter implementation and atomic
+  bootloader selection, with power-loss/fault-injection device tests.
 - [ ] Key rotation/revocation policy and recovery-key provisioning.
 
 ## Protocol and hardware integrations

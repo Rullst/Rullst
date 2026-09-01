@@ -51,6 +51,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added a compact canonical capability-status view and a SHA-bound CI quality
   scorecard artifact for every main push/PR. The score evaluates engineering
   evidence and explicitly excludes feature completeness and certification.
+- Added a `no_std` OTA rollback-counter adapter to `rullst-iot`. The manager can
+  load durable state and require an exact, strictly increasing compare-and-set
+  before changing local state; public tests cover restart/replay, transient
+  retry, corrupt load and stale-writer conflict. The trait does not implement or
+  certify flash/HSM persistence, bootloader atomicity or power-loss recovery.
 - Replaced the staged 80% framework-coverage threshold with one blocking 90%
   minimum for framework libraries and changed lines. The README again exposes
   dynamic Codecov and OpenSSF values, the declared Rust 1.96.0 MSRV, and the
@@ -776,7 +781,7 @@ release gate has completed.
   package-before-publish release validation used by stable tags.
 
 - **Enterprise Resilience, Memory Safety & Cryptographic Hardening (`rullst-core`, `rullst-security`, `rullst-capital`, `rullst-auth`, `rullst-mail`, `rullst-connect`, `rullst-orm`)**:
-  - **Signed Firmware Gate & IoT Claim Containment (`rullst-iot`)**: Replaced permissive OTA signature stubs with strict Ed25519 verification over a target/version/counter/length/SHA-256 manifest, enforced commit-after-verification and monotonic anti-rollback state, and moved deterministic MQTT/HSM/PQC fixtures behind the explicit `experimental-simulators` feature with `Simulated*` names. Firmware flashing, bootloader control, persistent counters, real MQTT transport, HSM backends, and ML-KEM remain unimplemented.
+  - **Signed Firmware Gate & IoT Claim Containment (`rullst-iot`)**: Replaced permissive OTA signature stubs with strict Ed25519 verification over a target/version/counter/length/SHA-256 manifest, enforced commit-after-verification and monotonic anti-rollback state, and moved deterministic MQTT/HSM/PQC fixtures behind the explicit `experimental-simulators` feature with `Simulated*` names. Firmware flashing, bootloader control, a concrete hardware-backed persistent counter, real MQTT transport, HSM backends, and ML-KEM remain unimplemented.
   - **Graceful Shutdown & Zero-Downtime Deploys (`rullst-core::server::builder`)**: Implemented cross-platform termination signal handling (`SIGINT`, `SIGTERM`, `Ctrl+C`) via `shutdown_signal()` and `.with_graceful_shutdown()`, cleanly draining in-flight requests before process shutdown.
   - **Async Cancellation & Drop Safety (`rullst-core::resilience`)**: Implemented RAII `ActiveRequestGuard` for the backpressure middleware, ensuring `active_requests` counters are never leaked when client futures are dropped or timed out.
   - **Zero-Allocation RASP Request Inspector (`rullst-security::rasp`)**: Replaced per-header heap string allocations with zero-allocation ASCII case-insensitive pattern matching (`contains_ignore_ascii_case`) and static attack pattern tables.
@@ -1002,7 +1007,7 @@ release gate has completed.
   - **Anomaly Evaluator (`rullst_iot::anomaly`)**: Deterministic statistical threshold evaluation for `no_std` applications.
   - **Dashboard Renderer (`rullst_iot::ui`)**: HTMX sensor-card string rendering; no measured footprint claim.
   - **Mesh Topology Model (`rullst_iot::mesh`):** In-memory RSSI relay selection; no P2P transport or self-healing network claim.
-  - **Signed OTA Manifest Gate (`rullst_iot::ota`):** Strict Ed25519 verification and monotonic rollback checks before inactive-partition selection; flashing, durable counters, and bootloader integration are not implemented.
+  - **Signed OTA Manifest Gate (`rullst_iot::ota`):** Strict Ed25519 verification and monotonic rollback checks before inactive-partition selection; flashing, a concrete durable-counter backend, and bootloader integration are not implemented.
   - **Explicit HSM Fixtures (`rullst_iot::hsm`):** Deterministic `SimulatedHsmDevice` fixtures behind `experimental-simulators`; no hardware binding, protected key, or signature claim.
   - **Explicit PQC Fixtures (`rullst_iot::pqc`):** Deterministic `SimulatedPqcFixture` values behind `experimental-simulators`; no ML-KEM/Kyber or quantum-safety claim.
   - **Power Policy Helper (`rullst_iot::power`):** Calculates a recommended mode from supplied voltage values; it does not control sleep or power hardware.

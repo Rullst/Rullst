@@ -38,12 +38,12 @@ D 60–69, and F below 60.
 
 The v12 RC quality objective is **no crate below B**, with the central Core and
 ORM crates at A. A+ is an evidence threshold, not a value to assign by intent.
-The current audited ceilings below do not yet satisfy that RC objective:
-`rullst-macros`, `rullst-orm-macros`, and `rullst-iot` remain C. Their scores
-must rise only through reviewed code, tests, documentation, and operational
-evidence; the policy must not be edited merely to manufacture a passing grade.
+The audited ceilings below now satisfy that floor after dedicated macro
+contracts and negative compiler cases plus an IoT durable-counter boundary with
+restart/failure proof. This does not pre-approve a commit: the exact SHA still
+earns those ceilings only when every constraining gate succeeds.
 
-## Audited green-gate ceilings — 31 August 2026
+## Audited green-gate ceilings — 1 September 2026
 
 These are the maximum current scores when every referenced Rust CI gate passes.
 They are not presumed results for a new commit; the exact per-SHA artifact
@@ -63,11 +63,11 @@ applies the real gate outcomes and includes the full finding for every row.
 | `rullst-ai` | 84 | B | Live adaptive evals, provider loops and external retrievers |
 | `rullst-studio` | 83 | B | Distributed observability and remote inspectors |
 | `rullst-capital` | 82 | B | Gateway parity and live fiscal homologation |
+| `rullst-orm-macros` | 82 | B | Runtime protocol semantics remain evidence owned by `rullst-orm` |
 | `rullst-nexus` | 81 | B | Host tenant policy, durable audit and production operations |
-| `rullst-orm-macros` | 76 | C | Backend breadth and dedicated macro documentation |
-| `rullst-macros` | 75 | C | Macro-specific documentation and failure/security proof |
-| `rullst-iot` | 72 | C | Hardware, transport, bootloader and durable anti-rollback proof |
-| **Repository (equal-crate aggregate)** | **84** | **B** | **Exact score remains conditional on the SHA's gates** |
+| `rullst-macros` | 81 | B | Experimental browser/runtime integration remains bounded |
+| `rullst-iot` | 81 | B | Concrete hardware storage, transport, flashing and bootloader evidence |
+| **Repository (equal-crate aggregate)** | **85** | **B** | **Exact score remains conditional on the SHA's gates** |
 
 ## What the score does not measure
 

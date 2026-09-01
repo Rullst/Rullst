@@ -1,7 +1,0 @@
-error[E0432]: unresolved import `rullst_orm_macros::Model`
- --> tests/ui/invalid_model.rs:1:5
-  |
-1 | use rullst_orm_macros::Model;
-  |     ^^^^^^^^^^^^^^^^^^^-----
-  |                        |
-  |                        no `Model` in the root

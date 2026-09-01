@@ -1,0 +1,15 @@
+error: #[route] does not register paths; use rullst::routes! instead
+ --> tests/ui/route_arguments.rs:3:1
+  |
+3 | #[route("/legacy")]
+  | ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the attribute macro `route` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+warning: use of deprecated macro `route`: use rullst::routes! for route registration; this legacy marker will be removed
+ --> tests/ui/route_arguments.rs:3:3
+  |
+3 | #[route("/legacy")]
+  |   ^^^^^
+  |
+  = note: `#[warn(deprecated)]` on by default

@@ -1,0 +1,8 @@
+error: tenant_column `tenant_id` must name a persisted field on the model
+ --> tests/ui/missing_tenant_field.rs:4:1
+  |
+4 | / #[orm(table = "records", tenant_column = "tenant_id")]
+5 | | struct Record {
+6 | |     id: i32,
+7 | | }
+  | |_^

@@ -1,0 +1,8 @@
+error: Billable requires a named `email: String` field
+ --> tests/ui/billable_missing_email.rs:4:16
+  |
+4 |   struct Account {
+  |  ________________^
+5 | |     name: String,
+6 | | }
+  | |_^

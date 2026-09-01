@@ -1,0 +1,5 @@
+error: #[require_role] requires a handler parameter that binds an authenticated `user`
+ --> tests/ui/require_role_missing_user.rs:4:20
+  |
+4 | async fn dashboard(value: String) {
+  |                    ^^^^^^^^^^^^^

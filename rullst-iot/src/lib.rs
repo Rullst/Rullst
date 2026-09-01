@@ -49,7 +49,10 @@ pub use mesh::{MeshNode, MeshTopology, NodeStatus};
 pub use modbus::{ModbusFrame, ModbusFunction};
 #[cfg(feature = "experimental-simulators")]
 pub use mqtt::SimulatedMqttPayloadFormatter;
-pub use ota::{BootPartition, OtaCommit, OtaError, OtaManager, OtaManifest, OtaStatus};
+pub use ota::{
+    BootPartition, OtaCommit, OtaError, OtaManager, OtaManifest, OtaStatus, RollbackCounterError,
+    RollbackCounterStore,
+};
 pub use power::{HarvesterState, PowerGovernor, PowerMode};
 #[cfg(feature = "experimental-simulators")]
 pub use pqc::SimulatedPqcFixture;

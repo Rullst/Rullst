@@ -18,11 +18,15 @@ builders, deterministic edge helpers, and a fail-closed signed firmware gate.
 - Ed25519 verification of domain-separated OTA manifests. A signed manifest
   binds the device target, version, monotonic rollback counter, firmware length,
   and SHA-256 digest.
+- A `no_std` `RollbackCounterStore` boundary for loading durable state and
+  atomically committing a strictly increasing counter with compare-and-set.
+  Restart, unavailable-store retry, and stale-writer conflicts have executable
+  contract tests; device-specific persistence still requires hardware evidence.
 
-The OTA state machine only verifies an artifact and selects the inactive boot
-partition. Integrators must still download and flash the image, validate the
-written bank, durably persist the rollback counter, and configure/recover the
-platform bootloader.
+The OTA state machine verifies an artifact, exposes the inactive boot partition,
+and coordinates with a caller-provided counter store. Integrators must still
+download and flash the image, validate the written bank, implement truly durable
+counter storage, and configure/recover the platform bootloader.
 
 ## CLI telemetry scaffold
 
@@ -44,34 +48,48 @@ device-enrollment path. Never obtain that key from the same untrusted update
 channel as the firmware.
 
 ```rust
-use rullst_iot::{OtaManager, OtaManifest};
+use rullst_iot::{
+    OtaCommit, OtaError, OtaManager, OtaManifest, RollbackCounterStore,
+};
 
-# fn verify_download(
-#     firmware: &[u8],
-#     signature: &[u8],
-#     trusted_public_key: [u8; 32],
-# ) -> Result<(), rullst_iot::OtaError> {
+fn verify_download<S: RollbackCounterStore>(
+    firmware: &[u8],
+    signature: &[u8],
+    trusted_public_key: [u8; 32],
+    counter_store: &mut S,
+) -> Result<OtaCommit, OtaError> {
 let manifest = OtaManifest::from_firmware(
     "board-revision-a",
     "12.1.0",
     121,
     firmware,
 )?;
-let mut ota = OtaManager::new_with_trusted_key(
+let mut ota = OtaManager::new_with_counter_store(
     "board-revision-a",
     "12.0.0",
-    120,
     trusted_public_key,
+    counter_store,
 )?;
 
 ota.verify_update(&manifest, firmware, signature)?;
-let selection = ota.commit_verified_update()?;
+let target = ota.verified_target_partition()?;
 
-// Platform code may now flash/validate `selection.target_partition()` and must
-// persist `selection.rollback_counter()` atomically with its boot decision.
-# Ok(())
-# }
+// The platform must flash and read back `target` before this call.
+// It must coordinate the returned receipt with its bootloader afterward.
+let receipt = ota.commit_verified_update_with_store(counter_store)?;
+debug_assert_eq!(receipt.target_partition(), target);
+
+Ok(receipt)
+}
 ```
+
+`RollbackCounterStore::compare_and_set` must make no change on an expected-value
+conflict, reject non-increasing values, and return success only after persistence
+survives reset. Advancing the counter before a later bootloader failure is
+security-safe but can require platform recovery and a newer signed counter; the
+framework cannot make counter storage and boot selection one hardware-atomic
+operation. `commit_verified_update` remains available for process-local state,
+but it does not provide persistent anti-rollback protection.
 
 `OtaManager::new`, `verify_signature`, and `commit_update` are deprecated
 migration APIs. All three always return `OtaError` because keyless construction,
@@ -99,7 +117,7 @@ There are intentionally no aliases named `HsmDevice`, `PqcKeyPair`, or
 - ATECC608A, TPM 2.0, or STSAFE hardware backends.
 - ML-KEM or any other post-quantum cryptographic primitive.
 - Firmware download, delta patching, flash writes, bootloader control, or
-  persistent anti-rollback storage.
+  a concrete persistent anti-rollback storage implementation.
 - Bidirectional Digital Twin transport or Studio/Nexus device synchronization.
 
 See [ROADMAP.md](ROADMAP.md) for the remaining integration work.

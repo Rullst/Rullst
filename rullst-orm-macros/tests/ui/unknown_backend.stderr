@@ -1,0 +1,5 @@
+error: ORM backend must be `sqlx` or `turso`
+ --> tests/ui/unknown_backend.rs:4:1
+  |
+4 | #[orm(table = "accounts", backend = "mongodb")]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

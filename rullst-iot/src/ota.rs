@@ -2,8 +2,9 @@
 //!
 //! This module verifies Ed25519 signatures over a canonical manifest that binds
 //! the target, version, monotonic rollback counter, firmware length, and SHA-256
-//! digest. It does not download, flash, boot, or persist rollback state; platform
-//! code must perform those operations and durably store the committed counter.
+//! digest. An explicit platform store can provide durable, atomic anti-rollback
+//! commits. This module does not download, flash, boot, or implement that store;
+//! platform code must provide those operations and their hardware guarantees.
 
 extern crate alloc;
 
@@ -12,6 +13,9 @@ use alloc::vec::Vec;
 use core::fmt;
 use ed25519_dalek::{Signature, VerifyingKey};
 use sha2::{Digest, Sha256};
+
+mod counter;
+pub use counter::{RollbackCounterError, RollbackCounterStore};
 
 const MANIFEST_DOMAIN: &[u8] = b"RULLST-OTA-MANIFEST-V1\0";
 
@@ -62,6 +66,7 @@ pub enum OtaError {
     FirmwareHashMismatch,
     TargetMismatch,
     RollbackDetected { current: u64, proposed: u64 },
+    RollbackCounterStore(RollbackCounterError),
     NoVerifiedUpdate,
     LegacyApiUnsupported { replacement: &'static str },
 }
@@ -97,6 +102,7 @@ impl fmt::Display for OtaError {
                 formatter,
                 "rollback counter must increase: current {current}, proposed {proposed}"
             ),
+            Self::RollbackCounterStore(error) => write!(formatter, "{error}"),
             Self::NoVerifiedUpdate => formatter.write_str("no verified firmware update is pending"),
             Self::LegacyApiUnsupported { replacement } => write!(
                 formatter,
@@ -108,6 +114,12 @@ impl fmt::Display for OtaError {
 
 #[cfg(feature = "std")]
 impl std::error::Error for OtaError {}
+
+impl From<RollbackCounterError> for OtaError {
+    fn from(error: RollbackCounterError) -> Self {
+        Self::RollbackCounterStore(error)
+    }
+}
 
 /// Canonical metadata signed by a firmware publisher.
 #[non_exhaustive]
@@ -283,6 +295,26 @@ impl OtaManager {
         })
     }
 
+    /// Creates a verifier with the last committed counter loaded from a
+    /// platform store.
+    ///
+    /// The store implementation, not `OtaManager`, is responsible for proving
+    /// durable and power-loss-safe hardware semantics.
+    pub fn new_with_counter_store<S: RollbackCounterStore>(
+        target: impl Into<String>,
+        current_version: impl Into<String>,
+        trusted_public_key: [u8; 32],
+        counter_store: &mut S,
+    ) -> Result<Self, OtaError> {
+        let rollback_counter = counter_store.load()?;
+        Self::new_with_trusted_key(
+            target,
+            current_version,
+            rollback_counter,
+            trusted_public_key,
+        )
+    }
+
     /// Returns the last committed monotonic counter.
     #[must_use]
     pub fn rollback_counter(&self) -> u64 {
@@ -293,6 +325,18 @@ impl OtaManager {
     #[must_use]
     pub fn pending_manifest(&self) -> Option<&OtaManifest> {
         self.pending_manifest.as_ref()
+    }
+
+    /// Returns the inactive bank selected for a cryptographically verified
+    /// update, without changing any state.
+    ///
+    /// Platform code can flash and read back this bank before committing the
+    /// durable rollback counter.
+    pub fn verified_target_partition(&self) -> Result<BootPartition, OtaError> {
+        self.pending_manifest
+            .as_ref()
+            .ok_or(OtaError::NoVerifiedUpdate)?;
+        Ok(self.current_partition.opposite())
     }
 
     /// Verifies the target, rollback counter, firmware hash/length, and strict
@@ -354,27 +398,63 @@ impl OtaManager {
             .map_err(|_| OtaError::SignatureInvalid)
     }
 
-    /// Selects the inactive partition for the verified manifest.
+    /// Selects the inactive partition for the verified manifest in memory.
     ///
     /// Platform code remains responsible for flashing and validating that bank,
     /// persisting the rollback counter, and changing the bootloader selection.
+    /// Prefer [`Self::commit_verified_update_with_store`] when a durable counter
+    /// implementation is available.
     pub fn commit_verified_update(&mut self) -> Result<OtaCommit, OtaError> {
         let manifest = self
             .pending_manifest
-            .take()
+            .as_ref()
+            .cloned()
             .ok_or(OtaError::NoVerifiedUpdate)?;
         self.status = OtaStatus::Committing;
+        Ok(self.apply_verified_manifest(manifest))
+    }
+
+    /// Atomically advances a platform rollback counter before committing the
+    /// verified manifest to this manager's in-memory state.
+    ///
+    /// A store failure leaves the manifest verified and available for a safe
+    /// retry. A conflict means this manager is stale and should be reconstructed
+    /// from the store before another update is verified. Platform code should
+    /// flash and validate [`Self::verified_target_partition`] before calling
+    /// this method, then coordinate the returned receipt with its bootloader.
+    pub fn commit_verified_update_with_store<S: RollbackCounterStore>(
+        &mut self,
+        counter_store: &mut S,
+    ) -> Result<OtaCommit, OtaError> {
+        let manifest = self
+            .pending_manifest
+            .as_ref()
+            .cloned()
+            .ok_or(OtaError::NoVerifiedUpdate)?;
+        self.status = OtaStatus::Committing;
+        if let Err(error) =
+            counter_store.compare_and_set(self.rollback_counter, manifest.rollback_counter)
+        {
+            self.status = OtaStatus::Verified;
+            return Err(error.into());
+        }
+
+        Ok(self.apply_verified_manifest(manifest))
+    }
+
+    fn apply_verified_manifest(&mut self, manifest: OtaManifest) -> OtaCommit {
         let target_partition = self.current_partition.opposite();
         self.current_partition = target_partition;
         self.firmware_version.clone_from(&manifest.version);
         self.rollback_counter = manifest.rollback_counter;
+        self.pending_manifest = None;
         self.status = OtaStatus::Idle;
 
-        Ok(OtaCommit {
+        OtaCommit {
             target_partition,
             version: manifest.version,
             rollback_counter: manifest.rollback_counter,
-        })
+        }
     }
 
     /// Legacy payload-only verification cannot bind target, hash, or anti-rollback

@@ -1,0 +1,5 @@
+error: #[orm(encrypted)] supports only String and Option<String> fields
+ --> tests/ui/encrypted_integer.rs:7:13
+  |
+7 |     secret: i64,
+  |             ^^^

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "audit_date": "2026-08-31",
+  "audit_date": "2026-09-01",
   "dimensions": {
     "api_architecture": 20,
     "verification": 25,
@@ -12,24 +12,24 @@
     {
       "name": "rullst-macros",
       "api_architecture": 17,
-      "verification": 21,
-      "security_failure_design": 13,
-      "documentation_dx": 11,
+      "verification": 23,
+      "security_failure_design": 15,
+      "documentation_dx": 13,
       "operations_release": 13,
       "specialist_gate": "none",
-      "finding": "Strong compile-time surface and UI tests; macro-specific docs and failure/security proof remain narrower than runtime crates.",
-      "evidence": ["rullst-macros/Cargo.toml", "rullst-macros/tests"]
+      "finding": "Dedicated bounded-contract documentation and real negative UI diagnostics cover malformed HTML, role identity, Billable shapes and compatibility macros; experimental browser/runtime integration remains narrower than the compile-time surface.",
+      "evidence": ["rullst-macros/Cargo.toml", "rullst-macros/README.md", "rullst-macros/tests"]
     },
     {
       "name": "rullst-orm-macros",
       "api_architecture": 17,
-      "verification": 21,
-      "security_failure_design": 14,
-      "documentation_dx": 11,
+      "verification": 23,
+      "security_failure_design": 16,
+      "documentation_dx": 13,
       "operations_release": 13,
       "specialist_gate": "none",
-      "finding": "Typed derives have compile evidence; backend expansion breadth and dedicated user-facing macro documentation can improve.",
-      "evidence": ["rullst-orm-macros/Cargo.toml", "rullst-orm-macros/tests"]
+      "finding": "Dedicated derive-boundary documentation and parser-driven compile failures cover backend, tenant, encrypted-field and Turso relation misuse; runtime protocol semantics remain evidence owned by rullst-orm.",
+      "evidence": ["rullst-orm-macros/Cargo.toml", "rullst-orm-macros/README.md", "rullst-orm-macros/tests"]
     },
     {
       "name": "rullst-orm",
@@ -77,14 +77,14 @@
     },
     {
       "name": "rullst-iot",
-      "api_architecture": 16,
-      "verification": 19,
-      "security_failure_design": 17,
-      "documentation_dx": 13,
-      "operations_release": 7,
+      "api_architecture": 17,
+      "verification": 22,
+      "security_failure_design": 18,
+      "documentation_dx": 14,
+      "operations_release": 10,
       "specialist_gate": "none",
-      "finding": "Useful no_std and signed-manifest boundary; real hardware, transport, bootloader and persistent anti-rollback evidence are still absent.",
-      "evidence": ["rullst-iot/README.md", "rullst-iot/tests", "docs/src/crates/iot.md"]
+      "finding": "The no_std signed-manifest gate now has an explicit durable monotonic-CAS adapter plus restart, retry, corruption and stale-writer evidence; concrete hardware storage, transport, flashing, bootloader and device fault-injection remain absent.",
+      "evidence": ["rullst-iot/README.md", "rullst-iot/src/ota/counter.rs", "rullst-iot/tests/ota_counter_store.rs", "docs/src/crates/iot.md"]
     },
     {
       "name": "rullst-security",
