@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788231227233,
+  "lastUpdate": 1788232604316,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -6089,6 +6089,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4004,
             "range": "± 36",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "4fc63e9e25276e5f7e1859a9e255fadc74a6f85d",
+          "message": "docs(release): record v12 feature freeze",
+          "timestamp": "2026-09-01T00:06:25-03:00",
+          "tree_id": "062fe6582f8b168370611e82cd6eff9ed9cc58c9",
+          "url": "https://github.com/Rullst/Rullst/commit/4fc63e9e25276e5f7e1859a9e255fadc74a6f85d"
+        },
+        "date": 1788232603883,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1051,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 843,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1922,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4544,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
