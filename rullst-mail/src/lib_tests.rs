@@ -95,6 +95,7 @@ async fn test_log_driver() {
 
 #[tokio::test]
 async fn test_mail_send_facade() {
+    let _lock = crate::facade::MAIL_ENV_LOCK.lock().await;
     unsafe {
         std::env::set_var("MAIL_DRIVER", "log");
     }

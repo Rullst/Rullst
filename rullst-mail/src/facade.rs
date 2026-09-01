@@ -11,6 +11,8 @@ use tokio::sync::OnceCell;
 
 static MAIL_QUEUE: OnceCell<Queue> = OnceCell::const_new();
 static CUSTOM_DRIVER: RwLock<Option<Arc<dyn MailDriver>>> = RwLock::new(None);
+#[cfg(test)]
+pub(crate) static MAIL_ENV_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 pub(crate) const MAIL_JOB_SCHEMA_VERSION: u8 = 1;
 
@@ -310,3 +312,7 @@ fn datetime_to_system_time(
         .checked_add(Duration::new(seconds, timestamp.timestamp_subsec_nanos()))
         .ok_or_else(|| MailError::ValidationError("mail schedule exceeds system range".to_string()))
 }
+
+#[cfg(test)]
+#[path = "facade_tests.rs"]
+mod tests;

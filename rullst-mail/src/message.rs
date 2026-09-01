@@ -410,14 +410,5 @@ pub fn strip_html_to_plain_text(html: &str) -> String {
 }
 
 #[cfg(test)]
-mod escaping_tests {
-    use super::*;
-
-    #[test]
-    fn escapes_text_and_attribute_delimiters() {
-        assert_eq!(
-            escape_html("<script data-x='\"'>&"),
-            "&lt;script data-x=&#x27;&quot;&#x27;&gt;&amp;"
-        );
-    }
-}
+#[path = "message_tests.rs"]
+mod escaping_tests;
