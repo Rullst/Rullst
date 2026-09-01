@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788244854700,
+  "lastUpdate": 1788248156543,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -13655,6 +13655,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2315,
             "range": "± 49",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "18a5b672a2067d6b4bb95dfb6a2260717a8c915e",
+          "message": "test(runtime): cover guarded adapter boundaries",
+          "timestamp": "2026-09-01T04:33:10-03:00",
+          "tree_id": "4202cc589827e22d22a7b229df91a757f35fc651",
+          "url": "https://github.com/Rullst/Rullst/commit/18a5b672a2067d6b4bb95dfb6a2260717a8c915e"
+        },
+        "date": 1788248154573,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 641,
+            "range": "± 40",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 918,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 662,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1787,
+            "range": "± 44",
             "unit": "ns/iter"
           }
         ]
