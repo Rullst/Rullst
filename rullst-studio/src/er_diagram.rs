@@ -130,7 +130,7 @@ async fn get_sqlite_schema() -> Result<String, sqlx::Error> {
 async fn get_postgres_schema() -> Result<String, sqlx::Error> {
     let pool = configured_pool()?;
     let tables = rullst_orm::_sqlx::query(
-        "SELECT table_name FROM information_schema.tables \
+        "SELECT table_name AS name FROM information_schema.tables \
          WHERE table_schema = 'public' AND table_name != '_sqlx_migrations' \
          ORDER BY table_name",
     )
@@ -139,7 +139,7 @@ async fn get_postgres_schema() -> Result<String, sqlx::Error> {
     let mut diagram = String::from("erDiagram\n");
 
     for table_row in tables {
-        let table = table_row.try_get::<String, _>("table_name")?;
+        let table = table_row.try_get::<String, _>("name")?;
         let mut columns_query = QueryBuilder::<rullst_orm::RullstDatabase>::new(
             "SELECT c.column_name AS name, c.data_type AS kind, \
              CASE WHEN tc.constraint_type = 'PRIMARY KEY' THEN 1 ELSE 0 END AS pk \
@@ -183,7 +183,7 @@ async fn get_postgres_schema() -> Result<String, sqlx::Error> {
 async fn get_mysql_schema() -> Result<String, sqlx::Error> {
     let pool = configured_pool()?;
     let tables = rullst_orm::_sqlx::query(
-        "SELECT table_name FROM information_schema.tables \
+        "SELECT table_name AS name FROM information_schema.tables \
          WHERE table_schema = DATABASE() AND table_name != '_sqlx_migrations' \
          ORDER BY table_name",
     )
@@ -192,7 +192,7 @@ async fn get_mysql_schema() -> Result<String, sqlx::Error> {
     let mut diagram = String::from("erDiagram\n");
 
     for table_row in tables {
-        let table = table_row.try_get::<String, _>("table_name")?;
+        let table = table_row.try_get::<String, _>("name")?;
         let mut columns_query = QueryBuilder::<rullst_orm::RullstDatabase>::new(
             "SELECT column_name AS name, data_type AS kind, \
                     CASE WHEN column_key = 'PRI' THEN 1 ELSE 0 END AS pk \

@@ -39,7 +39,7 @@ impl StudioColumnKind {
             || normalized.starts_with("char(")
         {
             Self::Text
-        } else if normalized == "bool" || normalized == "boolean" {
+        } else if matches!(normalized.as_str(), "bool" | "boolean" | "tinyint(1)") {
             Self::Boolean
         } else if matches!(
             normalized.as_str(),
@@ -232,7 +232,7 @@ pub(crate) async fn fetch_table_schema(
              ORDER BY c.ordinal_position"
         ),
         "mysql" => format!(
-            "SELECT column_name AS name, data_type AS type_name, \
+            "SELECT column_name AS name, column_type AS type_name, \
                     CASE WHEN is_nullable = 'YES' THEN 1 ELSE 0 END AS nullable, \
                     CASE WHEN column_key = 'PRI' THEN 1 ELSE 0 END AS pk \
              FROM information_schema.columns \

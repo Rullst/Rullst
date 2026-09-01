@@ -15,20 +15,31 @@ pub fn router() -> Router {
 async fn ensure_table_exists() {
     if let Some(pool) = rullst_core::db::safe_pool() {
         let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-        let sql = if driver == "postgres" {
-            "CREATE TABLE IF NOT EXISTS rullst_feature_flags (
-                name VARCHAR(255) PRIMARY KEY,
-                enabled BOOLEAN NOT NULL DEFAULT false,
-                rollout_percentage INTEGER,
-                variants TEXT
-            )"
-        } else {
-            "CREATE TABLE IF NOT EXISTS rullst_feature_flags (
-                name TEXT PRIMARY KEY,
-                enabled INTEGER NOT NULL DEFAULT 0,
-                rollout_percentage INTEGER,
-                variants TEXT
-            )"
+        let sql = match driver {
+            "postgres" => {
+                "CREATE TABLE IF NOT EXISTS rullst_feature_flags (
+                    name VARCHAR(255) PRIMARY KEY,
+                    enabled BOOLEAN NOT NULL DEFAULT false,
+                    rollout_percentage INTEGER,
+                    variants TEXT
+                )"
+            }
+            "mysql" | "mariadb" => {
+                "CREATE TABLE IF NOT EXISTS rullst_feature_flags (
+                    name VARCHAR(255) PRIMARY KEY,
+                    enabled BOOLEAN NOT NULL DEFAULT false,
+                    rollout_percentage INTEGER,
+                    variants TEXT
+                )"
+            }
+            _ => {
+                "CREATE TABLE IF NOT EXISTS rullst_feature_flags (
+                    name TEXT PRIMARY KEY,
+                    enabled INTEGER NOT NULL DEFAULT 0,
+                    rollout_percentage INTEGER,
+                    variants TEXT
+                )"
+            }
         };
         let _ = rullst_orm::_sqlx::query(sql).execute(pool).await;
     }

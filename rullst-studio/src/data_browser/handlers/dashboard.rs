@@ -179,17 +179,30 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
                     <p class="text-slate-400 text-sm">Flamegraph inspector visualizing microsecond-level HTTP requests, SQLx queries, and AI prompt execution spans.</p>
                 </a>
             </div>
-        </div>
-    </div>"##);
+        </div>"##);
+
+    dash_content_str.push_str(
+        r##"<div>
+            <h2 class="text-lg font-bold text-slate-200 mb-4">Database tables</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">"##,
+    );
+    if table_badges_html.is_empty() {
+        dash_content_str.push_str(
+            r##"<p class="text-sm text-slate-500">No application tables are currently visible.</p>"##,
+        );
+    } else {
+        dash_content_str.push_str(&table_badges_html);
+    }
+    dash_content_str.push_str("</div></div></div>");
 
     if is_htmx {
         Html(format!(
             "{}{}",
             dash_content_str,
-            render_sidebar_oob(&[], None)
+            render_sidebar_oob(&tables, None)
         ))
         .into_response()
     } else {
-        Html(studio_layout(dash_content_str, None, &[])).into_response()
+        Html(studio_layout(dash_content_str, None, &tables)).into_response()
     }
 }

@@ -441,36 +441,4 @@ pub(crate) fn build_mutable_rows_html(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn mutation_values_are_typed_and_bounded() {
-        assert!(matches!(
-            parse_bound_value(StudioColumnKind::Integer, "42".to_string()),
-            Ok(BoundValue::Integer(42))
-        ));
-        assert!(matches!(
-            parse_bound_value(StudioColumnKind::Boolean, "false".to_string()),
-            Ok(BoundValue::Boolean(false))
-        ));
-        assert!(parse_bound_value(StudioColumnKind::Float, "NaN".to_string()).is_err());
-        assert!(parse_bound_value(StudioColumnKind::Text, "x".repeat(MAX_CELL_BYTES + 1)).is_err());
-        assert!(parse_bound_value(StudioColumnKind::Text, "a\0b".to_string()).is_err());
-    }
-
-    #[test]
-    fn duplicate_or_excessive_form_fields_fail_closed() {
-        assert!(
-            unique_fields(vec![
-                ("column".to_string(), "name".to_string()),
-                ("column".to_string(), "email".to_string()),
-            ])
-            .is_err()
-        );
-        let excessive = (0..=MAX_FORM_FIELDS)
-            .map(|index| (format!("f{index}"), String::new()))
-            .collect();
-        assert!(unique_fields(excessive).is_err());
-    }
-}
+mod tests;

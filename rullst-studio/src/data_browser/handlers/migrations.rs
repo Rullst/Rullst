@@ -8,22 +8,20 @@ use std::fmt::Write;
 pub async fn handle_studio_tools_migrations(headers: axum::http::HeaderMap) -> impl IntoResponse {
     let is_htmx = headers.contains_key("hx-request");
     let mut table_badges_html = String::new();
-    let mut tables_count = 0;
+    let tables = fetch_tables().await.unwrap_or_default();
+    let tables_count = tables.len();
 
-    if let Ok(tables) = fetch_tables().await {
-        tables_count = tables.len();
-        for t in &tables {
-            let clean = escape_html_attr(t.as_str());
-            let enc = urlencoding::encode(t.as_str());
-            let _ = write!(
-                table_badges_html,
-                r##"<a href="#" hx-get="/studio/tables/{}" hx-target="#studio-content" hx-push-url="true" class="p-3 bg-slate-900/90 border border-slate-800 rounded-lg hover:border-sky-500/60 hover:bg-slate-900 transition group flex items-center justify-between">
+    for t in &tables {
+        let clean = escape_html_attr(t.as_str());
+        let enc = urlencoding::encode(t.as_str());
+        let _ = write!(
+            table_badges_html,
+            r##"<a href="#" hx-get="/studio/tables/{}" hx-target="#studio-content" hx-push-url="true" class="p-3 bg-slate-900/90 border border-slate-800 rounded-lg hover:border-sky-500/60 hover:bg-slate-900 transition group flex items-center justify-between">
                     <span class="text-sm font-semibold text-slate-200 group-hover:text-sky-400">{}</span>
                     <span class="text-xs font-mono text-slate-500 group-hover:text-slate-400">tbl →</span>
                 </a>"##,
-                enc, clean
-            );
-        }
+            enc, clean
+        );
     }
 
     let schema_section = if tables_count > 0 {
@@ -37,8 +35,8 @@ pub async fn handle_studio_tools_migrations(headers: axum::http::HeaderMap) -> i
 
     let content = crate::migration_manager::render_migration_manager_html(&schema_section);
     if is_htmx {
-        Html(format!("{}{}", content, render_sidebar_oob(&[], None))).into_response()
+        Html(format!("{}{}", content, render_sidebar_oob(&tables, None))).into_response()
     } else {
-        Html(studio_layout(content, None, &[])).into_response()
+        Html(studio_layout(content, None, &tables)).into_response()
     }
 }

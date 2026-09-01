@@ -1,5 +1,6 @@
 //! Studio Data Browser Tests
 
+use super::IntoStudioPort;
 use super::db::*;
 
 #[tokio::test]
@@ -166,6 +167,14 @@ fn test_mutable_column_type_boundary() {
         StudioColumnKind::Boolean
     );
     assert_eq!(
+        StudioColumnKind::from_database_type("tinyint(1)"),
+        StudioColumnKind::Boolean
+    );
+    assert_eq!(
+        StudioColumnKind::from_database_type("tinyint(2)"),
+        StudioColumnKind::Integer
+    );
+    assert_eq!(
         StudioColumnKind::from_database_type("numeric"),
         StudioColumnKind::Unsupported
     );
@@ -173,6 +182,20 @@ fn test_mutable_column_type_boundary() {
         StudioColumnKind::from_database_type("jsonb"),
         StudioColumnKind::Unsupported
     );
+}
+
+#[test]
+fn empty_rows_and_studio_port_inputs_have_deterministic_fallbacks() {
+    let rows = build_rows_html(&[], &[]);
+    assert!(rows.contains("No records found"));
+    assert!(rows.contains("colspan=\"1\""));
+
+    assert_eq!(5556_u16.into_port(), 5556);
+    assert_eq!(" 5557 ".into_port(), 5557);
+    assert_eq!("".into_port(), 5555);
+    assert_eq!("not-a-port".to_string().into_port(), 5555);
+    assert_eq!(Some(5558_u16).into_port(), 5558);
+    assert_eq!(None::<u16>.into_port(), 5555);
 }
 
 #[test]

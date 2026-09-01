@@ -300,3 +300,63 @@ fn build_pagination_html(
 
     html
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::to_bytes;
+
+    #[test]
+    fn pagination_is_bounded_encoded_and_directional() {
+        assert!(build_pagination_html("records", "", 1, 1).is_empty());
+
+        let first = build_pagination_html("audit records", "a&b", 1, 3);
+        assert!(first.contains("Page 1 of 3"));
+        assert!(first.contains("Next"));
+        assert!(!first.contains("Previous"));
+        assert!(first.contains("audit%20records"));
+        assert!(first.contains("a%26b"));
+
+        let middle = build_pagination_html("records", "", 2, 3);
+        assert!(middle.contains("Previous"));
+        assert!(middle.contains("Next"));
+
+        let last = build_pagination_html("records", "", 3, 3);
+        assert!(last.contains("Previous"));
+        assert!(!last.contains("Next"));
+    }
+
+    #[tokio::test]
+    async fn table_errors_preserve_status_escape_text_and_distinguish_htmx() {
+        let htmx = table_error_response(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "invalid <script>shape</script>",
+            true,
+            None,
+            &[],
+        );
+        assert_eq!(htmx.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        let body = to_bytes(htmx.into_body(), 8 * 1024)
+            .await
+            .expect("bounded HTMX error body");
+        let body = String::from_utf8(body.to_vec()).expect("UTF-8 HTMX error body");
+        assert!(body.contains("invalid &lt;script&gt;shape&lt;/script&gt;"));
+        assert!(!body.contains("<!DOCTYPE html>"));
+
+        let page = table_error_response(
+            StatusCode::NOT_FOUND,
+            "missing",
+            false,
+            Some("records"),
+            &["records".to_string()],
+        );
+        assert_eq!(page.status(), StatusCode::NOT_FOUND);
+        let body = to_bytes(page.into_body(), 64 * 1024)
+            .await
+            .expect("bounded full-page error body");
+        let body = String::from_utf8(body.to_vec()).expect("UTF-8 full-page error body");
+        assert!(body.contains("<!DOCTYPE html>"));
+        assert!(body.contains("missing"));
+        assert!(body.contains("records"));
+    }
+}
