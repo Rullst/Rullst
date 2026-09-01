@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788264881484,
+  "lastUpdate": 1788266438425,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -6569,6 +6569,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4033,
             "range": "± 57",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": false,
+          "id": "25787fa9e84e1025e41ec2e73513486ddd5ff97a",
+          "message": "docs(release): record coverage and gh login",
+          "timestamp": "2026-09-01T09:30:50-03:00",
+          "tree_id": "c659e5b958c007ea7d43fef8fc306f9a213be754",
+          "url": "https://github.com/Rullst/Rullst/commit/25787fa9e84e1025e41ec2e73513486ddd5ff97a"
+        },
+        "date": 1788266437996,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 994,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 787,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1803,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4014,
+            "range": "± 16",
             "unit": "ns/iter"
           }
         ]
