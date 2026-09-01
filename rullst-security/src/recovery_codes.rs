@@ -87,8 +87,7 @@ pub fn generate_recovery_codes(
         let code = generate_code();
         let normalized_code =
             normalize_code(&code).ok_or(RecoveryCodeError::CryptoInitialization)?;
-        let mut salt = [0_u8; 16];
-        rand::fill(&mut salt);
+        let salt = rand::random::<[u8; 16]>();
         let digest = recovery_digest(&subject, &normalized_code, &salt, pepper)?;
         plaintext.push(code);
         verifiers.push(RecoveryCodeVerifier {
