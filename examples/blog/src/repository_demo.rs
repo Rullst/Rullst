@@ -48,20 +48,20 @@ impl PostRepository {
 
         let analytics = rows
             .into_iter()
-            .map(|r| {
-                let author_name: String = r.get("author_name");
-                let total_posts: i64 = r.get("total_posts");
-                let total_bytes: i64 = r.try_get("total_bytes").unwrap_or(0);
+            .map(|row| -> Result<AuthorAnalytics, sqlx::Error> {
+                let author_name: String = row.try_get("author_name")?;
+                let total_posts: i64 = row.try_get("total_posts")?;
+                let total_bytes = row.try_get::<Option<i64>, _>("total_bytes")?.unwrap_or(0);
                 let words = total_bytes / 5;
                 let reading_time = (words as f64) / 200.0;
-                AuthorAnalytics {
+                Ok(AuthorAnalytics {
                     author_name,
                     total_posts,
                     total_words: words,
                     avg_reading_time_mins: (reading_time * 10.0).round() / 10.0,
-                }
+                })
             })
-            .collect();
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(analytics)
     }
@@ -75,15 +75,22 @@ impl PostRepository {
 
         let posts = rows
             .into_iter()
-            .map(|r| RawPostRecord {
-                id: r
-                    .try_get::<i64, _>("id")
-                    .unwrap_or_else(|_| r.get::<i32, _>("id") as i64),
-                tenant_id: r.get("tenant_id"),
-                title: r.get("title"),
-                body: r.get("body"),
+            .map(|row| -> Result<RawPostRecord, sqlx::Error> {
+                let id = match row.try_get::<i64, _>("id") {
+                    Ok(id) => id,
+                    Err(i64_error) => match row.try_get::<i32, _>("id") {
+                        Ok(id) => i64::from(id),
+                        Err(_) => return Err(i64_error),
+                    },
+                };
+                Ok(RawPostRecord {
+                    id,
+                    tenant_id: row.try_get("tenant_id")?,
+                    title: row.try_get("title")?,
+                    body: row.try_get("body")?,
+                })
             })
-            .collect();
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(posts)
     }
@@ -193,16 +200,15 @@ pub async fn repository_page() -> impl IntoResponse {
                     </div>
 
                     <div class="card">
-                        <h2 class="card-title">"Intent-Based Indexing (@index)"</h2>
+                        <h2 class="card-title">"Explicit Indexing & Query Review"</h2>
                         <p style="color: var(--text-muted);">
-                            "Rullst ORM analyzes entity doc-comments to automatically manage index migrations and optimize query execution plans."
+                            "Repository queries remain ordinary parameterized SQLx. Add indexes through reviewed migrations and inspect the real query plan for each supported database. Rullst does not infer index migrations from doc comments."
                         </p>
                         <div class="code-block">
-                            "/// @index(tenant_id, title)\n"
-                            "/// @index(created_at, desc)\n"
-                            "pub struct Post { ... }\n"
+                            "CREATE INDEX idx_posts_tenant_id_title\n"
+                            "    ON posts (tenant_id, title);\n"
                             "\n"
-                            "// Index Status: [ACTIVE] idx_posts_tenant_id_title on SQLite & Postgres."
+                            "// Verify with EXPLAIN on the exact deployed backend."
                         </div>
                     </div>
                 </div>
