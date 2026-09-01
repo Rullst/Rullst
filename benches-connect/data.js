@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788263697641,
+  "lastUpdate": 1788264900769,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -4073,6 +4073,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 405,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": false,
+          "id": "76bf9c6e24c4f9f7a197f8d12e4d5538f556f83b",
+          "message": "docs(readme): align public quality badges",
+          "timestamp": "2026-09-01T09:04:52-03:00",
+          "tree_id": "90754f5662c73fc386208be71e70b574cc2f5841",
+          "url": "https://github.com/Rullst/Rullst/commit/76bf9c6e24c4f9f7a197f8d12e4d5538f556f83b"
+        },
+        "date": 1788264900347,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 573,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
