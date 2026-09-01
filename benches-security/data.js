@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788255746675,
+  "lastUpdate": 1788256700198,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -5051,6 +5051,60 @@ window.BENCHMARK_DATA = {
             "name": "html_sanitizer/sanitize_text_escape",
             "value": 761,
             "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 26,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "2754d75c632953d59231e5a772afab6f63e3be03",
+          "message": "test(coverage): exercise provider and safety contracts",
+          "timestamp": "2026-09-01T06:46:52-03:00",
+          "tree_id": "c0a34ff31fa47c5d787e6c8af2b1c9280f505f52",
+          "url": "https://github.com/Rullst/Rullst/commit/2754d75c632953d59231e5a772afab6f63e3be03"
+        },
+        "date": 1788256699786,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5874,
+            "range": "± 100",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 667,
+            "range": "± 15",
             "unit": "ns/iter"
           },
           {
