@@ -34,6 +34,26 @@ coverage:
 
 component_management:
   individual_components:
+    - component_id: framework_libraries
+      name: Framework libraries
+      paths:
+        - "rullst/src/**"
+        - "rullst-ai/src/**"
+        - "rullst-auth/src/**"
+        - "rullst-capital/src/**"
+        - "rullst-connect/src/**"
+        - "rullst-core/src/**"
+        - "rullst-iot/src/**"
+        - "rullst-mail/src/**"
+        - "rullst-messaging/src/**"
+        - "rullst-nexus/src/**"
+        - "rullst-orm/src/**"
+        - "rullst-security/src/**"
+        - "rullst-studio/src/**"
+      statuses:
+        - type: project
+          target: 90%
+          threshold: 0%
     - component_id: authentication
       name: Authentication (rullst-auth)
       paths:
