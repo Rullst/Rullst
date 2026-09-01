@@ -1,5 +1,15 @@
 # Avaliação técnica completa do framework Rullst
 
+> [!IMPORTANT]
+> **Registro histórico, não painel do estado atual.** Este documento preserva a
+> auditoria do commit `96222fbd` e checkpoints posteriores para rastreabilidade;
+> inclusive a expressão “Nota atual” abaixo significa o checkpoint de 26 de
+> agosto de 2026, não o `HEAD` de hoje. Para decisões sobre a v12 use
+> [`docs/src/v12.md`](docs/src/v12.md),
+> [`docs/src/hardening-status.md`](docs/src/hardening-status.md) e o
+> [`docs/src/quality-scorecard.md`](docs/src/quality-scorecard.md), sempre
+> vinculando qualquer resultado ao SHA realmente executado.
+
 **Data da auditoria:** 24 de agosto de 2026  
 **Commit avaliado:** `96222fbd31bec3d20bc50db68c41bb85ca595779`  
 **Fonte normativa usada:** `docs/src/spec.md`  

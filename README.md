@@ -69,7 +69,7 @@ green main gates:
 
 | Deep evidence | Trigger and enforcement |
 | :--- | :--- |
-| [Benchmark regression](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Weekly, `main` push, or manual; eight suites emit non-blocking alerts at a 20% regression. |
+| [Benchmark regression](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Weekly, `main` push, or manual; eight published groups backed by nine Criterion benchmark binaries emit non-blocking alerts at a 20% regression. |
 | [Property testing](https://github.com/Rullst/Rullst/actions/workflows/proptest.yml) | Weekly/manual release-mode invariant testing with 10,000 configured cases. |
 | [TSan and ASan](https://github.com/Rullst/Rullst/actions/workflows/sanitizers.yml) | Daily/manual nightly-toolchain package matrices. |
 | [Fuzzing](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) / [corpus minimization](https://github.com/Rullst/Rullst/actions/workflows/corpus-sync.yml) | Forty manual libFuzzer jobs; weekly/manual corpus maintenance is informational. |
@@ -228,10 +228,11 @@ are:
   `mold` or `lld`, and debug hot reload uses a watched dynamic library plus a
   WebSocket browser refresh path. Results vary by host and project.
 
-Eight [Criterion benchmark suites](https://github.com/Rullst/Rullst/actions/workflows/bench.yml)
-track selected microbenchmarks. Their shared-runner history is regression
-evidence for those inputs, not a production throughput promise. The ORM suite
-also runs five equivalent typed-SQLite operations through pinned Rullst,
+Eight published [Criterion benchmark groups](https://github.com/Rullst/Rullst/actions/workflows/bench.yml),
+backed by nine benchmark binaries because the ORM group combines two, track
+selected microbenchmarks. Their shared-runner history is regression evidence for
+those inputs, not a production throughput promise. The ORM group also runs five
+equivalent typed-SQLite operations through pinned Rullst,
 Diesel and SeaORM dependencies; it preserves unfavorable results and does not
 claim universal superiority. The separate
 [cross-framework harness](https://github.com/Rullst/Benchmarks) currently
