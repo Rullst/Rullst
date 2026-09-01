@@ -177,6 +177,12 @@ be reviewed for that behavior. RustSec exceptions are limited by `deny.toml`
 and documented with owners, controls, and expiry dates in
 `docs/src/security-advisory-exceptions.md`.
 
+`scorecards.yml` runs the pinned OpenSSF Scorecard action on `main` pushes and
+weekly, uploads SARIF to GitHub code scanning, and publishes OIDC-authenticated
+results to the public Scorecard API so the README badge follows the latest
+completed analysis. The numeric score is supply-chain evidence, not a security
+certification.
+
 `release.yml` is tag-only. It verifies source, validates the exact semantic tag
 against every publishable crate, packages before the first publish, and creates
 a tag-bound evidence bundle containing the lockfile, Cargo metadata, CycloneDX

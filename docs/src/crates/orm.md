@@ -21,7 +21,7 @@ Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightf
 
 | Security Audit | Status | Description |
 | :--- | :---: | :--- |
-| **OSSF Scorecard** | <a href="https://securityscorecards.dev/viewer/?uri=github.com/Rullst/Rullst"><img src="https://img.shields.io/ossf-scorecard/github.com/Rullst/Rullst?style=flat-square&label=" alt="OSSF Scorecard" /></a> | Supply-chain security & best practices |
+| **OSSF Scorecard** | <a href="https://scorecard.dev/viewer/?uri=github.com/Rullst/Rullst"><img src="https://img.shields.io/ossf-scorecard/github.com/Rullst/Rullst?style=flat-square&label=" alt="OSSF Scorecard" /></a> | Supply-chain security & best practices |
 | **Release Provenance** | <a href="https://github.com/Rullst/Rullst/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/release.yml?style=flat-square&label=" alt="Release provenance" /></a> | Provenance attestations for release artifacts; no SLSA level is claimed here |
 | **Codecov** | <a href="https://codecov.io/gh/Rullst/Rullst"><img src="https://img.shields.io/codecov/c/github/Rullst/Rullst?style=flat-square&label=" alt="Codecov" /></a> | Strict code coverage enforcement |
 | **Matrix DB Tests** | <a href="https://github.com/Rullst/Rullst/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=flat-square&label=" alt="Testcontainers" /></a> | Dockerized PostgreSQL & MySQL integration tests |
