@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788245613519,
+  "lastUpdate": 1788248923084,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -3953,6 +3953,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 508,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "61714453b8bb10dff305bd97f0300e44008d938f",
+          "message": "test(mail): serialize shared trap state",
+          "timestamp": "2026-09-01T04:38:07-03:00",
+          "tree_id": "2bdad4f4d63412a2a6b5ab61806d23c6f1dc004e",
+          "url": "https://github.com/Rullst/Rullst/commit/61714453b8bb10dff305bd97f0300e44008d938f"
+        },
+        "date": 1788248922554,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 313,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
