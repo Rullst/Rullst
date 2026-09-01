@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788231319689,
+  "lastUpdate": 1788232623289,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -3832,6 +3832,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 567,
+            "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "4fc63e9e25276e5f7e1859a9e255fadc74a6f85d",
+          "message": "docs(release): record v12 feature freeze",
+          "timestamp": "2026-09-01T00:06:25-03:00",
+          "tree_id": "062fe6582f8b168370611e82cd6eff9ed9cc58c9",
+          "url": "https://github.com/Rullst/Rullst/commit/4fc63e9e25276e5f7e1859a9e255fadc74a6f85d"
+        },
+        "date": 1788232622843,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 546,
             "range": "± 2",
             "unit": "ns/iter"
           }
