@@ -49,6 +49,7 @@ jobs:
         # The outbox test uses SQLite; PostgreSQL/MySQL use testcontainers.
         env:
           TESTCONTAINERS_RYUK_DISABLED: "true"
+          RULLST_REQUIRE_TESTCONTAINERS: "true"
         run: |
           cargo llvm-cov --no-report -p rullst-orm \
             --test outbox_transaction_test \
@@ -66,6 +67,16 @@ jobs:
           cargo llvm-cov --no-report -p rullst-orm \
             --no-default-features --features redis \
             --test matrix_redis_data
+          cargo llvm-cov --no-report -p rullst-studio \
+            --no-default-features --features strict-sqlite \
+            --test data_browser_mutation_sqlite
+          cargo llvm-cov --no-report -p rullst-studio \
+            --no-default-features --features strict-postgres \
+            --test data_browser_mutation_postgres -- --test-threads=1
+          cargo llvm-cov --no-report -p rullst-studio \
+            --no-default-features --features strict-mysql \
+            --test data_browser_mutation_mysql \
+            --test data_browser_mutation_mariadb -- --test-threads=1
 
       - name: Generate merged coverage report
         run: |
