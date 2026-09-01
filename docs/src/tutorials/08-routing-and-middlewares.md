@@ -1,64 +1,79 @@
-# Tutorial 08: Controllers, Routing & Middlewares 🚦
+# Tutorial 08: Controllers, Routing & Middleware 🚦
 
-Learn how to structure sub-routers, apply custom Tower/Axum middlewares, and organize large Rullst applications.
+Rullst's `Router` wraps Axum's router while preserving explicit Tower
+middleware composition. This example uses the Axum 0.8 request and `Next` types.
 
 ---
 
-## 🛠️ Step 1: Create a Custom Middleware
+## Step 1: Create a custom middleware
 
 In `src/middlewares/logger.rs`:
 
 ```rust
-use axum::{
-    http::Request,
+use rullst::web::axum::{
+    extract::Request,
     middleware::Next,
     response::Response,
 };
 
-pub async fn log_request<B>(req: Request<B>, next: Next<B>) -> Response {
+pub async fn log_request(req: Request, next: Next) -> Response {
     let method = req.method().clone();
-    let uri = req.uri().clone();
-    
-    println!("👉 Incoming Request: {} {}", method, uri);
-    
-    let res = next.run(req).await;
-    
-    println!("👈 Response Status: {}", res.status());
-    res
+    let path = req.uri().path().to_owned();
+    let response = next.run(req).await;
+
+    // Prefer structured tracing in production; do not log query strings,
+    // cookies, authorization headers, or request bodies by default.
+    println!("[HTTP] {method} {path} -> {}", response.status());
+    response
 }
 ```
 
 ---
 
-## 💻 Step 2: Organize Sub-Routers in `src/main.rs`
+## Step 2: Organize sub-routers
 
-```rust
-use axum::{routing::{get, post}, middleware};
-use rullst::Server;
-use crate::controllers::{users_controller, auth_controller};
-use crate::middlewares::logger::log_request;
+```rust,no_run
+use rullst::{Router, Server, ServerError};
+use rullst::routing::{get, post};
+use rullst::web::axum::middleware;
+
+async fn list_users() -> &'static str { "users" }
+async fn create_user() -> &'static str { "created" }
+async fn login() -> &'static str { "login" }
+
+async fn log_request(
+    request: rullst::web::axum::extract::Request,
+    next: rullst::web::axum::middleware::Next,
+) -> rullst::web::axum::response::Response {
+    next.run(request).await
+}
 
 #[tokio::main]
-async fn main() {
-    let api_routes = axum::Router::new()
-        .route("/users", get(users_controller::index))
-        .route("/users", post(users_controller::create))
+async fn main() -> Result<(), ServerError> {
+    let api = Router::new()
+        .route("/users", get(list_users).post(create_user))
         .layer(middleware::from_fn(log_request));
 
-    let auth_routes = axum::Router::new()
-        .route("/login", post(auth_controller::login))
-        .route("/signup", post(auth_controller::signup));
+    let auth = Router::new().route("/login", post(login));
+    let app = Router::new()
+        .nest("/api/v1", api)
+        .nest("/auth", auth);
 
-    Server::new()
-        .nest("/api/v1", api_routes)
-        .nest("/auth", auth_routes)
-        .run()
-        .await;
+    Server::new(app).run(3000).await
 }
 ```
 
+Use `nest_axum` or `merge_axum` when integrating a third-party raw
+`axum::Router`.
+
 ---
 
-## 💡 Key Takeaways
-- Use `.nest("/prefix", router)` to structure API versioning and resource scopes.
-- Custom middlewares can intercept requests, inject headers, or check permissions before reaching controllers.
+## Key takeaways
+
+- Middleware order is security-sensitive. Use the canonical production baseline
+  for secure headers, CSRF, CORS, and WAF rather than assembling those controls
+  ad hoc.
+- Authentication middleware establishes identity; handlers/repositories must
+  still enforce resource ownership or role authorization.
+- Apply request-body and concurrency limits before handlers that parse expensive
+  or attacker-controlled input.

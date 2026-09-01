@@ -1,6 +1,8 @@
 # Tutorial 28: gRPC Microservices with Tonic 🌐
 
-Build high-performance gRPC microservices and Protobuf schemas using `cargo rullst make:grpc`.
+Generate a Tonic/Protobuf starting point using `cargo rullst make:grpc`. The
+command does not start a gRPC server, add every build dependency, or define
+production transport/authentication policy for the application.
 
 ---
 
@@ -13,6 +15,10 @@ cargo rullst make:grpc UserService
 This generates:
 - `proto/user_service.proto` (Protobuf definition)
 - `src/grpc/user_service.rs` (Tonic service implementation)
+
+Names ending in `Service` remain a single service suffix: `UserService`
+produces the `user_service_server::UserService` trait rather than
+`UserServiceService`.
 
 ---
 
@@ -51,6 +57,9 @@ impl UserService for UserServiceImpl {
 
 ## 💡 Key Takeaways
 - The generator creates a starting point for `tonic` and `prost`; inspect the
-  generated build configuration and service before deployment.
+  generated service and add/review the required `build.rs`, dependencies,
+  reflection/health endpoints, and server bootstrap before deployment.
+- Apply TLS or mTLS, authentication, per-method authorization, deadlines,
+  message-size/concurrency limits, and proxy policy explicitly.
 - Network, serialization, handler, and proxy latency must be measured in the
   target environment. Rullst does not claim a universal latency bound.

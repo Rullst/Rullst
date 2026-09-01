@@ -87,7 +87,10 @@ value when dropped:
 use rullst_security::VaultSecret;
 
 fn use_api_key() {
-    let api_key = VaultSecret::new("sk_live_example".to_string());
+    let Ok(value) = std::env::var("EXAMPLE_PROVIDER_KEY") else {
+        return;
+    };
+    let api_key = VaultSecret::new(value);
     send_request(api_key.expose_secret());
 }
 

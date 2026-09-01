@@ -87,5 +87,5 @@ audit history, rollback, or a supported shared-production admin surface.
 ## 📚 Documentation
 
 For supported usage and security boundaries, see the
-**[Rullst Book](https://rullst.github.io/Rullst/book/index.html)** and its
+**[Rullst Book](https://rullst.github.io/book/)** and its
 capability ledger. A production/shared Studio mode is not currently supplied.

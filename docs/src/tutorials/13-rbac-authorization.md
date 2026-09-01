@@ -1,45 +1,67 @@
-# Tutorial 13: RBAC Authorization & IDOR Protection 🛡️
+# Tutorial 13: RBAC, Ownership, and IDOR/BOLA Protection 🛡️
 
-Learn how to enforce Role-Based Access Control (RBAC) and prevent Insecure Direct Object Reference (IDOR) attacks using `rullst-security`.
+`rullst-security` provides role, owner, and tenant checks over a trusted
+`UserContext`. The framework cannot infer ownership from a route parameter: the
+application must load the resource and pass its stored owner/tenant identifiers
+to the guard.
 
 ---
 
-## 🛠️ Step 1: Define User Roles & Permissions
+## Step 1: Authorize a trusted user context
 
 ```rust
-use rullst_security::{RbacGuard, UserContext};
-use rullst_core::AppError;
+use rullst_security::{RbacGuard, SecurityError, UserContext};
 
-pub async fn admin_only_dashboard(user: UserContext) -> Result<String, AppError> {
-    // Authorize role
-    RbacGuard::authorize(&user, "admin").map_err(|e| AppError::Forbidden(e))?;
-    
-    Ok("Welcome to the Secret Admin Panel".to_string())
+pub fn authorize_admin(user: &UserContext) -> Result<(), SecurityError> {
+    RbacGuard::authorize(user, "admin")
 }
 ```
 
+Construct `UserContext` only after authentication. Roles, permissions, and
+tenant membership must come from trusted server-side state, not request headers
+or JSON supplied by the caller.
+
 ---
 
-## 💻 Step 2: Prevent IDOR / BOLA Attacks
-
-Authorize entity ownership dynamically:
+## Step 2: Check the resource record, not request ownership
 
 ```rust
-pub async fn update_document(
-    user: UserContext,
-    doc_owner_id: &str,
-) -> Result<(), AppError> {
-    // Ensures current user owns the resource or has 'admin' role
-    RbacGuard::authorize_owner_or_role(&user, doc_owner_id, "admin")
-        .map_err(|e| AppError::Forbidden(e))?;
-    
-    // Proceed with update
-    Ok(())
+use rullst_security::{RbacGuard, SecurityError, UserContext};
+
+pub struct DocumentAccess {
+    pub owner_user_id: String,
+    pub tenant_id: String,
+}
+
+pub fn authorize_document_update(
+    user: &UserContext,
+    stored: &DocumentAccess,
+) -> Result<(), SecurityError> {
+    RbacGuard::authorize_tenant_owner_or_role(
+        user,
+        &stored.tenant_id,
+        &stored.owner_user_id,
+        "document-editor",
+    )
 }
 ```
 
+Load `DocumentAccess` with a parameterized query by the route's document ID. Do
+not accept `owner_user_id` or `tenant_id` from the update payload. The tenant
+guard is evaluated first and roles — including `admin` — do not bypass a tenant
+mismatch.
+
+For particularly sensitive paths, make the database query itself tenant-scoped
+and then apply the guard as a second boundary. Return the same not-found/forbidden
+shape where revealing resource existence would leak information.
+
 ---
 
-## 💡 Key Takeaways
-- `RbacGuard::authorize` returns an authorization error if permissions fail.
-- `authorize_owner_or_role` prevents IDOR/BOLA vulnerabilities across API endpoints.
+## Key takeaways
+
+- `authorize` checks a role (and recognizes the framework's `admin` role).
+- `authorize_owner_or_role` is safe only when the owner ID came from trusted
+  resource state.
+- Use `authorize_tenant_owner_or_role` for tenant-bound resources.
+- A helper contributes to IDOR/BOLA prevention only when every parameterized
+  resource route invokes it or an equivalent scoped repository policy.

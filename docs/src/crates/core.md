@@ -41,11 +41,17 @@ they explicitly implement durable scheduling.
   is supported, Tokio task/yield observations when a runtime is available, and
   process uptime. Unsupported probes return `None`.
 - **Prometheus `/metrics` Exporter:** Text-format metrics served at `GET /metrics`; formatting and collection have bounded runtime cost.
-- **Kubernetes Health Probes (`rullst::health`):** Cloud-Native Liveness (`GET /health`) and Readiness (`GET /ready`) probe endpoints.
+- **Kubernetes probe routes (`rullst::health`):** `GET /health` and `GET
+  /ready` report process availability and uptime. The built-in `/ready` does
+  not test a database, queue, or external dependency; applications that need
+  dependency-aware readiness must supply that check themselves.
 - **Interactive Scalar API Docs (`rullst::scalar`):** OpenAPI documentation UI
   mounted at `/docs`, with a pinned CDN asset and a status-only fallback. A
   missing or malformed `openapi.json` returns `503`.
-- **Unified Error Handling:** `AppError` standardizes fallible application paths and error-console integration. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
+- **Typed framework errors:** startup, queues, validation, scheduling, storage,
+  and other subsystems expose their own typed errors. Applications may compose
+  those into an application-owned `AppError`; Core does not define one global
+  application error type.
 - **Durable scheduled queues:** SQLite and Redis persist bounded due timestamps;
   the live Redis CI contract proves that an immediate job remains claimable
   while a future job stays unavailable.
@@ -61,6 +67,9 @@ Most applications can use the re-exports provided by the umbrella `rullst`
 crate instead of depending on `rullst-core` directly.
 
 ### Mounting Health Probes & Prometheus Metrics
+
+These optional surfaces are application-owned and must be mounted explicitly.
+Protect or isolate `/metrics` when its operational data should not be public.
 
 ```rust
 use axum::Router;

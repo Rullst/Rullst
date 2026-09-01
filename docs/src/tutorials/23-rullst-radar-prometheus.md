@@ -40,6 +40,10 @@ rullst_tokio_latency_microseconds 42
 
 Visual dashboard available in Studio: `http://localhost:5555/studio/radar`.
 
+`/metrics` is not authenticated by `radar_metrics_router()`. Restrict it with a
+private network, service-mesh policy, or reviewed authentication middleware;
+process and runtime measurements can disclose operational information.
+
 ---
 
 ## 💡 Key Takeaways

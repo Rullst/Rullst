@@ -24,7 +24,7 @@ The `OtaManager` enforces a **fail-closed eligibility gate**: its state machine 
 
 ### The Cryptographic Invariant
 
-```
+```text
 [Signed Firmware Manifest]
 ├── Target Hardware ID: "stm32-sensor-node-v1"
 ├── Version String:     "2.4.0"

@@ -1,43 +1,86 @@
-# Tutorial 33: Multi-Tenant B2B Enterprise Architecture 🏢
+# Tutorial 33: Auth-bound multi-tenancy
 
-Build multi-tenant B2B applications with subdomains, custom domains, and database isolation using `rullst::multitenant`.
+Rullst Core can select a tenant from a request hint only after application
+authentication has inserted a trusted `TenantMembership`. A hostname, header,
+query parameter or request body is never sufficient proof of membership.
 
----
+## 1. Configure the selection layer
 
-## 🛠️ Step 1: Configure Multi-Tenancy Middleware
+```rust,no_run
+use axum::{Extension, Router, routing::get};
+use rullst_core::{
+    multitenant::{TenantConfig, TenantLayer, TenantStrategy},
+    security::TenantContext,
+};
 
-```rust
-use rullst_core::multitenant::{MultitenantLayer, TenantContext};
-use axum::{Router, routing::get};
-
-pub async fn tenant_dashboard(tenant: TenantContext) -> String {
-    format!("Welcome Tenant [{}] to your isolated workspace!", tenant.subdomain)
+async fn tenant_dashboard(Extension(tenant): Extension<TenantContext>) -> String {
+    format!("Selected workspace: {}", tenant.tenant_id)
 }
 
-pub fn app_router() -> Router {
+fn tenant_routes() -> Router {
+    let selection = TenantLayer::new(TenantConfig::new(TenantStrategy::Subdomain));
     Router::new()
         .route("/dashboard", get(tenant_dashboard))
-        .layer(MultitenantLayer::subdomain())
+        .layer(selection)
 }
 ```
 
----
+An outer, application-owned authentication layer must first validate the
+session/token and insert `TenantMembership::try_new(...)` from trusted identity
+claims. Without that extension, `TenantLayer` returns `403 Forbidden`. If the
+requested subdomain is not in the authenticated membership set, it also returns
+403. In Axum, remember that subsequently added layers run first; test the final
+middleware order in-process.
 
-## 🔒 Step 2: Tenant Database Isolation
+`TenantStrategy::Header` and `TenantStrategy::Parameter` are also available,
+but they remain untrusted selection hints. Query parameters additionally leak
+more easily through history, referrers and access logs. The built-in subdomain
+parser selects the first label only for hostnames with at least three labels;
+custom-domain ownership and trusted-proxy normalization remain application and
+deployment work.
 
-In database queries, scope models to the active tenant ID:
+## 2. Bind every database query
 
-```rust
-use crate::models::Invoice;
+Tenant selection does not rewrite arbitrary SQL or automatically add a tenant
+predicate to every ORM query. Bind the authenticated tenant explicitly:
 
-pub async fn list_tenant_invoices(tenant: TenantContext) -> Result<Vec<Invoice>, rullst_core::AppError> {
-    let invoices = Invoice::where_clause("tenant_id = ?", vec![tenant.id]).await?;
-    Ok(invoices)
+```rust,no_run
+use rullst_core::security::TenantContext;
+use sqlx::{FromRow, PgPool};
+
+#[derive(FromRow)]
+struct Invoice {
+    id: i64,
+    tenant_id: String,
+    total_minor: i64,
+}
+
+async fn list_tenant_invoices(
+    pool: &PgPool,
+    tenant: &TenantContext,
+) -> Result<Vec<Invoice>, sqlx::Error> {
+    sqlx::query_as::<_, Invoice>(
+        "SELECT id, tenant_id, total_minor FROM invoices WHERE tenant_id = $1",
+    )
+    .bind(&tenant.tenant_id)
+    .fetch_all(pool)
+    .await
 }
 ```
 
----
+Use database constraints and, where appropriate, database-native row-level
+security as additional defense. Negative tests must prove that one tenant
+cannot read, update or delete another tenant's records through every relevant
+route, repository, background job and administrative surface.
 
-## 💡 Key Takeaways
-- Supports subdomain multitenancy (`acme.saas.com`) and custom domain mapping (`app.acme.com`).
-- Prevents cross-tenant data leaks at the framework level.
+## 3. Operational boundaries
+
+- `TenantContext` is server-selected state, not a claim accepted from JSON.
+- `current_tenant_id()` is task-local convenience; passing an explicit
+  `TenantContext` to domain/storage APIs is easier to audit.
+- `TenantCache`, `TenantStorage`, `TenantRealtime` and `TenantPresence` provide
+  validated namespaces, but applications still own business authorization and
+  remote provider policy.
+- Cross-process membership updates, custom-domain verification, database
+  policy, audit retention and incident response are not automatic framework
+  guarantees.

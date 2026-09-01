@@ -157,7 +157,7 @@ Selecting the feature does not enable SEFIN transmission.
 
 ### Architecture & Pipeline
 
-```
+```text
 [SaaS Sale] ─► [NfseDpsV101] ─► [Pinned XSD] ─► [PKCS#12 XMLDSig] ─► [Bounded JSON codec]
                     │                                                    │
                     ▼                                                    ▼

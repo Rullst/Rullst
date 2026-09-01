@@ -107,7 +107,7 @@
 - [💳 Payment Gateways & Financial Infrastructure](payment-gateways-guide.md)
 - [🧪 Monorepo Examples & Reference Apps](examples.md)
 - [Axum/SQLx Interoperability](axum-sqlx-migration.md)
-- [🔌 Rullst Extension Packages Spec](packages-spec.md)
+- [🔌 Dependency Helper & Package Roadmap](packages-spec.md)
 - [🗺️ Blueprints Roadmap](blueprints_roadmap.md)
 - [🗺️ Rullst Official Roadmap](roadmap.md)
 - [💻 CLI Reference](cli_reference.md)

@@ -118,5 +118,7 @@ command and boundary.
   escapes dynamic values. Rendering still performs the allocations/work implied
   by the generated template.
 - All boolean HTML attributes inside `html!` must be explicitly quoted (e.g. `required="true"`).
-- Fallible handlers can return `Result<Response, AppError>`; server startup propagates its typed error with `?`.
+- Fallible handlers can return `Result<Response, YourAppError>` using an
+  application-defined error that converts the relevant typed framework/domain
+  errors; server startup propagates `ServerError` with `?`.
 - The v12 `main` branch is an evaluation source, not a stable release channel.

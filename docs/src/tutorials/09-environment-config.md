@@ -23,12 +23,18 @@ use rullst_core::config::RullstConfig;
 
 fn report_environment() -> Result<(), Box<dyn std::error::Error>> {
     let environment = RullstConfig::global().environment()?;
-    let database_url = std::env::var("DATABASE_URL")?;
+    let database_is_configured = std::env::var_os("DATABASE_URL").is_some();
 
-    println!("Booting Rullst in {environment} mode with {database_url}");
+    println!(
+        "Booting Rullst in {environment} mode; database configured: {database_is_configured}"
+    );
     Ok(())
 }
 ```
+
+Do not log `DATABASE_URL`: it commonly embeds a username and password. Report
+only whether configuration is present, and redact sensitive fields in structured
+telemetry.
 
 The generated server bootstrap loads `.env` before applying its runtime policy.
 Standalone utilities must load a dotenv file themselves or receive exported

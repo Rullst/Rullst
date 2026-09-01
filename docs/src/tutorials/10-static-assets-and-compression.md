@@ -1,58 +1,71 @@
 # Tutorial 10: Static Assets & Pre-Compression 📦
 
-Learn how Rullst serves static assets (CSS, JS, images) with built-in Brotli and Zstandard pre-compression for production builds.
+The standard `Server` serves an existing `static/` directory at `/static`.
+Production builds can create Brotli and Zstandard sidecars for eligible text and
+Wasm assets in that directory.
 
 ---
 
-## 🛠️ Step 1: Configure Static Asset Directory
+## Step 1: Use the standard static directory
 
-Place your static files inside the `public/` or `static/` directory:
-
-```
-public/
+```text
+static/
 ├── css/
 │   └── app.css
 ├── js/
 │   └── app.js
-└── favicon.ico
+└── favicon.svg
 ```
 
----
+Reference those files through `/static/...`, for example
+`/static/css/app.css`. `Server::run` mounts the directory when it exists; no
+additional `ServeDir` layer is required for this standard path.
 
-## 💻 Step 2: Mount Static Folder in `main.rs`
-
-```rust
-use tower_http::services::ServeDir;
-use rullst::Server;
+```rust,no_run
+use rullst::{routes, routing::get, Server};
 
 #[tokio::main]
-async fn main() {
-    Server::new()
-        .nest_service("/public", ServeDir::new("public"))
-        .run()
-        .await;
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let app = routes![get("/" => || async { "Rullst" })];
+    Server::new(app).run(3000).await?;
+    Ok(())
 }
 ```
 
+If you mount a different directory manually through Axum/Tower, its routing and
+pre-compressed negotiation become application responsibilities.
+
 ---
 
-## 🚀 Step 3: Production Build Compression
-
-When building for production:
+## Step 2: Build production sidecars
 
 ```bash
 cargo rullst build
 ```
 
-The build command generates Brotli and Zstandard sidecars for supported static
-files. Serving a sidecar avoids per-request compression work, but file I/O,
-headers, negotiation, proxy configuration, and network delivery still have
-runtime cost. Verify that the deployed server actually selects `.br`/`.zst` for
-the matching `Accept-Encoding` request.
+The release-mode command builds the application and creates `.br` and `.zst`
+siblings for `html`, `css`, `js`, `json`, `svg`, `wasm`, `xml`, and `txt` files
+under `static/`. The standard server negotiates Brotli through `ServeDir` and
+Zstandard through its static middleware.
+
+Verify deployed behavior rather than assuming negotiation worked:
+
+```bash
+curl --compressed -I -H 'Accept-Encoding: br' \
+  http://127.0.0.1:3000/static/css/app.css
+curl -I -H 'Accept-Encoding: zstd' \
+  http://127.0.0.1:3000/static/css/app.css
+```
+
+Check `Content-Encoding`, `Content-Type`, cache headers, and `Vary` through the
+actual TLS proxy/CDN. Pre-compression avoids compression work per request; it
+does not eliminate file I/O or network latency.
 
 ---
 
-## 💡 Key Takeaways
-- Use `ServeDir` to serve images, CSS, and favicon files.
-- `cargo rullst build` pre-compresses supported static assets. Edge latency
-  depends on the CDN/proxy, cache policy, payload, and deployment.
+## Key takeaways
+
+- Use `static/` for the framework's standard asset path and build integration.
+- Keep source files alongside generated sidecars in the deployed artifact.
+- Fingerprint immutable asset names and configure cache policy at the
+  application/CDN boundary.

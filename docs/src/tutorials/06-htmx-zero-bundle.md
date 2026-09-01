@@ -12,20 +12,30 @@ and permitted by the application's CSP.
 In your controller or view:
 
 ```rust
-use rullst::{html, Response, AppError};
+use axum::response::Html;
+use rullst::html;
+use rullst::html::RawHtml;
 
-pub async fn search_users(query: String) -> Result<Response, AppError> {
+pub async fn search_users() -> Html<String> {
     let results = vec!["Alice", "Bob", "Charlie"];
-    
-    Ok(html! {
+    let rows = results
+        .into_iter()
+        .map(|name| html! {
+            <li class="py-2 text-slate-200">{name}</li>
+        })
+        .collect::<String>();
+
+    Html(html! {
         <ul id="user-list" class="divide-y divide-slate-700">
-            { results.into_iter().map(|name| html! {
-                <li class="py-2 text-slate-200">{ name }</li>
-            }) }
+            {RawHtml(rows)}
         </ul>
     })
 }
 ```
+
+`RawHtml` is appropriate here only because `rows` is composed exclusively from
+already-escaped `html!` fragments. Do not wrap untrusted request data directly
+in `RawHtml`.
 
 ---
 

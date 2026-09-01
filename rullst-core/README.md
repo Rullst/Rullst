@@ -77,4 +77,4 @@ Repository workflows exercise Core with unit, integration, fuzz, and Miri jobs w
 
 ## 📚 Documentation
 
-For an architectural deep-dive into Rullst Core's event loop and middleware lifecycle, please visit the **[Rullst Book](https://rullst.github.io/Rullst/book/index.html)**.
+For an architectural deep-dive into Rullst Core's event loop and middleware lifecycle, please visit the **[Rullst Book](https://rullst.github.io/book/)**.
