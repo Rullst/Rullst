@@ -59,7 +59,10 @@ features.
 Current planning snapshot: **5 implemented, 24 partial, and 8 not started**
 inside the 37-milestone web-framework horizon. M31 is excluded because it is a
 separately governed safety-critical programme. The weighted planning estimate
-is 45.9% complete and 54.1% remaining; this is not v12 release readiness.
+is 45.9% complete and 54.1% remaining; this is not v12 release readiness and
+the 32 milestones without strict closure are not 32 blockers for v12.0. The
+[v12 programme](v12.md) owns release gates, while the root roadmap assigns
+compatible follow-up work to v12.1 and research or major contracts to v13.
 
 ## Claims that are impossible as framework guarantees
 

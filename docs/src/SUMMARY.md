@@ -4,6 +4,7 @@
 - [Why Rullst?](why-Rullst.md)
 - [Simple Capability Status](capability-status.md)
 - [Per-Commit Quality Scorecard](quality-scorecard.md)
+- [Rullst Academy Product Programme](rullst-academy.md)
 - [💡 The Rullst Philosophy](philosophy.md)
 
 # Core Features

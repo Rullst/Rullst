@@ -335,8 +335,8 @@ contains the more detailed evidence and acceptance boundaries.
 
 | Version | Status | Honest scope |
 | :--- | :---: | :--- |
-| **v12.0.0** | `[ ] Unreleased hardening` | Close the audited P0/P1/P2 regressions and prove the implemented foundations. Version numbers in manifests do not make a release complete. |
-| **v12.1.x** | `[ ] Candidate window, not a promise` | Generated-project matrix, WebAuthn/JWT consolidation, typed SDK/entitlement foundations, OTel trace ingestion, safe Studio assistants, and selected demand-backed adapters. |
+| **v12.0.0** | `[ ] Unreleased hardening` | Freeze new framework features, close the audited release gates, prove the implemented foundations and operate the separate Academy reference against an exact public RC. Version numbers in manifests do not make a release complete. |
+| **v12.1.x** | `[ ] Candidate window, not a promise` | Backward-compatible improvements demonstrated by real applications, including generated-project coverage, auth/session consolidation, authorship DX and selected demand-backed adapters. |
 | **v13.x** | `[ ] Research/major-architecture window` | The remaining security-stack consolidation, audited PQC protocols, human-governed agentic operations, vendor-backed edge replication, and any independently governed critical-systems project. |
 
 The framework may call a milestone implemented only when the same commit passes
