@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788255925052,
+  "lastUpdate": 1788256803301,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -3881,6 +3881,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/e14e3ef58cf082ee3e9b07b750278a36f4c51cbe"
         },
         "date": 1788255924615,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "2754d75c632953d59231e5a772afab6f63e3be03",
+          "message": "test(coverage): exercise provider and safety contracts",
+          "timestamp": "2026-09-01T06:46:52-03:00",
+          "tree_id": "c0a34ff31fa47c5d787e6c8af2b1c9280f505f52",
+          "url": "https://github.com/Rullst/Rullst/commit/2754d75c632953d59231e5a772afab6f63e3be03"
+        },
+        "date": 1788256802557,
         "tool": "cargo",
         "benches": [
           {
