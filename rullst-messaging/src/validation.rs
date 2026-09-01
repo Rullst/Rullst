@@ -69,20 +69,13 @@ pub(crate) fn validate_content_type(value: &str) -> Result<()> {
             reason: "must be bounded ASCII",
         });
     }
-    let mut pieces = value.split('/');
-    let Some(primary) = pieces.next() else {
+    let Some((primary, subtype)) = value.split_once('/') else {
         return Err(MessagingError::Invalid {
             field: "content type",
             reason: "must contain one type/subtype separator",
         });
     };
-    let Some(subtype) = pieces.next() else {
-        return Err(MessagingError::Invalid {
-            field: "content type",
-            reason: "must contain one type/subtype separator",
-        });
-    };
-    if pieces.next().is_some()
+    if subtype.contains('/')
         || primary.is_empty()
         || subtype.is_empty()
         || !primary.bytes().all(is_mime_token)
