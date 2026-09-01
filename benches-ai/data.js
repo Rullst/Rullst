@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788295964646,
+  "lastUpdate": 1788298660236,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -5033,6 +5033,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 484,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "683e2b2eccbd40d0896138746f62447850896c77",
+          "message": "docs(release): record v12 quality gate",
+          "timestamp": "2026-09-01T18:24:55-03:00",
+          "tree_id": "c41db748a230ea1db3ae5d1b0a7bb9522f10fd96",
+          "url": "https://github.com/Rullst/Rullst/commit/683e2b2eccbd40d0896138746f62447850896c77"
+        },
+        "date": 1788298659454,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1874,
+            "range": "± 45",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 330,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 710,
+            "range": "± 29",
             "unit": "ns/iter"
           }
         ]
