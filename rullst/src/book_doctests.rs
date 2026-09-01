@@ -1,0 +1,213 @@
+//! Cargo-aware doctest aggregation for the public tutorials.
+//!
+//! This module exists only while rustdoc collects tests. Keeping the Markdown
+//! files as the input prevents a separately copied example from drifting away
+//! from the guide users actually read.
+
+macro_rules! tutorial {
+    ($module:ident, $path:literal) => {
+        #[doc = include_str!($path)]
+        pub mod $module {}
+    };
+}
+
+tutorial!(
+    tutorial_01_hello_world,
+    "../../docs/src/tutorials/01-hello-world.md"
+);
+tutorial!(
+    tutorial_02_cli_generators,
+    "../../docs/src/tutorials/02-cli-generators.md"
+);
+tutorial!(
+    tutorial_03_active_record_crud,
+    "../../docs/src/tutorials/03-active-record-crud.md"
+);
+tutorial!(
+    tutorial_04_repository_pattern,
+    "../../docs/src/tutorials/04-repository-pattern.md"
+);
+tutorial!(
+    tutorial_05_migrations_and_seeds,
+    "../../docs/src/tutorials/05-migrations-and-seeds.md"
+);
+tutorial!(
+    tutorial_06_htmx_zero_bundle,
+    "../../docs/src/tutorials/06-htmx-zero-bundle.md"
+);
+tutorial!(
+    tutorial_07_forms_and_validation,
+    "../../docs/src/tutorials/07-forms-and-validation.md"
+);
+tutorial!(
+    tutorial_08_routing_and_middlewares,
+    "../../docs/src/tutorials/08-routing-and-middlewares.md"
+);
+tutorial!(
+    tutorial_09_environment_config,
+    "../../docs/src/tutorials/09-environment-config.md"
+);
+tutorial!(
+    tutorial_10_static_assets_and_compression,
+    "../../docs/src/tutorials/10-static-assets-and-compression.md"
+);
+tutorial!(
+    tutorial_11_authentication_system,
+    "../../docs/src/tutorials/11-authentication-system.md"
+);
+tutorial!(
+    tutorial_12_jwt_and_session_auth,
+    "../../docs/src/tutorials/12-jwt-and-session-auth.md"
+);
+tutorial!(
+    tutorial_13_rbac_authorization,
+    "../../docs/src/tutorials/13-rbac-authorization.md"
+);
+tutorial!(
+    tutorial_14_rasp_security_layer,
+    "../../docs/src/tutorials/14-rasp-security-layer.md"
+);
+tutorial!(
+    tutorial_15_rullst_vault_encryption,
+    "../../docs/src/tutorials/15-rullst-vault-encryption.md"
+);
+tutorial!(
+    tutorial_16_liveview_server_driven_ui,
+    "../../docs/src/tutorials/16-liveview-server-driven-ui.md"
+);
+tutorial!(
+    tutorial_17_websockets_realtime_chat,
+    "../../docs/src/tutorials/17-websockets-realtime-chat.md"
+);
+tutorial!(
+    tutorial_18_wasm_islands_rust,
+    "../../docs/src/tutorials/18-wasm-islands-rust.md"
+);
+tutorial!(
+    tutorial_19_saas_billing_capital,
+    "../../docs/src/tutorials/19-saas-billing-capital.md"
+);
+tutorial!(
+    tutorial_20_background_jobs_queues,
+    "../../docs/src/tutorials/20-background-jobs-queues.md"
+);
+tutorial!(
+    tutorial_21_local_ai_ollama,
+    "../../docs/src/tutorials/21-local-ai-ollama.md"
+);
+tutorial!(
+    tutorial_22_rag_vector_search,
+    "../../docs/src/tutorials/22-rag-vector-search.md"
+);
+tutorial!(
+    tutorial_23_rullst_radar_prometheus,
+    "../../docs/src/tutorials/23-rullst-radar-prometheus.md"
+);
+tutorial!(
+    tutorial_24_scalar_api_docs,
+    "../../docs/src/tutorials/24-scalar-api-docs.md"
+);
+tutorial!(
+    tutorial_25_kubernetes_deployment,
+    "../../docs/src/tutorials/25-kubernetes-deployment.md"
+);
+tutorial!(
+    tutorial_26_one_click_paas_deploy,
+    "../../docs/src/tutorials/26-one-click-paas-deploy.md"
+);
+tutorial!(
+    tutorial_27_zero_cost_di,
+    "../../docs/src/tutorials/27-zero-cost-di.md"
+);
+tutorial!(
+    tutorial_28_grpc_microservices,
+    "../../docs/src/tutorials/28-grpc-microservices.md"
+);
+tutorial!(
+    tutorial_29_embedded_iot_edge,
+    "../../docs/src/tutorials/29-embedded-iot-edge.md"
+);
+tutorial!(
+    tutorial_30_framework_escape_hatch,
+    "../../docs/src/tutorials/30-framework-escape-hatch.md"
+);
+tutorial!(
+    tutorial_31_end_to_end_saas_aws_gcp,
+    "../../docs/src/tutorials/31-end-to-end-saas-aws-gcp.md"
+);
+tutorial!(
+    tutorial_32_ai_sentinel_soc_dashboard,
+    "../../docs/src/tutorials/32-ai-sentinel-soc-dashboard.md"
+);
+tutorial!(
+    tutorial_33_multi_tenant_b2b_saas,
+    "../../docs/src/tutorials/33-multi-tenant-b2b-saas.md"
+);
+tutorial!(
+    tutorial_34_realtime_dashboard_liveview_websockets,
+    "../../docs/src/tutorials/34-realtime-dashboard-liveview-websockets.md"
+);
+tutorial!(
+    tutorial_35_high_performance_benchmarking,
+    "../../docs/src/tutorials/35-high-performance-benchmarking.md"
+);
+tutorial!(
+    tutorial_36_assisted_framework_upgrades,
+    "../../docs/src/tutorials/36-assisted-framework-upgrades.md"
+);
+tutorial!(
+    tutorial_38_transactional_outbox,
+    "../../docs/src/tutorials/38-transactional-outbox.md"
+);
+tutorial!(
+    tutorial_39_scout_search,
+    "../../docs/src/tutorials/39-scout-search.md"
+);
+tutorial!(
+    tutorial_40_nfse_homologation_preparation,
+    "../../docs/src/tutorials/40-nfse-homologation-preparation.md"
+);
+tutorial!(
+    tutorial_41_tenant_bound_rag,
+    "../../docs/src/tutorials/41-tenant-bound-rag.md"
+);
+tutorial!(
+    tutorial_42_server_bound_oauth_sessions,
+    "../../docs/src/tutorials/42-server-bound-oauth-sessions.md"
+);
+tutorial!(
+    tutorial_43_omni_web_first,
+    "../../docs/src/tutorials/43-omni-web-first.md"
+);
+tutorial!(
+    tutorial_44_omni_offline_sync,
+    "../../docs/src/tutorials/44-omni-offline-sync.md"
+);
+tutorial!(
+    tutorial_45_accessible_academy_media,
+    "../../docs/src/tutorials/45-accessible-academy-media.md"
+);
+tutorial!(
+    tutorial_46_server_authoritative_learning_activities,
+    "../../docs/src/tutorials/46-server-authoritative-learning-activities.md"
+);
+tutorial!(
+    tutorial_47_spaced_review_queue,
+    "../../docs/src/tutorials/47-spaced-review-queue.md"
+);
+tutorial!(
+    tutorial_48_local_oidc_testing,
+    "../../docs/src/tutorials/48-local-oidc-testing.md"
+);
+tutorial!(
+    tutorial_49_brokered_messaging,
+    "../../docs/src/tutorials/49-brokered-messaging.md"
+);
+tutorial!(
+    tutorial_50_auditable_revisions,
+    "../../docs/src/tutorials/50-auditable-revisions.md"
+);
+tutorial!(
+    rest_api_quickstart,
+    "../../docs/src/tutorials/rest-api-quickstart.md"
+);

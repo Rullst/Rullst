@@ -17,7 +17,7 @@ the returned router; the command does not edit route registration automatically.
 
 ## 💻 Step 2: Mount in Application
 
-```rust
+```rust,no_run
 use rullst::{Router, Server};
 use rullst::scalar::scalar_docs_router;
 

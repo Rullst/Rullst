@@ -27,11 +27,15 @@ the current feature does not silently substitute local storage.
 
 ## Create an account-bound state
 
-```rust
+```rust,no_run
 use rullst::offline_sync::{
     OfflineAccountId, OfflineSnapshotCipher, OfflineSyncPolicy, OfflineSyncState,
 };
 
+# fn load_device_key() -> Result<[u8; 32], std::io::Error> {
+#     Err(std::io::Error::other("platform secure storage adapter omitted"))
+# }
+# fn create_state() -> Result<(), Box<dyn std::error::Error>> {
 let account = OfflineAccountId::new("account_01j8student")?;
 let policy = OfflineSyncPolicy::default();
 let mut state = OfflineSyncState::new(account.clone());
@@ -40,6 +44,9 @@ let mut state = OfflineSyncState::new(account.clone());
 // Never embed a production key in source or store it next to the snapshot.
 let device_key = load_device_key()?;
 let cipher = OfflineSnapshotCipher::new("device-key-2026-01", device_key)?;
+# let _ = (cipher, policy, state);
+# Ok(())
+# }
 ```
 
 The cipher uses randomized AES-256-GCM. Its authenticated data binds the
@@ -52,11 +59,19 @@ nonce/tag or modified ciphertext fails closed. The owned key is redacted from
 Use a unique event entity for an immutable attempt. Do not queue an authoritative
 score: the server grades the answer and returns its own revision and value.
 
-```rust
+```rust,no_run
 use rullst::client_contract::IdempotencyKey;
-use rullst::offline_sync::{OfflineEntityKey, OfflineMutation};
+use rullst::offline_sync::{
+    OfflineAccountId, OfflineEntityKey, OfflineMutation, OfflineSyncPolicy,
+    OfflineSyncState,
+};
 use serde_json::json;
 
+# fn queue_attempt() -> Result<(), Box<dyn std::error::Error>> {
+# let policy = OfflineSyncPolicy::default();
+# let account = OfflineAccountId::new("account_01j8student")?;
+# let mut state = OfflineSyncState::new(account);
+# let client_epoch_ms = 1_800_000_000_000;
 let attempt = OfflineMutation::upsert(
     IdempotencyKey::new("attempt_01j8french7")?,
     OfflineEntityKey::new("lesson_attempts", "attempt_01j8french7")?,
@@ -70,6 +85,9 @@ let attempt = OfflineMutation::upsert(
 state.queue(policy, attempt)?;
 
 let batch = state.push_batch(policy, 25)?;
+# let _ = batch;
+# Ok(())
+# }
 ```
 
 Queue order is FIFO and replay keys are unique across pending and conflicted
@@ -113,7 +131,10 @@ Map the response's versioned client-contract envelope into
 `AuthoritativePush` or `AuthoritativePull`, including server-authored time, then
 run one bounded foreground attempt:
 
-```rust
+The following integration fragment intentionally depends on the
+application-owned `OfflineSyncTransport` implementation described above:
+
+```rust,ignore
 use rullst::offline_sync::{
     OfflineSyncCoordinator, OfflineSyncRunPolicy,
 };
@@ -160,7 +181,12 @@ corrupt encrypted bytes, which already fail authentication or schema checks.
 
 ## Persist and erase
 
-```rust
+The persistence call below is also an application integration fragment: `cipher`,
+`policy`, `state`, and `account` come from the preceding steps, while
+`platform_store_atomically` is the reviewed platform adapter Rullst deliberately
+does not supply:
+
+```rust,ignore
 let encrypted = cipher.seal(policy, &state)?;
 platform_store_atomically(&encrypted)?;
 

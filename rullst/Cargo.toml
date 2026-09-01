@@ -114,6 +114,8 @@ getrandom = { version = "0.4.2", features = ["wasm_js"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+rullst-connect = { workspace = true, features = ["axum-session"] }
+tower-sessions = "0.15"
 futures-util = "0.3.32"
 tokio-tungstenite = "0.30.0"
 criterion = { version = "0.8.2", features = ["html_reports", "async_tokio"] }

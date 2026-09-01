@@ -119,7 +119,11 @@ received:
 
 ```rust,no_run
 use rullst_connect::{AutoRefreshingSession, ConnectError, ConnectUser};
-use secrecy::ExposeSecret as _;
+use rullst_connect::prelude::ExposeSecret as _;
+
+# async fn call_authorized_endpoint(_: &str) -> Result<(), ConnectError> {
+#     Ok(())
+# }
 
 async fn provider_request(
     github: &rullst_connect::providers::GithubProvider,

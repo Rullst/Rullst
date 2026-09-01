@@ -9,7 +9,7 @@ does not claim general exploit detection.
 
 ## 🛠️ Step 1: Mount `RaspSecurityLayer` in `main.rs`
 
-```rust
+```rust,no_run
 use axum::Router;
 use rullst_security::rasp::RaspSecurityLayer;
 use rullst::Server;

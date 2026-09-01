@@ -27,6 +27,12 @@ cancelled, or skipped applicable gates suppress
 the dimensions they prove; the report is still generated so a red push cannot
 hide its note.
 
+Documentation/DX evidence also includes a Cargo-aware aggregation of the 50
+public tutorials. It consumes the Markdown files directly during the normal
+all-feature doctest run, so a green workspace test proves the standalone Rust
+examples compile on that SHA; explicitly contextual fragments remain visible as
+ignored and do not count as compiled examples.
+
 Grades use the following fixed bands: A+ 97–100, A 90–96, B 80–89, C 70–79,
 D 60–69, and F below 60.
 

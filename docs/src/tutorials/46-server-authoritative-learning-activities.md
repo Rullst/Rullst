@@ -9,7 +9,10 @@ turns an untrusted submission into a server-authored `ActivityResult`.
 Load the correct option, maximum score and canonical SHA-256 digest from your
 trusted, versioned rules. Do not accept them from an HTTP form.
 
-```rust,no_run
+This block is compiled inside the generated Academy starter, whose
+application-local `crate::services` modules provide the two imported contracts:
+
+```rust,ignore
 use crate::services::activity_contract::{
     ActivityAttempt, ActivityKind, SingleChoiceEvaluator,
     SingleChoiceSubmission, ACTIVITY_SCHEMA_VERSION, evaluate_activity,

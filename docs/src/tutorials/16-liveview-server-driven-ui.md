@@ -18,6 +18,9 @@ This creates `src/live/counter_component.rs`.
 
 ## 💻 Step 2: Implement the Component Lifecycle
 
+The following controller fragment expects the generated
+`crate::live::counter_component` module from Step 2:
+
 ```rust
 use async_trait::async_trait;
 use rullst::live::LiveComponent;
@@ -60,7 +63,10 @@ impl LiveComponent for CounterComponent {
 
 ## 💻 Step 3: Mount Component in a Controller
 
-```rust
+This route fragment belongs in the same application module where
+`CounterComponent` is in scope:
+
+```rust,ignore
 use rullst::live::Live;
 use crate::live::counter_component::CounterComponent;
 
@@ -71,7 +77,7 @@ pub async fn page_handler() -> String {
 
 Register the matching Axum WebSocket route:
 
-```rust
+```rust,ignore
 use axum::{routing::get, Router};
 use rullst::live::live_ws_handler;
 

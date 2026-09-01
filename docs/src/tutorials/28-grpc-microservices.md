@@ -24,9 +24,10 @@ produces the `user_service_server::UserService` trait rather than
 
 ## 💻 Step 2: Implement the gRPC Handler
 
-In `src/grpc/user_service.rs`:
+In `src/grpc/user_service.rs`, after the generated application's `build.rs` has
+compiled `proto/user_service.proto` and made the Tonic dependencies available:
 
-```rust
+```rust,ignore
 use tonic::{Request, Response, Status};
 
 pub mod proto {

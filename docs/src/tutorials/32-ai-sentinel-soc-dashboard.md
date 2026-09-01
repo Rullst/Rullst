@@ -6,7 +6,7 @@ responder or a durable SIEM integration.
 
 ## 1. Compose local request controls
 
-```rust
+```rust,no_run
 use axum::Router;
 use rullst_security::{CspSecurityLayer, HoneypotLayer, HoneypotState, RaspSecurityLayer};
 use std::net::SocketAddr;

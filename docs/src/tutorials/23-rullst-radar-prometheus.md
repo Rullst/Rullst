@@ -8,7 +8,7 @@ Monitor process RSS memory, Tokio runtime tick latency, and active tasks using R
 
 In `src/main.rs`:
 
-```rust
+```rust,no_run
 use axum::Router;
 use rullst_core::radar::radar_metrics_router;
 use rullst::Server;

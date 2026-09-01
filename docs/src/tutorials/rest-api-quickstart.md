@@ -21,7 +21,7 @@ commit.
 
 Replace `src/main.rs` with:
 
-```rust
+```rust,no_run
 use rullst::{Server, ServerError, routes, server::Json};
 use serde::Serialize;
 

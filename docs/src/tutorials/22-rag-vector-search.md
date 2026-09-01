@@ -90,14 +90,23 @@ the authenticated tenant scope, and then use the native operators:
 
 ```rust,no_run
 use rullst::ai::AiClient;
-use rullst::orm::with_tenant;
+use rullst::orm::{FromRow, Orm, Vector, with_tenant};
+
+# #[derive(Clone, Debug, FromRow, Orm)]
+# #[orm(table = "knowledge_chunks", tenant_column = "tenant_id")]
+# struct KnowledgeChunk {
+#     id: i32,
+#     tenant_id: String,
+#     content: String,
+#     embedding: Vector,
+# }
 
 # async fn retrieve(
 #     client: &AiClient,
 #     question: &str,
 # ) -> Result<Vec<KnowledgeChunk>, Box<dyn std::error::Error>> {
 let embedding = client.embed(question).await?;
-let query = embedding.iter().map(|value| f64::from(*value)).collect();
+let query: Vec<f64> = embedding.iter().map(|value| f64::from(*value)).collect();
 
 let chunks = with_tenant("tenant-42", async move {
     KnowledgeChunk::query()

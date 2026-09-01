@@ -25,6 +25,7 @@ dependency uses `rullst-messaging = { version = "12.0.0-rc.1", features =
 ```rust
 use rullst::messaging::{BrokerConfig, InMemoryBroker};
 
+# fn create_broker() -> Result<(), rullst::messaging::MessagingError> {
 let config = BrokerConfig::try_new("billing")?
     .with_limits(
         10_000,        // retained messages
@@ -33,6 +34,9 @@ let config = BrokerConfig::try_new("billing")?
         1024 * 1024,   // payload bytes
     )?;
 let broker = InMemoryBroker::new(config);
+# let _ = broker;
+# Ok(())
+# }
 ```
 
 The hard ceilings prevent an accidental configuration from turning the local

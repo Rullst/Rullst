@@ -8,6 +8,9 @@ only to demonstrate the component lifecycle.
 
 ## 🛠️ Step 1: Create Analytics LiveComponent
 
+This fragment expects the `crate::live::analytics_dashboard` module created in
+Step 1 to be registered by the generated application:
+
 ```rust
 use async_trait::async_trait;
 use rullst::live::LiveComponent;
@@ -64,7 +67,7 @@ impl LiveComponent for AnalyticsDashboard {
 
 ## 💻 Step 2: Render in View Page
 
-```rust
+```rust,ignore
 use rullst::live::Live;
 use crate::live::analytics_dashboard::AnalyticsDashboard;
 

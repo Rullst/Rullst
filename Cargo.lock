@@ -6813,6 +6813,7 @@ dependencies = [
  "tower-http 0.7.0",
  "tower-layer",
  "tower-service",
+ "tower-sessions",
  "tracing",
  "tracing-core",
  "tracing-opentelemetry",

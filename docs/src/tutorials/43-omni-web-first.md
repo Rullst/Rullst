@@ -119,6 +119,7 @@ struct LessonAttempt {
     answer: String,
 }
 
+# fn encode_attempt() -> Result<(), Box<dyn std::error::Error>> {
 let request = ClientRequest::mutation(
     CURRENT_CLIENT_CONTRACT_VERSION,
     RequestId::new("req_01j8lesson")?,
@@ -129,6 +130,9 @@ let request = ClientRequest::mutation(
     },
 );
 let encoded = ClientContractPolicy::default().encode_request(&request)?;
+# let _ = encoded;
+# Ok(())
+# }
 ```
 
 The server decodes through `ClientContractPolicy`, derives the user and tenant

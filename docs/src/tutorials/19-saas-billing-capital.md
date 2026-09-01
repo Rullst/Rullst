@@ -65,7 +65,7 @@ Stripe, the model deriving `Billable` can perform one fully specified charge:
 use rullst_capital::{Billable as _, CapitalError, StripeProvider};
 
 async fn charge_saved_method(
-    account: &impl rullst_capital::Billable,
+    account: &(impl rullst_capital::Billable + Sync),
     stripe: &StripeProvider,
 ) -> Result<String, CapitalError> {
     let receipt = account

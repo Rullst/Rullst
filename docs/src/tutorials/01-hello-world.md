@@ -59,7 +59,7 @@ the v12 API below is intentionally different.
 
 Replace `src/main.rs` with:
 
-```rust
+```rust,no_run
 use rullst::{html, response::Html, routes, Server};
 
 async fn home() -> Html<String> {
