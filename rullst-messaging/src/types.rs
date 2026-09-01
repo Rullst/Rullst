@@ -126,6 +126,21 @@ impl MessageId {
         Self(format!("msg_{}", uuid::Uuid::new_v4().simple()))
     }
 
+    #[cfg(feature = "sqlite")]
+    pub(crate) fn from_stored(value: String) -> Result<Self> {
+        let valid = value.len() == 36
+            && value.starts_with("msg_")
+            && value[4..]
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'));
+        if !valid {
+            return Err(MessagingError::CorruptStorage {
+                context: "message identifier",
+            });
+        }
+        Ok(Self(value))
+    }
+
     /// Returns the opaque identifier.
     pub fn as_str(&self) -> &str {
         &self.0
@@ -161,6 +176,19 @@ impl MessageHeaders {
     /// Creates an empty header collection.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    #[cfg(feature = "sqlite")]
+    pub(crate) fn from_stored(entries: BTreeMap<String, String>) -> Result<Self> {
+        let mut headers = Self::new();
+        for (name, value) in entries {
+            headers
+                .try_insert(name, value)
+                .map_err(|_| MessagingError::CorruptStorage {
+                    context: "message headers",
+                })?;
+        }
+        Ok(headers)
     }
 
     /// Adds one unique header after validating name, value, count, and total bytes.

@@ -56,12 +56,12 @@
     {
       "name": "rullst-messaging",
       "api_architecture": 18,
-      "verification": 22,
+      "verification": 23,
       "security_failure_design": 18,
-      "documentation_dx": 13,
-      "operations_release": 9,
+      "documentation_dx": 14,
+      "operations_release": 13,
       "specialist_gate": "messaging-contract",
-      "finding": "Clear bounded concurrent contract; current broker is deliberately process-local and lacks durable/remote restart and fault evidence.",
+      "finding": "Clear bounded concurrent contract plus durable local SQLite restart/corruption evidence; remote protocols, replication, encrypted-at-rest operations and provider fault matrices remain open.",
       "evidence": ["rullst-messaging/README.md", "rullst-messaging/tests", "docs/src/tutorials/49-brokered-messaging.md"]
     },
     {

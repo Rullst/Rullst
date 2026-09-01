@@ -49,6 +49,7 @@ rullst = { version = "12.0.0", default-features = false }
 | `mail-smtp` | no | `mail` plus the optional SMTP transport |
 | `mail-aws-ses` | no | `mail` plus native SES v2 delivery signed by the official AWS SDK |
 | `messaging` | no | Native bounded broker-neutral messaging contracts and the deterministic process-local broker |
+| `messaging-sqlite` | no | `messaging` plus fixed-schema durable local SQLite publication, lease, retry/DLQ, ACK and idempotency state |
 | `mailer` | no | Compatibility alias for `mail-smtp`; prefer `mail-smtp` in new manifests |
 | `queue-redis` | no | Redis dependency and Core's Redis queue backend |
 | `cache-redis` | no | Redis dependency and Core's Redis cache backend |
@@ -163,6 +164,10 @@ Default features: none. The deterministic process-local broker, versioned
 envelope, idempotency, consumer groups, leases, retry, dead-letter, and purge
 contracts are available without optional dependencies. Remote broker adapters
 are not implemented and therefore are not represented by placeholder features.
+
+| Feature | Enables |
+| --- | --- |
+| `sqlite` | Fixed-schema durable local broker with serialized SQLite write transactions, exact namespace configuration reopen and restart/corruption/two-instance regressions; payloads remain plaintext and remote replication/failover are not implied |
 
 ### `rullst-iot`
 

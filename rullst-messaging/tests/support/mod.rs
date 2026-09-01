@@ -48,6 +48,12 @@ where
             .expect("alpha replay")
             .was_created()
     );
+    assert_eq!(
+        broker
+            .dead_letters(DeadLetterQuery::try_new("orders", "missing", 10).expect("missing query"))
+            .await,
+        Err(MessagingError::SubscriptionNotFound)
+    );
 
     let request = PublishRequest::try_new(
         "orders",
@@ -104,6 +110,10 @@ where
         .ack(alpha_messages[0].ack_token())
         .await
         .expect("alpha ack");
+    assert_eq!(
+        broker.ack(alpha_messages[0].ack_token()).await,
+        Err(MessagingError::LeaseNotFound)
+    );
     broker
         .dead_letter(
             beta_messages[0].ack_token(),

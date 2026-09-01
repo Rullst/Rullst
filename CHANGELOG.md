@@ -30,12 +30,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   [feature matrix](docs/src/feature-matrix.md), and
   [compatibility policy](docs/src/compatibility-policy.md).
 - Added the first-class `rullst-messaging` crate and umbrella `messaging`
-  feature. Its bounded process-local broker provides a versioned envelope,
+  feature. Its bounded broker contract provides a versioned envelope,
   topic-scoped idempotency, consumer-group fan-out, expiring single-use ACK
   leases, retry, dead-letter inspection, explicit purge, deterministic time,
-  redacted diagnostics, and concurrent contract tests. It does not yet claim a
-  durable transport or Kafka, RabbitMQ, Redis Streams, NATS/JetStream,
-  SQS/SNS, Google Pub/Sub, or Pulsar interoperability.
+  redacted diagnostics, and concurrent contract tests. The opt-in
+  `messaging-sqlite` profile adds a fixed-schema durable local adapter whose
+  publications, claims, ACK/retry/DLQ transitions and purge use serialized
+  SQLite transactions; restart, multi-instance contention, configuration drift
+  and corrupt-row repair have executable regressions. It remains at least once,
+  stores payloads unencrypted and does not claim Kafka, RabbitMQ, Redis Streams,
+  NATS/JetStream, SQS/SNS, Google Pub/Sub, or Pulsar interoperability.
 - Hardened the shared mail attachment contract: messages now fail closed above
   32 attachments, 20 MiB per item or 25 MiB aggregate; unsafe basenames,
   ambiguous MIME values, duplicate/unreferenced inline CIDs and inline assets
@@ -47,6 +51,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added a compact canonical capability-status view and a SHA-bound CI quality
   scorecard artifact for every main push/PR. The score evaluates engineering
   evidence and explicitly excludes feature completeness and certification.
+- Replaced the staged 80% framework-coverage threshold with one blocking 90%
+  minimum for framework libraries and changed lines. The README again exposes
+  dynamic Codecov and OpenSSF values, the declared Rust 1.96.0 MSRV, and the
+  tag-only release-provenance workflow while explicitly avoiding a project-wide
+  SLSA Level 3 certification claim.
 - Added category-aware OAuth token revocation. `Provider::revoke_token` and
   `revoke_refresh_token` reject malformed/oversized values before transport;
   bounded protocol fixtures cover Google, GitHub, Discord, Apple, Auth0 and

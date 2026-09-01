@@ -7,11 +7,11 @@ codecov:
 coverage:
   precision: 2
   round: down
-  range: "80...100"
+  range: "90...100"
   status:
     project:
       framework_libraries:
-        target: 80%
+        target: 90%
         threshold: 0%
         paths:
           - "rullst/src/**"
@@ -22,6 +22,7 @@ coverage:
           - "rullst-core/src/**"
           - "rullst-iot/src/**"
           - "rullst-mail/src/**"
+          - "rullst-messaging/src/**"
           - "rullst-nexus/src/**"
           - "rullst-orm/src/**"
           - "rullst-security/src/**"

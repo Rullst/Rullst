@@ -14,7 +14,9 @@
 - [x] Deterministic in-memory implementation with injectable time.
 - [x] Reusable static-dispatch conformance suite and concurrent state tests.
 - [ ] Stable remote wire codec, compatibility fixtures, and migration policy.
-- [ ] Durable local adapter with crash/restart and corruption-recovery tests.
+- [x] Durable SQLite adapter with serialized write transactions, exact-config
+  reopen, cross-instance claim/idempotency tests, restart lease recovery,
+  and corrupt-row fail-closed/repair evidence.
 
 ## Phase 2 — remote adapters
 

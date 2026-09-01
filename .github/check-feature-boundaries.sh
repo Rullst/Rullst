@@ -64,6 +64,7 @@ rullst-core|queue-redis
 rullst-core|cache-redis
 rullst-core|offline-sync
 rullst-core|telemetry
+rullst-messaging|sqlite
 rullst-connect|axum
 rullst-connect|actix
 rullst-connect|retry
@@ -98,6 +99,7 @@ rullst|cache-redis
 rullst|offline-sync
 rullst|mail-smtp
 rullst|messaging
+rullst|messaging-sqlite
 rullst|auth-jwt
 rullst|oauth
 rullst|ai

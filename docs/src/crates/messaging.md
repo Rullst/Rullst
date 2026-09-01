@@ -7,7 +7,7 @@ semantics.
 
 ## Current status
 
-The crate has an **implemented, bounded process-local foundation**:
+The crate has an **implemented, bounded broker foundation**:
 
 - a versioned immutable envelope;
 - bounded identifiers, headers, payloads, batches, leases, and retention;
@@ -16,11 +16,16 @@ The crate has an **implemented, bounded process-local foundation**:
 - expiring single-use acknowledgement tokens;
 - bounded retry, dead-letter views, and explicit purge;
 - deterministic time injection and reusable contract tests.
+- a feature-gated SQLite adapter that transactionally retains publications,
+  subscriptions, claims, ACK/retry/DLQ state and idempotency across restart.
 
 The `InMemoryBroker` is suitable for offline tests, deterministic development,
-and explicitly process-local workloads. It is not durable and is not a remote
-transport. Kafka, RabbitMQ, Redis Streams, NATS/JetStream, SQS/SNS, Google
-Pub/Sub, and Pulsar adapters remain roadmap work.
+and explicitly process-local workloads. `SqliteBroker` uses a fixed schema and
+serialized SQLite write transactions; restart, two-instance contention,
+configuration drift and corrupt-row repair are tested. It is a durable local
+adapter, not a remote transport. Kafka, RabbitMQ, Redis Streams,
+NATS/JetStream, SQS/SNS, Google Pub/Sub, and Pulsar adapters remain roadmap
+work.
 
 ## Security and correctness boundary
 
@@ -32,6 +37,11 @@ topic and must make external effects idempotent.
 Delivery is at least once. A valid acknowledgement consumes its lease exactly
 once, but no local ACK can make an arbitrary remote side effect atomic. Use the
 stable envelope ID at the side-effect boundary.
+
+SQLite payloads and headers are plaintext. The deployment owns database-file
+permissions, encryption at rest, backups, retention, disk monitoring and topic/
+tenant authorization. Reopening a namespace with different limits fails closed
+instead of silently changing retained delivery semantics.
 
 Continue with the [brokered messaging tutorial](../tutorials/49-brokered-messaging.md)
 or inspect the [crate roadmap](https://github.com/Rullst/Rullst/blob/main/rullst-messaging/ROADMAP.md).

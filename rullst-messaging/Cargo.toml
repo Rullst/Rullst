@@ -15,13 +15,17 @@ categories = ["asynchronous", "network-programming"]
 
 [features]
 default = []
+sqlite = ["dep:serde_json", "dep:sqlx", "dep:url"]
 
 [dependencies]
 serde = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"], optional = true }
 sha2 = { workspace = true }
+sqlx = { workspace = true, features = ["runtime-tokio", "sqlite"], optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true }
+url = { version = "2.5.8", optional = true }
 uuid = { workspace = true, features = ["v4"] }
 
 [dev-dependencies]

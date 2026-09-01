@@ -260,10 +260,9 @@ uma RC.
    Windows verde no mesmo commit.
 4. Compilar projetos materializados representativos de todos os seis blueprints
    em CI e provar em release que Studio não é exposto e Nexus falha fechado.
-5. Cumprir os gates já escolhidos: bibliotecas em pelo menos 80% de line
-   coverage para a RC, patch coverage em pelo menos 90%, Auth e Security em pelo
-   menos 90%, sem caminho crítico em 0% e casos negativos do threat model
-   cobertos.
+5. Cumprir o gate único de cobertura escolhido: bibliotecas do framework,
+   patch coverage, Auth e Security em pelo menos 90%, sem caminho crítico em 0%
+   e casos negativos do threat model cobertos.
 6. Publicar matriz de features, MSRV, políticas de SemVer/depreciação/suporte,
    guias de migração e changelog compatível com a implementação real.
 7. Executar auditoria de dependências/licenças, validar SBOM/proveniência e fazer

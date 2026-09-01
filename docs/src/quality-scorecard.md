@@ -22,7 +22,8 @@ evidence fails, but a green run cannot inflate them.
 
 Specialist evidence includes database/Redis live matrices, AI evals, the threat
 minimum, release local-access negatives, provider matrices, and Messaging's
-concurrent contract. Failed, cancelled, or skipped applicable gates suppress
+concurrent in-memory plus durable SQLite restart/corruption contract. Failed,
+cancelled, or skipped applicable gates suppress
 the dimensions they prove; the report is still generated so a red push cannot
 hide its note.
 
@@ -44,12 +45,12 @@ applies the real gate outcomes and includes the full finding for every row.
 | `rullst` | 88 | B | Inherits uneven maturity from opt-in domain crates |
 | `rullst-auth` | 87 | B | WebAuthn conformance and durable shared revocation/devices |
 | `rullst-mail` | 87 | B | Inbox/provider evidence, opaque-file inspection and distributed operations |
+| `rullst-messaging` | 86 | B | Remote protocols, replication, encrypted-at-rest operations and provider fault matrices |
 | `cargo-rullst` | 85 | B | Complete generated-project matrix across every blueprint |
 | `rullst-ai` | 84 | B | Live adaptive evals, provider loops and external retrievers |
 | `rullst-studio` | 83 | B | Distributed observability and remote inspectors |
 | `rullst-capital` | 82 | B | Gateway parity and live fiscal homologation |
 | `rullst-nexus` | 81 | B | Host tenant policy, durable audit and production operations |
-| `rullst-messaging` | 80 | B | Durable/remote restart and fault evidence |
 | `rullst-orm-macros` | 76 | C | Backend breadth and dedicated macro documentation |
 | `rullst-macros` | 75 | C | Macro-specific documentation and failure/security proof |
 | `rullst-iot` | 72 | C | Hardware, transport, bootloader and durable anti-rollback proof |

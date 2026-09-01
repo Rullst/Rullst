@@ -125,12 +125,17 @@ unsafe Rust.
 
 `coverage.yml` runs LLVM coverage over workspace all-features tests plus the
 PostgreSQL/MySQL matrix and uploads LCOV to Codecov using GitHub OIDC rather
-than a long-lived upload secret. `codecov.yml` configures an 80% project target
-with no tolerance for the measured framework libraries and a separate 90%
-patch target; failure to upload the generated LCOV fails the workflow. The
-report excludes examples, CLI, macro crates, benchmarks, and test files.
-Therefore “80% project and 90% patch targets over the measured scope” is
-accurate; “90% of the whole repository is enforced” is not.
+than a long-lived upload secret. `codecov.yml` configures a single minimum of
+90%, with no tolerance, for both the measured framework libraries and changed
+lines; failure to upload the generated LCOV fails the workflow. The report
+filters examples, benchmarks, auxiliary test support, and separate test files.
+CLI and proc-macro code remains visible in the aggregate and as informational
+components, but is excluded from the blocking framework-library status because
+its stronger evidence comes from materialized scaffolds and compile contracts.
+Therefore “90% project and patch targets over the measured framework scope” is
+accurate; “90% of the whole repository is enforced” is not. The public README
+badge shows Codecov's aggregate for `main`, which can differ from the scoped
+blocking status and remains below the new gate until the test suite raises it.
 
 ### Formal, dynamic, and stress analysis
 

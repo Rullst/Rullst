@@ -1,8 +1,8 @@
 # 49. Bounded Brokered Messaging
 
-This tutorial uses `rullst-messaging`'s deterministic in-memory broker. The API
-is the conformance boundary for future remote adapters, but the current driver
-is process-local and non-durable.
+This tutorial starts with `rullst-messaging`'s deterministic in-memory broker
+and then switches the same trait contract to the durable local SQLite adapter.
+Remote broker protocols remain separate adapters.
 
 ## 1. Enable the umbrella feature
 
@@ -11,7 +11,9 @@ is process-local and non-durable.
 rullst = { version = "12.0.0", features = ["messaging"] }
 ```
 
-You can also depend directly on `rullst-messaging`.
+Use `messaging-sqlite` instead of `messaging` for durable local state. A direct
+dependency uses `rullst-messaging = { version = "12.0.0", features =
+["sqlite"] }`.
 
 ## 2. Create a bounded broker
 
@@ -31,6 +33,27 @@ let broker = InMemoryBroker::new(config);
 The hard ceilings prevent an accidental configuration from turning the local
 broker into unbounded memory state. Capacity exhaustion fails closed until
 terminal messages are explicitly purged.
+
+### Persist the same contract locally
+
+```rust,no_run
+use rullst::messaging::{BrokerConfig, SqliteBroker};
+
+# async fn open() -> Result<(), rullst::messaging::MessagingError> {
+let config = BrokerConfig::try_new("billing")?
+    .with_limits(10_000, 128, 5, 1024 * 1024)?;
+let broker = SqliteBroker::connect("sqlite://storage/messages.sqlite", config).await?;
+# let _ = broker;
+# Ok(())
+# }
+```
+
+All mutations use serialized SQLite write transactions. A committed publish or
+ACK survives restart, while an uncommitted operation rolls back. In-flight
+leases also survive; after expiry the next broker operation requeues or
+dead-letters them. Multiple processes may share one file and namespace, but
+reopening it with different limits is rejected. This is local durability, not
+network replication, automatic failover or exactly-once side effects.
 
 ## 3. Register a consumer group and publish
 
@@ -126,7 +149,9 @@ ACK reaches the broker. Therefore:
 4. treat retries and dead letters as normal operational states;
 5. authorize topics and tenant scope in the host application.
 
-The in-memory broker loses state on process exit. Use it for tests and
-explicitly local workloads only. A future remote adapter is supported only
-after it passes the shared contract plus its own protocol, restart, and fault
-matrix; an adapter name alone is not durability evidence.
+The in-memory broker loses state on process exit. The SQLite adapter retains
+state but stores payloads and headers in plaintext; the host owns file
+permissions, encryption at rest, backup/restore, retention, disk monitoring and
+topic/tenant authorization. A future remote adapter is supported only after it
+passes the shared contract plus its own protocol, restart, and fault matrix; an
+adapter name alone is not durability evidence.

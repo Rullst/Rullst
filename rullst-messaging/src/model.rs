@@ -146,6 +146,18 @@ pub struct MessageEnvelope {
     published_at_ms: i64,
 }
 
+#[cfg(feature = "sqlite")]
+pub(crate) struct StoredEnvelopeParts {
+    pub(crate) id: MessageId,
+    pub(crate) namespace: Namespace,
+    pub(crate) topic: TopicName,
+    pub(crate) event_kind: EventKind,
+    pub(crate) content_type: ContentType,
+    pub(crate) headers: MessageHeaders,
+    pub(crate) payload: Vec<u8>,
+    pub(crate) published_at_ms: i64,
+}
+
 impl MessageEnvelope {
     /// Stable envelope marker.
     pub const SCHEMA: &'static str = "rullst.messaging.v1";
@@ -166,6 +178,21 @@ impl MessageEnvelope {
             headers: request.headers.clone(),
             payload: request.payload.clone(),
             published_at_ms,
+        }
+    }
+
+    #[cfg(feature = "sqlite")]
+    pub(crate) fn from_stored(parts: StoredEnvelopeParts) -> Self {
+        Self {
+            schema: Self::SCHEMA,
+            id: parts.id,
+            namespace: parts.namespace,
+            topic: parts.topic,
+            event_kind: parts.event_kind,
+            content_type: parts.content_type,
+            headers: parts.headers,
+            payload: parts.payload,
+            published_at_ms: parts.published_at_ms,
         }
     }
 

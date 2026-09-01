@@ -11,6 +11,8 @@ mod clock;
 mod error;
 mod memory;
 mod model;
+#[cfg(feature = "sqlite")]
+mod sqlite;
 mod traits;
 mod types;
 mod validation;
@@ -23,6 +25,8 @@ pub use model::{
     Delivery, MessageEnvelope, PublishReceipt, PublishRequest, ReceiveRequest, RetryDisposition,
     SubscriptionReceipt, SubscriptionRequest,
 };
+#[cfg(feature = "sqlite")]
+pub use sqlite::SqliteBroker;
 pub use traits::{MessageAdmin, MessageBroker};
 pub use types::{
     AckToken, BrokerConfig, ConsumerGroup, ConsumerName, ContentType, EventKind, FailureCode,
