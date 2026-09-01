@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788228136972,
+  "lastUpdate": 1788230592022,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -13277,6 +13277,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2229,
             "range": "± 51",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "04006e822c7c7f7482bb5c29e097efec9e678b40",
+          "message": "test(messaging): expand bounded input coverage",
+          "timestamp": "2026-08-31T23:38:03-03:00",
+          "tree_id": "0a85cd2cd6eda95e697de84dfb9a68927f4c9995",
+          "url": "https://github.com/Rullst/Rullst/commit/04006e822c7c7f7482bb5c29e097efec9e678b40"
+        },
+        "date": 1788230590487,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 726,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 983,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 677,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2274,
+            "range": "± 65",
             "unit": "ns/iter"
           }
         ]
