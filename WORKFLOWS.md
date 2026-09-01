@@ -45,7 +45,7 @@ The workflows below run **only when requested manually**:
 
 | Workflow | Evidence | RC interpretation |
 | :--- | :--- | :--- |
-| `dast-zap.yml` | OWASP ZAP baseline against a release blog showcase plus fresh generated REST API and complete LMS applications | REST/LMS warnings and failures block. The showcase is informational because it deliberately uses third-party presentation assets; reports and application logs are retained. This remains representative, not universal deployment coverage. |
+| `dast-zap.yml` | OWASP ZAP baseline against a release blog showcase plus fresh generated REST API and complete LMS applications | REST/LMS warnings and failures block unless an exact rule ID is versioned as `INFO` with a local explanation in `.zap/`; those configs are passed explicitly to the pinned scanner and unlisted warnings remain live. The showcase is informational because it deliberately uses third-party presentation assets; reports and application logs are retained. This remains representative, not universal deployment coverage. |
 | `fuzzing.yml` | All 40 declared libFuzzer targets | Every matrix job must finish without a crash for the configured time budget; this is bounded evidence, not proof for every input. |
 | `kani.yml` | Bounded formal harnesses per supported package | Informational: commands currently use `continue-on-error`, so inspect each step rather than equating a green outer job with proof. |
 | `miri.yml` | Randomized-layout Miri package matrix | Informational for the same reason; unsupported paths and tolerated step failures must be recorded explicitly. |

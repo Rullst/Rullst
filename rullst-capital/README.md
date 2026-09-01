@@ -319,7 +319,7 @@ For Actix Web, enable the crate's `actix` feature (or umbrella
 `web::Data<WebhookMiddlewareState>`. The state can bind an explicit provider
 through `WebhookMiddlewareState::production_with_provider`, avoiding global
 configuration. See the
-[payment guide](https://rullst.github.io/payment-gateways-guide.html#actix-web-adapter)
+[payment guide](https://rullst.github.io/Rullst/book/payment-gateways-guide.html#actix-web-adapter)
 for a complete example.
 
 The bundled replay store is process-local. Multi-instance deployments must

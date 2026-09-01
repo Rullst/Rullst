@@ -62,6 +62,7 @@ jobs:
         run: >-
           lychee --no-progress --include-fragments=none --max-concurrency 32
           --host-concurrency 4 --max-retries 3 --retry-wait-time 2 --timeout 30
+          --exclude '^https?://(localhost|127\.0\.0\.1)(:|/|$)'
           --output lychee-external.txt '**/*.md'
 
       - name: Upload external-link report

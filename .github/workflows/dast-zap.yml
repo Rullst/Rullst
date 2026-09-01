@@ -140,8 +140,10 @@ jobs:
         with:
           target: http://127.0.0.1:3000
           docker_name: ${{ env.ZAP_DOCKER_IMAGE }}
-          rules_file_name: .zap/blog-showcase.tsv
-          cmd_options: -a -m 2
+          # action-baseline v0.15 only forwards rules_file_name when the file
+          # contains IGNORE. These files deliberately demote explained findings
+          # to INFO, so pass the config explicitly and keep all other WARNs live.
+          cmd_options: -a -m 2 -c .zap/blog-showcase.tsv
           fail_action: false
           allow_issue_writing: false
           artifact_name: zap-blog-showcase
@@ -195,8 +197,7 @@ jobs:
         with:
           target: http://127.0.0.1:3000
           docker_name: ${{ env.ZAP_DOCKER_IMAGE }}
-          rules_file_name: .zap/generated-apps.tsv
-          cmd_options: -a -m 1
+          cmd_options: -a -m 1 -c .zap/generated-apps.tsv
           fail_action: true
           allow_issue_writing: false
           artifact_name: zap-generated-rest-api
@@ -250,8 +251,7 @@ jobs:
         with:
           target: http://127.0.0.1:3000
           docker_name: ${{ env.ZAP_DOCKER_IMAGE }}
-          rules_file_name: .zap/generated-lms.tsv
-          cmd_options: -a -j -m 3
+          cmd_options: -a -j -m 3 -c .zap/generated-lms.tsv
           fail_action: true
           allow_issue_writing: false
           artifact_name: zap-generated-lms
