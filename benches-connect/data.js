@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788280330078,
+  "lastUpdate": 1788283381925,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -4253,6 +4253,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 499,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "060933005ba365230dfd960935307857e2f6d229",
+          "message": "test(docs): compile public tutorial examples",
+          "timestamp": "2026-09-01T14:12:03-03:00",
+          "tree_id": "21ad47d5bcf363f0751a865a9d10d34112c20315",
+          "url": "https://github.com/Rullst/Rullst/commit/060933005ba365230dfd960935307857e2f6d229"
+        },
+        "date": 1788283381336,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 564,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
