@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788298802979,
+  "lastUpdate": 1788303005988,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -14789,6 +14789,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2233,
             "range": "± 61",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fa29c2c3b1d16258ee8a392a2bdd493bdac6f06e",
+          "message": "feat(connect): encrypt persisted refresh state",
+          "timestamp": "2026-09-01T19:46:57-03:00",
+          "tree_id": "624ea87583bb75d413c70b2ba081dd00a5b90dfa",
+          "url": "https://github.com/Rullst/Rullst/commit/fa29c2c3b1d16258ee8a392a2bdd493bdac6f06e"
+        },
+        "date": 1788303004880,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 749,
+            "range": "± 53",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 989,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 617,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2340,
+            "range": "± 40",
             "unit": "ns/iter"
           }
         ]
