@@ -40,3 +40,7 @@ pub const OFFLINE_SNAPSHOT_DOMAIN: &str = "rullst.offline";
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "offline_sync_tests.rs"]
+mod offline_sync_tests;
