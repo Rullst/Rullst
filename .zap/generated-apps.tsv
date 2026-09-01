@@ -1,0 +1,5 @@
+10010	INFO	(Double-submit CSRF cookie is intentionally readable and remains Secure/SameSite)
+10049	INFO	(Dynamic responses intentionally default to explicit Cache-Control no-store)
+10094	INFO	(Cryptographically random CSRF and CSP nonce values are expected encoded tokens)
+10112	INFO	(CSRF cookie correctly identifies a state-management response)
+90005	INFO	(ZAP is not a browser and does not send browser-authored Sec-Fetch request headers)

@@ -19,7 +19,7 @@ pub mod live_counter;
 pub mod app {
     use crate::live_counter::CounterComponent;
     use crate::showcase_nav::{render_shared_styles, render_showcase_nav};
-    use axum::Form;
+    use axum::{Extension, Form};
     use rullst::db::FromRow;
     use rullst::{
         html,
@@ -131,7 +131,9 @@ pub mod app {
     // --- Route Handlers ---
 
     /// Zero-Bundle HTMX SSR Landing Page (`/`)
-    pub async fn index() -> impl IntoResponse {
+    pub async fn index(
+        Extension(csrf_token): Extension<rullst::security::CsrfToken>,
+    ) -> impl IntoResponse {
         let posts = Post::all().await.unwrap_or_default();
         let nav = render_showcase_nav("/");
         let styles = render_shared_styles();
@@ -162,6 +164,7 @@ pub mod app {
                             </div>
 
                             <form method="post" action="/posts" style="background: #05070c; border: 1px solid #1e293b; border-radius: 0.5rem; padding: 1.5rem;">
+                                <input type="hidden" name="_token" value={csrf_token.as_str()} />
                                 <h3 style="margin-top: 0; color: #38bdf8; font-size: 1.1rem; margin-bottom: 1rem;">"Publish a New Story (Active Record)"</h3>
                                 <div style="margin-bottom: 1rem;">
                                     <label style="display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.4rem;">"Article Title"</label>
@@ -393,7 +396,8 @@ pub fn router() -> Result<rullst::Router, Box<dyn std::error::Error>> {
     .layer(axum::Extension(demo_membership))
     .layer(axum::middleware::from_fn(
         rullst_security::deception_trap_middleware,
-    )))
+    ))
+    .layer(axum::middleware::from_fn(rullst::security::csrf_middleware)))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -411,9 +415,9 @@ pub extern "C" fn rullst_router_init() -> *mut rullst::Router {
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
-    use axum::body::Body;
+    use axum::body::{Body, to_bytes};
     use axum::extract::ConnectInfo;
-    use axum::http::{Request, StatusCode};
+    use axum::http::{Request, StatusCode, header};
     use std::net::SocketAddr;
     use std::sync::atomic::Ordering;
     use tower::ServiceExt;
@@ -442,5 +446,62 @@ mod tests {
                 && event.details.contains("/wp-admin")
                 && !event.verified_hmac
         }));
+    }
+
+    #[tokio::test]
+    async fn showcase_forms_render_and_enforce_the_double_submit_csrf_token() {
+        let app = super::router().expect("blog router").into_axum();
+
+        for path in ["/", "/pricing"] {
+            let response = app
+                .clone()
+                .oneshot(Request::get(path).body(Body::empty()).expect("GET request"))
+                .await
+                .expect("GET response");
+            assert_eq!(response.status(), StatusCode::OK);
+            let cookie = response
+                .headers()
+                .get(header::SET_COOKIE)
+                .and_then(|value| value.to_str().ok())
+                .expect("CSRF cookie");
+            let token = cookie
+                .split(';')
+                .next()
+                .and_then(|pair| pair.strip_prefix("rullst_csrf="))
+                .expect("CSRF token")
+                .to_owned();
+            let body = to_bytes(response.into_body(), 512 * 1024)
+                .await
+                .expect("HTML body");
+            let html = std::str::from_utf8(&body).expect("UTF-8 HTML");
+            assert!(html.contains(&format!("name=\"_token\" value=\"{token}\"")));
+        }
+
+        let rejected = app
+            .clone()
+            .oneshot(
+                Request::post("/posts")
+                    .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                    .body(Body::from("title=Blocked&body=Missing+token"))
+                    .expect("missing-token request"),
+            )
+            .await
+            .expect("missing-token response");
+        assert_eq!(rejected.status(), StatusCode::FORBIDDEN);
+
+        let token = rullst::security::generate_csrf_token();
+        let accepted = app
+            .oneshot(
+                Request::post("/posts")
+                    .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                    .header(header::COOKIE, format!("rullst_csrf={token}"))
+                    .body(Body::from(format!(
+                        "title=Accepted&body=Matching+token&_token={token}"
+                    )))
+                    .expect("matching-token request"),
+            )
+            .await
+            .expect("matching-token response");
+        assert_eq!(accepted.status(), StatusCode::SEE_OTHER);
     }
 }

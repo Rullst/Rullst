@@ -22,7 +22,7 @@ cargo rullst make:model Product --migration
 ```
 Creates the Model struct in `src/models/product.rs` and a timestamped migration in `migrations/`.
 
-### 3. Generate a Complete Full-Stack Resource
+### 3. Generate a Full-Stack Resource Starting Point
 ```bash
 cargo rullst make:resource Product
 ```

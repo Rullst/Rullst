@@ -1,7 +1,7 @@
 //! Route Handlers for Pricing, Monetization and Checkout Simulator in Blog Example.
 
 use async_trait::async_trait;
-use axum::extract::Query;
+use axum::extract::{Extension, Query};
 use axum::response::{Html, IntoResponse};
 use chrono::Utc;
 use serde::Deserialize;
@@ -49,34 +49,50 @@ pub struct CheckoutParams {
 }
 
 /// Handler for the Pricing & Monetization showcase route (`/pricing` and `/billing`).
-pub async fn pricing_page() -> impl IntoResponse {
+pub async fn pricing_page(
+    Extension(csrf_token): Extension<rullst::security::CsrfToken>,
+) -> impl IntoResponse {
     let nav = render_showcase_nav("/pricing");
     let styles = render_shared_styles();
 
     let (free_can_post, xml_snippet) = compute_demo_data();
 
-    let body = render_pricing_page(nav, styles, free_can_post, xml_snippet, None);
+    let body = render_pricing_page(
+        nav,
+        styles,
+        free_can_post,
+        xml_snippet,
+        csrf_token.as_str(),
+        None,
+    );
     Html(body)
 }
 
 /// Handler for interactive Checkout generation (`/checkout` via GET).
-pub async fn checkout_handler(Query(params): Query<CheckoutParams>) -> impl IntoResponse {
-    handle_checkout_submission(params).await
+pub async fn checkout_handler(
+    Extension(csrf_token): Extension<rullst::security::CsrfToken>,
+    Query(params): Query<CheckoutParams>,
+) -> impl IntoResponse {
+    handle_checkout_submission(params, csrf_token.as_str().to_owned()).await
 }
 
 /// Handler for interactive Checkout generation (`/checkout` via GET).
-pub async fn checkout_handler_get(Query(params): Query<CheckoutParams>) -> impl IntoResponse {
-    handle_checkout_submission(params).await
+pub async fn checkout_handler_get(
+    Extension(csrf_token): Extension<rullst::security::CsrfToken>,
+    Query(params): Query<CheckoutParams>,
+) -> impl IntoResponse {
+    handle_checkout_submission(params, csrf_token.as_str().to_owned()).await
 }
 
 /// Handler for interactive Checkout generation (`/checkout` via POST).
 pub async fn checkout_handler_post(
+    Extension(csrf_token): Extension<rullst::security::CsrfToken>,
     axum::extract::Form(params): axum::extract::Form<CheckoutParams>,
 ) -> impl IntoResponse {
-    handle_checkout_submission(params).await
+    handle_checkout_submission(params, csrf_token.as_str().to_owned()).await
 }
 
-async fn handle_checkout_submission(params: CheckoutParams) -> impl IntoResponse {
+async fn handle_checkout_submission(params: CheckoutParams, csrf_token: String) -> Html<String> {
     let nav = render_showcase_nav("/pricing");
     let styles = render_shared_styles();
 
@@ -101,7 +117,14 @@ async fn handle_checkout_submission(params: CheckoutParams) -> impl IntoResponse
         Err(e) => Some((provider, format!("Error generating session: {}", e))),
     };
 
-    let body = render_pricing_page(nav, styles, free_can_post, xml_snippet, simulated);
+    let body = render_pricing_page(
+        nav,
+        styles,
+        free_can_post,
+        xml_snippet,
+        &csrf_token,
+        simulated,
+    );
     Html(body)
 }
 

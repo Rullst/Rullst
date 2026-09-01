@@ -41,7 +41,11 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
 
     Ok(routes![
         get("/" => controllers::erp_controller::index),
-    ].merge_axum(admin_routes).nest_axum("/nexus", nexus))
+    ]
+    .merge_axum(admin_routes)
+    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
+    .nest_axum("/nexus", nexus))
 }}
 
 #[unsafe(no_mangle)]
@@ -135,7 +139,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 
     let router = routes![
         get("/" => controllers::erp_controller::index),
-    ].merge_axum(admin_routes).nest_axum("/nexus", nexus);
+    ]
+    .merge_axum(admin_routes)
+    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
+    .nest_axum("/nexus", nexus);
 
     #[cfg(debug_assertions)]
     {{
@@ -315,7 +323,7 @@ impl NexusModel for Order {
     let erp_controller = r##"use rullst::server::{
     Path,
     IntoResponse, Redirect,
-    Form
+    Extension, Form
 };
 use rullst::response::Html;
 use crate::models::product::Product;
@@ -323,10 +331,12 @@ use crate::models::order::Order;
 use crate::pages::erp;
 use serde::Deserialize;
 
-pub async fn index() -> impl IntoResponse {
+pub async fn index(
+    Extension(csrf_token): Extension<rullst::security::CsrfToken>,
+) -> impl IntoResponse {
     let products = Product::all().await.unwrap_or_default();
     let orders = Order::all().await.unwrap_or_default();
-    Html(erp::dashboard_page(products, orders))
+    Html(erp::dashboard_page(products, orders, csrf_token.as_str()))
 }
 
 #[derive(Deserialize)]
@@ -416,7 +426,11 @@ use crate::models::order::Order;"##,
         fe_imports = fe_imports
     ) + r##"
 
-pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
+pub fn dashboard_page(
+    products: Vec<Product>,
+    orders: Vec<Order>,
+    csrf_token: &str,
+) -> String {
     let total_sales: f64 = orders.iter()
         .filter(|o| o.status == "Paid")
         .map(|o| o.total_price)
@@ -447,11 +461,11 @@ pub fn dashboard_page(products: Vec<Product>, orders: Vec<Order>) -> String {
                     { rullst::html::RawHtml::new(render_kpi_cards(total_sales, total_orders, low_stock_alerts)) }
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div class="lg:col-span-2 flex flex-col gap-8">
-                            { rullst::html::RawHtml::new(render_products_table(&products)) }
+                            { rullst::html::RawHtml::new(render_products_table(&products, csrf_token)) }
                             { rullst::html::RawHtml::new(render_orders_table(&orders)) }
                         </div>
                         <div class="flex flex-col gap-8">
-                            { rullst::html::RawHtml::new(render_forms(&products)) }
+                            { rullst::html::RawHtml::new(render_forms(&products, csrf_token)) }
                         </div>
                     </div>
                 </div>
@@ -501,7 +515,7 @@ fn render_kpi_cards(total_sales: f64, total_orders: usize, low_stock_alerts: usi
     }
 }
 
-fn render_products_table(products: &[Product]) -> String {
+fn render_products_table(products: &[Product], csrf_token: &str) -> String {
     html! {
         <div class="glass p-6 rounded-2xl">
             <h2 class="text-xl font-bold mb-4 text-slate-200">"Product Inventory"</h2>
@@ -530,14 +544,12 @@ fn render_products_table(products: &[Product]) -> String {
                                         </span>
                                     </td>
                                     <td class="py-3.5 px-4 text-right">
-                                        <button 
-                                            hx-post={format!("/products/{}/add-stock", p.id)}
-                                            hx-target={format!("#stock-badge-{}", p.id)}
-                                            hx-swap="outerHTML"
-                                            class="px-2.5 py-1 text-xs font-bold text-orange-400 border border-orange-500/20 hover:border-orange-400 bg-orange-950/20 rounded-md transition-all active:scale-95"
-                                        >
-                                            "+1 Stock"
-                                        </button>
+                                        <form method="post" action={format!("/products/{}/add-stock", p.id)} hx-post={format!("/products/{}/add-stock", p.id)} hx-target={format!("#stock-badge-{}", p.id)} hx-swap="outerHTML">
+                                            <input type="hidden" name="_token" value={csrf_token} />
+                                            <button type="submit" class="px-2.5 py-1 text-xs font-bold text-orange-400 border border-orange-500/20 hover:border-orange-400 bg-orange-950/20 rounded-md transition-all active:scale-95">
+                                                "+1 Stock"
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             }
@@ -585,12 +597,13 @@ fn render_orders_table(orders: &[Order]) -> String {
     }
 }
 
-fn render_forms(products: &[Product]) -> String {
+fn render_forms(products: &[Product], csrf_token: &str) -> String {
     html! {
         <div class="flex flex-col">
             <div class="glass p-6 rounded-2xl border border-indigo-900/20">
                 <h3 class="text-lg font-bold mb-4 text-indigo-400">"Register New Sale"</h3>
                 <form action="/orders" method="POST" class="space-y-4">
+                    <input type="hidden" name="_token" value={csrf_token} />
                     <div>
                         <label class="block text-xs text-slate-400 font-medium mb-1">"Customer Name"</label>
                         <input type="text" name="customer_name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" placeholder="e.g., John Doe" />
@@ -619,6 +632,7 @@ fn render_forms(products: &[Product]) -> String {
             <div class="glass p-6 rounded-2xl mt-8">
                 <h3 class="text-lg font-bold mb-4 text-slate-200">"Register Product"</h3>
                 <form action="/products" method="POST" class="space-y-4">
+                    <input type="hidden" name="_token" value={csrf_token} />
                     <div>
                         <label class="block text-xs text-slate-400 font-medium mb-1">"Product Name"</label>
                         <input type="text" name="name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="e.g., Hario V60 Filter" />

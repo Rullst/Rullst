@@ -233,6 +233,80 @@ fn every_blueprint_variant_has_safe_paths_valid_rust_and_valid_manifest() {
 }
 
 #[test]
+fn blank_database_status_keeps_diagnostics_out_of_public_responses() {
+    for orm_pattern in ["Active Record", "Turso Active Record"] {
+        for api in [false, true] {
+            for hot_reload in [false, true] {
+                let files = blueprints::blank::file_manifest(
+                    "status-app",
+                    "status_app",
+                    api,
+                    hot_reload,
+                    true,
+                    orm_pattern,
+                    "Zero-Bundle HTMX",
+                );
+                let sources = files
+                    .iter()
+                    .filter(|(path, _)| path.ends_with(".rs"))
+                    .map(|(_, source)| source.as_str())
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
+                assert!(sources.contains("Database connected."));
+                assert!(sources.contains("Database unavailable."));
+                assert!(
+                    sources.contains(
+                        "tracing::warn!(error = %error, \"database status check failed\")"
+                    )
+                );
+                assert!(!sources.contains("users.len()"));
+                assert!(!sources.contains("offline or not"));
+                assert!(!sources.contains("not configured: {}"));
+            }
+        }
+    }
+}
+
+#[test]
+fn state_changing_html_blueprints_emit_and_enforce_csrf_tokens() {
+    for hot_reload in [false, true] {
+        let blank = blueprints::blank::file_manifest(
+            "csrf-app",
+            "csrf_app",
+            false,
+            hot_reload,
+            true,
+            "Active Record",
+            "Zero-Bundle HTMX",
+        )
+        .into_iter()
+        .filter(|(path, _)| path.ends_with(".rs"))
+        .map(|(_, source)| source)
+        .collect::<Vec<_>>()
+        .join("\n");
+        assert!(blank.contains("rullst::security::csrf_middleware"));
+        assert!(blank.contains("Extension<rullst::security::CsrfToken>"));
+        assert!(blank.contains("name=\"_token\""));
+
+        let erp = blueprints::erp::file_manifest(
+            "csrf_app",
+            hot_reload,
+            "Active Record",
+            "Zero-Bundle HTMX",
+        )
+        .into_iter()
+        .filter(|(path, _)| path.ends_with(".rs"))
+        .map(|(_, source)| source)
+        .collect::<Vec<_>>()
+        .join("\n");
+        assert!(erp.contains("rullst::security::csrf_middleware"));
+        assert!(erp.contains("Extension<rullst::security::CsrfToken>"));
+        assert_eq!(erp.matches("name=\"_token\"").count(), 3);
+    }
+}
+
+#[test]
 fn apply_materializes_each_public_blueprint_without_path_drift() {
     for spec in BLUEPRINTS {
         let root = std::env::temp_dir().join(format!(

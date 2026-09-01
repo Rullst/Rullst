@@ -412,6 +412,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Safer application and administration boundaries
 
+- The manual OWASP ZAP workflow now materializes fresh blank REST API and
+  complete LMS applications through the release CLI, builds and migrates them
+  in production mode, and treats every ZAP warning/failure as blocking while
+  retaining informational findings. The deliberately CDN-backed blog showcase
+  is reported separately as informational. This work also made Core dynamic
+  responses default to `Cache-Control: no-store` unless a handler provides an
+  explicit policy, and stopped the blank/API database status from returning
+  internal SQL diagnostics; details remain server-side logs. The scan exposed
+  missing CSRF fields in the blog showcase, which now renders the exact
+  request-scoped token and rejects missing or mismatched submissions. The same
+  audited contract now protects the state-changing Blank and ERP generated
+  forms, including their HTMX requests, in development as well as production.
 - Added native AWS SES v2 delivery behind `rullst-mail/aws-ses` and umbrella
   `mail-aws-ses`. `AwsSesDriver` delegates regional SigV4 and transport to the
   official AWS SDK, accepts static/temporary credentials, caller-owned rotating

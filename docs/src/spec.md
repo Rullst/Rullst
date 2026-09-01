@@ -145,6 +145,16 @@ PostgreSQL/MySQL contention evidence also remains open.
       .run(3000)
       .await?;
   ```
+* **Default Dynamic Cache Boundary:** `headers_middleware` supplies
+  `Cache-Control: no-store` only when the handler has not already selected an
+  explicit cache policy. Versioned public/static responses can therefore opt
+  into reviewed caching without weakening the default for dynamic data.
+* **Double-Submit Form Contract:** `csrf_middleware` installs the exact
+  request-scoped `CsrfToken` used by the CSRF cookie on eligible safe requests
+  and preserves it after a valid state-changing request. Server-rendered forms
+  must echo that value in `_token`; HTMX/JavaScript may instead send it through
+  `X-CSRF-Token`. The cookie intentionally remains script-readable and must not
+  be confused with an authentication or session cookie.
 
 ### 4.2. Server-Side Rendering (`rullst::macros`)
 * **Macro:** `html!` expands supported HTML trees into ordinary Rust `String`

@@ -9,6 +9,7 @@ pub fn render_pricing_page(
     styles: String,
     free_can_post: bool,
     xml_snippet: String,
+    csrf_token: &str,
     simulated_checkout_url: Option<(String, String)>, // (provider_id, url)
 ) -> String {
     let gateways = all_gateways();
@@ -153,6 +154,7 @@ pub fn render_pricing_page(
                         </p>
 
                         <form method="POST" action="/checkout" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 1rem; align-items: flex-end;">
+                            <input type="hidden" name="_token" value={csrf_token} />
                             <div>
                                 <label style="display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.35rem;">"Payment Gateway:"</label>
                                 <select name="provider" style="width: 100%; padding: 0.6rem; background: #070a12; border: 1px solid #334155; border-radius: 0.375rem; color: #fff; font-size: 0.9rem;">

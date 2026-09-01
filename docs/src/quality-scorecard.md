@@ -36,6 +36,13 @@ ignored and do not count as compiled examples.
 Grades use the following fixed bands: A+ 97–100, A 90–96, B 80–89, C 70–79,
 D 60–69, and F below 60.
 
+The v12 RC quality objective is **no crate below B**, with the central Core and
+ORM crates at A. A+ is an evidence threshold, not a value to assign by intent.
+The current audited ceilings below do not yet satisfy that RC objective:
+`rullst-macros`, `rullst-orm-macros`, and `rullst-iot` remain C. Their scores
+must rise only through reviewed code, tests, documentation, and operational
+evidence; the policy must not be edited merely to manufacture a passing grade.
+
 ## Audited green-gate ceilings — 31 August 2026
 
 These are the maximum current scores when every referenced Rust CI gate passes.

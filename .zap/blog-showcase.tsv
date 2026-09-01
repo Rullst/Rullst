@@ -1,0 +1,7 @@
+10010	INFO	(Double-submit CSRF cookie is intentionally readable and remains Secure/SameSite)
+10031	INFO	(Bounded reflected showcase inputs are escaped or reduced to closed provider/plan values)
+10049	INFO	(Dynamic showcase responses intentionally default to explicit Cache-Control no-store)
+10094	INFO	(Cryptographically random CSRF and CSP nonce values are expected encoded tokens)
+10099	INFO	(The repository page deliberately renders a static escaped SQL example, not server source)
+10112	INFO	(CSRF cookie correctly identifies a state-management response)
+90005	INFO	(ZAP is not a browser and does not send browser-authored Sec-Fetch request headers)

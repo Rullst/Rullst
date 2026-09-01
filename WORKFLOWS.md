@@ -45,7 +45,7 @@ The workflows below run **only when requested manually**:
 
 | Workflow | Evidence | RC interpretation |
 | :--- | :--- | :--- |
-| `dast-zap.yml` | OWASP ZAP baseline against the blog example | The job must succeed; it does not cover every generated application or deployment. |
+| `dast-zap.yml` | OWASP ZAP baseline against a release blog showcase plus fresh generated REST API and complete LMS applications | REST/LMS warnings and failures block. The showcase is informational because it deliberately uses third-party presentation assets; reports and application logs are retained. This remains representative, not universal deployment coverage. |
 | `fuzzing.yml` | All 40 declared libFuzzer targets | Every matrix job must finish without a crash for the configured time budget; this is bounded evidence, not proof for every input. |
 | `kani.yml` | Bounded formal harnesses per supported package | Informational: commands currently use `continue-on-error`, so inspect each step rather than equating a green outer job with proof. |
 | `miri.yml` | Randomized-layout Miri package matrix | Informational for the same reason; unsupported paths and tolerated step failures must be recorded explicitly. |
@@ -188,8 +188,15 @@ and the informational CLI/proc-macro components rather than hiding them.
   Messaging runs its integration contract so its concurrent state is actually
   exercised rather than reporting a zero-test library pass. There is no MSan
   job in the current sanitizer workflow.
-- The ZAP baseline is manual. It exercises the blog example, not every possible
-  Rullst application or deployment.
+- The manual ZAP workflow materializes, release-builds and migrates a fresh
+  REST API and complete LMS through the real CLI. Both baselines fail on any
+  warning/failure, preserve INFO observations and use no ignored rules. The
+  release blog showcase is scanned separately but remains informational because
+  its documented presentation boundary deliberately uses a relaxed CSP and
+  third-party assets. Its rules retain those external-asset findings for review
+  and reduce only evidenced token/state signals or escaped showcase reflections
+  to INFO; they do not hide findings with `IGNORE`. These three targets are representative evidence, not
+  coverage of every blueprint, authenticated role, browser, proxy or deployment.
 - Property tests and benchmarks are scheduled/manual evidence. The eight
   benchmark suites emit non-blocking alerts at a 20% regression; they are not a
   promise against every nanosecond-level regression.
@@ -259,7 +266,7 @@ dependency graph make static estimates unreliable.
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main push and PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check. |
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Attempts corpus minimization and uploads results; individual cmin failures are tolerated. |
 | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation and blocking OIDC-authenticated Codecov upload; scheduled/manual branch instrumentation is non-blocking. |
-| [`dast-zap.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/dast-zap.yml) | manual | On-demand | OWASP ZAP baseline against the blog example. |
+| [`dast-zap.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/dast-zap.yml) | manual | Blocking generated targets plus informational showcase | Pins the ZAP image by digest, scans fresh release/migrated REST API and complete LMS surfaces as blocking gates, scans the CDN-backed blog showcase informationally, and uploads separate reports plus application logs. |
 | [`documentation.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/documentation.yml) | main push and PR, weekly, manual | Blocking plus informational external scan | Builds the mdBook and rejects broken repository-local links. Scheduled/manual runs also upload a non-blocking external-link report because third-party availability and rate limits are not deterministic contribution gates. |
 | [`e2e-smoke.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/e2e-smoke.yml) | main push and PR, manual | Blocking | Boots the release blog example and checks HTTP, headers, form flow, and SQLite persistence. |
 | [`fuzzing.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/fuzzing.yml) | manual | On-demand | Forty libFuzzer matrix jobs, each capped below six hours. |

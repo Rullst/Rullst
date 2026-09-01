@@ -11,17 +11,19 @@ permissions:
   contents: read
 
 env:
+  APP_KEY: 0123456789abcdef0123456789abcdef
+  CARGO_TERM_COLOR: always
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  NEXUS_ADMIN_PASSWORD: Dast-Only-Password-2026
+  NEXUS_ADMIN_USERNAME: dast_admin
+  RULLST_ENV: production
+  ZAP_DOCKER_IMAGE: ghcr.io/zaproxy/zaproxy@sha256:781a2bdaea47324e7bab583e2263f21d257b0aee61ed51521a5be45f5f5081ef
 
 jobs:
   zap_scan:
-    name: ZAP Baseline Scan
+    name: ZAP representative release surfaces
     runs-on: ubuntu-latest
-    timeout-minutes: 120  # Hard cap: build(60) + server start(5) + ZAP scan(60) = ~125min max
-    permissions:
-      issues: write
-      pull-requests: write
-      contents: read
+    timeout-minutes: 240
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -43,54 +45,250 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-zap-
 
-      - name: Configure environment for Blog Example
+      - name: Configure blog showcase database
         working-directory: examples/blog
         run: |
-          {
-            echo "APP_KEY=12345678901234567890123456789012"
-            echo "APP_ENV=production"
-            echo "DATABASE_URL=sqlite://db.sqlite3"
-          } >> .env
-          touch db.sqlite3
           touch blog.db
 
-      - name: Build Rullst Server (Blog Example)
-        timeout-minutes: 60
-        run: cargo build --release -p rullst-blog-example
-
-      - name: Run Rullst Server in background
-        working-directory: examples/blog
+      - name: Build scanner targets and CLI
+        timeout-minutes: 80
         run: |
-          # Run the pre-compiled release binary directly (no recompilation)
-          ../../target/release/rullst-blog-example &
-          # Wait for the server to be ready on port 3000
-          sleep 3
-          curl -s --retry 15 --retry-connrefused --retry-delay 2 http://localhost:3000 > /dev/null
-          echo "Server is up at http://localhost:3000"
+          cargo fetch --locked
+          cargo build --release --locked \
+            -p cargo-rullst --bin cargo-rullst \
+            -p rullst-blog-example
 
-      - name: Generate ZAP Rules to Ignore CDN False Positives
+      - name: Materialize representative generated applications
         run: |
-          mkdir -p .zap
-          # 10055 = CSP unsafe-inline / unsafe-eval (required for Tailwind/HTMX CDNs)
-          # 90003 = Sub Resource Resource Integrity Attribute Missing (dynamic CDN versions)
-          # 10017 = Cross-Domain JavaScript (CDN scripts)
-          # 10109 = Modern Web Application (Informational)
-          # 90004 = Cross-Origin-Embedder-Policy (Handled by production middleware)
-          # 10049 = Storable and Cacheable Content (Handled by production middleware)
-          # 10202 = Absence of Anti-CSRF Tokens (False positive on GET routes in example app)
-          # 10063 = Permissions Policy Header Not Set (Not required for simple example)
-          # 10010 = Cookie No HttpOnly Flag (Double-Submit CSRF token is intentionally readable by frontend scripts)
-          # 10112 = Session Management Response Identified (Informational alert for session responses)
-          # 10099 = Source Code Disclosure - SQL (Informational / False positive on SQL query telemetry & RASP sandbox demos)
-          # 2 = Private IP Disclosure (Documentation / Example IPs in demo pages)
-          # 10024 = Sensitive Information in URL (Query params on demo sandbox GET endpoints)
-          # 10031 = User Controllable HTML Element Attribute (Safe reflected query params in search & table sort)
-          echo -e "10055\tIGNORE\t(CSP)\n90003\tIGNORE\t(SRI)\n10017\tIGNORE\t(Cross-Domain)\n10109\tIGNORE\t(Modern Web App)\n90004\tIGNORE\t(COEP/CORP)\n10049\tIGNORE\t(Cache-Control)\n10202\tIGNORE\t(CSRF)\n10063\tIGNORE\t(Permissions-Policy)\n10010\tIGNORE\t(HttpOnly-CSRF)\n10112\tIGNORE\t(Session-Management)\n10099\tIGNORE\t(SQL-Telemetry)\n2\tIGNORE\t(Private-IP)\n10024\tIGNORE\t(URL-Params)\n10031\tIGNORE\t(HTML-Attr-Reflection)" > .zap/rules.tsv
+          dast_root="$RUNNER_TEMP/rullst-zap"
+          printf 'DAST_ROOT=%s\n' "$dast_root" >> "$GITHUB_ENV"
+          mkdir -p "$dast_root"
 
-      - name: OWASP ZAP Baseline Scan
+          ./target/release/cargo-rullst new "$dast_root/zap-blank-api" \
+            --default \
+            --blueprint blank \
+            --database sqlite \
+            --api \
+            --skip-initial-migration
+          ./target/release/cargo-rullst new "$dast_root/zap-lms-app" \
+            --default \
+            --blueprint lms \
+            --database sqlite \
+            --skip-initial-migration
+
+          cp Cargo.lock "$dast_root/zap-blank-api/Cargo.lock"
+          cp Cargo.lock "$dast_root/zap-lms-app/Cargo.lock"
+
+      - name: Build generated applications in release mode
+        timeout-minutes: 100
+        run: |
+          CARGO_TARGET_DIR="$GITHUB_WORKSPACE/target" cargo build \
+            --release \
+            --offline \
+            --manifest-path "$DAST_ROOT/zap-blank-api/Cargo.toml"
+          CARGO_TARGET_DIR="$GITHUB_WORKSPACE/target" cargo build \
+            --release \
+            --offline \
+            --manifest-path "$DAST_ROOT/zap-lms-app/Cargo.toml"
+
+      - name: Apply generated application migrations
+        run: |
+          (
+            cd "$DAST_ROOT/zap-blank-api"
+            "$GITHUB_WORKSPACE/target/release/zap-blank-api" db:migrate
+          )
+          (
+            cd "$DAST_ROOT/zap-lms-app"
+            "$GITHUB_WORKSPACE/target/release/zap-lms-app" db:migrate
+          )
+
+      - name: Start blog showcase
+        run: |
+          log_path="$RUNNER_TEMP/zap-blog.log"
+          pid_path="$RUNNER_TEMP/zap-blog.pid"
+          (
+            cd examples/blog
+            exec ../../target/release/rullst-blog-example
+          ) > "$log_path" 2>&1 &
+          server_pid=$!
+          printf '%s\n' "$server_pid" > "$pid_path"
+
+          ready=false
+          for _ in {1..30}; do
+            if curl --user-agent 'Mozilla/5.0 (Rullst DAST readiness)' \
+              --fail --silent --show-error --max-time 5 \
+              http://127.0.0.1:3000/ > /dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$ready" != true ]]; then
+            tail -200 "$log_path"
+            exit 1
+          fi
+
+      - name: Scan blog showcase (informational boundary)
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        timeout-minutes: 45
+        with:
+          target: http://127.0.0.1:3000
+          docker_name: ${{ env.ZAP_DOCKER_IMAGE }}
+          rules_file_name: .zap/blog-showcase.tsv
+          cmd_options: -a -m 2
+          fail_action: false
+          allow_issue_writing: false
+          artifact_name: zap-blog-showcase
+
+      - name: Stop blog showcase
+        if: always()
+        run: |
+          pid_path="$RUNNER_TEMP/zap-blog.pid"
+          if [[ -f "$pid_path" ]]; then
+            server_pid=$(< "$pid_path")
+            if kill -0 "$server_pid" 2>/dev/null; then
+              kill "$server_pid"
+              wait "$server_pid" || true
+            fi
+          fi
+
+      - name: Start generated REST API
+        run: |
+          log_path="$RUNNER_TEMP/zap-blank-api.log"
+          pid_path="$RUNNER_TEMP/zap-blank-api.pid"
+          (
+            cd "$DAST_ROOT/zap-blank-api"
+            exec "$GITHUB_WORKSPACE/target/release/zap-blank-api"
+          ) > "$log_path" 2>&1 &
+          server_pid=$!
+          printf '%s\n' "$server_pid" > "$pid_path"
+
+          ready=false
+          for _ in {1..30}; do
+            if curl --user-agent 'Mozilla/5.0 (Rullst DAST readiness)' \
+              --fail --silent --show-error --max-time 5 \
+              http://127.0.0.1:3000/ > /dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$ready" != true ]]; then
+            tail -200 "$log_path"
+            exit 1
+          fi
+
+      - name: Scan generated REST API (blocking)
+        id: zap_api
+        continue-on-error: true
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        timeout-minutes: 45
+        with:
+          target: http://127.0.0.1:3000
+          docker_name: ${{ env.ZAP_DOCKER_IMAGE }}
+          rules_file_name: .zap/generated-apps.tsv
+          cmd_options: -a -m 1
+          fail_action: true
+          allow_issue_writing: false
+          artifact_name: zap-generated-rest-api
+
+      - name: Stop generated REST API
+        if: always()
+        run: |
+          pid_path="$RUNNER_TEMP/zap-blank-api.pid"
+          if [[ -f "$pid_path" ]]; then
+            server_pid=$(< "$pid_path")
+            if kill -0 "$server_pid" 2>/dev/null; then
+              kill "$server_pid"
+              wait "$server_pid" || true
+            fi
+          fi
+
+      - name: Start generated LMS
+        run: |
+          log_path="$RUNNER_TEMP/zap-lms.log"
+          pid_path="$RUNNER_TEMP/zap-lms.pid"
+          (
+            cd "$DAST_ROOT/zap-lms-app"
+            exec "$GITHUB_WORKSPACE/target/release/zap-lms-app"
+          ) > "$log_path" 2>&1 &
+          server_pid=$!
+          printf '%s\n' "$server_pid" > "$pid_path"
+
+          ready=false
+          for _ in {1..30}; do
+            if curl --user-agent 'Mozilla/5.0 (Rullst DAST readiness)' \
+              --fail --silent --show-error --max-time 5 \
+              http://127.0.0.1:3000/ > /dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$ready" != true ]]; then
+            tail -200 "$log_path"
+            exit 1
+          fi
+
+      - name: Scan generated LMS public surface (blocking)
+        id: zap_lms
+        continue-on-error: true
         uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
         timeout-minutes: 60
         with:
-          target: 'http://localhost:3000'
-          rules_file_name: '.zap/rules.tsv'
-          fail_action: false # Only warn for now, avoid breaking CI on first run
+          target: http://127.0.0.1:3000
+          docker_name: ${{ env.ZAP_DOCKER_IMAGE }}
+          rules_file_name: .zap/generated-lms.tsv
+          cmd_options: -a -j -m 3
+          fail_action: true
+          allow_issue_writing: false
+          artifact_name: zap-generated-lms
+
+      - name: Stop generated LMS
+        if: always()
+        run: |
+          pid_path="$RUNNER_TEMP/zap-lms.pid"
+          if [[ -f "$pid_path" ]]; then
+            server_pid=$(< "$pid_path")
+            if kill -0 "$server_pid" 2>/dev/null; then
+              kill "$server_pid"
+              wait "$server_pid" || true
+            fi
+          fi
+
+      - name: Upload application logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: zap-application-logs
+          path: ${{ runner.temp }}/zap-*.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Enforce generated application DAST gates
+        if: always() && !cancelled()
+        env:
+          REST_API_OUTCOME: ${{ steps.zap_api.outcome }}
+          LMS_OUTCOME: ${{ steps.zap_lms.outcome }}
+        run: |
+          failed=false
+          if [[ "$REST_API_OUTCOME" != success ]]; then
+            echo "Generated REST API ZAP gate: $REST_API_OUTCOME"
+            failed=true
+          fi
+          if [[ "$LMS_OUTCOME" != success ]]; then
+            echo "Generated LMS ZAP gate: $LMS_OUTCOME"
+            failed=true
+          fi
+          if [[ "$failed" == true ]]; then
+            exit 1
+          fi

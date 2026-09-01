@@ -83,6 +83,11 @@ pub async fn headers_middleware(mut req: Request, next: Next) -> Response {
     let mut response = next.run(req).await;
     let headers = response.headers_mut();
 
+    // Dynamic responses are private by default. A handler can still opt into an explicit,
+    // reviewed cache policy for public/static content before this middleware runs.
+    headers
+        .entry(header::CACHE_CONTROL)
+        .or_insert(HeaderValue::from_static("no-store"));
     headers.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
     headers.insert(
         header::X_CONTENT_TYPE_OPTIONS,

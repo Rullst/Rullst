@@ -33,9 +33,9 @@ pub fn file_manifest(
     };
 
     let db_status_code = if turso_primary {
-        "    // Typed Turso Active Record query through the primary Hrana transport.\n    let db_status = match User::all().await {\n        Ok(users) => format!(\"Turso connected! Total users: {}\", users.len()),\n        Err(e) => format!(\"Turso offline or not migrated: {}\", e),\n    };"
+        "    // Typed Turso Active Record query through the primary Hrana transport.\n    let db_status = match User::all().await {\n        Ok(_) => \"Database connected.\".to_string(),\n        Err(error) => {\n            tracing::warn!(error = %error, \"database status check failed\");\n            \"Database unavailable.\".to_string()\n        }\n    };"
     } else if db_needed {
-        "    // ORM usage example: Fetch active users from database\n    let db_status = match User::all().await {\n        Ok(users) => format!(\"Database connected! Total users: {}\", users.len()),\n        Err(e) => format!(\"Database offline or not configured: {}\", e),\n    };"
+        "    // ORM usage example: verify availability without exposing database details.\n    let db_status = match User::all().await {\n        Ok(_) => \"Database connected.\".to_string(),\n        Err(error) => {\n            tracing::warn!(error = %error, \"database status check failed\");\n            \"Database unavailable.\".to_string()\n        }\n    };"
     } else {
         "    let db_status = \"Database features are disabled for this project.\".to_string();"
     };
@@ -142,7 +142,7 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
         } else {
             let fe_imports = common::frontend_page_imports(frontend_engine);
             format!(
-                r##"{fe_imports}use rullst::{{routes, Router, response::{{Html, IntoResponse}}}};
+                r##"{fe_imports}use rullst::{{routes, Router, response::{{Html, IntoResponse}}, server::Extension}};
 use rullst::htmx::{{HtmxRequest, render_page}};
 
 {migrations_mod_declaration}{client_modules}
@@ -150,7 +150,10 @@ use rullst::htmx::{{HtmxRequest, render_page}};
 {db_model_code}
 
 // Main route: uses hybrid SSR with render_page
-pub async fn home(htmx: HtmxRequest) -> impl IntoResponse {{
+pub async fn home(
+    htmx: HtmxRequest,
+    Extension(csrf_token): Extension<rullst::security::CsrfToken>,
+) -> impl IntoResponse {{
     let name = "Rullst";
 {db_status_code}
 
@@ -172,12 +175,12 @@ pub async fn home(htmx: HtmxRequest) -> impl IntoResponse {{
                 <div class="bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
                     <h2 class="text-xl font-bold text-slate-200">"HTMX Reactive Counter"</h2>
                     <div id="counter-box" class="flex flex-col items-center gap-3">
-                        <button hx-post="/clicked" 
-                                hx-target="#counter-box" 
-                                hx-swap="outerHTML" 
-                                class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                        <form method="post" action="/clicked" hx-post="/clicked" hx-target="#counter-box" hx-swap="outerHTML">
+                            <input type="hidden" name="_token" value={{csrf_token.as_str()}} />
+                            <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
                             "Click here to increment"
-                        </button>
+                            </button>
+                        </form>
                         <p class="text-sm text-slate-400">"Clicks received on server: 0"</p>
                     </div>
                 </div>
@@ -198,17 +201,19 @@ use std::sync::atomic::{{AtomicUsize, Ordering}};
 static CLICK_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 // Reactive HTMX endpoint
-pub async fn clicked() -> impl IntoResponse {{
+pub async fn clicked(
+    Extension(csrf_token): Extension<rullst::security::CsrfToken>,
+) -> impl IntoResponse {{
     let current_clicks = CLICK_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
     
     Html(html! {{
         <div id="counter-box" class="flex flex-col items-center gap-3">
-            <button hx-post="/clicked" 
-                    hx-target="#counter-box" 
-                    hx-swap="outerHTML" 
-                    class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
-                "Click here to increment"
-            </button>
+            <form method="post" action="/clicked" hx-post="/clicked" hx-target="#counter-box" hx-swap="outerHTML">
+                <input type="hidden" name="_token" value={{csrf_token.as_str()}} />
+                <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                    "Click here to increment"
+                </button>
+            </form>
             <p class="text-sm text-emerald-400 font-medium">"Clicks received on server: " {{current_clicks.to_string()}}</p>
         </div>
     }})
@@ -218,7 +223,9 @@ pub fn router() -> Router {{
     routes![
         get("/" => home),
         post("/clicked" => clicked),
-    ].layer(rullst::server::from_fn(rullst::security::headers_middleware))
+    ]
+    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
 }}
 
 #[unsafe(no_mangle)]
@@ -341,14 +348,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
             )
         } else {
             format!(
-                r##"use rullst::{{html, routes, Server, response::{{Html, IntoResponse}}}};
+                r##"use rullst::{{html, routes, Server, response::{{Html, IntoResponse}}, server::Extension}};
 use rullst::htmx::{{HtmxRequest, render_page}};
 
 {migrations_mod_declaration}
 
 {db_model_code}
 
-async fn home(htmx: HtmxRequest) -> impl IntoResponse {{
+async fn home(
+    htmx: HtmxRequest,
+    Extension(csrf_token): Extension<rullst::security::CsrfToken>,
+) -> impl IntoResponse {{
     let name = "Rullst";
 {db_status_code}
 
@@ -370,12 +380,12 @@ async fn home(htmx: HtmxRequest) -> impl IntoResponse {{
                 <div class="bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
                     <h2 class="text-xl font-bold text-slate-200">"HTMX Reactive Counter"</h2>
                     <div id="counter-box" class="flex flex-col items-center gap-3">
-                        <button hx-post="/clicked" 
-                                hx-target="#counter-box" 
-                                hx-swap="outerHTML" 
-                                class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                        <form method="post" action="/clicked" hx-post="/clicked" hx-target="#counter-box" hx-swap="outerHTML">
+                            <input type="hidden" name="_token" value={{csrf_token.as_str()}} />
+                            <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
                             "Click here to increment"
-                        </button>
+                            </button>
+                        </form>
                         <p class="text-sm text-slate-400">"Clicks received on server: 0"</p>
                     </div>
                 </div>
@@ -391,17 +401,19 @@ use std::sync::atomic::{{AtomicUsize, Ordering}};
 static CLICK_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 // Reactive HTMX endpoint
-async fn clicked() -> impl IntoResponse {{
+async fn clicked(
+    Extension(csrf_token): Extension<rullst::security::CsrfToken>,
+) -> impl IntoResponse {{
     let current_clicks = CLICK_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
     
     Html(html! {{
         <div id="counter-box" class="flex flex-col items-center gap-3">
-            <button hx-post="/clicked" 
-                    hx-target="#counter-box" 
-                    hx-swap="outerHTML" 
-                    class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
-                "Click here to increment"
-            </button>
+            <form method="post" action="/clicked" hx-post="/clicked" hx-target="#counter-box" hx-swap="outerHTML">
+                <input type="hidden" name="_token" value={{csrf_token.as_str()}} />
+                <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                    "Click here to increment"
+                </button>
+            </form>
             <p class="text-sm text-emerald-400 font-medium">"Clicks received on server: " {{current_clicks.to_string()}}</p>
         </div>
     }})
@@ -413,7 +425,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     let router = routes![
         get("/" => home),
         post("/clicked" => clicked),
-    ].layer(rullst::server::from_fn(rullst::security::headers_middleware));
+    ]
+    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+    .layer(rullst::server::from_fn(rullst::security::headers_middleware));
 
     Server::new(router)
         .run(3000)

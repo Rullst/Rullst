@@ -259,6 +259,7 @@ async fn test_headers_middleware_injects_security_headers() {
     assert_eq!(res.status(), StatusCode::OK);
 
     let headers = res.headers();
+    assert_eq!(headers.get("Cache-Control").unwrap(), "no-store");
     assert_eq!(headers.get("X-Frame-Options").unwrap(), "DENY");
     assert_eq!(headers.get("X-Content-Type-Options").unwrap(), "nosniff");
     assert_eq!(headers.get("X-XSS-Protection").unwrap(), "0");
@@ -288,6 +289,38 @@ async fn test_headers_middleware_injects_security_headers() {
     assert!(csp.contains(&format!("'nonce-{nonce}'")));
 }
 
+#[tokio::test]
+async fn headers_middleware_preserves_an_explicit_cache_policy() {
+    use axum::{
+        body::Body,
+        http::{HeaderValue, Request, Response, header},
+        routing::get,
+    };
+    use tower::ServiceExt;
+
+    async fn public_asset() -> Response<Body> {
+        let mut response = Response::new(Body::from("versioned asset"));
+        response.headers_mut().insert(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static("public, max-age=31536000, immutable"),
+        );
+        response
+    }
+
+    let app = axum::Router::new()
+        .route("/asset", get(public_asset))
+        .route_layer(axum::middleware::from_fn(headers_middleware));
+    let response = app
+        .oneshot(Request::get("/asset").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+
+    assert_eq!(
+        response.headers().get(header::CACHE_CONTROL).unwrap(),
+        "public, max-age=31536000, immutable"
+    );
+}
+
 #[test]
 fn test_generate_csrf_token() {
     let token1 = generate_csrf_token();
@@ -305,7 +338,10 @@ async fn csrf_get_exposes_the_exact_cookie_token_to_form_handlers() {
     let app = axum::Router::new()
         .route(
             "/form",
-            get(|Extension(token): Extension<CsrfToken>| async move { token.as_str().to_owned() }),
+            get(|Extension(token): Extension<CsrfToken>| async move { token.as_str().to_owned() })
+                .post(|Extension(token): Extension<CsrfToken>| async move {
+                    token.as_str().to_owned()
+                }),
         )
         .layer(axum::middleware::from_fn(super::csrf::csrf_middleware));
 
@@ -332,6 +368,7 @@ async fn csrf_get_exposes_the_exact_cookie_token_to_form_handlers() {
     assert!(cookie.starts_with(&format!("rullst_csrf={first_token};")));
 
     let second = app
+        .clone()
         .oneshot(
             Request::builder()
                 .uri("/form")
@@ -354,6 +391,27 @@ async fn csrf_get_exposes_the_exact_cookie_token_to_form_handlers() {
         .await
         .expect("second body");
     assert_eq!(second_body.as_ref(), first_token.as_bytes());
+
+    let posted = app
+        .oneshot(
+            Request::post("/form")
+                .header(
+                    axum::http::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .header(
+                    axum::http::header::COOKIE,
+                    format!("rullst_csrf={first_token}"),
+                )
+                .body(Body::from(format!("_token={first_token}")))
+                .expect("valid POST request"),
+        )
+        .await
+        .expect("POST response");
+    let posted_body = axum::body::to_bytes(posted.into_body(), 128)
+        .await
+        .expect("POST body");
+    assert_eq!(posted_body.as_ref(), first_token.as_bytes());
 }
 
 #[test]

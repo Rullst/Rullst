@@ -119,13 +119,25 @@ failed best-effort context refresh does not roll back generated source. Review
 the diff and run `cargo check` after scaffolding.
 
 ### `cargo rullst make:resource <name>`
-Scaffolds a complete Full CRUD resource stack in a single command. It simultaneously generates the Model (`src/models/<name>.rs`), Migration (`migrations/<timestamp>_create_<name>s_table.rs`), Controller (`src/controllers/<name>.rs`), and HTML Views (`views/<name>/index.html` & `views/<name>/form.html`).
+Scaffolds the bounded starting files for a CRUD resource in one command: a
+Model (`src/models/<name>.rs`), Migration
+(`migrations/<timestamp>_create_<name>s_table.rs`), Controller
+(`src/controllers/<name>.rs`), and HTML view placeholders
+(`views/<name>/index.html` and `views/<name>/form.html`). It does not infer
+application fields, register routes, establish ownership/RBAC, or turn the
+placeholder handlers into a complete authorized CRUD implementation. Mount the
+routes behind the canonical security baseline, render request-scoped CSRF
+tokens in state-changing forms, complete validation/persistence, and run the
+application's authorization-negative tests.
 * **Arguments:** `<name>` (e.g., `Product` or `product`).
 * **Optional Flags:**
   * `--api`: Scaffolds a headless JSON API resource controller instead of HTML views.
 
 ### `cargo rullst make:controller <name>`
-Generates a new Controller in the `src/controllers/` directory. It creates the standard CRUD methods (`index`, `show`, `create`, `update`, `delete`) and automatically registers the route in `main.rs`.
+Generates a new Controller in the `src/controllers/` directory. It creates
+placeholder CRUD methods (`index`, `show`, `store`, `update`, `delete`) and
+registers the Rust module in `main.rs` when that file exists; it does not add
+application routes automatically.
 * **Arguments:** `<name>` (e.g., `UsersController` or `users`).
 * **Optional Flags:**
   * `--api`: Instead of returning HTML Views via the `html!` macro, the generated methods will automatically extract/return `Json<T>`.

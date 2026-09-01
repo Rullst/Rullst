@@ -160,7 +160,7 @@ fn csrf_token_from_cookie_header(cookie_header: &str) -> Option<String> {
 }
 
 #[cfg_attr(mutants, mutants::skip)]
-async fn handle_csrf_state_modifying(req: Request, next: Next) -> Response {
+async fn handle_csrf_state_modifying(mut req: Request, next: Next) -> Response {
     let csrf_cookie = req
         .headers()
         .get(header::COOKIE)
@@ -190,6 +190,7 @@ async fn handle_csrf_state_modifying(req: Request, next: Next) -> Response {
         if token.len() == cookie_token.len()
             && token.as_bytes().ct_eq(cookie_token.as_bytes()).into()
         {
+            req.extensions_mut().insert(CsrfToken(cookie_token.clone()));
             return next.run(req).await;
         }
         return (StatusCode::FORBIDDEN, "Invalid CSRF token").into_response();
@@ -203,7 +204,7 @@ async fn handle_csrf_state_modifying(req: Request, next: Next) -> Response {
         .unwrap_or("");
 
     if content_type.contains("application/x-www-form-urlencoded") {
-        let (parts, body) = req.into_parts();
+        let (mut parts, body) = req.into_parts();
 
         // Read request body (limited to 1MB to prevent memory exhaustion)
         let bytes = match axum::body::to_bytes(body, 1024 * 1024).await {
@@ -215,13 +216,13 @@ async fn handle_csrf_state_modifying(req: Request, next: Next) -> Response {
 
         let body_token = extract_token_from_body(&bytes);
 
-        // Reconstruct the request so it can be parsed by subsequent handlers
-        let reconstructed_req = Request::from_parts(parts, axum::body::Body::from(bytes));
-
         if let Some(token) = body_token {
             if token.len() == cookie_token.len()
                 && token.as_bytes().ct_eq(cookie_token.as_bytes()).into()
             {
+                parts.extensions.insert(CsrfToken(cookie_token));
+                // Reconstruct the request so it can be parsed by subsequent handlers.
+                let reconstructed_req = Request::from_parts(parts, axum::body::Body::from(bytes));
                 return next.run(reconstructed_req).await;
             }
         }
