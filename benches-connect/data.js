@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788271873035,
+  "lastUpdate": 1788280330078,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -4223,6 +4223,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 298,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "7d4ab6e907e4907ed3c4f117b3bc887b70166851",
+          "message": "docs(audit): retire stale release guidance",
+          "timestamp": "2026-09-01T13:21:47-03:00",
+          "tree_id": "a891518804c53c0c08525284d2107ab3fea08e35",
+          "url": "https://github.com/Rullst/Rullst/commit/7d4ab6e907e4907ed3c4f117b3bc887b70166851"
+        },
+        "date": 1788280329644,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 499,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
