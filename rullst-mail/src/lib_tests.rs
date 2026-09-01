@@ -189,6 +189,7 @@ fn test_redact_email_secrets() {
 
 #[tokio::test]
 async fn test_mail_trap_and_assertions() {
+    let _lock = crate::facade::MAIL_ENV_LOCK.lock().await;
     MailTrap::clear();
     MailTrap::assert_nothing_sent();
 
