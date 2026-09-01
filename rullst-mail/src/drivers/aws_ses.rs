@@ -391,3 +391,7 @@ mod tests {
         assert!(validate_endpoint("https://user:secret@example.com/send").is_err());
     }
 }
+
+#[cfg(test)]
+#[path = "aws_ses_tests.rs"]
+mod contract_tests;

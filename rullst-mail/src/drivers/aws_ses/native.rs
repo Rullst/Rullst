@@ -273,3 +273,7 @@ fn map_sdk_error(
         .map(|seconds| std::time::Duration::from_secs(seconds.min(86_400)));
     MailError::from_provider_response("aws_ses", status, detail, retry_after)
 }
+
+#[cfg(test)]
+#[path = "native_tests.rs"]
+mod tests;

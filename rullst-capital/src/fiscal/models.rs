@@ -312,3 +312,7 @@ impl FiscalResponse {
         self.kind == FiscalResponseKind::OfficialAuthorization
     }
 }
+
+#[cfg(test)]
+#[path = "models_tests.rs"]
+mod tests;

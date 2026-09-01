@@ -145,3 +145,7 @@ fn matches_json_type(value: &Value, param_type: &str) -> bool {
         _ => false,
     }
 }
+
+#[cfg(test)]
+#[path = "validation_tests.rs"]
+mod tests;

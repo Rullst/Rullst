@@ -411,3 +411,7 @@ fn validate_text_fields(target: &str, version: &str) -> Result<(), OtaError> {
     u32::try_from(version.len()).map_err(|_| OtaError::ManifestFieldTooLong)?;
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "ota_tests.rs"]
+mod tests;

@@ -302,6 +302,10 @@ mod tests {
     }
 }
 
+#[cfg(all(test, feature = "mail-smtp"))]
+#[path = "smtp_tests.rs"]
+mod contract_tests;
+
 /// Placeholder SMTP driver if Cargo feature is not enabled
 #[cfg(not(feature = "mail-smtp"))]
 pub struct SmtpDriver;

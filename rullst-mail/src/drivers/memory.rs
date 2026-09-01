@@ -258,3 +258,7 @@ impl MailAssertion {
         self
     }
 }
+
+#[cfg(test)]
+#[path = "memory_tests.rs"]
+mod tests;

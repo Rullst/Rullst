@@ -350,3 +350,7 @@ mod tests {
         assert_eq!(AUDIT_CHAIN_UNAVAILABLE, "Unavailable");
     }
 }
+
+#[cfg(test)]
+#[path = "security_page_tests.rs"]
+mod page_tests;

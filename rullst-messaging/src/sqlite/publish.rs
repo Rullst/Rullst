@@ -276,3 +276,7 @@ async fn ensure_topic(
     .map_err(|_| storage_error("register topic"))?;
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "publish_tests.rs"]
+mod tests;
