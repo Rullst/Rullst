@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788245866389,
+  "lastUpdate": 1788249040201,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -4361,6 +4361,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 714,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "61714453b8bb10dff305bd97f0300e44008d938f",
+          "message": "test(mail): serialize shared trap state",
+          "timestamp": "2026-09-01T04:38:07-03:00",
+          "tree_id": "2bdad4f4d63412a2a6b5ab61806d23c6f1dc004e",
+          "url": "https://github.com/Rullst/Rullst/commit/61714453b8bb10dff305bd97f0300e44008d938f"
+        },
+        "date": 1788249039662,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1090,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 230,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 479,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
