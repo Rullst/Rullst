@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788283361923,
+  "lastUpdate": 1788292841097,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -6856,6 +6856,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "make_login_cookie",
             "value": 4021,
+            "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "42a63bad754a3714cc899c241d7b3d0d3cd55dca",
+          "message": "fix(ci): exclude dev dependencies from architecture graph",
+          "timestamp": "2026-09-01T16:49:59-03:00",
+          "tree_id": "2892a262222604b75f4e8ddad86ec4a1a5381c10",
+          "url": "https://github.com/Rullst/Rullst/commit/42a63bad754a3714cc899c241d7b3d0d3cd55dca"
+        },
+        "date": 1788292840590,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1039,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 862,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1931,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4576,
             "range": "± 13",
             "unit": "ns/iter"
           }
