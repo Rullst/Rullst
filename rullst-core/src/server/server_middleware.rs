@@ -1,65 +1,100 @@
-/// Intercepts HTML responses in development mode and injects morphdom WebSocket HMR script.
+const HMR_CLIENT_PATH: &str = "/_rullst/hmr-client.js";
+const MAX_HMR_BODY_BYTES: usize = 10 * 1024 * 1024;
+const HMR_CLIENT: &str = r#"(() => {
+    'use strict';
+    let retryDelayMs = 250;
+    const connect = () => {
+        const socketProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const socket = new WebSocket(`${socketProtocol}://${window.location.host}/_rullst_hmr`);
+        socket.onopen = () => { retryDelayMs = 250; };
+        socket.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                if (message.type === 'UI_UPDATE') window.location.reload();
+            } catch (_) {
+                console.warn('Rullst HMR ignored a malformed local message.');
+            }
+        };
+        socket.onclose = () => {
+            window.setTimeout(connect, retryDelayMs);
+            retryDelayMs = Math.min(retryDelayMs * 2, 5000);
+        };
+    };
+    connect();
+})();
+"#;
+
+/// Serves the same-origin, offline hot-reload browser client in development.
+pub(crate) async fn hmr_client_script() -> axum::response::Response {
+    let mut response = axum::response::Response::new(axum::body::Body::from(HMR_CLIENT));
+    response.headers_mut().insert(
+        axum::http::header::CONTENT_TYPE,
+        axum::http::HeaderValue::from_static("application/javascript; charset=utf-8"),
+    );
+    response.headers_mut().insert(
+        axum::http::header::CACHE_CONTROL,
+        axum::http::HeaderValue::from_static("no-store"),
+    );
+    response
+}
+
+/// Intercepts development HTML responses and injects the local HMR client.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn inject_hmr_script(
     req: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> axum::response::Response {
+    use axum::body::HttpBody as _;
+
     let res = next.run(req).await;
 
     if let Some(content_type) = res.headers().get(axum::http::header::CONTENT_TYPE) {
         if content_type.to_str().unwrap_or("").contains("text/html") {
+            let declared_too_large = res
+                .headers()
+                .get(axum::http::header::CONTENT_LENGTH)
+                .and_then(|value| value.to_str().ok())
+                .and_then(|value| value.parse::<u64>().ok())
+                .is_some_and(|length| length > MAX_HMR_BODY_BYTES as u64);
+            let body_is_bounded = res
+                .body()
+                .size_hint()
+                .upper()
+                .is_some_and(|length| length <= MAX_HMR_BODY_BYTES as u64);
+            if declared_too_large || !body_is_bounded {
+                return res;
+            }
+
             let (mut parts, body) = res.into_parts();
-            const MAX_HMR_BODY_BYTES: usize = 10 * 1024 * 1024;
             if let Ok(bytes) = axum::body::to_bytes(body, MAX_HMR_BODY_BYTES).await {
                 let mut html = String::from_utf8_lossy(&bytes).to_string();
 
-                let port = std::env::var("PORT")
-                    .ok()
-                    .and_then(|p| p.parse::<u16>().ok())
-                    .unwrap_or(3000);
-                let ws_port = port + 1;
-
-                let script = format!(
-                    r#"
-<!-- Rullst Hybrid Hot-Reloading -->
-<script src="https://unpkg.com/morphdom@2.7.4/dist/morphdom-umd.js"></script>
-<script>
-    (function connectHmr() {{
-        const host = window.location.hostname || '127.0.0.1';
-        const ws = new WebSocket(`ws://${{host}}:{}/_rullst_hmr`);
-        ws.onmessage = (e) => {{
-            const data = JSON.parse(e.data);
-            if (data.type === "UI_UPDATE") {{
-                fetch(window.location.href)
-                    .then(r => r.text())
-                    .then(newHtml => {{
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(newHtml, 'text/html');
-                        morphdom(document.body, doc.body, {{
-                            onBeforeElUpdated: function(fromEl, toEl) {{
-                                if (fromEl.isEqualNode(toEl)) return false;
-                                return true;
-                            }}
-                        }});
-                    }});
-            }}
-        }};
-        ws.onclose = () => setTimeout(connectHmr, 1000);
-    }})();
-</script>
-"#,
-                    ws_port
-                );
-                if let Some(idx) = html.rfind("</body>") {
-                    html.insert_str(idx, &script);
-                } else {
-                    html.push_str(&script);
+                if !html.contains(HMR_CLIENT_PATH) {
+                    let script = format!(
+                        "\n<!-- Rullst authenticated local hot reload -->\n<script src=\"{HMR_CLIENT_PATH}\" defer></script>\n"
+                    );
+                    if let Some(idx) = html.rfind("</body>") {
+                        html.insert_str(idx, &script);
+                    } else {
+                        html.push_str(&script);
+                    }
                 }
 
                 parts.headers.remove(axum::http::header::CONTENT_LENGTH);
                 return axum::response::Response::from_parts(parts, axum::body::Body::from(html));
             } else {
-                return axum::response::Response::from_parts(parts, axum::body::Body::empty());
+                eprintln!(
+                    "Rullst HMR could not buffer a bounded development HTML response; returning an explicit error."
+                );
+                let mut response = axum::response::Response::new(axum::body::Body::from(
+                    "Rullst HMR could not read the development HTML response.",
+                ));
+                *response.status_mut() = axum::http::StatusCode::INTERNAL_SERVER_ERROR;
+                response.headers_mut().insert(
+                    axum::http::header::CONTENT_TYPE,
+                    axum::http::HeaderValue::from_static("text/plain; charset=utf-8"),
+                );
+                return response;
             }
         }
     }

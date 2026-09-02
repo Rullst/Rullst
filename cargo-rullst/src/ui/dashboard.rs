@@ -1,51 +1,25 @@
 // src/ui/dashboard.rs — Interactive Rullst CLI dashboard (menus, logo, handlers).
 
+use super::dashboard_brand::{play_launch_pulse, print_neon_logo};
 use colored::*;
 
-fn print_neon_logo() {
-    let color_logo = |s: &str| s.truecolor(255, 165, 0).bold();
-    println!(
-        "\n{}",
-        color_logo(r#"  ██████╗ ██╗   ██╗██╗     ██╗     ███████╗████████╗"#)
-    );
-    println!(
-        "{}",
-        color_logo(r#"  ██╔══██╗██║   ██║██║     ██║     ██╔════╝╚══██╔══╝"#)
-    );
-    println!(
-        "{}",
-        color_logo(r#"  ██████╔╝██║   ██║██║     ██║     ███████╗   ██║   "#)
-    );
-    println!(
-        "{}",
-        color_logo(r#"  ██╔══██╗██║   ██║██║     ██║     ╚════██║   ██║   "#)
-    );
-    println!(
-        "{}",
-        color_logo(r#"  ██║  ██║╚██████╔╝███████╗███████╗███████║   ██║   "#)
-    );
-    println!(
-        "{}",
-        color_logo(r#"  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚══════╝╚══════╝   ╚═╝   "#)
-    );
-    println!(
-        "\n  {} {} {}",
-        "The".white(),
-        "Explicit Full-Stack Rust Toolkit".bright_cyan().bold(),
-        format!("v{}", env!("CARGO_PKG_VERSION")).bright_yellow()
-    );
-    println!(
-        "  {}\n",
-        "⚡ Security · Speed · Developer Experience ⚡"
-            .bright_magenta()
-            .bold()
-    );
-}
-
 pub fn execute_command(cmd_args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
-    std::process::Command::new(&cmd_args[0])
-        .args(&cmd_args[1..])
+    let Some((program, arguments)) = cmd_args.split_first() else {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "dashboard command cannot be empty",
+        )
+        .into());
+    };
+    let status = std::process::Command::new(program)
+        .args(arguments)
         .status()?;
+    if !status.success() {
+        return Err(std::io::Error::other(format!(
+            "dashboard command `{program}` failed with status {status}"
+        ))
+        .into());
+    }
     Ok(())
 }
 
@@ -307,7 +281,8 @@ fn handle_existing_project(
 
 pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
     print!("\x1B[2J\x1B[1;1H");
-    print_neon_logo();
+    print_neon_logo()?;
+    play_launch_pulse()?;
 
     let theme = dialoguer::theme::ColorfulTheme::default();
     let choices = [
@@ -350,5 +325,13 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
         _ => Ok(()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn dashboard_never_indexes_an_empty_command() {
+        assert!(super::execute_command(Vec::new()).is_err());
     }
 }

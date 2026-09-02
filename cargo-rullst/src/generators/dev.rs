@@ -1,14 +1,5 @@
 #![cfg_attr(mutants, mutants::skip)]
 use crate::generators::is_rullst_project;
-use axum::{
-    Router,
-    extract::{
-        State,
-        ws::{Message, WebSocket, WebSocketUpgrade},
-    },
-    response::IntoResponse,
-    routing::get,
-};
 use colored::*;
 use notify::{RecursiveMode, Watcher};
 use std::collections::HashMap;
@@ -18,45 +9,31 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::process::Stdio;
 
-use quote::quote;
-use syn::{Macro, visit_mut::VisitMut};
-use tokio::sync::{broadcast, mpsc};
+use tokio::sync::mpsc;
 use tokio::time::{Duration, sleep};
 
-struct HtmlStripper;
+#[path = "dev_support.rs"]
+mod support;
+use support::{
+    bounded_diagnostic, did_logic_change, generate_reload_token, hot_reload_profile_available,
+    is_actionable_event, report_watcher_message,
+};
 
-impl VisitMut for HtmlStripper {
-    fn visit_macro_mut(&mut self, m: &mut Macro) {
-        if m.path.is_ident("html") {
-            m.tokens = proc_macro2::TokenStream::new();
-        }
-        syn::visit_mut::visit_macro_mut(self, m);
-    }
-}
+const DASHBOARD_LOG_CAPACITY: usize = 512;
+const RELOAD_TOKEN_HEADER: &str = "x-rullst-hmr-token";
 
-fn did_logic_change(old_src: &str, new_src: &str) -> bool {
-    let mut old_ast = match syn::parse_file(old_src) {
-        Ok(ast) => ast,
-        Err(_) => return true,
-    };
-    let mut new_ast = match syn::parse_file(new_src) {
-        Ok(ast) => ast,
-        Err(_) => return true,
-    };
-
-    let mut stripper = HtmlStripper;
-    stripper.visit_file_mut(&mut old_ast);
-    stripper.visit_file_mut(&mut new_ast);
-
-    let old_stripped = quote!(#old_ast).to_string();
-    let new_stripped = quote!(#new_ast).to_string();
-
-    old_stripped != new_stripped
-}
-
-#[derive(Clone)]
-struct AppState {
-    tx: broadcast::Sender<String>,
+#[derive(Debug, thiserror::Error)]
+enum DevServerError {
+    #[error("this command must be executed in the root of a valid Rullst project")]
+    NotRullstProject,
+    #[error("failed to invoke the initial Cargo build: {0}")]
+    BuildInvocation(#[source] std::io::Error),
+    #[error("the initial application build failed; run `cargo build` for the complete diagnostic")]
+    BuildFailed,
+    #[error("failed to invoke the initial database migration: {0}")]
+    MigrationInvocation(#[source] std::io::Error),
+    #[error("the initial database migration failed with status {0}")]
+    MigrationFailed(std::process::ExitStatus),
 }
 
 use crate::ui::dash_tui::LogMsg;
@@ -64,69 +41,50 @@ use crate::ui::dash_tui::LogMsg;
 #[tokio::main]
 pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Error>> {
     if !is_rullst_project() {
-        println!(
-            "{}",
-            "❌ Error: This command must be executed in the root of a valid Rullst project."
-                .red()
-                .bold()
-        );
-        std::process::exit(1);
+        return Err(DevServerError::NotRullstProject.into());
     }
 
     println!(
         "{}\n",
-        "🚀 Starting Rullst Hybrid Hot-Reload Server (AST + Dylib)..."
-            .cyan()
-            .bold()
+        "🚀 Starting the Rullst development server...".cyan().bold()
     );
 
-    build_and_migrate();
+    build_and_migrate()?;
 
-    let (tx, _rx) = broadcast::channel(100);
-    let app_state = AppState { tx: tx.clone() };
+    let hot_reload_enabled = hot_reload_profile_available(Path::new("."));
 
-    let (log_tx, mut log_rx) = mpsc::unbounded_channel::<LogMsg>();
+    let (log_tx, log_rx) = mpsc::channel::<LogMsg>(DASHBOARD_LOG_CAPACITY);
 
     let port = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse::<u16>().ok())
         .unwrap_or(3000);
-    let ws_port = port.checked_add(1).ok_or_else(|| {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "PORT must be lower than 65535 so the HMR socket can use the next port",
-        )
-    })?;
-
-    let ws_app = Router::new()
-        .route("/_rullst_hmr", get(ws_handler))
-        .with_state(app_state.clone());
-
-    let ws_listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", ws_port)).await?;
-    let msg = format!(
-        "📡 Rullst HMR WebSocket listening on ws://127.0.0.1:{}/_rullst_hmr",
-        ws_port
-    );
-    if is_dash {
-        let _ = log_tx.send(LogMsg::System(msg));
-    } else {
-        println!("{}", msg);
+    if hot_reload_enabled {
+        let msg =
+            format!("📡 Authenticated hot reload active on http://127.0.0.1:{port}/_rullst_hmr");
+        if is_dash {
+            let _ = log_tx.send(LogMsg::System(msg)).await;
+        } else {
+            println!("{msg}");
+        }
     }
-
-    tokio::spawn(async move {
-        let _ = axum::serve(ws_listener, ws_app).await;
-    });
 
     let msg2 = "📦 Booting Rullst application...".yellow().to_string();
     if is_dash {
-        let _ = log_tx.send(LogMsg::System(msg2));
+        let _ = log_tx.send(LogMsg::System(msg2)).await;
     } else {
         println!("{}", msg2);
     }
 
+    let reload_token = generate_reload_token();
     let mut cmd = Command::new("cargo");
     cmd.arg("run").arg("-q");
+    if hot_reload_enabled {
+        cmd.env("HOT_RELOAD", "1");
+        cmd.env("RULLST_HMR_TOKEN", &reload_token);
+    }
     if is_dash {
+        configure_dashboard_process_group(&mut cmd);
         cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
     }
 
@@ -145,25 +103,44 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
         std::thread::spawn(move || {
             let reader = BufReader::new(stdout);
             for line in reader.lines().map_while(Result::ok) {
-                let _ = tx1.send(LogMsg::AppStdout(line));
+                if tx1.blocking_send(LogMsg::AppStdout(line)).is_err() {
+                    break;
+                }
             }
         });
         let tx2 = log_tx.clone();
         std::thread::spawn(move || {
             let reader = BufReader::new(stderr);
             for line in reader.lines().map_while(Result::ok) {
-                let _ = tx2.send(LogMsg::AppStderr(line));
+                if tx2.blocking_send(LogMsg::AppStderr(line)).is_err() {
+                    break;
+                }
             }
         });
     }
 
     let log_tx_watcher = log_tx.clone();
+    let reload_token_watcher = reload_token;
 
     let watcher_task = tokio::spawn(async move {
+        if !hot_reload_enabled {
+            report_watcher_message(
+                &log_tx_watcher,
+                is_dash,
+                "Hot swapping is disabled for this scaffold; regenerate with `--hot-reload` to add the explicit cdylib boundary."
+                    .to_string(),
+                false,
+            )
+            .await;
+            return;
+        }
         let (notify_tx, mut notify_rx) = tokio::sync::mpsc::channel(100);
         let mut watcher =
             match notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
                 if let Ok(event) = res {
+                    if !is_actionable_event(event.kind) {
+                        return;
+                    }
                     let _ = notify_tx.blocking_send(event);
                 }
             }) {
@@ -171,7 +148,7 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
                 Err(error) => {
                     let message = format!("❌ Failed to initialize the file watcher: {error}");
                     if is_dash {
-                        let _ = log_tx_watcher.send(LogMsg::System(message));
+                        let _ = log_tx_watcher.send(LogMsg::System(message)).await;
                     } else {
                         eprintln!("{message}");
                     }
@@ -186,7 +163,7 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
             if let Err(error) = watcher.watch(path, mode) {
                 let message = format!("❌ Failed to watch {}: {error}", path.display());
                 if is_dash {
-                    let _ = log_tx_watcher.send(LogMsg::System(message));
+                    let _ = log_tx_watcher.send(LogMsg::System(message)).await;
                 } else {
                     eprintln!("{message}");
                 }
@@ -198,12 +175,11 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
             .green()
             .to_string();
         if is_dash {
-            let _ = log_tx_watcher.send(LogMsg::System(m));
+            let _ = log_tx_watcher.send(LogMsg::System(m)).await;
         } else {
             println!("{}", m);
         }
 
-        let mut last_build = std::time::Instant::now();
         let mut file_cache: HashMap<PathBuf, String> = HashMap::new();
 
         for entry in walkdir::WalkDir::new("src")
@@ -219,17 +195,18 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
         }
 
         while let Some(event) = notify_rx.recv().await {
+            let mut changed_paths = event.paths;
             sleep(Duration::from_millis(150)).await;
-            while notify_rx.try_recv().is_ok() {}
-
-            if last_build.elapsed() < Duration::from_millis(500) {
-                continue;
+            while let Ok(coalesced) = notify_rx.try_recv() {
+                changed_paths.extend(coalesced.paths);
             }
+            changed_paths.sort_unstable();
+            changed_paths.dedup();
 
             let mut logic_changed = false;
             let mut html_changed = false;
 
-            for path in event.paths {
+            for path in changed_paths {
                 if path.extension().and_then(|e| e.to_str()) == Some("rs") {
                     if let Ok(new_content) = fs::read_to_string(&path) {
                         if let Some(old_content) = file_cache.get(&path) {
@@ -245,6 +222,8 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
                             logic_changed = true;
                             file_cache.insert(path.clone(), new_content);
                         }
+                    } else if file_cache.remove(&path).is_some() {
+                        logic_changed = true;
                     }
                 } else if path.extension().and_then(|e| e.to_str()) == Some("toml") {
                     logic_changed = true;
@@ -252,133 +231,186 @@ pub async fn run_dev_server(is_dash: bool) -> Result<(), Box<dyn std::error::Err
             }
 
             if html_changed || logic_changed {
-                let m = "🔄 File change detected. Recompiling library for Hot-Swap..."
-                    .yellow()
-                    .to_string();
-                if is_dash {
-                    let _ = log_tx_watcher.send(LogMsg::System(m));
+                let change_kind = if logic_changed {
+                    "Rust logic or manifest"
                 } else {
-                    println!("{}", m);
-                }
+                    "server-rendered view"
+                };
+                report_watcher_message(
+                    &log_tx_watcher,
+                    is_dash,
+                    format!("🔄 {change_kind} change detected; rebuilding the hot library..."),
+                    false,
+                )
+                .await;
 
-                let status = Command::new("cargo")
+                let started = std::time::Instant::now();
+                let output = tokio::process::Command::new("cargo")
                     .arg("build")
                     .arg("--lib")
                     .arg("-q")
-                    .status();
+                    .output()
+                    .await;
 
-                if let Ok(status) = status {
-                    if status.success() {
+                match output {
+                    Ok(output) if output.status.success() => {
                         let client = reqwest::Client::new();
                         let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
                         let url =
                             format!("http://127.0.0.1:{}/_rullst/internal/reload_dylib", port);
-                        match client.post(&url).send().await {
-                            Ok(_) => {
-                                let m = "✅ Hot-Swap executed successfully. App updated!"
-                                    .green()
-                                    .to_string();
-                                if is_dash {
-                                    let _ = log_tx_watcher.send(LogMsg::System(m));
-                                } else {
-                                    println!("{}", m);
-                                }
-                                // Notify browser via WebSocket to morph DOM with updated server response
-                                let _ = tx.send(r#"{"type": "UI_UPDATE"}"#.to_string());
+                        match client
+                            .post(&url)
+                            .header(RELOAD_TOKEN_HEADER, &reload_token_watcher)
+                            .timeout(Duration::from_secs(5))
+                            .send()
+                            .await
+                        {
+                            Ok(response) if response.status().is_success() => {
+                                report_watcher_message(
+                                    &log_tx_watcher,
+                                    is_dash,
+                                    format!(
+                                        "✅ Hot library swapped in {:.0} ms; refreshing connected browsers.",
+                                        started.elapsed().as_secs_f64() * 1_000.0
+                                    ),
+                                    false,
+                                )
+                                .await;
                             }
-                            Err(_) => {
-                                let m =
-                                    "⚠️ Failed to trigger hot-swap webhook. Is the app running?"
-                                        .red()
-                                        .to_string();
-                                if is_dash {
-                                    let _ = log_tx_watcher.send(LogMsg::System(m));
-                                } else {
-                                    println!("{}", m);
-                                }
+                            Ok(response) => {
+                                let status = response.status();
+                                report_watcher_message(
+                                    &log_tx_watcher,
+                                    is_dash,
+                                    format!(
+                                        "Hot-swap endpoint rejected the new library ({status})."
+                                    ),
+                                    true,
+                                )
+                                .await;
+                            }
+                            Err(error) => {
+                                report_watcher_message(
+                                    &log_tx_watcher,
+                                    is_dash,
+                                    format!("Hot-swap request failed: {error}"),
+                                    true,
+                                )
+                                .await;
                             }
                         }
-                    } else {
-                        let m = "❌ Build failed. Please fix compilation errors to Hot-Swap."
-                            .red()
-                            .to_string();
-                        if is_dash {
-                            let _ = log_tx_watcher.send(LogMsg::System(m));
-                        } else {
-                            println!("{}", m);
-                        }
+                    }
+                    Ok(output) => {
+                        let diagnostic = bounded_diagnostic(&output.stderr);
+                        report_watcher_message(
+                            &log_tx_watcher,
+                            is_dash,
+                            format!("Hot-reload build failed; the running application was kept unchanged.\n{diagnostic}"),
+                            true,
+                        )
+                        .await;
+                    }
+                    Err(error) => {
+                        report_watcher_message(
+                            &log_tx_watcher,
+                            is_dash,
+                            format!("Could not invoke the hot-reload build: {error}"),
+                            true,
+                        )
+                        .await;
                     }
                 }
             }
-
-            last_build = std::time::Instant::now();
         }
     });
 
     if is_dash {
-        crate::ui::dash_tui::run(log_rx, port).await?;
-        let _ = app_child.kill();
+        let dashboard_result = crate::ui::dash_tui::run(
+            log_rx,
+            log_tx.clone(),
+            port,
+            hot_reload_enabled,
+            &mut app_child,
+        )
+        .await;
+        stop_child(&mut app_child);
         watcher_task.abort();
+        dashboard_result?;
     } else {
-        while let Some(msg) = log_rx.recv().await {
-            match msg {
-                LogMsg::System(s) => println!("{}", s),
-                LogMsg::AppStdout(s) => println!("{}", s),
-                LogMsg::AppStderr(s) => eprintln!("{}", s),
-            }
-        }
-        let _ = app_child.kill();
+        let _ = app_child.wait()?;
+        watcher_task.abort();
     }
 
     Ok(())
 }
 
-async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {
-    ws.on_upgrade(|socket| handle_socket(socket, state))
+fn stop_child(child: &mut std::process::Child) {
+    if child.try_wait().ok().flatten().is_none() && !terminate_dashboard_process_group(child.id()) {
+        let _ = child.kill();
+    }
+    let _ = child.wait();
 }
 
-async fn handle_socket(mut socket: WebSocket, state: AppState) {
-    let mut rx = state.tx.subscribe();
-    while let Ok(msg) = rx.recv().await {
-        if socket.send(Message::Text(msg.into())).await.is_err() {
-            break;
-        }
+fn configure_dashboard_process_group(command: &mut Command) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+        command.creation_flags(CREATE_NEW_PROCESS_GROUP);
     }
 }
 
-fn build_and_migrate() {
+fn terminate_dashboard_process_group(process_id: u32) -> bool {
+    #[cfg(unix)]
+    {
+        return Command::new("kill")
+            .args(["-TERM", "--", &format!("-{process_id}")])
+            .status()
+            .is_ok_and(|status| status.success());
+    }
+    #[cfg(windows)]
+    {
+        return Command::new("taskkill")
+            .args(["/PID", &process_id.to_string(), "/T", "/F"])
+            .status()
+            .is_ok_and(|status| status.success());
+    }
+    #[allow(unreachable_code)]
+    false
+}
+
+fn build_and_migrate() -> Result<(), DevServerError> {
     let output_result =
         crate::ui::components::with_spinner("Compiling Rullst Application...", || {
             Command::new("cargo").arg("build").arg("-q").output()
         });
 
-    match output_result {
-        Ok(output) => {
-            if !output.status.success() {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                if !stderr.trim().is_empty() {
-                    println!("{}", stderr);
-                }
-                println!(
-                    "{}",
-                    "❌ Compilation failed. Run `cargo build` to see errors.".red()
-                );
-                std::process::exit(1);
-            }
+    let output = output_result.map_err(DevServerError::BuildInvocation)?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if !stderr.trim().is_empty() {
+            eprintln!("{stderr}");
         }
-        Err(_) => {
-            println!("{}", "❌ Failed to execute `cargo build`.".red());
-            std::process::exit(1);
-        }
+        return Err(DevServerError::BuildFailed);
     }
 
     if std::path::Path::new("src/migrations").exists() {
         println!("{}", "📦 Executing pending database migrations...".yellow());
-        let _ = Command::new("cargo")
+        let status = Command::new("cargo")
             .arg("run")
             .arg("-q")
             .arg("--")
             .arg("db:migrate")
-            .status();
+            .status()
+            .map_err(DevServerError::MigrationInvocation)?;
+        if !status.success() {
+            return Err(DevServerError::MigrationFailed(status));
+        }
     }
+    Ok(())
 }

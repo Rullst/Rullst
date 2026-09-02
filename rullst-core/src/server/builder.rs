@@ -46,6 +46,10 @@ pub enum ServerError {
     #[error("hot reload failed: {0}")]
     HotReload(String),
 
+    /// The private development reload channel is not configured safely.
+    #[error("hot reload configuration error: {0}")]
+    HotReloadConfiguration(String),
+
     /// An operating-system I/O operation failed.
     #[error("server I/O error: {0}")]
     Io(#[from] std::io::Error),
@@ -349,9 +353,11 @@ impl Server {
         }
 
         let is_dev = true;
+        let reload_token = resolve_hot_reload_token()?;
 
-        println!("\x1b[36m⚡ Inicializando Rullst em Modo Hot-Reloading via dylib...\x1b[0m");
-        println!("\x1b[36m⚡ Initializing Rullst in Hot-Reloading mode via dylib...\x1b[0m");
+        println!(
+            "\x1b[36mRullst: initializing the authenticated development-library reload boundary...\x1b[0m"
+        );
 
         let (initial_router, library) = match load_dylib_router(&lib_path, is_dev) {
             Ok(r) => r,
@@ -366,10 +372,14 @@ impl Server {
 
         let current_router = Arc::new(RwLock::new(initial_router));
         let active_libraries = Arc::new(Mutex::new(vec![library]));
+        let (hmr_sender, _receiver) = tokio::sync::broadcast::channel(32);
 
         let hotswap_service = HotSwapService {
             current_router: current_router.clone(),
             active_libraries: active_libraries.clone(),
+            hmr_sender,
+            reload_lock: Arc::new(tokio::sync::Mutex::new(())),
+            reload_token,
             lib_path: lib_path.clone(),
             is_dev,
             shield: self.shield,
@@ -377,7 +387,7 @@ impl Server {
         };
 
         println!(
-            "Rullst framework serving on http://{} (Hot-Reload Ativo via CLI WebSocket)",
+            "Rullst framework serving on http://{} (authenticated development hot reload)",
             addr
         );
         println!(
@@ -486,6 +496,21 @@ fn read_optional_environment_variable(name: &str) -> Result<Option<String>, Serv
             "{name} is not valid Unicode"
         ))),
     }
+}
+
+fn resolve_hot_reload_token() -> Result<Arc<str>, ServerError> {
+    let token = read_optional_environment_variable("RULLST_HMR_TOKEN")?.ok_or_else(|| {
+        ServerError::HotReloadConfiguration(
+            "RULLST_HMR_TOKEN is missing; start hot reload through `cargo rullst dev` or `cargo rullst dash`"
+                .to_string(),
+        )
+    })?;
+    if token.len() != 64 || !token.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(ServerError::HotReloadConfiguration(
+            "RULLST_HMR_TOKEN must contain exactly 64 hexadecimal characters".to_string(),
+        ));
+    }
+    Ok(Arc::from(token))
 }
 
 fn resolve_environment(

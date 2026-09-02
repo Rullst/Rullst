@@ -1,522 +1,458 @@
+mod render;
+mod state;
+mod terminal;
+
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use ratatui::{Terminal, backend::CrosstermBackend};
+use state::{App, LogLevel, ServerStatus};
+use std::{
+    fs::File,
+    io::{self, IsTerminal, Read},
+    process::{Child, Command, ExitStatus, Stdio},
+    time::{Duration, Instant},
+};
+use tokio::sync::mpsc::{Receiver, Sender};
+
+const ENV_READ_LIMIT: u64 = 64 * 1_024;
+const ACTION_OUTPUT_LIMIT: usize = 4 * 1_024;
+
 #[derive(Debug)]
 pub enum LogMsg {
     AppStdout(String),
     AppStderr(String),
     System(String),
-}
-use crossterm::{
-    event::{Event, KeyCode},
-    execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
-};
-use ratatui::{
-    Terminal,
-    backend::CrosstermBackend,
-    layout::{Alignment, Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
-    text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Wrap},
-};
-use std::io::{self};
-use std::time::Instant;
-use tokio::sync::mpsc::UnboundedReceiver;
-
-struct App {
-    app_logs: Vec<String>,
-    sys_logs: Vec<String>,
-    app_scroll: u16,
-    sys_scroll: u16,
-    start_time: Instant,
-    tick_count: usize,
-    port: u16,
-    db_provider: String,
-}
-
-fn open_browser_url(url: &str) {
-    let url_str = url.to_string();
-    std::thread::spawn(move || {
-        #[cfg(target_os = "windows")]
-        let _ = std::process::Command::new("cmd")
-            .arg("/c")
-            .arg("start")
-            .arg(&url_str)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn();
-
-        #[cfg(target_os = "macos")]
-        let _ = std::process::Command::new("open")
-            .arg(&url_str)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn();
-
-        #[cfg(target_os = "linux")]
-        let _ = std::process::Command::new("xdg-open")
-            .arg(&url_str)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .spawn();
-    });
-}
-
-fn detect_db_provider() -> String {
-    if let Ok(env_str) = std::fs::read_to_string(".env") {
-        for line in env_str.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("DATABASE_URL=") {
-                let url = trimmed
-                    .trim_start_matches("DATABASE_URL=")
-                    .trim_matches('"')
-                    .trim_matches('\'');
-                if url.contains("turso") || url.starts_with("libsql") {
-                    return " Turso / libSQL (Connected)".to_string();
-                } else if url.starts_with("postgres") || url.starts_with("postgresql") {
-                    return " PostgreSQL (Connected)".to_string();
-                } else if url.starts_with("mysql") || url.starts_with("mariadb") {
-                    return " MySQL / MariaDB (Connected)".to_string();
-                } else if url.starts_with("sqlite") {
-                    return " SQLite (Connected)".to_string();
-                }
-            }
-        }
-    }
-    " SQLite / Turso / MySQL / MariaDB / PG (Connected)".to_string()
-}
-
-impl App {
-    fn new(port: u16) -> App {
-        App {
-            app_logs: Vec::new(),
-            sys_logs: Vec::new(),
-            app_scroll: 0,
-            sys_scroll: 0,
-            start_time: Instant::now(),
-            tick_count: 0,
-            port,
-            db_provider: detect_db_provider(),
-        }
-    }
-}
-
-fn strip_ansi(s: &str) -> String {
-    static ANSI_ESCAPE: std::sync::OnceLock<Result<regex::Regex, regex::Error>> =
-        std::sync::OnceLock::new();
-    match ANSI_ESCAPE.get_or_init(|| regex::Regex::new(r"\x1B\[[0-9;]*[a-zA-Z]")) {
-        Ok(regex) => regex.replace_all(s, "").into_owned(),
-        Err(_) => s.to_owned(),
-    }
+    MigrationFinished { success: bool, summary: String },
+    StudioProbe { available: bool },
 }
 
 pub async fn run(
-    mut log_rx: UnboundedReceiver<LogMsg>,
+    mut log_rx: Receiver<LogMsg>,
+    log_tx: Sender<LogMsg>,
     port: u16,
+    hmr_enabled: bool,
+    app_child: &mut Child,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    if !io::stdout().is_terminal() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "cargo rullst dash requires an interactive terminal; use `cargo rullst dev` in non-interactive environments",
+        )
+        .into());
+    }
 
-    let (key_tx, mut key_rx) = tokio::sync::mpsc::unbounded_channel();
+    let _terminal_guard = terminal::TerminalGuard::enter()?;
+    let backend = CrosstermBackend::new(io::stdout());
+    let mut terminal = Terminal::new(backend)?;
+    let (key_tx, mut key_rx) = tokio::sync::mpsc::channel(32);
     std::thread::spawn(move || {
         loop {
-            if let Ok(true) = crossterm::event::poll(std::time::Duration::from_millis(150))
+            if let Ok(true) = crossterm::event::poll(Duration::from_millis(150))
                 && let Ok(event) = crossterm::event::read()
-                && key_tx.send(event).is_err()
+                && key_tx.blocking_send(event).is_err()
             {
                 break;
             }
         }
     });
 
-    let mut app = App::new(port);
-    app.sys_logs
-        .push("🚀 Rullst Studio Dashboard Initialized.".to_string());
-    app.sys_logs
-        .push(format!("🌐 Localhost Ready: http://127.0.0.1:{}", port));
+    let colors_enabled = std::env::var_os("NO_COLOR").is_none();
+    let animations_enabled = !reduced_motion_requested();
+    let mut app = App::new(
+        port,
+        hmr_enabled,
+        detect_database_profile(),
+        colors_enabled,
+        animations_enabled,
+    );
+    app.push_system("Dashboard ready; waiting for the application port.".to_string());
+    app.push_system(if hmr_enabled {
+        "Hot reload uses the authenticated same-origin application channel.".to_string()
+    } else {
+        "Hot reload is disabled for this project profile.".to_string()
+    });
 
-    let mut ticker = tokio::time::interval(std::time::Duration::from_millis(200));
+    let tick_duration = if animations_enabled {
+        Duration::from_millis(120)
+    } else {
+        Duration::from_secs(1)
+    };
+    let mut ticker = tokio::time::interval(tick_duration);
+    let mut last_app_probe = Instant::now()
+        .checked_sub(Duration::from_secs(1))
+        .unwrap_or_else(Instant::now);
 
     loop {
-        terminal.draw(|f| ui(f, &app))?;
+        terminal.draw(|frame| render::ui(frame, &app))?;
 
         tokio::select! {
             _ = ticker.tick() => {
                 app.tick_count = app.tick_count.wrapping_add(1);
-            }
-            Some(msg) = log_rx.recv() => {
-                match msg {
-                    LogMsg::AppStdout(s) => {
-                        app.app_logs.push(strip_ansi(&s));
-                        if app.app_logs.len() > 1000 { app.app_logs.remove(0); }
-                    }
-                    LogMsg::AppStderr(s) => {
-                        let clean = strip_ansi(&s);
-                        if clean.to_lowercase().contains("warning:") || clean.trim().starts_with('|') || clean.trim().starts_with('=') {
-                            app.app_logs.push(format!("[WARN] {}", clean));
-                        } else {
-                            app.app_logs.push(format!("[ERR] {}", clean));
-                        }
-                        if app.app_logs.len() > 1000 { app.app_logs.remove(0); }
-                    }
-                    LogMsg::System(s) => {
-                        app.sys_logs.push(strip_ansi(&s));
-                        if app.sys_logs.len() > 1000 { app.sys_logs.remove(0); }
-                    }
+                update_child_status(&mut app, app_child)?;
+                if !matches!(app.server_status, ServerStatus::Exited { .. })
+                    && last_app_probe.elapsed() >= Duration::from_millis(750)
+                {
+                    let ready = probe_port(port).await;
+                    app.server_status = if ready {
+                        ServerStatus::Ready
+                    } else {
+                        ServerStatus::Starting
+                    };
+                    last_app_probe = Instant::now();
                 }
             }
-            Some(event) = key_rx.recv() => {
-                if let Event::Key(key) = event {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => {
-                            break;
-                        }
-                        KeyCode::Char('o') => {
-                            app.sys_logs.push("🌐 Launching application in browser...".to_string());
-                            let url = format!("http://127.0.0.1:{}", app.port);
-                            open_browser_url(&url);
-                        }
-                        KeyCode::Char('s') => {
-                            app.sys_logs.push("📊 Launching Rullst Studio service in background...".to_string());
-                            let cargo_cmd = std::env::args().next().unwrap_or_default();
-                            let _ = std::process::Command::new(cargo_cmd)
-                                .arg("studio")
-                                .stdout(std::process::Stdio::null())
-                                .stderr(std::process::Stdio::null())
-                                .spawn();
-                            app.sys_logs.push("🌐 Opening http://127.0.0.1:5555 in 1.5s...".to_string());
-                            std::thread::spawn(move || {
-                                std::thread::sleep(std::time::Duration::from_millis(1500));
-                                open_browser_url("http://127.0.0.1:5555");
-                            });
-                        }
-                        KeyCode::Char('d') => {
-                            let openapi_path = std::path::Path::new("openapi.json");
-                            if !openapi_path.exists() {
-                                app.sys_logs.push("⚙️ Auto-generating openapi.json specification...".to_string());
-                                if let Err(e) = crate::generators::openapi::generate_openapi_spec() {
-                                    app.sys_logs.push(format!("⚠️ Failed to generate openapi.json: {}", e));
-                                } else {
-                                    app.sys_logs.push("✅ openapi.json generated successfully!".to_string());
-                                }
-                            }
-                            let docs_path = std::path::Path::new("src/controllers/docs_controller.rs");
-                            if !docs_path.exists() {
-                                app.sys_logs.push("⚙️ Auto-scaffolding Scalar API Docs (src/controllers/docs_controller.rs)...".to_string());
-                                if let Err(e) = crate::generators::scalar::generate_scalar_docs() {
-                                    app.sys_logs.push(format!("⚠️ Failed to scaffold docs: {}", e));
-                                } else {
-                                    app.sys_logs.push("✅ Scalar API Docs generated successfully!".to_string());
-                                }
-                            }
-                            app.sys_logs.push("📜 Opening Scalar API Docs (/docs)...".to_string());
-                            let url = format!("http://127.0.0.1:{}/docs", app.port);
-                            open_browser_url(&url);
-                        }
-                        KeyCode::Char('m') => {
-                            app.sys_logs.push("⏳ Running db:migrate...".to_string());
-                            let _ = std::process::Command::new("cargo")
-                                .arg("run")
-                                .arg("-q")
-                                .arg("--")
-                                .arg("db:migrate")
-                                .status();
-                            app.sys_logs.push("✅ Migration check complete.".to_string());
-                        }
-                        KeyCode::Char('c') => {
-                            app.app_logs.clear();
-                            app.sys_logs.clear();
-                        }
-                        KeyCode::Up => {
-                            if app.app_scroll > 0 { app.app_scroll -= 1; }
-                        }
-                        KeyCode::Down => {
-                            app.app_scroll += 1;
-                        }
-                        _ => {}
-                    }
+            message = log_rx.recv() => {
+                if let Some(message) = message {
+                    handle_log_message(&mut app, message);
+                }
+            }
+            event = key_rx.recv() => {
+                let Some(Event::Key(key)) = event else {
+                    continue;
+                };
+                if key.kind == KeyEventKind::Press
+                    && handle_key(key, &mut app, &log_tx)
+                {
+                    break;
                 }
             }
         }
     }
 
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;
     Ok(())
 }
 
-fn ui(f: &mut ratatui::Frame, app: &App) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(1)
-        .constraints(
-            [
-                Constraint::Length(3), // Animated Header Banner
-                Constraint::Min(10),   // Main Grid
-                Constraint::Length(3), // Interactive Footer
-            ]
-            .as_ref(),
-        )
-        .split(f.area());
-
-    // ─── Header Animation & Uptime ──────────────────────────────────────────────
-    let spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-    let frame = spinner_frames[app.tick_count % spinner_frames.len()];
-    let elapsed = app.start_time.elapsed();
-    let uptime_str = format!(
-        "{:02}:{:02}:{:02}",
-        elapsed.as_secs() / 3600,
-        (elapsed.as_secs() % 3600) / 60,
-        elapsed.as_secs() % 60
-    );
-
-    let header_text = vec![
-        Span::styled(
-            format!(" {} ", frame),
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(
-            "🦀 Rullst Studio Dashboard",
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::raw("   │   "),
-        Span::styled("🌐 App URL: ", Style::default().fg(Color::White)),
-        Span::styled(
-            format!("http://127.0.0.1:{}", app.port),
-            Style::default()
-                .fg(Color::Green)
-                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
-        ),
-        Span::raw("   │   "),
-        Span::styled(
-            "⚡ HMR: ACTIVE",
-            Style::default()
-                .fg(Color::Magenta)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::raw("   │   "),
-        Span::styled(
-            format!("🕒 Uptime: {}", uptime_str),
-            Style::default().fg(Color::DarkGray),
-        ),
-    ];
-
-    let header = Paragraph::new(Line::from(header_text))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Cyan)),
-        )
-        .alignment(Alignment::Center);
-    f.render_widget(header, chunks[0]);
-
-    // ─── Main Grid Layout ───────────────────────────────────────────────────────
-    let main_columns = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(58), Constraint::Percentage(42)].as_ref())
-        .split(chunks[1]);
-
-    // Right Column Split (Top: System Logs, Bottom: Inspector / Stats)
-    let right_panels = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Percentage(55), Constraint::Percentage(45)].as_ref())
-        .split(main_columns[1]);
-
-    // 1. Left Panel: App Server Logs
-    let app_text: Vec<Line> = app
-        .app_logs
-        .iter()
-        .map(|s| {
-            if s.contains("[ERR]") {
-                Line::from(Span::styled(s, Style::default().fg(Color::Red)))
-            } else if s.contains("[WARN]") {
-                Line::from(Span::styled(s, Style::default().fg(Color::Yellow)))
+fn handle_log_message(app: &mut App, message: LogMsg) {
+    match message {
+        LogMsg::AppStdout(line) => app.push_app(LogLevel::Info, strip_ansi(&line)),
+        LogMsg::AppStderr(line) => {
+            let line = strip_ansi(&line);
+            let lower = line.to_ascii_lowercase();
+            let level = if lower.contains("warning:")
+                || line.trim_start().starts_with('|')
+                || line.trim_start().starts_with('=')
+            {
+                LogLevel::Warning
             } else {
-                Line::from(Span::styled(s, Style::default().fg(Color::White)))
-            }
-        })
-        .collect();
-
-    let app_visible_lines = (main_columns[0].height as usize).saturating_sub(2);
-    let app_total_lines = app_text.len();
-    let app_scroll = if app_total_lines > app_visible_lines {
-        (app_total_lines - app_visible_lines) as u16 - app.app_scroll
-    } else {
-        0
-    };
-
-    let app_panel = Paragraph::new(app_text)
-        .block(
-            Block::default()
-                .title(" 🖥️  Application & HTTP Logs ")
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Blue)),
-        )
-        .wrap(Wrap { trim: false })
-        .scroll((app_scroll, 0));
-    f.render_widget(app_panel, main_columns[0]);
-
-    // 2. Right Top Panel: System & Hot Reload
-    let sys_text: Vec<Line> = app
-        .sys_logs
-        .iter()
-        .map(|s| {
-            let style = if s.contains("✅") || s.contains("Ready") {
-                Style::default().fg(Color::Green)
-            } else if s.contains("❌") || s.contains("⚠️") {
-                Style::default().fg(Color::Red)
-            } else if s.contains("🔄") || s.contains("⏳") {
-                Style::default().fg(Color::Yellow)
-            } else {
-                Style::default().fg(Color::Magenta)
+                LogLevel::Error
             };
-            Line::from(Span::styled(s, style))
-        })
-        .collect();
+            app.push_app(level, line);
+        }
+        LogMsg::System(line) => app.push_system(strip_ansi(&line)),
+        LogMsg::MigrationFinished { success, summary } => {
+            app.migration_running = false;
+            app.push_system(summary);
+            if !success {
+                app.push_app(
+                    LogLevel::Error,
+                    "Database migration did not complete successfully.".to_string(),
+                );
+            }
+        }
+        LogMsg::StudioProbe { available } => {
+            app.studio_probe_running = false;
+            if available {
+                app.push_system("Studio verified on 127.0.0.1:5555; opening it.".to_string());
+            } else {
+                app.push_system(
+                    "Studio is unavailable on 127.0.0.1:5555; check the application logs."
+                        .to_string(),
+                );
+            }
+        }
+    }
+}
 
-    let sys_visible_lines = (right_panels[0].height as usize).saturating_sub(2);
-    let sys_total_lines = sys_text.len();
-    let sys_scroll = if sys_total_lines > sys_visible_lines {
-        (sys_total_lines - sys_visible_lines) as u16 - app.sys_scroll
+fn handle_key(key: KeyEvent, app: &mut App, log_tx: &Sender<LogMsg>) -> bool {
+    if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
+        return true;
+    }
+    if app.search_editing {
+        match key.code {
+            KeyCode::Enter | KeyCode::Esc => app.search_editing = false,
+            KeyCode::Backspace => app.backspace_search(),
+            KeyCode::Char(character) => app.append_search(character),
+            _ => {}
+        }
+        return false;
+    }
+
+    match key.code {
+        KeyCode::Char('q') | KeyCode::Esc => return true,
+        KeyCode::Char('o') => {
+            open_browser(format!("http://127.0.0.1:{}", app.port), log_tx.clone())
+        }
+        KeyCode::Char('s') if !app.studio_probe_running => {
+            app.studio_probe_running = true;
+            app.push_system("Checking the local Studio endpoint...".to_string());
+            spawn_studio_probe(log_tx.clone());
+        }
+        KeyCode::Char('d') => open_api_docs(app, log_tx.clone()),
+        KeyCode::Char('m') if !app.migration_running => {
+            app.migration_running = true;
+            app.push_system("Running db:migrate asynchronously...".to_string());
+            spawn_migration(log_tx.clone());
+        }
+        KeyCode::Char('c') => app.clear_logs(),
+        KeyCode::Char('f') => {
+            app.filter = app.filter.next();
+            app.app_scroll_from_bottom = 0;
+        }
+        KeyCode::Char('/') => app.search_editing = true,
+        KeyCode::Tab => app.focus = app.focus.next(),
+        KeyCode::Up => app.scroll_older(1),
+        KeyCode::Down => app.scroll_newer(1),
+        KeyCode::PageUp => app.scroll_older(10),
+        KeyCode::PageDown => app.scroll_newer(10),
+        KeyCode::End => app.scroll_to_latest(),
+        _ => {}
+    }
+    false
+}
+
+fn update_child_status(app: &mut App, child: &mut Child) -> io::Result<()> {
+    if matches!(app.server_status, ServerStatus::Exited { .. }) {
+        return Ok(());
+    }
+    if let Some(status) = child.try_wait()? {
+        app.server_status = exit_status(status);
+        app.push_system(format!(
+            "Application process ended: {}.",
+            app.server_status.label()
+        ));
+    }
+    Ok(())
+}
+
+fn exit_status(status: ExitStatus) -> ServerStatus {
+    ServerStatus::Exited {
+        success: status.success(),
+        code: status.code(),
+    }
+}
+
+async fn probe_port(port: u16) -> bool {
+    tokio::time::timeout(
+        Duration::from_millis(120),
+        tokio::net::TcpStream::connect((std::net::Ipv4Addr::LOCALHOST, port)),
+    )
+    .await
+    .is_ok_and(|connection| connection.is_ok())
+}
+
+fn spawn_studio_probe(log_tx: Sender<LogMsg>) {
+    tokio::spawn(async move {
+        let available = probe_port(5_555).await;
+        if available {
+            open_browser("http://127.0.0.1:5555".to_string(), log_tx.clone());
+        }
+        let _ = log_tx.send(LogMsg::StudioProbe { available }).await;
+    });
+}
+
+fn spawn_migration(log_tx: Sender<LogMsg>) {
+    tokio::spawn(async move {
+        let result = tokio::process::Command::new("cargo")
+            .args(["run", "-q", "--", "db:migrate"])
+            .output()
+            .await;
+        let message = match result {
+            Ok(output) => {
+                send_action_output(&log_tx, &output.stdout, &output.stderr).await;
+                let code = output
+                    .status
+                    .code()
+                    .map_or_else(|| "signal".to_string(), |code| code.to_string());
+                LogMsg::MigrationFinished {
+                    success: output.status.success(),
+                    summary: if output.status.success() {
+                        "Database migration completed successfully.".to_string()
+                    } else {
+                        format!("Database migration failed with exit status {code}.")
+                    },
+                }
+            }
+            Err(error) => LogMsg::MigrationFinished {
+                success: false,
+                summary: format!("Could not start the migration command: {error}"),
+            },
+        };
+        let _ = log_tx.send(message).await;
+    });
+}
+
+async fn send_action_output(log_tx: &Sender<LogMsg>, stdout: &[u8], stderr: &[u8]) {
+    for line in bounded_text(stdout).lines() {
+        let _ = log_tx.send(LogMsg::AppStdout(line.to_string())).await;
+    }
+    for line in bounded_text(stderr).lines() {
+        let _ = log_tx.send(LogMsg::AppStderr(line.to_string())).await;
+    }
+}
+
+fn bounded_text(bytes: &[u8]) -> String {
+    let end = bytes.len().min(ACTION_OUTPUT_LIMIT);
+    String::from_utf8_lossy(&bytes[..end]).into_owned()
+}
+
+fn open_api_docs(app: &mut App, log_tx: Sender<LogMsg>) {
+    let spec_exists = std::path::Path::new("openapi.json").is_file();
+    let controller_exists = std::path::Path::new("src/controllers/docs_controller.rs").is_file();
+    if spec_exists && controller_exists {
+        open_browser(format!("http://127.0.0.1:{}/docs", app.port), log_tx);
     } else {
-        0
+        app.push_system(
+            "API docs are not scaffolded. Run `cargo rullst make:scalar` explicitly, review the generated files, then press [d] again."
+                .to_string(),
+        );
+    }
+}
+
+fn open_browser(url: String, log_tx: Sender<LogMsg>) {
+    std::thread::spawn(move || {
+        let result = browser_command(&url).and_then(|mut command| command.status());
+        let message = match result {
+            Ok(status) if status.success() => format!("Opened {url}"),
+            Ok(status) => format!("Browser opener exited with status {status} for {url}"),
+            Err(error) => format!("Could not open {url}: {error}"),
+        };
+        let _ = log_tx.blocking_send(LogMsg::System(message));
+    });
+}
+
+fn browser_command(url: &str) -> io::Result<Command> {
+    #[cfg(target_os = "windows")]
+    let mut command = {
+        let mut command = Command::new("cmd");
+        command.args(["/c", "start", "", url]);
+        command
     };
+    #[cfg(target_os = "macos")]
+    let mut command = {
+        let mut command = Command::new("open");
+        command.arg(url);
+        command
+    };
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let mut command = {
+        let mut command = Command::new("xdg-open");
+        command.arg(url);
+        command
+    };
+    #[cfg(not(any(target_os = "windows", target_os = "macos", unix)))]
+    return Err(io::Error::new(
+        io::ErrorKind::Unsupported,
+        "opening a browser is unsupported on this platform",
+    ));
 
-    let sys_panel = Paragraph::new(sys_text)
-        .block(
-            Block::default()
-                .title(" ⚙️  Hot-Reload Engine (Dylib + AST) ")
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Yellow)),
-        )
-        .wrap(Wrap { trim: false })
-        .scroll((sys_scroll, 0));
-    f.render_widget(sys_panel, right_panels[0]);
+    command.stdout(Stdio::null()).stderr(Stdio::null());
+    Ok(command)
+}
 
-    // 3. Right Bottom Panel: Environment & Inspector
-    let inspector_lines = vec![
-        Line::from(vec![
-            Span::styled("  🚀 Mode:", Style::default().fg(Color::DarkGray)),
-            Span::styled(
-                " Hybrid Hot-Reload (Native Rust + DOM)",
-                Style::default().fg(Color::Cyan),
-            ),
-        ]),
-        Line::from(vec![
-            Span::styled("  🌐 Address:", Style::default().fg(Color::DarkGray)),
-            Span::styled(
-                format!(" http://127.0.0.1:{}", app.port),
-                Style::default().fg(Color::Green),
-            ),
-        ]),
-        Line::from(vec![
-            Span::styled("  📡 WebSocket:", Style::default().fg(Color::DarkGray)),
-            Span::styled(
-                format!(" ws://127.0.0.1:{}/_rullst_hmr", app.port + 1),
-                Style::default().fg(Color::Magenta),
-            ),
-        ]),
-        Line::from(vec![
-            Span::styled("  🗄️  Database:", Style::default().fg(Color::DarkGray)),
-            Span::styled(&app.db_provider, Style::default().fg(Color::Yellow)),
-        ]),
-        Line::from(vec![
-            Span::styled("  🔑 Nexus CMS:", Style::default().fg(Color::DarkGray)),
-            Span::styled(" credentials from .env", Style::default().fg(Color::Cyan)),
-            Span::styled(
-                format!(" (http://127.0.0.1:{}/nexus)", app.port),
-                Style::default().fg(Color::DarkGray),
-            ),
-        ]),
-        Line::from(vec![
-            Span::styled("  🛡️ Studio Guard:", Style::default().fg(Color::DarkGray)),
-            Span::styled(
-                " Loopback 127.0.0.1:5555",
-                Style::default().fg(Color::Green),
-            ),
-            Span::styled(" (Press [s])", Style::default().fg(Color::DarkGray)),
-        ]),
-        Line::from(vec![Span::raw("")]),
-        Line::from(vec![
-            Span::styled(
-                "  ✨ TIP:",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::styled(
-                " Edit any .rs file to see sub-ms hot reload!",
-                Style::default().fg(Color::White),
-            ),
-        ]),
-    ];
+fn detect_database_profile() -> String {
+    let mut contents = String::new();
+    let Ok(file) = File::open(".env") else {
+        return "not configured (.env missing)".to_string();
+    };
+    if file
+        .take(ENV_READ_LIMIT)
+        .read_to_string(&mut contents)
+        .is_err()
+    {
+        return "configuration unreadable".to_string();
+    }
 
-    let inspector_panel = Paragraph::new(inspector_lines)
-        .block(
-            Block::default()
-                .title(" 📊  Project Inspector & Status ")
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Magenta)),
-        )
-        .wrap(Wrap { trim: false });
-    f.render_widget(inspector_panel, right_panels[1]);
+    database_profile_from_env(&contents)
+}
 
-    // ─── Footer Shortcuts ───────────────────────────────────────────────────────
-    let footer_text = vec![
-        Span::styled(
-            "[o]",
-            Style::default()
-                .fg(Color::Green)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::raw(" Open App  │  "),
-        Span::styled(
-            "[s]",
-            Style::default()
-                .fg(Color::Magenta)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::raw(" DB Studio  │  "),
-        Span::styled(
-            "[d]",
-            Style::default()
-                .fg(Color::Blue)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::raw(" API Docs  │  "),
-        Span::styled(
-            "[m]",
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::raw(" Migrate  │  "),
-        Span::styled(
-            "[c]",
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::raw(" Clear  │  "),
-        Span::styled(
-            "[q/Esc]",
-            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-        ),
-        Span::raw(" Quit"),
-    ];
+fn database_profile_from_env(contents: &str) -> String {
+    for line in contents.lines() {
+        let Some((name, raw_value)) = line.trim().split_once('=') else {
+            continue;
+        };
+        if name.trim() != "DATABASE_URL" {
+            continue;
+        }
+        let value = raw_value.trim().trim_matches(['"', '\'']);
+        let provider = if value.starts_with("postgres://") || value.starts_with("postgresql://") {
+            "PostgreSQL"
+        } else if value.starts_with("mysql://") {
+            "MySQL/MariaDB"
+        } else if value.starts_with("sqlite:") {
+            "SQLite"
+        } else if value.starts_with("libsql://") {
+            "Turso/libSQL"
+        } else if value.is_empty() {
+            "empty DATABASE_URL"
+        } else {
+            "custom URL"
+        };
+        return format!("configured: {provider}");
+    }
 
-    let footer = Paragraph::new(Line::from(footer_text))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::DarkGray)),
-        )
-        .alignment(Alignment::Center);
-    f.render_widget(footer, chunks[2]);
+    if contents.lines().any(|line| {
+        line.trim()
+            .strip_prefix("TURSO_DATABASE_URL=")
+            .is_some_and(|value| !value.trim().is_empty())
+    }) {
+        return "configured: Turso/libSQL".to_string();
+    }
+    "not configured".to_string()
+}
+
+fn reduced_motion_requested() -> bool {
+    std::env::var("RULLST_REDUCED_MOTION")
+        .ok()
+        .is_some_and(|value| matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
+}
+
+fn strip_ansi(value: &str) -> String {
+    static ANSI_ESCAPE: std::sync::OnceLock<Result<regex::Regex, regex::Error>> =
+        std::sync::OnceLock::new();
+    match ANSI_ESCAPE.get_or_init(|| regex::Regex::new(r"\x1B\[[0-9;]*[a-zA-Z]")) {
+        Ok(regex) => regex.replace_all(value, "").into_owned(),
+        Err(_) => value.to_owned(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn action_output_is_hard_bounded() {
+        let bytes = vec![b'x'; ACTION_OUTPUT_LIMIT + 100];
+        assert_eq!(bounded_text(&bytes).len(), ACTION_OUTPUT_LIMIT);
+    }
+
+    #[test]
+    fn ansi_sequences_are_removed_from_dashboard_logs() {
+        assert_eq!(strip_ansi("\u{1b}[31mfailed\u{1b}[0m"), "failed");
+    }
+
+    #[test]
+    fn database_profile_reports_configuration_without_exposing_credentials() {
+        let postgres =
+            database_profile_from_env("DATABASE_URL=postgres://admin:secret@127.0.0.1/app\n");
+        assert_eq!(postgres, "configured: PostgreSQL");
+        assert!(!postgres.contains("admin"));
+        assert!(!postgres.contains("secret"));
+
+        assert_eq!(
+            database_profile_from_env("TURSO_DATABASE_URL=libsql://example.turso.io\n"),
+            "configured: Turso/libSQL"
+        );
+        assert_eq!(
+            database_profile_from_env("APP_ENV=development\n"),
+            "not configured"
+        );
+    }
+
+    #[test]
+    fn control_c_requests_a_clean_dashboard_exit() {
+        let (log_tx, _log_rx) = tokio::sync::mpsc::channel(1);
+        let mut app = App::new(3_000, true, "not configured".to_string(), true, true);
+        let key = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
+        assert!(handle_key(key, &mut app, &log_tx));
+    }
 }

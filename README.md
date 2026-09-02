@@ -264,8 +264,10 @@ are:
   checks, AI heuristics, and the tenant-partitioned in-memory RAG retriever have explicit limits;
   they are not described as zero-cost.
 - **Development build tuning:** generated configuration may select an installed
-  `mold` or `lld`, and debug hot reload uses a watched dynamic library plus a
-  WebSocket browser refresh path. Results vary by host and project.
+  `mold` or `lld`. Explicit `--hot-reload` projects use an authenticated,
+  generation-bounded development-library swap plus an offline same-origin
+  browser refresh path; failed builds retain the serving router. The CLI reports
+  observed rebuild/swap time because results vary by host and project.
 
 Eight published [Criterion benchmark groups](https://github.com/Rullst/Rullst/actions/workflows/bench.yml),
 backed by nine benchmark binaries because the ORM group combines two, track

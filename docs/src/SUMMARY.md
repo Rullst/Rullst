@@ -79,6 +79,7 @@
 - [48. Signed Local OIDC Testing](tutorials/48-local-oidc-testing.md)
 - [49. Bounded Brokered Messaging](tutorials/49-brokered-messaging.md)
 - [50. Auditable Revisions](tutorials/50-auditable-revisions.md)
+- [51. Authenticated Development Hot Reload](tutorials/51-authenticated-hot-reload.md)
 
 # Reference
 - [📜 Framework Spec](spec.md)

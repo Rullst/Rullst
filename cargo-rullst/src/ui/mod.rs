@@ -4,6 +4,7 @@
 pub mod components;
 pub mod dash_tui;
 pub mod dashboard;
+mod dashboard_brand;
 pub mod help;
 pub mod spinner;
 pub mod update_check;

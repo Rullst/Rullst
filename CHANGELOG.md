@@ -701,6 +701,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Local development and observability
 
+- `cargo rullst new --default` can now pin the ORM architecture, frontend
+  profile, hot-reload boundary, AI and Redis capabilities, or an explicit
+  database-free blank starter. Generated SQLx applications disable umbrella
+  defaults and select exactly one strict primary backend instead of allowing an
+  implicit SQLite profile to mask PostgreSQL/MySQL/MariaDB choices. A public-CLI
+  materialization gate crosses the distinct blueprint, backend, frontend, ORM,
+  API, hot-reload, AI, Redis and polyglot axes and compiles the generated
+  applications with a memory-conscious single-job native dependency build.
+- Rebuilt `cargo rullst dash` as a bounded, responsive development control
+  surface. It now probes the application and Studio ports, monitors the owned
+  child exit state, reports database configuration rather than inventing a
+  connection, runs migrations asynchronously with their real result, supports
+  pane focus/search/level filtering and restores terminal/process state on
+  failures. The command interface and dashboard add adaptive neon animation and
+  a robot/crab/gear/scroll terminal mascot; `RULLST_REDUCED_MOTION=1` and
+  `NO_COLOR=1` provide static and color-free modes, and non-terminal `dash`
+  invocation fails with guidance to use `dev`.
+- Hardened the opt-in development hot-reload boundary. The CLI now activates
+  hot mode only for a generated `cdylib`/initializer profile, coalesces every
+  notified path, captures bounded asynchronous build diagnostics, checks the
+  reload HTTP status and reports measured duration. A fresh 256-bit per-session
+  token authenticates the internal swap in constant time, swaps are serialized,
+  retained libraries have a 64-generation ceiling, and the browser client is a
+  same-origin offline asset with bounded reconnect backoff. Failed builds/swaps
+  leave the prior router serving; browser updates are reliable full-page
+  refreshes rather than an unverified DOM-state-preserving claim.
 - Expanded the umbrella boundary matrix to compile all 45 public features in
   isolation and fail when its rows drift from the manifest. The tag-only
   packaged consumer now derives and enables the full feature set from the
@@ -1258,6 +1284,13 @@ release gate has completed.
 ### Added
 - **Rullst Dev Dashboard (`cargo rullst dash`)**: Transformed the development server experience with a real-time Ratatui-powered visual dashboard. Splits the terminal into immersive panels displaying application logs and hot-reload system events simultaneously, complete with interactive shortcuts (e.g., `m` to run migrations). The classic textual dev server remains available via `cargo rullst dev` for CI/CD compatibility.
 - **Hybrid Hot-Reloading (Dynamic Linking + AST Parsing)**: The ultimate DX revolution. For business logic changes, Rullst uses dynamic library hot-swapping (`dylib` / `.so`) to update the backend instantly. For frontend views (`html!` macros), the CLI intercepts changes, parses the AST, and squirts new HTML fragments over WebSockets to morphdom. The result? Sub-millisecond layout updates (like Vite/Dioxus) with a stateful Rust backend.
+  - **v12 audited scope:** The AST comparison classifies a change for diagnostics,
+    but both view and logic changes require a real `cargo build --lib`. A
+    successful, authenticated development request swaps the router, then the
+    local browser client performs a full-page refresh. Duration is measured and
+    machine/project dependent; sub-millisecond updates and arbitrary state
+    preservation are not claimed. Production and a stable third-party plugin
+    ABI remain out of scope.
 - **Native Reactive SSR (Rullst Live)**: Introduced `#[live_component]` and `#[live_event]` declarative macros. Developers can now build highly interactive, real-time WebSocket UIs (LiveView style) without writing JavaScript or WebAssembly. The macro automatically handles DOM diffing events and state syncing via HTMX.
 - **Documentation Hub**: A premium VitePress documentation portal in `docs/` with dark mode aesthetics.
 - **TypeScript SDK Generator (`generate:ts`)**: AST-based CLI command to dynamically generate typed `rullst-client.ts`.

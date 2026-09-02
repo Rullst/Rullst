@@ -5,8 +5,10 @@ use super::*;
 use crate::Router;
 use crate::scheduler::Scheduler;
 use crate::server::hotswap::HotSwapService;
-use crate::server::server_middleware::inject_hmr_script;
+use crate::server::server_middleware::{hmr_client_script, inject_hmr_script};
 use std::sync::{Arc, Mutex, RwLock};
+
+const TEST_RELOAD_TOKEN: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 #[test]
 fn test_server_builder() {
@@ -47,6 +49,9 @@ async fn test_hot_swap_service_call() {
     let mut service = HotSwapService {
         current_router,
         active_libraries: Arc::new(Mutex::new(vec![])),
+        hmr_sender: tokio::sync::broadcast::channel(4).0,
+        reload_lock: Arc::new(tokio::sync::Mutex::new(())),
+        reload_token: Arc::from(TEST_RELOAD_TOKEN),
         lib_path: "".to_string(),
         is_dev: false,
         shield: None,
@@ -76,6 +81,9 @@ async fn test_hot_swap_service_panic() {
     let mut service = HotSwapService {
         current_router,
         active_libraries: Arc::new(Mutex::new(vec![])),
+        hmr_sender: tokio::sync::broadcast::channel(4).0,
+        reload_lock: Arc::new(tokio::sync::Mutex::new(())),
+        reload_token: Arc::from(TEST_RELOAD_TOKEN),
         lib_path: "".to_string(),
         is_dev: false,
         shield: None,
@@ -109,6 +117,9 @@ async fn test_hot_swap_service_poisoned_lock() {
     let mut service = HotSwapService {
         current_router,
         active_libraries: Arc::new(Mutex::new(vec![])),
+        hmr_sender: tokio::sync::broadcast::channel(4).0,
+        reload_lock: Arc::new(tokio::sync::Mutex::new(())),
+        reload_token: Arc::from(TEST_RELOAD_TOKEN),
         lib_path: "".to_string(),
         is_dev: false,
         shield: None,
@@ -136,6 +147,9 @@ async fn test_hot_swap_service_reload_route() {
     let mut service = HotSwapService {
         current_router: current_router.clone(),
         active_libraries: Arc::new(Mutex::new(vec![])),
+        hmr_sender: tokio::sync::broadcast::channel(4).0,
+        reload_lock: Arc::new(tokio::sync::Mutex::new(())),
+        reload_token: Arc::from(TEST_RELOAD_TOKEN),
         lib_path: "".to_string(),
         is_dev: true,
         shield: None,
@@ -148,6 +162,10 @@ async fn test_hot_swap_service_reload_route() {
     let req = axum::http::Request::builder()
         .method("POST")
         .uri("/_rullst/internal/reload_dylib")
+        .header(
+            crate::server::hotswap::RELOAD_TOKEN_HEADER,
+            TEST_RELOAD_TOKEN,
+        )
         .body(axum::body::Body::empty())
         .unwrap();
     let res = service.call(req).await.unwrap();
@@ -174,7 +192,6 @@ async fn test_hot_swap_service_reload_route() {
 
 #[tokio::test]
 async fn test_inject_hmr_script() {
-    let _environment = TEST_ENV_LOCK.lock().await;
     let router = axum::Router::new()
         .route(
             "/",
@@ -187,9 +204,6 @@ async fn test_inject_hmr_script() {
     use tower_service::Service;
     let mut service = router;
 
-    unsafe {
-        std::env::set_var("PORT", "3000");
-    }
     let req = axum::http::Request::builder()
         .uri("/")
         .body(axum::body::Body::empty())
@@ -198,11 +212,65 @@ async fn test_inject_hmr_script() {
     let body_bytes = axum::body::to_bytes(res.into_body(), 10240).await.unwrap();
     let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
     assert!(body_str.contains("Hello"));
-    assert!(body_str.contains("Rullst Hybrid Hot-Reloading"));
-    assert!(body_str.contains("3001/_rullst_hmr"));
-    unsafe {
-        std::env::remove_var("PORT");
-    }
+    assert!(body_str.contains("Rullst authenticated local hot reload"));
+    assert!(body_str.contains("src=\"/_rullst/hmr-client.js\""));
+    assert!(!body_str.contains("unpkg.com"));
+    assert!(!body_str.contains("morphdom"));
+
+    let response = hmr_client_script().await;
+    assert_eq!(
+        response.headers().get(axum::http::header::CACHE_CONTROL),
+        Some(&axum::http::HeaderValue::from_static("no-store"))
+    );
+    assert_eq!(
+        response.headers().get(axum::http::header::CONTENT_TYPE),
+        Some(&axum::http::HeaderValue::from_static(
+            "application/javascript; charset=utf-8"
+        ))
+    );
+    let client = axum::body::to_bytes(response.into_body(), 16 * 1024)
+        .await
+        .unwrap();
+    let client = String::from_utf8(client.to_vec()).unwrap();
+    assert!(client.contains("window.location.reload()"));
+    assert!(client.contains("window.location.host}/_rullst_hmr"));
+    assert!(!client.contains("currentPort + 1"));
+    assert!(client.contains("Math.min(retryDelayMs * 2, 5000)"));
+}
+
+#[tokio::test]
+async fn hmr_injection_preserves_html_declared_above_its_buffer_limit() {
+    let router = axum::Router::new()
+        .route(
+            "/large",
+            axum::routing::get(|| async {
+                axum::response::Response::builder()
+                    .header(axum::http::header::CONTENT_TYPE, "text/html")
+                    .header(axum::http::header::CONTENT_LENGTH, 10 * 1024 * 1024 + 1)
+                    .body(axum::body::Body::from("preserved"))
+                    .unwrap()
+            }),
+        )
+        .layer(axum::middleware::from_fn(inject_hmr_script));
+
+    use tower::ServiceExt;
+    let response = router
+        .oneshot(
+            axum::http::Request::builder()
+                .uri("/large")
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        response.headers().get(axum::http::header::CONTENT_LENGTH),
+        Some(&axum::http::HeaderValue::from_static("10485761"))
+    );
+    let body = axum::body::to_bytes(response.into_body(), 64)
+        .await
+        .unwrap();
+    assert_eq!(body, "preserved");
 }
 
 #[tokio::test]

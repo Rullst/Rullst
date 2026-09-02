@@ -3,7 +3,11 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, RwLock};
 use std::task::{Context, Poll};
+use subtle::ConstantTimeEq;
 use tower_service::Service;
+
+pub(crate) const RELOAD_TOKEN_HEADER: &str = "x-rullst-hmr-token";
+pub(crate) const MAX_HOT_RELOAD_GENERATIONS: usize = 64;
 
 /// Tower service that atomically swaps the Axum router at runtime during hot-reload development.
 /// Wraps the router in an `Arc<RwLock<>>` so handlers continue serving in-flight requests
@@ -12,6 +16,9 @@ use tower_service::Service;
 pub struct HotSwapService {
     pub(crate) current_router: Arc<RwLock<axum::Router>>,
     pub(crate) active_libraries: Arc<Mutex<Vec<libloading::Library>>>,
+    pub(crate) hmr_sender: tokio::sync::broadcast::Sender<String>,
+    pub(crate) reload_lock: Arc<tokio::sync::Mutex<()>>,
+    pub(crate) reload_token: Arc<str>,
     pub(crate) lib_path: String,
     pub(crate) is_dev: bool,
     pub(crate) shield: Option<crate::resilience::TrafficShield>,
@@ -19,6 +26,35 @@ pub struct HotSwapService {
 }
 
 impl HotSwapService {
+    fn response(
+        status: axum::http::StatusCode,
+        body: impl Into<axum::body::Body>,
+    ) -> axum::response::Response {
+        match axum::response::Response::builder()
+            .status(status)
+            .body(body.into())
+        {
+            Ok(response) => response,
+            Err(_) => {
+                let mut response = axum::response::Response::new(axum::body::Body::empty());
+                *response.status_mut() = status;
+                response
+            }
+        }
+    }
+
+    fn reload_is_authorized(&self, request: &axum::extract::Request) -> bool {
+        let Some(provided) = request
+            .headers()
+            .get(RELOAD_TOKEN_HEADER)
+            .and_then(|value| value.to_str().ok())
+        else {
+            return false;
+        };
+        provided.len() == self.reload_token.len()
+            && bool::from(provided.as_bytes().ct_eq(self.reload_token.as_bytes()))
+    }
+
     #[cfg_attr(mutants, mutants::skip)]
     pub(crate) fn handle_oneshot_error()
     -> Result<axum::response::Response, std::convert::Infallible> {
@@ -92,15 +128,49 @@ impl Service<axum::extract::Request> for HotSwapService {
 
     #[cfg_attr(mutants, mutants::skip)]
     fn call(&mut self, req: axum::extract::Request) -> Self::Future {
+        if req.uri().path() == "/_rullst_hmr" && req.method() == axum::http::Method::GET {
+            let hmr_sender = self.hmr_sender.clone();
+            return Box::pin(async move {
+                use tower::ServiceExt;
+                let hmr_router = axum::Router::new()
+                    .route("/_rullst_hmr", axum::routing::get(hmr_websocket))
+                    .with_state(hmr_sender);
+                match hmr_router.oneshot(req).await {
+                    Ok(response) => Ok(response),
+                    Err(_) => Self::handle_oneshot_error(),
+                }
+            });
+        }
         if req.uri().path() == "/_rullst/internal/reload_dylib"
             && req.method() == axum::http::Method::POST
         {
+            if !self.reload_is_authorized(&req) {
+                return Box::pin(async {
+                    Ok(Self::response(
+                        axum::http::StatusCode::FORBIDDEN,
+                        axum::body::Body::empty(),
+                    ))
+                });
+            }
             let lib_path = self.lib_path.clone();
             let is_dev = self.is_dev;
             let current_router = self.current_router.clone();
             let active_libraries = self.active_libraries.clone();
+            let reload_lock = self.reload_lock.clone();
+            let hmr_sender = self.hmr_sender.clone();
 
             return Box::pin(async move {
+                let _reload_guard = reload_lock.lock().await;
+                let generation_count = active_libraries
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .len();
+                if generation_limit_reached(generation_count) {
+                    return Ok(Self::response(
+                        axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                        "Hot-reload generation limit reached; restart `cargo rullst dash` to release retained development libraries.",
+                    ));
+                }
                 match load_dylib_router(&lib_path, is_dev) {
                     Ok((new_router, new_lib)) => {
                         match current_router.write() {
@@ -119,27 +189,19 @@ impl Service<axum::extract::Request> for HotSwapService {
                         println!(
                             "\x1b[32mRullst hot reload: development library swap completed.\x1b[0m"
                         );
+                        let _ = hmr_sender.send(r#"{"type":"UI_UPDATE"}"#.to_string());
 
-                        let res = axum::response::Response::builder()
-                            .status(axum::http::StatusCode::OK)
-                            .body(axum::body::Body::from("Swapped"))
-                            .unwrap_or_else(|_| {
-                                axum::response::Response::new(axum::body::Body::empty())
-                            });
-                        Ok(res)
+                        Ok(Self::response(axum::http::StatusCode::OK, "Swapped"))
                     }
                     Err(e) => {
                         eprintln!(
                             "\x1b[31m❌ Rullst Hot-Reload: Error loading new dylib: {}\x1b[0m",
                             e
                         );
-                        let res = axum::response::Response::builder()
-                            .status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
-                            .body(axum::body::Body::from(e.to_string()))
-                            .unwrap_or_else(|_| {
-                                axum::response::Response::new(axum::body::Body::empty())
-                            });
-                        Ok(res)
+                        Ok(Self::response(
+                            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                            e.to_string(),
+                        ))
                     }
                 }
             });
@@ -187,6 +249,38 @@ impl Service<axum::extract::Request> for HotSwapService {
             }
         })
     }
+}
+
+async fn hmr_websocket(
+    ws: axum::extract::WebSocketUpgrade,
+    axum::extract::State(sender): axum::extract::State<tokio::sync::broadcast::Sender<String>>,
+) -> impl axum::response::IntoResponse {
+    ws.on_upgrade(move |socket| forward_hmr_messages(socket, sender.subscribe()))
+}
+
+async fn forward_hmr_messages(
+    mut socket: axum::extract::ws::WebSocket,
+    mut receiver: tokio::sync::broadcast::Receiver<String>,
+) {
+    loop {
+        match receiver.recv().await {
+            Ok(message) => {
+                if socket
+                    .send(axum::extract::ws::Message::Text(message.into()))
+                    .await
+                    .is_err()
+                {
+                    break;
+                }
+            }
+            Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+            Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+        }
+    }
+}
+
+pub(crate) fn generation_limit_reached(generation_count: usize) -> bool {
+    generation_count >= MAX_HOT_RELOAD_GENERATIONS
 }
 
 #[cfg(test)]

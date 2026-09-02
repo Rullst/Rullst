@@ -1,5 +1,7 @@
 use crate::Router;
-use crate::server::server_middleware::{inject_hmr_script, zstd_static_middleware};
+use crate::server::server_middleware::{
+    hmr_client_script, inject_hmr_script, zstd_static_middleware,
+};
 
 /// Dynamically loads an application router from a compiled dynamic library (`cdylib`).
 #[cfg_attr(mutants, mutants::skip)]
@@ -145,6 +147,10 @@ pub fn load_dylib_router(
             .route(
                 "/_rullst/autofix",
                 axum::routing::post(crate::error_console::handle_autofix),
+            )
+            .route(
+                "/_rullst/hmr-client.js",
+                axum::routing::get(hmr_client_script),
             )
             .layer(axum::middleware::from_fn(
                 crate::error_console::catch_panic_middleware,

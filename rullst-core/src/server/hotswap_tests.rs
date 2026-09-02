@@ -9,10 +9,15 @@ use tower_service::Service;
 
 use super::*;
 
+const TEST_RELOAD_TOKEN: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
 fn service(router: axum::Router) -> HotSwapService {
     HotSwapService {
         current_router: Arc::new(RwLock::new(router)),
         active_libraries: Arc::new(Mutex::new(Vec::new())),
+        hmr_sender: tokio::sync::broadcast::channel(4).0,
+        reload_lock: Arc::new(tokio::sync::Mutex::new(())),
+        reload_token: Arc::from(TEST_RELOAD_TOKEN),
         lib_path: "/definitely/missing/rullst-app".to_owned(),
         is_dev: true,
         shield: None,
@@ -44,6 +49,7 @@ async fn forwards_normal_requests_and_reports_missing_reload_library() {
             Request::builder()
                 .method("POST")
                 .uri("/_rullst/internal/reload_dylib")
+                .header(RELOAD_TOKEN_HEADER, TEST_RELOAD_TOKEN)
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -52,6 +58,51 @@ async fn forwards_normal_requests_and_reports_missing_reload_library() {
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     assert!(body_text(response).await.contains("Dylib not found"));
     assert!(service.active_libraries.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn reload_endpoint_rejects_missing_and_incorrect_tokens() {
+    for token in [None, Some("incorrect-token")] {
+        let mut service = service(axum::Router::new());
+        let mut request = Request::builder()
+            .method("POST")
+            .uri("/_rullst/internal/reload_dylib");
+        if let Some(token) = token {
+            request = request.header(RELOAD_TOKEN_HEADER, token);
+        }
+        let response = service
+            .call(request.body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        assert!(body_text(response).await.is_empty());
+    }
+}
+
+#[tokio::test]
+async fn hmr_channel_is_reserved_and_requires_a_websocket_upgrade() {
+    let router = axum::Router::new().route(
+        "/_rullst_hmr",
+        axum::routing::get(|| async { "application shadow" }),
+    );
+    let mut service = service(router);
+    let response = service
+        .call(
+            Request::builder()
+                .uri("/_rullst_hmr")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert!(response.status().is_client_error());
+    assert!(!body_text(response).await.contains("application shadow"));
+}
+
+#[test]
+fn retained_library_generation_limit_is_bounded() {
+    assert!(!generation_limit_reached(MAX_HOT_RELOAD_GENERATIONS - 1));
+    assert!(generation_limit_reached(MAX_HOT_RELOAD_GENERATIONS));
 }
 
 #[tokio::test]

@@ -59,9 +59,12 @@ cargo rullst dev
 ```
 
 > [!TIP]
-> The `cargo rullst dev` command compiles the project, starts the local server,
-> and watches Rust source files. A change triggers another compilation and a
-> process reload; the duration depends on the project and machine.
+> The `cargo rullst dev` command compiles the project and starts the local
+> server. When the project was generated with `--hot-reload`, a change triggers
+> a real library rebuild, an authenticated router swap, and a browser refresh;
+> a failed build leaves the previous router serving. The CLI reports observed
+> duration rather than promising a fixed reload time. See the bounded behavior
+> and limitations in the [CLI reference](cli_reference.md#cargo-rullst-dev).
 > 
 > For a detailed guide on choosing ORM patterns (Active Record vs Data Mapper vs Hybrid) and Frontend Engines (HTMX vs Leptos vs Dioxus), check out our [Architecture Choices Guide](architecture-decisions.md).
 
@@ -167,6 +170,21 @@ The non-interactive flags mirror the second step:
 cargo rullst new edge_app --default --database mariadb --turso --mongodb \
   --skip-initial-migration
 ```
+
+Automation can pin the ORM, frontend and optional runtime capabilities instead
+of accepting hidden interactive defaults:
+
+```bash
+cargo rullst new learning_portal --default --blueprint lms \
+  --database postgres --orm repository --frontend htmx --ai \
+  --skip-initial-migration
+```
+
+For a blank application with no primary relational database, use the explicit
+`--no-database` flag. It cannot be combined with `--database` or `--orm`.
+Generated SQLx profiles disable Rullst's umbrella defaults and select exactly
+one strict relational backend, so a chosen PostgreSQL/MySQL/MariaDB profile is
+not accidentally compiled through an implicit SQLite default.
 
 To create a Turso-primary API using the current bounded blank starter:
 

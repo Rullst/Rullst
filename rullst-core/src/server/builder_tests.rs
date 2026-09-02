@@ -159,6 +159,12 @@ async fn scheduler_shield_and_missing_hot_library_have_typed_lifecycles() {
             .is_none()
     );
 
+    let _lock = crate::server::TEST_ENV_LOCK.lock().await;
+    let environment = EnvironmentGuard::clear(&["RULLST_HMR_TOKEN"]);
+    environment.set(
+        "RULLST_HMR_TOKEN",
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    );
     let error = Server::new_hot("/definitely/missing/rullst-app")
         .run_hot_reload(
             "/definitely/missing/rullst-app".to_string(),
@@ -168,6 +174,31 @@ async fn scheduler_shield_and_missing_hot_library_have_typed_lifecycles() {
         .await
         .unwrap_err();
     assert!(matches!(error, ServerError::HotReload(_)));
+}
+
+#[tokio::test]
+async fn hot_reload_token_configuration_fails_closed() {
+    let _lock = crate::server::TEST_ENV_LOCK.lock().await;
+    let environment = EnvironmentGuard::clear(&["RULLST_HMR_TOKEN"]);
+    assert!(matches!(
+        resolve_hot_reload_token(),
+        Err(ServerError::HotReloadConfiguration(message)) if message.contains("missing")
+    ));
+
+    environment.set("RULLST_HMR_TOKEN", "too-short");
+    assert!(matches!(
+        resolve_hot_reload_token(),
+        Err(ServerError::HotReloadConfiguration(message)) if message.contains("64 hexadecimal")
+    ));
+
+    environment.set(
+        "RULLST_HMR_TOKEN",
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    );
+    assert_eq!(
+        resolve_hot_reload_token().unwrap().as_ref(),
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    );
 }
 
 #[cfg(not(feature = "orm"))]
