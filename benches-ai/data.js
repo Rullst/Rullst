@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788388436574,
+  "lastUpdate": 1788392697699,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -5801,6 +5801,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 700,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "745bde23cb31a352ecfe58d2a1739abef789a49f",
+          "message": "fix(sqlite): close pools after failed initialization",
+          "timestamp": "2026-09-02T20:21:28-03:00",
+          "tree_id": "cca3ddb88c1be09d3c30058e750a0631eb883809",
+          "url": "https://github.com/Rullst/Rullst/commit/745bde23cb31a352ecfe58d2a1739abef789a49f"
+        },
+        "date": 1788392697101,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1536,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 284,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 730,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
