@@ -60,19 +60,9 @@ pub(super) fn embedding_values(
 }
 
 pub(super) fn image_mime_type(image_bytes: &[u8]) -> Result<&'static str, AiError> {
-    if image_bytes.starts_with(&[0xff, 0xd8, 0xff]) {
-        Ok("image/jpeg")
-    } else if image_bytes.starts_with(&[0x89, 0x50, 0x4e, 0x47]) {
-        Ok("image/png")
-    } else if image_bytes.starts_with(&[0x52, 0x49, 0x46, 0x46]) {
-        Ok("image/webp")
-    } else if image_bytes.starts_with(&[0x47, 0x49, 0x46, 0x38]) {
-        Ok("image/gif")
-    } else {
-        Err(AiError::ConfigError(
-            "vision input must be JPEG, PNG, WebP, or GIF".to_string(),
-        ))
-    }
+    super::super::vision::image_mime_type(image_bytes).ok_or_else(|| {
+        AiError::ConfigError("vision input must be JPEG, PNG, WebP, or GIF".to_string())
+    })
 }
 
 #[cfg(test)]
@@ -139,17 +129,15 @@ mod tests {
             "image/jpeg"
         );
         assert_eq!(
-            image_mime_type(&[0x89, 0x50, 0x4e, 0x47, 0x00]).unwrap(),
+            image_mime_type(b"\x89PNG\r\n\x1a\n\x00").unwrap(),
             "image/png"
         );
         assert_eq!(
-            image_mime_type(&[0x52, 0x49, 0x46, 0x46, 0x00]).unwrap(),
+            image_mime_type(b"RIFF\x04\x00\x00\x00WEBP").unwrap(),
             "image/webp"
         );
-        assert_eq!(
-            image_mime_type(&[0x47, 0x49, 0x46, 0x38, 0x00]).unwrap(),
-            "image/gif"
-        );
+        assert_eq!(image_mime_type(b"GIF89a").unwrap(), "image/gif");
+        assert!(image_mime_type(b"RIFF\x04\x00\x00\x00WAVE").is_err());
         assert!(image_mime_type(&[0x00, 0x01, 0x02]).is_err());
     }
 }

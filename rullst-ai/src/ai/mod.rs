@@ -21,6 +21,7 @@ mod structured;
 /// Function-calling and tool schema utilities.
 pub mod tools;
 mod vector;
+mod vision;
 
 pub use client::{AiClient, ChatBuilder};
 pub use durable_audit::{
@@ -40,6 +41,7 @@ pub use memory::{SqlChatBackend, SqlChatMemory};
 pub use structured::StructuredOutputSchema;
 pub use tools::*;
 pub use vector::{VectorDocument, VectorIndex, cosine_similarity};
+pub use vision::{LocalImagePolicy, MAX_VISION_IMAGE_BYTES, VisionInputError};
 
 /// Errors returned by AI providers, guardrails, and response parsing.
 #[non_exhaustive]
@@ -74,6 +76,9 @@ pub enum AiError {
         /// Capability that was requested.
         capability: &'static str,
     },
+    /// A local or remote vision source failed its explicit intake policy.
+    #[error("Vision input error: {0}")]
+    VisionInput(#[from] VisionInputError),
     /// A legacy catch-all error.
     #[error("Error: {0}")]
     Other(String),

@@ -57,6 +57,47 @@ The guardrail blocks deterministic injection patterns and invisible Unicode cont
 classes are masked before outbound transmission. Like all heuristic filters, this is one boundary in
 a defense-in-depth design; it is not a proof that arbitrary model output is safe.
 
+## Policy-bound vision sources
+
+Vision accepts three explicit source forms. `prompt_with_image` consumes bytes
+already admitted by the application. `prompt_with_image_file` canonicalizes a
+file and requires it to remain under an exact `LocalImagePolicy` root.
+`prompt_with_image_url` requires an `EgressFetcher` whose exact HTTPS host
+allowlist, DNS pinning, redirect checks, peer verification, timeout, and stream
+budget apply before provider dispatch.
+
+```rust,no_run
+# use rullst_ai::{AiClient, EgressFetcher, EgressPolicy, LocalImagePolicy, providers::openai::OpenAiProvider};
+# async fn example() -> Result<(), Box<dyn std::error::Error>> {
+let client = AiClient::new(OpenAiProvider::new("mock_local"));
+
+let local = LocalImagePolicy::with_max_bytes(["./private-uploads"], 2 * 1_024 * 1_024)?;
+client
+    .prompt_with_image_file("Describe this image", "./private-uploads/photo.png", &local)
+    .await?;
+
+let remote_policy = EgressPolicy::strict()
+    .with_allowed_hosts(["images.example.com"])?
+    .with_max_response_bytes(2 * 1_024 * 1_024)?;
+let fetcher = EgressFetcher::new(remote_policy);
+client
+    .prompt_with_image_url(
+        "Describe this image",
+        "https://images.example.com/photo.png",
+        &fetcher,
+    )
+    .await?;
+# Ok(())
+# }
+```
+
+The high-level file and URL paths accept at most 10 MiB and recognize bounded
+JPEG, full PNG signature, RIFF/WebP, and GIF87a/GIF89a signatures. A supplied
+remote `Content-Type` must match those bytes. Provider capability is checked
+and text guardrails run before local or network I/O. Exact model support is
+still provider/configuration dependent, and an allowlisted local directory
+must be protected by the host against adversarial rename races.
+
 ## Tenant-aware durable chat memory
 
 `StatefulChat<M>` uses static dispatch over the `ChatMemory` contract. It loads

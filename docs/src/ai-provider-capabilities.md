@@ -39,6 +39,19 @@ model can still reject vision, embeddings, or schema output. In particular:
   native JSON mode, and JSON Schema. This reports which request shapes Rullst
   will send; it does not discover or certify model behavior.
 
+## Vision input sources
+
+The Vision column describes provider request-shape support, not unrestricted
+image acquisition. `AiClient::prompt_with_image` accepts application-admitted
+bytes. `prompt_with_image_file` additionally requires an exact canonical
+`LocalImagePolicy` root and byte budget. `prompt_with_image_url` accepts only an
+explicit `EgressFetcher`, so HTTPS host allowlisting, DNS pinning, peer and
+redirect validation, proxy bypass, timeout and streaming limits are mandatory.
+Both helpers verify bounded JPEG/PNG/WebP/GIF signatures; a supplied remote
+media type must match the bytes. Capability and prompt checks happen before
+file or network I/O. Local-directory trust, tenant/owner authorization, image
+decoding safety and model behavior remain application/provider boundaries.
+
 ## OpenAI-compatible local and cloud endpoints
 
 `OpenAiCompatibleProvider::try_local` accepts an unauthenticated OpenAI-shaped

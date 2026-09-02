@@ -137,18 +137,46 @@ audit event without logging prompts or secrets verbatim.
 
 ## 4. Inspect capabilities before optional operations
 
-```rust,ignore
+```rust,no_run
+# use rullst::ai::{AiClient, EgressFetcher, EgressPolicy, LocalImagePolicy, providers::openai::OpenAiProvider};
+# async fn example() -> Result<(), Box<dyn std::error::Error>> {
+let client = AiClient::new(OpenAiProvider::new("mock_local"));
 let capabilities = client.capabilities();
 
 if capabilities.vision {
-    let response = client.prompt_with_image("Describe this image", bytes).await?;
-    // Use the response according to the application's trust policy.
+    // Bytes have already crossed the application's own admission boundary.
+    let png = b"\x89PNG\r\n\x1a\n\x00";
+    client.prompt_with_image("Describe this image", png).await?;
+
+    // Local files must remain under an exact canonical allowlisted root.
+    let local = LocalImagePolicy::new(["./private-uploads"])?;
+    client
+        .prompt_with_image_file("Describe this image", "./private-uploads/photo.png", &local)
+        .await?;
+
+    // URLs require an explicit HTTPS egress allowlist and resource budget.
+    let remote = EgressPolicy::strict()
+        .with_allowed_hosts(["images.example.com"])?
+        .with_max_response_bytes(2 * 1_024 * 1_024)?;
+    client
+        .prompt_with_image_url(
+            "Describe this image",
+            "https://images.example.com/photo.png",
+            &EgressFetcher::new(remote),
+        )
+        .await?;
 }
+# Ok(())
+# }
 ```
 
 Capability inspection prevents avoidable requests but is not a substitute for
 handling `UnsupportedCapability` and upstream model errors. Configuration can
-select a model that supports less than its provider transport.
+select a model that supports less than its provider transport. File and URL
+helpers check capability and guard the text before I/O, cap images at 10 MiB,
+sniff JPEG/PNG/WebP/GIF bytes and require a supplied remote `Content-Type` to
+match. The host must authorize the source and protect allowed local directories;
+Rullst does not infer tenant ownership from a path or URL.
 
 ## 5. Request structured output
 

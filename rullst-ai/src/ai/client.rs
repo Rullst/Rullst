@@ -1,9 +1,11 @@
 //! Mandatory-guardrail high-level client and chat builder.
 
 use super::{
-    AiError, AiGuardrails, AiProvider, FallbackProvider, Message, ProviderCapabilities,
-    StructuredOutputSchema, guardrails::prepare_messages, structured::clean_json_markdown,
+    AiError, AiGuardrails, AiProvider, EgressFetcher, EgressResolver, FallbackProvider,
+    LocalImagePolicy, Message, ProviderCapabilities, StructuredOutputSchema,
+    guardrails::prepare_messages, structured::clean_json_markdown,
 };
+use std::path::Path;
 use std::sync::Arc;
 
 /// A fluent builder for a guarded multi-turn conversation.
@@ -117,6 +119,46 @@ impl AiClient {
         self.provider.prompt_with_image(&text, image_bytes).await
     }
 
+    /// Loads a bounded image from an exact allowlisted local root, then sends a guarded prompt.
+    pub async fn prompt_with_image_file(
+        &self,
+        text: &str,
+        path: impl AsRef<Path>,
+        policy: &LocalImagePolicy,
+    ) -> Result<String, AiError> {
+        self.ensure_vision_support()?;
+        let text = AiGuardrails::prepare(text)?;
+        let image = policy.read(path.as_ref()).await?;
+        self.provider.prompt_with_image(&text, &image).await
+    }
+
+    /// Fetches a bounded HTTPS image through an explicit deny-by-default egress policy.
+    pub async fn prompt_with_image_url<R>(
+        &self,
+        text: &str,
+        url: &str,
+        fetcher: &EgressFetcher<R>,
+    ) -> Result<String, AiError>
+    where
+        R: EgressResolver,
+    {
+        self.ensure_vision_support()?;
+        let text = AiGuardrails::prepare(text)?;
+        let image = super::vision::fetch_image(fetcher, url).await?;
+        self.provider.prompt_with_image(&text, &image).await
+    }
+
+    fn ensure_vision_support(&self) -> Result<(), AiError> {
+        if self.capabilities().vision {
+            Ok(())
+        } else {
+            Err(AiError::UnsupportedCapability {
+                provider: self.provider.provider_name(),
+                capability: "vision input",
+            })
+        }
+    }
+
     /// Initiates a guarded multi-turn chat interaction.
     pub fn chat(&self) -> ChatBuilder {
         ChatBuilder::new(self.provider.clone())
@@ -176,10 +218,16 @@ impl AiClient {
 mod tests {
     use super::*;
     use async_trait::async_trait;
+    use std::path::PathBuf;
     use std::sync::Mutex;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     struct SpyProvider {
         seen: Arc<Mutex<Vec<String>>>,
+    }
+
+    struct VisionSpyProvider {
+        seen_images: Arc<Mutex<Vec<Vec<u8>>>>,
     }
 
     #[async_trait]
@@ -199,6 +247,55 @@ mod tests {
             self.seen.lock().expect("test mutex").push(text.to_string());
             Ok(vec![0.0])
         }
+    }
+
+    #[async_trait]
+    impl AiProvider for VisionSpyProvider {
+        fn provider_name(&self) -> &'static str {
+            "vision-spy"
+        }
+
+        fn capabilities(&self) -> ProviderCapabilities {
+            ProviderCapabilities {
+                vision: true,
+                ..ProviderCapabilities::PORTABLE
+            }
+        }
+
+        async fn prompt(&self, text: &str) -> Result<String, AiError> {
+            Ok(text.to_string())
+        }
+
+        async fn chat(&self, messages: &[Message]) -> Result<String, AiError> {
+            Ok(messages.len().to_string())
+        }
+
+        async fn embed(&self, _text: &str) -> Result<Vec<f32>, AiError> {
+            Ok(vec![0.0])
+        }
+
+        async fn prompt_with_image(
+            &self,
+            _text: &str,
+            image_bytes: &[u8],
+        ) -> Result<String, AiError> {
+            self.seen_images
+                .lock()
+                .expect("test mutex")
+                .push(image_bytes.to_vec());
+            Ok("vision-ok".to_string())
+        }
+    }
+
+    fn vision_test_directory() -> PathBuf {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock after epoch")
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "rullst-ai-client-vision-{}-{nonce}",
+            std::process::id()
+        ))
     }
 
     #[tokio::test]
@@ -277,6 +374,56 @@ mod tests {
             seen: Arc::new(Mutex::new(Vec::new())),
         });
         assert_eq!(client.capabilities(), ProviderCapabilities::PORTABLE);
+    }
+
+    #[tokio::test]
+    async fn client_file_vision_dispatches_only_policy_validated_bytes() {
+        let root = vision_test_directory();
+        std::fs::create_dir_all(&root).expect("create root");
+        let path = root.join("image.png");
+        let png = b"\x89PNG\r\n\x1a\n\x00".to_vec();
+        std::fs::write(&path, &png).expect("write image");
+        let policy = LocalImagePolicy::new([&root]).expect("valid local policy");
+        let seen_images = Arc::new(Mutex::new(Vec::new()));
+        let client = AiClient::new(VisionSpyProvider {
+            seen_images: seen_images.clone(),
+        });
+
+        assert_eq!(
+            client
+                .prompt_with_image_file("describe this", &path, &policy)
+                .await
+                .expect("guarded file prompt"),
+            "vision-ok"
+        );
+        assert_eq!(seen_images.lock().expect("test mutex").as_slice(), [png]);
+        std::fs::remove_dir_all(root).expect("remove root");
+    }
+
+    #[tokio::test]
+    async fn client_url_vision_fails_closed_before_provider_dispatch() {
+        let seen_images = Arc::new(Mutex::new(Vec::new()));
+        let client = AiClient::new(VisionSpyProvider {
+            seen_images: seen_images.clone(),
+        });
+
+        assert!(matches!(
+            client
+                .prompt_with_image_url(
+                    "describe this",
+                    "https://example.com/image.png",
+                    &EgressFetcher::strict(),
+                )
+                .await,
+            Err(AiError::VisionInput(
+                super::super::VisionInputError::RemoteFetch(
+                    super::super::EgressFetchError::Policy(
+                        super::super::EgressPolicyError::HostNotAllowed
+                    )
+                )
+            ))
+        ));
+        assert!(seen_images.lock().expect("test mutex").is_empty());
     }
 
     #[tokio::test]

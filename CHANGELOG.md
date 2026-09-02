@@ -31,6 +31,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   mock mode from empty/`mock_*` keys. Optional embeddings, vision, JSON, and
   schema paths are declared per configuration; redirects/proxies are disabled
   and image/response sizes are bounded.
+- `rullst-ai` vision now has explicit guarded byte, local-file and remote-URL
+  entry points. Local files require canonical exact-root admission and a byte
+  budget; URLs require the deny-by-default `EgressFetcher`. Both paths check
+  declared vision capability before I/O, cap input at 10 MiB, recognize JPEG
+  SOI, full PNG, RIFF-WebP and GIF signatures and reject a contradictory remote
+  media type. Host path trust, source authorization, decoder safety and exact
+  model behavior remain external boundaries.
 - `rullst-ai` adds `DurableRagAuditTrail` and `DurableToolAuditTrail` for
   bounded synchronous local evidence. Distinct versioned streams enforce byte
   and record ceilings, validate semantic events and SHA-256-framed records on
