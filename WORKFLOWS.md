@@ -87,7 +87,7 @@ cargo test --workspace --all-features
 
 `ci.yml` also compiles and exercises each ORM strict database feature in
 isolation (PostgreSQL, MySQL, and SQLite), exercises the runtime-only Core and
-all 41 public umbrella features in isolated additive graphs with automatic
+all 42 public umbrella features in isolated additive graphs with automatic
 manifest-drift detection, runs the portable database matrix on Linux, and
 tests the all-feature workspace on Linux, macOS, and Windows. The umbrella's
 `cfg(doctest)` aggregation reads all 50 public tutorial files directly, so that

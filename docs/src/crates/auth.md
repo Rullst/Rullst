@@ -4,8 +4,10 @@
 role-based authorization middleware, WebAuthn/passkey ceremony verification, and
 an opt-in application JWT policy.
 
-Application JWTs are enabled with `jwt`; OAuth2/OIDC providers remain a separate
-trust boundary enabled with `oauth`, which re-exports `rullst-connect`.
+Application JWTs are enabled with `jwt`. The `sqlite` feature also enables JWT
+and adds durable shared JWT revocation plus passkey device state. OAuth2/OIDC
+providers remain a separate trust boundary enabled with `oauth`, which
+re-exports `rullst-connect`.
 
 ## Passwords
 
@@ -49,7 +51,16 @@ fn round_trip(user_id: i32) -> Result<i32, AuthError> {
 `PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges,
 client-data ceremony type, user-presence/user-verification flags, ES256 COSE keys, P-256 points,
 credential IDs, signatures, and monotonic counters. Only `none` attestation is advertised and
-accepted. Applications must persist the returned counter atomically with the credential record.
+accepted. With `sqlite`, `SqlitePasskeyStore` supplies bounded file-backed
+registration, listing, renaming, revocation and optimistic counter CAS shared
+by processes on the same SQLite file. `finish_authenticate` verifies the ES256
+ceremony and atomically advances the stored counter; a stale concurrent update
+fails. Revoked records remain in inventory and continue to consume quota.
+
+Challenge state remains process-local inside `PasskeyAuth`, so a multi-instance
+deployment needs sticky ceremony routing or a custom shared challenge layer.
+The adapter does not establish normative WebAuthn conformance, encrypt or
+replicate the database, or replace application device-ownership policy.
 
 ## Application JWTs
 
@@ -57,9 +68,16 @@ The `jwt` feature provides `ApplicationJwtPolicy`, versioned HS256 claims, stron
 key validation, required issuer/audience/subject/time/JTI claims, bounded TTL and
 scope policy, and `kid`-based key rotation. Every verification receives a
 `JwtRevocationStore`. Production policies reject the bundled bounded in-memory
-store because it is process-local; applications must supply a shared durable
-implementation for cross-instance token/session-version revocation. This API does
-not verify third-party OAuth/OIDC tokens.
+store because it is process-local. With `sqlite`,
+`SqliteJwtRevocationStore` persists token IDs and monotonic subject session
+versions behind a stored quota. Its `BEGIN IMMEDIATE` mutations are visible to
+local processes, expired token rows are pruned before capacity checks, and
+`ApplicationJwtPolicy::verify_async` checks that shared state.
+
+The SQLite boundary is durable across restarts but not replicated across hosts.
+The deployment owns trusted paths, file permissions/encryption, backup,
+availability and disaster recovery. This API does not verify third-party
+OAuth/OIDC tokens or provide refresh tokens.
 
 ## RBAC
 

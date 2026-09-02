@@ -57,6 +57,24 @@
       "marker": "TM-AUTH-05"
     },
     {
+      "id": "AUTH-05",
+      "crate": "rullst-auth",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "auth::passkey::sqlite::tests::complete_device_lifecycle_survives_restart_and_rejects_replay",
+      "source": "rullst-auth/src/auth/passkey/sqlite/tests.rs",
+      "marker": "TM-AUTH-05"
+    },
+    {
+      "id": "AUTH-05",
+      "crate": "rullst-auth",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "auth::passkey::sqlite::tests::competing_counter_updates_use_compare_and_set",
+      "source": "rullst-auth/src/auth/passkey/sqlite/tests.rs",
+      "marker": "TM-AUTH-05"
+    },
+    {
       "id": "AUTH-07",
       "crate": "rullst-security",
       "target_kind": "lib",
@@ -81,6 +99,24 @@
       "target": "lib",
       "test_filter": "jwt::tests::production_requires_shared_revocation_and_rotation_keeps_previous_tokens_verifiable",
       "source": "rullst-auth/src/jwt/tests.rs",
+      "marker": "TM-AUTH-06"
+    },
+    {
+      "id": "AUTH-06",
+      "crate": "rullst-auth",
+      "target_kind": "integration",
+      "target": "sqlite_jwt_revocation",
+      "test_filter": "production_verification_and_token_revocation_survive_restart",
+      "source": "rullst-auth/tests/sqlite_jwt_revocation.rs",
+      "marker": "TM-AUTH-06"
+    },
+    {
+      "id": "AUTH-06",
+      "crate": "rullst-auth",
+      "target_kind": "integration",
+      "target": "sqlite_jwt_revocation",
+      "test_filter": "transactional_quota_is_exact_across_competing_instances",
+      "source": "rullst-auth/tests/sqlite_jwt_revocation.rs",
       "marker": "TM-AUTH-06"
     },
     {

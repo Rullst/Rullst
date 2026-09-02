@@ -132,14 +132,14 @@
     },
     {
       "name": "rullst-auth",
-      "api_architecture": 18,
-      "verification": 22,
+      "api_architecture": 19,
+      "verification": 24,
       "security_failure_design": 19,
-      "documentation_dx": 14,
-      "operations_release": 14,
+      "documentation_dx": 15,
+      "operations_release": 18,
       "specialist_gate": "threat-minimum",
-      "finding": "Strong password/session/RBAC/JWT primitives; WebAuthn conformance and shared durable revocation/device operations are not complete.",
-      "evidence": ["rullst-auth/README.md", "rullst-auth/tests", "docs/src/crates/auth.md"]
+      "finding": "Strong password/session/RBAC/JWT primitives plus bounded shared SQLite JWT revocation and passkey device lifecycle with restart, quota, replay and counter-CAS evidence; shared ceremonies, multi-host replication, refresh workflow and normative WebAuthn conformance remain external or incomplete.",
+      "evidence": ["rullst-auth/README.md", "rullst-auth/src/auth/passkey/sqlite.rs", "rullst-auth/src/auth/passkey/sqlite/tests.rs", "rullst-auth/src/jwt/sqlite.rs", "rullst-auth/tests/sqlite_jwt_revocation.rs", "docs/src/crates/auth.md"]
     },
     {
       "name": "rullst-nexus",
@@ -171,7 +171,7 @@
       "documentation_dx": 14,
       "operations_release": 18,
       "specialist_gate": "none",
-      "finding": "All 41 public umbrella features have isolated compile boundaries with automatic manifest-drift detection, and the packaged-distribution consumer derives the complete extracted feature set instead of maintaining a partial allowlist; release confidence still inherits the bounded maturity of opt-in domain capabilities.",
+      "finding": "All 42 public umbrella features have isolated compile boundaries with automatic manifest-drift detection, and the packaged-distribution consumer derives the complete extracted feature set instead of maintaining a partial allowlist; release confidence still inherits the bounded maturity of opt-in domain capabilities.",
       "evidence": ["rullst/Cargo.toml", "rullst/tests", ".github/check-feature-boundaries.sh", ".github/test-packaged-distribution.sh", "docs/src/feature-matrix.md"]
     },
     {

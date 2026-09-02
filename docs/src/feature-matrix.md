@@ -53,6 +53,7 @@ rullst = { version = "12.0.0-rc.1", default-features = false }
 | `studio` | no | Studio plus Core's Studio integration marker |
 | `auth` | no | Authentication, sessions, passkeys, and RBAC helpers from `rullst-auth` |
 | `auth-jwt` | no | `auth` plus the strict application-issued JWT policy |
+| `auth-sqlite` | no | `auth-jwt` plus bounded shared SQLite JWT revocation and passkey device lifecycle state |
 | `mail` | no | `rullst-mail` with HTTP/offline transports and no SMTP dependency |
 | `mail-smtp` | no | `mail` plus the optional SMTP transport |
 | `mail-aws-ses` | no | `mail` plus native SES v2 delivery signed by the official AWS SDK |
@@ -216,8 +217,10 @@ Default features: none.
 | --- | --- |
 | `oauth` | Optional `rullst-connect` OAuth2/OIDC integration and re-exports |
 | `jwt` | Application-issued JWT claims, key rotation, and revocation-store policy |
+| `sqlite` | `jwt` plus bounded file-backed shared JWT revocation and passkey device lifecycle state |
 
-The umbrella crate exposes this as `auth-jwt`, which also enables `auth`.
+The umbrella crate exposes these as `auth-jwt` and `auth-sqlite`; both enable
+`auth`, while `auth-sqlite` also enables `auth-jwt`.
 
 ### `rullst-security`
 

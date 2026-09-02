@@ -61,7 +61,7 @@ being published as an achieved one.
 | `rullst-security` | 90 | A | External SIEM delivery, independent audit and certification |
 | `rullst-connect` | 90 | A | Durable transaction/key operations, distributed refresh and provider conformance |
 | `rullst` | 90 | A | Inherits bounded maturity from opt-in domain crates |
-| `rullst-auth` | 87 | B | WebAuthn conformance and durable shared revocation/devices |
+| `rullst-auth` | 95 | A | Shared ceremonies, multi-host state, refresh workflow and normative WebAuthn conformance |
 | `rullst-mail` | 87 | B | Inbox/provider evidence, opaque-file inspection and distributed operations |
 | `rullst-messaging` | 86 | B | Remote protocols, replication, encrypted-at-rest operations and provider fault matrices |
 | `cargo-rullst` | 85 | B | Complete generated-project matrix across every blueprint |
@@ -72,24 +72,23 @@ being published as an achieved one.
 | `rullst-nexus` | 81 | B | Host tenant policy, durable audit and production operations |
 | `rullst-macros` | 81 | B | Experimental browser/runtime integration remains bounded |
 | `rullst-iot` | 83 | B | Concrete transport/hardware storage, flashing and bootloader evidence |
-| **Repository (equal-crate aggregate)** | **86** | **B** | **1,379/1,600; exact score remains conditional on the SHA's gates** |
+| **Repository (equal-crate aggregate)** | **87** | **B** | **1,387/1,600; exact score remains conditional on the SHA's gates** |
 
 ## Measured gap to the v12 quality gate
 
-At the ceilings above, Core, ORM, Security, Connect, AI and the umbrella meet A,
-while IoT meets its approved B exception. Nine crates remain below their
-required grade. Their individual gaps total **56 audited points**. This is not a count of tasks and
+At the ceilings above, Core, ORM, Security, Connect, Auth, AI and the umbrella meet A,
+while IoT meets its approved B exception. Eight crates remain below their
+required grade. Their individual gaps total **53 audited points**. This is not a count of tasks and
 cannot be closed by editing the policy: every point requires a commensurate
 change in implementation, verification, security/failure design,
 documentation/DX, or operational evidence.
 
-If the nine remaining crates reach exactly 90 while Core and ORM remain at
-91, Security, Connect and AI remain at 90 and IoT remains at 83, the equal-crate
-aggregate becomes 1,435/1,600, which rounds to **90/A**.
+If the eight remaining crates reach exactly 90 while Core and ORM remain at
+91, Auth remains at 95, Security, Connect and AI remain at 90 and IoT remains
+at 83, the equal-crate aggregate becomes 1,440/1,600, or **90/A**.
 
 | Crate | Current | Gap to required grade | Next evidence cluster to audit |
 | :--- | ---: | ---: | :--- |
-| `rullst-auth` | 87/B | +3 | Durable revocation/device lifecycle and broader WebAuthn vectors |
 | `rullst-mail` | 87/B | +3 | Attachment-inspection policy and durable delivery/failure operations |
 | `rullst-messaging` | 86/B | +4 | Remote adapter or encrypted durable-state contracts and fault matrices |
 | `cargo-rullst` | 85/B | +5 | Broader compile/runtime verification of generated blueprint combinations |
@@ -121,7 +120,7 @@ implementation earns a high A.
 | `rullst-security` | 90/A | 96/A | 6 | SIEM rotation/acknowledgement contracts, broader threat negatives and recovery/SBOM evidence | Independent audit, certification and real SOC operation |
 | `rullst-connect` | 90/A | 95/A | 5 | Transactional token-generation CAS, remaining revocation fixtures and lifecycle recovery | Live-provider conformance and IdP operations |
 | `rullst` | 90/A | 96/A | 6 | Deeper cross-domain runtime composition and recovery contracts | Maturity inherited from external provider/device evidence |
-| `rullst-auth` | 87/B | 95/A | 8 | Durable shared revocation/device lifecycle and broader WebAuthn ceremony vectors | Normative external WebAuthn conformance |
+| `rullst-auth` | 95/A | 95/A | 0 | Bounded shared local revocation/device lifecycle, restart and counter-CAS evidence complete for this campaign | Shared ceremonies, multi-host replication, refresh workflow and normative WebAuthn conformance |
 | `rullst-mail` | 87/B | 95/A | 8 | Inspection policy, durable suppression/failure lifecycle and transport observability | Inbox placement, DNS reputation and live-provider acceptance |
 | `rullst-messaging` | 86/B | 96/A | 10 | Encrypted local durability, stable codec/outbox/trace contracts and fault matrices | Remote broker operation, replication and cloud acceptance |
 | `cargo-rullst` | 85/B | 95/A | 10 | Complete generated-blueprint/upgrade compile and runtime matrix | Production deployment/account acceptance |
@@ -132,10 +131,10 @@ implementation earns a high A.
 | `rullst-orm-macros` | 82/B | 95/A | 13 | Full parser/UI diagnostic matrix and generated runtime cross-evidence | Compiler/ecosystem compatibility beyond the tested matrix |
 | `rullst-nexus` | 81/B | 95/A | 14 | Tenant authorization, durable audit and bounded admin operation contracts | Host identity/domain policy and production operation |
 | `rullst-macros` | 81/B | 94/A | 13 | Public grammar/diagnostics and generated browser/server protocol contracts | Compiler/browser ecosystem matrix beyond CI |
-| **Repository** | **1,379/1,600 = 86.2/B** | **1,514/1,600 = 94.6/A** | **135** | **Every gain still requires reviewed evidence** | **A+ remains outside this local planning ceiling** |
+| **Repository** | **1,387/1,600 = 86.7/B** | **1,514/1,600 = 94.6/A** | **127** | **Every gain still requires reviewed evidence** | **A+ remains outside this local planning ceiling** |
 
-On this planning scale, **91.1% of the eventual score total is already
-evidenced and 8.9% remains**. That percentage describes point distance, not
+On this planning scale, **91.6% of the eventual score total is already
+evidenced and 8.4% remains**. That percentage describes point distance, not
 elapsed effort: the remaining points are concentrated in integration,
 durability, failure recovery and generated-project matrices and are therefore
 more expensive than early API/documentation points. `rullst-iot` is the only

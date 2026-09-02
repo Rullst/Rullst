@@ -20,6 +20,13 @@ const MAX_SCOPES: usize = 64;
 const MAX_SCOPE_BYTES: usize = 128;
 const MAX_KEYS: usize = 8;
 
+mod async_store;
+pub use async_store::{AsyncJwtRevocationStore, JwtRevocationMode};
+#[cfg(feature = "sqlite")]
+mod sqlite;
+#[cfg(feature = "sqlite")]
+pub use sqlite::{SqliteJwtRevocationSnapshot, SqliteJwtRevocationStore};
+
 /// Failure domain for application JWT policy, issuance and verification.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -44,13 +51,6 @@ pub enum JwtError {
     RevocationStoreCapacity,
     #[error("JWT revocation backend failed: {0}")]
     RevocationBackend(String),
-}
-
-/// Whether revocation state is local to one process or shared by a backend.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum JwtRevocationMode {
-    ProcessLocal,
-    Shared,
 }
 
 /// Deployment posture enforced when verifying an application JWT.
@@ -120,7 +120,7 @@ struct InMemoryRevocationState {
 
 impl InMemoryJwtRevocationStore {
     pub fn new(max_entries: usize) -> Result<Self, JwtError> {
-        if max_entries == 0 {
+        if !(1..=1_000_000).contains(&max_entries) {
             return Err(JwtError::InvalidConfiguration("max_entries"));
         }
         Ok(Self {
@@ -372,6 +372,33 @@ impl ApplicationJwtPolicy {
         {
             return Err(JwtError::RevocationStoreNotShared);
         }
+        let now = unix_time()?;
+        let claims = self.decode_and_validate(token, now)?;
+        if revocations.is_revoked(&claims, now)? {
+            return Err(JwtError::Revoked);
+        }
+        Ok(claims)
+    }
+
+    /// Verifies an application token against an async shared revocation backend.
+    pub async fn verify_async<R: AsyncJwtRevocationStore>(
+        &self,
+        token: &str,
+        revocations: &R,
+    ) -> Result<ApplicationJwtClaims, JwtError> {
+        if self.mode == JwtPolicyMode::Production && revocations.mode() != JwtRevocationMode::Shared
+        {
+            return Err(JwtError::RevocationStoreNotShared);
+        }
+        let now = unix_time()?;
+        let claims = self.decode_and_validate(token, now)?;
+        if revocations.is_revoked(&claims, now).await? {
+            return Err(JwtError::Revoked);
+        }
+        Ok(claims)
+    }
+
+    fn decode_and_validate(&self, token: &str, now: u64) -> Result<ApplicationJwtClaims, JwtError> {
         if token.len() > 16 * 1024 {
             return Err(JwtError::InvalidToken);
         }
@@ -392,11 +419,7 @@ impl ApplicationJwtPolicy {
             decode::<ApplicationJwtClaims>(token, &DecodingKey::from_secret(key), &validation)
                 .map_err(|_| JwtError::InvalidToken)?
                 .claims;
-        let now = unix_time()?;
         self.validate_claims(&claims, now)?;
-        if revocations.is_revoked(&claims, now)? {
-            return Err(JwtError::Revoked);
-        }
         Ok(claims)
     }
 

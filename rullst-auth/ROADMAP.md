@@ -20,3 +20,10 @@ authentication and tenant/resource lookup.
 - [ ] **Two-Factor Authentication (2FA)**: Built-in TOTP generation and validation for Google Authenticator/Authy integration, including recovery codes.
 - [ ] **Magic Links**: Passwordless authentication via single-use, time-sensitive signed URLs delivered via email (`rullst-mail` integration).
 - [ ] **Device Management**: Track active sessions across devices and provide an API for users to "Sign out of all other sessions".
+
+The v12 `sqlite` profile now covers a bounded subset of device management:
+passkey registration, inventory, rename, revocation, restart persistence and
+signature-counter CAS, plus shared-local JWT revocation by token or subject
+session version. It does not inventory cookie/refresh sessions, authenticate
+device ownership, share WebAuthn challenges across instances, replicate across
+hosts or implement the complete "sign out all other sessions" product flow.

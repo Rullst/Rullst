@@ -86,6 +86,7 @@ rullst-capital|nfse
 rullst-capital|quota-sql
 rullst-mail|mail-smtp
 rullst-auth|jwt
+rullst-auth|sqlite
 
 # Umbrella boundaries exposed to generated applications.
 rullst|orm
@@ -111,6 +112,7 @@ rullst|mail-aws-ses
 rullst|messaging
 rullst|messaging-sqlite
 rullst|auth-jwt
+rullst|auth-sqlite
 rullst|oauth
 rullst|ai
 rullst|ai-sql-memory

@@ -147,6 +147,7 @@ fn token_policy_rejects_weak_keys_wrong_audience_and_invalid_inputs() {
     ));
     assert!(JwtSigningKey::new("unsafe kid", FIRST_SECRET).is_err());
     assert!(InMemoryJwtRevocationStore::new(0).is_err());
+    assert!(InMemoryJwtRevocationStore::new(1_000_001).is_err());
 
     let policy = development_policy();
     assert_eq!(

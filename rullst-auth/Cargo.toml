@@ -17,6 +17,7 @@ categories = ["authentication", "web-programming"]
 default = []
 oauth = ["dep:rullst-connect"]
 jwt = ["dep:hex", "dep:jsonwebtoken"]
+sqlite = ["jwt", "dep:sqlx"]
 
 [dependencies]
 rullst-core = { workspace = true }
@@ -42,6 +43,7 @@ dotenvy = { workspace = true }
 url = "2.5.8"
 jsonwebtoken = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }
+sqlx = { workspace = true, optional = true, features = ["sqlite", "runtime-tokio"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

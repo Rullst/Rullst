@@ -38,6 +38,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   growth and uncertain durability. The streams are single-process and not
   authenticated; hosts retain permissions, rotation, retention, backup and
   external-delivery responsibility.
+- `rullst-auth` adds the opt-in `sqlite` profile for durable shared local auth
+  state. `SqliteJwtRevocationStore` transactionally persists bounded JTI and
+  monotonic session-version revocation for `verify_async`, while
+  `SqlitePasskeyStore` supplies bounded device registration, inventory, rename,
+  revocation and signature-counter CAS. Restart, two-instance contention,
+  replay, quota and configuration-drift regressions are executable. Challenge
+  state remains process-local, and multi-host replication, database encryption,
+  refresh workflows and normative WebAuthn conformance remain external.
 - `rullst-connect` adds storage-neutral `EncryptedTokenSnapshot` envelopes for
   refresh state. AES-256-GCM authenticates the version, rotation key ID,
   provider and trusted local-account binding; decryption revalidates every
@@ -72,8 +80,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   scorecard artifact for every main push/PR. The score evaluates engineering
   evidence and explicitly excludes feature completeness and certification.
 - Raised the v12 RC quality gate to A (90) for every publishable crate except
-  the approved IoT floor of B (80). After AI reached its bounded A evidence
-  ceiling, the audited plan records nine crates below A and a 56-point
+  the approved IoT floor of B (80). After Auth reached its bounded 95/A local
+  ceiling, the audited plan records eight crates below A and a 53-point
   aggregate gap; policy values may move only with real implementation and
   evidence, never to make the release table look greener.
 - Added a `no_std` OTA rollback-counter adapter to `rullst-iot`. The manager can
@@ -654,7 +662,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Local development and observability
 
-- Expanded the umbrella boundary matrix to compile all 41 public features in
+- Expanded the umbrella boundary matrix to compile all 42 public features in
   isolation and fail when its rows drift from the manifest. The tag-only
   packaged consumer now derives and enables the full feature set from the
   extracted `.crate` manifest instead of relying on a partial static list.
