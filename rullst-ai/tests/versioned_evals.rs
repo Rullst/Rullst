@@ -4,7 +4,7 @@
 
 use rullst_ai::ai::providers::{
     anthropic::AnthropicProvider, deepseek::DeepSeekProvider, gemini::GeminiProvider,
-    ollama::OllamaProvider, openai::OpenAiProvider,
+    ollama::OllamaProvider, openai::OpenAiProvider, openai_compatible::OpenAiCompatibleProvider,
 };
 use rullst_ai::ai::{AiError, AiGuardrails, AiProvider};
 use serde::Deserialize;
@@ -42,6 +42,7 @@ fn offline_providers() -> Vec<Arc<dyn AiProvider>> {
         Arc::new(GeminiProvider::new("mock_eval")),
         Arc::new(OllamaProvider::new("mock_eval", "mock-model")),
         Arc::new(DeepSeekProvider::new("mock_eval")),
+        Arc::new(OpenAiCompatibleProvider::mock("mock-model").unwrap()),
     ]
 }
 

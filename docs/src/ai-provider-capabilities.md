@@ -17,6 +17,7 @@ falling back to another operation.
 | Gemini | yes | yes | yes | yes | native mode | yes | no | no | yes | no | no |
 | DeepSeek | yes | yes | no | no | native mode | default model only | no | no | yes | no | no |
 | Ollama | yes | yes | yes | yes | native mode | yes | no | no | yes | no | no |
+| OpenAI-compatible | yes | yes | declared | declared | declared native mode | declared | no | no | yes | no | no |
 
 `yes` means Rullst constructs and parses that provider request. A configured
 model can still reject vision, embeddings, or schema output. In particular:
@@ -33,6 +34,32 @@ model can still reject vision, embeddings, or schema output. In particular:
 - Empty and `mock_*` credentials select deterministic offline behavior. They do
   not contact the configured endpoint and do not promote capabilities that the
   transport marks unsupported.
+- The OpenAI-compatible adapter defaults to text/chat only. Its exact
+  endpoint/model configuration must explicitly declare embeddings, vision,
+  native JSON mode, and JSON Schema. This reports which request shapes Rullst
+  will send; it does not discover or certify model behavior.
+
+## OpenAI-compatible local and cloud endpoints
+
+`OpenAiCompatibleProvider::try_local` accepts an unauthenticated OpenAI-shaped
+base URL only when its host is a literal loopback IP such as `127.0.0.1` or
+`::1`. It may use HTTP for local development and never probes localhost
+implicitly; requiring an IP literal avoids trusting host-name resolution.
+`try_local_with_bearer` supports an explicitly authenticated loopback server.
+`try_cloud` requires HTTPS and Bearer authentication; empty and `mock_*` keys
+select the offline fixture. All constructors reject URL credentials, query
+strings, and fragments, disable redirects and environment proxies, cap images
+at 10 MiB and JSON responses at 2 MiB, and retain the ordinary 30-second
+configurable request deadline.
+
+This adapter covers `/chat/completions`, optional `/embeddings`, OpenAI-shaped
+image content, and the declared response-format modes. It does not claim Azure
+query/header conventions, arbitrary authentication schemes, provider-native
+tools, streaming, retries, automatic model discovery, or compatibility with an
+unrelated HTTP protocol. Implement `AiProvider` for those explicit semantics.
+Local runtimes such as llama.cpp server, LocalAI, LM Studio, and vLLM are
+possible consumers only when their installed configuration exposes these exact
+shapes; Rullst does not certify a product name or infer capabilities from it.
 
 ## Operational boundaries
 

@@ -65,7 +65,7 @@ being published as an achieved one.
 | `rullst-mail` | 87 | B | Inbox/provider evidence, opaque-file inspection and distributed operations |
 | `rullst-messaging` | 86 | B | Remote protocols, replication, encrypted-at-rest operations and provider fault matrices |
 | `cargo-rullst` | 85 | B | Complete generated-project matrix across every blueprint |
-| `rullst-ai` | 84 | B | Live adaptive evals, provider loops and external retrievers |
+| `rullst-ai` | 88 | B | Streaming/cancellation, live adaptive evals, provider loops and external retrievers |
 | `rullst-studio` | 83 | B | Distributed observability and remote inspectors |
 | `rullst-capital` | 82 | B | Gateway parity and live fiscal homologation |
 | `rullst-orm-macros` | 82 | B | Runtime protocol semantics remain evidence owned by `rullst-orm` |
@@ -78,7 +78,7 @@ being published as an achieved one.
 
 At the ceilings above, Core, ORM, Security and Connect meet A and IoT meets its
 approved B exception. Eleven crates remain below their required grade. Their
-individual gaps total **64 audited points**. This is not a count of tasks and
+individual gaps total **60 audited points**. This is not a count of tasks and
 cannot be closed by editing the policy: every point requires a commensurate
 change in implementation, verification, security/failure design,
 documentation/DX, or operational evidence.
@@ -94,7 +94,7 @@ aggregate becomes 1,435/1,600, which rounds to **90/A**.
 | `rullst-mail` | 87/B | +3 | Attachment-inspection policy and durable delivery/failure operations |
 | `rullst-messaging` | 86/B | +4 | Remote adapter or encrypted durable-state contracts and fault matrices |
 | `cargo-rullst` | 85/B | +5 | Broader compile/runtime verification of generated blueprint combinations |
-| `rullst-ai` | 84/B | +6 | Cancellation/streaming, durable retrieval/memory and adaptive eval evidence |
+| `rullst-ai` | 88/B | +2 | Cancellation/streaming, durable retrieval/tool audit and adaptive eval evidence |
 | `rullst-studio` | 83/B | +7 | Distributed trace ingestion and authenticated remote-inspector boundaries |
 | `rullst-capital` | 82/B | +8 | Shared gateway contracts and fiscal/provider evidence without invented homologation |
 | `rullst-orm-macros` | 82/B | +8 | Complete parser/UI contracts for generated invariants and runtime cross-evidence |
@@ -127,17 +127,17 @@ implementation earns a high A.
 | `rullst-mail` | 87/B | 95/A | 8 | Inspection policy, durable suppression/failure lifecycle and transport observability | Inbox placement, DNS reputation and live-provider acceptance |
 | `rullst-messaging` | 86/B | 96/A | 10 | Encrypted local durability, stable codec/outbox/trace contracts and fault matrices | Remote broker operation, replication and cloud acceptance |
 | `cargo-rullst` | 85/B | 95/A | 10 | Complete generated-blueprint/upgrade compile and runtime matrix | Production deployment/account acceptance |
-| `rullst-ai` | 84/B | 95/A | 11 | Explicit OpenAI-compatible local/cloud adapter, cancellation/streaming, durable retrieval/tool audit and adaptive evaluations | Non-compatible protocols need adapters; model-provider behavior and corpus quality remain external |
+| `rullst-ai` | 88/B | 95/A | 7 | Cancellation/streaming, durable retrieval/tool audit and adaptive evaluations | Non-compatible protocols need adapters; model-provider behavior and corpus quality remain external |
 | `rullst-studio` | 83/B | 94/A | 11 | Distributed trace ingestion plus authenticated cache/query inspection boundaries | Production topology and operator authorization |
 | `rullst-iot` | 83/B | 88/B | 5 | Authenticated manifest wire, streaming hash and key-rotation/recovery contracts | Physical hardware, flashing/bootloader, broker/device interoperability and certification |
 | `rullst-capital` | 82/B | 93/A | 11 | Durable idempotency, shared gateway fault contracts and local fiscal audit/recovery | Live gateway acceptance and official fiscal homologation |
 | `rullst-orm-macros` | 82/B | 95/A | 13 | Full parser/UI diagnostic matrix and generated runtime cross-evidence | Compiler/ecosystem compatibility beyond the tested matrix |
 | `rullst-nexus` | 81/B | 95/A | 14 | Tenant authorization, durable audit and bounded admin operation contracts | Host identity/domain policy and production operation |
 | `rullst-macros` | 81/B | 94/A | 13 | Public grammar/diagnostics and generated browser/server protocol contracts | Compiler/browser ecosystem matrix beyond CI |
-| **Repository** | **1,371/1,600 = 85.7/B** | **1,514/1,600 = 94.6/A** | **143** | **Every gain still requires reviewed evidence** | **A+ remains outside this local planning ceiling** |
+| **Repository** | **1,375/1,600 = 85.9/B** | **1,514/1,600 = 94.6/A** | **139** | **Every gain still requires reviewed evidence** | **A+ remains outside this local planning ceiling** |
 
-On this planning scale, **90.6% of the eventual score total is already
-evidenced and 9.4% remains**. That percentage describes point distance, not
+On this planning scale, **90.8% of the eventual score total is already
+evidenced and 9.2% remains**. That percentage describes point distance, not
 elapsed effort: the remaining points are concentrated in integration,
 durability, failure recovery and generated-project matrices and are therefore
 more expensive than early API/documentation points. `rullst-iot` is the only

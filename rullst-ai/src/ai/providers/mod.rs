@@ -8,14 +8,20 @@ pub mod gemini;
 pub mod ollama;
 /// OpenAI client provider.
 pub mod openai;
+/// Capability-declared OpenAI-compatible local/cloud provider.
+pub mod openai_compatible;
 
 mod support;
 
 #[cfg(test)]
 mod capability_tests {
     use super::{
-        anthropic::AnthropicProvider, deepseek::DeepSeekProvider, gemini::GeminiProvider,
-        ollama::OllamaProvider, openai::OpenAiProvider,
+        anthropic::AnthropicProvider,
+        deepseek::DeepSeekProvider,
+        gemini::GeminiProvider,
+        ollama::OllamaProvider,
+        openai::OpenAiProvider,
+        openai_compatible::{OpenAiCompatibleCapabilities, OpenAiCompatibleProvider},
     };
     use crate::ai::{AiProvider, JsonCapability, ProviderCapabilities};
 
@@ -39,6 +45,18 @@ mod capability_tests {
         assert_eq!(GeminiProvider::new("").capabilities(), FULL_GENERATION);
         assert_eq!(
             OllamaProvider::new("", "mock-model").capabilities(),
+            FULL_GENERATION
+        );
+        assert_eq!(
+            OpenAiCompatibleProvider::mock("mock-model")
+                .expect("valid compatible fixture")
+                .with_capabilities(
+                    OpenAiCompatibleCapabilities::chat_only()
+                        .with_embeddings()
+                        .with_vision()
+                        .with_json_schema(),
+                )
+                .capabilities(),
             FULL_GENERATION
         );
 

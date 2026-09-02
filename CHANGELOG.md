@@ -24,6 +24,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Upgrade and compatibility
 
+- `rullst-ai` adds `OpenAiCompatibleProvider` for explicit local and cloud
+  endpoints implementing bounded OpenAI request shapes. Local HTTP is
+  restricted to literal loopback IPs, with optional explicit Bearer
+  authentication; cloud endpoints require HTTPS/Bearer or select deterministic
+  mock mode from empty/`mock_*` keys. Optional embeddings, vision, JSON, and
+  schema paths are declared per configuration; redirects/proxies are disabled
+  and image/response sizes are bounded.
 - `rullst-connect` adds storage-neutral `EncryptedTokenSnapshot` envelopes for
   refresh state. AES-256-GCM authenticates the version, rotation key ID,
   provider and trusted local-account binding; decryption revalidates every

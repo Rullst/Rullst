@@ -1,8 +1,12 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use rullst_ai::ai::providers::{
-    anthropic::AnthropicProvider, deepseek::DeepSeekProvider, gemini::GeminiProvider,
-    ollama::OllamaProvider, openai::OpenAiProvider,
+    anthropic::AnthropicProvider,
+    deepseek::DeepSeekProvider,
+    gemini::GeminiProvider,
+    ollama::OllamaProvider,
+    openai::OpenAiProvider,
+    openai_compatible::{OpenAiCompatibleCapabilities, OpenAiCompatibleProvider},
 };
 use rullst_ai::ai::{AiError, AiProvider, Message, StructuredOutputSchema};
 use std::sync::Arc;
@@ -14,6 +18,16 @@ fn offline_providers() -> Vec<Arc<dyn AiProvider>> {
         Arc::new(GeminiProvider::new("mock_key").with_base_url("not a URL")),
         Arc::new(OllamaProvider::new("mock_offline", "mock-model")),
         Arc::new(DeepSeekProvider::new("mock_key").with_base_url("not a URL")),
+        Arc::new(
+            OpenAiCompatibleProvider::mock("mock-model")
+                .unwrap()
+                .with_capabilities(
+                    OpenAiCompatibleCapabilities::chat_only()
+                        .with_embeddings()
+                        .with_vision()
+                        .with_json_schema(),
+                ),
+        ),
     ]
 }
 
@@ -117,6 +131,11 @@ async fn embedding_mocks_use_the_redacted_input() {
         Arc::new(OpenAiProvider::new("mock_key").with_base_url("not a URL")),
         Arc::new(GeminiProvider::new("").with_base_url("not a URL")),
         Arc::new(OllamaProvider::new("mock_offline", "mock-model")),
+        Arc::new(
+            OpenAiCompatibleProvider::mock("mock-model")
+                .unwrap()
+                .with_capabilities(OpenAiCompatibleCapabilities::chat_only().with_embeddings()),
+        ),
     ];
 
     for provider in providers {

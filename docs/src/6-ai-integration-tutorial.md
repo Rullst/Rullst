@@ -1,9 +1,10 @@
 # Integrating AI into Rullst
 
 `rullst-ai` provides guarded adapters for OpenAI, Anthropic, Gemini, DeepSeek,
-and Ollama. The high-level `AiClient` applies prompt-injection heuristics and PII
-masking before dispatch. Those controls reduce known risks; passing them does
-not prove that a prompt or model response is safe or correct.
+Ollama, and explicitly configured OpenAI-compatible local/cloud endpoints. The
+high-level `AiClient` applies prompt-injection heuristics and PII masking before
+dispatch. Those controls reduce known risks; passing them does not prove that a
+prompt or model response is safe or correct.
 
 Start with the [provider capability matrix](ai-provider-capabilities.md). It
 separates implemented transport paths from model-dependent behavior and lists
@@ -47,6 +48,40 @@ Other built-in constructors are available under:
 - `providers::gemini::GeminiProvider`;
 - `providers::deepseek::DeepSeekProvider`;
 - `providers::ollama::OllamaProvider`.
+
+For a local server exposing an OpenAI-compatible endpoint, declare only the
+request shapes verified for the exact model:
+
+```rust,no_run
+use rullst::ai::{
+    AiClient,
+    providers::openai_compatible::{
+        OpenAiCompatibleCapabilities, OpenAiCompatibleProvider,
+    },
+};
+
+fn local_client() -> Result<AiClient, rullst::ai::AiError> {
+    let provider = OpenAiCompatibleProvider::try_local(
+        "http://127.0.0.1:8080/v1",
+        "my-local-model",
+    )?
+    .with_capabilities(
+        OpenAiCompatibleCapabilities::chat_only()
+            .with_embeddings()
+            .with_json_mode(),
+    )
+    .try_with_embedding_model("my-embedding-model")?;
+    Ok(AiClient::new(provider))
+}
+```
+
+`try_local` accepts HTTP only on literal loopback IPs and sends no
+authorization header. Use `try_local_with_bearer` for an authenticated loopback
+server or `try_cloud(https_base_url, api_key, model)` for a Bearer-authenticated
+cloud endpoint. None of these constructors discovers model
+capabilities; false declarations become provider errors, while omitted
+capabilities fail locally with `UnsupportedCapability`. A non-compatible API
+implements the public `AiProvider` trait instead.
 
 ## 3. Call it from an Axum handler
 

@@ -17,9 +17,22 @@ tenant-aware RAG pipeline.
 | Anthropic | yes | yes | no | prompt-constrained | no |
 | DeepSeek | yes | no | no | yes | `deepseek-v4-flash` |
 | Ollama | yes | model-dependent | yes | yes | local API only |
+| OpenAI-compatible local/cloud | yes | declared | declared | declared | declared |
 
 Unsupported capabilities return `AiError::UnsupportedCapability`; they do not silently switch to
 an unrelated endpoint or fabricate a live-provider result.
+
+`OpenAiCompatibleProvider` covers servers implementing the named OpenAI
+`/chat/completions` and optional `/embeddings` shapes. It defaults to chat-only;
+vision, embeddings, JSON mode, and JSON Schema must be declared for the exact
+endpoint/model pair. `try_local` permits unauthenticated HTTP only on a literal
+loopback IP, `try_local_with_bearer` adds explicit local authentication, and
+`try_cloud` requires HTTPS plus a Bearer credential. All three
+disable redirects and environment proxies and bound response bodies. Different
+protocols use a custom public `AiProvider`, not an arbitrary-HTTP mode.
+Local runtimes such as llama.cpp server, LocalAI, LM Studio, and vLLM can use
+this path only when their installed configuration exposes the declared shapes;
+the product name alone is not treated as compatibility evidence.
 
 ## Guarded client
 
@@ -140,10 +153,13 @@ selection, content-type/schema validation and data minimization.
 
 ## Offline mode
 
-OpenAI, Gemini, Anthropic, and DeepSeek select deterministic offline mode when their API key is empty
-or starts with `mock_`. Ollama uses an empty or `mock_*` host. Offline branches return before URL
-construction or HTTP dispatch and cover every capability the provider implements. Unsupported live
-capabilities remain typed errors in offline mode.
+OpenAI, Gemini, Anthropic, DeepSeek, and compatible cloud endpoints select
+deterministic offline mode when their API key is empty or starts with `mock_`.
+Ollama uses an empty or `mock_*` host; the compatible adapter also exposes an
+explicit `mock` constructor. Plain `try_local` is deliberately live because no
+credential is its valid loopback configuration. Offline branches return before
+HTTP dispatch and cover every capability the provider declares. Unsupported
+live capabilities remain typed errors in offline mode.
 
 `AiClient::auto()` checks `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`,
 `DEEPSEEK_API_KEY`, and `OLLAMA_HOST`. If none is configured, it selects an offline OpenAI fixture;

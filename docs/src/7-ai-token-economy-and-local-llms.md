@@ -49,22 +49,42 @@ An OpenAI-compatible server is configured explicitly rather than inferred from
 an arbitrary environment variable:
 
 ```rust
-use rullst_ai::ai::{AiClient, providers::openai::OpenAiProvider};
+use rullst_ai::ai::{
+    AiClient,
+    providers::openai_compatible::{
+        OpenAiCompatibleCapabilities, OpenAiCompatibleProvider,
+    },
+};
 
-let provider = OpenAiProvider::new("local-development-key")
-    .with_base_url("http://127.0.0.1:1234/v1")
-    .with_model("configured-model-name");
+let provider = OpenAiCompatibleProvider::try_local(
+    "http://127.0.0.1:1234/v1",
+    "configured-model-name",
+)?
+.with_capabilities(OpenAiCompatibleCapabilities::chat_only());
 let client = AiClient::new(provider);
+# Ok::<(), rullst_ai::ai::AiError>(())
 ```
+
+The same adapter can be used with local runtimes such as llama.cpp server,
+LocalAI, LM Studio, or vLLM **when the exact installed version and
+configuration expose the request shapes declared in Rullst**. Those product names
+are examples, not compatibility certification; check the runtime's API and
+model documentation. A server with a different protocol implements the public
+`AiProvider` contract instead.
 
 Compatibility must be tested for the methods the application uses. An endpoint
 may implement chat while differing on embeddings, vision, JSON Schema, errors
-or streaming. Consult the [provider capability matrix](ai-provider-capabilities.md).
+or streaming. Optional request shapes are disabled until explicitly declared.
+Use `try_local_with_bearer` for an authenticated loopback server and
+`try_cloud` for HTTPS/Bearer cloud endpoints. Consult the [provider capability
+matrix](ai-provider-capabilities.md).
 
 ## Privacy boundary
 
 Using a loopback endpoint can avoid sending model requests to a cloud provider,
 but it does not prove an air gap or zero leakage. The model runtime, host
 network, proxy variables, logs, tracing, crash dumps and application code still
-determine the real data path. The built-in prompt and PII checks are bounded
-heuristics, not authorization or a complete data-loss-prevention guarantee.
+determine the real data path. The compatible adapter ignores ambient proxies
+and redirects, but that is only one transport boundary. The built-in prompt and
+PII checks are bounded heuristics, not authorization or a complete
+data-loss-prevention guarantee.

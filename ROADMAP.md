@@ -280,9 +280,10 @@ contains the more detailed evidence and acceptance boundaries.
 - **Native JSON Schema enforcement on every LLM** *(partial — capability-typed
   support is worth completing; parseable JSON must remain distinct and providers
   that cannot enforce a schema should return `UnsupportedCapability`).*
-- **Any local model over any arbitrary HTTP API** *(`[!] Do not promise` — named
-  Ollama and OpenAI-compatible protocols are worthwhile, while arbitrary APIs
-  differ in authentication, streaming, schema, and error semantics).*
+- **Any local model over any arbitrary HTTP API** *(`[!] Do not promise` —
+  named Ollama and a capability-declared OpenAI-compatible local/cloud adapter
+  are implemented, while arbitrary APIs differ in authentication, streaming,
+  tools, schema, and error semantics and use the public provider trait).*
 - **Automatically air-gapped/zero-leak AI** *(`[!] Do not promise` — local
   endpoints can be useful, but the host network, logs, model runtime, and
   telemetry determine the real data boundary).*

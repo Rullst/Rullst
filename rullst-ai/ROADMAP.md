@@ -10,6 +10,9 @@
 - Prompt-injection heuristics and outbound PII masking before provider dispatch.
 - Versioned deterministic offline injection, jailbreak, and PII regression corpus.
 - OpenAI, Gemini, Anthropic, DeepSeek, and Ollama provider adapters.
+- Capability-declared OpenAI-compatible adapter with explicit unauthenticated
+  loopback and HTTPS/Bearer cloud constructors, bounded responses, no ambient
+  proxy/redirects, and deterministic offline fixtures.
 - Deterministic empty/`mock_*` offline paths for supported provider capabilities.
 - Explicit separation between parseable JSON mode and provider-enforced JSON Schema output.
 - Ordered provider fallback, RAG prompt helper, vector index, and tool registry.

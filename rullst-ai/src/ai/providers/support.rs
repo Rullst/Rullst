@@ -44,9 +44,17 @@ pub(super) fn embedding_values(
     values
         .iter()
         .map(|value| {
-            value.as_f64().map(|number| number as f32).ok_or_else(|| {
+            let number = value.as_f64().ok_or_else(|| {
                 AiError::ApiError(format!("{provider} returned a non-numeric embedding value"))
-            })
+            })?;
+            let number = number as f32;
+            if number.is_finite() {
+                Ok(number)
+            } else {
+                Err(AiError::ApiError(format!(
+                    "{provider} returned a non-finite embedding value"
+                )))
+            }
         })
         .collect()
 }
@@ -119,6 +127,9 @@ mod tests {
 
         let invalid_json_values = vec![serde_json::json!("not-a-number")];
         assert!(embedding_values(Some(&invalid_json_values), "Provider").is_err());
+
+        let overflowing_json_values = vec![serde_json::json!(1.0e308)];
+        assert!(embedding_values(Some(&overflowing_json_values), "Provider").is_err());
     }
 
     #[test]

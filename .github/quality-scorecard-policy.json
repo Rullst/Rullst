@@ -99,14 +99,14 @@
     },
     {
       "name": "rullst-ai",
-      "api_architecture": 17,
-      "verification": 22,
-      "security_failure_design": 18,
+      "api_architecture": 18,
+      "verification": 23,
+      "security_failure_design": 19,
       "documentation_dx": 14,
-      "operations_release": 13,
+      "operations_release": 14,
       "specialist_gate": "ai-evals",
-      "finding": "Strong guarded/offline/provider capability boundaries; live adaptive evals, durable provider loops and broad external retrievers remain partial.",
-      "evidence": ["rullst-ai/README.md", "rullst-ai/tests", "docs/src/ai-provider-capabilities.md"]
+      "finding": "Strong guarded/offline/provider capability boundaries plus a bounded capability-declared OpenAI-compatible local/cloud adapter; streaming/cancellation, live adaptive evals, durable provider loops and broad external retrievers remain partial.",
+      "evidence": ["rullst-ai/README.md", "rullst-ai/src/ai/providers/openai_compatible.rs", "rullst-ai/tests/openai_compatible_contract.rs", "rullst-ai/tests/versioned_evals.rs", "docs/src/ai-provider-capabilities.md"]
     },
     {
       "name": "rullst-capital",

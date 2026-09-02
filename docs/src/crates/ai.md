@@ -17,9 +17,19 @@ tenant-aware RAG pipeline.
 | Anthropic | yes | yes | no | prompt-constrained | no |
 | DeepSeek | yes | no | no | yes | `deepseek-v4-flash` |
 | Ollama | yes | model-dependent | yes | yes | local API only |
+| OpenAI-compatible local/cloud | yes | declared | declared | declared | declared |
 
 Unsupported capabilities return `AiError::UnsupportedCapability`; the client does not silently
 switch to an unrelated endpoint or represent a fixture as a live-provider result.
+
+`OpenAiCompatibleProvider` covers servers implementing the named OpenAI
+`/chat/completions` and optional `/embeddings` shapes. It defaults to chat-only;
+vision, embeddings, JSON mode, and JSON Schema must be declared for the exact
+endpoint/model pair. `try_local` permits unauthenticated HTTP only on a literal
+loopback IP, `try_local_with_bearer` adds explicit local authentication, and
+`try_cloud` requires HTTPS plus a Bearer credential. All three
+disable redirects and environment proxies and bound response bodies. Different
+protocols use a custom public `AiProvider`, not an arbitrary-HTTP mode.
 
 ## Guarded client
 
@@ -89,7 +99,7 @@ flow and production integration boundary.
 
 The packaged `evals/guardrails-v1.json` corpus freezes deterministic injection,
 jailbreak, and PII regressions. The repository gate validates unique IDs and
-required categories, then runs every case across all five built-in transports in
+required categories, then runs every case across all six built-in transports in
 offline mode. It is deliberately not presented as a safety benchmark:
 adaptive attacks, tool selection, hallucination, and live provider/model
 versions require separate eval suites.
@@ -107,9 +117,12 @@ data minimization remain caller contracts.
 
 ## Offline mode
 
-OpenAI, Gemini, Anthropic, and DeepSeek use deterministic offline mode when their API key is empty
-or begins with `mock_`. Ollama uses an empty or `mock_*` host. Offline branches return before URL
-construction or HTTP dispatch and cover each capability that the provider implements. Unsupported
+OpenAI, Gemini, Anthropic, DeepSeek, and compatible cloud endpoints use
+deterministic offline mode when their API key is empty or begins with `mock_`.
+Ollama uses an empty or `mock_*` host; the compatible adapter also exposes an
+explicit `mock` constructor. Plain `try_local` is deliberately live because no
+credential is its valid loopback configuration. Offline branches return before
+HTTP dispatch and cover each capability the provider declares. Unsupported
 capabilities remain typed errors in offline mode.
 
 `AiClient::auto()` checks `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`,
