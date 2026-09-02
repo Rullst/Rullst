@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788368987445,
+  "lastUpdate": 1788374435531,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -4763,6 +4763,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 510,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fcbc24d48be2f716fb7538d3ae88357f884f7dd5",
+          "message": "test(docs): include hot reload tutorial in doctests",
+          "timestamp": "2026-09-02T15:22:54-03:00",
+          "tree_id": "3084c2e60a059c0b8fa68c342dc6fb7a861c9d80",
+          "url": "https://github.com/Rullst/Rullst/commit/fcbc24d48be2f716fb7538d3ae88357f884f7dd5"
+        },
+        "date": 1788374434787,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 302,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
