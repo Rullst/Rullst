@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788331228463,
+  "lastUpdate": 1788336211445,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -7289,6 +7289,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2094,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "bc9eff484e9c666f4904c2db4c8389ff49464579",
+          "message": "feat(ai): add durable local audit trails",
+          "timestamp": "2026-09-02T04:53:32-03:00",
+          "tree_id": "2c9e5b6cb1602d23acb9906c888df0d81909cbbe",
+          "url": "https://github.com/Rullst/Rullst/commit/bc9eff484e9c666f4904c2db4c8389ff49464579"
+        },
+        "date": 1788336210715,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1007,
+            "range": "± 36",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 791,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1791,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4051,
+            "range": "± 117",
             "unit": "ns/iter"
           }
         ]
