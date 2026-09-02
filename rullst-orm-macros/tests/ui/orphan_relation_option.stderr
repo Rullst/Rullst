@@ -1,0 +1,5 @@
+error: relationship options require exactly one relation declaration
+ --> tests/ui/orphan_relation_option.rs:7:5
+  |
+7 |     #[orm(foreign_key = "account_id")]
+  |     ^

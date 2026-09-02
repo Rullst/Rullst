@@ -1,0 +1,5 @@
+error: table name must contain 1-64 ASCII letters, digits, or underscores and cannot start with a digit
+ --> tests/ui/invalid_table_identifier.rs:4:7
+  |
+4 | #[orm(table = "accounts; DROP TABLE users")]
+  |       ^^^^^

@@ -230,6 +230,24 @@ new_user.save().await?; // Auto-executes parameterized INSERT or UPDATE
 new_user.delete().await?;
 ```
 
+The `Orm` derive grammar is fail-closed. Model and field attributes are parsed
+as structured nested metadata; unknown or duplicate options are compile
+errors. Every SQLx model requires a persisted named `id` field. Explicit
+table/column/relation identifiers use the 1–64 byte portable ASCII identifier
+grammar, and declared hook, scope, policy, relation-model, tenant, soft-delete,
+and embedding references are validated before code generation. A relation
+field accepts exactly one relation declaration; options that do not apply to
+that relation fail compilation. `belongs_to_many` requires `pivot_table` and
+defaults omitted owner/related pivot keys from the two model names.
+
+Only `skip`, `default`, `json`, and `json(nullable)` from SQLx field metadata
+are compatible with generated ORM persistence in v12. `rename`, `try_from`,
+`flatten`, and unknown SQLx options fail compilation instead of letting the
+decoded shape drift from generated SQL. Soft-delete sentinel expressions are
+bounded compile-time SQL fragments, not parameterized runtime values: they are
+capped at 128 bytes and reject statement separators, NUL, and SQL comments,
+while portability and semantic review remain the model author's responsibility.
+
 ### 5.2. Parameterized Queries & Privacy
 * Values accepted by non-raw query APIs use SQLx parameterization. Structural
   identifiers use the bounded ASCII grammar. pgvector helpers bind canonical

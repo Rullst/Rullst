@@ -1,0 +1,5 @@
+error: duplicate `relation` attribute option
+ --> tests/ui/conflicting_relations.rs:7:30
+  |
+7 |     #[orm(has_many = "Post", has_one = "Post")]
+  |                              ^^^^^^^

@@ -22,14 +22,14 @@
     },
     {
       "name": "rullst-orm-macros",
-      "api_architecture": 17,
-      "verification": 23,
-      "security_failure_design": 16,
-      "documentation_dx": 13,
-      "operations_release": 13,
+      "api_architecture": 19,
+      "verification": 25,
+      "security_failure_design": 19,
+      "documentation_dx": 15,
+      "operations_release": 17,
       "specialist_gate": "none",
-      "finding": "Dedicated derive-boundary documentation and parser-driven compile failures cover backend, tenant, encrypted-field and Turso relation misuse; runtime protocol semantics remain evidence owned by rullst-orm.",
-      "evidence": ["rullst-orm-macros/Cargo.toml", "rullst-orm-macros/README.md", "rullst-orm-macros/tests"]
+      "finding": "The fail-closed structured derive parser validates duplicate and unknown options, identifiers, persisted targets and cross-field relation/embedding/soft-delete invariants through 24 exact compile-fail fixtures; broad rullst-orm runtime matrices cross-check generated behavior, while compiler/ecosystem compatibility beyond the tested matrix remains external.",
+      "evidence": ["rullst-orm-macros/Cargo.toml", "rullst-orm-macros/README.md", "rullst-orm-macros/src/parser", "rullst-orm-macros/tests", "rullst-orm/tests/integration_tests.rs", "rullst-orm/tests/tenant_scope_test.rs", "rullst-orm/tests/turso_primary.rs", "docs/src/spec.md"]
     },
     {
       "name": "rullst-orm",

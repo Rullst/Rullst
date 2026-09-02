@@ -1,0 +1,10 @@
+error: embedding_for target `body` must name a persisted field on the model
+ --> tests/ui/missing_embedding_target.rs:4:1
+  |
+4 | / #[orm(table = "articles")]
+5 | | struct Article {
+6 | |     id: i32,
+7 | |     #[orm(embedding_for = "body")]
+8 | |     embedding: Option<Vec<f32>>,
+9 | | }
+  | |_^

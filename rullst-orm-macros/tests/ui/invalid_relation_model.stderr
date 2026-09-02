@@ -1,0 +1,5 @@
+error: relation `has_many` requires one PascalCase Rust model identifier (for example `#[orm(has_many = "User")]`)
+ --> tests/ui/invalid_relation_model.rs:7:11
+  |
+7 |     #[orm(has_many = "Post<Vec>")]
+  |           ^^^^^^^^

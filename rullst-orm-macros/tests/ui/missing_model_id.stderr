@@ -1,0 +1,8 @@
+error: Orm models require a persisted named `id` field
+ --> tests/ui/missing_model_id.rs:4:1
+  |
+4 | / #[orm(table = "accounts")]
+5 | | struct Account {
+6 | |     name: String,
+7 | | }
+  | |_^

@@ -1,0 +1,5 @@
+error: duplicate `table` attribute option
+ --> tests/ui/duplicate_model_option.rs:4:27
+  |
+4 | #[orm(table = "accounts", table_name = "other_accounts")]
+  |                           ^^^^^^^^^^

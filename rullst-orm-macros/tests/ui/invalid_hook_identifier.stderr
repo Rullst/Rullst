@@ -1,0 +1,5 @@
+error: before_save must be a single valid Rust identifier
+ --> tests/ui/invalid_hook_identifier.rs:4:27
+  |
+4 | #[orm(table = "accounts", before_save = "Self::validate")]
+  |                           ^^^^^^^^^^^

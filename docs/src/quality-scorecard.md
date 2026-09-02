@@ -68,31 +68,30 @@ being published as an achieved one.
 | `rullst-ai` | 90 | A | Streaming/cancellation, live adaptive evals, distributed audit delivery, provider loops and external retrievers |
 | `rullst-studio` | 83 | B | Distributed observability and remote inspectors |
 | `rullst-capital` | 82 | B | Gateway parity and live fiscal homologation |
-| `rullst-orm-macros` | 82 | B | Runtime protocol semantics remain evidence owned by `rullst-orm` |
+| `rullst-orm-macros` | 95 | A | Compiler/ecosystem compatibility beyond the tested matrix |
 | `rullst-nexus` | 95 | A | Host identity/domain policy, global/custom-route authorization, immutable audit delivery and production operations |
 | `rullst-macros` | 94 | A | Real browser/network ecosystems and host identity policy remain external |
 | `rullst-iot` | 83 | B | Concrete transport/hardware storage, flashing and bootloader evidence |
-| **Repository (equal-crate aggregate)** | **90** | **A** | **1,432/1,600; exact score remains conditional on the SHA's gates** |
+| **Repository (equal-crate aggregate)** | **90** | **A** | **1,445/1,600; exact score remains conditional on the SHA's gates** |
 
 ## Measured gap to the v12 quality gate
 
 At the audited scores above, Core, ORM, Security, Connect, Auth, Mail,
-Messaging, AI, Nexus, Macros and the umbrella meet A, while IoT meets its approved B
-exception. Four crates remain below their required grade. Their individual
-gaps total **28 audited points**. This is not a count of tasks and
+Messaging, AI, Nexus, both macro crates and the umbrella meet A, while IoT
+meets its approved B exception. Three crates remain below their required grade.
+Their individual gaps total **20 audited points**. This is not a count of tasks and
 cannot be closed by editing the policy: every point requires a commensurate
 change in implementation, verification, security/failure design,
 documentation/DX, or operational evidence.
 
-If the four remaining crates reach exactly 90 while the other current scores
-remain unchanged, the equal-crate aggregate becomes 1,460/1,600, or **91/A**.
+If the three remaining crates reach exactly 90 while the other current scores
+remain unchanged, the equal-crate aggregate becomes 1,465/1,600, or **92/A**.
 
 | Crate | Current | Gap to required grade | Next evidence cluster to audit |
 | :--- | ---: | ---: | :--- |
 | `cargo-rullst` | 85/B | +5 | Broader compile/runtime verification of generated blueprint combinations |
 | `rullst-studio` | 83/B | +7 | Distributed trace ingestion and authenticated remote-inspector boundaries |
 | `rullst-capital` | 82/B | +8 | Shared gateway contracts and fiscal/provider evidence without invented homologation |
-| `rullst-orm-macros` | 82/B | +8 | Complete parser/UI contracts for generated invariants and runtime cross-evidence |
 
 ## Maximum-local v12 campaign
 
@@ -103,8 +102,10 @@ CI and documentation. These targets do **not** alter the scorecard policy and
 must not appear as achieved scores until their evidence is implemented and
 green on the exact commit.
 
-The campaign is scoped to v12 quality and the historically promised `[x]`
-capabilities. It does not pull every open v13 idea into the RC. External
+The campaign is scoped to the 15 non-IoT crates, v12 quality, and the
+historically promised `[x]` capabilities. IoT remains audited at its accepted
+83/B evidence but is outside the remaining ceiling work. The campaign does not
+pull every open v13 idea into the RC. External
 provider acceptance, app-store/device testing, fiscal homologation, independent
 audit and production operation remain external even when a bounded
 implementation earns a high A.
@@ -122,21 +123,21 @@ implementation earns a high A.
 | `cargo-rullst` | 85/B | 95/A | 10 | Complete generated-blueprint/upgrade compile and runtime matrix | Production deployment/account acceptance |
 | `rullst-ai` | 90/A | 95/A | 5 | Cancellation/streaming, distributed authenticated audit delivery and adaptive evaluations | Non-compatible protocols need adapters; model-provider behavior and corpus quality remain external |
 | `rullst-studio` | 83/B | 94/A | 11 | Distributed trace ingestion plus authenticated cache/query inspection boundaries | Production topology and operator authorization |
-| `rullst-iot` | 83/B | 88/B | 5 | Authenticated manifest wire, streaming hash and key-rotation/recovery contracts | Physical hardware, flashing/bootloader, broker/device interoperability and certification |
+| `rullst-iot` | 83/B | 83/B | 0 | Approved B exception retained outside the 15-crate ceiling campaign | Physical hardware, flashing/bootloader, broker/device interoperability and certification |
 | `rullst-capital` | 82/B | 93/A | 11 | Durable idempotency, shared gateway fault contracts and local fiscal audit/recovery | Live gateway acceptance and official fiscal homologation |
-| `rullst-orm-macros` | 82/B | 95/A | 13 | Full parser/UI diagnostic matrix and generated runtime cross-evidence | Compiler/ecosystem compatibility beyond the tested matrix |
+| `rullst-orm-macros` | 95/A | 95/A | 0 | Fail-closed structured parser, 24 exact UI diagnostics and generated runtime cross-evidence complete for this campaign | Compiler/ecosystem compatibility beyond the tested matrix |
 | `rullst-nexus` | 95/A | 95/A | 0 | Trusted-context tenant scope, transaction-coupled audit and bounded admin operation contracts complete for this campaign | Host identity/domain policy, global/custom-route authorization, immutable audit delivery and production operation |
 | `rullst-macros` | 94/A | 94/A | 0 | Bounded grammar/diagnostics, native server route, versioned Wasm transport, CSRF composition and generated-project evidence complete for this campaign | Real compiler/browser/network ecosystem matrix and host identity policy beyond CI |
-| **Repository** | **1,432/1,600 = 89.5 (rounded 90/A)** | **1,514/1,600 = 94.6/A** | **82** | **Every gain still requires reviewed evidence** | **A+ remains outside this local planning ceiling** |
+| **Repository** | **1,445/1,600 = 90.3 (rounded 90/A)** | **1,509/1,600 = 94.3/A** | **64** | **Every gain still requires reviewed evidence** | **A+ remains outside this local planning ceiling** |
 
-On this planning scale, **94.6% of the eventual score total is already
-evidenced and 5.4% remains**. That percentage describes point distance, not
+On this planning scale, **95.8% of the eventual score total is already
+evidenced and 4.2% remains**. That percentage describes point distance, not
 elapsed effort: the remaining points are concentrated in integration,
 durability, failure recovery and generated-project matrices and are therefore
 more expensive than early API/documentation points. `rullst-iot` is the only
-projected local ceiling below A; its approved B exception reflects missing
-physical/device evidence rather than lowering the release gate for other
-crates. This table must be re-audited whenever implementation reveals a
+accepted campaign result below A; its approved B exception reflects missing
+physical/device evidence rather than lowering the release gate for the other
+15 crates. This table must be re-audited whenever implementation reveals a
 stronger or weaker boundary.
 
 The final point allocation may differ from these candidate clusters after code

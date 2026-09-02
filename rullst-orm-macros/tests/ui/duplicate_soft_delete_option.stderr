@@ -1,0 +1,5 @@
+error: duplicate `column` attribute option
+ --> tests/ui/duplicate_soft_delete_option.rs:6:39
+  |
+6 |     soft_delete(field = "deleted_at", column = "removed_at")
+  |                                       ^^^^^^

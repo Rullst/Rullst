@@ -187,6 +187,12 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
             rag_context_fields.push(field_name.clone());
         }
         if let Some(target) = field_attributes.embedding_for.clone() {
+            if embedding_for.is_some() {
+                return Err(syn::Error::new(
+                    field.span(),
+                    "only one persisted field may declare #[orm(embedding_for = \"...\")]",
+                ));
+            }
             embedding_for = Some((field_name.clone(), target));
         }
 
@@ -212,7 +218,17 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         }
 
         if field_attributes.is_relation() {
-            relations.push(field_attributes.into_relation(field_name));
+            let mut relation = field_attributes.into_relation(field_name);
+            if relation.rel_type == "belongs_to_many" {
+                if relation.foreign_key.is_empty() {
+                    relation.foreign_key = format!("{}_id", name.to_string().to_lowercase());
+                }
+                if relation.related_key.is_empty() {
+                    relation.related_key =
+                        format!("{}_id", relation.rel_model.to_ascii_lowercase());
+                }
+            }
+            relations.push(relation);
         } else if field_attributes.is_skipped {
             // Skipped fields are not exposed to the generated SQL or the
             // column enum; record the ident so downstream code (if it ever
@@ -261,6 +277,34 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
                 "tenant_column supports String, i32, f64, or bool so it can be bound without lossy conversion",
             ));
         }
+    }
+
+    if !normal_fields.iter().any(|field| field == "id") {
+        return Err(syn::Error::new_spanned(
+            input,
+            "Orm models require a persisted named `id` field",
+        ));
+    }
+
+    if let Some(config) = model_attributes.soft_delete.as_ref()
+        && !normal_fields.iter().any(|field| field == &config.column)
+    {
+        return Err(syn::Error::new_spanned(
+            input,
+            format!(
+                "soft_delete column `{}` must name a persisted field on the model",
+                config.column
+            ),
+        ));
+    }
+
+    if let Some((_, target)) = embedding_for.as_ref()
+        && !normal_fields.iter().any(|field| field == target)
+    {
+        return Err(syn::Error::new_spanned(
+            input,
+            format!("embedding_for target `{target}` must name a persisted field on the model"),
+        ));
     }
 
     for relation in &relations {

@@ -1,0 +1,5 @@
+error: unsupported ORM model option `mystery`
+ --> tests/ui/unknown_model_option.rs:4:27
+  |
+4 | #[orm(table = "accounts", mystery)]
+  |                           ^^^^^^^

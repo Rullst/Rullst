@@ -1,0 +1,8 @@
+error: soft_delete column `deleted_at` must name a persisted field on the model
+ --> tests/ui/missing_soft_delete_field.rs:4:1
+  |
+4 | / #[orm(table = "accounts", soft_delete(field = "deleted_at"))]
+5 | | struct Account {
+6 | |     id: i32,
+7 | | }
+  | |_^

@@ -1,5 +1,5 @@
 error: ORM backend must be `sqlx` or `turso`
- --> tests/ui/unknown_backend.rs:4:1
+ --> tests/ui/unknown_backend.rs:4:27
   |
 4 | #[orm(table = "accounts", backend = "mongodb")]
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |                           ^^^^^^^^^^^^^^^^^^^

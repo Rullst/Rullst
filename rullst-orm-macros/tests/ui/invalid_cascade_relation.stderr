@@ -1,0 +1,5 @@
+error: cascade_soft_delete is supported only on has_many or has_one relations
+ --> tests/ui/invalid_cascade_relation.rs:8:5
+  |
+8 |     #[orm(belongs_to = "User", foreign_key = "user_id", cascade_soft_delete)]
+  |     ^

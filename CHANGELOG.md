@@ -24,6 +24,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Upgrade and compatibility
 
+- `rullst-orm-macros` now parses model, relation, and SQLx attributes as
+  structured nested metadata and fails closed on unknown, duplicate, orphaned,
+  or conflicting options. Persisted `id`, tenant, soft-delete, and embedding
+  targets are validated before generation; SQL identifiers and Rust callback
+  names are bounded; unsupported SQLx shape mappings are explicit compile
+  errors. Twenty-four compile-fail fixtures plus the `rullst-orm` runtime
+  matrices exercise the derive/runtime boundary.
 - `#[server_function]` now generates a bounded end-to-end transport instead of
   a default-on-error Wasm stub. Concrete async functions return
   `rullst::rpc::RpcResult<T>`; owned Serde arguments and results travel through
@@ -134,11 +141,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   identity/membership, global/custom-route authorization, retention, backup,
   replication and immutable export remain external.
 - Raised the v12 RC quality gate to A (90) for every publishable crate except
-  the approved IoT floor of B (80). After Auth reached its bounded 95/A local
-  ceiling, Messaging reached 96/A and Nexus reached 95/A, the audited plan
-  records five crates below A and a 37-point
-  aggregate gap; policy values may move only with real implementation and
-  evidence, never to make the release table look greener.
+  the approved IoT floor of B (80). Auth, Mail, Messaging, Nexus and both macro
+  crates have reached their bounded local ceilings; the audited plan records
+  three crates below A and a 20-point aggregate gap. Policy values may move
+  only with real implementation and evidence, never to make the release table
+  look greener.
 - Added a `no_std` OTA rollback-counter adapter to `rullst-iot`. The manager can
   load durable state and require an exact, strictly increasing compare-and-set
   before changing local state; public tests cover restart/replay, transient

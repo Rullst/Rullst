@@ -149,7 +149,12 @@ transaction. Turso can additionally be selected explicitly by
 
 ### `rullst-orm-macros`
 
-Default features: none.
+Default features: none. `#[derive(Orm)]` uses a fail-closed structured parser:
+unknown/duplicate options, missing persisted targets, conflicting relations,
+unsafe identifiers, and SQLx mappings that generated persistence cannot honor
+are compile errors. The exact derive grammar and its raw soft-delete-expression
+boundary are defined in the packaged crate README and the
+[SST](spec.md#51-model-definition--crud).
 
 | Feature | Enables |
 | --- | --- |

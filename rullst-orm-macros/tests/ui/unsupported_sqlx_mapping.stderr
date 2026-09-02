@@ -1,0 +1,5 @@
+error: #[sqlx(rename)] is not supported by #[derive(Orm)]; use matching persisted field names and types
+ --> tests/ui/unsupported_sqlx_mapping.rs:7:12
+  |
+7 |     #[sqlx(rename = "display_name")]
+  |            ^^^^^^

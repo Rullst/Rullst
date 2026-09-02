@@ -1,0 +1,5 @@
+error: unsupported ORM field option `mystery`
+ --> tests/ui/unknown_field_option.rs:7:11
+  |
+7 |     #[orm(mystery)]
+  |           ^^^^^^^
