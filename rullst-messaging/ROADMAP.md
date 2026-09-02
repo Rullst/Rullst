@@ -13,7 +13,8 @@
   acknowledgement leases, retry, dead-letter, and explicit purge.
 - [x] Deterministic in-memory implementation with injectable time.
 - [x] Reusable static-dispatch conformance suite and concurrent state tests.
-- [ ] Stable remote wire codec, compatibility fixtures, and migration policy.
+- [x] Canonical bounded v1 envelope wire codec, fixed compatibility fixture,
+  strict unknown-version rejection, and additive-version migration policy.
 - [x] Durable SQLite adapter with serialized write transactions, exact-config
   reopen, cross-instance claim/idempotency tests, restart lease recovery,
   and corrupt-row fail-closed/repair evidence.
@@ -34,8 +35,8 @@ semantics must fail explicitly rather than being silently approximated.
 
 ## Phase 3 — operations and integrations
 
-- [ ] OpenTelemetry propagation with a documented allowlist and secret-safe
-  metadata mapping.
+- [x] W3C `traceparent` and conservative `tracestate` propagation through a
+  documented two-header allowlist; baggage and exporter policy remain host work.
 - [ ] Studio inspection through real broker telemetry and explicit unavailable
   states.
 - [ ] Transactional-outbox relay integration without claiming atomic remote

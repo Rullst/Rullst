@@ -68,7 +68,7 @@ network replication, automatic failover or exactly-once side effects.
 
 ```rust
 use rullst::messaging::{
-    MessageBroker, PublishRequest, StartPosition, SubscriptionRequest,
+    MessageBroker, PublishRequest, StartPosition, SubscriptionRequest, TraceContext,
 };
 
 # async fn example(
@@ -82,6 +82,10 @@ broker
     )?)
     .await?;
 
+let trace = TraceContext::try_with_state(
+    "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+    "vendor=value",
+)?;
 let request = PublishRequest::try_new(
     "invoices",
     "invoice.paid",
@@ -89,7 +93,7 @@ let request = PublishRequest::try_new(
     br#"{"invoice_id":"2026-0042"}"#.to_vec(),
 )?
 .with_content_type("application/json")?
-.with_header("trace-id", "01-example")?;
+.with_trace_context(&trace)?;
 
 let first = broker.publish(request.clone()).await?;
 let replay = broker.publish(request).await?;
@@ -102,6 +106,11 @@ assert!(replay.is_duplicate());
 Idempotency is scoped to the topic. The same topic/key with different content
 returns `MessagingError::IdempotencyConflict`; it never silently overwrites the
 original publication.
+
+Only validated W3C version-00 `traceparent` and a conservative `tracestate`
+subset are copied. `baggage` is deliberately excluded because arbitrary
+application metadata may contain credentials or personal data. Sampling,
+export, retention and tenant-aware correlation remain host responsibilities.
 
 ## 4. Receive, acknowledge, retry, or dead-letter
 
@@ -142,6 +151,29 @@ for delivery in broker.receive(request).await? {
 # Ok(())
 # }
 ```
+
+If an adapter needs a stable broker-neutral representation, encode the received
+envelope explicitly:
+
+```rust
+use rullst::messaging::{BrokerConfig, MessageEnvelope, WireEnvelopeCodec};
+
+# fn frame(
+#     envelope: &MessageEnvelope,
+# ) -> Result<(), rullst::messaging::MessagingError> {
+let config = BrokerConfig::try_new("billing")?;
+let bytes = WireEnvelopeCodec::encode(envelope, &config)?;
+let decoded = WireEnvelopeCodec::decode(&bytes, &config)?;
+assert_eq!(&decoded, envelope);
+# Ok(())
+# }
+```
+
+The v1 frame is canonical, bounded by `BrokerConfig`, namespace-bound and
+rejects unknown versions, truncation, trailing bytes and non-canonical fields.
+It carries an accepted envelope only. It does not retain the caller's publish
+idempotency key, connect to a broker, or map remote ACK/retention semantics, so
+it cannot be presented as a Kafka/NATS/RabbitMQ adapter by itself.
 
 An ACK token is an opaque, single-use capability bound to one group and one
 lease. Once it expires, the message is requeued or dead-lettered at the attempt

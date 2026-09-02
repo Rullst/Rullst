@@ -126,7 +126,6 @@ impl MessageId {
         Self(format!("msg_{}", uuid::Uuid::new_v4().simple()))
     }
 
-    #[cfg(feature = "sqlite")]
     pub(crate) fn from_stored(value: String) -> Result<Self> {
         let valid = value.len() == 36
             && value.starts_with("msg_")

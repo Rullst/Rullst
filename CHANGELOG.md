@@ -67,7 +67,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   SQLite transactions; restart, multi-instance contention, configuration drift
   and corrupt-row repair have executable regressions. It remains at least once,
   stores payloads unencrypted and does not claim Kafka, RabbitMQ, Redis Streams,
-  NATS/JetStream, SQS/SNS, Google Pub/Sub, or Pulsar interoperability.
+  NATS/JetStream, SQS/SNS, Google Pub/Sub, or Pulsar interoperability. A
+  canonical bounded v1 envelope codec now freezes one deterministic byte
+  fixture and rejects unknown/non-canonical/truncated frames; W3C version-00
+  trace context propagates through an explicit `traceparent`/`tracestate`
+  allowlist without baggage. Neither addition is a remote transport or tracing
+  exporter.
 - Hardened the shared mail attachment contract: messages now fail closed above
   32 attachments, 20 MiB per item or 25 MiB aggregate; unsafe basenames,
   ambiguous MIME values, duplicate/unreferenced inline CIDs and inline assets

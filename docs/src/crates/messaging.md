@@ -15,7 +15,9 @@ The crate has an **implemented, bounded broker foundation**:
 - consumer-group fan-out and competing-consumer claims;
 - expiring single-use acknowledgement tokens;
 - bounded retry, dead-letter views, and explicit purge;
-- deterministic time injection and reusable contract tests.
+- deterministic time injection and reusable contract tests;
+- a canonical bounded v1 envelope wire codec with a deterministic byte fixture;
+- allowlisted W3C `traceparent`/`tracestate` propagation without baggage;
 - a feature-gated SQLite adapter that transactionally retains publications,
   subscriptions, claims, ACK/retry/DLQ state and idempotency across restart.
 
@@ -26,6 +28,10 @@ configuration drift and corrupt-row repair are tested. It is a durable local
 adapter, not a remote transport. Kafka, RabbitMQ, Redis Streams,
 NATS/JetStream, SQS/SNS, Google Pub/Sub, and Pulsar adapters remain roadmap
 work.
+
+The wire codec is not a remote adapter: it neither opens broker connections nor
+maps a provider's publish/ACK/retention semantics. Trace sampling, exporting,
+retention and tenant-aware correlation also remain host policy.
 
 ## Security and correctness boundary
 

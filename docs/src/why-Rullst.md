@@ -131,8 +131,11 @@ relational transactions have identical semantics. Read the
 The same boundary discipline now applies to messaging. `rullst-messaging`
 defines one versioned envelope, bounded topic/group metadata, idempotent
 publication, consumer groups, expiring acknowledgement leases, retry and
-dead-letter semantics, with a deterministic concurrent in-memory contract.
-That makes offline tests and future adapter conformance explicit without
+dead-letter semantics, with a deterministic concurrent in-memory contract. A
+canonical bounded v1 envelope codec and allowlisted W3C trace-context boundary
+make byte compatibility and correlation behavior executable. The codec still
+does not open a remote connection or map broker-specific semantics. That makes
+offline tests and future adapter conformance explicit without
 pretending the local broker is Kafka, RabbitMQ, NATS, Redis Streams, or a cloud
 service. Applications still own topic authorization and idempotency of remote
 side effects. See [Bounded Brokered Messaging](tutorials/49-brokered-messaging.md).

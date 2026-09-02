@@ -18,13 +18,23 @@ opt-in durable SQLite adapter. Remote broker interoperability is roadmap work.
 - expiring, single-use acknowledgement leases;
 - bounded retry, automatic/manual dead-lettering, and explicit terminal purge;
 - injectable clock and a reusable static-dispatch contract suite;
-- redacted debug output and low-cardinality tracing.
+- redacted debug output and low-cardinality tracing;
+- a canonical bounded v1 envelope wire codec with a fixed compatibility
+  fixture, strict version rejection, and fail-closed decoding;
+- validated W3C `traceparent` plus a conservative `tracestate` subset, carried
+  only through those two allowlisted headers without arbitrary baggage;
 - opt-in SQLite durability for publications, group cursors, leases, retries,
   dead letters, acknowledgements, idempotency and explicit purge.
 
 The in-memory driver is process-local and not durable. It does not claim
 Kafka, RabbitMQ, Redis Streams, NATS/JetStream, SQS/SNS, Google Pub/Sub, or
 Pulsar protocol compatibility.
+
+`WireEnvelopeCodec` is an envelope interoperability primitive, not a remote
+transport. It does not establish a connection, persist the caller's publish
+idempotency key, map broker-specific acknowledgements, or certify any named
+broker. Applications also own trace sampling, export, retention and
+tenant-aware correlation policy.
 
 ## Durable local profile
 

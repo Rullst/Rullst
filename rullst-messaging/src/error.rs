@@ -50,6 +50,12 @@ pub enum MessagingError {
     /// A namespace was reopened with different operational limits.
     #[error("durable messaging namespace configuration does not match persisted state")]
     ConfigurationConflict,
+    /// A remote frame uses a schema or codec version this release does not implement.
+    #[error("messaging wire version is unsupported")]
+    UnsupportedWireVersion,
+    /// A remote frame is malformed, non-canonical, oversized, or violates envelope bounds.
+    #[error("messaging wire envelope is invalid")]
+    InvalidWireEnvelope,
     /// An internal invariant failed closed instead of losing or acknowledging a message.
     #[error("messaging state invariant failed at {context}")]
     InternalState {

@@ -13,9 +13,11 @@ mod memory;
 mod model;
 #[cfg(feature = "sqlite")]
 mod sqlite;
+mod trace;
 mod traits;
 mod types;
 mod validation;
+mod wire;
 
 pub use admin::{DeadLetter, DeadLetterQuery, PurgeReceipt, PurgeRequest};
 pub use clock::{Clock, SystemClock};
@@ -27,8 +29,10 @@ pub use model::{
 };
 #[cfg(feature = "sqlite")]
 pub use sqlite::SqliteBroker;
+pub use trace::TraceContext;
 pub use traits::{MessageAdmin, MessageBroker};
 pub use types::{
     AckToken, BrokerConfig, ConsumerGroup, ConsumerName, ContentType, EventKind, FailureCode,
     IdempotencyKey, MessageHeaders, MessageId, Namespace, StartPosition, TopicName,
 };
+pub use wire::WireEnvelopeCodec;

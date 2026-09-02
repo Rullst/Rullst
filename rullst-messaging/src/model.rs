@@ -55,6 +55,12 @@ impl PublishRequest {
         Ok(self)
     }
 
+    /// Adds one validated W3C trace context without propagating baggage.
+    pub fn with_trace_context(mut self, context: &crate::TraceContext) -> Result<Self> {
+        context.insert_into(&mut self.headers)?;
+        Ok(self)
+    }
+
     /// Returns the destination topic.
     pub fn topic(&self) -> &TopicName {
         &self.topic
@@ -146,7 +152,6 @@ pub struct MessageEnvelope {
     published_at_ms: i64,
 }
 
-#[cfg(feature = "sqlite")]
 pub(crate) struct StoredEnvelopeParts {
     pub(crate) id: MessageId,
     pub(crate) namespace: Namespace,
@@ -181,7 +186,6 @@ impl MessageEnvelope {
         }
     }
 
-    #[cfg(feature = "sqlite")]
     pub(crate) fn from_stored(parts: StoredEnvelopeParts) -> Self {
         Self {
             schema: Self::SCHEMA,
@@ -229,6 +233,11 @@ impl MessageEnvelope {
     /// Returns the bounded metadata.
     pub fn headers(&self) -> &MessageHeaders {
         &self.headers
+    }
+
+    /// Returns the validated W3C trace context carried by allowlisted headers.
+    pub fn trace_context(&self) -> Result<Option<crate::TraceContext>> {
+        crate::TraceContext::from_headers(&self.headers)
     }
 
     /// Returns the opaque payload.
