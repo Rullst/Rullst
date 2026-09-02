@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788340479575,
+  "lastUpdate": 1788342762986,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -5417,6 +5417,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 742,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "7263d971fa7c85b16df175bffe10549823d5aded",
+          "message": "feat(mail): add durable suppression and inspection",
+          "timestamp": "2026-09-02T06:40:18-03:00",
+          "tree_id": "f3aa916c999f3c70e14d89721718f968b69cf073",
+          "url": "https://github.com/Rullst/Rullst/commit/7263d971fa7c85b16df175bffe10549823d5aded"
+        },
+        "date": 1788342762538,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1858,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 341,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 699,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
