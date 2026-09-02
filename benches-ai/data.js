@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788331370838,
+  "lastUpdate": 1788336356721,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -5321,6 +5321,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 572,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "bc9eff484e9c666f4904c2db4c8389ff49464579",
+          "message": "feat(ai): add durable local audit trails",
+          "timestamp": "2026-09-02T04:53:32-03:00",
+          "tree_id": "2c9e5b6cb1602d23acb9906c888df0d81909cbbe",
+          "url": "https://github.com/Rullst/Rullst/commit/bc9eff484e9c666f4904c2db4c8389ff49464579"
+        },
+        "date": 1788336355924,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1673,
+            "range": "± 49",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 359,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 802,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
