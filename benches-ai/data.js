@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788369223874,
+  "lastUpdate": 1788374617085,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -5657,6 +5657,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 705,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fcbc24d48be2f716fb7538d3ae88357f884f7dd5",
+          "message": "test(docs): include hot reload tutorial in doctests",
+          "timestamp": "2026-09-02T15:22:54-03:00",
+          "tree_id": "3084c2e60a059c0b8fa68c342dc6fb7a861c9d80",
+          "url": "https://github.com/Rullst/Rullst/commit/fcbc24d48be2f716fb7538d3ae88357f884f7dd5"
+        },
+        "date": 1788374616324,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1019,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 175,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 0,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 430,
+            "range": "± 9",
             "unit": "ns/iter"
           }
         ]
