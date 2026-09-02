@@ -61,12 +61,18 @@ fn configuration_selects_real_or_offline_delivery_and_rejects_unsafe_values() {
 
 #[tokio::test]
 async fn offline_send_records_sanitized_delivery_and_real_transport_fails_typed() {
-    OfflineMailMock::clear().unwrap();
     let offline = SmtpDriver::try_new("mock_smtp", 25, None, None).unwrap();
-    offline.send(&base_message().text("body")).await.unwrap();
+    let offline_message = base_message()
+        .to("smtp-contract@example.com")
+        .subject("SMTP offline contract")
+        .text("body");
+    offline.send(&offline_message).await.unwrap();
     let deliveries = OfflineMailMock::deliveries().unwrap();
-    assert_eq!(deliveries.len(), 1);
-    assert_eq!(deliveries[0].provider, "smtp");
+    assert!(deliveries.iter().any(|delivery| {
+        delivery.provider == "smtp"
+            && delivery.message.to == "smtp-contract@example.com"
+            && delivery.message.subject == "SMTP offline contract"
+    }));
 
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
