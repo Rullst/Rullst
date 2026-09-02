@@ -208,6 +208,10 @@ tutorial!(
     "../../docs/src/tutorials/50-auditable-revisions.md"
 );
 tutorial!(
+    tutorial_51_authenticated_hot_reload,
+    "../../docs/src/tutorials/51-authenticated-hot-reload.md"
+);
+tutorial!(
     rest_api_quickstart,
     "../../docs/src/tutorials/rest-api-quickstart.md"
 );
