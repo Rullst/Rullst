@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788374378385,
+  "lastUpdate": 1788380857636,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -7769,6 +7769,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2960,
             "range": "± 227",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": false,
+          "id": "cf58a64140abf47b1bd13cdfb089626da0683c99",
+          "message": "feat(orm): complete bounded native enum mapping",
+          "timestamp": "2026-09-02T16:47:47-03:00",
+          "tree_id": "20f41c4bfd9d822da593200a45b8fd629d580834",
+          "url": "https://github.com/Rullst/Rullst/commit/cf58a64140abf47b1bd13cdfb089626da0683c99"
+        },
+        "date": 1788380857060,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 845,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 686,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1559,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2088,
+            "range": "± 25",
             "unit": "ns/iter"
           }
         ]
