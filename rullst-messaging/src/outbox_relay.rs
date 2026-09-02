@@ -141,7 +141,7 @@ impl<B: MessageBroker> OrmOutboxRelay<B> {
         &self,
         claim: &ClaimedOutboxEvent,
     ) -> std::result::Result<PublishRequest, OrmOutboxRelayError> {
-        let canonical_json = if claim.payload_json.len() <= MAX_OUTBOX_PAYLOAD_BYTES {
+        let normalized_json = if claim.payload_json.len() <= MAX_OUTBOX_PAYLOAD_BYTES {
             serde_json::from_str::<serde_json::Value>(&claim.payload_json)
                 .and_then(|value| serde_json::to_string(&value))
                 .ok()
@@ -153,14 +153,14 @@ impl<B: MessageBroker> OrmOutboxRelay<B> {
             || !(1..=MAX_CLAIM_ATTEMPTS).contains(&claim.attempts)
             || claim.claim_expires_at_epoch <= 0
             || !valid_claim_key(&claim.claim_key)
-            || canonical_json.is_none()
+            || normalized_json.is_none()
         {
             return Err(invalid_claim(MessagingError::Invalid {
                 field: "ORM outbox claim",
                 reason: "claim metadata or JSON payload is invalid",
             }));
         }
-        let canonical_json = canonical_json.ok_or_else(|| {
+        let normalized_json = normalized_json.ok_or_else(|| {
             invalid_claim(MessagingError::Invalid {
                 field: "ORM outbox claim",
                 reason: "claim JSON payload is invalid",
@@ -170,7 +170,7 @@ impl<B: MessageBroker> OrmOutboxRelay<B> {
             self.topic.as_str(),
             &claim.event_kind,
             &claim.event_key,
-            canonical_json.into_bytes(),
+            normalized_json.into_bytes(),
         )
         .and_then(|request| request.with_content_type("application/json"))
         .map_err(invalid_claim)
