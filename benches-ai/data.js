@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788392697699,
+  "lastUpdate": 1788393526780,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -5849,6 +5849,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 730,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "50796c962356ebbfbc1fc37b1a5bbd936c774981",
+          "message": "feat(orm-macros): enforce fail-closed derive parsing",
+          "timestamp": "2026-09-02T20:46:06-03:00",
+          "tree_id": "7302a5e87eb52270bf04eb80370183227d6567ed",
+          "url": "https://github.com/Rullst/Rullst/commit/50796c962356ebbfbc1fc37b1a5bbd936c774981"
+        },
+        "date": 1788393526038,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1719,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 363,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 726,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
