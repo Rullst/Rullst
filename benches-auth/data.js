@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788342611962,
+  "lastUpdate": 1788343509618,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -7433,6 +7433,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4559,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "61f1326a518ea52368010a208933997d77d2d8c2",
+          "message": "feat(messaging): add wire and trace contracts",
+          "timestamp": "2026-09-02T06:55:34-03:00",
+          "tree_id": "cf0ce63bbffd8cbe4edd397da2c2c728cd67aaf4",
+          "url": "https://github.com/Rullst/Rullst/commit/61f1326a518ea52368010a208933997d77d2d8c2"
+        },
+        "date": 1788343508845,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1006,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 794,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1806,
+            "range": "± 36",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4088,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
