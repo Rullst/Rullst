@@ -124,6 +124,7 @@ jobs:
     timeout-minutes: 90
     env:
       TESTCONTAINERS_RYUK_DISABLED: "true"
+      RULLST_REQUIRE_TESTCONTAINERS: "true"
     strategy:
       fail-fast: false
       matrix:

@@ -1,0 +1,6 @@
+error: database enum labels must be 1-63 ASCII letters, digits, spaces, underscores or hyphens
+ --> tests/ui/enum_unsafe_label.rs:5:5
+  |
+5 | /     #[rullst_enum(rename = "owner's")]
+6 | |     Active,
+  | |__________^

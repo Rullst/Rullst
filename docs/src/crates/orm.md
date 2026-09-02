@@ -77,6 +77,10 @@ generated API.
 - **Field privacy:** `#[orm(encrypted)]` transparently encrypts supported
   `String` fields with a versioned AES-256-GCM envelope. Randomized ciphertext
   cannot be filtered or sorted; use a separate keyed blind index where needed.
+- **Native relational enums:** `#[derive(Enum)]` owns one closed label mapping
+  for SQLx, Serde and ORM values. `Blueprint::native_enum` emits a named,
+  drift-checked PostgreSQL type with `strict-postgres`, inline MySQL/MariaDB
+  `ENUM`, or a SQLite `TEXT CHECK` constraint.
 - **Scout hooks and providers:** `#[orm(searchable)]` calls a configured
   `SearchEngine` after generated writes/deletes. `scout-http` supplies bounded
   Meilisearch, Elasticsearch and Algolia adapters; the generated effect is
@@ -183,6 +187,47 @@ async fn main() -> Result<(), rullst_orm::Error> {
     Ok(())
 }
 ```
+
+### Native database enums
+
+Generated applications should select a strict primary feature. PostgreSQL
+native enums specifically require `strict-postgres`, because SQLx's dynamic
+`Any` driver cannot decode custom PostgreSQL types:
+
+```toml
+rullst-orm = { version = "12.0.0-rc.1", features = ["strict-postgres"] }
+```
+
+Derive one label contract and use it in schema code:
+
+```rust
+use rullst_orm::schema::{Blueprint, Schema};
+use rullst_orm::{Enum, Orm};
+
+#[derive(Enum, Debug, Clone, Copy, PartialEq, Eq)]
+#[rullst_enum(type_name = "account_status", rename_all = "snake_case")]
+enum AccountStatus {
+    AwaitingReview,
+    Active,
+}
+
+# async fn create_schema() -> Result<(), rullst_orm::Error> {
+Orm::init("postgres://user:password@localhost/application").await?;
+Schema::create("accounts", |table: &mut Blueprint| {
+    table.id();
+    table.native_enum::<AccountStatus>("status").not_null();
+}).await?;
+# Ok(())
+# }
+```
+
+The derive accepts 1–64 unique labels of at most 63 bytes using ASCII letters,
+digits, spaces, underscores or hyphens. An existing PostgreSQL type must have
+the exact same ordered labels or schema creation fails. MySQL/MariaDB store the
+labels in the table's inline `ENUM`; SQLite enforces them through `TEXT CHECK`.
+Adding, removing or reordering labels is an explicit reviewed migration. Drop
+every dependent table before calling `Schema::drop_native_enum::<T>()` on
+PostgreSQL; the method is a validated no-op on the other backends.
 
 ---
 

@@ -126,6 +126,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   while explicit or task-scoped transactions are reused without nesting.
 - **Typed Partial Updates**: `.update_partial()` changes only explicitly
   selected columns and preserves model policy/tenant checks.
+- **Native Relational Enums**: `#[derive(Enum)]` owns one closed label mapping
+  for SQLx, Serde and ORM values. `Blueprint::native_enum` emits a named,
+  drift-checked PostgreSQL type with `strict-postgres`, inline MySQL/MariaDB
+  `ENUM`, or a SQLite `TEXT CHECK` constraint.
 - **Stable Keyset Chunking**: `.chunk_by_id()` traverses ascending generated
   `i32` IDs without offset drift when already processed rows are deleted, and
   propagates callback errors. `.chunk()` remains available for offset-based
@@ -210,6 +214,47 @@ async fn main() -> Result<(), rullst_orm::Error> {
     Ok(())
 }
 ```
+
+### Native database enums
+
+Select a strict primary feature in generated applications. PostgreSQL native
+enums specifically require `strict-postgres`, because SQLx's dynamic `Any`
+driver cannot decode custom PostgreSQL types:
+
+```toml
+rullst-orm = { version = "12.0.0-rc.1", features = ["strict-postgres"] }
+```
+
+Then derive one label contract and use it in schema code:
+
+```rust
+use rullst_orm::schema::{Blueprint, Schema};
+use rullst_orm::{Enum, Orm};
+
+#[derive(Enum, Debug, Clone, Copy, PartialEq, Eq)]
+#[rullst_enum(type_name = "account_status", rename_all = "snake_case")]
+enum AccountStatus {
+    AwaitingReview,
+    Active,
+}
+
+# async fn create_schema() -> Result<(), rullst_orm::Error> {
+Orm::init("postgres://user:password@localhost/application").await?;
+Schema::create("accounts", |table: &mut Blueprint| {
+    table.id();
+    table.native_enum::<AccountStatus>("status").not_null();
+}).await?;
+# Ok(())
+# }
+```
+
+The derive accepts 1–64 unique labels of at most 63 bytes using ASCII letters,
+digits, spaces, underscores or hyphens. An existing PostgreSQL type must have
+the exact same ordered labels or schema creation fails. MySQL/MariaDB store the
+labels in the table's inline `ENUM`; SQLite enforces them through `TEXT CHECK`.
+Adding, removing or reordering labels is an explicit reviewed migration. Drop
+every dependent table before calling `Schema::drop_native_enum::<T>()` on
+PostgreSQL; the method is a validated no-op on the other backends.
 
 ### Optional Redis query cache
 

@@ -1,0 +1,5 @@
+error: Enum macro supports only unit variants
+ --> tests/ui/enum_data_variant.rs:5:5
+  |
+5 |     Active(String),
+  |     ^^^^^^^^^^^^^^

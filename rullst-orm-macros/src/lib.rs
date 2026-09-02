@@ -68,6 +68,11 @@ pub fn derive_personal_data(input: TokenStream) -> TokenStream {
 }
 
 #[cfg_attr(test, mutants::skip)]
+/// Derives the bounded relational-enum label and codec contract.
+///
+/// Container attributes accept `type_name` and `rename_all = "lowercase"` or
+/// `"snake_case"`; unit variants accept `rename`. Runtime DDL is emitted only
+/// when the enum is passed to `rullst_orm::schema::Blueprint::native_enum`.
 #[proc_macro_derive(Enum, attributes(rullst_enum))]
 pub fn derive_enum(input: TokenStream) -> TokenStream {
     enums::derive_enum_impl(input.into()).into()

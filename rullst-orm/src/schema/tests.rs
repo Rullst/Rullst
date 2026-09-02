@@ -267,7 +267,7 @@ struct AccountStatus;
 
 impl DatabaseEnum for AccountStatus {
     const TYPE_NAME: &'static str = "account_status";
-    const VARIANTS: &'static [&'static str] = &["Awaiting Review", "Owner's Active"];
+    const VARIANTS: &'static [&'static str] = &["awaiting_review", "owners_active"];
 }
 
 #[test]
@@ -285,15 +285,13 @@ fn native_enum_ddl_is_driver_specific_and_escaped() {
         blueprint
             .build_for_driver("mysql")
             .expect("MySQL enum DDL")
-            .contains("status ENUM('Awaiting Review', 'Owner''s Active') NOT NULL")
+            .contains("status ENUM('awaiting_review', 'owners_active') NOT NULL")
     );
     assert!(
         blueprint
             .build_for_driver("sqlite")
             .expect("SQLite enum DDL")
-            .contains(
-                "status TEXT CHECK(status IN ('Awaiting Review', 'Owner''s Active')) NOT NULL"
-            )
+            .contains("status TEXT CHECK(status IN ('awaiting_review', 'owners_active')) NOT NULL")
     );
 }
 

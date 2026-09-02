@@ -16,6 +16,13 @@ struct User {
     pub email: String,
 }
 
+#[derive(rullst_orm::Enum, Debug, Clone, Copy, PartialEq, Eq)]
+#[rullst_enum(type_name = "mysql_account_status", rename_all = "snake_case")]
+enum AccountStatus {
+    AwaitingReview,
+    Active,
+}
+
 #[tokio::test]
 async fn test_matrix_mysql_crud() {
     // 1. Inicia o container do MySQL
@@ -117,4 +124,44 @@ async fn test_matrix_mysql_crud() {
     assert!(not_found.is_none());
 
     support::exercise_outbox().await;
+    exercise_native_enum().await;
+}
+
+async fn exercise_native_enum() {
+    Schema::create("mysql_enum_accounts", |table: &mut Blueprint| {
+        table.id();
+        table.native_enum::<AccountStatus>("status").not_null();
+    })
+    .await
+    .expect("MySQL inline enum schema should be created");
+
+    let pool = Orm::pool().expect("MySQL pool");
+    let mut connection = pool.acquire().await.expect("MySQL connection");
+    sqlx::query("SET SESSION sql_mode = 'STRICT_ALL_TABLES'")
+        .execute(&mut *connection)
+        .await
+        .expect("strict MySQL enum validation should be enabled");
+    sqlx::query("INSERT INTO mysql_enum_accounts (status) VALUES (?)")
+        .bind(AccountStatus::AwaitingReview)
+        .execute(&mut *connection)
+        .await
+        .expect("MySQL enum should encode");
+    let stored = sqlx::query_scalar::<_, AccountStatus>(
+        "SELECT status FROM mysql_enum_accounts WHERE id = 1",
+    )
+    .fetch_one(&mut *connection)
+    .await
+    .expect("MySQL enum should decode");
+    assert_eq!(stored, AccountStatus::AwaitingReview);
+
+    let invalid = sqlx::query("INSERT INTO mysql_enum_accounts (status) VALUES (?)")
+        .bind("retired")
+        .execute(&mut *connection)
+        .await;
+    assert!(invalid.is_err(), "MySQL ENUM must reject unknown labels");
+    drop(connection);
+
+    Schema::drop_if_exists("mysql_enum_accounts")
+        .await
+        .expect("MySQL enum table should be dropped");
 }

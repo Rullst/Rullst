@@ -114,7 +114,12 @@ compile-time schema verified.
   implicit deletes now create an atomic transaction when necessary and reuse
   explicit/task-scoped transactions. Recursive descendant traversal and cycle
   handling remain outside the bounded contract.
-- [~] **Native Enum Mapping**: Rust enums map to validated strings and schema helpers emit portable `CHECK`; native PostgreSQL/MySQL enum DDL is not generated.
+- [x] **Native Enum Mapping (bounded)**: `#[derive(Enum)]` supplies one
+  validated label contract and SQLx codecs. `Blueprint::native_enum` uses a
+  named, drift-checked type with `strict-postgres`, inline `ENUM` on
+  MySQL/MariaDB, and `TEXT CHECK` on SQLite. Variant evolution and PostgreSQL
+  dependent-type removal remain explicit migration work; SQLx Any PostgreSQL
+  fails closed because it cannot decode custom types.
 
 ## Phase 7: future and infrastructure
 

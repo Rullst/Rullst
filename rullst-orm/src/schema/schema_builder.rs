@@ -1,6 +1,10 @@
 use super::blueprint::Blueprint;
-use super::enums::{DatabaseEnum, NativeEnumDefinition, quoted_label, validated_definition};
-use super::validation::{validate_identifier, validate_table_name};
+use super::enums::{DatabaseEnum, validated_definition};
+#[cfg(feature = "strict-postgres")]
+use super::enums::{NativeEnumDefinition, quoted_label};
+#[cfg(feature = "strict-postgres")]
+use super::validation::validate_identifier;
+use super::validation::validate_table_name;
 use crate::Error;
 
 pub struct Schema;
@@ -21,7 +25,16 @@ impl Schema {
 
         let driver = crate::Orm::driver()?;
         if driver == "postgres" {
-            for definition in blueprint.postgres_enum_definitions()? {
+            let definitions = blueprint.postgres_enum_definitions()?;
+            #[cfg(not(feature = "strict-postgres"))]
+            if !definitions.is_empty() {
+                return Err(Error::Validation(
+                    "PostgreSQL native enums require the `strict-postgres` feature because SQLx Any cannot decode custom PostgreSQL types"
+                        .to_string(),
+                ));
+            }
+            #[cfg(feature = "strict-postgres")]
+            for definition in definitions {
                 ensure_postgres_enum(&definition).await?;
             }
         }
@@ -76,6 +89,7 @@ impl Schema {
     }
 }
 
+#[cfg(feature = "strict-postgres")]
 async fn ensure_postgres_enum(definition: &NativeEnumDefinition) -> Result<(), Error> {
     validate_identifier(definition.type_name)?;
     let labels = definition

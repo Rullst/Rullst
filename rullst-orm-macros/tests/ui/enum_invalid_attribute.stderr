@@ -1,0 +1,5 @@
+error: rename_all must be `lowercase` or `snake_case`
+ --> tests/ui/enum_invalid_attribute.rs:4:15
+  |
+4 | #[rullst_enum(rename_all = "SCREAMING_SNAKE_CASE")]
+  |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

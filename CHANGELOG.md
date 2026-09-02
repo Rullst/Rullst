@@ -349,6 +349,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   offline modes; SurrealDB uses its public HTTP protocol rather than adding the
   BSL-licensed SDK. Umbrella `orm-mongodb`, `orm-duckdb`, `orm-turso`,
   `orm-surrealdb`, and `orm-polyglot` features mirror the lower-level flags.
+- Added bounded native relational enum mapping to `rullst-orm`.
+  `#[derive(Enum)]` now generates one validated label contract shared by
+  string/Serde/`RullstValue` conversion and SQLx codecs;
+  `Blueprint::native_enum` creates and exact-drift-checks named PostgreSQL
+  types under `strict-postgres`, emits inline MySQL/MariaDB `ENUM`, and emits a
+  SQLite `TEXT CHECK`. PostgreSQL through SQLx Any fails before DDL because it
+  cannot decode custom types. Variant evolution and dependent-type cleanup
+  remain explicit migration operations.
 - Added bounded specialized datastore contracts to `rullst-orm`. `qdrant`
   provides validated dense-cosine collection/upsert/delete/query operations,
   deterministic fallback, authenticated protocol fixtures and a digest-pinned

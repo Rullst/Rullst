@@ -15,6 +15,13 @@ struct User {
     pub email: String,
 }
 
+#[derive(rullst_orm::Enum, Debug, Clone, Copy, PartialEq, Eq)]
+#[rullst_enum(type_name = "mariadb_account_status", rename_all = "snake_case")]
+enum AccountStatus {
+    AwaitingReview,
+    Active,
+}
+
 #[tokio::test]
 async fn test_matrix_mariadb_crud() {
     let container = match Mariadb::default().start().await {
@@ -79,4 +86,44 @@ async fn test_matrix_mariadb_crud() {
     );
 
     support::exercise_outbox().await;
+    exercise_native_enum().await;
+}
+
+async fn exercise_native_enum() {
+    Schema::create("mariadb_enum_accounts", |table: &mut Blueprint| {
+        table.id();
+        table.native_enum::<AccountStatus>("status").not_null();
+    })
+    .await
+    .expect("MariaDB inline enum schema should be created");
+
+    let pool = Orm::pool().expect("MariaDB pool");
+    let mut connection = pool.acquire().await.expect("MariaDB connection");
+    sqlx::query("SET SESSION sql_mode = 'STRICT_ALL_TABLES'")
+        .execute(&mut *connection)
+        .await
+        .expect("strict MariaDB enum validation should be enabled");
+    sqlx::query("INSERT INTO mariadb_enum_accounts (status) VALUES (?)")
+        .bind(AccountStatus::Active)
+        .execute(&mut *connection)
+        .await
+        .expect("MariaDB enum should encode");
+    let stored = sqlx::query_scalar::<_, AccountStatus>(
+        "SELECT status FROM mariadb_enum_accounts WHERE id = 1",
+    )
+    .fetch_one(&mut *connection)
+    .await
+    .expect("MariaDB enum should decode");
+    assert_eq!(stored, AccountStatus::Active);
+
+    let invalid = sqlx::query("INSERT INTO mariadb_enum_accounts (status) VALUES (?)")
+        .bind("retired")
+        .execute(&mut *connection)
+        .await;
+    assert!(invalid.is_err(), "MariaDB ENUM must reject unknown labels");
+    drop(connection);
+
+    Schema::drop_if_exists("mariadb_enum_accounts")
+        .await
+        .expect("MariaDB enum table should be dropped");
 }

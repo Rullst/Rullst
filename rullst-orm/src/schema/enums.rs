@@ -1,4 +1,3 @@
-use super::validation::validate_identifier;
 use crate::Error;
 
 /// Maximum number of labels accepted by the native-enum schema contract.
@@ -34,11 +33,17 @@ pub(super) fn validated_definition<E: DatabaseEnum>() -> Result<NativeEnumDefini
 }
 
 pub(super) fn validate_native_enum(type_name: &str, variants: &[&str]) -> Result<(), Error> {
-    validate_identifier(type_name)?;
-    if type_name.contains('.') {
-        return Err(Error::Validation(
-            "database enum type names must be unqualified identifiers".to_string(),
-        ));
+    let type_name_bytes = type_name.as_bytes();
+    if type_name_bytes.is_empty()
+        || type_name_bytes.len() > MAX_DATABASE_ENUM_LABEL_BYTES
+        || !(type_name_bytes[0].is_ascii_alphabetic() || type_name_bytes[0] == b'_')
+        || !type_name_bytes
+            .iter()
+            .all(|byte| byte.is_ascii_alphanumeric() || *byte == b'_')
+    {
+        return Err(Error::Validation(format!(
+            "database enum type names must be 1-{MAX_DATABASE_ENUM_LABEL_BYTES} byte unqualified ASCII identifiers"
+        )));
     }
     if variants.is_empty() || variants.len() > MAX_DATABASE_ENUM_VARIANTS {
         return Err(Error::Validation(format!(
@@ -52,10 +57,10 @@ pub(super) fn validate_native_enum(type_name: &str, variants: &[&str]) -> Result
             || variant.len() > MAX_DATABASE_ENUM_LABEL_BYTES
             || !variant
                 .bytes()
-                .all(|byte| byte.is_ascii_graphic() || byte == b' ')
+                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b' '))
         {
             return Err(Error::Validation(format!(
-                "database enum labels must be 1-{MAX_DATABASE_ENUM_LABEL_BYTES} printable ASCII bytes"
+                "database enum labels must be 1-{MAX_DATABASE_ENUM_LABEL_BYTES} ASCII letters, digits, spaces, underscores or hyphens"
             )));
         }
         if !seen.insert(*variant) {
@@ -79,10 +84,17 @@ mod tests {
     fn enum_metadata_rejects_unsafe_or_ambiguous_shapes() {
         assert!(validate_native_enum("account_status", &["Active", "Paused"]).is_ok());
         assert!(validate_native_enum("public.account_status", &["Active"]).is_err());
+        assert!(validate_native_enum("1account_status", &["Active"]).is_err());
         assert!(validate_native_enum("status;drop", &["Active"]).is_err());
+        assert!(
+            validate_native_enum(&"x".repeat(MAX_DATABASE_ENUM_LABEL_BYTES + 1), &["Active"])
+                .is_err()
+        );
         assert!(validate_native_enum("status", &[]).is_err());
         assert!(validate_native_enum("status", &["Active", "Active"]).is_err());
         assert!(validate_native_enum("status", &["line\nfeed"]).is_err());
+        assert!(validate_native_enum("status", &["owner's"]).is_err());
+        assert!(validate_native_enum("status", &["back\\slash"]).is_err());
         assert!(
             validate_native_enum("status", &[&"x".repeat(MAX_DATABASE_ENUM_LABEL_BYTES + 1)])
                 .is_err()
@@ -90,7 +102,8 @@ mod tests {
     }
 
     #[test]
-    fn enum_labels_are_sql_quoted_without_interpolation_escape() {
+    fn enum_labels_are_sql_quoted_defensively() {
+        assert_eq!(quoted_label("awaiting_review"), "'awaiting_review'");
         assert_eq!(quoted_label("owner's"), "'owner''s'");
     }
 }

@@ -1,0 +1,6 @@
+error: duplicate database enum label `same`
+ --> tests/ui/enum_duplicate_label.rs:7:5
+  |
+7 | /     #[rullst_enum(rename = "same")]
+8 | |     Paused,
+  | |__________^

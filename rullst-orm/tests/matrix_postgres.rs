@@ -15,6 +15,22 @@ struct User {
     pub email: String,
 }
 
+#[derive(rullst_orm::Enum, Debug, Clone, Copy, PartialEq, Eq)]
+#[rullst_enum(type_name = "pg_account_status", rename_all = "snake_case")]
+enum AccountStatus {
+    AwaitingReview,
+    Active,
+}
+
+#[cfg(feature = "strict-postgres")]
+struct ConflictingAccountStatus;
+
+#[cfg(feature = "strict-postgres")]
+impl rullst_orm::DatabaseEnum for ConflictingAccountStatus {
+    const TYPE_NAME: &'static str = "pg_account_status";
+    const VARIANTS: &'static [&'static str] = &["retired"];
+}
+
 #[tokio::test]
 async fn test_matrix_postgres_crud() {
     // 1. Inicia o container do PostgreSQL
@@ -109,4 +125,68 @@ async fn test_matrix_postgres_crud() {
     assert!(not_found.is_none());
 
     support::exercise_outbox().await;
+
+    #[cfg(feature = "strict-postgres")]
+    exercise_native_enum().await;
+    #[cfg(not(feature = "strict-postgres"))]
+    exercise_dynamic_pool_enum_refusal().await;
+}
+
+#[cfg(feature = "strict-postgres")]
+async fn exercise_native_enum() {
+    Schema::create("pg_native_enum_accounts", |table: &mut Blueprint| {
+        table.id();
+        table.native_enum::<AccountStatus>("status").not_null();
+    })
+    .await
+    .expect("PostgreSQL named enum schema should be created");
+
+    sqlx::query("INSERT INTO pg_native_enum_accounts (status) VALUES ($1)")
+        .bind(AccountStatus::AwaitingReview)
+        .execute(Orm::pool().expect("PostgreSQL pool"))
+        .await
+        .expect("PostgreSQL enum should encode");
+    let stored = sqlx::query_scalar::<_, AccountStatus>(
+        "SELECT status FROM pg_native_enum_accounts WHERE id = 1",
+    )
+    .fetch_one(Orm::pool().expect("PostgreSQL pool"))
+    .await
+    .expect("PostgreSQL enum should decode");
+    assert_eq!(stored, AccountStatus::AwaitingReview);
+
+    let drift = Schema::create("pg_native_enum_conflict", |table: &mut Blueprint| {
+        table.id();
+        table
+            .native_enum::<ConflictingAccountStatus>("status")
+            .not_null();
+    })
+    .await;
+    assert!(
+        matches!(drift, Err(rullst_orm::Error::Validation(_))),
+        "an existing PostgreSQL enum with different labels must fail closed"
+    );
+
+    Schema::drop_if_exists("pg_native_enum_accounts")
+        .await
+        .expect("PostgreSQL enum table should be dropped");
+    Schema::drop_native_enum::<AccountStatus>()
+        .await
+        .expect("unused PostgreSQL enum type should be dropped");
+}
+
+#[cfg(not(feature = "strict-postgres"))]
+async fn exercise_dynamic_pool_enum_refusal() {
+    let unsupported = Schema::create("pg_any_native_enum", |table: &mut Blueprint| {
+        table.id();
+        table.native_enum::<AccountStatus>("status").not_null();
+    })
+    .await;
+    assert!(
+        matches!(
+            unsupported,
+            Err(rullst_orm::Error::Validation(message))
+                if message.contains("strict-postgres")
+        ),
+        "SQLx Any must fail before creating an unreadable PostgreSQL custom type"
+    );
 }

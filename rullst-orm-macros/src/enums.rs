@@ -87,15 +87,18 @@ fn expand_enum(input: TokenStream) -> syn::Result<TokenStream> {
     let display_arms = variant_idents
         .iter()
         .zip(labels.iter())
-        .map(|(variant, label)| quote! { #name::#variant => #label });
+        .map(|(variant, label)| quote! { #name::#variant => #label })
+        .collect::<Vec<_>>();
     let parse_arms = variant_idents
         .iter()
         .zip(labels.iter())
-        .map(|(variant, label)| quote! { #label => Ok(#name::#variant) });
+        .map(|(variant, label)| quote! { #label => Ok(#name::#variant) })
+        .collect::<Vec<_>>();
     let decode_arms = variant_idents
         .iter()
         .zip(labels.iter())
-        .map(|(variant, label)| quote! { #label => Ok(#name::#variant) });
+        .map(|(variant, label)| quote! { #label => Ok(#name::#variant) })
+        .collect::<Vec<_>>();
 
     Ok(quote! {
         impl rullst_orm::DatabaseEnum for #name {
@@ -222,6 +225,10 @@ fn expand_enum(input: TokenStream) -> syn::Result<TokenStream> {
             fn type_info() -> rullst_orm::_sqlx::mysql::MySqlTypeInfo {
                 rullst_orm::_sqlx::mysql::MySqlTypeInfo::__enum()
             }
+
+            fn compatible(type_info: &rullst_orm::_sqlx::mysql::MySqlTypeInfo) -> bool {
+                <str as rullst_orm::_sqlx::Type<rullst_orm::_sqlx::MySql>>::compatible(type_info)
+            }
         }
 
         impl rullst_orm::_sqlx::Type<rullst_orm::_sqlx::Postgres> for #name {
@@ -314,11 +321,11 @@ fn validate_label(value: &str, span: impl quote::ToTokens) -> syn::Result<()> {
         || value.len() > MAX_LABEL_BYTES
         || !value
             .bytes()
-            .all(|byte| byte.is_ascii_graphic() || byte == b' ')
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b' '))
     {
         return Err(syn::Error::new_spanned(
             span,
-            "database enum labels must be 1-63 printable ASCII bytes",
+            "database enum labels must be 1-63 ASCII letters, digits, spaces, underscores or hyphens",
         ));
     }
     Ok(())
