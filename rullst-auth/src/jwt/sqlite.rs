@@ -97,7 +97,10 @@ impl SqliteJwtRevocationStore {
             .connect_with(options)
             .await
             .map_err(|_| backend_error("connect SQLite revocation database"))?;
-        prepare_schema(&pool, max_entries).await?;
+        if let Err(error) = prepare_schema(&pool, max_entries).await {
+            pool.close().await;
+            return Err(error);
+        }
         Ok(Self { pool, max_entries })
     }
 

@@ -62,7 +62,10 @@ impl SqliteSuppressionStore {
             .connect_with(options)
             .await
             .map_err(|_| unavailable("connect database"))?;
-        prepare_schema(&pool, max_recipients, max_events).await?;
+        if let Err(error) = prepare_schema(&pool, max_recipients, max_events).await {
+            pool.close().await;
+            return Err(error);
+        }
         Ok(Self {
             pool,
             max_recipients,

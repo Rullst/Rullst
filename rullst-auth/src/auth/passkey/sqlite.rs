@@ -114,7 +114,12 @@ impl SqlitePasskeyStore {
         validate_limits(max_total_credentials, max_credentials_per_subject)?;
         let database_url = database_url.into();
         let pool = connect_pool(&database_url).await?;
-        prepare_schema(&pool, max_total_credentials, max_credentials_per_subject).await?;
+        if let Err(error) =
+            prepare_schema(&pool, max_total_credentials, max_credentials_per_subject).await
+        {
+            pool.close().await;
+            return Err(error);
+        }
         Ok(Self {
             pool,
             max_total_credentials,
