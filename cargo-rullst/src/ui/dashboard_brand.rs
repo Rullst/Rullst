@@ -12,18 +12,23 @@ const LOGO: [&str; 6] = [
 ];
 
 // Saturated ANSI-256 colors remain predictable on terminals that do not
-// implement 24-bit RGB faithfully. Two moving blue-green-orange waves keep
-// every color family visible, then return to the stable three-color signature.
+// implement 24-bit RGB faithfully. The opening pauses on complete blue, green,
+// and orange gradients before settling on the stable three-color signature.
+const BLUE_GRADIENT: [u8; 6] = [69, 63, 33, 27, 21, 20];
+const GREEN_GRADIENT: [u8; 6] = [118, 82, 46, 40, 34, 28];
+const ORANGE_GRADIENT: [u8; 6] = [215, 214, 208, 202, 166, 130];
 const FINAL_SIGNATURE: [u8; 6] = [33, 27, 46, 34, 215, 166];
 const PULSE_COLORS: [u8; 6] = FINAL_SIGNATURE;
-const ANIMATION_FRAMES: [usize; 13] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const ANIMATION_FRAMES: [usize; 24] = [
+    0, 0, 0, 1, 2, 3, 4, 5, 6, 6, 6, 7, 8, 9, 10, 11, 12, 12, 12, 13, 14, 15, 16, 16,
+];
 
 pub(super) fn print_neon_logo() -> std::io::Result<()> {
     let mut stdout = std::io::stdout();
     let animation = if visual_effects_enabled() {
         &ANIMATION_FRAMES[..]
     } else {
-        &[12][..]
+        &[16][..]
     };
     writeln!(stdout)?;
     for (index, frame) in animation.iter().copied().enumerate() {
@@ -35,7 +40,7 @@ pub(super) fn print_neon_logo() -> std::io::Result<()> {
         }
         stdout.flush()?;
         if index + 1 < animation.len() {
-            std::thread::sleep(std::time::Duration::from_millis(180));
+            std::thread::sleep(std::time::Duration::from_millis(110));
         }
     }
     writeln!(
@@ -83,7 +88,29 @@ fn color_wave(line: &str, frame: usize) -> String {
 }
 
 fn logo_color(frame: usize, letter: usize) -> u8 {
-    FINAL_SIGNATURE[(letter + frame) % FINAL_SIGNATURE.len()]
+    if frame >= 16 {
+        FINAL_SIGNATURE[letter]
+    } else if frame <= 6 {
+        if letter < frame {
+            GREEN_GRADIENT[letter]
+        } else {
+            BLUE_GRADIENT[letter]
+        }
+    } else if frame <= 12 {
+        if letter < frame - 6 {
+            ORANGE_GRADIENT[letter]
+        } else {
+            GREEN_GRADIENT[letter]
+        }
+    } else {
+        let blue_count = (frame - 12).min(2);
+        let green_count = frame.saturating_sub(14).min(2);
+        if letter < blue_count || (2..2 + green_count).contains(&letter) {
+            FINAL_SIGNATURE[letter]
+        } else {
+            ORANGE_GRADIENT[letter]
+        }
+    }
 }
 
 pub(super) fn play_launch_pulse() -> std::io::Result<()> {
@@ -166,23 +193,23 @@ fn visual_effects_enabled() -> bool {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn logo_wave_makes_two_complete_passes_and_restores_the_signature() {
-        let initial = (0..6)
+    fn logo_visits_each_full_gradient_then_settles_on_signature() {
+        let blue = (0..6)
             .map(|letter| super::logo_color(0, letter))
             .collect::<Vec<_>>();
-        let moving = (0..6)
-            .map(|letter| super::logo_color(1, letter))
-            .collect::<Vec<_>>();
-        let first_pass = (0..6)
+        let green = (0..6)
             .map(|letter| super::logo_color(6, letter))
             .collect::<Vec<_>>();
-        let second_pass = (0..6)
+        let orange = (0..6)
             .map(|letter| super::logo_color(12, letter))
             .collect::<Vec<_>>();
+        let signature = (0..6)
+            .map(|letter| super::logo_color(16, letter))
+            .collect::<Vec<_>>();
 
-        assert_eq!(initial, super::FINAL_SIGNATURE);
-        assert_ne!(moving, super::FINAL_SIGNATURE);
-        assert_eq!(first_pass, super::FINAL_SIGNATURE);
-        assert_eq!(second_pass, super::FINAL_SIGNATURE);
+        assert_eq!(blue, super::BLUE_GRADIENT);
+        assert_eq!(green, super::GREEN_GRADIENT);
+        assert_eq!(orange, super::ORANGE_GRADIENT);
+        assert_eq!(signature, super::FINAL_SIGNATURE);
     }
 }
