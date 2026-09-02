@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788357133033,
+  "lastUpdate": 1788368987445,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -4733,6 +4733,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 574,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "6020901c2eeb6f0d0efa74a47d51b9ceb4721752",
+          "message": "feat(ai): add policy-bound vision sources",
+          "timestamp": "2026-09-02T13:49:43-03:00",
+          "tree_id": "2e0ebb8e777a4d988fb0b599feaecf7eff039594",
+          "url": "https://github.com/Rullst/Rullst/commit/6020901c2eeb6f0d0efa74a47d51b9ceb4721752"
+        },
+        "date": 1788368986884,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 510,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
