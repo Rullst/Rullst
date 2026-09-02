@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788336211445,
+  "lastUpdate": 1788340337032,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -7337,6 +7337,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4051,
             "range": "± 117",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e48d52638c873fdd5a7fb3c0d6dec37fca5faee6",
+          "message": "feat(auth): add durable shared sqlite state",
+          "timestamp": "2026-09-02T06:02:37-03:00",
+          "tree_id": "2293d3c7128846118c17cc03f81fbc7a9e2f5638",
+          "url": "https://github.com/Rullst/Rullst/commit/e48d52638c873fdd5a7fb3c0d6dec37fca5faee6"
+        },
+        "date": 1788340336609,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 999,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 796,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1815,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4009,
+            "range": "± 26",
             "unit": "ns/iter"
           }
         ]
