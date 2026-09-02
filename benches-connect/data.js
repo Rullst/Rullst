@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788392459020,
+  "lastUpdate": 1788393404080,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -4883,6 +4883,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 468,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "50796c962356ebbfbc1fc37b1a5bbd936c774981",
+          "message": "feat(orm-macros): enforce fail-closed derive parsing",
+          "timestamp": "2026-09-02T20:46:06-03:00",
+          "tree_id": "7302a5e87eb52270bf04eb80370183227d6567ed",
+          "url": "https://github.com/Rullst/Rullst/commit/50796c962356ebbfbc1fc37b1a5bbd936c774981"
+        },
+        "date": 1788393403319,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 569,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
