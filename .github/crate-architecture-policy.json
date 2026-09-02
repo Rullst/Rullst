@@ -24,6 +24,7 @@
     { "from": "rullst-core", "to": "rullst-orm", "optional": true },
     { "from": "rullst-mail", "to": "rullst-capital", "optional": true },
     { "from": "rullst-mail", "to": "rullst-core", "optional": false },
+    { "from": "rullst-messaging", "to": "rullst-orm", "optional": true },
     { "from": "rullst-nexus", "to": "rullst-ai", "optional": false },
     { "from": "rullst-nexus", "to": "rullst-auth", "optional": false },
     { "from": "rullst-nexus", "to": "rullst-core", "optional": false },

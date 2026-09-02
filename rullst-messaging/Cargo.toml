@@ -15,11 +15,14 @@ categories = ["asynchronous", "network-programming"]
 
 [features]
 default = []
-sqlite = ["dep:serde_json", "dep:sqlx", "dep:url"]
+sqlite = ["dep:aes-gcm", "dep:serde_json", "dep:sqlx", "dep:url", "dep:zeroize"]
+orm-outbox = ["dep:rullst-orm", "dep:serde_json"]
 
 [dependencies]
+aes-gcm = { version = "0.11.0", features = ["zeroize"], optional = true }
 serde = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"], optional = true }
+rullst-orm = { workspace = true, optional = true }
 sha2 = { workspace = true }
 sqlx = { workspace = true, features = ["runtime-tokio", "sqlite"], optional = true }
 thiserror = { workspace = true }
@@ -27,6 +30,7 @@ tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true }
 url = { version = "2.5.8", optional = true }
 uuid = { workspace = true, features = ["v4"] }
+zeroize = { workspace = true, optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

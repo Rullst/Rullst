@@ -11,6 +11,8 @@ mod clock;
 mod error;
 mod memory;
 mod model;
+#[cfg(feature = "orm-outbox")]
+mod outbox_relay;
 #[cfg(feature = "sqlite")]
 mod sqlite;
 mod trace;
@@ -27,8 +29,10 @@ pub use model::{
     Delivery, MessageEnvelope, PublishReceipt, PublishRequest, ReceiveRequest, RetryDisposition,
     SubscriptionReceipt, SubscriptionRequest,
 };
+#[cfg(feature = "orm-outbox")]
+pub use outbox_relay::{OrmOutboxRelay, OrmOutboxRelayError, OutboxRelayReceipt};
 #[cfg(feature = "sqlite")]
-pub use sqlite::SqliteBroker;
+pub use sqlite::{MessagingKeyring, MessagingStorageKey, SqliteBroker};
 pub use trace::TraceContext;
 pub use traits::{MessageAdmin, MessageBroker};
 pub use types::{

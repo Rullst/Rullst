@@ -167,8 +167,9 @@ managed service.
 Kafka, RabbitMQ, Redis Streams, S3, and R2 are integrations with mature
 services. Rullst now has a coherent bounded `rullst-messaging` contract for
 idempotency, groups, leases, retry and dead letters, with a deterministic
-process-local broker and opt-in durable local SQLite state. Remote adapters and
-the remote-storage boundary still need provider-specific
+process-local broker, canonical envelope/trace contracts and opt-in durable
+local SQLite state with explicit encrypted content. Remote adapters and the
+remote-storage boundary still need provider-specific
 conformance, backpressure, multipart, path/key and deterministic mock evidence.
 Building another broker or object store as a SaaS would add little value until
 Rullst applications reveal a concrete unmet need.

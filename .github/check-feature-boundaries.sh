@@ -72,6 +72,7 @@ rullst-core|cache-redis
 rullst-core|offline-sync
 rullst-core|telemetry
 rullst-messaging|sqlite
+rullst-messaging|orm-outbox
 rullst-connect|axum
 rullst-connect|actix
 rullst-connect|retry
@@ -113,6 +114,7 @@ rullst|mail-aws-ses
 rullst|mail-sqlite
 rullst|messaging
 rullst|messaging-sqlite
+rullst|messaging-orm-outbox
 rullst|auth-jwt
 rullst|auth-sqlite
 rullst|oauth

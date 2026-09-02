@@ -20,6 +20,10 @@ The crate has an **implemented, bounded broker foundation**:
 - allowlisted W3C `traceparent`/`tracestate` propagation without baggage;
 - a feature-gated SQLite adapter that transactionally retains publications,
   subscriptions, claims, ACK/retry/DLQ state and idempotency across restart.
+- an explicit SQLite AES-256-GCM profile for header values and payloads, with
+  immutable profile selection and bounded primary/prior-key rotation.
+- an opt-in static relational ORM outbox relay with exact stream/topic binding
+  and publish-before-ACK crash/replay evidence.
 
 The `InMemoryBroker` is suitable for offline tests, deterministic development,
 and explicitly process-local workloads. `SqliteBroker` uses a fixed schema and
@@ -44,10 +48,20 @@ Delivery is at least once. A valid acknowledgement consumes its lease exactly
 once, but no local ACK can make an arbitrary remote side effect atomic. Use the
 stable envelope ID at the side-effect boundary.
 
-SQLite payloads and headers are plaintext. The deployment owns database-file
-permissions, encryption at rest, backups, retention, disk monitoring and topic/
-tenant authorization. Reopening a namespace with different limits fails closed
-instead of silently changing retained delivery semantics.
+`SqliteBroker::connect` keeps the compatible plaintext profile.
+`connect_encrypted` uses randomized AES-256-GCM and authenticates immutable row
+metadata. Raw-storage, restart, wrong-key, tamper, row-swap, rotation, symlink
+and two-instance regressions are executable. It protects header values and
+payloads, not routing/idempotency/delivery metadata or the complete database.
+The deployment still owns keys, database-file permissions, protected backups,
+rollback detection, retention, disk monitoring and topic/tenant authorization.
+Reopening a namespace with different limits or a different storage profile
+fails closed instead of silently changing retained semantics.
+
+The outbox relay does not make ORM and broker state one atomic transaction. It
+uses the committed event key for exact broker replay, publishes first and ACKs
+the exact ORM lease second. The application still supervises workers, retries,
+dead letters, cleanup, tenant/topic authorization and destination idempotency.
 
 Continue with the [brokered messaging tutorial](../tutorials/49-brokered-messaging.md)
 or inspect the [crate roadmap](https://github.com/Rullst/Rullst/blob/main/rullst-messaging/ROADMAP.md).

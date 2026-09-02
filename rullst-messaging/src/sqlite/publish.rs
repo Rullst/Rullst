@@ -5,7 +5,8 @@ use crate::{
 use sqlx::SqliteConnection;
 
 use super::SqliteBroker;
-use super::codec::{encode_headers, fingerprint};
+use super::codec::fingerprint;
+use super::storage::MessageBinding;
 use super::transaction::{finish, storage_error};
 
 impl<C: Clock> SqliteBroker<C> {
@@ -103,7 +104,18 @@ impl<C: Clock> SqliteBroker<C> {
         }
 
         let message_id = MessageId::random();
-        let headers_json = encode_headers(request.headers())?;
+        let binding = MessageBinding::message(
+            self.config.namespace(),
+            request.topic().as_str(),
+            sequence.0,
+            message_id.as_str(),
+            request.event_kind().as_str(),
+            request.content_type().as_str(),
+            now,
+        );
+        let (headers_json, stored_payload) =
+            self.storage
+                .encode_message(binding, request.headers(), request.payload())?;
         sqlx::query("INSERT INTO rullst_messaging_messages (namespace, topic, sequence, message_id, event_kind, content_type, headers_json, payload, published_at_ms, idempotency_key, fingerprint) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
             .bind(self.config.namespace().as_str())
             .bind(request.topic().as_str())
@@ -112,7 +124,7 @@ impl<C: Clock> SqliteBroker<C> {
             .bind(request.event_kind().as_str())
             .bind(request.content_type().as_str())
             .bind(headers_json)
-            .bind(request.payload())
+            .bind(stored_payload)
             .bind(now)
             .bind(request.idempotency_key().as_str())
             .bind(proposed_fingerprint.as_slice())

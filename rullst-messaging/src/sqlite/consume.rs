@@ -99,8 +99,10 @@ impl<C: Clock> SqliteBroker<C> {
             .await
             .map_err(|_| storage_error("load pending message"))?;
             let envelope = decode_envelope(
+                &self.storage,
                 self.config.namespace(),
                 request.topic().as_str(),
+                sequence,
                 row,
                 self.config.max_payload_bytes(),
             )?;

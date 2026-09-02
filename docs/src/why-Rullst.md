@@ -134,7 +134,12 @@ publication, consumer groups, expiring acknowledgement leases, retry and
 dead-letter semantics, with a deterministic concurrent in-memory contract. A
 canonical bounded v1 envelope codec and allowlisted W3C trace-context boundary
 make byte compatibility and correlation behavior executable. The codec still
-does not open a remote connection or map broker-specific semantics. That makes
+does not open a remote connection or map broker-specific semantics. SQLite can
+explicitly protect header values and payloads with row-bound AES-256-GCM and a
+bounded rotation keyring while keeping visible metadata and operator duties
+honest. The opt-in relational outbox relay also proves its unavoidable
+publish-before-ACK crash window as an exact idempotent replay instead of calling
+two systems one atomic transaction. That makes
 offline tests and future adapter conformance explicit without
 pretending the local broker is Kafka, RabbitMQ, NATS, Redis Streams, or a cloud
 service. Applications still own topic authorization and idempotency of remote

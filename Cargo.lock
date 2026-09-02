@@ -7073,6 +7073,8 @@ dependencies = [
 name = "rullst-messaging"
 version = "12.0.0"
 dependencies = [
+ "aes-gcm",
+ "rullst-orm",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -7082,6 +7084,7 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
+ "zeroize",
 ]
 
 [[package]]

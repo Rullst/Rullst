@@ -72,7 +72,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   fixture and rejects unknown/non-canonical/truncated frames; W3C version-00
   trace context propagates through an explicit `traceparent`/`tracestate`
   allowlist without baggage. Neither addition is a remote transport or tracing
-  exporter.
+  exporter. SQLite can now select an immutable explicit AES-256-GCM profile:
+  randomized envelopes authenticate immutable row metadata and protect header
+  values plus payloads, while a bounded primary/prior-key ring prevents unsafe
+  retirement before old records are purged. Raw-state, restart, wrong-key,
+  tamper, ciphertext-swap, profile-conflict, symlink and two-instance tests are
+  executable. Routing/idempotency/delivery metadata remains visible, and key
+  custody, protected backup/rollback handling and profile migration remain host
+  responsibilities. The optional `orm-outbox` bridge binds one relational
+  outbox stream to one broker topic, validates claimed JSON, publishes the
+  durable event key as broker idempotency and ACKs the exact ORM lease second.
+  Its crash-window regression reclaims after publish-before-ACK and proves an
+  exact broker replay with one message. It does not claim a cross-system atomic
+  transaction; worker supervision, cleanup, authorization and destination
+  idempotency remain application work.
 - Hardened the shared mail attachment contract: messages now fail closed above
   32 attachments, 20 MiB per item or 25 MiB aggregate; unsafe basenames,
   ambiguous MIME values, duplicate/unreferenced inline CIDs and inline assets
@@ -96,7 +109,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   evidence and explicitly excludes feature completeness and certification.
 - Raised the v12 RC quality gate to A (90) for every publishable crate except
   the approved IoT floor of B (80). After Auth reached its bounded 95/A local
-  ceiling, the audited plan records seven crates below A and a 50-point
+  ceiling and Messaging reached its bounded 96/A local ceiling, the audited
+  plan records six crates below A and a 46-point
   aggregate gap; policy values may move only with real implementation and
   evidence, never to make the release table look greener.
 - Added a `no_std` OTA rollback-counter adapter to `rullst-iot`. The manager can
@@ -677,7 +691,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Local development and observability
 
-- Expanded the umbrella boundary matrix to compile all 43 public features in
+- Expanded the umbrella boundary matrix to compile all 45 public features in
   isolation and fail when its rows drift from the manifest. The tag-only
   packaged consumer now derives and enables the full feature set from the
   extracted `.crate` manifest instead of relying on a partial static list.

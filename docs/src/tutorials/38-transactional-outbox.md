@@ -149,3 +149,19 @@ Other explicit limits:
 
 This separation keeps model saves predictable while giving applications a
 durable primitive where the event schema and operational policy are explicit.
+
+## 5. Relay into `rullst-messaging`
+
+With the umbrella `messaging-orm-outbox` feature, `OrmOutboxRelay<B>` maps one
+exact outbox stream to one topic on any static `MessageBroker`. It validates the
+claimed JSON, uses `event_key` as the broker idempotency key, publishes and then
+acknowledges the exact ORM claim. Its executable crash-window test stops after
+the first publish, reclaims the expired event and observes an exact broker
+replay with only one retained message.
+
+That bridge improves composition; it does not change the guarantee. ORM commit,
+broker publish and ORM ACK are not one distributed atomic transaction. Operate
+the claim loop, retry/dead-letter policy, cleanup, authorization and final
+consumer deduplication explicitly. See
+[Bounded Brokered Messaging](49-brokered-messaging.md#6-relay-a-relational-outbox-after-commit)
+for the relay code.

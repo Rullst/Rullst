@@ -18,6 +18,9 @@
 - [x] Durable SQLite adapter with serialized write transactions, exact-config
   reopen, cross-instance claim/idempotency tests, restart lease recovery,
   and corrupt-row fail-closed/repair evidence.
+- [x] Explicit AES-256-GCM SQLite content profile with row-bound AAD, bounded
+  keyring rotation, profile conflict, raw-storage/restart, tamper, row-swap,
+  symlink and two-instance evidence. Routing/idempotency metadata remains visible.
 
 ## Phase 2 — remote adapters
 
@@ -39,11 +42,12 @@ semantics must fail explicitly rather than being silently approximated.
   documented two-header allowlist; baggage and exporter policy remain host work.
 - [ ] Studio inspection through real broker telemetry and explicit unavailable
   states.
-- [ ] Transactional-outbox relay integration without claiming atomic remote
-  effects.
+- [x] Opt-in static ORM transactional-outbox relay with exact stream/topic
+  binding and publish-before-ACK crash/replay evidence; atomic remote effects
+  remain explicitly impossible.
 - [ ] Broker-specific live lifecycle matrices, restart/fault evidence, and
   release provenance.
-- [ ] Encrypted durable credentials, rotation hooks, and deployment guidance.
+- [ ] Remote-adapter encrypted credentials and secret-manager integration.
 
 Exactly-once external side effects, universal ordering, zero data loss, and
 provider availability are not framework guarantees. They require application

@@ -56,9 +56,66 @@ The adapter uses a fixed schema and `BEGIN IMMEDIATE` for mutations, so separate
 instances sharing a file serialize publication and claims. Reopening the same
 namespace requires the exact persisted limits. SQLite commits survive process
 restart; expired leases are requeued or dead-lettered on the next operation.
-Malformed persisted envelopes fail closed. The database contains plaintext
-payload/header data, so filesystem permissions, encryption at rest, backups,
-retention and tenant/topic authorization remain deployment/application duties.
+Malformed persisted envelopes fail closed. `connect` selects an immutable
+plaintext-v1 profile. For protected message contents, start a namespace with
+the explicit AES-256-GCM profile:
+
+```rust,no_run
+use rullst_messaging::{
+    BrokerConfig, MessagingKeyring, MessagingStorageKey, SqliteBroker,
+};
+
+# async fn encrypted(key_bytes: [u8; 32]) -> Result<(), rullst_messaging::MessagingError> {
+let primary = MessagingStorageKey::try_new("messages-2026-09", key_bytes)?;
+let keyring = MessagingKeyring::new(primary);
+let broker = SqliteBroker::connect_encrypted(
+    "sqlite://storage/messages.sqlite",
+    BrokerConfig::try_new("checkout")?,
+    keyring,
+).await?;
+# let _ = broker;
+# Ok(())
+# }
+```
+
+This profile encrypts and authenticates header values plus payload bytes with a
+fresh AES-256-GCM nonce. AAD binds namespace, topic, sequence, message ID,
+event/content type, publication timestamp and rotation key ID. Topic, message
+and event metadata, timestamps, idempotency keys, fingerprints, key IDs and
+delivery state remain visible. It is content encryption, not full-database or
+metadata encryption.
+
+The first key encrypts new records; add at most seven prior decryption keys with
+`with_decryption_key`. Startup rejects a missing/wrong key, tampered profile or
+removal of a prior key while any retained record still references it. Rotation
+does not rewrite old messages: ACK and purge them under the complete keyring
+before retiring that key. Plaintext and encrypted profiles never mix silently;
+migration requires an explicit new namespace/database and application-owned
+republishing. Key custody, file permissions, protected backups, rollback
+detection, retention, disk operations and tenant/topic authorization remain
+deployment/application duties.
+
+## Transactional outbox relay
+
+Enable `orm-outbox` directly, or `messaging-orm-outbox` on `rullst`, to bridge
+the existing relational `rullst-orm::Outbox` to any concrete `MessageBroker`.
+The application first commits its domain mutation and outbox row in one ORM
+transaction. A supervised worker claims that row and passes it to an
+`OrmOutboxRelay` bound to one exact stream and broker topic.
+
+`publish_claim` validates the claim and publishes its JSON using the outbox
+`event_key` as the broker idempotency key. `relay_and_ack` then acknowledges the
+exact ORM lease. These are necessarily two operations: if the process stops
+after publication, the lease expires and a later claim republishes the same
+content. The broker returns the original message as an exact replay, after
+which the new claim can be acknowledged. The executable integration test
+proves this crash window produces one broker message.
+
+The relay does not turn a relational and remote system into one atomic
+transaction. Worker supervision, retry/dead-letter policy, outbox cleanup,
+topic/tenant authorization and destination-side idempotency remain application
+responsibilities. Outbox payload, event/idempotency keys and claim tokens are
+redacted from claim/relay diagnostics.
 
 ## Example
 

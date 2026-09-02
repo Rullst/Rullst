@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "TM-12.4",
+  "model_version": "TM-12.5",
   "cases": [
     {
       "id": "AUTH-01",
@@ -352,6 +352,60 @@
       "test_filter": "observability::tests::observations_classify_terminal_outcomes_without_message_content",
       "source": "rullst-mail/src/observability/tests.rs",
       "marker": "TM-MAIL-03"
+    },
+    {
+      "id": "MESSAGING-01",
+      "crate": "rullst-messaging",
+      "target_kind": "integration",
+      "target": "sqlite_encryption",
+      "test_filter": "encrypted_profile_hides_content_and_survives_restart",
+      "source": "rullst-messaging/tests/sqlite_encryption.rs",
+      "marker": "TM-MESSAGING-01"
+    },
+    {
+      "id": "MESSAGING-02",
+      "crate": "rullst-messaging",
+      "target_kind": "integration",
+      "target": "sqlite_encryption",
+      "test_filter": "ciphertext_row_substitution_is_rejected_by_metadata_binding",
+      "source": "rullst-messaging/tests/sqlite_encryption.rs",
+      "marker": "TM-MESSAGING-02"
+    },
+    {
+      "id": "MESSAGING-03",
+      "crate": "rullst-messaging",
+      "target_kind": "integration",
+      "target": "sqlite_encryption",
+      "test_filter": "rotation_requires_old_keys_until_their_records_are_purged",
+      "source": "rullst-messaging/tests/sqlite_encryption.rs",
+      "marker": "TM-MESSAGING-03"
+    },
+    {
+      "id": "MESSAGING-04",
+      "crate": "rullst-messaging",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "wire::tests::version_truncation_namespace_and_trailing_bytes_fail_closed",
+      "source": "rullst-messaging/src/wire/tests.rs",
+      "marker": "TM-MESSAGING-04"
+    },
+    {
+      "id": "MESSAGING-05",
+      "crate": "rullst-messaging",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "trace::tests::malformed_or_ambiguous_trace_context_fails_closed",
+      "source": "rullst-messaging/src/trace/tests.rs",
+      "marker": "TM-MESSAGING-05"
+    },
+    {
+      "id": "MESSAGING-06",
+      "crate": "rullst-messaging",
+      "target_kind": "integration",
+      "target": "orm_outbox_relay",
+      "test_filter": "committed_claim_replays_exactly_after_publish_before_ack_crash",
+      "source": "rullst-messaging/tests/orm_outbox_relay.rs",
+      "marker": "TM-MESSAGING-06"
     },
     {
       "id": "IOT-01",

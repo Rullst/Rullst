@@ -55,14 +55,14 @@
     },
     {
       "name": "rullst-messaging",
-      "api_architecture": 18,
-      "verification": 23,
-      "security_failure_design": 18,
-      "documentation_dx": 14,
-      "operations_release": 13,
-      "specialist_gate": "messaging-contract",
-      "finding": "Clear bounded concurrent contract plus durable local SQLite restart/corruption evidence; remote protocols, replication, encrypted-at-rest operations and provider fault matrices remain open.",
-      "evidence": ["rullst-messaging/README.md", "rullst-messaging/tests", "docs/src/tutorials/49-brokered-messaging.md"]
+      "api_architecture": 19,
+      "verification": 25,
+      "security_failure_design": 20,
+      "documentation_dx": 15,
+      "operations_release": 17,
+      "specialist_gate": "threat-minimum",
+      "finding": "Bounded broker, canonical wire/trace, encrypted local-content rotation and ORM outbox crash-replay contracts have exact threat/restart/tamper/concurrency evidence; remote protocols, replication, full metadata encryption and provider operations remain open.",
+      "evidence": ["rullst-messaging/README.md", "rullst-messaging/src/outbox_relay.rs", "rullst-messaging/src/sqlite/storage.rs", "rullst-messaging/tests", "docs/src/tutorials/49-brokered-messaging.md", "docs/src/threat-models.md"]
     },
     {
       "name": "rullst-connect",

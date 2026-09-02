@@ -5,6 +5,7 @@ mod codec;
 mod consume;
 mod publish;
 mod schema;
+mod storage;
 mod transaction;
 
 use crate::{
@@ -19,6 +20,9 @@ use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
 
+use storage::StorageProfile;
+pub use storage::{MessagingKeyring, MessagingStorageKey};
+
 /// Durable local broker backed by a fixed, versioned SQLite schema.
 ///
 /// Every mutation uses `BEGIN IMMEDIATE`, so multiple processes sharing the
@@ -30,12 +34,22 @@ pub struct SqliteBroker<C = SystemClock> {
     pub(super) config: BrokerConfig,
     pub(super) clock: C,
     pub(super) pool: SqlitePool,
+    storage: StorageProfile,
 }
 
 impl SqliteBroker<SystemClock> {
     /// Opens or creates a durable broker using the system clock.
     pub async fn connect(database_url: impl Into<String>, config: BrokerConfig) -> Result<Self> {
         Self::connect_with_clock(database_url, config, SystemClock).await
+    }
+
+    /// Opens encrypted local storage using the system clock and supplied keyring.
+    pub async fn connect_encrypted(
+        database_url: impl Into<String>,
+        config: BrokerConfig,
+        keyring: MessagingKeyring,
+    ) -> Result<Self> {
+        Self::connect_encrypted_with_clock(database_url, config, keyring, SystemClock).await
     }
 }
 
@@ -45,6 +59,31 @@ impl<C: Clock> SqliteBroker<C> {
         database_url: impl Into<String>,
         config: BrokerConfig,
         clock: C,
+    ) -> Result<Self> {
+        Self::connect_with_profile(database_url, config, clock, StorageProfile::plaintext()).await
+    }
+
+    /// Opens encrypted local storage with an injectable trusted clock.
+    pub async fn connect_encrypted_with_clock(
+        database_url: impl Into<String>,
+        config: BrokerConfig,
+        keyring: MessagingKeyring,
+        clock: C,
+    ) -> Result<Self> {
+        Self::connect_with_profile(
+            database_url,
+            config,
+            clock,
+            StorageProfile::encrypted(keyring),
+        )
+        .await
+    }
+
+    async fn connect_with_profile(
+        database_url: impl Into<String>,
+        config: BrokerConfig,
+        clock: C,
+        storage: StorageProfile,
     ) -> Result<Self> {
         let database_url = database_url.into();
         if !database_url.starts_with("sqlite:") {
@@ -61,22 +100,35 @@ impl<C: Clock> SqliteBroker<C> {
         if is_volatile_database_url(&database_url, options.get_filename()) {
             return Err(invalid_database_url("must identify a file-backed database"));
         }
+        reject_existing_unsafe_target(options.get_filename())?;
         let pool = SqlitePoolOptions::new()
             .max_connections(4)
             .connect_with(options)
             .await
             .map_err(|_| transaction::storage_error("connect"))?;
-        schema::prepare(&pool, &config).await?;
+        schema::prepare(&pool, &config, &storage).await?;
         Ok(Self {
             config,
             clock,
             pool,
+            storage,
         })
     }
 
     /// Returns the persisted broker configuration.
     pub fn config(&self) -> &BrokerConfig {
         &self.config
+    }
+}
+
+fn reject_existing_unsafe_target(path: &Path) -> Result<()> {
+    match std::fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_file() => Err(
+            invalid_database_url("existing target must be a regular file"),
+        ),
+        Ok(_) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(_) => Err(transaction::storage_error("inspect database target")),
     }
 }
 

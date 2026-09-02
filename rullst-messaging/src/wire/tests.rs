@@ -48,6 +48,7 @@ fn canonical_frame_round_trips_every_bounded_envelope_field() {
 
 #[test]
 fn version_truncation_namespace_and_trailing_bytes_fail_closed() {
+    // TM-MESSAGING-04: untrusted wire frames fail closed before delivery.
     let (config, envelope) = fixture();
     let encoded = WireEnvelopeCodec::encode(&envelope, &config).expect("encode");
     for length in 0..encoded.len() {

@@ -64,6 +64,63 @@ dead-letters them. Multiple processes may share one file and namespace, but
 reopening it with different limits is rejected. This is local durability, not
 network replication, automatic failover or exactly-once side effects.
 
+### Protect header values and payloads
+
+`SqliteBroker::connect` deliberately retains the compatible plaintext profile.
+For a new namespace/database, load a 32-byte high-entropy key from a secret
+manager and select the encrypted profile explicitly:
+
+```rust,no_run
+use rullst::messaging::{
+    BrokerConfig, MessagingKeyring, MessagingStorageKey, SqliteBroker,
+};
+
+# async fn open_encrypted(
+#     secret_manager_key: [u8; 32],
+# ) -> Result<(), rullst::messaging::MessagingError> {
+let primary = MessagingStorageKey::try_new("messages-2026-09", secret_manager_key)?;
+let keyring = MessagingKeyring::new(primary);
+let broker = SqliteBroker::connect_encrypted(
+    "sqlite://storage/messages.sqlite",
+    BrokerConfig::try_new("billing")?,
+    keyring,
+).await?;
+# let _ = broker;
+# Ok(())
+# }
+```
+
+To rotate, put the new primary first and append the old decryption key:
+
+```rust
+use rullst::messaging::{MessagingKeyring, MessagingStorageKey};
+
+# fn rotate(new_key: [u8; 32], old_key: [u8; 32])
+#     -> Result<MessagingKeyring, rullst::messaging::MessagingError> {
+let keys = MessagingKeyring::new(MessagingStorageKey::try_new(
+    "messages-2026-10",
+    new_key,
+)?)
+.with_decryption_key(MessagingStorageKey::try_new(
+    "messages-2026-09",
+    old_key,
+)?)?;
+# Ok(keys)
+# }
+```
+
+New publications use the primary. Old records are not silently rewritten and
+their keys remain mandatory until those messages become terminal and are
+purged. Plaintext/encrypted profiles cannot be mixed or changed in place; move
+through a new namespace/database with an application-reviewed republish
+procedure. Passwords are not AES keys, and source literals are unsuitable for
+production key custody.
+
+The encrypted profile protects header values and payloads. Topic, event and
+content type, message/key IDs, timestamps, idempotency key, fingerprint and
+delivery state remain visible metadata. Protect the database file and backups,
+control rollback, rehearse key recovery and authorize topic access separately.
+
 ## 3. Register a consumer group and publish
 
 ```rust
@@ -191,8 +248,59 @@ ACK reaches the broker. Therefore:
 5. authorize topics and tenant scope in the host application.
 
 The in-memory broker loses state on process exit. The SQLite adapter retains
-state but stores payloads and headers in plaintext; the host owns file
-permissions, encryption at rest, backup/restore, retention, disk monitoring and
-topic/tenant authorization. A future remote adapter is supported only after it
+state; its default profile is plaintext, while the explicit encrypted profile
+protects header values and payloads but not routing/idempotency metadata. The
+host owns key custody, file permissions, protected backup/restore, rollback
+detection, retention, disk monitoring and topic/tenant authorization. A future
+remote adapter is supported only after it
 passes the shared contract plus its own protocol, restart, and fault matrix; an
 adapter name alone is not durability evidence.
+
+## 6. Relay a relational outbox after commit
+
+Enable `messaging-orm-outbox` on the umbrella crate. Commit the domain mutation
+and `rullst_orm::Outbox::enqueue` together as described in the
+[transactional outbox tutorial](38-transactional-outbox.md). Then bind one
+exact outbox stream to one broker topic:
+
+```rust
+use rullst::messaging::{
+    InMemoryBroker, MessagingError, OrmOutboxRelay,
+};
+
+fn configure_relay(
+    broker: InMemoryBroker,
+) -> Result<OrmOutboxRelay<InMemoryBroker>, MessagingError> {
+    OrmOutboxRelay::try_new("tenant-a", "domain-events", broker)
+}
+```
+
+A supervised worker claims and relays one event:
+
+```rust,no_run
+use rullst::messaging::{InMemoryBroker, OrmOutboxRelay};
+use rullst_orm::Outbox;
+
+async fn relay_one(relay: &OrmOutboxRelay<InMemoryBroker>) {
+    let claim = match Outbox::claim_next("tenant-a", "worker-a", 30, 8).await {
+        Ok(Some(claim)) => claim,
+        Ok(None) | Err(_) => return,
+    };
+    match relay.relay_and_ack(claim).await {
+        Ok(receipt) if !receipt.outbox_acknowledged() => {
+            // The lease expired; a later claim will replay the same event key.
+        }
+        Ok(_) => {}
+        Err(error) => {
+            // Record a secret-free operational failure and let the lease expire.
+            let _accepted_before_ack_failure = error.accepted_publication();
+        }
+    }
+}
+```
+
+The ordering is intentionally publish then ACK. A stop in between causes a new
+ORM claim to publish the same event key and content; the broker returns its
+original ID as a duplicate. This is at-least-once relay with bounded
+idempotency, not an atomic transaction across two systems. Keep the worker
+supervised and make the final consumer idempotent too.

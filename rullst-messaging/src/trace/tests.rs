@@ -19,6 +19,7 @@ fn trace_context_accepts_canonical_values_and_redacts_debug() {
 
 #[test]
 fn malformed_or_ambiguous_trace_context_fails_closed() {
+    // TM-MESSAGING-05: correlation metadata cannot bypass its strict allowlist.
     for invalid in [
         "00-00000000000000000000000000000000-00f067aa0ba902b7-01",
         "00-4bf92f3577b34da6a3ce929d0e0e4736-0000000000000000-01",

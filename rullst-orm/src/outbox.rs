@@ -1,6 +1,7 @@
 //! Durable, database-backed transactional outbox.
 
 use serde_json::Value;
+use std::fmt;
 
 use crate::{Error, FromRow, Orm};
 
@@ -18,7 +19,7 @@ pub struct EnqueuedOutboxEvent {
 }
 
 /// Event exclusively claimed by one worker until its lease expires.
-#[derive(Clone, Debug, FromRow)]
+#[derive(Clone, FromRow)]
 pub struct ClaimedOutboxEvent {
     /// Stable database identifier.
     pub id: i64,
@@ -36,6 +37,22 @@ pub struct ClaimedOutboxEvent {
     pub claim_key: String,
     /// Unix timestamp when another worker may reclaim this event.
     pub claim_expires_at_epoch: i64,
+}
+
+impl fmt::Debug for ClaimedOutboxEvent {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ClaimedOutboxEvent")
+            .field("id", &self.id)
+            .field("stream", &"[REDACTED]")
+            .field("event_key", &"[REDACTED]")
+            .field("event_kind", &self.event_kind)
+            .field("payload_bytes", &self.payload_json.len())
+            .field("attempts", &self.attempts)
+            .field("claim_key", &"[REDACTED]")
+            .field("claim_expires_at_epoch", &self.claim_expires_at_epoch)
+            .finish()
+    }
 }
 
 impl ClaimedOutboxEvent {

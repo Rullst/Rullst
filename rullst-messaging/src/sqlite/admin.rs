@@ -9,6 +9,7 @@ use super::transaction::{finish, storage_error};
 
 type DeadLetterRow = (
     i64,
+    i64,
     String,
     i64,
     String,
@@ -40,7 +41,7 @@ impl<C: Clock> SqliteBroker<C> {
             context: "dead-letter limit conversion",
         })?;
         let rows: Vec<DeadLetterRow> = sqlx::query_as(
-            "SELECT d.attempt, d.failure_code, d.dead_lettered_at_ms, m.message_id, m.event_kind, m.content_type, m.headers_json, m.payload, m.published_at_ms FROM rullst_messaging_deliveries d JOIN rullst_messaging_messages m ON m.namespace = d.namespace AND m.topic = d.topic AND m.sequence = d.sequence WHERE d.namespace = ? AND d.topic = ? AND d.group_name = ? AND d.state = 'dead' ORDER BY d.sequence LIMIT ?",
+            "SELECT d.sequence, d.attempt, d.failure_code, d.dead_lettered_at_ms, m.message_id, m.event_kind, m.content_type, m.headers_json, m.payload, m.published_at_ms FROM rullst_messaging_deliveries d JOIN rullst_messaging_messages m ON m.namespace = d.namespace AND m.topic = d.topic AND m.sequence = d.sequence WHERE d.namespace = ? AND d.topic = ? AND d.group_name = ? AND d.state = 'dead' ORDER BY d.sequence LIMIT ?",
         )
         .bind(self.config.namespace().as_str())
         .bind(query.topic().as_str())
@@ -51,28 +52,30 @@ impl<C: Clock> SqliteBroker<C> {
         .map_err(|_| storage_error("list dead letters"))?;
         let mut dead_letters = Vec::with_capacity(rows.len());
         for row in rows {
-            if row.2 < 0 {
+            if row.3 < 0 {
                 return Err(MessagingError::CorruptStorage {
                     context: "dead-letter timestamp",
                 });
             }
             let failure_code =
-                FailureCode::try_new(row.1).map_err(|_| MessagingError::CorruptStorage {
+                FailureCode::try_new(row.2).map_err(|_| MessagingError::CorruptStorage {
                     context: "dead-letter failure code",
                 })?;
-            let envelope_row: EnvelopeRow = (row.3, row.4, row.5, row.6, row.7, row.8);
+            let envelope_row: EnvelopeRow = (row.4, row.5, row.6, row.7, row.8, row.9);
             let envelope = decode_envelope(
+                &self.storage,
                 self.config.namespace(),
                 query.topic().as_str(),
+                row.0,
                 envelope_row,
                 self.config.max_payload_bytes(),
             )?;
             dead_letters.push(DeadLetter::new(
                 envelope,
                 query.group().clone(),
-                attempt(row.0)?,
+                attempt(row.1)?,
                 failure_code,
-                row.2,
+                row.3,
             ));
         }
         Ok(dead_letters)

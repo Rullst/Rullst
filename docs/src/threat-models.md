@@ -1,6 +1,6 @@
 # Rullst v12 threat models
 
-> **Model version:** TM-12.4
+> **Model version:** TM-12.5
 > **Applies to:** the v12 release candidate source and generated applications
 > **Last source review:** 2026-09-02
 > **Status:** maintainer baseline; application owners must extend it for their
@@ -27,8 +27,8 @@ addresses are untrusted unless a separately reviewed proxy policy establishes
 the direct peer as trusted.
 
 The machine-readable release minimum in
-`.github/threat-model-release-minimum.json` binds 41 distinct abuse-case IDs to
-53 evidence rows across eleven crates. The gate rejects missing markers,
+`.github/threat-model-release-minimum.json` binds 47 distinct abuse-case IDs to
+59 evidence rows across twelve crates. The gate rejects missing markers,
 missing tests and zero-test filters before executing Auth, Nexus, Studio,
 tenant ownership, Capital, AI, Mail, IoT, generated-default and Academy
 negatives. Passing that bounded minimum does not imply that every case below is
@@ -167,6 +167,24 @@ Trust boundaries are authenticated application state ↔ mail message,
 application ↔ inspection/suppression adapters, verified provider event ↔ local
 suppression state and transport result ↔ observation sink.
 
+## TM-MESSAGING-1 — durable messages, wire frames and correlation
+
+**Assets:** message payloads and headers, idempotency state, ACK leases,
+consumer progress, storage keys, broker routing metadata and trace correlation.
+
+| Abuse case | Required disposition | Repository evidence or remaining work |
+| --- | --- | --- |
+| `MESSAGING-01` protected message content is recovered from a copied SQLite file | Offer an explicit authenticated-encryption profile, encrypt header values and payload before persistence, and fail startup on profile/key mismatch. | `connect_encrypted` uses AES-256-GCM with random nonces and a bounded keyring. A raw-database/restart regression proves the selected header and payload are absent while delivery round-trips. Topic, event/content type, IDs, timestamps, idempotency key, fingerprint and delivery state remain visible metadata; host key custody, permissions, backup and erasure remain required. |
+| `MESSAGING-02` ciphertext or metadata is copied, reordered or altered | Bind namespace, topic, sequence, message ID, event/content type, timestamp and rotation key ID into AAD; reject authentication failure before claiming the message. | The exact negative swaps two valid ciphertext rows and receives `StorageAuthenticationFailed`; probe tamper and wrong-key tests cover startup. AES-GCM does not prevent deletion, rollback of the complete database or availability loss, so protected backup/rollback detection remains deployment work. |
+| `MESSAGING-03` unsafe rotation silently makes retained records unreadable | Track every retained record's non-secret key ID, require every referenced prior key at startup, use only the primary key for new writes and permit removal only after old records are purged. | The rotation regression opens old+new, writes with the new primary, rejects new-only while an old record remains, then permits it after terminal purge. External secret-manager rotation, escrow, recovery rehearsal and multi-host rollout remain operator work. |
+| `MESSAGING-04` malformed, oversized, cross-namespace or future-version wire frame enters broker state | Bound the frame before payload allocation, validate every field and canonical ordering, require exact namespace and reject unknown versions/trailing bytes. | A fixed byte digest freezes v1; exact negatives cover every truncation, wrong magic, unknown version, trailing data and namespace mismatch. The codec is only an envelope primitive, not a remote transport or provider protocol. |
+| `MESSAGING-05` attacker-controlled trace metadata leaks baggage or creates ambiguous correlation | Propagate only strictly validated W3C version-00 `traceparent` and a conservative `tracestate` subset; exclude baggage and redact diagnostics. | Grammar, duplicate-key, zero-ID, uppercase and malformed-member negatives are exact; an in-memory delivery proves only the two allowlisted headers. Sampling, tenant authorization, exporter security and retention remain host work. |
+| `MESSAGING-06` process stops after broker publication but before acknowledging the relational outbox | Commit domain state plus outbox row together, claim with a lease, publish the exact outbox event key as broker idempotency, then ACK the exact claim. Never call the two systems one atomic transaction. | The opt-in static `OrmOutboxRelay` maps one configured stream/topic, validates the claimed JSON and keeps payload/event/claim keys out of `Debug`. An exact crash-window regression publishes, lets the claim expire, republishes through a new claim, observes the broker's duplicate receipt and only then ACKs; one message exists. Worker supervision, retention, tenant authorization and destination idempotency remain application work. |
+
+Trust boundaries are publisher/consumer ↔ broker contract, process ↔ SQLite
+file/key manager, local envelope ↔ future remote adapter and untrusted
+correlation headers ↔ tracing infrastructure.
+
 ## TM-AI-1 — prompts, RAG and tool execution
 
 **Assets:** system prompts, tenant content, provider keys, retrieved data, tool
@@ -269,6 +287,6 @@ registry and CLI ↔ filesystem/process/cloud.
 - New boundaries receive new IDs; IDs are never silently reused.
 - Closing residual risk requires code/configuration, a negative test and
   commit-bound evidence. Documentation alone cannot claim a control is deployed.
-- Before stable v12, maintainers must review TM-12.4 against the exact RC,
+- Before stable v12, maintainers must review TM-12.5 against the exact RC,
   applications must add topology/provider threats and an independent reviewer
   must cover the highest-impact paths.

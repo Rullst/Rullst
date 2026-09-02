@@ -50,6 +50,18 @@ pub enum MessagingError {
     /// A namespace was reopened with different operational limits.
     #[error("durable messaging namespace configuration does not match persisted state")]
     ConfigurationConflict,
+    /// An encrypted durable record references a rotation key not in the supplied keyring.
+    #[error("durable messaging storage requires an unavailable rotation key")]
+    StorageKeyUnavailable,
+    /// The operating system could not generate a fresh authenticated-encryption nonce.
+    #[error("durable messaging storage could not obtain secure randomness")]
+    StorageRandomnessUnavailable,
+    /// Authenticated encryption failed without exposing stored message data.
+    #[error("durable messaging storage encryption failed")]
+    StorageEncryptionFailed,
+    /// A durable encrypted record, its key, or its bound metadata failed authentication.
+    #[error("durable messaging encrypted storage authentication failed")]
+    StorageAuthenticationFailed,
     /// A remote frame uses a schema or codec version this release does not implement.
     #[error("messaging wire version is unsupported")]
     UnsupportedWireVersion,

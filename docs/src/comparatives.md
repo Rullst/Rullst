@@ -318,8 +318,8 @@ A v13 pode receber mudanças arquiteturais que não cabem numa minor:
    uma única ordem e tipos compartilhados sem ciclo de dependências.
 2. Definir uma arquitetura de extensões first-party e comunitárias com
    compatibilidade, ownership, manutenção e conformance suites.
-3. Evoluir a fundação delimitada de `rullst-messaging` com codec estável,
-   persistência e adapters Kafka, RabbitMQ, NATS/JetStream e Redis Streams,
+3. Evoluir a fundação delimitada de `rullst-messaging` com outbox/relay e
+   adapters Kafka, RabbitMQ, NATS/JetStream e Redis Streams,
    em vez de misturar mensageria com OAuth em Connect.
 4. Evoluir SOC/SIEM como produto verificável: ingestão multi-source, regras,
    correlação, retenção, casos, evidências, RBAC, auditoria e intervenção humana.
