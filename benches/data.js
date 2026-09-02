@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788330784193,
+  "lastUpdate": 1788335770643,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -15005,6 +15005,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1573,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "bc9eff484e9c666f4904c2db4c8389ff49464579",
+          "message": "feat(ai): add durable local audit trails",
+          "timestamp": "2026-09-02T04:53:32-03:00",
+          "tree_id": "2c9e5b6cb1602d23acb9906c888df0d81909cbbe",
+          "url": "https://github.com/Rullst/Rullst/commit/bc9eff484e9c666f4904c2db4c8389ff49464579"
+        },
+        "date": 1788335768985,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 742,
+            "range": "± 38",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 997,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 683,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2364,
+            "range": "± 45",
             "unit": "ns/iter"
           }
         ]
