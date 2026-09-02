@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788380857636,
+  "lastUpdate": 1788388132111,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -7817,6 +7817,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2088,
             "range": "± 25",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "24097d809093a47300ed5fd47de98d1fd28b1a39",
+          "message": "feat(macros): add bounded typed server functions",
+          "timestamp": "2026-09-02T18:33:59-03:00",
+          "tree_id": "4f1166b38668d15bc7dfa21f91d01c885968b1cc",
+          "url": "https://github.com/Rullst/Rullst/commit/24097d809093a47300ed5fd47de98d1fd28b1a39"
+        },
+        "date": 1788388131399,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1074,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 872,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1944,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4585,
+            "range": "± 115",
             "unit": "ns/iter"
           }
         ]
