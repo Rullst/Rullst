@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788369113577,
+  "lastUpdate": 1788374531651,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -6419,6 +6419,60 @@ window.BENCHMARK_DATA = {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 28,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fcbc24d48be2f716fb7538d3ae88357f884f7dd5",
+          "message": "test(docs): include hot reload tutorial in doctests",
+          "timestamp": "2026-09-02T15:22:54-03:00",
+          "tree_id": "3084c2e60a059c0b8fa68c342dc6fb7a861c9d80",
+          "url": "https://github.com/Rullst/Rullst/commit/fcbc24d48be2f716fb7538d3ae88357f884f7dd5"
+        },
+        "date": 1788374530925,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 3151,
+            "range": "± 105",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 406,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 7,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 13,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
