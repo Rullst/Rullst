@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788388043039,
+  "lastUpdate": 1788392289278,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -13168,6 +13168,78 @@ window.BENCHMARK_DATA = {
           {
             "name": "generate_csrf_token_32_chars",
             "value": 148,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "745bde23cb31a352ecfe58d2a1739abef789a49f",
+          "message": "fix(sqlite): close pools after failed initialization",
+          "timestamp": "2026-09-02T20:21:28-03:00",
+          "tree_id": "cca3ddb88c1be09d3c30058e750a0631eb883809",
+          "url": "https://github.com/Rullst/Rullst/commit/745bde23cb31a352ecfe58d2a1739abef789a49f"
+        },
+        "date": 1788392288719,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 32,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 210,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 76,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 139,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 265,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 1006,
+            "range": "± 56",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 144,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 144,
             "range": "± 1",
             "unit": "ns/iter"
           }
