@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788388328403,
+  "lastUpdate": 1788392589159,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -6575,6 +6575,60 @@ window.BENCHMARK_DATA = {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 13,
             "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 28,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "745bde23cb31a352ecfe58d2a1739abef789a49f",
+          "message": "fix(sqlite): close pools after failed initialization",
+          "timestamp": "2026-09-02T20:21:28-03:00",
+          "tree_id": "cca3ddb88c1be09d3c30058e750a0631eb883809",
+          "url": "https://github.com/Rullst/Rullst/commit/745bde23cb31a352ecfe58d2a1739abef789a49f"
+        },
+        "date": 1788392588573,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4917,
+            "range": "± 48",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 598,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 9,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 5,
+            "range": "± 2",
             "unit": "ns/iter"
           },
           {
