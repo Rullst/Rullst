@@ -19,6 +19,11 @@ This does not guarantee that an assistant understands the application, chooses
 the right edit, uses fewer tokens or produces secure code. Keep source review,
 tests and application threat models authoritative.
 
+The [AI maintainability and project-building roadmap](ai-maintainability-roadmap.md)
+records the measurable post-v12-RC work needed to improve generated agent
+instructions, bounded task-oriented context and reproducible model evaluations.
+Those planned evaluation profiles are not current compatibility guarantees.
+
 ## Ollama through `AiClient::auto`
 
 The high-level client recognizes `OLLAMA_HOST` and `OLLAMA_MODEL`:

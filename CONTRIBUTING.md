@@ -26,6 +26,50 @@ This section guides you through submitting an enhancement suggestion for Rullst,
 - Fill in the required Pull Request template.
 - End files with a newline.
 
+### AI-Assisted Contributions
+
+Rullst welcomes responsible use of generative AI, code assistants, and
+autonomous agents. AI assistance never transfers responsibility away from the
+human contributor. The person opening a pull request must understand the diff,
+have the right to contribute it, and be able to explain and maintain it.
+
+The pull request template requires one of two disclosures: no generative AI was
+used, or AI was used and its tools/models, affected scope, and human validation
+are summarized. Assisted pull requests must also:
+
+- describe the intended behavior, trust boundaries, and meaningful negative
+  cases instead of pasting a model-generated narrative;
+- include tests that exercise the changed behavior and list the exact local
+  commands that were run;
+- independently verify every new dependency, API, security claim, benchmark,
+  citation, and generated file;
+- keep credentials, personal data, private vulnerability details, proprietary
+  prompts, and third-party source code out of prompts and transcripts; and
+- remain small enough for a reviewer to understand. Maintainers may request
+  that broad agent-generated changes be split into independently reviewable
+  pull requests.
+
+The exact prompt or transcript is **not required**. A contributor may provide a
+redacted prompt or content-addressed transcript as optional review context, but
+a screenshot, recording, signature, timestamp, or SHA-256 digest can prove at
+most the integrity of the disclosed material. It cannot prove that the record
+is complete, that it was the only model interaction, or that the resulting code
+was not changed later. Such material does not replace code review, CI, tests, or
+artifact provenance and does not increase the trust assigned to a pull request.
+
+Undisclosed or misunderstood AI assistance may cause a pull request to be
+closed. Deliberately false disclosure, fabricated test evidence, hidden
+behavior, prompt-injection instructions aimed at reviewers or tools, and
+dependency confusion/slopsquatting are treated as supply-chain security
+concerns. Do not put vulnerability details in a public pull request; follow
+[`SECURITY.md`](SECURITY.md) for coordinated private disclosure.
+
+This policy follows the OpenSSF/CNCF guidance that projects should state their
+AI contribution rules while recognizing that AI use cannot be detected with an
+absolute guarantee. Rullst therefore applies the same fail-closed review and
+verification gates to every contribution, regardless of authorship. See
+[Securing Open Source in the Age of AI](https://openssf.org/resources/securing-open-source-in-the-age-of-ai-a-practical-guide/).
+
 ## Development Setup
 
 1. Fork the repo and create a short-lived branch from the latest green `main`.

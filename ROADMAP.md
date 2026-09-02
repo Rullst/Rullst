@@ -142,6 +142,10 @@ checklist because those lenses substantially overlap.
 
 The original goal of becoming the first **AI-Native Web Framework** is preserved
 as a design ambition, not a historically provable “first” claim.
+The dedicated
+[AI maintainability and project-building roadmap](docs/src/ai-maintainability-roadmap.md)
+defines the post-v12-RC acceptance work for generated instructions, bounded
+context, golden tasks and reproducible model evaluation.
 
 1. **“Zero Runtime Magic, Pure Compilation”:** derives, typed routes, and compiler
    diagnostics can make AI-assisted changes easier to inspect. *(Partial and
