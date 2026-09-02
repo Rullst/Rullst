@@ -69,12 +69,29 @@ append_package_patches() {
   done
 }
 
+umbrella_manifest="$packages_dir/rullst-${version}/Cargo.toml"
+umbrella_features="$(
+  python3 - "$umbrella_manifest" <<'PY'
+import json
+import sys
+import tomllib
+from pathlib import Path
+
+manifest = tomllib.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+features = sorted(name for name in manifest.get("features", {}) if name != "default")
+if not features:
+    raise SystemExit("packaged rullst manifest has no public features")
+print(", ".join(json.dumps(name) for name in features))
+PY
+)"
+
 {
   printf '[package]\nname = "rullst-packaged-consumer"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
   printf '[dependencies]\n'
   for crate in "${crates[@]}"; do
     if [ "$crate" = "rullst" ]; then
-      printf '"rullst" = { version = "=%s", features = ["orm", "queue-sqlite", "nexus", "studio", "auth", "mailer", "redis", "oauth", "ai", "capital", "security", "iot", "telemetry"] }\n' "$version"
+      printf '"rullst" = { version = "=%s", default-features = false, features = [%s] }\n' \
+        "$version" "$umbrella_features"
     else
       printf '"%s" = "=%s"\n' "$crate" "$version"
     fi

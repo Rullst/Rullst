@@ -43,7 +43,7 @@ stricter than the earlier all-B floor and reopens bounded implementation work
 before the feature freeze. It does not pre-approve a commit: the exact SHA
 still earns each ceiling only when every constraining gate succeeds.
 
-## Current audited green-gate ceilings — 1 September 2026
+## Current audited green-gate ceilings — 2 September 2026
 
 These are the maximum current scores when every referenced Rust CI gate passes.
 They are not presumed results for a new commit; the exact per-SHA artifact
@@ -60,7 +60,7 @@ being published as an achieved one.
 | `rullst-orm` | 91 | A | Cross-store semantics, disaster recovery and remaining operational adapters |
 | `rullst-security` | 90 | A | External SIEM delivery, independent audit and certification |
 | `rullst-connect` | 90 | A | Durable transaction/key operations, distributed refresh and provider conformance |
-| `rullst` | 88 | B | Inherits uneven maturity from opt-in domain crates |
+| `rullst` | 90 | A | Inherits bounded maturity from opt-in domain crates |
 | `rullst-auth` | 87 | B | WebAuthn conformance and durable shared revocation/devices |
 | `rullst-mail` | 87 | B | Inbox/provider evidence, opaque-file inspection and distributed operations |
 | `rullst-messaging` | 86 | B | Remote protocols, replication, encrypted-at-rest operations and provider fault matrices |
@@ -72,13 +72,13 @@ being published as an achieved one.
 | `rullst-nexus` | 81 | B | Host tenant policy, durable audit and production operations |
 | `rullst-macros` | 81 | B | Experimental browser/runtime integration remains bounded |
 | `rullst-iot` | 83 | B | Concrete transport/hardware storage, flashing and bootloader evidence |
-| **Repository (equal-crate aggregate)** | **86** | **B** | **Exact score remains conditional on the SHA's gates** |
+| **Repository (equal-crate aggregate)** | **86** | **B** | **1,377/1,600; exact score remains conditional on the SHA's gates** |
 
 ## Measured gap to the v12 quality gate
 
-At the ceilings above, Core, ORM, Security and Connect meet A and IoT meets its
-approved B exception. Eleven crates remain below their required grade. Their
-individual gaps total **60 audited points**. This is not a count of tasks and
+At the ceilings above, Core, ORM, Security, Connect and the umbrella meet A,
+while IoT meets its approved B exception. Ten crates remain below their
+required grade. Their individual gaps total **58 audited points**. This is not a count of tasks and
 cannot be closed by editing the policy: every point requires a commensurate
 change in implementation, verification, security/failure design,
 documentation/DX, or operational evidence.
@@ -89,7 +89,6 @@ aggregate becomes 1,435/1,600, which rounds to **90/A**.
 
 | Crate | Current | Gap to required grade | Next evidence cluster to audit |
 | :--- | ---: | ---: | :--- |
-| `rullst` | 88/B | +2 | Cross-feature facade contracts across the published domain crates |
 | `rullst-auth` | 87/B | +3 | Durable revocation/device lifecycle and broader WebAuthn vectors |
 | `rullst-mail` | 87/B | +3 | Attachment-inspection policy and durable delivery/failure operations |
 | `rullst-messaging` | 86/B | +4 | Remote adapter or encrypted durable-state contracts and fault matrices |
@@ -122,7 +121,7 @@ implementation earns a high A.
 | `rullst-orm` | 91/A | 96/A | 5 | Cross-store semantics, recovery rehearsal and remaining bounded adapter matrices | Vendor operations and application tenant policy |
 | `rullst-security` | 90/A | 96/A | 6 | SIEM rotation/acknowledgement contracts, broader threat negatives and recovery/SBOM evidence | Independent audit, certification and real SOC operation |
 | `rullst-connect` | 90/A | 95/A | 5 | Transactional token-generation CAS, remaining revocation fixtures and lifecycle recovery | Live-provider conformance and IdP operations |
-| `rullst` | 88/B | 96/A | 8 | Cross-feature facade and crates-only consumer contracts over published domains | Maturity inherited from external provider/device evidence |
+| `rullst` | 90/A | 96/A | 6 | Deeper cross-domain runtime composition and recovery contracts | Maturity inherited from external provider/device evidence |
 | `rullst-auth` | 87/B | 95/A | 8 | Durable shared revocation/device lifecycle and broader WebAuthn ceremony vectors | Normative external WebAuthn conformance |
 | `rullst-mail` | 87/B | 95/A | 8 | Inspection policy, durable suppression/failure lifecycle and transport observability | Inbox placement, DNS reputation and live-provider acceptance |
 | `rullst-messaging` | 86/B | 96/A | 10 | Encrypted local durability, stable codec/outbox/trace contracts and fault matrices | Remote broker operation, replication and cloud acceptance |
@@ -134,10 +133,10 @@ implementation earns a high A.
 | `rullst-orm-macros` | 82/B | 95/A | 13 | Full parser/UI diagnostic matrix and generated runtime cross-evidence | Compiler/ecosystem compatibility beyond the tested matrix |
 | `rullst-nexus` | 81/B | 95/A | 14 | Tenant authorization, durable audit and bounded admin operation contracts | Host identity/domain policy and production operation |
 | `rullst-macros` | 81/B | 94/A | 13 | Public grammar/diagnostics and generated browser/server protocol contracts | Compiler/browser ecosystem matrix beyond CI |
-| **Repository** | **1,375/1,600 = 85.9/B** | **1,514/1,600 = 94.6/A** | **139** | **Every gain still requires reviewed evidence** | **A+ remains outside this local planning ceiling** |
+| **Repository** | **1,377/1,600 = 86.1/B** | **1,514/1,600 = 94.6/A** | **137** | **Every gain still requires reviewed evidence** | **A+ remains outside this local planning ceiling** |
 
-On this planning scale, **90.8% of the eventual score total is already
-evidenced and 9.2% remains**. That percentage describes point distance, not
+On this planning scale, **91.0% of the eventual score total is already
+evidenced and 9.0% remains**. That percentage describes point distance, not
 elapsed effort: the remaining points are concentrated in integration,
 durability, failure recovery and generated-project matrices and are therefore
 more expensive than early API/documentation points. `rullst-iot` is the only

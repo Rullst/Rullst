@@ -274,6 +274,7 @@ impl SimulatedMqttPayloadFormatter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
 
     #[test]
     fn encodes_qos_zero_and_variable_remaining_length() {

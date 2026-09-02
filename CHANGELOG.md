@@ -647,6 +647,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Local development and observability
 
+- Expanded the umbrella boundary matrix to compile all 41 public features in
+  isolation and fail when its rows drift from the manifest. The tag-only
+  packaged consumer now derives and enables the full feature set from the
+  extracted `.crate` manifest instead of relying on a partial static list.
+- Restored `rullst-iot` test compilation without default features by importing
+  the required `alloc` vector macro and string-conversion trait explicitly.
+- Made durable messaging SQLite fixtures portable across Unix and Windows by
+  generating slash-normalized relative file URLs instead of verbatim
+  canonical Windows paths.
 - Reworked the public landing page into a self-contained, responsive product
   and contribution entry point while preserving the v5 EOL/v12 NO-GO warning
   and the dedication at both boundaries. The benchmark root is now a central

@@ -2,17 +2,24 @@
 set -euo pipefail
 
 # Keep every public package usable without implicit default features. Feature
-# rows below then exercise the boundaries most likely to regress when optional
-# adapters or the umbrella crate change their dependency wiring.
+# rows below exercise every public umbrella feature and the package boundaries
+# most likely to regress when optional adapters change dependency wiring.
+declare -A checked_umbrella_features=()
+
 while IFS='|' read -r package features; do
   [[ -z "$package" || "$package" == \#* ]] && continue
 
-  targets=(--all-targets)
   if [[ "$package" == "rullst" && -n "$features" ]]; then
-    # These rows verify the umbrella library's public feature forwarding. Its
-    # tests/benches bring unrelated dev-dependencies into each isolated graph
-    # and can rebuild large native adapters (notably DuckDB) for no extra
-    # boundary coverage; the no-feature row above still checks all targets.
+    checked_umbrella_features["$features"]=1
+  fi
+
+  targets=(--all-targets)
+  if [[ -n "$features" ]]; then
+    # Feature rows verify an isolated public library boundary. Tests/benches
+    # bring unrelated dev-dependencies into each graph and can rebuild large
+    # native adapters for no extra boundary coverage; each package's
+    # no-feature row above still checks all targets, while the workspace test
+    # and specialist jobs exercise feature-enabled integration targets.
     targets=(--lib)
   fi
 
@@ -90,14 +97,17 @@ rullst|orm-scout
 rullst|orm-pgvector
 rullst|orm-qdrant
 rullst|orm-redis
-# `orm-polyglot` is the exact union of the five isolated forwarding rows above
-# and remains compiled by the workspace all-feature test/Clippy gates. Repeating
-# it here rebuilds bundled DuckDB for a third graph without testing a new edge.
+rullst|orm-polyglot
 rullst|queue-sqlite
 rullst|queue-redis
 rullst|cache-redis
+rullst|redis
 rullst|offline-sync
+rullst|auth
 rullst|mail-smtp
+rullst|mailer
+rullst|mail
+rullst|mail-aws-ses
 rullst|messaging
 rullst|messaging-sqlite
 rullst|auth-jwt
@@ -108,13 +118,40 @@ rullst|capital
 rullst|capital-actix
 rullst|capital-nfse
 rullst|capital-quota-sql
+rullst|capital-pdf
+rullst|capital-mail
 rullst|security
 rullst|security-redis
 rullst|iot
 rullst|telemetry
 rullst|nexus
 rullst|studio
+rullst|strict-postgres
+rullst|strict-mysql
+rullst|strict-sqlite
 MATRIX
+
+# Fail when a new public umbrella feature is added without an isolated row.
+# This keeps the human-readable matrix synchronized with Cargo's actual
+# additive feature graph instead of relying only on the all-feature build.
+mapfile -t public_umbrella_features < <(
+  python3 - <<'PY'
+import tomllib
+from pathlib import Path
+
+manifest = tomllib.loads(Path("rullst/Cargo.toml").read_text(encoding="utf-8"))
+for feature in sorted(manifest.get("features", {})):
+    if feature != "default":
+        print(feature)
+PY
+)
+
+for feature in "${public_umbrella_features[@]}"; do
+  if [[ -z "${checked_umbrella_features[$feature]:-}" ]]; then
+    echo "Missing isolated umbrella feature boundary: rullst|$feature" >&2
+    exit 1
+  fi
+done
 
 printf 'Testing  %-20s features=%s\n' "rullst-core" "<none>"
 cargo test --locked --package rullst-core --no-default-features

@@ -87,16 +87,18 @@ cargo test --workspace --all-features
 
 `ci.yml` also compiles and exercises each ORM strict database feature in
 isolation (PostgreSQL, MySQL, and SQLite), exercises the runtime-only Core and
-minimal umbrella boundaries, runs the portable database matrix on Linux, and
+all 41 public umbrella features in isolated additive graphs with automatic
+manifest-drift detection, runs the portable database matrix on Linux, and
 tests the all-feature workspace on Linux, macOS, and Windows. The umbrella's
 `cfg(doctest)` aggregation reads all 50 public tutorial files directly, so that
-same command compiles or executes their 76 standalone Rust examples and records
-18 explicitly contextual fragments as ignored instead of pretending they are
-standalone programs. Its pinned live
-Redis job also proves that scheduled Core jobs are not claimed early, plus ORM
+same command discovers 95 Rust blocks, compiles or executes 77 of them, and
+records 18 explicitly contextual fragments as ignored instead of pretending
+they are standalone programs. Its pinned live Redis job also proves that
+scheduled Core jobs are not claimed early, plus ORM
 cache hit/TTL/recovery, tenant/table invalidation, rollback preservation,
-process-local post-commit observers and Scout commit ordering. A separate SQLite outbox contract runs on all three operating systems
-and covers atomicity, conflicting idempotency keys, claim races, lease expiry,
+process-local post-commit observers and Scout commit ordering. A separate
+SQLite outbox contract runs on all three operating systems and covers
+atomicity, conflicting idempotency keys, claim races, lease expiry,
 retry and dead-letter; the relational matrix repeats the core outbox lifecycle
 against PostgreSQL, MySQL, MariaDB and strict SQLite. A dedicated job checks
 the declared MSRV, Rust 1.96.0. The Linux provider matrix also runs the
@@ -112,6 +114,18 @@ gate results; a failed/skipped/cancelled gate can remove the dimensions it was
 meant to prove, while a green gate cannot inflate a crate beyond its audited
 ceiling. This is engineering-evidence reporting, not capability completion or
 certification. See the [scorecard methodology](docs/src/quality-scorecard.md).
+
+Rows with no feature selected compile every package target. Feature-selected
+rows compile the isolated library graph; feature-enabled tests, examples, and
+benchmarks remain covered by the workspace and specialist jobs. This avoids
+pulling unrelated development dependencies into every boundary while retaining
+real integration coverage.
+
+The tag-only packaged-distribution gate reads the complete feature set from the
+extracted `rullst` package manifest and compiles that crates-only consumer with
+defaults disabled and every public feature enabled. A partial hand-maintained
+feature allowlist therefore cannot make a monorepo-only integration appear
+release-ready.
 
 ## Recommended `main` branch-protection profile
 

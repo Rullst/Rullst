@@ -18,8 +18,11 @@ feature enabled by another dependency. Inspect the final selection with:
 cargo tree -e features
 ```
 
-The release gates compile every package with no default features, representative
-individual boundaries, and the complete workspace with all features. See
+The release gates compile every package with no default features, every public
+umbrella feature in isolation, representative domain-package boundaries, and
+the complete workspace with all features. The isolated umbrella list is
+checked automatically against `rullst/Cargo.toml`, so a newly added public
+feature cannot silently escape the matrix. See
 [`check-feature-boundaries.sh`](../../.github/check-feature-boundaries.sh) for
 the exact individual checks.
 

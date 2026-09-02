@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "audit_date": "2026-09-01",
+  "audit_date": "2026-09-02",
   "dimensions": {
     "api_architecture": 20,
     "verification": 25,
@@ -166,13 +166,13 @@
     {
       "name": "rullst",
       "api_architecture": 18,
-      "verification": 22,
+      "verification": 23,
       "security_failure_design": 17,
       "documentation_dx": 14,
-      "operations_release": 17,
+      "operations_release": 18,
       "specialist_gate": "none",
-      "finding": "Coherent optional facade and feature gates; release confidence still inherits the uneven maturity of opt-in domain capabilities.",
-      "evidence": ["rullst/Cargo.toml", "rullst/tests", "docs/src/feature-matrix.md"]
+      "finding": "All 41 public umbrella features have isolated compile boundaries with automatic manifest-drift detection, and the packaged-distribution consumer derives the complete extracted feature set instead of maintaining a partial allowlist; release confidence still inherits the bounded maturity of opt-in domain capabilities.",
+      "evidence": ["rullst/Cargo.toml", "rullst/tests", ".github/check-feature-boundaries.sh", ".github/test-packaged-distribution.sh", "docs/src/feature-matrix.md"]
     },
     {
       "name": "cargo-rullst",

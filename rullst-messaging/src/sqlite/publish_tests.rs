@@ -17,10 +17,8 @@ fn fixture(label: &str) -> (PathBuf, String) {
     let directory = PathBuf::from("target").join("rullst-messaging-tests");
     std::fs::create_dir_all(&directory).expect("create fixture directory");
     let path = directory.join(format!("{label}-{}.sqlite", uuid::Uuid::new_v4().simple()));
-    let absolute = std::fs::canonicalize(&directory)
-        .expect("canonical fixture directory")
-        .join(path.file_name().expect("fixture name"));
-    (absolute.clone(), format!("sqlite://{}", absolute.display()))
+    let database_url = format!("sqlite://{}", path.to_string_lossy().replace('\\', "/"));
+    (path, database_url)
 }
 
 fn cleanup(path: &std::path::Path) {

@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::*;
+use alloc::string::ToString;
 use ed25519_dalek::{Signer, SigningKey};
 
 fn signing_key() -> SigningKey {
