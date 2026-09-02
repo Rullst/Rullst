@@ -212,6 +212,10 @@ tutorial!(
     "../../docs/src/tutorials/51-authenticated-hot-reload.md"
 );
 tutorial!(
+    tutorial_52_typed_server_functions,
+    "../../docs/src/tutorials/52-typed-server-functions.md"
+);
+tutorial!(
     rest_api_quickstart,
     "../../docs/src/tutorials/rest-api-quickstart.md"
 );

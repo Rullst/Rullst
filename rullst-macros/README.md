@@ -11,7 +11,7 @@ generated paths and matching runtime features stay aligned.
 | `html!` | Parses an HTML-shaped token tree, escapes dynamic text and attribute values, and rejects mismatched tags at compile time. | `rullst::html::RawHtml` is an explicit trust boundary; never wrap untrusted text in it. Static literals are author-owned source code. |
 | `#[require_role("Role")]` | Requires an async handler binding named `user`, checks `HasRole` before the body, and returns HTTP 403 on denial. | Authentication, user extraction, role persistence, tenant policy, and ownership checks remain application responsibilities. |
 | `#[derive(Billable)]` | Implements the bounded Capital `Billable` facade for a named-field struct containing `email: String`; optional subscription, tier, and paired grace-period fields are recognized. | It does not charge by itself or invent provider/payment/authorization data. |
-| `#[server_function]` | Preserves the complete native async free-function signature. | Browser argument transport and server-side RPC registration are not implemented by this macro; the Wasm bridge is experimental. |
+| `#[server_function]` | Generates one concrete `RpcResult<T>` function for native and Wasm targets plus a matching `<name>_rpc_router()`. Arguments and results use the bounded, versioned `rullst.client` v1 JSON envelope. | Parameters and output must be owned Serde types. The generated router supplies transport, not identity: mount it inside the production security, authentication, tenant, authorization, rate-limit, and application idempotency policies. |
 | `#[route]` | Deprecated compatibility marker that preserves an argument-free annotation. | It never registers a route. Use `rullst::routes!`. |
 
 ## Experimental compatibility surfaces
@@ -27,11 +27,15 @@ generated paths and matching runtime features stay aligned.
 
 ## Compile-time diagnostics
 
-The UI test suite checks malformed HTML, unsupported `server_function`
-arguments, synchronous server functions, methods with receivers, missing role
+The UI test suite checks malformed HTML, unknown/duplicate `server_function`
+options, unsafe RPC paths, synchronous/generic/method server functions,
+borrowed and destructured RPC parameters, invalid return types, missing role
 identity bindings, invalid legacy route arguments, and invalid `Billable`
-shapes. These tests prove diagnostic boundaries only; runtime behavior is
-tested through the facade and owning runtime crates.
+shapes. Native facade tests exercise parameter/result transport, correlation,
+redacted application failures, media-type/schema/body-limit rejection, and the
+production CSRF layer. Both supported Wasm targets compile the client
+expansion; browser-engine/network interoperability beyond CI remains external
+evidence.
 
 ```console
 cargo test -p rullst-macros

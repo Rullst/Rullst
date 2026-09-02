@@ -1,5 +1,5 @@
 error: #[server_function] supports free functions, not methods with a self receiver
  --> tests/ui/server_function_method.rs:7:24
   |
-7 |     async fn increment(&self) -> u32 {
+7 |     async fn increment(&self) -> RpcResult<u32> {
   |                        ^^^^^

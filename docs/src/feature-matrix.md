@@ -111,6 +111,10 @@ Default features: none.
 
 Core's process-local Radar and span collector do not require `telemetry`.
 That feature is specifically for OpenTelemetry/OTLP integration.
+The `rullst.client` v1 codec and bounded `#[server_function]` transport are
+available without a feature flag; only the explicit generated route exists on
+native targets, while the same annotated function becomes its Wasm caller.
+Identity, authorization and tenant policy remain application layers.
 
 ### `rullst-orm`
 

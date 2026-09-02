@@ -11,14 +11,14 @@
   "crates": [
     {
       "name": "rullst-macros",
-      "api_architecture": 17,
-      "verification": 23,
-      "security_failure_design": 15,
-      "documentation_dx": 13,
-      "operations_release": 13,
+      "api_architecture": 19,
+      "verification": 25,
+      "security_failure_design": 19,
+      "documentation_dx": 15,
+      "operations_release": 16,
       "specialist_gate": "none",
-      "finding": "Dedicated bounded-contract documentation and real negative UI diagnostics cover malformed HTML, role identity, Billable shapes and compatibility macros; experimental browser/runtime integration remains narrower than the compile-time surface.",
-      "evidence": ["rullst-macros/Cargo.toml", "rullst-macros/README.md", "rullst-macros/tests"]
+      "finding": "Bounded macro grammar and negative UI diagnostics now include a concrete server-function protocol: versioned typed envelopes, explicit Axum route generation, same-origin Wasm transport, body/correlation/error limits, CSRF composition, two-target Wasm compilation and generated-project evidence; real browser/network ecosystems and host identity policy remain external.",
+      "evidence": ["rullst-macros/Cargo.toml", "rullst-macros/README.md", "rullst-macros/tests", "rullst-core/src/rpc.rs", "rullst/tests/server_function_rpc.rs", "cargo-rullst/src/blueprints/blank/client.rs", "docs/src/tutorials/52-typed-server-functions.md"]
     },
     {
       "name": "rullst-orm-macros",

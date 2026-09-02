@@ -1,5 +1,10 @@
+extern crate self as rullst;
+
 pub use rullst_core::*;
 pub use rullst_macros::{Billable, require_role};
+
+#[cfg(target_arch = "wasm32")]
+mod server_function_wasm_contract;
 
 /// Security facade for the lightweight Core middleware and, when the
 /// `security` feature is enabled, the extended `rullst-security` suite.

@@ -61,6 +61,12 @@ impl RequestId {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// Constructs a framework-generated identifier. Callers outside Core must
+    /// continue through [`RequestId::new`] so untrusted values are validated.
+    pub(crate) fn framework(value: String) -> Self {
+        Self(value)
+    }
 }
 
 impl<'de> Deserialize<'de> for RequestId {
@@ -141,6 +147,13 @@ impl FailureCode {
     /// Returns the validated code.
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    /// Constructs one of the framework-owned codes whose literal is reviewed
+    /// with the protocol implementation. Application input must always use
+    /// [`FailureCode::new`] instead.
+    pub(crate) fn framework(value: &'static str) -> Self {
+        Self(value.to_owned())
     }
 }
 

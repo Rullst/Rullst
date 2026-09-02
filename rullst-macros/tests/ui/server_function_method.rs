@@ -4,8 +4,8 @@ struct Counter;
 
 impl Counter {
     #[server_function]
-    async fn increment(&self) -> u32 {
-        1
+    async fn increment(&self) -> RpcResult<u32> {
+        Ok(1)
     }
 }
 

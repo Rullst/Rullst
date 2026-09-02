@@ -1,0 +1,5 @@
+error: #[server_function] requires concrete parameter and output types; generics are not supported
+ --> tests/ui/server_function_generic.rs:4:18
+  |
+4 | async fn identity<T>(value: T) -> RpcResult<T> {
+  |                  ^^^

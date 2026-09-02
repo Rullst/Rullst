@@ -1,0 +1,5 @@
+error: server-function path must be a bounded same-origin `/api/rpc/...` path using ASCII letters, digits, `-`, `_`, and `/`
+ --> tests/ui/server_function_bad_path.rs:3:26
+  |
+3 | #[server_function(path = "https://example.test/api/rpc/sum")]
+  |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

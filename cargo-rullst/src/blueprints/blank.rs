@@ -2,6 +2,7 @@
 
 use super::common;
 
+mod client;
 mod turso;
 
 pub fn file_manifest(
@@ -96,6 +97,7 @@ pub fn file_manifest(
     } else {
         ""
     };
+    let rpc_module = if !api { "mod rpc;\n" } else { "" };
 
     if hot_reload {
         let lib_rs = if api {
@@ -224,6 +226,7 @@ pub fn router() -> Router {{
         get("/" => home),
         post("/clicked" => clicked),
     ]
+    .merge_axum(rpc::increment_counter_rpc_router().into_axum())
     .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
     .layer(rullst::server::from_fn(rullst::security::headers_middleware))
 }}
@@ -243,26 +246,6 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
         manifest.push(("src/lib.rs", lib_rs));
 
         if !api {
-            let server_fn = r#"use rullst::server_function;
-use serde::{Serialize, Deserialize};
-
-#[derive(Serialize, Deserialize, Clone, Default)]
-pub struct CounterResponse {
-    pub new_value: i32,
-    pub message: String,
-}
-
-#[server_function]
-pub async fn increment_counter() -> CounterResponse {
-    CounterResponse {
-        new_value: 1,
-        message: format!("Successfully incremented on the server!"),
-    }
-}
-"#
-            .to_string();
-            manifest.push(("src/rpc.rs", server_fn));
-
             let island_counter = include_str!("../generators/island.rs.template")
                 .replace("__MODULE_NAME__", "counter")
                 .replace("__TYPE_NAME__", "Counter");
@@ -351,7 +334,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
                 r##"use rullst::{{html, routes, Server, response::{{Html, IntoResponse}}, server::Extension}};
 use rullst::htmx::{{HtmxRequest, render_page}};
 
-{migrations_mod_declaration}
+{migrations_mod_declaration}{rpc_module}
 
 {db_model_code}
 
@@ -426,6 +409,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         get("/" => home),
         post("/clicked" => clicked),
     ]
+    .merge_axum(rpc::increment_counter_rpc_router().into_axum())
     .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
     .layer(rullst::server::from_fn(rullst::security::headers_middleware));
 
@@ -437,6 +421,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 }}
 "##,
                 migrations_mod_declaration = migrations_mod_declaration,
+                rpc_module = rpc_module,
                 db_model_code = db_model_code,
                 db_status_code = db_status_code,
                 artisan_call = artisan_call
@@ -444,6 +429,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         };
 
         manifest.push(("src/main.rs", main_rs));
+    }
+
+    if !api {
+        manifest.push(("src/rpc.rs", client::rpc_source()));
     }
 
     if turso_primary {

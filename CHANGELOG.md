@@ -24,6 +24,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Upgrade and compatibility
 
+- `#[server_function]` now generates a bounded end-to-end transport instead of
+  a default-on-error Wasm stub. Concrete async functions return
+  `rullst::rpc::RpcResult<T>`; owned Serde arguments and results travel through
+  the versioned `rullst.client` v1 envelope to an explicit generated Axum
+  router. The 256 KiB codec, same-origin path grammar, correlation, JSON/version
+  rejection, message-free failures, CSRF composition test, two-target Wasm
+  compile proof and generated blank-project verification are executable.
+  Authentication, authorization, tenant scope, application idempotency and
+  browser/network interoperability beyond CI remain host or external evidence.
 - `rullst-ai` adds `OpenAiCompatibleProvider` for explicit local and cloud
   endpoints implementing bounded OpenAI request shapes. Local HTTP is
   restricted to literal loopback IPs, with optional explicit Bearer

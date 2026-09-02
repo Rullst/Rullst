@@ -288,6 +288,8 @@ fn state_changing_html_blueprints_emit_and_enforce_csrf_tokens() {
         assert!(blank.contains("rullst::security::csrf_middleware"));
         assert!(blank.contains("Extension<rullst::security::CsrfToken>"));
         assert!(blank.contains("name=\"_token\""));
+        assert!(blank.contains("rullst::rpc::RpcResult<CounterResponse>"));
+        assert!(blank.contains("increment_counter_rpc_router().into_axum()"));
 
         let erp = blueprints::erp::file_manifest(
             "csrf_app",

@@ -64,7 +64,7 @@
 
 | Continuous or change-aware gate | v12 `main` status | Actual scope |
 | :--- | :---: | :--- |
-| **Rust CI** | [![Rust CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=main&style=flat-square&label=Rust%20CI)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Amain) | Format, all-target/all-feature Clippy, tests on Linux/macOS/Windows, Cargo-aware doctests sourced from all 50 public tutorials, strict DB boundaries, feature boundaries, generated-code checks, and MSRV 1.96.0. |
+| **Rust CI** | [![Rust CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=main&style=flat-square&label=Rust%20CI)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Amain) | Format, all-target/all-feature Clippy, tests on Linux/macOS/Windows, Cargo-aware doctests sourced from all 52 public tutorials, strict DB boundaries, feature boundaries, generated-code checks, and MSRV 1.96.0. |
 | **Declared MSRV** | [![MSRV 1.96.0](https://img.shields.io/badge/MSRV-1.96.0-f74c00?style=flat-square&logo=rust)](docs/src/compatibility-policy.md) | Every publishable v12 manifest declares Rust 1.96.0 and CI runs an explicit workspace all-feature check with that toolchain. |
 | **GitHub Actions lint** | [![Workflow Lint](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/workflow-lint.yml?branch=main&style=flat-square&label=Workflow%20Lint)](https://github.com/Rullst/Rullst/actions/workflows/workflow-lint.yml?query=branch%3Amain) | Validates workflow syntax, expressions, embedded shell, and full-SHA third-party Action pins. |
 | **Documentation** | [![Documentation](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/documentation.yml?branch=main&style=flat-square&label=Docs)](https://github.com/Rullst/Rullst/actions/workflows/documentation.yml?query=branch%3Amain) | Builds the mdBook and rejects broken local links and anchors; scheduled/manual runs also preserve an informational external-link report. |
@@ -367,6 +367,10 @@ claim that every mode has identical maturity, bundle size, or migration cost.
 Rullst is built on **Axum**, **Tokio**, **Tower**, and **SQLx**, and exposes standard routers and pools at important integration points. Some framework helpers and generated structures still require an explicit migration when ejecting:
 
 - **Incremental Adoption:** Mount existing `axum::Router` instances directly into `rullst::server::Server`.
+- **Typed Server Functions:** One concrete async Rust signature generates an
+  explicit Axum route and matching Wasm caller over a bounded, versioned
+  protocol—without runtime reflection or silent default values. See the
+  [server-functions tutorial](docs/src/tutorials/52-typed-server-functions.md).
 - **Standard SQLx:** Run raw `sqlx::Pool` queries alongside `rullst-orm` without wrappers.
 - **Escape Hatch:** Use the CLI eject output as a migration starting point and review the generated code before deployment.
 - 📖 Read the full [Axum & SQLx Migration & Escape Hatch Guide](https://github.com/Rullst/Rullst/blob/main/docs/src/axum-sqlx-migration.md).

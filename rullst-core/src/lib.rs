@@ -72,6 +72,8 @@ pub mod resilience;
 #[cfg(not(target_arch = "wasm32"))]
 /// High-performance application routers built on Axum.
 pub mod routing;
+/// Typed, versioned browser-to-server function transport.
+pub mod rpc;
 #[cfg(not(target_arch = "wasm32"))]
 /// Interactive Scalar API documentation UI.
 pub mod scalar;

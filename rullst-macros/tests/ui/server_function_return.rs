@@ -1,8 +1,8 @@
 use rullst_macros::server_function;
 
 #[server_function]
-fn sum(left: u32, right: u32) -> RpcResult<u32> {
-    Ok(left + right)
+async fn sum(left: u32, right: u32) -> u32 {
+    left + right
 }
 
 fn main() {}

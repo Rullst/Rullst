@@ -1,0 +1,5 @@
+error: duplicate `path` option
+ --> tests/ui/server_function_duplicate_path.rs:3:42
+  |
+3 | #[server_function(path = "/api/rpc/one", path = "/api/rpc/two")]
+  |                                          ^^^^^^^^^^^^^^^^^^^^^

@@ -37,6 +37,11 @@ they explicitly implement durable scheduling.
 - **Axum-compatible routing:** `rullst::Router` wraps and converts to/from
   `axum::Router`; application latency depends on handlers, middleware, build
   profile, and deployment.
+- **Typed server functions:** concrete async `#[server_function]` items share
+  owned Serde arguments/results through the versioned `rullst.client` v1
+  envelope. The generated native router and Wasm caller enforce same-origin
+  paths, bounded bodies, correlation and redacted errors; hosts still own
+  identity, tenant, authorization, idempotency and rate-limit policy.
 - **Rullst Radar (`rullst::radar`):** Collects process RSS/CPU where an OS probe
   is supported, Tokio task/yield observations when a runtime is available, and
   process uptime. Unsupported probes return `None`.

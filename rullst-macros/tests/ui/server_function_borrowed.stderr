@@ -1,0 +1,5 @@
+error: #[server_function] parameter types must be owned because requests are deserialized
+ --> tests/ui/server_function_borrowed.rs:4:22
+  |
+4 | async fn greet(name: &str) -> RpcResult<String> {
+  |                      ^^^^

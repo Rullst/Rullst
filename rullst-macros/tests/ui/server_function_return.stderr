@@ -1,0 +1,5 @@
+error: #[server_function] must return rullst::rpc::RpcResult<T>
+ --> tests/ui/server_function_return.rs:4:40
+  |
+4 | async fn sum(left: u32, right: u32) -> u32 {
+  |                                        ^^^

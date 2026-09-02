@@ -1,0 +1,5 @@
+error: #[server_function] parameters must use simple identifier patterns
+ --> tests/ui/server_function_pattern.rs:4:14
+  |
+4 | async fn sum((left, right): (u32, u32)) -> RpcResult<u32> {
+  |              ^^^^^^^^^^^^^

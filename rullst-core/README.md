@@ -9,6 +9,11 @@
 ## ✨ Features
 
 - **Typed Axum Integration:** Wraps Axum routing while retaining access to the underlying router and middleware ecosystem.
+- **Bounded Server Functions:** `#[server_function]` shares the versioned
+  `rullst.client` v1 envelope between native Axum routes and Wasm callers, with
+  a 256 KiB body ceiling, correlation checks, same-origin paths, CSRF header
+  forwarding, and message-free typed failures. Identity and domain policy stay
+  server-owned.
 - **Runtime Telemetry:** Exposes process/runtime snapshots and tracing-span collection for consumers such as Rullst Studio.
 - **Typed Failures:** Server, scheduler, queue, storage, and resilience APIs expose structured errors for fallible paths. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
 - **Dependency Injection:** Type-safe, intuitive global state management across routes and background workers.
