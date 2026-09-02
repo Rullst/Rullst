@@ -1,9 +1,11 @@
 use super::column::{Column, ColumnDefault};
+use super::enums::{DatabaseEnum, NativeEnumDefinition, quoted_label, validate_native_enum};
 use super::validation::validate_identifier;
 use crate::Error;
 
 pub struct Blueprint {
     pub columns: Vec<Column>,
+    native_enum_columns: Vec<(String, NativeEnumDefinition)>,
 }
 
 impl Default for Blueprint {
@@ -14,7 +16,10 @@ impl Default for Blueprint {
 
 impl Blueprint {
     pub fn new() -> Self {
-        Self { columns: vec![] }
+        Self {
+            columns: vec![],
+            native_enum_columns: vec![],
+        }
     }
 
     pub fn id(&mut self) -> &mut Column {
@@ -73,6 +78,25 @@ impl Blueprint {
         self.add_column(name, &col_type)
     }
 
+    /// Adds a database-native enum column from a closed [`DatabaseEnum`]
+    /// contract.
+    ///
+    /// PostgreSQL uses the named enum type (created and drift-checked by
+    /// [`Schema::create`](super::Schema::create)); MySQL/MariaDB use an inline
+    /// `ENUM`, and SQLite uses `TEXT CHECK`. Metadata is validated when the
+    /// blueprint is built, so a manually implemented invalid contract fails
+    /// before any table DDL is executed.
+    pub fn native_enum<E: DatabaseEnum>(&mut self, name: &str) -> &mut Column {
+        self.native_enum_columns.push((
+            name.to_string(),
+            NativeEnumDefinition {
+                type_name: E::TYPE_NAME,
+                variants: E::VARIANTS,
+            },
+        ));
+        self.add_column(name, "TEXT")
+    }
+
     pub fn timestamps(&mut self) {
         let mut created = Column::new("created_at", "TEXT");
         created.default(ColumnDefault::CurrentTimestamp);
@@ -102,7 +126,26 @@ impl Blueprint {
             // identifiers regardless of how the Column was constructed.
             validate_identifier(&col.name)?;
 
-            let mut col_type_str = col.col_type.clone();
+            let mut col_type_str = if let Some((_, definition)) = self
+                .native_enum_columns
+                .iter()
+                .find(|(column, _)| column == &col.name)
+            {
+                validate_native_enum(definition.type_name, definition.variants)?;
+                let labels = definition
+                    .variants
+                    .iter()
+                    .map(|variant| quoted_label(variant))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                match driver {
+                    "postgres" => format!("\"{}\"", definition.type_name),
+                    "mysql" => format!("ENUM({labels})"),
+                    _ => format!("TEXT CHECK({} IN ({labels}))", col.name),
+                }
+            } else {
+                col.col_type.clone()
+            };
             if driver == "postgres" && col.is_auto_increment {
                 if col.col_type == "INTEGER" || col.col_type == "INT" {
                     col_type_str = "SERIAL".to_string();
@@ -132,5 +175,23 @@ impl Blueprint {
             defs.push(def);
         }
         Ok(defs.join(",\n    "))
+    }
+
+    pub(super) fn postgres_enum_definitions(&self) -> Result<Vec<NativeEnumDefinition>, Error> {
+        let mut definitions = std::collections::BTreeMap::new();
+        for (_, definition) in &self.native_enum_columns {
+            validate_native_enum(definition.type_name, definition.variants)?;
+            if let Some(existing) = definitions.get(definition.type_name) {
+                if existing != definition {
+                    return Err(Error::Validation(format!(
+                        "database enum type `{}` has conflicting label definitions",
+                        definition.type_name
+                    )));
+                }
+            } else {
+                definitions.insert(definition.type_name, definition.clone());
+            }
+        }
+        Ok(definitions.into_values().collect())
     }
 }

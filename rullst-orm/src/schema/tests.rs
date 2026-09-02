@@ -263,6 +263,55 @@ fn test_blueprint_enum_column() {
     assert!(col.is_nullable);
 }
 
+struct AccountStatus;
+
+impl DatabaseEnum for AccountStatus {
+    const TYPE_NAME: &'static str = "account_status";
+    const VARIANTS: &'static [&'static str] = &["Awaiting Review", "Owner's Active"];
+}
+
+#[test]
+fn native_enum_ddl_is_driver_specific_and_escaped() {
+    let mut blueprint = Blueprint::new();
+    blueprint.native_enum::<AccountStatus>("status").not_null();
+
+    assert!(
+        blueprint
+            .build_for_driver("postgres")
+            .expect("PostgreSQL enum DDL")
+            .contains("status \"account_status\" NOT NULL")
+    );
+    assert!(
+        blueprint
+            .build_for_driver("mysql")
+            .expect("MySQL enum DDL")
+            .contains("status ENUM('Awaiting Review', 'Owner''s Active') NOT NULL")
+    );
+    assert!(
+        blueprint
+            .build_for_driver("sqlite")
+            .expect("SQLite enum DDL")
+            .contains(
+                "status TEXT CHECK(status IN ('Awaiting Review', 'Owner''s Active')) NOT NULL"
+            )
+    );
+}
+
+struct ConflictingAccountStatus;
+
+impl DatabaseEnum for ConflictingAccountStatus {
+    const TYPE_NAME: &'static str = "account_status";
+    const VARIANTS: &'static [&'static str] = &["Different"];
+}
+
+#[test]
+fn native_enum_metadata_rejects_conflicting_named_types() {
+    let mut blueprint = Blueprint::new();
+    blueprint.native_enum::<AccountStatus>("primary_status");
+    blueprint.native_enum::<ConflictingAccountStatus>("secondary_status");
+    assert!(blueprint.postgres_enum_definitions().is_err());
+}
+
 #[test]
 fn test_blueprint_boolean_column() {
     let mut bp = Blueprint::new();

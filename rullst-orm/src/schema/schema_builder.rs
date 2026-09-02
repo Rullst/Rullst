@@ -1,5 +1,6 @@
 use super::blueprint::Blueprint;
-use super::validation::validate_table_name;
+use super::enums::{DatabaseEnum, NativeEnumDefinition, quoted_label, validated_definition};
+use super::validation::{validate_identifier, validate_table_name};
 use crate::Error;
 
 pub struct Schema;
@@ -19,6 +20,11 @@ impl Schema {
         let columns_sql = blueprint.build()?;
 
         let driver = crate::Orm::driver()?;
+        if driver == "postgres" {
+            for definition in blueprint.postgres_enum_definitions()? {
+                ensure_postgres_enum(&definition).await?;
+            }
+        }
         let escaped_table = match driver {
             "mysql" => format!("`{}`", table_name),
             _ => format!("\"{}\"", table_name),
@@ -53,4 +59,54 @@ impl Schema {
         crate::execute_query!(query, execute, pool)?;
         Ok(())
     }
+
+    /// Drops a named PostgreSQL enum after all dependent tables have been
+    /// removed. MySQL/MariaDB and SQLite have no standalone enum object, so
+    /// this operation is a validated no-op for those drivers.
+    pub async fn drop_native_enum<E: DatabaseEnum>() -> Result<(), Error> {
+        let definition = validated_definition::<E>()?;
+        if crate::Orm::driver()? != "postgres" {
+            return Ok(());
+        }
+        let sql = format!("DROP TYPE IF EXISTS \"{}\";", definition.type_name);
+        sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
+            .execute(crate::Orm::try_pool()?)
+            .await?;
+        Ok(())
+    }
+}
+
+async fn ensure_postgres_enum(definition: &NativeEnumDefinition) -> Result<(), Error> {
+    validate_identifier(definition.type_name)?;
+    let labels = definition
+        .variants
+        .iter()
+        .map(|variant| quoted_label(variant))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let sql = format!(
+        "DO $rullst$ BEGIN CREATE TYPE \"{}\" AS ENUM ({}); EXCEPTION WHEN duplicate_object THEN NULL; END $rullst$;",
+        definition.type_name, labels
+    );
+    let pool = crate::Orm::try_pool()?;
+    sqlx::query(sqlx::AssertSqlSafe(sql.as_str()))
+        .execute(pool)
+        .await?;
+
+    let actual = sqlx::query_as::<_, (String,)>(
+        "SELECT e.enumlabel::TEXT FROM pg_type AS t JOIN pg_enum AS e ON e.enumtypid = t.oid WHERE t.typname = $1 AND pg_type_is_visible(t.oid) ORDER BY e.enumsortorder",
+    )
+    .bind(definition.type_name)
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|(label,)| label)
+    .collect::<Vec<_>>();
+    if actual != definition.variants {
+        return Err(Error::Validation(format!(
+            "PostgreSQL enum `{}` differs from the declared Rust enum",
+            definition.type_name
+        )));
+    }
+    Ok(())
 }

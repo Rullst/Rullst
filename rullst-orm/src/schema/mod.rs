@@ -1,5 +1,6 @@
 pub mod blueprint;
 pub mod column;
+mod enums;
 pub mod join;
 pub mod migration;
 pub mod schema_builder;
@@ -10,6 +11,7 @@ mod tests;
 
 pub use blueprint::Blueprint;
 pub use column::{Column, ColumnDefault};
+pub use enums::{DatabaseEnum, MAX_DATABASE_ENUM_LABEL_BYTES, MAX_DATABASE_ENUM_VARIANTS};
 pub use join::JoinClause;
 pub use migration::{Migration, run_artisan, run_artisan_with_args};
 pub use schema_builder::Schema;

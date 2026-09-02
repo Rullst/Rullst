@@ -135,7 +135,7 @@ pub use replica::ReplicaPool;
 pub use repository::{GenericRepository, Repository};
 pub use resource::{ApiResource, JsonResource, ResourceCollection};
 pub use rullst_orm_macros::{Enum, Nexus, Orm, PersonalData, TursoModel, test};
-pub use schema::{JoinClause, SubqueryBuilder};
+pub use schema::{DatabaseEnum, JoinClause, SubqueryBuilder};
 #[cfg(feature = "scout-http")]
 pub use scout::{AlgoliaEngine, ElasticsearchEngine, MeilisearchEngine};
 pub use scout::{MockSearchEngine, SearchEngine, get_search_engine, set_search_engine};
