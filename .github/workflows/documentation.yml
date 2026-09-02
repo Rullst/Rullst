@@ -51,6 +51,11 @@ jobs:
       - name: Build the documentation book
         run: mdbook build docs
 
+      - name: Validate the landing page and benchmark templates
+        run: |
+          python3 .github/validate-site.py
+          node --check docs/site.js
+
       - name: Validate repository-local links
         run: >-
           lychee --offline --no-progress --include-fragments=anchor-only

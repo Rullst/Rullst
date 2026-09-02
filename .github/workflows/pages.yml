@@ -40,12 +40,21 @@ jobs:
       - name: Build mdBook (Main Docs)
         run: mdbook build docs
 
+      - name: Validate static site templates
+        run: |
+          python3 .github/validate-site.py
+          node --check docs/site.js
+
       - name: Assemble Final Site
         run: |
           mkdir -p public_site
 
           # Root landing page
           cp docs/home_template.html public_site/index.html
+          mkdir -p public_site/assets
+          cp docs/site.css public_site/assets/site.css
+          cp docs/site.js public_site/assets/site.js
+          cp -r images public_site/images
 
           # mdBook
           mkdir -p public_site/book

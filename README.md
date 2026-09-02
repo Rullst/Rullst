@@ -28,6 +28,33 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge" alt="License: MIT">
 </p>
 
+<p align="center">
+  <a href="https://codecov.io/gh/Rullst/Rullst"><img src="https://codecov.io/github/Rullst/Rullst/branch/main/graph/badge.svg?component=framework_libraries" alt="Framework library coverage"></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/Rullst/Rullst"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FRullst%2FRullst&query=%24.score&label=OpenSSF%20Scorecard" alt="OpenSSF Scorecard"></a>
+  <a href="docs/src/compatibility-policy.md"><img src="https://img.shields.io/badge/MSRV-1.96.0-f74c00?logo=rust" alt="MSRV 1.96.0"></a>
+</p>
+
+<p align="center">
+  <strong>Build ambitious Axum applications with one coordinated Rust toolchain—while keeping authorization, data, deployment, and provider boundaries explicit.</strong>
+</p>
+
+<p align="center">
+  <a href="docs/src/tutorials/01-hello-world.md"><strong>Start building</strong></a>
+  ·
+  <a href="https://rullst.github.io/Rullst/"><strong>Explore Rullst</strong></a>
+  ·
+  <a href="CONTRIBUTING.md"><strong>Contribute</strong></a>
+  ·
+  <a href="docs/src/why-Rullst.md"><strong>Why Rullst?</strong></a>
+</p>
+
+| Build the product | Keep control | Grow with one release train |
+| :--- | :--- | :--- |
+| Scaffold HTTP, data, auth, workers, admin, AI and product services from one CLI. | Inspect generated Rust and keep direct Axum, Tokio, Tower and SQLx escape hatches. | Version 16 publishable crates together and test their integration in one workspace. |
+
+<details>
+<summary><strong>🛡️ Open the full v12 verification dashboard (37 workflows)</strong></summary>
+
 <h3 align="center">🛡️ v12 Main Verification Dashboard</h3>
 
 <p align="center">
@@ -88,6 +115,9 @@ profile and the exact scope of all
 > 🧭 **[Capability Status & Vision Decisions](https://github.com/Rullst/Rullst/blob/main/docs/src/capability-ledger.md)** preserves ambitious features that are partial or not implemented, with an explicit recommendation and rationale for each one.
 >
 > 📋 **[Simple Capability Status](https://github.com/Rullst/Rullst/blob/main/docs/src/capability-status.md)** and the **[per-commit quality scorecard](https://github.com/Rullst/Rullst/blob/main/docs/src/quality-scorecard.md)** keep feature progress separate from SHA-bound engineering evidence.
+
+</details>
+
 <br>
 
 ## 💡 The Rullst Philosophy
@@ -200,13 +230,22 @@ The documentation separates released behavior, v12 preview capabilities,
 migration guidance, and roadmap boundaries. Explore the guides and evaluate the
 features your application intends to enable:
 
-👉 **[Explore the Official Website & Docs](https://rullst.github.io)**
+👉 **[Explore the Official Website & Docs](https://rullst.github.io/Rullst/)**
 
 🔑 **[Maintainer GitHub CLI installation & safe login](docs/src/gh-install.md)**
 
 💬 **[Join the Community on Discord](https://discord.gg/2ntKFtsSjw)**
 
 > **Found a bug?** [Report an Issue](https://github.com/Rullst/Rullst/issues)
+
+#### Build Rullst with us
+
+| Start as a user | Improve the framework | Help shape what comes next |
+| :--- | :--- | :--- |
+| Follow the [Zero-to-Hero tutorial](docs/src/tutorials/01-hello-world.md), then report the first point of friction. | Read the [contribution guide](CONTRIBUTING.md), choose a bounded issue, and include evidence with the change. | Review the [capability ledger](docs/src/capability-ledger.md), join [Discord](https://discord.gg/2ntKFtsSjw), and challenge roadmap assumptions with a concrete use case. |
+
+Documentation, tests, reproductions, accessibility reviews, provider contracts,
+and benchmark methodology are first-class contributions—not secondary work.
 
 ---
 
@@ -239,6 +278,11 @@ claim universal superiority. The separate
 measures a historical Rullst 4.x application and must not be used as v12
 performance evidence until its versions and runs are refreshed.
 
+Open the [public benchmark hub](https://rullst.github.io/Rullst/benches/) for
+the per-crate dashboards, or read the
+[benchmarking methodology](docs/src/tutorials/35-high-performance-benchmarking.md)
+before interpreting a number.
+
 ### v12 capability highlights
 
 - 🎨 **Studio & Nexus:** a loopback-first developer dashboard at `:5555` and an
@@ -249,9 +293,10 @@ performance evidence until its versions and runs are refreshed.
 - 🔑 **Passkeys/WebAuthn:** one-time challenge handling and ES256 registration
   and assertion verification within the documented `none`-attestation scope;
   deployments own RP/origin policy and atomic counter persistence.
-- 🌐 **Guarded AI client:** supported Gemini, Claude, OpenAI, DeepSeek, and
-  Ollama transports with bounded injection heuristics and PII masking on the
-  high-level client path. Passing a heuristic is not authorization.
+- 🌐 **Guarded AI client:** supported Gemini, Claude, OpenAI, DeepSeek,
+  Ollama, and capability-declared OpenAI-compatible transports with bounded
+  injection heuristics and PII masking on the high-level client path. Passing a
+  heuristic is not authorization or model certification.
 - 💳 **Capital adapters:** Stripe and LemonSqueezy checkout/webhook adapters use
   cryptographic HMAC verification; Axum and opt-in Actix middleware share one
   bounded verifier. The included process-local metrics/event buffer is a preview

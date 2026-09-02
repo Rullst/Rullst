@@ -57,6 +57,15 @@ model a production network, database, proxy or user journey. The separate
 cross-framework repository currently exercises historical Rullst 4.x and is not
 v12 evidence until refreshed.
 
+The [public benchmark hub](https://rullst.github.io/Rullst/benches/) links the
+eight published groups: facade/HTTP, Core primitives, ORM, Auth, Connect,
+Security, AI and Capital. Nine Criterion binaries back those groups because ORM
+has both local and cross-ORM inputs. A crate without a microbenchmark is not
+automatically less mature: protocol vectors, generated-project compilation,
+restart/failure contracts, no_std target builds or whole-request tests can fit
+its dominant risk better. Add a new benchmark only with a stable operation,
+input, unit and interpretation.
+
 The repository now also contains a v12 cross-ORM SQLite harness:
 
 ```bash

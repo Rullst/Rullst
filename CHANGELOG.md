@@ -647,6 +647,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Local development and observability
 
+- Reworked the public landing page into a self-contained, responsive product
+  and contribution entry point while preserving the v5 EOL/v12 NO-GO warning
+  and the dedication at both boundaries. The benchmark root is now a central
+  hub for all eight published groups and explains why other crates use
+  risk-appropriate evidence instead of decorative microbenchmarks. Pages and
+  documentation CI validate semantic HTML, local assets, CSP, JavaScript
+  syntax, links and accessibility text before deployment.
 - Added an English [Why Rullst?](docs/src/why-Rullst.md) guide that summarizes
   the framework's implemented technical differentiators, suitable use cases,
   explicit limits, and evaluation path without presenting roadmap work as a

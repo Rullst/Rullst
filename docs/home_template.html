@@ -1,360 +1,251 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description"
-    content="Rullst v12 development preview: an explicit, AI-friendly full-stack Rust framework built on Axum, Tokio, Tower and SQLx. Not yet released." />
-  <meta property="og:title" content="Rullst v12 development preview — NO-GO" />
-  <meta property="og:description"
-    content="Explore the implemented v12 capabilities, evidence and release boundaries. The published v5 line is end-of-life; v12 remains unreleased." />
-  <meta property="og:image" content="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" />
-  <meta property="og:type" content="website" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Rullst v12 development preview — NO-GO" />
-  <meta name="twitter:description"
-    content="Implemented capabilities, reproducible evidence and honest release boundaries for Rullst v12." />
-  <meta name="twitter:image" content="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" />
-  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" />
-  <title>Rullst v12 development preview — NO-GO</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&display=swap"
-    rel="stylesheet" />
-  <link rel="stylesheet" href="https://rullst.github.io/src/style.css" />
-  <style>
-    body>.navbar {
-      position: sticky;
-      top: 0;
-    }
-
-    .content-section {
-      max-width: 1080px;
-      margin: 0 auto;
-      padding: 4.5rem 1rem;
-    }
-
-    .card-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1rem;
-    }
-
-    .fact-card {
-      padding: 1.6rem;
-      border-radius: 16px;
-      text-align: left;
-    }
-
-    .fact-card h3 {
-      color: #38bdf8;
-      margin: 0 0 0.65rem;
-      font-size: 1.1rem;
-    }
-
-    .fact-card p,
-    .boundary-copy {
-      color: #cbd5e1;
-      line-height: 1.65;
-      margin: 0;
-    }
-
-    .evidence-link {
-      display: inline-block;
-      margin-top: 0.8rem;
-      color: #a7f3d0;
-      font-weight: 700;
-      text-decoration: none;
-    }
-
-    .status-list li {
-      margin-bottom: 0.8rem;
-      color: #cbd5e1;
-      line-height: 1.55;
-    }
-
-    .positioning-table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-    }
-
-    .positioning-table th,
-    .positioning-table td {
-      padding: 1rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      color: #cbd5e1;
-      vertical-align: top;
-    }
-
-    .positioning-table th {
-      color: #f8fafc;
-      background: rgba(30, 41, 59, 0.75);
-    }
-
-    code {
-      font-family: "JetBrains Mono", monospace;
-    }
-  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Rullst v12 development preview: a coordinated, explicit, AI-friendly full-stack Rust framework built on Axum, Tokio, Tower and SQLx.">
+  <meta name="theme-color" content="#050914">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://raw.githubusercontent.com; style-src 'self'; script-src 'self'; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+  <meta property="og:title" content="Rullst — Build ambitious products in Rust">
+  <meta property="og:description" content="A coordinated full-stack Rust toolchain with inspectable code and explicit security, data and deployment boundaries.">
+  <meta property="og:image" content="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Rullst — Build ambitious products in Rust">
+  <meta name="twitter:description" content="Explore the implemented v12 preview, documentation, benchmarks and contribution paths.">
+  <meta name="twitter:image" content="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png">
+  <title>Rullst — Build ambitious products in Rust</title>
+  <link rel="icon" type="image/png" href="/Rullst/Rullst.png">
+  <link rel="stylesheet" href="./assets/site.css">
+  <script src="./assets/site.js" defer></script>
 </head>
-
 <body>
-  <p
-    style="margin: 0; padding: 0.5rem 1rem; text-align: center; color: #cbd5e1; background: #020617; font-size: 0.85rem;">
-    All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ).
-  </p>
+  <p class="glory">All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ).</p>
 
-  <aside aria-label="Rullst release status"
-    style="position: relative; z-index: 1000; padding: 1rem; border-bottom: 1px solid rgba(251, 191, 36, 0.55); background: rgba(69, 26, 3, 0.97); color: #fef3c7; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);">
-    <div style="max-width: 1180px; margin: 0 auto; line-height: 1.55; text-align: center;">
-      <strong style="display: block; margin-bottom: 0.25rem; color: #fbbf24; font-size: 1.05rem;">
-        ⚠️ Published v5 is end-of-life; v12 is an unreleased development preview
-      </strong>
-      <span>
-        <a href="https://github.com/Rullst/Rullst/tree/main"
-          style="color: #fde68a; font-weight: 700;">main</a> contains active v12 work and remains
-        <strong>NO-GO for production</strong>. The frozen
-        <a href="https://github.com/Rullst/Rullst/tree/v5"
-          style="color: #fde68a; font-weight: 700;">v5 branch</a> preserves legacy source without maintenance.
-        Use only versioned crates.io releases and matching immutable tags as published artifacts.
-      </span>
-    </div>
+  <aside class="release-banner" aria-label="Rullst release status">
+    <strong>Development preview:</strong> v5 is end-of-life and v12 on
+    <a href="https://github.com/Rullst/Rullst/tree/main">main</a> remains
+    <strong>NO-GO for production</strong> until its release-candidate gates pass.
+    <a href="/Rullst/book/v12.html">Read the release program</a>.
   </aside>
 
-  <div class="blob blob-1"></div>
-  <div class="blob blob-2"></div>
-
-  <nav class="navbar" aria-label="Primary navigation">
-    <div class="nav-content">
-      <div class="logo"><span>📜🦀🌐 Rullst <small
-            style="font-size: 0.6em; color: #fbbf24; font-family: 'JetBrains Mono', monospace;">v12 preview</small></span>
-      </div>
-      <button class="hamburger" id="hamburger" aria-label="Toggle navigation" aria-expanded="false">
-        <span class="bar"></span><span class="bar"></span><span class="bar"></span>
-      </button>
-      <div class="nav-links" id="nav-links">
-        <a href="https://github.com/Rullst/Rullst/tree/main" class="btn btn-outline">GitHub</a>
-        <a href="/Rullst/book/" class="btn btn-outline">Documentation</a>
-        <a href="/Rullst/book/v12.html" class="btn btn-outline">Release program</a>
-        <a href="#evidence" class="btn btn-outline">Evidence</a>
+  <nav class="site-nav" aria-label="Primary navigation">
+    <div class="shell nav-inner">
+      <a class="brand" href="/Rullst/" aria-label="Rullst home">
+        <img src="/Rullst/Rullst.png" alt="">
+        <span>Rullst</span>
+        <small>v12 preview</small>
+      </a>
+      <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" data-nav-toggle>☰</button>
+      <div class="nav-links" data-navigation>
+        <a href="#why">Why Rullst</a>
+        <a href="#journey">How it works</a>
+        <a href="/Rullst/benches/">Benchmarks</a>
+        <a href="/Rullst/book/">Docs</a>
+        <a href="#community">Community</a>
+        <a href="https://github.com/Rullst/Rullst">GitHub ↗</a>
       </div>
     </div>
   </nav>
 
-  <header class="hero">
-    <div class="hero-content">
-      <h1 class="hero-title">Full-stack Rust with <span class="text-gradient">explicit boundaries</span>.</h1>
-      <p class="hero-subtitle">
-        Rullst v12 is an AI-friendly framework suite built on Axum, Tokio, Tower and SQLx: typed APIs, inspectable
-        generated code, offline provider fixtures and security controls whose limits are documented alongside them.
-      </p>
-      <div class="hero-cta">
-        <a href="/Rullst/book/tutorials/01-hello-world.html" class="btn btn-primary">Read Zero to Hero</a>
-        <a href="https://github.com/Rullst/Rullst/blob/main/README.md" class="btn btn-secondary">Explore the preview</a>
-      </div>
-      <div class="badges">
-        <img src="https://img.shields.io/crates/v/rullst?style=for-the-badge&color=64748b&logo=rust"
-          alt="Latest published Rullst version" />
-        <img src="https://img.shields.io/badge/v12-development%20NO--GO-f59e0b.svg?style=for-the-badge"
-          alt="Version 12 development NO-GO" />
-        <img src="https://img.shields.io/badge/license-MIT-eab308.svg?style=for-the-badge" alt="MIT license" />
-      </div>
-      <p style="color: #94a3b8; margin-top: 1rem; font-size: 0.9rem;">
-        The crates.io badge identifies the legacy published line; it is not evidence that v12 has shipped.
-      </p>
-    </div>
-  </header>
-
   <main>
-    <section class="content-section" aria-labelledby="capabilities-title">
-      <h2 id="capabilities-title" class="section-title">What the v12 preview implements</h2>
-      <p class="boundary-copy" style="max-width: 820px; margin: 0 auto 2rem; text-align: center;">
-        These are bounded capabilities in the main branch, not a framework-wide production-readiness label.
-      </p>
-      <div class="card-grid">
-        <article class="glass fact-card">
-          <h3>Axum-native HTTP</h3>
-          <p>Routing, middleware and server helpers preserve access to Axum, Tokio and Tower escape hatches.</p>
-          <a class="evidence-link" href="/Rullst/book/crates/core.html">Core boundary →</a>
-        </article>
-        <article class="glass fact-card">
-          <h3>Parameterized ORM</h3>
-          <p>Active Record and repository APIs cover SQLite, PostgreSQL and MySQL, with strict identifier validation
-            around generated queries.</p>
-          <a class="evidence-link" href="/Rullst/book/crates/orm.html">ORM documentation →</a>
-        </article>
-        <article class="glass fact-card">
-          <h3>Authenticated field encryption</h3>
-          <p><code>#[orm(encrypted)]</code> protects string fields on generated reads and writes with versioned
-            AES-256-GCM envelopes and explicit key rotation.</p>
-          <a class="evidence-link" href="/Rullst/book/tutorials/15-rullst-vault-encryption.html">Encryption guide →</a>
-        </article>
-        <article class="glass fact-card">
-          <h3>Defense-in-depth helpers</h3>
-          <p>CSRF, secure headers, bounded WAF/RASP heuristics, ownership guards, Login Jail and telemetry support an
-            application policy; they do not replace it.</p>
-          <a class="evidence-link" href="/Rullst/book/security-architecture.html">Security architecture →</a>
-        </article>
-        <article class="glass fact-card">
-          <h3>Guarded AI clients</h3>
-          <p>Five built-in provider paths share offline fixtures, bounded prompt/PII checks, capabilities and an
-            opt-in strict egress fetcher.</p>
-          <a class="evidence-link" href="/Rullst/book/ai-provider-capabilities.html">Provider matrix →</a>
-        </article>
-        <article class="glass fact-card">
-          <h3>Studio, Nexus and CLI</h3>
-          <p>Local developer telemetry, policy-protected admin scaffolding and generators make architecture visible
-            while keeping production access decisions explicit.</p>
-          <a class="evidence-link" href="/Rullst/book/cli_reference.html">CLI reference →</a>
-        </article>
-      </div>
-    </section>
-
-    <section class="content-section" aria-labelledby="model-title">
-      <h2 id="model-title" class="section-title">Small model, explicit behavior</h2>
-      <div class="glass" style="padding: 2rem; border-radius: 16px; overflow-x: auto;">
-        <pre style="margin: 0; color: #a7f3d0;"><code>use rullst_orm::FromRow;
-
-#[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
-#[orm(table = "users")]
-struct User {
-    id: i32,
-    email: String,
-    #[orm(encrypted)]
-    recovery_note: Option&lt;String&gt;,
-}
-
-let user = User::find(42).await?;</code></pre>
-      </div>
-      <p class="boundary-copy" style="margin-top: 1rem;">
-        Generated persistence encrypts annotated values before SQL and decrypts loaded models before fetch hooks.
-        Randomized encrypted columns deliberately reject filtering and sorting; raw SQL remains caller-owned.
-      </p>
-    </section>
-
-    <section id="evidence" class="content-section" aria-labelledby="evidence-title">
-      <h2 id="evidence-title" class="section-title">Evidence over slogans</h2>
-      <div class="card-grid">
-        <article class="glass fact-card">
-          <h3>Release program</h3>
-          <p>The v12 checklist distinguishes implemented, partial, external and release-only gates. The current stable
-            decision remains NO-GO.</p>
-          <a class="evidence-link" href="/Rullst/book/v12.html">Inspect the checklist →</a>
-        </article>
-        <article class="glass fact-card">
-          <h3>Security evidence ledger</h3>
-          <p>Each v12 security claim links to implementation, tests and a known boundary. It is not a certification or
-            external audit.</p>
-          <a class="evidence-link" href="/Rullst/book/v12-security-claims.html">Inspect the ledger →</a>
-        </article>
-        <article class="glass fact-card">
-          <h3>Microbenchmarks</h3>
-          <p>Criterion suites track selected operations for regressions. They are not production throughput promises
-            or proof that one framework is universally faster.</p>
-          <a class="evidence-link" href="/Rullst/benches/">Open benchmark dashboards →</a>
-        </article>
-      </div>
-      <div class="glass" style="margin-top: 1rem; padding: 1.5rem; border-radius: 16px;">
-        <p class="boundary-copy">
-          <strong style="color: #fbbf24;">Cross-framework benchmark boundary:</strong> the separate Rullst Benchmarks
-          repository currently exercises a historical Rullst 4.x application. It must not be cited as v12 evidence
-          until its dependency versions, hardware, configuration and runs are refreshed.
+    <header class="shell hero">
+      <div>
+        <p class="eyebrow">Axum-native · inspectable · one release train</p>
+        <h1>Build ambitious products in <span class="gradient-text">Rust, end to end.</span></h1>
+        <p class="hero-copy">
+          Rullst coordinates HTTP, data, auth, security helpers, workers, AI providers,
+          admin tooling and application scaffolds—without hiding the underlying Rust
+          or pretending your product policy can be automated away.
         </p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="/Rullst/book/tutorials/01-hello-world.html">Start with Zero to Hero →</a>
+          <a class="button" href="https://github.com/Rullst/Rullst">Explore the source</a>
+          <a class="button" href="https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md">Contribute</a>
+        </div>
+      </div>
+
+      <div class="terminal" aria-label="Example Rullst CLI session">
+        <div class="terminal-bar">
+          <span class="terminal-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span>rullst / project</span>
+          <button class="copy-command" type="button" data-copy-command><span data-copy-status>Copy command</span></button>
+        </div>
+        <pre><code><span class="prompt">$</span> cargo rullst new my_app
+<span class="answer">? Blueprint</span>  LMS
+<span class="answer">? Database</span>   PostgreSQL
+<span class="answer">? Frontend</span>   Zero-Bundle HTMX
+
+<span class="success">✓</span> generated inspectable Rust
+<span class="success">✓</span> wrote reversible migrations
+<span class="success">✓</span> kept Axum and SQLx escape hatches
+
+<span class="prompt">$</span> cd my_app
+<span class="prompt">$</span> cargo rullst dev
+
+<span class="success">●</span> app     <span class="url">http://127.0.0.1:3000</span>
+<span class="answer">→ review the generated routes, models and policy</span></code></pre>
+      </div>
+    </header>
+
+    <section class="trust-strip" aria-label="Repository facts">
+      <div class="trust-item"><strong>16</strong><span>publishable crates</span></div>
+      <div class="trust-item"><strong>50</strong><span>public tutorials in doctest scope</span></div>
+      <div class="trust-item"><strong>37</strong><span>workflow definitions</span></div>
+      <div class="trust-item"><strong>1.96.0</strong><span>declared v12 MSRV</span></div>
+    </section>
+
+    <section id="why" class="shell section reveal">
+      <div class="section-heading">
+        <p class="eyebrow">A framework suite with an opinion</p>
+        <h2>Move faster without surrendering the boundaries that matter.</h2>
+        <p>Rullst generates and coordinates ordinary Rust. You can inspect it, test it, replace it, and keep ownership of application policy.</p>
+      </div>
+      <div class="card-grid">
+        <article class="card">
+          <h3>Product-shaped foundations</h3>
+          <p>Start from blank, blog, SaaS, LMS, portfolio or ERP blueprints, then add typed resources, workers, billing, mail and platform shells.</p>
+          <a href="/Rullst/book/cli_reference.html">Explore the CLI →</a>
+        </article>
+        <article class="card">
+          <h3>Explicit security composition</h3>
+          <p>Use bounded CSRF, headers, ownership/RBAC, sessions, WAF/RASP and audit helpers while keeping authorization and deployment policy visible.</p>
+          <a href="/Rullst/book/security-architecture.html">Inspect the boundaries →</a>
+        </article>
+        <article class="card">
+          <h3>One coordinated workspace</h3>
+          <p>Version Core, ORM, Auth, Security, AI, Capital, Connect, Messaging, Mail, Studio, Nexus and the CLI together.</p>
+          <a href="/Rullst/book/spec.html">See the architecture specification →</a>
+        </article>
+        <article class="card">
+          <h3>Data without a fictional universal ORM</h3>
+          <p>Use SQLx-backed relational models and explicit capability APIs for Turso, MongoDB, DuckDB, SurrealDB, vectors, search and Redis.</p>
+          <a href="/Rullst/book/polyglot-persistence.html">Choose by capability →</a>
+        </article>
+        <article class="card">
+          <h3>Guarded AI, local or cloud</h3>
+          <p>Compose named providers, deterministic offline fixtures and capability-declared OpenAI-compatible endpoints behind one guarded client contract.</p>
+          <a href="/Rullst/book/ai-provider-capabilities.html">Compare provider paths →</a>
+        </article>
+        <article class="card">
+          <h3>Escape hatches stay open</h3>
+          <p>Mount standard Axum routers, run raw parameterized SQLx queries, inspect generated code and eject when the abstraction no longer fits.</p>
+          <a href="/Rullst/book/axum-sqlx-migration.html">Read the migration guide →</a>
+        </article>
       </div>
     </section>
 
-    <section class="content-section" aria-labelledby="positioning-title">
-      <h2 id="positioning-title" class="section-title">Choose by architecture, not scorecards</h2>
-      <div class="glass" style="overflow-x: auto; border-radius: 16px;">
-        <table class="positioning-table">
-          <thead>
-            <tr>
-              <th>Project</th>
-              <th>Best fit</th>
-              <th>Relationship to Rullst</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><a href="https://docs.rs/axum/latest/axum/" style="color: #38bdf8;">Axum</a></td>
-              <td>Focused HTTP routing and Tower composition</td>
-              <td>Rullst builds on it and should preserve direct access to it.</td>
-            </tr>
-            <tr>
-              <td><a href="https://actix.rs/docs/" style="color: #38bdf8;">Actix Web</a></td>
-              <td>Mature, focused Rust web services</td>
-              <td>An established alternative when an integrated suite is unnecessary.</td>
-            </tr>
-            <tr>
-              <td><a href="https://loco.rs/docs/" style="color: #38bdf8;">Loco</a></td>
-              <td>Rails-inspired Axum applications</td>
-              <td>The closest batteries-included Rust comparison and a DX reference.</td>
-            </tr>
-            <tr>
-              <td><a href="https://book.leptos.dev/" style="color: #38bdf8;">Leptos</a> / <a
-                  href="https://dioxuslabs.com/learn/0.7/" style="color: #38bdf8;">Dioxus</a></td>
-              <td>Reactive Rust UI and full-stack rendering</td>
-              <td>Frontend-first choices; Rullst defaults to server-rendered HTML/HTMX.</td>
-            </tr>
-          </tbody>
-        </table>
+    <section id="journey" class="shell section reveal">
+      <div class="section-heading">
+        <p class="eyebrow">From idea to running application</p>
+        <h2>One workflow. Reviewable output.</h2>
       </div>
-      <p class="boundary-copy" style="margin-top: 1rem;">
-        Ecosystems change. This compact positioning guide links to each project's own documentation and avoids claims
-        that another framework “does not have” a feature.
-      </p>
+      <div class="journey-grid">
+        <article class="journey-card">
+          <span class="step">01</span>
+          <h3>Choose a starting point</h3>
+          <p>Pick a bounded blueprint, persistence profile and frontend mode instead of assembling an undocumented stack by hand.</p>
+        </article>
+        <article class="journey-card">
+          <span class="step">02</span>
+          <h3>Own the generated Rust</h3>
+          <p>Review routes, models, migrations and middleware in your project. Rullst does not hide application behavior behind runtime reflection.</p>
+        </article>
+        <article class="journey-card">
+          <span class="step">03</span>
+          <h3>Verify the exact boundary</h3>
+          <p>Run ordinary Cargo checks plus Rullst's documented database, security, portability and release evidence for the features you enable.</p>
+        </article>
+      </div>
+      <figure class="product-shot">
+        <img src="/Rullst/images/cargo-rullst-dash.png" alt="Rullst CLI dashboard showing application logs, hot reload status and project information" loading="lazy">
+        <figcaption>Developer dashboard preview. Timings, enabled services and database state vary by project and machine.</figcaption>
+      </figure>
     </section>
 
-    <section class="content-section" aria-labelledby="release-title">
-      <div class="glass" style="padding: 2rem; border-radius: 16px;">
-        <h2 id="release-title" class="section-title" style="text-align: left; margin-top: 0;">What still blocks v12</h2>
-        <ul class="status-list">
-          <li>All local gates and Linux/macOS/Windows CI must be green on one immutable candidate SHA.</li>
-          <li>Exact packages and a crates.io-only consumer must reproduce from the candidate artifacts.</li>
-          <li>Security advisories require resolution or a narrow, owned and expiring exception.</li>
-          <li>External review, an operated release candidate and human GO/NO-GO approval cannot be replaced by local
-            tests.</li>
-        </ul>
-        <a href="https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md" class="btn btn-primary">Read the release
-          guide</a>
+    <section id="evidence" class="shell section reveal">
+      <div class="section-heading">
+        <p class="eyebrow">Evidence over slogans</p>
+        <h2>See what is implemented—and where the proof stops.</h2>
+        <p>A green badge is useful evidence, not a security certification or production guarantee. Rullst documents implementation, tests and known limits together.</p>
+      </div>
+      <div class="evidence-grid">
+        <article class="evidence-card">
+          <h3>Capability ledger</h3>
+          <p>Separate implemented, bounded, partial, external and rejected promises instead of presenting a wish list as shipped behavior.</p>
+          <a href="/Rullst/book/capability-ledger.html">Inspect capability truth →</a>
+        </article>
+        <article class="evidence-card">
+          <h3>Security claims ledger</h3>
+          <p>Trace selected v12 security claims to implementation, tests and an explicit residual boundary.</p>
+          <a href="/Rullst/book/v12-security-claims.html">Trace the evidence →</a>
+        </article>
+        <article class="evidence-card">
+          <h3>Release program</h3>
+          <p>Track the exact gates that still separate the active mainline from a responsible v12 release candidate.</p>
+          <a href="/Rullst/book/v12.html">Open the v12 program →</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="shell section reveal">
+      <div class="benchmark-callout">
+        <div>
+          <p class="eyebrow">Performance you can inspect</p>
+          <h2>Eight benchmark groups. Exact workloads. No universal-fastest claim.</h2>
+          <p>Browse Criterion history by crate, then read the methodology and limitations before comparing a number.</p>
+        </div>
+        <a class="button button-primary" href="/Rullst/benches/">Open benchmark hub →</a>
+      </div>
+    </section>
+
+    <section id="community" class="shell section reveal">
+      <div class="community">
+        <div>
+          <p class="eyebrow">Build Rullst with us</p>
+          <h2>Users, reviewers and contributors all make the framework better.</h2>
+          <p>Bring a real use case, a reproduction, a documentation improvement, an accessibility review, a benchmark question or a focused code change.</p>
+          <div class="community-actions">
+            <a class="button button-primary" href="https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md">Contribution guide</a>
+            <a class="button" href="https://github.com/Rullst/Rullst/issues">Open issues</a>
+            <a class="button" href="https://discord.gg/2ntKFtsSjw">Join Discord</a>
+          </div>
+        </div>
+        <div>
+          <article class="card">
+            <h3>A good first contribution</h3>
+            <p>Choose one bounded problem, explain the user impact, add evidence proportional to the change and keep claims narrower than the proof.</p>
+            <a href="https://github.com/Rullst/Rullst/blob/main/AGENTS.md">Read the engineering rules →</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="shell section reveal">
+      <div class="release-card">
+        <div>
+          <h2>v12 remains an unreleased development preview.</h2>
+          <p>Use versioned crates.io releases or matching immutable tags for published artifacts. Do not deploy the moving main branch as a stable release.</p>
+        </div>
+        <a class="button" href="https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md">Review the release guide →</a>
       </div>
     </section>
   </main>
 
   <footer class="footer">
-    <p>Rullst is open source under the MIT license.</p>
-    <div style="margin-top: 1rem; display: flex; gap: 1.25rem; justify-content: center; flex-wrap: wrap;">
-      <a href="https://github.com/Rullst/Rullst" style="color: #94a3b8;">GitHub</a>
-      <a href="https://discord.gg/2ntKFtsSjw" style="color: #94a3b8;">Discord</a>
-      <a href="https://youtube.com/@Rullst_Official" style="color: #94a3b8;">YouTube</a>
-      <a href="mailto:officialrullst@gmail.com" style="color: #38bdf8;">Security and official inquiries</a>
+    <div class="shell footer-main">
+      <div>
+        <strong>Rullst</strong><br>
+        <span>Explicit, productive, security-conscious Rust web development.</span>
+      </div>
+      <div class="footer-links">
+        <a href="/Rullst/book/">Documentation</a>
+        <a href="/Rullst/benches/">Benchmarks</a>
+        <a href="https://github.com/Rullst/Rullst">GitHub</a>
+        <a href="mailto:officialrullst@gmail.com">Official inquiries</a>
+      </div>
     </div>
-    <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 1.5rem; font-style: italic;">
-      All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ).
-    </p>
+    <p class="glory">All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ).</p>
   </footer>
-
-  <script>
-    const hamburger = document.getElementById('hamburger');
-    const navigation = document.getElementById('nav-links');
-    if (hamburger && navigation) {
-      hamburger.addEventListener('click', () => {
-        const expanded = hamburger.getAttribute('aria-expanded') === 'true';
-        hamburger.setAttribute('aria-expanded', String(!expanded));
-        hamburger.classList.toggle('active');
-        navigation.classList.toggle('active');
-      });
-      navigation.querySelectorAll('a').forEach((item) => {
-        item.addEventListener('click', () => {
-          hamburger.setAttribute('aria-expanded', 'false');
-          hamburger.classList.remove('active');
-          navigation.classList.remove('active');
-        });
-      });
-    }
-  </script>
 </body>
-
 </html>

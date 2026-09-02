@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rullst Performance Benchmarks</title>
+  <title>Rullst Benchmark Hub</title>
   
-  <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.js"></script>
+  <link rel="icon" type="image/png" href="/Rullst/Rullst.png" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js"
+    integrity="sha384-zYPBGXwO4633CABX/5Spf6emCKUJCfoOkhOMYyxMsatqQZPnDblmmOewfjsIVWCM"
+    crossorigin="anonymous"></script>
 
   <style>
     :root {
@@ -25,7 +24,7 @@
 
     body {
       margin: 0;
-      font-family: 'Inter', sans-serif;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background-color: var(--bg-color);
       color: var(--text-main);
       overflow-x: hidden;
@@ -93,7 +92,7 @@
       font-weight: 600;
       text-decoration: none;
       transition: all 0.2s ease;
-      font-family: 'Inter', sans-serif;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
     }
 
     .btn-outline {
@@ -139,6 +138,64 @@
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 1.5rem;
       margin-bottom: 3rem;
+    }
+
+    .suite-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 1rem;
+      margin-bottom: 3rem;
+    }
+
+    .suite-card {
+      display: block;
+      padding: 1.25rem;
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.72);
+      color: var(--text-main);
+      text-decoration: none;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .suite-card:hover,
+    .suite-card:focus-visible {
+      transform: translateY(-3px);
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+
+    .suite-card strong {
+      display: block;
+      margin-bottom: 0.35rem;
+      color: var(--secondary);
+    }
+
+    .suite-card span {
+      color: var(--text-muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.75rem;
+    }
+
+    .glory {
+      margin: 0;
+      padding: 0.55rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      background: #020617;
+      color: #cbd5e1;
+      font-size: 0.82rem;
+      text-align: center;
+    }
+
+    .boundary-table td:first-child {
+      color: var(--text-main);
+      font-weight: 700;
     }
 
     .info-card {
@@ -206,6 +263,15 @@
       color: #f43f5e;
     }
 
+    .commit-link {
+      color: var(--secondary);
+      text-decoration: none;
+    }
+
+    .neutral-change {
+      color: #64748b;
+    }
+
     #loading {
       text-align: center;
       padding: 4rem;
@@ -215,15 +281,31 @@
   </style>
 </head>
 <body>
+  <p class="glory">All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ).</p>
   <div class="blob blob-1"></div>
   <div class="blob blob-2"></div>
 
   <div class="container">
     <header>
-      <h1>Rullst Performance Benchmarks</h1>
-      <p class="subtitle">Historical Criterion measurements for selected Rullst operations. Compare runs from the same CI environment; these are not application throughput or production capacity claims.</p>
-      <a href="/Rullst/" class="btn btn-outline">🏠 Back to Home</a>
+      <h1>Rullst Benchmark Hub</h1>
+      <p class="subtitle">Historical Criterion measurements for selected, named operations. Compare runs from the same CI environment; these are regression signals, not application throughput, capacity, or universal-framework rankings.</p>
+      <div class="header-actions">
+        <a href="/Rullst/" class="btn btn-outline">← Rullst home</a>
+        <a href="/Rullst/book/tutorials/35-high-performance-benchmarking.html" class="btn btn-outline">Read the methodology</a>
+        <a href="https://github.com/Rullst/Rullst/actions/workflows/bench.yml" class="btn btn-outline">Inspect the workflow ↗</a>
+      </div>
     </header>
+
+    <nav class="suite-grid" aria-label="Benchmark dashboards">
+      <a class="suite-card" href="/Rullst/benches/"><strong>Facade & HTTP</strong><span>Router calls, HTML rendering and a selected WAF path.</span></a>
+      <a class="suite-card" href="/Rullst/benches/core/"><strong>Core primitives</strong><span>HTML escaping, PII masking and CSRF token generation.</span></a>
+      <a class="suite-card" href="/Rullst/benches/orm/"><strong>ORM</strong><span>Local paths plus equivalent bounded SQLite shapes with pinned ORMs.</span></a>
+      <a class="suite-card" href="/Rullst/benches/auth/"><strong>Auth</strong><span>AES-256-GCM session encryption and decryption.</span></a>
+      <a class="suite-card" href="/Rullst/benches/connect/"><strong>Connect</strong><span>Selected OAuth provider construction and PKCE operations.</span></a>
+      <a class="suite-card" href="/Rullst/benches/security/"><strong>Security</strong><span>Selected RASP, ownership/RBAC and Vault operations.</span></a>
+      <a class="suite-card" href="/Rullst/benches/ai/"><strong>AI</strong><span>Guardrails, PII masking and bounded token-context work.</span></a>
+      <a class="suite-card" href="/Rullst/benches/capital/"><strong>Capital</strong><span>Webhook validation and subscription parsing.</span></a>
+    </nav>
 
     <div class="info-grid">
       <div class="info-card">
@@ -241,10 +323,10 @@
     </div>
 
     <div id="loading">Loading benchmark data...</div>
-    <div id="dashboard" style="display: none;">
+    <div id="dashboard" hidden>
       
       <div class="glass">
-        <h2>📈 Performance History</h2>
+        <h2>📈 Facade & HTTP history</h2>
         <div class="chart-container">
           <canvas id="historyChart"></canvas>
         </div>
@@ -269,6 +351,24 @@
       </div>
 
     </div>
+
+    <section class="glass">
+      <h2>Evidence fit matters more than one chart per crate</h2>
+      <p class="subtitle" style="margin: 0 0 1rem; max-width: none; text-align: left;">
+        A benchmark is added only when it has a stable operation, input and interpretation. Other crates currently rely on evidence that better matches their risk; this table is not a maturity ranking.
+      </p>
+      <div style="overflow-x: auto;">
+        <table class="boundary-table">
+          <thead><tr><th>Surface</th><th>Current primary evidence</th><th>Useful future measurement</th></tr></thead>
+          <tbody>
+            <tr><td>Messaging & Mail</td><td>Deterministic broker/queue, retry, restart and provider protocol contracts.</td><td>Bounded local publish/claim throughput and queue-depth latency under fixed contention.</td></tr>
+            <tr><td>IoT</td><td>Protocol vectors, signed OTA invariants, no_std target builds and simulator boundaries.</td><td>Encoder cost on named host and embedded targets; real device evidence remains separate.</td></tr>
+            <tr><td>Macros & CLI</td><td>Compile-fail UI tests, generated-project compilation and runtime scaffold contracts.</td><td>Cold/warm compile and scaffold time on pinned toolchains without calling it runtime speed.</td></tr>
+            <tr><td>Studio & Nexus</td><td>Authenticated/local-access contracts and real telemetry/data integration tests.</td><td>Whole-request latency and memory for a fixed dataset and page workload.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 
   <!-- Load the generated data from github-action-benchmark -->
@@ -280,12 +380,17 @@
       const dashboard = document.getElementById('dashboard');
       
       if (!window.BENCHMARK_DATA) {
-        loading.innerHTML = '⚠️ No benchmark data found. Did the GitHub Action run successfully?';
+        loading.textContent = 'No published Facade & HTTP dataset is available in this build.';
         return;
       }
 
-      loading.style.display = 'none';
-      dashboard.style.display = 'block';
+      if (typeof Chart === 'undefined') {
+        loading.textContent = 'Chart rendering is temporarily unavailable; the benchmark data remains published for inspection.';
+        return;
+      }
+
+      loading.hidden = true;
+      dashboard.hidden = false;
 
       // Parse data
       const data = window.BENCHMARK_DATA;
@@ -354,7 +459,7 @@
       // Render Chart
       const ctx = document.getElementById('historyChart').getContext('2d');
       Chart.defaults.color = '#94a3b8';
-      Chart.defaults.font.family = 'Inter';
+      Chart.defaults.font.family = 'system-ui';
       
       new Chart(ctx, {
         type: 'line',
@@ -404,6 +509,15 @@
 
       // Render Table
       const tbody = document.querySelector('#commitsTable tbody');
+      const appendCell = (row, text, className) => {
+        const cell = document.createElement('td');
+        cell.textContent = String(text);
+        if (className) {
+          cell.className = className;
+        }
+        row.appendChild(cell);
+        return cell;
+      };
       // Show latest 10 commits backwards
       const reversedCommits = [...commits].reverse().slice(0, 10);
       
@@ -413,14 +527,15 @@
         const tr = document.createElement('tr');
         
         const date = new Date(entry.commit.timestamp).toLocaleString();
-        const msg = entry.commit.message.split('\\n')[0].substring(0, 50);
-        const link = `https://github.com/Rullst/Rullst/commit/${entry.commit.id}`;
+        const commitId = String(entry.commit.id);
+        const msg = String(entry.commit.message).split('\\n')[0].substring(0, 50);
         
         // Show the first benchmark value as an example in the table
         const mainBench = entry.benches[0];
-        let valStr = mainBench ? `${mainBench.value} ${mainBench.unit}` : '-';
+        const valStr = mainBench ? `${mainBench.value} ${mainBench.unit}` : '-';
         
-        let changeStr = '<span class="badge">Baseline</span>';
+        let changeLabel = 'Baseline';
+        let changeClass = 'badge';
         
         if (mainBench && prevEntry) {
           const prevBench = prevEntry.benches.find(b => b.name === mainBench.name);
@@ -428,27 +543,46 @@
             const diff = mainBench.value - prevBench.value;
             const pct = (diff / prevBench.value) * 100;
             if (pct > 2) {
-              changeStr = `<span class="badge regression">📈 +${pct.toFixed(2)}% (Slower)</span>`;
+              changeLabel = `📈 +${pct.toFixed(2)}% (Slower)`;
+              changeClass = 'badge regression';
             } else if (pct < -2) {
-              changeStr = `<span class="badge">📉 ${pct.toFixed(2)}% (Faster)</span>`;
+              changeLabel = `📉 ${pct.toFixed(2)}% (Faster)`;
             } else {
-              changeStr = `<span style="color: #64748b;">~ 0.00%</span>`;
+              changeLabel = '~ 0.00%';
+              changeClass = 'neutral-change';
             }
           }
         }
 
         prevEntry = [...commits].reverse()[idx + 1] || null;
 
-        tr.innerHTML = `
-          <td>${date}</td>
-          <td><a href="${link}" target="_blank" style="color: var(--secondary); text-decoration: none;">${entry.commit.id.substring(0, 7)}</a>: ${msg}</td>
-          <td>${mainBench ? mainBench.name : '-'}</td>
-          <td class="mono">${valStr}</td>
-          <td>${changeStr}</td>
-        `;
+        appendCell(tr, date);
+        const commitCell = document.createElement('td');
+        if (/^[0-9a-f]{7,64}$/i.test(commitId)) {
+          const commitLink = document.createElement('a');
+          commitLink.href = `https://github.com/Rullst/Rullst/commit/${commitId}`;
+          commitLink.target = '_blank';
+          commitLink.rel = 'noopener noreferrer';
+          commitLink.className = 'commit-link';
+          commitLink.textContent = commitId.substring(0, 7);
+          commitCell.appendChild(commitLink);
+          commitCell.append(`: ${msg}`);
+        } else {
+          commitCell.textContent = msg;
+        }
+        tr.appendChild(commitCell);
+        appendCell(tr, mainBench ? mainBench.name : '-');
+        appendCell(tr, valStr, 'mono');
+        const changeCell = document.createElement('td');
+        const change = document.createElement('span');
+        change.className = changeClass;
+        change.textContent = changeLabel;
+        changeCell.appendChild(change);
+        tr.appendChild(changeCell);
         tbody.appendChild(tr);
       });
     });
   </script>
+  <p class="glory">All glory and honor to God יהוה in the name of Yeshua the Messiah (Jesus Christ).</p>
 </body>
 </html>
