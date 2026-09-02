@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788343509618,
+  "lastUpdate": 1788347822292,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -7481,6 +7481,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4088,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "948b56c0151558aa5ab2e85b8418a53ac24702a0",
+          "message": "feat(messaging): encrypt durability and bridge outbox",
+          "timestamp": "2026-09-02T08:05:31-03:00",
+          "tree_id": "fb63ef8b2e2004399c4342400886752a3963da76",
+          "url": "https://github.com/Rullst/Rullst/commit/948b56c0151558aa5ab2e85b8418a53ac24702a0"
+        },
+        "date": 1788347821665,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1008,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 795,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1815,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4040,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
