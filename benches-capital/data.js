@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788343699611,
+  "lastUpdate": 1788348015624,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -4769,6 +4769,48 @@ window.BENCHMARK_DATA = {
             "name": "capital_subscription/parse_status_active",
             "value": 20,
             "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "948b56c0151558aa5ab2e85b8418a53ac24702a0",
+          "message": "feat(messaging): encrypt durability and bridge outbox",
+          "timestamp": "2026-09-02T08:05:31-03:00",
+          "tree_id": "fb63ef8b2e2004399c4342400886752a3963da76",
+          "url": "https://github.com/Rullst/Rullst/commit/948b56c0151558aa5ab2e85b8418a53ac24702a0"
+        },
+        "date": 1788348015003,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
             "unit": "ns/iter"
           },
           {
