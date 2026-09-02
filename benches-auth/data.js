@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788357112777,
+  "lastUpdate": 1788367129262,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -7577,6 +7577,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4094,
             "range": "± 64",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "d4f18e1dd2d9e5688549cb896c4e7934251bab13",
+          "message": "style(cli): refine startup color wave",
+          "timestamp": "2026-09-02T13:20:36-03:00",
+          "tree_id": "8315e3a901c1b25e8b6310ec775f004d0b4e6c0a",
+          "url": "https://github.com/Rullst/Rullst/commit/d4f18e1dd2d9e5688549cb896c4e7934251bab13"
+        },
+        "date": 1788367128655,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1055,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 860,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1943,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4522,
+            "range": "± 52",
             "unit": "ns/iter"
           }
         ]
