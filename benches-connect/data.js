@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788318142025,
+  "lastUpdate": 1788320528925,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -4493,6 +4493,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 508,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": false,
+          "id": "a9c13acb8a22272a168419fb753c066ff874a93e",
+          "message": "docs(site): redesign landing and benchmark hub",
+          "timestamp": "2026-09-02T00:31:48-03:00",
+          "tree_id": "1fca7a51edbd859a79a93e3d0fa215710f1df9b0",
+          "url": "https://github.com/Rullst/Rullst/commit/a9c13acb8a22272a168419fb753c066ff874a93e"
+        },
+        "date": 1788320528340,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 508,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
