@@ -16,6 +16,8 @@ cargo-rullst/src/bin/test_colored.rs
 
 # Rullst Framework Temporary & Scratch files
 coverage_report.txt
+*.profraw
+*.profdata
 scratch*.rs
 scratch/
 patch.txt
