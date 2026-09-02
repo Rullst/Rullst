@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788367039695,
+  "lastUpdate": 1788367756257,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -12803,6 +12803,78 @@ window.BENCHMARK_DATA = {
             "name": "mask_pii/safe_field_no_pii",
             "value": 159,
             "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 136,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "5b429c761145f2a17d74088bd7081c785097db6a",
+          "message": "style(cli): stage startup brand gradients",
+          "timestamp": "2026-09-02T13:39:02-03:00",
+          "tree_id": "f6537391e66cef2a6f39b6e25a8ec2519dd3ca1c",
+          "url": "https://github.com/Rullst/Rullst/commit/5b429c761145f2a17d74088bd7081c785097db6a"
+        },
+        "date": 1788367755775,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 25,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 208,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 65,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 154,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 296,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 1021,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 167,
+            "range": "± 1",
             "unit": "ns/iter"
           },
           {
