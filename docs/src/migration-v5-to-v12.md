@@ -81,6 +81,13 @@ Nexus no longer mounts as an implicitly open admin router. New code should use
 `LocalNexusAccess::loopback_only()` in a debug build. Basic Auth requires a
 verified TLS boundary in production.
 
+Tenant-owned Nexus models should add an explicit text tenant column to their
+derive metadata and install `TenantContext` only after authenticated membership
+resolution. Models without this metadata remain global administrator models.
+If `with_required_audit()` is enabled, run
+`create_nexus_audit_table()` as a deployment migration first; a missing table
+intentionally rolls mutations back.
+
 Studio must remain a separate debug-only loopback service. Rebuild the server
 middleware order using the v12 production baseline, then add application
 authorization and the extended `rullst-security` layers explicitly where used.

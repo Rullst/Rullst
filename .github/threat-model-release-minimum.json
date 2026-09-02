@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "TM-12.5",
+  "model_version": "TM-12.6",
   "cases": [
     {
       "id": "AUTH-01",
@@ -129,6 +129,15 @@
       "marker": "TM-NEXUS-01"
     },
     {
+      "id": "NEXUS-02",
+      "crate": "rullst-nexus",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "nexus::crud::query::tests::scoped_query_without_context_is_empty_by_construction",
+      "source": "rullst-nexus/src/nexus/crud/query.rs",
+      "marker": "TM-NEXUS-02"
+    },
+    {
       "id": "NEXUS-05",
       "crate": "rullst-core",
       "target_kind": "lib",
@@ -136,6 +145,15 @@
       "test_filter": "security::baseline::tests::production_baseline_composes_nonce_cors_csrf_and_headers",
       "source": "rullst-core/src/security/baseline.rs",
       "marker": "TM-NEXUS-05"
+    },
+    {
+      "id": "NEXUS-06",
+      "crate": "rullst-nexus",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "nexus::audit::tests::schemas_keep_required_identity_and_scope_columns",
+      "source": "rullst-nexus/src/nexus/audit.rs",
+      "marker": "TM-NEXUS-06"
     },
     {
       "id": "STUDIO-01",

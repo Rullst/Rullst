@@ -217,6 +217,11 @@ behavior, signing, and store acceptance remain separate evidence gates; see the
 Studio is a local developer control room with explicit unavailable states when
 a probe is not connected. Nexus generates an authenticated administration
 surface from registered model metadata and applies server-side field policy.
+Tenant-owned models can explicitly bind every built-in CRUD/search/batch path
+to a trusted Core tenant context, while an opt-in required audit row shares the
+mutation transaction and rolls it back on audit failure. The host still owns
+identity/membership and immutable external evidence; Nexus does not disguise a
+same-database mutable table as an append-only audit service.
 Studio's relational browser can also perform deliberately narrow primitive
 row edits/deletions: the write surface exists only behind the verified local
 request capability, binds values, identifies one row by its inspected complete

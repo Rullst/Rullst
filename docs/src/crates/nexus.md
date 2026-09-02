@@ -54,13 +54,21 @@ mutations.
   identifiers; bound record values; server-side pair/byte limits and semantic
   validation for Boolean, enum, JSON, number, date, e-mail and HTTP(S) URL
   fields; CRUD, search, pagination, sort and batch operations; CSRF middleware;
-  fail-closed loopback/Basic access; bounded Basic Auth failure throttling.
+  fail-closed loopback/Basic access; bounded Basic Auth failure throttling;
+  opt-in exact text-column tenant scope across every built-in read and mutation,
+  derived only from a trusted Core `TenantContext`; and opt-in
+  transaction-coupled minimized mutation audit with a fixed cross-database
+  schema and bounded export API.
 - Batch boundary: at most 1,000 explicitly selected IDs; deactivation is
   available only for a writable Boolean `is_active` or `active` field.
-- Application responsibility: model/field authorization policy, database
-  privileges, trusted proxy and TLS configuration, secret rotation, audit-log
-  durability, schema/type compatibility, tenant isolation and any ownership
-  rules beyond the panel-wide administrator boundary. Multiline intent and
+- Application responsibility: identity, tenant membership and domain policy;
+  model/field authorization for global models and custom routes; database
+  privileges; trusted proxy and TLS configuration; secret rotation; immutable
+  external audit delivery, retention and backup; schema/type compatibility;
+  and ownership rules beyond the explicit tenant column. The built-in audit
+  table is transaction-coupled in the same database, not append-only or
+  tamper-evident, and records committed mutations rather than rejected
+  attempts. Multiline intent and
   variants from an unrelated Rust enum require explicit `#[nexus]` metadata;
   the struct derive does not invent them.
 - Not implemented: a generic `NexusLayer`, automatic ORM schema reflection,

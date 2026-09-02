@@ -1,6 +1,6 @@
 # Rullst v12 threat models
 
-> **Model version:** TM-12.5
+> **Model version:** TM-12.6
 > **Applies to:** the v12 release candidate source and generated applications
 > **Last source review:** 2026-09-02
 > **Status:** maintainer baseline; application owners must extend it for their
@@ -27,8 +27,8 @@ addresses are untrusted unless a separately reviewed proxy policy establishes
 the direct peer as trusted.
 
 The machine-readable release minimum in
-`.github/threat-model-release-minimum.json` binds 47 distinct abuse-case IDs to
-59 evidence rows across twelve crates. The gate rejects missing markers,
+`.github/threat-model-release-minimum.json` binds 49 distinct abuse-case IDs to
+61 evidence rows and 53 exact test executions across twelve crates. The gate rejects missing markers,
 missing tests and zero-test filters before executing Auth, Nexus, Studio,
 tenant ownership, Capital, AI, Mail, IoT, generated-default and Academy
 negatives. Passing that bounded minimum does not imply that every case below is
@@ -64,11 +64,11 @@ tools, audit evidence and security telemetry.
 | Abuse case | Required disposition | Repository evidence or remaining work |
 | --- | --- | --- |
 | `NEXUS-01` anonymous/default access | Fail closed without explicit production policy. Local shortcut requires debug build and verified loopback peer. | Router policy and loopback tests. |
-| `NEXUS-02` IDOR/BOLA on CRUD/batch routes | Resolve subject/tenant, then authorize object ownership or role for every ID and bulk member. | RBAC ownership helpers exist; route-by-route independent review remains open. |
+| `NEXUS-02` IDOR/BOLA on CRUD/batch routes | Resolve subject/tenant, then authorize object ownership or role for every ID and bulk member. | Models that explicitly register a text tenant column now scope every built-in read/mutation/batch predicate to a trusted `TenantContext`, inject it on create and fail closed without context. A real SQLite HTTP regression proves cross-tenant list/update/delete/batch denial and protected create input; pure SQL tests keep the all-feature release minimum portable. Global models, custom routes, identity/membership resolution, within-tenant object ownership and independent review remain host work. |
 | `NEXUS-03` stored/reflected XSS | Escape dynamic HTML; make raw HTML explicit; enforce nonce CSP. | Core proves renderer/header nonce identity. Generated LMS auth/catalog/course/player style elements consume the request nonce, remove remote shell dependencies/inline style attributes and the materialized catalog escapes script-shaped search text; browser validation and a route-by-route Nexus audit remain open. |
 | `NEXUS-04` AI assistant privilege escalation | Treat model output as untrusted; allowlist typed tools and authorize each invocation as the human subject. | Prompt filtering exists; tool approval/audit policy remains open. |
 | `NEXUS-05` destructive CSRF | Require CSRF on cookie-authenticated mutations and exact signed-webhook exemptions only. | The exact Core baseline regression proves a production cookie write is denied without the matching double-submit value, accepted with it and retains the outer header/CORS policy on denial. Exact signed-webhook exemptions have separate unit negatives; a full Nexus browser/proxy flow remains open. |
-| `NEXUS-06` audit repudiation | Record actor, tenant, object, operation, outcome and correlation ID in durable separate storage. | Tamper-evident local chain exists; durable append-only sink remains open. |
+| `NEXUS-06` audit repudiation | Record actor, tenant, object, operation, outcome and correlation ID in durable separate storage. | The opt-in required policy records the built-in authenticated actor, optional tenant, table/action, optional known key, count, committed outcome, bounded correlation ID, timestamp and format version in the same transaction; unavailable storage rolls the mutation back. A real SQLite regression covers commit and rollback, while schema tests cover all SQL dialects. It is same-database mutable evidence, not separate append-only or tamper-evident storage; denied attempts and automatically assigned create keys are not uniformly persisted. Host retention, backup, replication, immutable export and review remain open. |
 
 Trust boundaries are browser ↔ Nexus, Nexus ↔ application policy/database and
 Nexus ↔ LLM/provider.
@@ -287,6 +287,6 @@ registry and CLI ↔ filesystem/process/cloud.
 - New boundaries receive new IDs; IDs are never silently reused.
 - Closing residual risk requires code/configuration, a negative test and
   commit-bound evidence. Documentation alone cannot claim a control is deployed.
-- Before stable v12, maintainers must review TM-12.5 against the exact RC,
+- Before stable v12, maintainers must review TM-12.6 against the exact RC,
   applications must add topology/provider threats and an independent reviewer
   must cover the highest-impact paths.

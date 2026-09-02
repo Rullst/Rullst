@@ -1,18 +1,44 @@
 //! Axum HTTP request handlers for Nexus CRUD dashboard and model administration.
 
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
     response::{Html, IntoResponse, Response},
 };
 use std::fmt::Write as _;
 use std::sync::Arc;
 
-use crate::nexus::crud::input::{FormInputError, FormMode, validate_form_values};
-use crate::nexus::crud::query::{PaginationParams, find_entry, sanitize_identifier};
+use crate::nexus::NexusPrincipal;
+use crate::nexus::crud::mutation::{create_record, delete_record, update_record};
+use crate::nexus::crud::query::{PaginationParams, find_entry};
 use crate::nexus::crud::views::{render_record_form, render_table_rows, render_table_view};
 use crate::nexus::types::{NexusState, RegistryEntry};
 use crate::nexus::ui::{render_shell, render_sidebar, safe_icon_html};
+use rullst_core::security::TenantContext;
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct MissingTenantContext;
+
+impl IntoResponse for MissingTenantContext {
+    fn into_response(self) -> Response {
+        (
+            StatusCode::FORBIDDEN,
+            "This model requires authenticated tenant context.",
+        )
+            .into_response()
+    }
+}
+
+pub(crate) fn tenant_for_entry<'a>(
+    entry: &RegistryEntry,
+    context: Option<&'a TenantContext>,
+) -> Result<Option<&'a str>, MissingTenantContext> {
+    match (entry.tenant_column, context) {
+        (Some(_), Some(context)) => Ok(Some(context.tenant_id.as_str())),
+        (Some(_), None) => Err(MissingTenantContext),
+        (None, _) => Ok(None),
+    }
+}
 
 /// GET /nexus — Dashboard overview.
 pub async fn nexus_dashboard(
@@ -68,6 +94,7 @@ pub async fn nexus_table_view(
     Path(table): Path<String>,
     Query(params): Query<PaginationParams>,
     headers: axum::http::HeaderMap,
+    tenant: Option<Extension<TenantContext>>,
 ) -> Response {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
@@ -79,13 +106,17 @@ pub async fn nexus_table_view(
                 .into_response();
         }
     };
+    let tenant_id = match tenant_for_entry(entry, tenant.as_ref().map(|value| &value.0)) {
+        Ok(tenant_id) => tenant_id,
+        Err(error) => return error.into_response(),
+    };
 
     let page = params.page.unwrap_or(1).max(1);
     let q = params.q.clone().unwrap_or_default();
     let sort_by = params.sort_by.as_deref();
     let order = params.order.as_deref();
 
-    let content = render_table_view(&state, entry, page, &q, sort_by, order).await;
+    let content = render_table_view(&state, entry, page, &q, sort_by, order, tenant_id).await;
     if headers.contains_key("hx-request") {
         Html(content).into_response()
     } else {
@@ -103,28 +134,40 @@ pub async fn nexus_table_search(
     State(state): State<Arc<NexusState>>,
     Path(table): Path<String>,
     Query(params): Query<PaginationParams>,
-) -> Html<String> {
+    tenant: Option<Extension<TenantContext>>,
+) -> Response {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
-        None => return Html("<p class=\"nexus-error\">Table not found.</p>".to_string()),
+        None => {
+            return (StatusCode::NOT_FOUND, "Table not found.").into_response();
+        }
+    };
+    let tenant_id = match tenant_for_entry(entry, tenant.as_ref().map(|value| &value.0)) {
+        Ok(tenant_id) => tenant_id,
+        Err(error) => return error.into_response(),
     };
     let q = params.q.clone().unwrap_or_default();
     let page = params.page.unwrap_or(1).max(1);
     let sort_by = params.sort_by.as_deref();
     let order = params.order.as_deref();
-    Html(render_table_rows(entry, &q, page, sort_by, order).await)
+    Html(render_table_rows(entry, &q, page, sort_by, order, tenant_id).await).into_response()
 }
 
 /// GET /nexus/table/{table}/new — New record form.
 pub async fn nexus_new_form(
     State(state): State<Arc<NexusState>>,
     Path(table): Path<String>,
-) -> Html<String> {
+    tenant: Option<Extension<TenantContext>>,
+) -> Response {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
-        None => return Html("<p class=\"nexus-error\">Table not found.</p>".to_string()),
+        None => return (StatusCode::NOT_FOUND, "Table not found.").into_response(),
     };
-    Html(render_record_form(&state, entry, None).await)
+    let tenant_id = match tenant_for_entry(entry, tenant.as_ref().map(|value| &value.0)) {
+        Ok(tenant_id) => tenant_id,
+        Err(error) => return error.into_response(),
+    };
+    Html(render_record_form(&state, entry, None, tenant_id).await).into_response()
 }
 
 /// POST /nexus/table/{table} — Create a new record.
@@ -132,310 +175,87 @@ pub async fn nexus_new_form(
 pub async fn nexus_create_record(
     State(state): State<Arc<NexusState>>,
     Path(table): Path<String>,
+    Extension(principal): Extension<NexusPrincipal>,
+    tenant: Option<Extension<TenantContext>>,
+    headers: axum::http::HeaderMap,
     axum::extract::Form(data_vec): axum::extract::Form<Vec<(String, String)>>,
-) -> impl axum::response::IntoResponse {
+) -> Response {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
-        None => {
-            return (
-                StatusCode::NOT_FOUND,
-                Html("<p class=\"nexus-error\">Table not found.</p>".to_string()),
-            )
-                .into_response();
-        }
+        None => return (StatusCode::NOT_FOUND, "Table not found.").into_response(),
     };
-
-    let data = match validate_form_values(entry, data_vec, FormMode::Create) {
-        Ok(data) => data,
-        Err(error) => return invalid_form_response(entry, error),
-    };
-
-    let mut keys = Vec::new();
-    let mut values = Vec::new();
-    for value in data {
-        if value.field.name == entry.pk && value.value.trim().is_empty() {
-            continue;
-        }
-        keys.push(value.field.name);
-        values.push(value.value);
-    }
-
-    if keys.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Html(format!(
-                "<div class=\"nexus-toast nexus-toast-danger\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
-                 &#10060; No values provided to create {}\
-                 </div>",
-                rullst_core::html::escape_str(entry.label)
-            ))
-        ).into_response();
-    }
-
-    let clean_table = sanitize_identifier(&table);
-    let clean_keys: Vec<String> = keys.iter().map(|k| sanitize_identifier(k)).collect();
-    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    let placeholders = (0..clean_keys.len())
-        .map(|i| {
-            if driver == "postgres" {
-                format!("${}", i + 1)
-            } else {
-                "?".to_string()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(", ");
-    let sql = format!(
-        "INSERT INTO {} ({}) VALUES ({})",
-        clean_table,
-        clean_keys.join(", "),
-        placeholders
-    );
-
-    let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
-    for v in &values {
-        query = query.bind(v);
-    }
-
-    let mut success = false;
-    let mut err_msg = String::new();
-
-    if let Some(pool) = rullst_core::db::safe_pool() {
-        match query.execute(pool).await {
-            Ok(_) => {
-                success = true;
-            }
-            Err(e) => {
-                err_msg = e.to_string();
-            }
-        }
-    } else {
-        err_msg = "Database pool not initialized".to_string();
-    }
-
-    if success {
-        (
-            StatusCode::OK,
-            Html(format!(
-                "<div class=\"nexus-toast nexus-toast-success\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
-                 &#9989; New {} record created successfully!\
-                 </div>",
-                rullst_core::html::escape_str(entry.label)
-            ))
-        ).into_response()
-    } else {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Html(format!(
-                "<div class=\"nexus-toast nexus-toast-danger\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
-                 &#10060; Failed to create {}: {}\
-                 </div>",
-                rullst_core::html::escape_str(entry.label),
-                rullst_core::html::escape_str(&err_msg)
-            ))
-        ).into_response()
-    }
+    create_record(
+        &state,
+        entry,
+        &principal,
+        tenant.as_ref().map(|value| &value.0),
+        &headers,
+        data_vec,
+    )
+    .await
 }
 
 /// GET /nexus/table/{table}/{id}/edit — Edit record form.
 pub async fn nexus_edit_form(
     State(state): State<Arc<NexusState>>,
     Path((table, id)): Path<(String, String)>,
-) -> Html<String> {
+    tenant: Option<Extension<TenantContext>>,
+) -> Response {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
-        None => return Html("<p class=\"nexus-error\">Table not found.</p>".to_string()),
+        None => return (StatusCode::NOT_FOUND, "Table not found.").into_response(),
     };
-    Html(render_record_form(&state, entry, Some(&id)).await)
+    let tenant_id = match tenant_for_entry(entry, tenant.as_ref().map(|value| &value.0)) {
+        Ok(tenant_id) => tenant_id,
+        Err(error) => return error.into_response(),
+    };
+    Html(render_record_form(&state, entry, Some(&id), tenant_id).await).into_response()
 }
 
 /// PUT /nexus/table/{table}/{id} — Update a record.
 pub async fn nexus_update_record(
     State(state): State<Arc<NexusState>>,
     Path((table, id)): Path<(String, String)>,
+    Extension(principal): Extension<NexusPrincipal>,
+    tenant: Option<Extension<TenantContext>>,
+    headers: axum::http::HeaderMap,
     axum::extract::Form(data_vec): axum::extract::Form<Vec<(String, String)>>,
-) -> impl axum::response::IntoResponse {
+) -> Response {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
-        None => {
-            return (
-                StatusCode::NOT_FOUND,
-                Html("<p class=\"nexus-error\">Table not found.</p>".to_string()),
-            )
-                .into_response();
-        }
+        None => return (StatusCode::NOT_FOUND, "Table not found.").into_response(),
     };
-
-    let data = match validate_form_values(entry, data_vec, FormMode::Update) {
-        Ok(data) => data,
-        Err(error) => return invalid_form_response(entry, error),
-    };
-
-    let clean_table = sanitize_identifier(&table);
-    let clean_pk = sanitize_identifier(entry.pk);
-    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    let mut updates = Vec::new();
-    let mut values = Vec::new();
-    for value in data {
-        let clean_field = sanitize_identifier(value.field.name);
-        if driver == "postgres" {
-            updates.push(format!("{} = ${}", clean_field, updates.len() + 1));
-        } else {
-            updates.push(format!("{} = ?", clean_field));
-        }
-        values.push(value.value);
-    }
-
-    if updates.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            Html("<p class=\"nexus-error\">No writable fields were provided.</p>".to_string()),
-        )
-            .into_response();
-    }
-
-    let pk_placeholder = if driver == "postgres" {
-        format!("${}", updates.len() + 1)
-    } else {
-        "?".to_string()
-    };
-
-    let sql = format!(
-        "UPDATE {} SET {} WHERE {} = {}",
-        clean_table,
-        updates.join(", "),
-        clean_pk,
-        pk_placeholder
-    );
-    let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
-    for v in &values {
-        query = query.bind(v);
-    }
-    if let Ok(num_id) = id.parse::<i64>() {
-        query = query.bind(num_id);
-    } else {
-        query = query.bind(id.clone());
-    }
-
-    let mut success = false;
-    let mut err_msg = String::new();
-
-    if let Some(pool) = rullst_core::db::safe_pool() {
-        match query.execute(pool).await {
-            Ok(result) => {
-                success = result.rows_affected() > 0;
-                if !success {
-                    err_msg = "Record not found".to_string();
-                }
-            }
-            Err(e) => {
-                err_msg = e.to_string();
-            }
-        }
-    } else {
-        err_msg = "Database pool not initialized".to_string();
-    }
-
-    if success {
-        (
-            StatusCode::OK,
-            Html(format!(
-                "<div class=\"nexus-toast nexus-toast-success\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
-                 &#9989; {} #{} updated successfully!\
-                 </div>",
-                rullst_core::html::escape_str(entry.label),
-                rullst_core::html::escape_str(&id)
-            ))
-        ).into_response()
-    } else {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Html(format!(
-                "<div class=\"nexus-toast nexus-toast-danger\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
-                 &#10060; Failed to update {}: {}\
-                 </div>",
-                rullst_core::html::escape_str(entry.label),
-                rullst_core::html::escape_str(&err_msg)
-            ))
-        ).into_response()
-    }
-}
-
-fn invalid_form_response(entry: &RegistryEntry, error: FormInputError) -> Response {
-    (
-        StatusCode::UNPROCESSABLE_ENTITY,
-        Html(format!(
-            "<div class=\"nexus-toast nexus-toast-danger\" hx-swap-oob=\"true\" id=\"nexus-toast\">\
-             &#10060; Invalid {} form: {}\
-             </div>",
-            rullst_core::html::escape_str(entry.label),
-            rullst_core::html::escape_str(&error.to_string())
-        )),
+    update_record(
+        &state,
+        entry,
+        &id,
+        &principal,
+        tenant.as_ref().map(|value| &value.0),
+        &headers,
+        data_vec,
     )
-        .into_response()
+    .await
 }
 
 /// DELETE /nexus/table/{table}/{id} — Delete a record.
 pub async fn nexus_delete_record(
     State(state): State<Arc<NexusState>>,
     Path((table, id)): Path<(String, String)>,
-) -> impl axum::response::IntoResponse {
+    Extension(principal): Extension<NexusPrincipal>,
+    tenant: Option<Extension<TenantContext>>,
+    headers: axum::http::HeaderMap,
+) -> Response {
     let entry = match find_entry(&state, &table) {
         Some(e) => e,
-        None => {
-            return (
-                StatusCode::NOT_FOUND,
-                Html("<p class=\"nexus-error\">Table not found.</p>".to_string()),
-            )
-                .into_response();
-        }
+        None => return (StatusCode::NOT_FOUND, "Table not found.").into_response(),
     };
-
-    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    let clean_table = sanitize_identifier(&table);
-    let clean_pk = sanitize_identifier(entry.pk);
-    let sql = if driver == "postgres" {
-        format!("DELETE FROM {} WHERE {} = $1", clean_table, clean_pk)
-    } else {
-        format!("DELETE FROM {} WHERE {} = ?", clean_table, clean_pk)
-    };
-    let mut success = false;
-    let mut err_msg = String::new();
-
-    if let Some(pool) = rullst_core::db::safe_pool() {
-        let mut q = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
-        if let Ok(num_id) = id.parse::<i64>() {
-            q = q.bind(num_id);
-        } else {
-            q = q.bind(&id);
-        }
-        match q.execute(pool).await {
-            Ok(result) => {
-                success = result.rows_affected() > 0;
-                if !success {
-                    err_msg = "Record not found".to_string();
-                }
-            }
-            Err(e) => {
-                err_msg = e.to_string();
-            }
-        }
-    } else {
-        err_msg = "Database pool not initialized".to_string();
-    }
-
-    if success {
-        (StatusCode::OK, "Record deleted successfully.").into_response()
-    } else {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!(
-                "Failed to delete {} #{}: {}",
-                rullst_core::html::escape_str(entry.label),
-                rullst_core::html::escape_str(&id),
-                rullst_core::html::escape_str(&err_msg)
-            ),
-        )
-            .into_response()
-    }
+    delete_record(
+        &state,
+        entry,
+        &id,
+        &principal,
+        tenant.as_ref().map(|value| &value.0),
+        &headers,
+    )
+    .await
 }

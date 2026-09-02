@@ -62,6 +62,61 @@ is denied, and neither `RULLST_ENV` nor legacy `APP_ENV` can turn credential-fre
 binary. Applications can call `basic_from_env()` directly in debug when testing
 the production authentication flow.
 
+## Tenant-scoped administration
+
+Use an explicit tenant column when a registered model contains tenant-owned
+rows. The column must be a text, non-primary-key field. The derive makes it
+hidden and read-only so browser form data cannot choose the tenant:
+
+```rust
+use rullst::db::{FromRow, Nexus, Orm};
+
+#[derive(Debug, Clone, FromRow, Orm, Nexus)]
+#[orm(table = "projects", tenant = "organization_id")]
+pub struct Project {
+    pub id: i64,
+    pub organization_id: String,
+    pub name: String,
+    pub active: bool,
+}
+```
+
+Authentication middleware must resolve membership and install a trusted
+`rullst::security::TenantContext`. Do not construct it directly from
+`X-Tenant-ID`, a query parameter or another client assertion. Nexus applies the
+exact scope to list/search/edit/create/update/delete and batch routes; missing
+context denies a scoped model. A model without the attribute remains global by
+design.
+
+## Require transaction-coupled audit
+
+Install the fixed audit schema as an explicit deployment step, then enable the
+policy on the panel:
+
+```rust,ignore
+rullst::nexus::create_nexus_audit_table().await?;
+
+let nexus = rullst::nexus::Nexus::new()
+    .with_auth_policy(nexus_auth)
+    .register::<Project>()
+    .with_required_audit()
+    .try_build()?;
+```
+
+Each successful mutation and its minimized `rullst_nexus_audits` row commit in
+one database transaction. Audit failure rolls the mutation back. The record
+contains actor, optional tenant, table/action, optional known key, affected-row
+count, committed outcome, optional bounded request ID, timestamp and format
+version. `verify_nexus_audit_table()` checks deployment readiness and
+`recent_nexus_audits()` reads at most 1,000 newest rows, optionally tenant
+filtered; the application must authorize that export separately.
+
+The table is neither append-only nor protected from a database administrator.
+It does not persist denied attempts, and automatically assigned create keys are
+not recovered uniformly across all supported SQL dialects. Protect database
+permissions and send records to an independently operated immutable sink when
+that property is required.
+
 ## 👤 Example: Dynamic Profile Settings in Blueprints
 
 Starter blueprints like **Portfolio** use explicit Nexus metadata to expose

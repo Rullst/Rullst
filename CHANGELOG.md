@@ -107,10 +107,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Added a compact canonical capability-status view and a SHA-bound CI quality
   scorecard artifact for every main push/PR. The score evaluates engineering
   evidence and explicitly excludes feature completeness and certification.
+- Nexus now supports opt-in tenant-scoped registered models. A declared text
+  tenant column is hidden/read-only, is injected from a trusted Core
+  `TenantContext` on create, and constrains every built-in list, search, edit,
+  update, delete and batch path. Missing context fails closed. An independent
+  opt-in required-audit policy writes a minimized actor/tenant/action/key/count/
+  outcome/correlation/timestamp record in the same relational transaction and
+  rolls the mutation back when audit storage is unavailable. The fixed table is
+  same-database mutable evidence, not append-only/tamper-evident storage; host
+  identity/membership, global/custom-route authorization, retention, backup,
+  replication and immutable export remain external.
 - Raised the v12 RC quality gate to A (90) for every publishable crate except
   the approved IoT floor of B (80). After Auth reached its bounded 95/A local
-  ceiling and Messaging reached its bounded 96/A local ceiling, the audited
-  plan records six crates below A and a 46-point
+  ceiling, Messaging reached 96/A and Nexus reached 95/A, the audited plan
+  records five crates below A and a 37-point
   aggregate gap; policy values may move only with real implementation and
   evidence, never to make the release table look greener.
 - Added a `no_std` OTA rollback-counter adapter to `rullst-iot`. The manager can

@@ -12,6 +12,7 @@ fn state() -> Arc<NexusState> {
     Arc::new(NexusState {
         registry: Arc::new(Vec::new()),
         brand: Arc::new("Rullst <Admin>".to_string()),
+        audit_policy: crate::nexus::NexusAuditPolicy::Disabled,
     })
 }
 

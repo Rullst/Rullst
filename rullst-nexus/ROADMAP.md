@@ -20,5 +20,10 @@ Rullst Nexus is the official Admin Panel for the Rullst ecosystem. It aims to pr
 
 ## Phase 2: Advanced Features
 - [x] **Batch Actions**: Delete explicitly selected records or deactivate them when the model exposes a writable Boolean `is_active`/`active` field, with a 1,000-record bound.
+- [x] **Bounded Tenant and Audit Contract**: An explicit text tenant column
+  scopes all built-in CRUD/search/edit/batch routes to a trusted
+  `TenantContext`; optional required audit commits minimized mutation evidence
+  in the same database transaction. Host identity/membership and immutable
+  external audit storage remain explicit deployment boundaries.
 - [ ] **Custom Dashboards**: Ability to inject custom widgets, charts, and metrics directly into the admin homepage.
 - [ ] **Visual SQL Builder**: A UI to generate complex queries graphically and export the generated Rust code.

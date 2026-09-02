@@ -18,17 +18,7 @@ pub use rate_limit::{
 use std::{fmt, net::SocketAddr, sync::Arc, time::Duration};
 use subtle::ConstantTimeEq;
 
-pub(crate) const NEXUS_ADMIN_ROLE: &str = "NexusAdmin";
-
-/// Authenticated administrator capability inserted only by a validated Nexus access policy.
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct NexusPrincipal;
-
-impl rullst_auth::HasRole for NexusPrincipal {
-    fn has_role(&self, role: &str) -> bool {
-        role == NEXUS_ADMIN_ROLE
-    }
-}
+use super::principal::{NEXUS_ADMIN_ROLE, NexusPrincipal};
 
 /// Minimum accepted length for a Nexus Basic Auth password.
 pub const MIN_NEXUS_PASSWORD_LENGTH: usize = 16;
@@ -45,6 +35,8 @@ pub enum NexusBuildError {
     MissingAuthenticationPolicy,
     /// The Basic Auth username is empty or only contains whitespace.
     EmptyUsername,
+    /// The Basic Auth username is padded, oversized, or contains control characters.
+    InvalidUsername,
     /// Basic Auth usernames cannot contain the `:` credential separator.
     UsernameContainsSeparator,
     /// A public/example placeholder was supplied as the username.
@@ -72,6 +64,9 @@ impl fmt::Display for NexusBuildError {
             Self::EmptyUsername => {
                 formatter.write_str("Nexus Basic Auth requires a non-empty username")
             }
+            Self::InvalidUsername => formatter.write_str(
+                "Nexus Basic Auth usernames must not have surrounding whitespace, must contain at most 255 bytes, and must not contain control characters",
+            ),
             Self::UsernameContainsSeparator => formatter.write_str(
                 "Nexus Basic Auth usernames cannot contain the ':' credential separator",
             ),
@@ -311,7 +306,9 @@ pub(crate) async fn basic_auth_middleware(
         if !credentials.rate_limiter.record_success(peer_ip) {
             return status_response(StatusCode::SERVICE_UNAVAILABLE);
         }
-        request.extensions_mut().insert(NexusPrincipal);
+        request
+            .extensions_mut()
+            .insert(NexusPrincipal::authenticated(credentials.username.clone()));
         next.run(request).await
     } else {
         match credentials.rate_limiter.record_failure(peer_ip) {
@@ -329,7 +326,9 @@ pub(crate) async fn loopback_only_middleware(mut request: Request, next: Next) -
         .is_some_and(|connection| connection.0.ip().is_loopback());
 
     if is_loopback {
-        request.extensions_mut().insert(NexusPrincipal);
+        request
+            .extensions_mut()
+            .insert(NexusPrincipal::authenticated("local-loopback"));
         next.run(request).await
     } else {
         status_response(StatusCode::FORBIDDEN)
@@ -377,6 +376,12 @@ fn validate_username(username: &str) -> Result<(), NexusBuildError> {
     }
     if username.contains(':') {
         return Err(NexusBuildError::UsernameContainsSeparator);
+    }
+    if username.trim().len() != username.len()
+        || username.len() > 255
+        || username.chars().any(char::is_control)
+    {
+        return Err(NexusBuildError::InvalidUsername);
     }
     if is_placeholder_username(username) {
         return Err(NexusBuildError::PlaceholderUsername);

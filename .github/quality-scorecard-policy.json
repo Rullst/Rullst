@@ -143,14 +143,14 @@
     },
     {
       "name": "rullst-nexus",
-      "api_architecture": 17,
-      "verification": 21,
-      "security_failure_design": 18,
-      "documentation_dx": 13,
-      "operations_release": 12,
+      "api_architecture": 19,
+      "verification": 24,
+      "security_failure_design": 20,
+      "documentation_dx": 15,
+      "operations_release": 17,
       "specialist_gate": "release-local-access",
-      "finding": "Fail-closed admin foundation with generated CRUD tests; tenant policy, durable audit and broader production admin operations remain host work.",
-      "evidence": ["rullst-nexus/README.md", "rullst-nexus/tests", "docs/src/crates/nexus.md"]
+      "finding": "Fail-closed admin with bounded metadata/forms, opt-in trusted-context tenant scoping across every built-in CRUD and batch path, generic database failures and transaction-coupled minimized mutation audit; host identity/domain policy, global-model/custom-route authorization, immutable audit delivery and production operations remain external.",
+      "evidence": ["rullst-nexus/README.md", "rullst-nexus/src/nexus/audit.rs", "rullst-nexus/src/nexus/crud/mutation.rs", "rullst-nexus/tests/tenant_audit.rs", "docs/src/crates/nexus.md", "docs/src/threat-models.md"]
     },
     {
       "name": "rullst-studio",

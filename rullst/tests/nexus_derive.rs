@@ -20,6 +20,15 @@ struct DerivedArticle {
     is_active: bool,
 }
 
+#[derive(Nexus)]
+#[allow(dead_code)]
+#[nexus(table = "tenant_articles", tenant = "organization_id")]
+struct TenantArticle {
+    id: i64,
+    organization_id: String,
+    title: String,
+}
+
 #[test]
 fn derive_nexus_generates_model_and_widget_metadata() {
     assert_eq!(DerivedArticle::nexus_table(), "derived_articles");
@@ -39,4 +48,18 @@ fn derive_nexus_generates_model_and_widget_metadata() {
         }
     );
     assert_eq!(fields[3].kind, FieldKind::Boolean);
+}
+
+#[test]
+fn derive_nexus_exposes_protected_tenant_metadata_through_the_facade() {
+    assert_eq!(
+        TenantArticle::nexus_tenant_column(),
+        Some("organization_id")
+    );
+    let tenant = TenantArticle::nexus_fields()
+        .into_iter()
+        .find(|field| field.name == "organization_id")
+        .expect("tenant field metadata");
+    assert!(tenant.hidden && tenant.readonly);
+    assert_eq!(tenant.kind, FieldKind::Text);
 }

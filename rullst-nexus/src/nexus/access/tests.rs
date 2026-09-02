@@ -62,6 +62,23 @@ fn basic_auth_rejects_weak_and_placeholder_credentials() {
             .expect_err("placeholder username must fail"),
         NexusBuildError::PlaceholderUsername
     );
+    assert_eq!(
+        NexusBasicAuth::new("line\nbreak", &secret)
+            .expect_err("control characters in username must fail"),
+        NexusBuildError::InvalidUsername
+    );
+    assert_eq!(
+        NexusBasicAuth::new("u".repeat(256), &secret).expect_err("oversized username must fail"),
+        NexusBuildError::InvalidUsername
+    );
+    assert_eq!(
+        NexusBasicAuth::new(" ops", &secret).expect_err("padded username must fail"),
+        NexusBuildError::InvalidUsername
+    );
+    assert_eq!(
+        NexusBasicAuth::new("ops ", &secret).expect_err("padded username must fail"),
+        NexusBuildError::InvalidUsername
+    );
 }
 
 #[test]

@@ -13,7 +13,7 @@ directly, because generated code calls the matching runtime API.
 | `#[rullst_orm::test]` | Runs an async test inside the task-scoped ORM transaction and rolls it back. Code that opens a separate connection is outside that sandbox. |
 | `#[derive(PersonalData)]` | Declares application-selected personal-data fields; it is metadata, not automatic privacy compliance. |
 | `#[derive(Enum)]` | Generates the portable string enum contract; native PostgreSQL/MySQL enum DDL remains separate. |
-| `#[derive(Nexus)]` | Generates bounded model metadata consumed by the authenticated Nexus runtime. |
+| `#[derive(Nexus)]` | Generates bounded model metadata consumed by the authenticated Nexus runtime. `#[orm(tenant = "organization_id")]` or the equivalent `#[nexus(...)]` opts a text field into Nexus-wide trusted-context scoping and makes it hidden/read-only. |
 
 ## Compile-time safety boundaries
 

@@ -70,6 +70,9 @@ Every baseline must review these contracts:
 - [Cargo feature defaults and aliases](feature-matrix.md);
 - [compatibility, MSRV, and support policy](compatibility-policy.md);
 - explicit Nexus access policy and debug-only loopback convenience;
+- explicit Nexus tenant metadata for tenant-owned admin models, with a trusted
+  `TenantContext`, plus the optional required audit schema/policy when mutation
+  evidence is needed;
 - debug-only, loopback-bound Studio deployment;
 - ownership checks on parameterized data routes;
 - exact CSRF webhook exemptions, WAF/body limits, and trusted proxy identity;

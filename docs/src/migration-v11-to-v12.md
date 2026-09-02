@@ -62,6 +62,9 @@ which layer the application imports instead of enabling both reflexively.
 - Review the changed default features (`orm` and `queue-sqlite`).
 - Select at most one `strict-*` database backend.
 - Build Nexus with an explicit access policy and keep Studio on debug loopback.
+- Mark tenant-owned Nexus models with an explicit text tenant column and supply
+  a membership-derived `TenantContext`; install the audit table before enabling
+  `with_required_audit()`.
 - Re-run IDOR, tenant-isolation, CSRF/CORS, webhook, and trusted-proxy negative
   tests.
 

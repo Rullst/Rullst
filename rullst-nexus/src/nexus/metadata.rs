@@ -26,6 +26,12 @@ pub(super) fn validate_registry(registry: &[RegistryEntry]) -> Result<(), NexusB
             entry.pk,
             "a primary-key name is not a bounded ASCII identifier",
         )?;
+        if let Some(tenant_column) = entry.tenant_column {
+            validate_identifier(
+                tenant_column,
+                "a tenant column is not a bounded ASCII identifier",
+            )?;
+        }
         validate_display_text(
             entry.label,
             MAX_LABEL_BYTES,
@@ -65,6 +71,23 @@ fn validate_fields(entry: &RegistryEntry) -> Result<(), NexusBuildError> {
     }
     if !has_primary_key {
         return invalid("the registered primary key is not present in the field metadata");
+    }
+    if let Some(tenant_column) = entry.tenant_column {
+        let tenant_field = entry
+            .fields
+            .iter()
+            .find(|field| field.name == tenant_column)
+            .ok_or(NexusBuildError::InvalidModelMetadata {
+                reason: "the registered tenant column is absent from field metadata",
+            })?;
+        if !tenant_field.readonly
+            || tenant_column == entry.pk
+            || !matches!(tenant_field.kind, FieldKind::Text)
+        {
+            return invalid(
+                "a tenant column must be a readonly text non-primary-key field controlled by Nexus",
+            );
+        }
     }
     Ok(())
 }
@@ -142,6 +165,7 @@ mod tests {
             label: "Articles",
             icon: "A",
             pk: "id",
+            tenant_column: None,
             fields: vec![
                 FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
                 FieldMeta::new(
@@ -178,5 +202,16 @@ mod tests {
             options: vec!["draft", "draft"],
         };
         assert!(validate_registry(&[duplicate_enum]).is_err());
+
+        let mut invalid_tenant = valid_entry();
+        invalid_tenant.tenant_column = Some("status");
+        assert!(validate_registry(&[invalid_tenant]).is_err());
+
+        let mut valid_tenant = valid_entry();
+        valid_tenant.tenant_column = Some("status");
+        valid_tenant.fields[1] = FieldMeta::new("status", "Tenant", FieldKind::Text)
+            .readonly()
+            .hidden();
+        assert!(validate_registry(&[valid_tenant]).is_ok());
     }
 }

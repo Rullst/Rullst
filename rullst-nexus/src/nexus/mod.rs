@@ -1,7 +1,9 @@
 mod access;
 pub mod ai_chat;
+pub mod audit;
 pub mod crud;
 mod metadata;
+mod principal;
 pub mod security;
 pub mod telemetry;
 pub mod types;
@@ -9,7 +11,9 @@ pub mod ui;
 
 pub use access::*;
 pub use ai_chat::*;
+pub use audit::*;
 pub use crud::*;
+pub use principal::*;
 pub use security::*;
 pub use telemetry::*;
 pub use types::*;
@@ -26,6 +30,7 @@ pub struct Nexus {
     registry: Vec<RegistryEntry>,
     brand: String,
     auth: Option<PendingAuthPolicy>,
+    audit_policy: NexusAuditPolicy,
 }
 
 enum PendingAuthPolicy {
@@ -45,6 +50,7 @@ impl Nexus {
             registry: Vec::new(),
             brand: "Rullst App".to_string(),
             auth: None,
+            audit_policy: NexusAuditPolicy::Disabled,
         }
     }
 
@@ -54,6 +60,7 @@ impl Nexus {
             label: M::nexus_label(),
             icon: M::nexus_icon(),
             pk: M::nexus_pk(),
+            tenant_column: M::nexus_tenant_column(),
             fields: M::nexus_fields(),
         });
         self
@@ -75,6 +82,17 @@ impl Nexus {
     /// Selects a validated access policy for the Nexus admin panel.
     pub fn with_auth_policy(mut self, policy: NexusAuthPolicy) -> Self {
         self.auth = Some(PendingAuthPolicy::Validated(policy));
+        self
+    }
+
+    /// Requires every successful create, update, delete, or batch mutation to
+    /// append a minimized record to `rullst_nexus_audits` atomically.
+    ///
+    /// Applications must install the fixed schema during deployment with
+    /// [`create_nexus_audit_table`]. A missing or unavailable audit table makes
+    /// mutations fail closed without committing their data changes.
+    pub fn with_required_audit(mut self) -> Self {
+        self.audit_policy = NexusAuditPolicy::Required;
         self
     }
 
@@ -121,6 +139,7 @@ impl Nexus {
         let state = Arc::new(NexusState {
             registry: Arc::new(self.registry),
             brand: Arc::new(self.brand),
+            audit_policy: self.audit_policy,
         });
 
         let router = AxumRouter::new()
@@ -235,9 +254,11 @@ mod tests {
                 label: "Users",
                 icon: "👤",
                 pk: "id",
+                tenant_column: None,
                 fields: vec![],
             }]),
             brand: Arc::new("Test".to_string()),
+            audit_policy: NexusAuditPolicy::Disabled,
         };
         let sidebar = render_sidebar(&state, None);
         assert!(sidebar.contains("/nexus/table/users"));
@@ -253,9 +274,11 @@ mod tests {
                 label: "Users",
                 icon: "👤",
                 pk: "id",
+                tenant_column: None,
                 fields: vec![],
             }]),
             brand: Arc::new("Test".to_string()),
+            audit_policy: NexusAuditPolicy::Disabled,
         };
         let sidebar = render_sidebar(&state, Some("users"));
         assert!(sidebar.contains("nexus-nav-active"));
@@ -266,6 +289,7 @@ mod tests {
         let state = NexusState {
             registry: Arc::new(vec![]),
             brand: Arc::new("MySaaS".to_string()),
+            audit_policy: NexusAuditPolicy::Disabled,
         };
         let html = render_shell(&state, "", "<p>content</p>");
         assert!(html.contains("MySaaS"));

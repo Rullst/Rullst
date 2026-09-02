@@ -6,7 +6,7 @@ model_path="docs/src/threat-models.md"
 
 jq -e '
   .schema_version == 1
-  and .model_version == "TM-12.5"
+  and .model_version == "TM-12.6"
   and (.cases | length > 0)
   and ([.cases[].id] | unique | sort == [
     "ACADEMY-02",
@@ -44,7 +44,9 @@ jq -e '
     "MESSAGING-05",
     "MESSAGING-06",
     "NEXUS-01",
+    "NEXUS-02",
     "NEXUS-05",
+    "NEXUS-06",
     "PAY-01",
     "PAY-06",
     "PAY-07",

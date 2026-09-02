@@ -6,6 +6,7 @@ fn entry() -> RegistryEntry {
         label: "Articles",
         icon: "A",
         pk: "id",
+        tenant_column: None,
         fields: vec![
             FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
             FieldMeta::new("body", "Body", FieldKind::Textarea),
@@ -28,6 +29,7 @@ fn semantic_entry() -> RegistryEntry {
         label: "Profiles",
         icon: "P",
         pk: "id",
+        tenant_column: None,
         fields: vec![
             FieldMeta::new("id", "ID", FieldKind::Number),
             FieldMeta::new("name", "Name", FieldKind::Text),

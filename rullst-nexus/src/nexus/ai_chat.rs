@@ -325,6 +325,7 @@ mod tests {
             label: "Products",
             icon: "&#128196;",
             pk: "id",
+            tenant_column: None,
             fields: vec![
                 FieldMeta::new("id", "ID", FieldKind::Number),
                 FieldMeta::new("title", "Title", FieldKind::Text),
@@ -334,6 +335,7 @@ mod tests {
         NexusState {
             registry: Arc::new(vec![entry]),
             brand: Arc::new("Admin Panel".to_string()),
+            audit_policy: crate::nexus::NexusAuditPolicy::Disabled,
         }
     }
 
@@ -382,6 +384,7 @@ mod tests {
                 label: "<img src=x onerror=alert(1)>",
                 icon: "📄",
                 pk: "id",
+                tenant_column: None,
                 fields: vec![FieldMeta::new(
                     "title FROM secrets;--",
                     "Title",
@@ -389,6 +392,7 @@ mod tests {
                 )],
             }]),
             brand: Arc::new("Admin".to_string()),
+            audit_policy: crate::nexus::NexusAuditPolicy::Disabled,
         };
 
         let response = generate_smart_nexus_ai_response("list every table", &state);

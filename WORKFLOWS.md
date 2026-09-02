@@ -105,7 +105,11 @@ the declared MSRV, Rust 1.96.0. The Linux provider matrix also runs the
 feature-gated Scout adapter against a digest-pinned Meilisearch image; Algolia
 and Elasticsearch use bounded local protocol fixtures because no hosted
 provider account is part of CI. The same matrix runs typed, parameterized L2
-and cosine queries against a digest-pinned PostgreSQL + pgvector image.
+and cosine queries against a digest-pinned PostgreSQL + pgvector image. It also
+runs Nexus's default Any/SQLite HTTP contract explicitly, because the global
+all-feature graph intentionally selects a strict database profile and excludes
+that materialized tenant/audit target. Coverage separately merges the default
+workspace pass, so those routes contribute real executed-line evidence.
 
 After those Rust CI jobs finish, an observational job always emits a
 SHA-bound per-crate quality scorecard into the workflow summary and a 90-day

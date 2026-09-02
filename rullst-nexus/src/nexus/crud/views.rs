@@ -30,9 +30,11 @@ pub async fn render_table_rows(
     page: u32,
     sort_by: Option<&str>,
     order: Option<&str>,
+    tenant_id: Option<&str>,
 ) -> String {
     let visible_fields: Vec<&FieldMeta> = entry.fields.iter().filter(|f| !f.hidden).collect();
-    let (sql, binds) = build_table_query(entry, &visible_fields, q, page, sort_by, order);
+    let (sql, binds) =
+        build_table_query(entry, &visible_fields, q, page, sort_by, order, tenant_id);
 
     let pool = match rullst_core::db::safe_pool() {
         Some(p) => p,
@@ -55,11 +57,11 @@ pub async fn render_table_rows(
 
     let db_rows = match rows_result {
         Ok(r) => r,
-        Err(e) => {
+        Err(_) => {
+            tracing::error!(table = entry.table, "Nexus table query failed");
             return format!(
-                "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">&#10071; Database Error: {}</td></tr>",
-                visible_fields.len() + 1,
-                rullst_core::html::escape_str(&e.to_string())
+                "<tr><td colspan=\"{}\" class=\"nexus-empty-row\">&#10071; The data store is temporarily unavailable.</td></tr>",
+                visible_fields.len() + 1
             );
         }
     };
@@ -154,6 +156,7 @@ pub async fn render_table_view(
     q: &str,
     sort_by: Option<&str>,
     order: Option<&str>,
+    tenant_id: Option<&str>,
 ) -> String {
     let visible_fields: Vec<&FieldMeta> = entry.fields.iter().filter(|f| !f.hidden).collect();
 
@@ -182,7 +185,7 @@ pub async fn render_table_view(
         acc
     });
 
-    let rows_html = render_table_rows(entry, q, page, sort_by, order).await;
+    let rows_html = render_table_rows(entry, q, page, sort_by, order, tenant_id).await;
 
     let table_path = urlencoding::encode(entry.table);
     let safe_table = rullst_core::html::escape_str(entry.table);
@@ -274,6 +277,7 @@ pub async fn render_record_form(
     _state: &NexusState,
     entry: &RegistryEntry,
     record_id: Option<&str>,
+    tenant_id: Option<&str>,
 ) -> String {
     let is_edit = record_id.is_some();
     let title = if is_edit {
@@ -291,24 +295,39 @@ pub async fn render_record_form(
             let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
             let clean_table = sanitize_identifier(t);
             let clean_pk = sanitize_identifier(pk);
-            let sql = if driver == "postgres" {
-                format!(
-                    "SELECT * FROM {} WHERE {} = $1 LIMIT 1",
-                    clean_table, clean_pk
-                )
-            } else {
-                format!(
-                    "SELECT * FROM {} WHERE {} = ? LIMIT 1",
-                    clean_table, clean_pk
-                )
+            let pk_placeholder = if driver == "postgres" { "$1" } else { "?" };
+            let tenant_predicate = match (entry.tenant_column, tenant_id) {
+                (Some(column), Some(_)) if driver == "postgres" => {
+                    format!(" AND {} = $2", sanitize_identifier(column))
+                }
+                (Some(column), Some(_)) => {
+                    format!(" AND {} = ?", sanitize_identifier(column))
+                }
+                (Some(_), None) => " AND 1 = 0".to_string(),
+                (None, _) => String::new(),
             };
+            let sql = format!(
+                "SELECT * FROM {} WHERE {} = {}{} LIMIT 1",
+                clean_table, clean_pk, pk_placeholder, tenant_predicate
+            );
             let mut q = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
             if let Ok(num_id) = id.parse::<i64>() {
                 q = q.bind(num_id);
             } else {
                 q = q.bind(id);
             }
-            q.fetch_optional(pool).await.unwrap_or(None)
+            if entry.tenant_column.is_some()
+                && let Some(tenant_id) = tenant_id
+            {
+                q = q.bind(tenant_id);
+            }
+            match q.fetch_optional(pool).await {
+                Ok(row) => row,
+                Err(_) => {
+                    tracing::error!(table = entry.table, "Nexus record query failed");
+                    None
+                }
+            }
         } else {
             None
         }
@@ -437,50 +456,4 @@ pub async fn render_record_form(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::Arc;
-
-    fn state() -> NexusState {
-        NexusState {
-            registry: Arc::new(vec![]),
-            brand: Arc::new("Nexus".to_string()),
-        }
-    }
-
-    #[tokio::test]
-    async fn table_view_escapes_metadata_and_only_offers_supported_batch_actions() {
-        let entry = RegistryEntry {
-            table: "articles",
-            label: "<img src=x onerror=alert(1)>",
-            icon: "📰",
-            pk: "id",
-            fields: vec![
-                FieldMeta::new("title", "<script>alert(1)</script>", FieldKind::Text),
-                FieldMeta::new("is_active", "Active", FieldKind::Boolean),
-            ],
-        };
-        let html = render_table_view(
-            &state(),
-            &entry,
-            1,
-            "\"><svg/onload=alert(1)>",
-            Some("title"),
-            Some("asc"),
-        )
-        .await;
-
-        assert!(!html.contains("<script>"));
-        assert!(!html.contains("<img src=x"));
-        assert!(!html.contains("<svg"));
-        assert!(html.contains("&lt;script&gt;"));
-        assert!(html.contains("value=\"deactivate\""));
-
-        let without_active = RegistryEntry {
-            fields: vec![FieldMeta::new("title", "Title", FieldKind::Text)],
-            ..entry
-        };
-        let html = render_table_view(&state(), &without_active, 1, "", None, None).await;
-        assert!(!html.contains("value=\"deactivate\""));
-    }
-}
+mod tests;

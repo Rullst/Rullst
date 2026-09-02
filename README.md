@@ -285,8 +285,9 @@ before interpreting a number.
 
 ### v12 capability highlights
 
-- 🎨 **Studio & Nexus:** a loopback-first developer dashboard at `:5555` and an
-  authenticated `/nexus` model CRUD panel generated from explicit model metadata.
+- 🎨 **Studio & Nexus:** a loopback-first developer dashboard at `:5555` and a
+  fail-closed `/nexus` model CRUD panel with explicit metadata, opt-in trusted
+  tenant scoping and transaction-coupled mutation audit.
 - 🛡️ **Security helpers:** bounded request heuristics for selected XSS, SQLi,
   traversal, and command-injection indicators plus explicit role/ownership
   guards. These controls do not replace application authorization or testing.
@@ -433,7 +434,7 @@ Rullst is a unified monorepo. Core, ORM, Connect, and the domain crates are vers
 - 📡 **[rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot)**: `no_std` telemetry/frame helpers, Ed25519-signed OTA manifest verification, and a durable rollback-counter CAS boundary; concrete device storage, flashing/bootloader integration, MQTT transport, HSM, and PQC remain roadmap work.
 - ✉️ **[rullst-mail](https://github.com/Rullst/Rullst/tree/main/rullst-mail)**: Transactional email drivers with mandatory validation, background delivery, opt-in bounded attachment inspection, shared-local suppression and secret-minimized observations, plus safe fiscal-receipt and dunning scaffolds.
 - 📊 **[rullst-studio](https://github.com/Rullst/Rullst/tree/main/rullst-studio)**: Developer Control Room (`:5555`) with live telemetry and data browser.
-- ⚙️ **[rullst-nexus](https://github.com/Rullst/Rullst/tree/main/rullst-nexus)**: Registered-model Admin CMS (`/nexus`) and a local security-event view.
+- ⚙️ **[rullst-nexus](https://github.com/Rullst/Rullst/tree/main/rullst-nexus)**: Fail-closed registered-model Admin CMS (`/nexus`) with opt-in trusted tenant scope, transaction-coupled mutation audit, and a local security-event view.
 - 🛠️ **[cargo-rullst](https://github.com/Rullst/Rullst/tree/main/cargo-rullst)**: CLI scaffolding, bounded AST IDOR checks, and deployment helpers.
 
 ---

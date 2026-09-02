@@ -85,6 +85,14 @@ pub trait NexusModel: Send + Sync + 'static {
     fn nexus_pk() -> &'static str {
         "id"
     }
+    /// Optional text column used to scope every Nexus read and mutation to the
+    /// authenticated [`rullst_core::security::TenantContext`].
+    ///
+    /// Models without tenant-owned rows should keep the default. A scoped
+    /// model fails closed when the request has no trusted tenant context.
+    fn nexus_tenant_column() -> Option<&'static str> {
+        None
+    }
     /// The field schema array describing column kinds and metadata.
     fn nexus_fields() -> Vec<FieldMeta>;
 }
@@ -96,7 +104,20 @@ pub struct RegistryEntry {
     pub label: &'static str,
     pub icon: &'static str,
     pub pk: &'static str,
+    pub tenant_column: Option<&'static str>,
     pub fields: Vec<FieldMeta>,
+}
+
+/// Persistence policy for successful Nexus data mutations.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum NexusAuditPolicy {
+    /// Do not write Nexus-specific mutation records.
+    #[default]
+    Disabled,
+    /// Commit each mutation only when its minimized audit row is written in
+    /// the same database transaction.
+    Required,
 }
 
 /// Shared state passed into all Nexus route handlers.
@@ -104,4 +125,5 @@ pub struct RegistryEntry {
 pub struct NexusState {
     pub registry: Arc<Vec<RegistryEntry>>,
     pub brand: Arc<String>,
+    pub audit_policy: NexusAuditPolicy,
 }

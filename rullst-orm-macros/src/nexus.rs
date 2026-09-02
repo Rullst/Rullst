@@ -9,6 +9,7 @@ struct ModelOptions {
     label: Option<String>,
     icon: Option<String>,
     primary_key: Option<String>,
+    tenant_column: Option<String>,
 }
 
 #[derive(Default)]
@@ -36,6 +37,8 @@ fn parse_model_options(input: &DeriveInput) -> syn::Result<ModelOptions> {
                 options.icon = Some(meta.value()?.parse::<LitStr>()?.value());
             } else if meta.path.is_ident("primary_key") && attribute.path().is_ident("nexus") {
                 options.primary_key = Some(meta.value()?.parse::<LitStr>()?.value());
+            } else if meta.path.is_ident("tenant") {
+                options.tenant_column = Some(meta.value()?.parse::<LitStr>()?.value());
             } else if attribute.path().is_ident("nexus") {
                 return Err(meta.error("unsupported Nexus model option"));
             }
@@ -80,8 +83,12 @@ fn parse_field_options(field: &syn::Field) -> syn::Result<FieldOptions> {
     Ok(options)
 }
 
+fn type_name(field_type: &Type) -> String {
+    quote!(#field_type).to_string().replace(' ', "")
+}
+
 fn unwrapped_type_name(field_type: &Type) -> String {
-    let mut type_name = quote!(#field_type).to_string().replace(' ', "");
+    let mut type_name = type_name(field_type);
     if type_name.starts_with("Option<") && type_name.ends_with('>') {
         type_name = type_name[7..type_name.len() - 1].to_string();
     }
@@ -186,6 +193,7 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
     let label = model_options.label.unwrap_or_else(|| format!("{name}s"));
     let icon = model_options.icon.unwrap_or_else(|| "📄".to_string());
     let configured_primary_key = model_options.primary_key;
+    let tenant_column = model_options.tenant_column;
     let mut inferred_primary_key = None;
     let mut field_metas = Vec::with_capacity(fields.len());
 
@@ -199,6 +207,16 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
             .unwrap_or(&raw_field_name)
             .to_string();
         let options = parse_field_options(field)?;
+        if tenant_column.as_deref() == Some(field_name.as_str())
+            && (type_name(&field.ty) != "String"
+                || options.kind.as_deref().is_some_and(|kind| kind != "text")
+                || !options.options.is_empty())
+        {
+            return Err(syn::Error::new_spanned(
+                field,
+                "Nexus tenant columns must use a non-optional `String` with text metadata",
+            ));
+        }
         if options.primary_key || (configured_primary_key.is_none() && field_name == "id") {
             inferred_primary_key = Some(field_name.clone());
         }
@@ -215,7 +233,9 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
             || matches!(field_name.as_str(), "password_hash" | "deleted_at");
         let readonly = options.readonly
             || is_primary_key
+            || tenant_column.as_deref() == Some(field_name.as_str())
             || matches!(field_name.as_str(), "created_at" | "updated_at");
+        let hidden = hidden || tenant_column.as_deref() == Some(field_name.as_str());
 
         field_metas.push(quote! {
             ::rullst::nexus::FieldMeta {
@@ -241,6 +261,21 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
             format!("Nexus primary key `{primary_key}` is not a field on `{name}`"),
         ));
     }
+    if let Some(tenant_column) = tenant_column.as_deref()
+        && !fields
+            .iter()
+            .filter_map(|field| field.ident.as_ref())
+            .any(|field| field == tenant_column)
+    {
+        return Err(syn::Error::new_spanned(
+            input,
+            format!("Nexus tenant column `{tenant_column}` is not a field on `{name}`"),
+        ));
+    }
+
+    let tenant_method = tenant_column
+        .as_deref()
+        .map(|column| quote!(fn nexus_tenant_column() -> Option<&'static str> { Some(#column) }));
 
     Ok(quote! {
         impl ::rullst::nexus::NexusModel for #name {
@@ -251,6 +286,7 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
                 vec![#(#field_metas),*]
             }
             fn nexus_pk() -> &'static str { #primary_key }
+            #tenant_method
         }
     })
 }
@@ -321,5 +357,69 @@ mod tests {
                 .to_string()
                 .contains("is not a field")
         );
+
+        let invalid_tenant: DeriveInput = parse_quote! {
+            #[nexus(tenant = "organization_id")]
+            struct Article { id: i64 }
+        };
+        assert!(
+            expand_nexus(&invalid_tenant)
+                .expect_err("missing tenant column must fail")
+                .to_string()
+                .contains("tenant column `organization_id` is not a field")
+        );
+
+        let invalid_tenant_type: DeriveInput = parse_quote! {
+            #[nexus(tenant = "organization_id")]
+            struct Article {
+                id: i64,
+                organization_id: Option<String>,
+            }
+        };
+        assert!(
+            expand_nexus(&invalid_tenant_type)
+                .expect_err("nullable tenant column must fail")
+                .to_string()
+                .contains("must use a non-optional `String` with text metadata")
+        );
+
+        let invalid_tenant_widget: DeriveInput = parse_quote! {
+            #[nexus(tenant = "organization_id")]
+            struct Article {
+                id: i64,
+                #[nexus(kind = "textarea")]
+                organization_id: String,
+            }
+        };
+        assert!(
+            expand_nexus(&invalid_tenant_widget)
+                .expect_err("non-text tenant metadata must fail")
+                .to_string()
+                .contains("must use a non-optional `String` with text metadata")
+        );
+    }
+
+    #[test]
+    fn generates_readonly_hidden_tenant_scope_from_orm_metadata() {
+        let input: DeriveInput = parse_quote! {
+            #[orm(table = "articles", tenant = "organization_id")]
+            struct Article {
+                id: i64,
+                organization_id: String,
+                title: String,
+            }
+        };
+        let output = expand_nexus(&input)
+            .expect("valid tenant-scoped Nexus derive")
+            .to_string();
+
+        assert!(output.contains("fn nexus_tenant_column"));
+        assert!(output.contains("Some (\"organization_id\")"));
+        let tenant_field = output
+            .split("name : \"organization_id\"")
+            .nth(1)
+            .expect("tenant field metadata emitted");
+        assert!(tenant_field.contains("hidden : true"));
+        assert!(tenant_field.contains("readonly : true"));
     }
 }

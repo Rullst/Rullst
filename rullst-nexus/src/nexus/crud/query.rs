@@ -100,6 +100,7 @@ pub fn build_table_query(
     page: u32,
     sort_by: Option<&str>,
     order: Option<&str>,
+    tenant_id: Option<&str>,
 ) -> (String, Vec<String>) {
     let clean_table = sanitize_identifier(entry.table);
     let limit = 15;
@@ -124,41 +125,67 @@ pub fn build_table_query(
     let mut sql = format!("SELECT {} FROM {}", select_list, clean_table);
     let mut binds = Vec::new();
 
+    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
+    let mut predicates = Vec::new();
     if !q.is_empty() {
         let text_fields: Vec<String> = entry
             .fields
             .iter()
             .filter(|f| {
-                matches!(
-                    f.kind,
-                    FieldKind::Text | FieldKind::Textarea | FieldKind::Email | FieldKind::Url
-                )
+                !f.hidden
+                    && matches!(
+                        f.kind,
+                        FieldKind::Text | FieldKind::Textarea | FieldKind::Email | FieldKind::Url
+                    )
             })
             .map(|f| sanitize_identifier(f.name))
             .collect();
 
         if !text_fields.is_empty() {
-            let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
             let where_clauses: Vec<String> = text_fields
                 .iter()
                 .enumerate()
                 .map(|(idx, col)| {
                     if driver == "postgres" {
-                        format!("{} LIKE ${}", col, idx + 1)
+                        format!("{} LIKE ${}", col, binds.len() + idx + 1)
                     } else {
                         format!("{} LIKE ?", col)
                     }
                 })
                 .collect();
 
-            sql.push_str(" WHERE ");
-            sql.push_str(&where_clauses.join(" OR "));
+            predicates.push(format!("({})", where_clauses.join(" OR ")));
 
             let search_term = format!("%{}%", q);
             for _ in 0..text_fields.len() {
                 binds.push(search_term.clone());
             }
         }
+    }
+
+    if let Some(tenant_column) = entry.tenant_column {
+        if let Some(tenant_id) = tenant_id {
+            let placeholder = if driver == "postgres" {
+                format!("${}", binds.len() + 1)
+            } else {
+                "?".to_string()
+            };
+            predicates.push(format!(
+                "{} = {}",
+                sanitize_identifier(tenant_column),
+                placeholder
+            ));
+            binds.push(tenant_id.to_string());
+        } else {
+            // Public rendering helpers also fail closed if called outside the
+            // authenticated HTTP handler path.
+            predicates.push("1 = 0".to_string());
+        }
+    }
+
+    if !predicates.is_empty() {
+        sql.push_str(" WHERE ");
+        sql.push_str(&predicates.join(" AND "));
     }
 
     let sort_col = sort_by
@@ -180,4 +207,56 @@ pub fn build_table_query(
     );
 
     (sql, binds)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn tenant_entry() -> RegistryEntry {
+        RegistryEntry {
+            table: "records",
+            label: "Records",
+            icon: "R",
+            pk: "id",
+            tenant_column: Some("tenant_id"),
+            fields: vec![
+                FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
+                FieldMeta::new("tenant_id", "Tenant", FieldKind::Text)
+                    .readonly()
+                    .hidden(),
+                FieldMeta::new("title", "Title", FieldKind::Text),
+            ],
+        }
+    }
+
+    #[test]
+    fn scoped_query_binds_search_before_trusted_tenant() {
+        let entry = tenant_entry();
+        let visible = vec![&entry.fields[0], &entry.fields[2]];
+        let (sql, binds) = build_table_query(
+            &entry,
+            &visible,
+            "needle",
+            1,
+            Some("title"),
+            Some("asc"),
+            Some("tenant-a"),
+        );
+
+        assert!(sql.contains("(title LIKE ?)") || sql.contains("(title LIKE $1)"));
+        assert!(sql.contains("tenant_id = ?") || sql.contains("tenant_id = $2"));
+        assert_eq!(binds, ["%needle%", "tenant-a"]);
+    }
+
+    #[test]
+    // TM-NEXUS-02
+    fn scoped_query_without_context_is_empty_by_construction() {
+        let entry = tenant_entry();
+        let visible = vec![&entry.fields[2]];
+        let (sql, binds) = build_table_query(&entry, &visible, "", 1, None, None, None);
+
+        assert!(sql.contains("WHERE 1 = 0"));
+        assert!(binds.is_empty());
+    }
 }
