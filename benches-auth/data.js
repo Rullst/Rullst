@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788388132111,
+  "lastUpdate": 1788392380901,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -7865,6 +7865,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4585,
             "range": "± 115",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "745bde23cb31a352ecfe58d2a1739abef789a49f",
+          "message": "fix(sqlite): close pools after failed initialization",
+          "timestamp": "2026-09-02T20:21:28-03:00",
+          "tree_id": "cca3ddb88c1be09d3c30058e750a0631eb883809",
+          "url": "https://github.com/Rullst/Rullst/commit/745bde23cb31a352ecfe58d2a1739abef789a49f"
+        },
+        "date": 1788392380296,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1036,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 842,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1902,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2508,
+            "range": "± 49",
             "unit": "ns/iter"
           }
         ]
