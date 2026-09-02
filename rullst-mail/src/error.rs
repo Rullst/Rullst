@@ -62,6 +62,20 @@ pub enum MailError {
         /// Delta-seconds `Retry-After`, capped at one day when supplied.
         retry_after: Option<Duration>,
     },
+    /// Delivery was blocked before transport by authoritative suppression state.
+    SuppressedRecipient {
+        /// Stable reason label; the recipient address is deliberately omitted.
+        reason: &'static str,
+    },
+    /// Suppression state could not be checked, so delivery failed closed.
+    SuppressionUnavailable,
+    /// An attachment was rejected before any transport received it.
+    AttachmentRejected {
+        /// Stable reason label; filename and content are deliberately omitted.
+        reason: &'static str,
+    },
+    /// Attachment inspection could not complete, so delivery failed closed.
+    AttachmentInspectionUnavailable,
 }
 
 impl MailError {
@@ -74,6 +88,10 @@ impl MailError {
             Self::ConfigError(_)
             | Self::SendError(_)
             | Self::ValidationError(_)
+            | Self::SuppressedRecipient { .. }
+            | Self::SuppressionUnavailable
+            | Self::AttachmentRejected { .. }
+            | Self::AttachmentInspectionUnavailable
             | Self::ProviderResponse { .. } => MailFailureClass::Permanent,
         }
     }
@@ -152,6 +170,18 @@ impl std::fmt::Display for MailError {
                     write!(f, " (retry after {}s)", delay.as_secs())?;
                 }
                 Ok(())
+            }
+            MailError::SuppressedRecipient { reason } => {
+                write!(f, "Recipient is suppressed ({reason})")
+            }
+            MailError::SuppressionUnavailable => {
+                write!(f, "Suppression state is unavailable; delivery blocked")
+            }
+            MailError::AttachmentRejected { reason } => {
+                write!(f, "Attachment rejected before delivery ({reason})")
+            }
+            MailError::AttachmentInspectionUnavailable => {
+                write!(f, "Attachment inspection is unavailable; delivery blocked")
             }
         }
     }

@@ -1,6 +1,6 @@
 //! # `rullst-mail` — High-Performance Transactional Email & Mailables Engine
 //!
-//! Provides zero-cost abstraction for transactional emails with built-in:
+//! Provides typed, bounded primitives for transactional emails with built-in:
 //! - **RFC 8058 One-Click List-Unsubscribe** headers
 //! - **Automatic Plain-Text Fallback** derivation
 //! - **In-Memory MailTrap & Fluent Assertions**
@@ -8,18 +8,22 @@
 //! - Multiple delivery drivers (**SMTP**, **Resend**, **SendGrid**, **Postmark**, **AWS SES**, **Log**, **Memory**, **Failover**)
 //! - **Dynamic Multi-Tenancy Resolver** (`TenantMailResolver`)
 //! - **Resilient Circuit Breaker & Automatic Failover** (`FailoverDriver`)
+//! - Opt-in attachment inspection, recipient suppression, and minimized observations
 
 pub mod attachment;
 pub mod drivers;
 pub mod error;
 pub mod facade;
 pub mod factory;
+pub mod inspection;
 pub mod message;
+pub mod observability;
 #[cfg(feature = "capital-invoice")]
 pub mod paid_invoice;
 pub mod pipeline;
 pub mod resolver;
 pub mod security;
+pub mod suppression;
 pub mod tracking;
 pub mod validator;
 pub mod worker;
@@ -33,12 +37,15 @@ pub use drivers::*;
 pub use error::*;
 pub use facade::*;
 pub use factory::*;
+pub use inspection::*;
 pub use message::*;
+pub use observability::*;
 #[cfg(feature = "capital-invoice")]
 pub use paid_invoice::*;
 pub use pipeline::*;
 pub use resolver::*;
 pub use security::*;
+pub use suppression::*;
 pub use tracking::*;
 pub use validator::*;
 pub use worker::*;

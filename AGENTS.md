@@ -26,7 +26,7 @@ The Rullst framework is organized into decoupled, high-performance crates:
 | **`rullst-connect`** | OAuth2/OIDC and social-login providers; brokered messaging is deliberately outside this identity-focused crate. |
 | **`rullst-messaging`** | Bounded broker-neutral envelopes, idempotent publication, consumer groups, leases, retry/DLQ, a deterministic process-local broker, and opt-in durable local SQLite state; remote adapters are roadmap work. |
 | **`rullst-iot`** | `no_std` telemetry/frame helpers, bounded MQTT 5 PUBLISH and CoAP request encoders, Ed25519-signed OTA manifest verification, and a caller-provided durable rollback-counter CAS contract. Concrete counter storage, network transports/session state, HSM, PQC, flashing, and bootloader integration are roadmap work. |
-| **`rullst-mail`** | Templated transactional email engine (Resend, SendGrid, Postmark, SMTP) with background delivery. |
+| **`rullst-mail`** | Templated transactional email engine (Resend, SendGrid, Postmark, SMTP) with background delivery, opt-in attachment inspection, recipient suppression, and minimized delivery observations. |
 | **`rullst-studio`** | Developer Control Room (`http://127.0.0.1:5555`), clean routes (`/studio/*`), dark glassmorphic UI, non-mocked telemetry. |
 | **`rullst-nexus`** | Auto-generated Admin CMS (`/nexus`), model CRUD interfaces, AI Admin Assistant (`/nexus/chat`), SOC Threat Radar. |
 | **`rullst-macros`** | Procedural macros (`html!`, `rullst::model`, `rullst::runtime::main`). |

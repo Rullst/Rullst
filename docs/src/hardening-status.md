@@ -80,6 +80,17 @@ uma topologia de produção validada.
 | **P1-18 — tenant escolhido pelo cliente** | **Corrigido no boundary definido** | [`tenant_guard.rs`](../../rullst-core/src/security/tenant_guard.rs) deriva seleção de `TenantMembership`/`TenantContext` confiável e ignora headers como autoridade; [`multitenant.rs`](../../rullst-core/src/multitenant.rs) trata header/query/subdomínio apenas como seletor sujeito a membership, devolvendo 403 sem vínculo. [`RbacGuard`](../../rullst-security/src/rbac/guard.rs) carrega tenant validado e exige match exato sem bypass de admin; [`TenantStorage`](../../rullst-core/src/storage/tenant.rs), [`TenantCache`](../../rullst-core/src/cache/tenant.rs), [`TenantRealtime` e `TenantPresence`](../../rullst-core/src/realtime.rs) oferecem namespaces locais ligados ao mesmo contexto. O LMS gerado persiste escolas/memberships/coortes/entitlements, resolve a escola no middleware e filtra mutações/leaderboard; outbox, automação derivada e notificações preservam `school_id`, o leaderboard integra cache local tenant-scoped e notificações novas podem ser projetadas para uma assinatura realtime tenant/user autenticada. Os testes negam seleção arbitrária/ambígua, regra estrangeira, vazamento de notificação do mesmo usuário, admin cross-school e colisões locais da mesma chave/canal/sala de presença. Isso não cobre anexos/mídia, demais caches, autorização ampla de salas, transporte distribuído, storage remoto, busca, métricas, exports, Nexus, cache distribuído ou bancos reais. |
 | **P1-19 — bypass CSWSH por prefixo de host** | **Corrigido** | [`cswsh.rs`](../../rullst-security/src/cswsh.rs) normaliza e compara esquema/host/porta exatos, com origin ausente fechado por padrão. Testes `deceptive_localhost_prefixes_are_rejected` e `middleware_rejects_a_deceptive_localhost_origin` cobrem `localhost.evil`. |
 
+O teto local posterior de Mail complementa P1-16 com três wrappers opt-in:
+[`inspection.rs`](../../rullst-mail/src/inspection.rs) falha antes do transporte
+em assinaturas conhecidas incompatíveis, conteúdo ativo e indisponibilidade do
+scanner; [`suppression`](../../rullst-mail/src/suppression/mod.rs) oferece store
+bounded process-local ou SQLite compartilhado-local com replay e quotas
+transacionais; e [`observability.rs`](../../rullst-mail/src/observability.rs)
+omite destinatário, assunto, corpo e filenames. As provas exatas entram em
+`TM-MAIL-01` a `TM-MAIL-03`. Isso não equivale a antivírus/CDR, autenticação de
+webhook do provider, replicação multi-host, operação de telemetria ou inbox
+delivery.
+
 ## Achados médios — P2
 
 | ID | Estado | Evidência atual e limite |

@@ -76,12 +76,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   REST, native SES and SMTP transports onto the same bounded owned-byte model.
   Encoding may copy data, provider limits can be lower, and opaque file bytes
   are not malware- or DLP-inspected.
+- Added opt-in Mail safety/operations wrappers using static dispatch. A bounded
+  local attachment inspector rejects executable magic, spoofed known types,
+  active PDF/SVG and recognized secrets/unsafe links before transport. A
+  provider-neutral suppression guard offers process-local state or an opt-in
+  file-backed SQLite store with immutable quotas, exact replay conflicts,
+  monotonic bounce/complaint state and restart/two-instance evidence. A
+  non-failing observer records only low-cardinality terminal outcomes. Provider
+  webhook authentication, authoritative malware/CDR inspection, multi-host
+  replication, external telemetry and inbox acceptance remain explicit host or
+  provider responsibilities.
 - Added a compact canonical capability-status view and a SHA-bound CI quality
   scorecard artifact for every main push/PR. The score evaluates engineering
   evidence and explicitly excludes feature completeness and certification.
 - Raised the v12 RC quality gate to A (90) for every publishable crate except
   the approved IoT floor of B (80). After Auth reached its bounded 95/A local
-  ceiling, the audited plan records eight crates below A and a 53-point
+  ceiling, the audited plan records seven crates below A and a 50-point
   aggregate gap; policy values may move only with real implementation and
   evidence, never to make the release table look greener.
 - Added a `no_std` OTA rollback-counter adapter to `rullst-iot`. The manager can
@@ -662,7 +672,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Local development and observability
 
-- Expanded the umbrella boundary matrix to compile all 42 public features in
+- Expanded the umbrella boundary matrix to compile all 43 public features in
   isolation and fail when its rows drift from the manifest. The tag-only
   packaged consumer now derives and enables the full feature set from the
   extracted `.crate` manifest instead of relying on a partial static list.

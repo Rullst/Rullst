@@ -22,6 +22,9 @@
 - **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. Structured tracing exposes bounded decision fields without provider bodies.
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
 - **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, SendGrid, Postmark, native SES and SMTP serialize the same owned-byte model; transports copy or Base64-encode as required.
+- **🔬 Opt-in Attachment Inspection (`AttachmentInspectionGuard`):** A strict bounded local policy rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links before transport. A static `AttachmentInspector` adapter boundary supports an independently operated production scanner.
+- **🚫 Durable Recipient Suppression (`sqlite`):** `SuppressionGuard` checks manual, hard-bounce and spam-complaint state before transport. The SQLite store binds verified provider/event identities, detects conflicting replay, enforces immutable quotas transactionally and survives restart or multiple local processes.
+- **📊 Secret-Minimized Delivery Observability:** `ObservedMailDriver` records only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing static observer.
 - **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend/SendGrid delivery uses provider scheduling. Real SMTP, Postmark, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
 - **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters) and dangerous URI schemes (`javascript:`, `data:text/html`).
 - **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`).
@@ -236,7 +239,66 @@ if msg.is_disposable() {
 
 ---
 
-### 7. Authenticated Open/Click Tracking Primitives
+### 7. Composing Inspection, Suppression, and Observability
+
+The wrappers use static dispatch and may be composed around any `MailDriver`.
+Enable `rullst-mail/sqlite` (or umbrella `rullst/mail-sqlite`) for the durable
+local suppression store:
+
+```rust,no_run
+use rullst_mail::{
+    AttachmentInspectionGuard, BoundedMailObserver, LocalAttachmentInspector,
+    MailDriver, MemoryDriver, Message, MutableSuppressionStore,
+    ObservedMailDriver, SqliteSuppressionStore, SuppressionEvent,
+    SuppressionGuard, SuppressionReason,
+};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+# async fn deliver() -> Result<(), Box<dyn std::error::Error>> {
+let store = SqliteSuppressionStore::connect(
+    "sqlite://storage/mail-suppressions.sqlite",
+    100_000,
+    500_000,
+).await?;
+
+// Only record events after the provider-specific signature was authenticated.
+let observed_at = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+store.record(SuppressionEvent::try_new(
+    "postmark",
+    "verified-event-id",
+    "blocked@example.com",
+    SuppressionReason::HardBounce,
+    observed_at,
+)?).await?;
+
+let (transport, _) = MemoryDriver::isolated();
+let inspected = AttachmentInspectionGuard::new(
+    transport,
+    LocalAttachmentInspector::strict(),
+);
+let suppressed = SuppressionGuard::new(inspected, store);
+let observer = BoundedMailObserver::new(10_000)?;
+let driver = ObservedMailDriver::try_new("memory", suppressed, observer)?;
+driver.send(&Message::new()
+    .to("recipient@example.com")
+    .subject("Bounded delivery")
+    .text("Hello"))
+    .await?;
+# Ok(())
+# }
+```
+
+`SuppressionEvent` does not verify a webhook signature: a provider-specific
+adapter must authenticate the exact event first. SQLite is shared durable local
+state, not multi-host replication or encrypted storage. Keep replay IDs at least
+as long as every provider's redelivery window. The local attachment inspector is
+a bounded heuristic, not antivirus, sandbox execution, recursive archive
+inspection or content disarm. The default observer is bounded and process-local;
+the host owns any external metrics/tracing sink, retention and alerts.
+
+---
+
+### 8. Authenticated Open/Click Tracking Primitives
 
 Generate versioned, purpose-bound HMAC-SHA256 tracking tokens with a mandatory
 32-byte secret and bounded validity. HMAC authenticates but does not encrypt:
@@ -269,7 +331,7 @@ let event = verifier.verify_open_once(secret, &token, now_unix_seconds)?;
 
 ---
 
-### 8. Transactional Test Fixtures with `MailFactory`
+### 9. Transactional Test Fixtures with `MailFactory`
 
 Quickly generate standard transactional emails for local preview and testing:
 
@@ -285,7 +347,7 @@ let alert_msg = MailFactory::fake_security_alert("eve@example.com", "Unrecognize
 
 ---
 
-### 9. Native AWS SES v2 with SigV4
+### 10. Native AWS SES v2 with SigV4
 
 Enable the opt-in official SDK transport:
 
@@ -374,9 +436,11 @@ valid/hostile HTML or MIME document and cannot guarantee delivery, absence of
 phishing, absence of data leakage or legal compliance.
 
 Attachment limits are 32 items, 20 MiB per item and 25 MiB of raw bytes in
-aggregate before transport encoding. Provider/account limits can be lower.
-Attachment bytes are treated as opaque: the pipeline does not parse archives,
-scan malware, or apply the body/subject DLP heuristics to file content.
+aggregate before transport encoding. Provider/account limits can be lower. The
+base pipeline validates metadata but treats bytes as opaque. The opt-in local
+inspector recognizes only its documented bounded formats and heuristics; use a
+production scanner adapter when malware, archive, sandbox or CDR policy is
+required.
 
 ---
 

@@ -1,8 +1,8 @@
 # Rullst v12 threat models
 
-> **Model version:** TM-12.3
+> **Model version:** TM-12.4
 > **Applies to:** the v12 release candidate source and generated applications
-> **Last source review:** 2026-08-30
+> **Last source review:** 2026-09-02
 > **Status:** maintainer baseline; application owners must extend it for their
 > data, topology and providers. It is not a pentest or certification.
 
@@ -27,11 +27,12 @@ addresses are untrusted unless a separately reviewed proxy policy establishes
 the direct peer as trusted.
 
 The machine-readable release minimum in
-`.github/threat-model-release-minimum.json` binds 38 abuse-case IDs to 38 exact
-test executions across ten crates. The gate rejects missing markers, missing tests and
-zero-test filters before executing Auth, Nexus, Studio, tenant ownership,
-Capital, AI, IoT, generated-default and Academy negatives. Passing that bounded
-minimum does not imply that every case below is closed.
+`.github/threat-model-release-minimum.json` binds 41 distinct abuse-case IDs to
+53 evidence rows across eleven crates. The gate rejects missing markers,
+missing tests and zero-test filters before executing Auth, Nexus, Studio,
+tenant ownership, Capital, AI, Mail, IoT, generated-default and Academy
+negatives. Passing that bounded minimum does not imply that every case below is
+closed.
 
 ## TM-AUTH-1 — sessions, passwords, OAuth/OIDC and passkeys
 
@@ -151,6 +152,21 @@ amount/currency, invoice identity, replay state and fiscal documents.
 Trust boundaries are provider ↔ webhook, user ↔ checkout, application ↔
 provider and application ↔ durable billing state.
 
+## TM-MAIL-1 — outbound content, suppressions and delivery telemetry
+
+**Assets:** recipients, message content and attachments, provider event
+identities, suppression state, tenant identity and operational observations.
+
+| Abuse case | Required disposition | Repository evidence or remaining work |
+| --- | --- | --- |
+| `MAIL-01` executable, active or type-confused attachment leaves the process | Validate bounded metadata and recognizable signatures, reject active content and fail closed when authoritative inspection is unavailable. | The opt-in static `AttachmentInspectionGuard` completes inspection before the wrapped transport. Its strict local heuristic rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links. It is not antivirus, sandboxing, recursive archive inspection or CDR; production risk policy may require an independently operated scanner adapter. |
+| `MAIL-02` forged, replayed or lost suppression event permits unwanted delivery | Authenticate the provider event before mutation, bind provider/event/payload exactly, persist suppression durably and check it before transport. | The opt-in SQLite store provides exact replay conflict detection, monotonic manual/bounce/complaint state, immutable quotas and shared-local restart/two-instance evidence; `SuppressionGuard` fails closed on suppressed recipients or unavailable state. Rullst does not authenticate provider webhooks in this API, and only already-verified events may be recorded. Replay-ID retention must cover the provider window. Multi-host replication, webhook adapters and provider-account acceptance remain open. |
+| `MAIL-03` message or recipient leaks through delivery telemetry | Emit only bounded low-cardinality outcomes and never recipient, subject, body, filename or provider response content. | `ObservedMailDriver` records provider label, outcome, elapsed time, attachment count and two booleans through a non-failing static sink. The bounded default sink is process-local; externally operated metrics/tracing export, retention and alerting remain deployment work. |
+
+Trust boundaries are authenticated application state ↔ mail message,
+application ↔ inspection/suppression adapters, verified provider event ↔ local
+suppression state and transport result ↔ observation sink.
+
 ## TM-AI-1 — prompts, RAG and tool execution
 
 **Assets:** system prompts, tenant content, provider keys, retrieved data, tool
@@ -253,6 +269,6 @@ registry and CLI ↔ filesystem/process/cloud.
 - New boundaries receive new IDs; IDs are never silently reused.
 - Closing residual risk requires code/configuration, a negative test and
   commit-bound evidence. Documentation alone cannot claim a control is deployed.
-- Before stable v12, maintainers must review TM-12.3 against the exact RC,
+- Before stable v12, maintainers must review TM-12.4 against the exact RC,
   applications must add topology/provider threats and an independent reviewer
   must cover the highest-impact paths.

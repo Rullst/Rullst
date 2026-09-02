@@ -85,6 +85,7 @@ rullst-capital|actix
 rullst-capital|nfse
 rullst-capital|quota-sql
 rullst-mail|mail-smtp
+rullst-mail|sqlite
 rullst-auth|jwt
 rullst-auth|sqlite
 
@@ -109,6 +110,7 @@ rullst|mail-smtp
 rullst|mailer
 rullst|mail
 rullst|mail-aws-ses
+rullst|mail-sqlite
 rullst|messaging
 rullst|messaging-sqlite
 rullst|auth-jwt

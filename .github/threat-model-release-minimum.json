@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "TM-12.3",
+  "model_version": "TM-12.4",
   "cases": [
     {
       "id": "AUTH-01",
@@ -325,6 +325,33 @@
       "test_filter": "ai::memory::sql::tests::sqlite_history_is_atomic_tenant_bound_and_deletable",
       "source": "rullst-ai/src/ai/memory/sql.rs",
       "marker": "TM-AI-08"
+    },
+    {
+      "id": "MAIL-01",
+      "crate": "rullst-mail",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "inspection::tests::local_inspector_accepts_bounded_safe_types_and_rejects_spoofed_or_active_content",
+      "source": "rullst-mail/src/inspection/tests.rs",
+      "marker": "TM-MAIL-01"
+    },
+    {
+      "id": "MAIL-02",
+      "crate": "rullst-mail",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "suppression::sqlite::tests::suppression_guard_observes_restart_safe_state_before_transport",
+      "source": "rullst-mail/src/suppression/sqlite/tests.rs",
+      "marker": "TM-MAIL-02"
+    },
+    {
+      "id": "MAIL-03",
+      "crate": "rullst-mail",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "observability::tests::observations_classify_terminal_outcomes_without_message_content",
+      "source": "rullst-mail/src/observability/tests.rs",
+      "marker": "TM-MAIL-03"
     },
     {
       "id": "IOT-01",

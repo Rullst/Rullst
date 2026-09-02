@@ -121,14 +121,14 @@
     },
     {
       "name": "rullst-mail",
-      "api_architecture": 18,
-      "verification": 22,
-      "security_failure_design": 18,
-      "documentation_dx": 14,
-      "operations_release": 15,
+      "api_architecture": 19,
+      "verification": 24,
+      "security_failure_design": 19,
+      "documentation_dx": 15,
+      "operations_release": 18,
       "specialist_gate": "threat-minimum",
-      "finding": "Good transport, preflight, bounded attachment and queue contracts; provider acceptance, inbox delivery, opaque-file inspection and distributed breaker operations remain open.",
-      "evidence": ["rullst-mail/README.md", "rullst-mail/tests", "docs/src/crates/mail.md"]
+      "finding": "Bounded transports, preflight, static inspection, durable shared-local suppression and minimized delivery observations; provider webhook conformance, authoritative malware inspection, multi-host operations, acceptance and inbox delivery remain open.",
+      "evidence": ["rullst-mail/README.md", "rullst-mail/src/inspection.rs", "rullst-mail/src/suppression", "rullst-mail/src/observability.rs", "rullst-mail/tests", "docs/src/crates/mail.md", "docs/src/threat-models.md"]
     },
     {
       "name": "rullst-auth",
@@ -171,7 +171,7 @@
       "documentation_dx": 14,
       "operations_release": 18,
       "specialist_gate": "none",
-      "finding": "All 42 public umbrella features have isolated compile boundaries with automatic manifest-drift detection, and the packaged-distribution consumer derives the complete extracted feature set instead of maintaining a partial allowlist; release confidence still inherits the bounded maturity of opt-in domain capabilities.",
+      "finding": "All 43 public umbrella features have isolated compile boundaries with automatic manifest-drift detection, and the packaged-distribution consumer derives the complete extracted feature set instead of maintaining a partial allowlist; release confidence still inherits the bounded maturity of opt-in domain capabilities.",
       "evidence": ["rullst/Cargo.toml", "rullst/tests", ".github/check-feature-boundaries.sh", ".github/test-packaged-distribution.sh", "docs/src/feature-matrix.md"]
     },
     {

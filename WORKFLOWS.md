@@ -5,7 +5,7 @@ is not evidence that a workflow has passed for a particular commit. A green
 claim must always point to the GitHub Actions run, commit SHA, logs, and produced
 artifacts.
 
-Last source-level review: **2026-09-01**.
+Last source-level review: **2026-09-02**.
 
 ## Status language
 
@@ -87,7 +87,7 @@ cargo test --workspace --all-features
 
 `ci.yml` also compiles and exercises each ORM strict database feature in
 isolation (PostgreSQL, MySQL, and SQLite), exercises the runtime-only Core and
-all 42 public umbrella features in isolated additive graphs with automatic
+all 43 public umbrella features in isolated additive graphs with automatic
 manifest-drift detection, runs the portable database matrix on Linux, and
 tests the all-feature workspace on Linux, macOS, and Windows. The umbrella's
 `cfg(doctest)` aggregation reads all 50 public tutorial files directly, so that
