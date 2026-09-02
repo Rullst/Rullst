@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788342147717,
+  "lastUpdate": 1788343070106,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -15167,6 +15167,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2346,
             "range": "± 34",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "61f1326a518ea52368010a208933997d77d2d8c2",
+          "message": "feat(messaging): add wire and trace contracts",
+          "timestamp": "2026-09-02T06:55:34-03:00",
+          "tree_id": "cf0ce63bbffd8cbe4edd397da2c2c728cd67aaf4",
+          "url": "https://github.com/Rullst/Rullst/commit/61f1326a518ea52368010a208933997d77d2d8c2"
+        },
+        "date": 1788343068421,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 739,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 991,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 654,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2324,
+            "range": "± 38",
             "unit": "ns/iter"
           }
         ]
