@@ -6,6 +6,7 @@ use crate::blueprints::{
     BLANK_BLUEPRINT_ID, BLOG_BLUEPRINT_ID, ERP_BLUEPRINT_ID, LMS_BLUEPRINT_ID,
     PORTFOLIO_BLUEPRINT_ID, SAAS_BLUEPRINT_ID,
 };
+use crate::generators::project::ProjectScaffoldOptions;
 
 /// Optional persistence capabilities that complement the primary SQL ORM.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -72,17 +73,27 @@ pub fn run_project_wizard(
     } else {
         Vec::new()
     };
-    run_project_wizard_with_blueprint(name_arg, api, use_defaults, &integrations, None, None)
+    run_project_wizard_with_blueprint(
+        name_arg,
+        ProjectScaffoldOptions {
+            api,
+            use_defaults,
+            turso,
+            ..ProjectScaffoldOptions::default()
+        },
+        &integrations,
+        None,
+    )
 }
 
 pub(crate) fn run_project_wizard_with_blueprint(
     name_arg: Option<&str>,
-    mut api: bool,
-    use_defaults: bool,
+    options: ProjectScaffoldOptions,
     requested_integrations: &[PolyglotIntegration],
-    db_provider_override: Option<&str>,
     blueprint_override: Option<usize>,
 ) -> Result<ProjectWizardOptions, Box<dyn std::error::Error>> {
+    let mut api = options.api;
+    let db_provider_override = options.database;
     if db_provider_override.is_some_and(|provider| {
         !matches!(
             provider,
@@ -113,27 +124,59 @@ pub(crate) fn run_project_wizard_with_blueprint(
         .into());
     }
 
-    if use_defaults {
+    if options.use_defaults {
         let name = name_arg.unwrap_or("app").to_string();
         let blueprint_selection = blueprint_override.unwrap_or(BLANK_BLUEPRINT_ID);
         let db_provider = db_provider_override.unwrap_or("Sqlite").to_string();
+        if options.no_database && blueprint_selection != BLANK_BLUEPRINT_ID {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "--no-database is available only for the blank blueprint",
+            )
+            .into());
+        }
+        if options.no_database && options.orm_pattern.is_some() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "an ORM architecture cannot be selected without a primary database",
+            )
+            .into());
+        }
+        if db_provider == "Turso" && options.hot_reload {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Turso-primary does not support the generated hot-reload profile",
+            )
+            .into());
+        }
+        if db_provider == "Turso" && options.orm_pattern.is_some() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Turso-primary selects its typed Active Record profile automatically",
+            )
+            .into());
+        }
         return Ok(ProjectWizardOptions {
             name,
             api,
             orm_pattern: if db_provider == "Turso" {
-                "Turso Active Record".to_string()
+                "Turso Active Record"
             } else {
-                "Active Record".to_string()
-            },
+                options.orm_pattern.unwrap_or("Active Record")
+            }
+            .to_string(),
             db_provider,
-            db_needed: true,
-            hot_reload: false,
+            db_needed: !options.no_database,
+            hot_reload: options.hot_reload,
             blueprint_selection,
-            wants_ai: false,
-            wants_redis: false,
+            wants_ai: options.wants_ai,
+            wants_redis: options.wants_redis,
             turso: requested_integrations.contains(&PolyglotIntegration::Turso),
             polyglot_integrations: requested_integrations.to_vec(),
-            frontend_engine: "Zero-Bundle HTMX".to_string(),
+            frontend_engine: options
+                .frontend_engine
+                .unwrap_or("Zero-Bundle HTMX")
+                .to_string(),
         });
     }
 
@@ -375,10 +418,12 @@ mod tests {
         ];
         let options = run_project_wizard_with_blueprint(
             Some("polyglot-app"),
-            false,
-            true,
+            ProjectScaffoldOptions {
+                use_defaults: true,
+                database: Some("MariaDB"),
+                ..ProjectScaffoldOptions::default()
+            },
             &selected,
-            Some("MariaDB"),
             Some(BLANK_BLUEPRINT_ID),
         )
         .expect("deterministic wizard");
@@ -386,5 +431,60 @@ mod tests {
         assert_eq!(options.db_provider, "MariaDB");
         assert_eq!(options.polyglot_integrations, selected);
         assert!(options.turso);
+    }
+
+    #[test]
+    fn deterministic_wizard_preserves_every_build_axis() {
+        let options = run_project_wizard_with_blueprint(
+            Some("profiled-app"),
+            ProjectScaffoldOptions {
+                use_defaults: true,
+                database: Some("Postgres"),
+                orm_pattern: Some("Hybrid"),
+                frontend_engine: Some("Tera Templates"),
+                hot_reload: true,
+                wants_ai: true,
+                wants_redis: true,
+                ..ProjectScaffoldOptions::default()
+            },
+            &[],
+            Some(ERP_BLUEPRINT_ID),
+        )
+        .expect("deterministic build axes");
+
+        assert_eq!(options.db_provider, "Postgres");
+        assert_eq!(options.orm_pattern, "Hybrid");
+        assert_eq!(options.frontend_engine, "Tera Templates");
+        assert!(options.hot_reload);
+        assert!(options.wants_ai);
+        assert!(options.wants_redis);
+    }
+
+    #[test]
+    fn impossible_deterministic_profiles_fail_instead_of_being_ignored() {
+        let no_database_lms = run_project_wizard_with_blueprint(
+            Some("invalid-lms"),
+            ProjectScaffoldOptions {
+                use_defaults: true,
+                no_database: true,
+                ..ProjectScaffoldOptions::default()
+            },
+            &[],
+            Some(LMS_BLUEPRINT_ID),
+        );
+        assert!(no_database_lms.is_err());
+
+        let turso_hot_reload = run_project_wizard_with_blueprint(
+            Some("invalid-edge"),
+            ProjectScaffoldOptions {
+                use_defaults: true,
+                database: Some("Turso"),
+                hot_reload: true,
+                ..ProjectScaffoldOptions::default()
+            },
+            &[PolyglotIntegration::Turso],
+            Some(BLANK_BLUEPRINT_ID),
+        );
+        assert!(turso_hot_reload.is_err());
     }
 }

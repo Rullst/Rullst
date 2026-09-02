@@ -3,7 +3,7 @@
 pub(super) const SCORE_POLICY_SERVICE: &str = r##"use super::{ScoreError, ScoreSubmission};
 
 pub(super) async fn lock_activity_policy(
-    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst::db::sqlx::Any>,
+    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst_orm::RullstDatabase>,
     driver: &str,
     value: &ScoreSubmission,
 ) -> Result<(), ScoreError> {

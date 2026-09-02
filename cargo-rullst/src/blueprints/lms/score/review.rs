@@ -243,7 +243,7 @@ fn transition(
 }
 
 pub(super) async fn apply_review_schedule(
-    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst::db::sqlx::Any>,
+    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst_orm::RullstDatabase>,
     driver: &str,
     school_id: i32,
     value: &ScoreSubmission,

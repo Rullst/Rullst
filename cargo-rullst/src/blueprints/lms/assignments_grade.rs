@@ -222,7 +222,7 @@ pub async fn grade_assignment_at(
 }
 
 async fn insert_outbox(
-    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst::db::sqlx::Any>,
+    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst_orm::RullstDatabase>,
     driver: &str, event_key: &str, school_id: i32, subject_user_id: i32, payload: &str,
 ) -> Result<(), AssignmentGradeError> {
     let sql = match driver {

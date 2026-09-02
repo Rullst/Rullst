@@ -213,7 +213,7 @@ pub async fn effective_grade(assignment_grade_id: i32) -> Result<(i32, i32), Ass
 }
 
 async fn insert_outbox(
-    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst::db::sqlx::Any>,
+    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst_orm::RullstDatabase>,
     driver: &str, event_key: &str, school_id: i32, subject_user_id: i32, payload: &str,
 ) -> Result<(), AssignmentGradeCorrectionError> {
     let sql = match driver {

@@ -180,7 +180,7 @@ pub async fn submit_assignment_at(
 }
 
 async fn insert_outbox(
-    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst::db::sqlx::Any>,
+    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst_orm::RullstDatabase>,
     driver: &str, event_key: &str, school_id: i32, event_kind: &str, subject_user_id: i32, payload: &str,
 ) -> Result<(), AssignmentSubmissionError> {
     let sql = match driver {

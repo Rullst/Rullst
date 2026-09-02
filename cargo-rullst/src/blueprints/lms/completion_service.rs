@@ -321,7 +321,7 @@ async fn authorize_certificate_scope(
 }
 
 async fn insert_outbox(
-    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst::db::sqlx::Any>,
+    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst_orm::RullstDatabase>,
     driver: &str,
     school_id: i32,
     event_key: &str,

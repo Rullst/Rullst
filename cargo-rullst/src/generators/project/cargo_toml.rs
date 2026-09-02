@@ -50,11 +50,14 @@ pub fn build_cargo_toml(
 
     let crate_version = env!("CARGO_PKG_VERSION");
     let rullst_source = dependency_source(current_dir, "rullst", crate_version)?;
-    let rullst_dep = format!("rullst = {{ {rullst_source}");
+    let rullst_dep = format!("rullst = {{ {rullst_source}, default-features = false");
 
     let mut rullst_features = Vec::new();
     if db_needed {
         rullst_features.push("orm");
+        if let Some(profile) = relational_profile(db_provider) {
+            rullst_features.push(profile);
+        }
     }
     if wants_ai {
         rullst_features.push("ai");
@@ -130,6 +133,9 @@ edition = "2021"
         if wants_redis {
             orm_features.push("\"redis\"".to_owned());
         }
+        if db_needed && let Some(profile) = relational_profile(db_provider) {
+            orm_features.push(format!("\"{profile}\""));
+        }
         let orm_features = orm_features.join(", ");
         let orm_source = dependency_source(current_dir, "rullst-orm", crate_version)?;
         if orm_features.is_empty() {
@@ -196,6 +202,15 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'
     );
 
     Ok(cargo_toml)
+}
+
+fn relational_profile(db_provider: &str) -> Option<&'static str> {
+    match db_provider {
+        "Postgres" => Some("strict-postgres"),
+        "MySQL" | "MariaDB" => Some("strict-mysql"),
+        "Sqlite" => Some("strict-sqlite"),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -363,5 +378,69 @@ mod tests {
         assert!(manifest.contains("features = [\"turso\"]"));
         assert!(manifest.contains("dotenvy = \"0.15\""));
         assert!(!manifest.lines().any(|line| line.starts_with("sqlx = ")));
+    }
+
+    #[test]
+    fn primary_relational_choice_selects_one_strict_profile() {
+        for (provider, expected, rejected) in [
+            (
+                "Sqlite",
+                "strict-sqlite",
+                ["strict-postgres", "strict-mysql"],
+            ),
+            (
+                "Postgres",
+                "strict-postgres",
+                ["strict-sqlite", "strict-mysql"],
+            ),
+            (
+                "MySQL",
+                "strict-mysql",
+                ["strict-sqlite", "strict-postgres"],
+            ),
+            (
+                "MariaDB",
+                "strict-mysql",
+                ["strict-sqlite", "strict-postgres"],
+            ),
+        ] {
+            let manifest = build_cargo_toml(
+                "strict-app",
+                false,
+                true,
+                provider,
+                &[],
+                false,
+                false,
+                BLANK_BLUEPRINT_ID,
+                "Zero-Bundle HTMX",
+                &isolated_root(),
+            )
+            .expect("strict database manifest");
+            let parsed: toml::Value = toml::from_str(&manifest).expect("valid Cargo manifest");
+            for dependency in ["rullst", "rullst-orm"] {
+                let features = parsed["dependencies"][dependency]["features"]
+                    .as_array()
+                    .expect("generated dependency feature array")
+                    .iter()
+                    .filter_map(toml::Value::as_str)
+                    .collect::<Vec<_>>();
+                assert!(
+                    features.contains(&expected),
+                    "{provider}:{dependency} missing {expected}"
+                );
+                for other in rejected {
+                    assert!(
+                        !features.contains(&other),
+                        "{provider}:{dependency} unexpectedly selected {other}"
+                    );
+                }
+            }
+            assert_eq!(
+                parsed["dependencies"]["rullst"]["default-features"].as_bool(),
+                Some(false),
+                "{provider}: generated applications must not re-enable the umbrella default database profile"
+            );
+        }
     }
 }

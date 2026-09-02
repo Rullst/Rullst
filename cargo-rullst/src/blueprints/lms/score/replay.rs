@@ -18,7 +18,7 @@ fn exact(existing: &StoredAttempt, actor_user_id: i32, value: &ScoreSubmission) 
 }
 
 async fn load_locked(
-    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst::db::sqlx::Any>,
+    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst_orm::RullstDatabase>,
     driver: &str,
     value: &ScoreSubmission,
 ) -> Result<Option<StoredAttempt>, ScoreError> {
@@ -37,7 +37,7 @@ async fn load_locked(
 }
 
 pub(super) async fn persist_activity_attempt(
-    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst::db::sqlx::Any>,
+    transaction: &mut rullst::db::sqlx::Transaction<'_, rullst_orm::RullstDatabase>,
     driver: &str,
     actor_user_id: i32,
     value: &ScoreSubmission,

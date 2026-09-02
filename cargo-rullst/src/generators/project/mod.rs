@@ -27,6 +27,12 @@ pub struct ProjectScaffoldOptions {
     pub surrealdb: bool,
     pub qdrant: bool,
     pub database: Option<&'static str>,
+    pub no_database: bool,
+    pub orm_pattern: Option<&'static str>,
+    pub frontend_engine: Option<&'static str>,
+    pub hot_reload: bool,
+    pub wants_ai: bool,
+    pub wants_redis: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -208,10 +214,8 @@ pub(crate) fn create_new_project_with_cli_options(
     }
     let wizard_opts = wizard::run_project_wizard_with_blueprint(
         name_arg,
-        options.api,
-        options.use_defaults,
+        options,
         &requested_integrations,
-        options.database,
         blueprint_override,
     )?;
 
@@ -387,6 +391,12 @@ pub fn create_new_project(
             surrealdb: false,
             qdrant: false,
             database: None,
+            no_database: false,
+            orm_pattern: None,
+            frontend_engine: None,
+            hot_reload: false,
+            wants_ai: false,
+            wants_redis: false,
         },
     )
 }

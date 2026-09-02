@@ -75,6 +75,48 @@ pub enum DatabaseChoice {
     Turso,
 }
 
+/// ORM architectures accepted by deterministic project generation.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum OrmChoice {
+    ActiveRecord,
+    Repository,
+    Hybrid,
+}
+
+impl OrmChoice {
+    const fn pattern(self) -> &'static str {
+        match self {
+            Self::ActiveRecord => "Active Record",
+            Self::Repository => "Repository",
+            Self::Hybrid => "Hybrid",
+        }
+    }
+}
+
+/// Frontend profiles accepted by deterministic project generation.
+#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum FrontendChoice {
+    Htmx,
+    Liveview,
+    WasmIsland,
+    Pico,
+    Tera,
+}
+
+impl FrontendChoice {
+    const fn engine(self) -> &'static str {
+        match self {
+            Self::Htmx => "Zero-Bundle HTMX",
+            Self::Liveview => "LiveView",
+            Self::WasmIsland => "Wasm Island",
+            Self::Pico => "Pico CSS",
+            Self::Tera => "Tera Templates",
+        }
+    }
+}
+
 /// Platforms accepted by deterministic Omni scaffolding.
 #[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -159,6 +201,24 @@ pub enum Commands {
         /// Selects the primary relational backend in deterministic/CI mode
         #[arg(long, value_enum, requires = "default")]
         database: Option<DatabaseChoice>,
+        /// Generates a blank project without a primary relational database
+        #[arg(long, requires = "default", conflicts_with = "database")]
+        no_database: bool,
+        /// Selects the generated ORM architecture in deterministic/CI mode
+        #[arg(long, value_enum, requires = "default")]
+        orm: Option<OrmChoice>,
+        /// Selects the generated frontend profile in deterministic/CI mode
+        #[arg(long, value_enum, requires = "default")]
+        frontend: Option<FrontendChoice>,
+        /// Enables the generated hot-reload library boundary in deterministic/CI mode
+        #[arg(long, requires = "default")]
+        hot_reload: bool,
+        /// Enables the Rullst AI facade in deterministic/CI mode
+        #[arg(long, requires = "default")]
+        ai: bool,
+        /// Enables Redis-backed adapters in deterministic/CI mode
+        #[arg(long, requires = "default")]
+        redis: bool,
         /// Selects a detached LMS module profile; assessment or gamification foundation
         #[arg(long, value_enum, value_delimiter = ',', requires = "default")]
         lms_modules: Vec<LmsModuleChoice>,
@@ -516,6 +576,12 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             default,
             blueprint,
             database,
+            no_database,
+            orm,
+            frontend,
+            hot_reload,
+            ai,
+            redis,
             lms_modules,
             skip_initial_migration,
             turso,
@@ -550,6 +616,12 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                     surrealdb: *surrealdb,
                     qdrant: *qdrant,
                     database: database.map(DatabaseChoice::provider),
+                    no_database: *no_database,
+                    orm_pattern: orm.map(OrmChoice::pattern),
+                    frontend_engine: frontend.map(FrontendChoice::engine),
+                    hot_reload: *hot_reload,
+                    wants_ai: *ai,
+                    wants_redis: *redis,
                 },
                 blueprint.as_ref().map(|choice| choice.id()),
                 *skip_initial_migration,
@@ -966,6 +1038,70 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn parses_complete_deterministic_project_profile() {
+        let cli = Cli::try_parse_from([
+            "rullst",
+            "new",
+            "release-consumer",
+            "--default",
+            "--blueprint",
+            "erp",
+            "--database",
+            "postgres",
+            "--orm",
+            "repository",
+            "--frontend",
+            "tera",
+            "--hot-reload",
+            "--ai",
+            "--redis",
+            "--skip-initial-migration",
+        ])
+        .expect("complete deterministic project profile");
+
+        assert!(matches!(
+            cli.command,
+            Commands::New {
+                blueprint: Some(BlueprintChoice::Erp),
+                database: Some(DatabaseChoice::Postgres),
+                orm: Some(OrmChoice::Repository),
+                frontend: Some(FrontendChoice::Tera),
+                hot_reload: true,
+                ai: true,
+                redis: true,
+                skip_initial_migration: true,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn deterministic_profile_flags_require_default_mode() {
+        for flag in [
+            "--no-database",
+            "--hot-reload",
+            "--ai",
+            "--redis",
+            "--orm",
+            "--frontend",
+        ] {
+            let mut arguments = vec!["rullst", "new", "profile"];
+            arguments.push(flag);
+            if matches!(flag, "--orm" | "--frontend") {
+                arguments.push(if flag == "--orm" { "hybrid" } else { "pico" });
+            }
+            let error = Cli::try_parse_from(arguments)
+                .err()
+                .expect("profile flag without deterministic defaults must fail");
+            assert_eq!(
+                error.kind(),
+                clap::error::ErrorKind::MissingRequiredArgument,
+                "unexpected parser result for {flag}"
+            );
+        }
     }
 
     #[test]
