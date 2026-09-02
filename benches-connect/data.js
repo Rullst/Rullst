@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788340356642,
+  "lastUpdate": 1788342631083,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -4613,6 +4613,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 568,
             "range": "± 17",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "7263d971fa7c85b16df175bffe10549823d5aded",
+          "message": "feat(mail): add durable suppression and inspection",
+          "timestamp": "2026-09-02T06:40:18-03:00",
+          "tree_id": "f3aa916c999f3c70e14d89721718f968b69cf073",
+          "url": "https://github.com/Rullst/Rullst/commit/7263d971fa7c85b16df175bffe10549823d5aded"
+        },
+        "date": 1788342630650,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 506,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
