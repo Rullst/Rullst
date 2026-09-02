@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788336405221,
+  "lastUpdate": 1788340528569,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -4649,6 +4649,48 @@ window.BENCHMARK_DATA = {
             "name": "capital_subscription/parse_status_past_due",
             "value": 22,
             "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e48d52638c873fdd5a7fb3c0d6dec37fca5faee6",
+          "message": "feat(auth): add durable shared sqlite state",
+          "timestamp": "2026-09-02T06:02:37-03:00",
+          "tree_id": "2293d3c7128846118c17cc03f81fbc7a9e2f5638",
+          "url": "https://github.com/Rullst/Rullst/commit/e48d52638c873fdd5a7fb3c0d6dec37fca5faee6"
+        },
+        "date": 1788340528141,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
             "unit": "ns/iter"
           },
           {
