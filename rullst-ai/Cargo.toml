@@ -31,6 +31,9 @@ zeroize = { workspace = true }
 tokio = { workspace = true, features = ["net", "time"] }
 sqlx = { workspace = true, optional = true, features = ["any", "sqlite", "postgres", "mysql", "runtime-tokio", "tls-rustls"] }
 
+[target.'cfg(unix)'.dependencies]
+libc = { workspace = true }
+
 [features]
 default = []
 sql-memory = ["dep:sqlx"]

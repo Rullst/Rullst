@@ -92,8 +92,12 @@ that an interrupted provider request was never processed.
 boundary](ai-tool-security.md). Dispatch requires an exact policy allowlist,
 principal authorization, closed JSON validation, payload limits, a call budget
 and an audit sink. Destructive and financial calls additionally consume a
-one-use approval bound to the exact payload. The bundled in-memory audit sink is
-not durable and the application owns principal/approver authentication.
+one-use approval bound to the exact payload. Applications may select either the
+bounded process-local in-memory sink or `DurableToolAuditTrail`, whose local
+versioned file validates restart integrity and fails closed on quota,
+corruption, symlink targets and competing-writer growth. The durable sink is
+single-process and does not provide authenticity, rotation, retention, backup,
+external delivery or principal/approver authentication.
 
 The registry is not connected to any built-in provider transport. Consequently
 the provider tools column remains `no`, and local guarded execution must not be

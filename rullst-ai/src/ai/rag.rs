@@ -6,8 +6,8 @@ mod memory;
 mod pipeline;
 
 pub use audit::{
-    InMemoryRagAuditTrail, RagAuditError, RagAuditEvent, RagAuditOutcome, RagAuditSink,
-    RecordedRagAuditEvent,
+    DurableRagAuditTrail, InMemoryRagAuditTrail, RagAuditError, RagAuditEvent, RagAuditOutcome,
+    RagAuditSink, RecordedRagAuditEvent,
 };
 pub use config::RagConfig;
 pub use memory::InMemoryRagRetriever;

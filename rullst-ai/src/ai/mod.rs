@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use std::sync::Arc;
 
 mod client;
+mod durable_audit;
 mod egress;
 mod egress_fetch;
 mod egress_host;
@@ -22,6 +23,9 @@ pub mod tools;
 mod vector;
 
 pub use client::{AiClient, ChatBuilder};
+pub use durable_audit::{
+    DurableAuditError, DurableAuditSnapshot, MAX_AI_AUDIT_BYTES, MAX_AI_AUDIT_RECORDS,
+};
 pub use egress::{EgressPolicy, EgressPolicyError, ValidatedEgressUrl};
 pub use egress_fetch::{
     EgressFetchError, EgressFetcher, EgressResolver, FetchedResource, SystemEgressResolver,

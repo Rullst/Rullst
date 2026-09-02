@@ -15,7 +15,8 @@ mod audit;
 mod policy;
 mod validation;
 pub use audit::{
-    InMemoryToolAuditTrail, RecordedToolAuditEvent, ToolAuditEvent, ToolAuditOutcome, ToolAuditSink,
+    DurableToolAuditTrail, InMemoryToolAuditTrail, RecordedToolAuditEvent, ToolAuditEvent,
+    ToolAuditOutcome, ToolAuditSink,
 };
 pub use policy::{HumanApproval, ToolExecutionContext, ToolExecutionPolicy};
 use validation::{serialized_size, validate_payload, validate_tool};

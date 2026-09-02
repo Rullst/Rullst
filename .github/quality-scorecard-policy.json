@@ -103,10 +103,10 @@
       "verification": 23,
       "security_failure_design": 19,
       "documentation_dx": 14,
-      "operations_release": 14,
+      "operations_release": 16,
       "specialist_gate": "ai-evals",
-      "finding": "Strong guarded/offline/provider capability boundaries plus a bounded capability-declared OpenAI-compatible local/cloud adapter; streaming/cancellation, live adaptive evals, durable provider loops and broad external retrievers remain partial.",
-      "evidence": ["rullst-ai/README.md", "rullst-ai/src/ai/providers/openai_compatible.rs", "rullst-ai/tests/openai_compatible_contract.rs", "rullst-ai/tests/versioned_evals.rs", "docs/src/ai-provider-capabilities.md"]
+      "finding": "Strong guarded/offline/provider boundaries plus bounded synchronous local RAG/tool audit with restart, tamper, quota and concurrency evidence; streaming/cancellation, live adaptive evals, distributed authenticated audit delivery, durable provider loops and broad external retrievers remain partial.",
+      "evidence": ["rullst-ai/README.md", "rullst-ai/src/ai/durable_audit.rs", "rullst-ai/src/ai/providers/openai_compatible.rs", "rullst-ai/tests/durable_audit.rs", "rullst-ai/tests/openai_compatible_contract.rs", "rullst-ai/tests/versioned_evals.rs", "docs/src/ai-provider-capabilities.md"]
     },
     {
       "name": "rullst-capital",

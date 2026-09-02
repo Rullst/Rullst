@@ -106,12 +106,33 @@ The approval is consumed once. Its approver and bounded reason are recorded in
 authorized/success/failure audit events, while the payload itself is omitted to
 avoid duplicating secrets or personal data in the audit trail.
 
-## Production boundary
+## Durable local evidence
 
 `InMemoryToolAuditTrail` is bounded and process-local; it is intended for local
-development and single-process tests. A production or multi-instance
-application should implement `ToolAuditSink` using a durable append-only store
-with retention, access control, integrity monitoring, and incident export.
+development and tests. A single-process service can instead open the built-in
+bounded local trail:
+
+```rust,no_run
+use rullst_ai::ai::DurableToolAuditTrail;
+
+let audit = DurableToolAuditTrail::try_open("storage/audit/ai-tools.log")?;
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+Each append is synchronized and followed by `sync_data`. The distinct
+versioned tool stream has 16 MiB and 4,096-record default ceilings, validates
+every frame and event on restart, and rejects corruption, unsafe file types,
+external length changes and quota exhaustion. `try_open_with_max_bytes` may set
+a smaller byte ceiling.
+
+This is a single-process local writer, not an external audit service. Its
+SHA-256 frames detect accidental or same-length record corruption but are not a
+signature or HMAC. The host owns trusted directory permissions, exclusive
+writer operation, rotation, retention, backup, incident export and deletion
+policy. Multi-instance applications should implement `ToolAuditSink` over an
+appropriate durable destination.
+
+## Production boundary
 
 The registry deliberately does not provide network fetchers, shell execution,
 database ownership policy, distributed budgets, provider tool-call parsing, or

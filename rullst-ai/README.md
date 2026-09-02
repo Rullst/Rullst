@@ -114,6 +114,12 @@ applications implement the static-dispatch `RagRetriever` boundary over a store 
 pgvector or Qdrant and must enforce authoritative tenant/ownership predicates in that store. The
 pipeline's tenant-tag check is an additional invariant, not datastore authorization.
 
+`DurableRagAuditTrail` and `DurableToolAuditTrail` provide bounded synchronous
+local audit files with distinct version headers, SHA-256 frame integrity,
+restart validation and fail-closed quota/corruption handling. They are
+single-process writers, not authenticated or distributed audit services; the
+host owns directory permissions, rotation, retention, backup and export.
+
 See the [tenant-bound RAG tutorial](../docs/src/tutorials/41-tenant-bound-rag.md) for a complete
 offline example, audit behavior, and the production adapter boundary.
 

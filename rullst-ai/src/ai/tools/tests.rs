@@ -345,4 +345,5 @@ fn invalid_registration_policy_context_and_audit_capacity_are_rejected() {
     assert!(ToolExecutionContext::new("", ["echo"], 1).is_err());
     assert!(ToolExecutionContext::new("user", ["echo"], 0).is_err());
     assert!(InMemoryToolAuditTrail::new(0).is_err());
+    assert!(InMemoryToolAuditTrail::new(1_000_001).is_err());
 }

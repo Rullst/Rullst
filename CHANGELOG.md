@@ -31,6 +31,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   mock mode from empty/`mock_*` keys. Optional embeddings, vision, JSON, and
   schema paths are declared per configuration; redirects/proxies are disabled
   and image/response sizes are bounded.
+- `rullst-ai` adds `DurableRagAuditTrail` and `DurableToolAuditTrail` for
+  bounded synchronous local evidence. Distinct versioned streams enforce byte
+  and record ceilings, validate semantic events and SHA-256-framed records on
+  restart, and fail closed on corruption, unsafe targets, competing-writer
+  growth and uncertain durability. The streams are single-process and not
+  authenticated; hosts retain permissions, rotation, retention, backup and
+  external-delivery responsibility.
 - `rullst-connect` adds storage-neutral `EncryptedTokenSnapshot` envelopes for
   refresh state. AES-256-GCM authenticates the version, rotation key ID,
   provider and trusted local-account binding; decryption revalidates every
@@ -65,10 +72,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   scorecard artifact for every main push/PR. The score evaluates engineering
   evidence and explicitly excludes feature completeness and certification.
 - Raised the v12 RC quality gate to A (90) for every publishable crate except
-  the approved IoT floor of B (80). After Security reached its bounded A
-  evidence ceiling, the audited plan records twelve crates below A and a
-  66-point aggregate gap; policy values may move only with real implementation
-  and evidence, never to make the release table look greener.
+  the approved IoT floor of B (80). After AI reached its bounded A evidence
+  ceiling, the audited plan records nine crates below A and a 56-point
+  aggregate gap; policy values may move only with real implementation and
+  evidence, never to make the release table look greener.
 - Added a `no_std` OTA rollback-counter adapter to `rullst-iot`. The manager can
   load durable state and require an exact, strictly increasing compare-and-set
   before changing local state; public tests cover restart/replay, transient

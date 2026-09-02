@@ -91,7 +91,7 @@ all 41 public umbrella features in isolated additive graphs with automatic
 manifest-drift detection, runs the portable database matrix on Linux, and
 tests the all-feature workspace on Linux, macOS, and Windows. The umbrella's
 `cfg(doctest)` aggregation reads all 50 public tutorial files directly, so that
-same command discovers 95 Rust blocks, compiles or executes 77 of them, and
+same command discovers 96 Rust blocks, compiles or executes 78 of them, and
 records 18 explicitly contextual fragments as ignored instead of pretending
 they are standalone programs. Its pinned live Redis job also proves that
 scheduled Core jobs are not claimed early, plus ORM

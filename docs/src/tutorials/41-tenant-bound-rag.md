@@ -141,9 +141,27 @@ therefore happen in the datastore query itself.
 
 ## Supply durable, minimized audit evidence
 
-`InMemoryRagAuditTrail` is useful for local assertions. Multi-instance
-production deployments should implement `RagAuditSink` over an append-only,
-access-controlled destination with an explicit retention policy.
+`InMemoryRagAuditTrail` is useful for local assertions. A single-process
+service can use the bounded built-in local file:
+
+```rust,no_run
+use rullst::ai::rag::DurableRagAuditTrail;
+use std::sync::Arc;
+
+let audit = Arc::new(DurableRagAuditTrail::try_open(
+    "storage/audit/rag.log",
+)?);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+The trail synchronously appends a distinct versioned stream, validates every
+event/frame on restart and fails closed on corruption, unsafe file types,
+external length changes and quota exhaustion. The default ceilings are 16 MiB
+and 4,096 events; `try_open_with_max_bytes` may select a smaller byte quota.
+Its SHA-256 frame digest detects corruption but does not authenticate the
+writer. The host owns trusted directory permissions, exclusive writer access,
+rotation, retention, backup and export. Multi-instance deployments should
+implement `RagAuditSink` over an append-only, access-controlled destination.
 
 The built-in event contains the tenant ID, a SHA-256 digest of the original
 question, document counts, included context characters, and the terminal

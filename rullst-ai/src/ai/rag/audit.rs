@@ -1,8 +1,14 @@
 //! Secret-minimized audit contract for bounded RAG operations.
 
+use crate::ai::durable_audit::{
+    DurableAuditError, DurableAuditLog, DurableAuditRecord, DurableAuditSnapshot,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+
+const RAG_AUDIT_MAGIC: &[u8] = b"RULLST-AI-RAG-AUDIT-V1\n";
 
 /// Final outcome recorded for one RAG operation.
 #[non_exhaustive]
@@ -65,13 +71,96 @@ where
     }
 }
 
-/// Sequence-numbered event retained by [`InMemoryRagAuditTrail`].
+/// Sequence-numbered event returned by the in-memory and durable RAG trails.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RecordedRagAuditEvent {
-    /// Monotonic sequence within this process-local sink.
+    /// Monotonic sequence within this trail.
     pub sequence: u64,
     /// Recorded secret-minimized event.
     pub event: RagAuditEvent,
+}
+
+impl DurableAuditRecord for RagAuditEvent {
+    const MAGIC: &'static [u8] = RAG_AUDIT_MAGIC;
+
+    fn validate(&self) -> Result<(), &'static str> {
+        if self.tenant_id.is_empty()
+            || self.tenant_id.len() > 128
+            || !self.tenant_id.bytes().all(|byte| {
+                byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':')
+            })
+        {
+            return Err("event has an invalid tenant identifier");
+        }
+        if self.query_sha256.len() != 64
+            || !self
+                .query_sha256
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
+        {
+            return Err("event has an invalid query digest");
+        }
+        if self.included_documents > 32 || self.included_documents > self.retrieved_documents {
+            return Err("event has invalid document counts");
+        }
+        if self.context_chars > 128 * 1024 {
+            return Err("event exceeds the context character limit");
+        }
+        Ok(())
+    }
+}
+
+/// Bounded single-process durable RAG audit trail.
+///
+/// The file is synchronously appended and validated on restart. It is not a
+/// multi-process writer, external SIEM, retention service, or authenticity
+/// proof; the host owns directory permissions, rotation, backup, and delivery.
+pub struct DurableRagAuditTrail {
+    log: DurableAuditLog<RagAuditEvent>,
+}
+
+impl DurableRagAuditTrail {
+    /// Opens or creates a local RAG audit file with the crate's 16 MiB ceiling.
+    pub fn try_open(path: impl Into<PathBuf>) -> Result<Self, DurableAuditError> {
+        DurableAuditLog::try_open(path).map(|log| Self { log })
+    }
+
+    /// Opens or creates a local RAG audit file with a smaller explicit quota.
+    pub fn try_open_with_max_bytes(
+        path: impl Into<PathBuf>,
+        max_bytes: u64,
+    ) -> Result<Self, DurableAuditError> {
+        DurableAuditLog::try_open_with_max_bytes(path, max_bytes).map(|log| Self { log })
+    }
+
+    /// Re-reads and validates all durable entries in sequence order.
+    pub fn entries(&self) -> Result<Vec<RecordedRagAuditEvent>, DurableAuditError> {
+        self.log
+            .entries()?
+            .into_iter()
+            .enumerate()
+            .map(|(index, event)| {
+                let sequence = u64::try_from(index)
+                    .ok()
+                    .and_then(|value| value.checked_add(1))
+                    .ok_or(DurableAuditError::RecordCapacityExceeded)?;
+                Ok(RecordedRagAuditEvent { sequence, event })
+            })
+            .collect()
+    }
+
+    /// Returns validated counters without exposing event bodies.
+    pub fn snapshot(&self) -> Result<DurableAuditSnapshot, DurableAuditError> {
+        self.log.snapshot()
+    }
+}
+
+impl RagAuditSink for DurableRagAuditTrail {
+    fn record(&self, event: RagAuditEvent) -> Result<(), RagAuditError> {
+        self.log
+            .append(event)
+            .map_err(|error| RagAuditError(error.to_string()))
+    }
 }
 
 #[derive(Debug, Default)]
@@ -82,7 +171,8 @@ struct InMemoryRagAuditState {
 
 /// Bounded process-local RAG audit trail for development and tests.
 ///
-/// Production multi-instance deployments should provide a durable append-only implementation.
+/// Single-process services can use [`DurableRagAuditTrail`]. Multi-instance
+/// deployments should provide an append-only shared implementation.
 #[derive(Debug)]
 pub struct InMemoryRagAuditTrail {
     capacity: usize,

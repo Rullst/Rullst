@@ -89,8 +89,11 @@ defense in depth, not a replacement for datastore authorization.
 
 The mandatory audit event stores the tenant, a SHA-256 correlation digest, counts, character budget,
 and outcome. It deliberately omits raw questions, documents, embeddings, provider bodies, and model
-answers. The digest is not encryption and can be guessed for low-entropy questions. Use a durable
-append-only `RagAuditSink` in production; the included sink is process-local.
+answers. The digest is not encryption and can be guessed for low-entropy questions.
+`DurableRagAuditTrail` and `DurableToolAuditTrail` provide bounded synchronous local files with
+distinct version headers, SHA-256 frame integrity and restart/quota/corruption validation. They are
+single-process writers and do not supply authenticity, rotation, retention, backup or external
+delivery; multi-instance deployments can implement the same audit traits over their destination.
 
 Follow the [tenant-bound RAG tutorial](../tutorials/41-tenant-bound-rag.md) for the complete offline
 flow and production integration boundary.
