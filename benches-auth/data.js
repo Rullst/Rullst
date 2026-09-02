@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788340337032,
+  "lastUpdate": 1788342611962,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -7385,6 +7385,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4009,
             "range": "± 26",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "7263d971fa7c85b16df175bffe10549823d5aded",
+          "message": "feat(mail): add durable suppression and inspection",
+          "timestamp": "2026-09-02T06:40:18-03:00",
+          "tree_id": "f3aa916c999f3c70e14d89721718f968b69cf073",
+          "url": "https://github.com/Rullst/Rullst/commit/7263d971fa7c85b16df175bffe10549823d5aded"
+        },
+        "date": 1788342611525,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1056,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 855,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1940,
+            "range": "± 45",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4559,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
