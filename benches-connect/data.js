@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788342631083,
+  "lastUpdate": 1788343530822,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -4643,6 +4643,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 506,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "61f1326a518ea52368010a208933997d77d2d8c2",
+          "message": "feat(messaging): add wire and trace contracts",
+          "timestamp": "2026-09-02T06:55:34-03:00",
+          "tree_id": "cf0ce63bbffd8cbe4edd397da2c2c728cd67aaf4",
+          "url": "https://github.com/Rullst/Rullst/commit/61f1326a518ea52368010a208933997d77d2d8c2"
+        },
+        "date": 1788343529993,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 583,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
