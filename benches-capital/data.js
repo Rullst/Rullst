@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788303664691,
+  "lastUpdate": 1788318318902,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -4474,6 +4474,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_active",
             "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 24,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": false,
+          "id": "2adfe0a9df1d1c6da46932953f42532d9c96af66",
+          "message": "feat(ai): add compatible provider adapter",
+          "timestamp": "2026-09-01T23:52:08-03:00",
+          "tree_id": "9fbe592fed2b06650a82a5b336556ab35e885343",
+          "url": "https://github.com/Rullst/Rullst/commit/2adfe0a9df1d1c6da46932953f42532d9c96af66"
+        },
+        "date": 1788318318472,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 22,
             "range": "± 0",
             "unit": "ns/iter"
           },
