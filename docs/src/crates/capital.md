@@ -11,7 +11,7 @@
 | :--- | :---: | :--- |
 | **Direct Gateways** | 🟠 `[Partial]` | 11 payment/payout adapter surfaces with pooled HTTP clients and deterministic mocks. Live method coverage, provider acceptance tests, retry semantics, and reconciliation are not uniform yet. |
 | **Subscription Lifecycle** | 🟠 `[Partial]` | Checkout, portal, cancellation, pause, usage, coupon, trial, status, and webhook APIs exist, but not every provider implements and verifies every method end-to-end. |
-| **Webhook Processing** | 🟢 `[Implemented / Bounded]` | Axum and opt-in Actix middleware call one canonical bounded verifier; named adapters implement signature verification and freshness checks. Cross-instance durable replay/idempotency remains application or future framework work. Alipay RSA2 remains fail-closed. |
+| **Webhook Processing** | 🟢 `[Implemented / Bounded]` | Axum and opt-in Actix middleware call one canonical bounded verifier; named adapters implement signature verification and freshness checks. The opt-in `webhook-sql` ledger shares bounded payload or semantic-event claims across SQLite, PostgreSQL, MySQL, and MariaDB processes. Relational handlers can claim a stable provider event ID with one domain mutation in a caller transaction. Cross-system exactly-once and reconciliation remain application work; Alipay RSA2 remains fail-closed. |
 | **Metered Billing** | 🟢 `[Implemented / Bounded]` | Current Stripe Meter Events and Lemon Squeezy Usage Records shapes with provider-specific identity/action, bounded response binding and deterministic non-live mocks. Durable application-outbox claiming and provider-account evidence remain explicit. |
 | **Paid Invoice Rendering** | 🟢 `[Implemented / Feature-gated]` | Exact validated minor units, escaped HTML, bounded paginated A4 PDF and a final-success e-mail/amount/currency binding. The downstream Mail bridge sends the attachment but durable outbox claiming and exactly-once delivery remain application work. |
 | **SaaS MRR/ARR Analytics** | 🟢 `[Implemented / Bounded]` | In-memory revenue metrics and churn calculations for supplied records; this is not an accounting ledger or provider reconciliation engine. |
@@ -100,7 +100,10 @@ own at-least-once retries/provider attachment policy.
 The low-level provider contract below illustrates exact-byte verification. HTTP
 applications should normally mount `verify_webhook` on Axum or
 `verify_webhook_actix_with_state` on Actix so body limits, normalized event
-insertion, and local replay rejection are applied before the handler. Webhooks
+insertion, and replay rejection are applied before the handler. The default
+store is process-local; the opt-in `webhook-sql` feature accepts an
+`Arc<SqlWebhookReplayStore>` in `WebhookMiddlewareState` for cross-process
+admission. Active claims are never evicted to admit new work. Webhooks
 use constant-time cryptographic verification where applicable:
 
 ```rust
@@ -141,6 +144,14 @@ pub async fn handle_stripe_webhook(
     Ok(axum::http::StatusCode::OK)
 }
 ```
+
+SQL-backed middleware claims the payload before dispatch. Treat it as a
+fail-closed replay firewall, not an exactly-once delivery guarantee. For an
+atomic relational state change, verify the exact payload through the selected
+provider, obtain its stable event identifier, then call
+`check_and_record_event_key_with_transaction` inside the same transaction as
+the domain mutation. Provider API calls, e-mail, queues, and other systems still
+need an outbox, idempotent consumers, and reconciliation.
 
 ---
 

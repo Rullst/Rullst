@@ -19,8 +19,10 @@ provider sandbox.
 - **Webhook event inspector:** Holds records explicitly passed to the local
   manager. Capital does not connect every webhook route to Studio automatically.
 - **Webhook verification:** Provider-specific signature/freshness/replay
-  foundations for documented adapters. Durable reconciliation and database
-  updates remain application responsibilities.
+  foundations for documented adapters. The opt-in SQL replay ledger shares
+  bounded payload digests or semantic provider event keys across processes on
+  SQLite, PostgreSQL, MySQL, and MariaDB. Reconciliation and authorization
+  remain application responsibilities.
 - **Payment-bound invoices:** The opt-in `invoice-pdf` feature validates money
   into exact minor units, renders bounded paginated PDF and binds delivery to a
   final receipt matching recipient, amount and currency.
@@ -81,6 +83,13 @@ Durable relational quota accounting is separately opt-in:
 ```toml
 rullst = { version = "12.0.0-rc.1", features = ["capital-quota-sql"] }
 # Or directly: rullst-capital = { version = "12.0.0-rc.1", features = ["quota-sql"] }
+```
+
+Durable cross-process webhook replay claims are independently opt-in:
+
+```toml
+rullst = { version = "12.0.0-rc.1", features = ["capital-webhook-sql"] }
+# Or directly: rullst-capital = { version = "12.0.0-rc.1", features = ["webhook-sql"] }
 ```
 
 Applications using the umbrella crate can derive the bounded billing facade on
@@ -283,7 +292,7 @@ async fn checkout_handler() -> Result<String, String> {
 
 ### Intercepting and Verifying Webhooks
 
-`rullst-capital` includes Axum and opt-in Actix Web middleware adapters over one canonical [`webhook` verifier](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs). Both bound the body, verify supported provider signatures, enforce timestamp freshness for Stripe, Mercado Pago and Paddle, restore the exact body, insert a normalized event, and reject replayed payloads through a bounded TTL store. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by the production-safe entry points.
+`rullst-capital` includes Axum and opt-in Actix Web middleware adapters over one canonical [`webhook` verifier](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs). Both bound the body, verify supported provider signatures, enforce timestamp freshness for Stripe, Mercado Pago and Paddle, restore the exact body, insert a normalized event, and reject replayed payloads through a bounded TTL store. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by the production-safe entry points. The in-memory store now fails closed when full instead of discarding an unexpired replay proof.
 
 The webhook route must receive a narrowly scoped CSRF exemption in the application router; never disable CSRF for browser routes. The exemption is safe only when this signature/freshness/replay middleware remains mandatory on that exact route. An outer blanket CSRF layer will reject legitimate provider callbacks before Capital can verify them.
 
@@ -322,9 +331,27 @@ configuration. See the
 [payment guide](https://rullst.github.io/Rullst/book/payment-gateways-guide.html#actix-web-adapter)
 for a complete example.
 
-The bundled replay store is process-local. Multi-instance deployments must
-claim the provider event ID in shared durable state before idempotent billing
-side effects.
+The default store is process-local. With `webhook-sql`,
+`SqlWebhookReplayStore` persists an immutable capacity/TTL profile and
+provider-scoped SHA-256 claims in SQLite, PostgreSQL, MySQL, or MariaDB. Schema
+setup is explicit, active claims are never evicted to make room, configuration
+drift/corruption/storage failure fail closed, and the same backend can be
+passed to `WebhookMiddlewareState` through `Arc`. TTL decisions use the
+database clock inside the claim transaction so process clock skew cannot expire
+another node's proof early.
+
+That middleware path records the payload before calling the handler, so it is
+a replay firewall rather than an exactly-once delivery protocol. A crash after
+admission can still occur before a business mutation.
+
+When a verified provider protocol supplies a stable event ID, prefer
+`check_and_record_event_key` over payload-only replay detection. A relational
+handler that uses the provider's low-level signature contract can call
+`check_and_record_event_key_with_transaction` and write its domain mutation
+through the same transaction before one commit. Do not pre-claim the same event
+through SQL middleware on this atomic path. This is atomic only inside that
+database: provider API calls, e-mail, queues, and other systems still require
+an outbox, idempotent consumers, and reconciliation.
 
 ---
 
@@ -414,6 +441,6 @@ assert!(!response.is_officially_authorized());
 
 - **Constant-Time Verification**: Supported HMAC/token signatures use cryptographic verification or `subtle::ConstantTimeEq`.
 - **Fail-Closed Configuration**: Empty webhook secrets never authenticate a request; mock credentials require a deliberate `mock_*` value.
-- **Freshness and Replay Protection**: Timestamped protocols have a configurable five-minute window, and middleware records provider-scoped payload hashes in a bounded 24-hour TTL store.
+- **Freshness and Replay Protection**: Timestamped protocols have a configurable five-minute window, and middleware records provider-scoped payload hashes in a bounded 24-hour TTL store. `webhook-sql` adds bounded durable claims; stable semantic event IDs can share a transaction with the domain mutation.
 - **Alipay Containment**: Live RSA2 checkout and webhook verification return `UnsupportedOperation`; only explicitly mock-prefixed credentials operate offline.
 - **Fiscal Containment**: Local XSD/XMLDSig/mTLS preparation is not an official NFS-e authorization; live transmission remains disabled until the documented external gates pass.

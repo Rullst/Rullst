@@ -3,6 +3,8 @@
 mod quota_sql_live_support;
 
 use rullst_capital::SqlQuotaBackend;
+#[cfg(feature = "webhook-sql")]
+use rullst_capital::SqlWebhookBackend;
 use testcontainers::{ImageExt, runners::AsyncRunner};
 use testcontainers_modules::mysql::Mysql;
 
@@ -29,6 +31,12 @@ async fn shared_quota_is_atomic_on_mysql() {
     quota_sql_live_support::exercise_sql_quota(
         &format!("mysql://root:root@{host}:{port}/testdb"),
         SqlQuotaBackend::Mysql,
+    )
+    .await;
+    #[cfg(feature = "webhook-sql")]
+    quota_sql_live_support::exercise_sql_webhook_replay(
+        &format!("mysql://root:root@{host}:{port}/testdb"),
+        SqlWebhookBackend::Mysql,
     )
     .await;
 }

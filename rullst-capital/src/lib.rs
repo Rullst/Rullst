@@ -10,7 +10,7 @@ pub mod quota;
 pub mod subscription;
 pub mod usage;
 
-#[cfg(any(feature = "axum", feature = "actix"))]
+#[cfg(any(feature = "axum", feature = "actix", feature = "webhook-sql"))]
 pub mod webhook;
 
 pub use billable::*;
@@ -24,5 +24,5 @@ pub use quota::*;
 pub use subscription::*;
 pub use usage::*;
 
-#[cfg(any(feature = "axum", feature = "actix"))]
+#[cfg(any(feature = "axum", feature = "actix", feature = "webhook-sql"))]
 pub use webhook::*;

@@ -3,6 +3,8 @@
 mod quota_sql_live_support;
 
 use rullst_capital::SqlQuotaBackend;
+#[cfg(feature = "webhook-sql")]
+use rullst_capital::SqlWebhookBackend;
 use testcontainers::runners::AsyncRunner;
 use testcontainers_modules::postgres::Postgres;
 
@@ -23,6 +25,12 @@ async fn shared_quota_is_atomic_on_postgres() {
     quota_sql_live_support::exercise_sql_quota(
         &format!("postgres://postgres:postgres@{host}:{port}/postgres"),
         SqlQuotaBackend::Postgres,
+    )
+    .await;
+    #[cfg(feature = "webhook-sql")]
+    quota_sql_live_support::exercise_sql_webhook_replay(
+        &format!("postgres://postgres:postgres@{host}:{port}/postgres"),
+        SqlWebhookBackend::Postgres,
     )
     .await;
 }

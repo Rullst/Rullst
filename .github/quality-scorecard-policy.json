@@ -110,14 +110,14 @@
     },
     {
       "name": "rullst-capital",
-      "api_architecture": 17,
-      "verification": 22,
-      "security_failure_design": 18,
-      "documentation_dx": 14,
-      "operations_release": 11,
+      "api_architecture": 18,
+      "verification": 24,
+      "security_failure_design": 19,
+      "documentation_dx": 15,
+      "operations_release": 13,
       "specialist_gate": "provider-matrix",
-      "finding": "Well-bounded payments, quotas and fiscal preparation; gateway parity, live fiscal authorization and homologation are intentionally unproven.",
-      "evidence": ["rullst-capital/README.md", "rullst-capital/tests", "docs/src/crates/capital.md"]
+      "finding": "Bounded payments, quotas, shared relational webhook replay/event claims and local fiscal preparation have restart, contention, transaction and four-protocol evidence; shared gateway fault parity, fiscal audit/recovery, live authorization and homologation remain incomplete or external.",
+      "evidence": ["rullst-capital/README.md", "rullst-capital/src/webhook/sql.rs", "rullst-capital/tests", "docs/src/crates/capital.md", "docs/src/payment-gateways-guide.md", "docs/src/spec.md"]
     },
     {
       "name": "rullst-mail",
@@ -171,7 +171,7 @@
       "documentation_dx": 14,
       "operations_release": 18,
       "specialist_gate": "none",
-      "finding": "All 43 public umbrella features have isolated compile boundaries with automatic manifest-drift detection, and the packaged-distribution consumer derives the complete extracted feature set instead of maintaining a partial allowlist; release confidence still inherits the bounded maturity of opt-in domain capabilities.",
+      "finding": "All 45 public umbrella features have isolated compile boundaries with automatic manifest-drift detection, and the packaged-distribution consumer derives the complete extracted feature set instead of maintaining a partial allowlist; release confidence still inherits the bounded maturity of opt-in domain capabilities.",
       "evidence": ["rullst/Cargo.toml", "rullst/tests", ".github/check-feature-boundaries.sh", ".github/test-packaged-distribution.sh", "docs/src/feature-matrix.md"]
     },
     {

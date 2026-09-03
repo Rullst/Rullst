@@ -3,6 +3,8 @@
 mod quota_sql_live_support;
 
 use rullst_capital::SqlQuotaBackend;
+#[cfg(feature = "webhook-sql")]
+use rullst_capital::SqlWebhookBackend;
 use testcontainers::runners::AsyncRunner;
 use testcontainers_modules::mariadb::Mariadb;
 
@@ -23,6 +25,12 @@ async fn shared_quota_is_atomic_on_mariadb() {
     quota_sql_live_support::exercise_sql_quota(
         &format!("mysql://root@{host}:{port}/test"),
         SqlQuotaBackend::Mysql,
+    )
+    .await;
+    #[cfg(feature = "webhook-sql")]
+    quota_sql_live_support::exercise_sql_webhook_replay(
+        &format!("mysql://root@{host}:{port}/test"),
+        SqlWebhookBackend::Mysql,
     )
     .await;
 }

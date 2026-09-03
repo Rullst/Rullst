@@ -273,9 +273,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Capital's signed-webhook boundary now exposes both Axum and feature-gated
   Actix Web middleware over one canonical verifier. Both paths cap raw bodies
   at two megabytes, verify before dispatch, restore the exact payload, attach a
-  normalized event and reject local replay. Explicit provider-bound state
-  removes the need for global configuration in isolated applications; durable
-  cross-instance provider-event idempotency remains application-owned.
+  normalized event and reject replay. The local store fails closed at capacity
+  instead of evicting an active proof. The opt-in `webhook-sql` feature adds
+  immutable bounded shared payload/event claims over SQLite, PostgreSQL, MySQL,
+  and MariaDB, using the database transaction clock and including
+  restart/contention/drift/live-protocol evidence plus a caller-transaction path
+  that can bind a stable event ID to one relational
+  mutation. Middleware admission is not exactly-once delivery; cross-system
+  effects and reconciliation remain application-owned.
 - `cargo rullst make:mail-invoice [Name]` and `make:mail-dunning [Name]`
   complete the bounded transactional-mail scaffold set. The fiscal template
   consumes typed Capital provenance and always labels `OfflineMock` as

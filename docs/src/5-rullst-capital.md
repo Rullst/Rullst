@@ -142,6 +142,15 @@ normalized event. A webhook route may receive a narrowly scoped CSRF exemption
 only when this verifier remains mandatory on that exact route. See the
 [payment guide](payment-gateways-guide.md#actix-web-adapter) for Actix setup.
 
+The default store is process-local. The opt-in `webhook-sql` feature persists
+bounded provider-scoped payload digests or stable event IDs across SQLite,
+PostgreSQL, MySQL, and MariaDB processes. SQL-backed middleware is a replay
+firewall that claims before dispatch, not exactly-once delivery. For an atomic
+relational business transition, use the verified provider event ID with
+`check_and_record_event_key_with_transaction` in the domain transaction and do
+not pre-claim it through SQL middleware. Cross-system effects still require an
+outbox, idempotent consumers, and reconciliation.
+
 ```rust,no_run
 use axum::{routing::post, Router};
 use rullst_capital::verify_webhook;

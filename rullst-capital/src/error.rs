@@ -22,6 +22,22 @@ pub enum CapitalError {
     #[error("Webhook replay detected: {0}")]
     WebhookReplay(String),
 
+    /// The bounded replay ledger reached its configured active-record limit.
+    #[error("Webhook replay store is full")]
+    WebhookReplayStoreFull,
+
+    /// The durable replay ledger could not complete a required operation.
+    #[error("Webhook replay store is unavailable")]
+    WebhookReplayStoreUnavailable,
+
+    /// Existing durable replay metadata does not match the configured profile.
+    #[error("Webhook replay store configuration differs from persisted metadata")]
+    WebhookReplayConfigurationDrift,
+
+    /// Persisted replay state violates the fixed schema or value contract.
+    #[error("Webhook replay store contains corrupt state")]
+    WebhookReplayCorruptState,
+
     /// A mock verifier was mounted on the production-safe webhook middleware.
     #[error("Mock webhook mode is not allowed by this middleware: {0}")]
     MockWebhookNotAllowed(String),
@@ -115,6 +131,23 @@ mod tests {
 
         let usage = CapitalError::InvalidUsage("quantity is zero".to_string());
         assert_eq!(usage.to_string(), "Invalid metered usage: quantity is zero");
+
+        assert_eq!(
+            CapitalError::WebhookReplayStoreFull.to_string(),
+            "Webhook replay store is full"
+        );
+        assert_eq!(
+            CapitalError::WebhookReplayStoreUnavailable.to_string(),
+            "Webhook replay store is unavailable"
+        );
+        assert_eq!(
+            CapitalError::WebhookReplayConfigurationDrift.to_string(),
+            "Webhook replay store configuration differs from persisted metadata"
+        );
+        assert_eq!(
+            CapitalError::WebhookReplayCorruptState.to_string(),
+            "Webhook replay store contains corrupt state"
+        );
 
         let quota = CapitalError::from(crate::QuotaError::LimitExceeded {
             used: 2,

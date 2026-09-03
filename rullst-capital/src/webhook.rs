@@ -1,4 +1,7 @@
-use crate::capital::{BillingProvider, WebhookEvent, WebhookVerificationMode, provider};
+#[cfg(any(feature = "axum", feature = "actix"))]
+use crate::capital::provider;
+#[cfg(any(feature = "axum", feature = "actix", test))]
+use crate::capital::{BillingProvider, WebhookEvent, WebhookVerificationMode};
 use crate::error::CapitalError;
 #[cfg(feature = "axum")]
 use axum::{
@@ -9,13 +12,24 @@ use axum::{
     response::Response,
 };
 use ring::digest::{SHA256, digest};
-use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, LazyLock, Mutex};
+#[cfg(any(feature = "axum", feature = "actix", test))]
+use std::collections::HashMap;
+use std::collections::VecDeque;
+#[cfg(any(feature = "axum", feature = "actix"))]
+use std::sync::LazyLock;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+
+#[cfg(feature = "webhook-sql")]
+mod sql;
+#[cfg(feature = "webhook-sql")]
+pub use sql::{SqlWebhookBackend, SqlWebhookReplayStore};
 
 pub(super) const MAX_WEBHOOK_PAYLOAD_BYTES: usize = 2 * 1024 * 1024;
 const DEFAULT_REPLAY_CAPACITY: usize = 10_000;
 const DEFAULT_REPLAY_TTL: Duration = Duration::from_secs(24 * 60 * 60);
+const MAX_REPLAY_CAPACITY: usize = 1_000_000;
+const MAX_REPLAY_TTL: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 
 #[derive(Debug)]
 struct ReplayEntry {
@@ -25,8 +39,9 @@ struct ReplayEntry {
 
 /// Bounded in-memory webhook replay store with time-based eviction.
 ///
-/// Applications requiring replay protection across multiple processes should persist the same
-/// payload key in a shared datastore before executing side effects.
+/// Multi-process applications can select `SqlWebhookReplayStore` through the
+/// `webhook-sql` feature. This process-local variant fails closed at capacity
+/// rather than evicting an active replay proof.
 #[derive(Debug)]
 pub struct InMemoryWebhookReplayStore {
     entries: Mutex<VecDeque<ReplayEntry>>,
@@ -37,14 +52,14 @@ pub struct InMemoryWebhookReplayStore {
 impl InMemoryWebhookReplayStore {
     /// Creates a replay store. Capacity and TTL must both be greater than zero.
     pub fn new(max_entries: usize, ttl: Duration) -> Result<Self, CapitalError> {
-        if max_entries == 0 {
+        if max_entries == 0 || max_entries > MAX_REPLAY_CAPACITY {
             return Err(CapitalError::ConfigurationError(
-                "Webhook replay capacity must be greater than zero".to_string(),
+                "Webhook replay capacity must be between 1 and 1000000".to_string(),
             ));
         }
-        if ttl.is_zero() {
+        if ttl.is_zero() || ttl > MAX_REPLAY_TTL {
             return Err(CapitalError::ConfigurationError(
-                "Webhook replay TTL must be greater than zero".to_string(),
+                "Webhook replay TTL must be between 1 second and 30 days".to_string(),
             ));
         }
 
@@ -57,7 +72,19 @@ impl InMemoryWebhookReplayStore {
 
     /// Atomically rejects a replay or records a newly verified payload key.
     pub fn check_and_record(&self, key: impl Into<String>) -> Result<(), CapitalError> {
-        self.check_and_record_at(key.into(), Instant::now())
+        let key = key.into();
+        let valid = !key.is_empty()
+            && key.len() <= 128
+            && key
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'.'));
+        if !valid {
+            return Err(CapitalError::ConfigurationError(
+                "Webhook replay key must use 1-128 ASCII letters, digits, dots, hyphens, or underscores"
+                    .to_string(),
+            ));
+        }
+        self.check_and_record_at(key, Instant::now())
     }
 
     fn check_and_record_at(&self, key: String, now: Instant) -> Result<(), CapitalError> {
@@ -76,8 +103,8 @@ impl InMemoryWebhookReplayStore {
             return Err(CapitalError::WebhookReplay(key));
         }
 
-        if entries.len() == self.max_entries {
-            let _ = entries.pop_front();
+        if entries.len() >= self.max_entries {
+            return Err(CapitalError::WebhookReplayStoreFull);
         }
         entries.push_back(ReplayEntry {
             key,
@@ -88,12 +115,25 @@ impl InMemoryWebhookReplayStore {
 
     /// Computes and records a stable provider-scoped SHA-256 payload key.
     pub fn record_payload(&self, provider_name: &str, payload: &[u8]) -> Result<(), CapitalError> {
-        let mut scoped_payload = Vec::with_capacity(provider_name.len() + payload.len() + 1);
-        scoped_payload.extend_from_slice(provider_name.as_bytes());
-        scoped_payload.push(0);
-        scoped_payload.extend_from_slice(payload);
-        let payload_hash = digest(&SHA256, &scoped_payload);
-        self.check_and_record(hex::encode(payload_hash.as_ref()))
+        validate_replay_provider(provider_name)?;
+        if payload.is_empty() || payload.len() > MAX_WEBHOOK_PAYLOAD_BYTES {
+            return Err(CapitalError::ConfigurationError(
+                "Webhook replay payload must contain 1 byte through the configured body limit"
+                    .to_string(),
+            ));
+        }
+        self.check_and_record(payload_key(provider_name, payload))
+    }
+
+    /// Records a provider-scoped semantic event identifier selected after signature verification.
+    pub fn record_event_key(
+        &self,
+        provider_name: &str,
+        event_key: &str,
+    ) -> Result<(), CapitalError> {
+        validate_replay_provider(provider_name)?;
+        validate_replay_event_key(event_key)?;
+        self.check_and_record(event_key_hash(provider_name, event_key))
     }
 }
 
@@ -107,15 +147,62 @@ impl Default for InMemoryWebhookReplayStore {
     }
 }
 
+/// Explicit replay backend used by framework middleware.
+#[derive(Clone)]
+#[non_exhaustive]
+pub enum WebhookReplayBackend {
+    /// Process-local bounded replay protection.
+    Memory(Arc<InMemoryWebhookReplayStore>),
+    /// Durable relational replay protection shared by multiple processes.
+    #[cfg(feature = "webhook-sql")]
+    Sql(Arc<SqlWebhookReplayStore>),
+}
+
+impl std::fmt::Debug for WebhookReplayBackend {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Memory(store) => formatter.debug_tuple("Memory").field(store).finish(),
+            #[cfg(feature = "webhook-sql")]
+            Self::Sql(store) => formatter.debug_tuple("Sql").field(store).finish(),
+        }
+    }
+}
+
+impl From<Arc<InMemoryWebhookReplayStore>> for WebhookReplayBackend {
+    fn from(store: Arc<InMemoryWebhookReplayStore>) -> Self {
+        Self::Memory(store)
+    }
+}
+
+#[cfg(feature = "webhook-sql")]
+impl From<Arc<SqlWebhookReplayStore>> for WebhookReplayBackend {
+    fn from(store: Arc<SqlWebhookReplayStore>) -> Self {
+        Self::Sql(store)
+    }
+}
+
+impl WebhookReplayBackend {
+    #[cfg(any(feature = "axum", feature = "actix", test))]
+    async fn record_payload(&self, provider: &str, payload: &[u8]) -> Result<(), CapitalError> {
+        match self {
+            Self::Memory(store) => store.record_payload(provider, payload),
+            #[cfg(feature = "webhook-sql")]
+            Self::Sql(store) => store.check_and_record_payload(provider, payload).await,
+        }
+    }
+}
+
 /// Provider and replay state shared by the Axum and Actix middleware adapters.
+#[cfg(any(feature = "axum", feature = "actix"))]
 #[non_exhaustive]
 #[derive(Clone)]
 pub struct WebhookMiddlewareState {
-    replay_store: Arc<InMemoryWebhookReplayStore>,
+    replay_store: WebhookReplayBackend,
     allow_mock: bool,
     provider: Option<Arc<dyn BillingProvider>>,
 }
 
+#[cfg(any(feature = "axum", feature = "actix"))]
 impl std::fmt::Debug for WebhookMiddlewareState {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
@@ -130,20 +217,21 @@ impl std::fmt::Debug for WebhookMiddlewareState {
     }
 }
 
+#[cfg(any(feature = "axum", feature = "actix"))]
 impl WebhookMiddlewareState {
     /// Creates production-safe state that rejects `mock_*` verifier modes.
-    pub fn production(replay_store: Arc<InMemoryWebhookReplayStore>) -> Self {
+    pub fn production(replay_store: impl Into<WebhookReplayBackend>) -> Self {
         Self {
-            replay_store,
+            replay_store: replay_store.into(),
             allow_mock: false,
             provider: None,
         }
     }
 
     /// Creates explicitly local-only state that permits signed `mock_*` fixtures.
-    pub fn local_mock(replay_store: Arc<InMemoryWebhookReplayStore>) -> Self {
+    pub fn local_mock(replay_store: impl Into<WebhookReplayBackend>) -> Self {
         Self {
-            replay_store,
+            replay_store: replay_store.into(),
             allow_mock: true,
             provider: None,
         }
@@ -152,13 +240,13 @@ impl WebhookMiddlewareState {
     /// Creates production-safe state bound to an explicit provider instance.
     pub fn production_with_provider<P>(
         provider: Arc<P>,
-        replay_store: Arc<InMemoryWebhookReplayStore>,
+        replay_store: impl Into<WebhookReplayBackend>,
     ) -> Self
     where
         P: BillingProvider + 'static,
     {
         Self {
-            replay_store,
+            replay_store: replay_store.into(),
             allow_mock: false,
             provider: Some(provider),
         }
@@ -167,13 +255,13 @@ impl WebhookMiddlewareState {
     /// Creates local-only state bound to an explicit provider and permits `mock_*` fixtures.
     pub fn local_mock_with_provider<P>(
         provider: Arc<P>,
-        replay_store: Arc<InMemoryWebhookReplayStore>,
+        replay_store: impl Into<WebhookReplayBackend>,
     ) -> Self
     where
         P: BillingProvider + 'static,
     {
         Self {
-            replay_store,
+            replay_store: replay_store.into(),
             allow_mock: true,
             provider: Some(provider),
         }
@@ -187,8 +275,9 @@ impl WebhookMiddlewareState {
     }
 }
 
-pub(super) static DEFAULT_REPLAY_STORE: LazyLock<InMemoryWebhookReplayStore> =
-    LazyLock::new(InMemoryWebhookReplayStore::default);
+#[cfg(any(feature = "axum", feature = "actix"))]
+pub(super) static DEFAULT_REPLAY_STORE: LazyLock<WebhookReplayBackend> =
+    LazyLock::new(|| WebhookReplayBackend::Memory(Arc::new(InMemoryWebhookReplayStore::default())));
 
 #[cfg(feature = "actix")]
 mod actix;
@@ -237,7 +326,7 @@ pub async fn verify_webhook_with_state(
 async fn verify_webhook_inner(
     req: Request,
     next: Next,
-    replay_store: &InMemoryWebhookReplayStore,
+    replay_store: &WebhookReplayBackend,
     allow_mock: bool,
     active_provider: Option<&dyn BillingProvider>,
 ) -> Result<Response, StatusCode> {
@@ -261,6 +350,7 @@ async fn verify_webhook_inner(
         replay_store,
         allow_mock,
     )
+    .await
     .map_err(capital_error_status)?;
 
     let request = rebuild_request(parts, body_bytes, event);
@@ -273,11 +363,12 @@ fn rebuild_request(mut parts: Parts, body: Bytes, event: WebhookEvent) -> Reques
     Request::from_parts(parts, Body::from(body))
 }
 
-pub(super) fn verify_payload(
+#[cfg(any(feature = "axum", feature = "actix", test))]
+pub(super) async fn verify_payload(
     active_provider: &dyn BillingProvider,
     body: &[u8],
     headers: &HashMap<String, String>,
-    replay_store: &InMemoryWebhookReplayStore,
+    replay_store: &WebhookReplayBackend,
     allow_mock: bool,
 ) -> Result<WebhookEvent, CapitalError> {
     let mode = active_provider.webhook_verification_mode()?;
@@ -287,10 +378,62 @@ pub(super) fn verify_payload(
         ));
     }
     let event = active_provider.handle_webhook(body, headers)?;
-    replay_store.record_payload(active_provider.name(), body)?;
+    replay_store
+        .record_payload(active_provider.name(), body)
+        .await?;
     Ok(event)
 }
 
+pub(super) fn validate_replay_provider(provider: &str) -> Result<(), CapitalError> {
+    let valid = !provider.is_empty()
+        && provider.len() <= 64
+        && provider
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'.'));
+    if !valid {
+        return Err(CapitalError::ConfigurationError(
+            "Webhook replay provider must use 1-64 ASCII letters, digits, dots, hyphens, or underscores"
+                .to_string(),
+        ));
+    }
+    Ok(())
+}
+
+pub(super) fn validate_replay_event_key(event_key: &str) -> Result<(), CapitalError> {
+    let valid = !event_key.is_empty()
+        && event_key.len() <= 128
+        && event_key
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'.' | b':'));
+    if !valid {
+        return Err(CapitalError::ConfigurationError(
+            "Webhook event key must use 1-128 ASCII letters, digits, dots, colons, hyphens, or underscores"
+                .to_string(),
+        ));
+    }
+    Ok(())
+}
+
+pub(super) fn payload_key(provider_name: &str, payload: &[u8]) -> String {
+    scoped_replay_key(provider_name, b"payload", payload)
+}
+
+pub(super) fn event_key_hash(provider_name: &str, event_key: &str) -> String {
+    scoped_replay_key(provider_name, b"event", event_key.as_bytes())
+}
+
+fn scoped_replay_key(provider_name: &str, domain: &[u8], material: &[u8]) -> String {
+    let mut scoped = Vec::with_capacity(provider_name.len() + domain.len() + material.len() + 2);
+    scoped.extend_from_slice(provider_name.as_bytes());
+    scoped.push(0);
+    scoped.extend_from_slice(domain);
+    scoped.push(0);
+    scoped.extend_from_slice(material);
+    let hash = digest(&SHA256, &scoped);
+    hex::encode(hash.as_ref())
+}
+
+#[cfg(any(feature = "axum", feature = "actix"))]
 pub(super) fn capital_error_status_code(error: &CapitalError) -> u16 {
     match error {
         CapitalError::ConfigurationError(_) | CapitalError::General(_) => 500,
@@ -303,6 +446,10 @@ pub(super) fn capital_error_status_code(error: &CapitalError) -> u16 {
         | CapitalError::InvalidInvoice(_)
         | CapitalError::InvalidUsage(_) => 400,
         CapitalError::ProviderRequestFailed(_)
+        | CapitalError::WebhookReplayStoreFull
+        | CapitalError::WebhookReplayStoreUnavailable
+        | CapitalError::WebhookReplayConfigurationDrift
+        | CapitalError::WebhookReplayCorruptState
         | CapitalError::UnsupportedOperation(_)
         | CapitalError::MockWebhookNotAllowed(_)
         | CapitalError::SubscriptionError(_)
@@ -313,8 +460,10 @@ pub(super) fn capital_error_status_code(error: &CapitalError) -> u16 {
 
 #[cfg(feature = "axum")]
 fn capital_error_status(error: CapitalError) -> StatusCode {
-    StatusCode::from_u16(capital_error_status_code(&error))
-        .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
+    match StatusCode::from_u16(capital_error_status_code(&error)) {
+        Ok(status) => status,
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
+    }
 }
 
 #[cfg(test)]
@@ -398,10 +547,33 @@ mod tests {
 
     #[test]
     fn replay_store_is_bounded_and_provider_scoped() {
-        let store = InMemoryWebhookReplayStore::new(1, Duration::from_secs(60)).unwrap();
+        let store = InMemoryWebhookReplayStore::new(2, Duration::from_secs(60)).unwrap();
         assert!(store.record_payload("stripe", b"same body").is_ok());
         assert!(store.record_payload("paddle", b"same body").is_ok());
-        assert!(store.record_payload("stripe", b"same body").is_ok());
+        assert!(matches!(
+            store.record_payload("stripe", b"same body"),
+            Err(CapitalError::WebhookReplay(_))
+        ));
+        assert_eq!(
+            store.record_payload("stripe", b"different body"),
+            Err(CapitalError::WebhookReplayStoreFull)
+        );
+    }
+
+    #[test]
+    fn semantic_event_keys_are_provider_scoped_and_validated() {
+        let store = InMemoryWebhookReplayStore::new(2, Duration::from_secs(60)).unwrap();
+        assert!(store.record_event_key("stripe", "evt_123").is_ok());
+        assert!(store.record_event_key("paddle", "evt_123").is_ok());
+        assert!(matches!(
+            store.record_event_key("stripe", "evt_123"),
+            Err(CapitalError::WebhookReplay(_))
+        ));
+        assert!(
+            InMemoryWebhookReplayStore::default()
+                .record_event_key("stripe", "contains spaces")
+                .is_err()
+        );
     }
 
     #[test]
@@ -410,8 +582,8 @@ mod tests {
         assert!(InMemoryWebhookReplayStore::new(1, Duration::ZERO).is_err());
     }
 
-    #[test]
-    fn canonical_verifier_decodes_stripe_and_lemonsqueezy_and_rejects_mock_in_production() {
+    #[tokio::test]
+    async fn canonical_verifier_decodes_stripe_and_lemonsqueezy_and_rejects_mock_in_production() {
         let stripe_payload = serde_json::to_vec(&serde_json::json!({
             "type": "customer.subscription.updated",
             "data": { "object": {
@@ -427,7 +599,8 @@ mod tests {
             "mock_stripe_signature".to_string(),
         )]);
         let stripe = StripeProvider::new("mock_api", "mock_stripe_signature");
-        let stripe_store = InMemoryWebhookReplayStore::default();
+        let stripe_store =
+            WebhookReplayBackend::Memory(Arc::new(InMemoryWebhookReplayStore::default()));
         let stripe_event = verify_payload(
             &stripe,
             &stripe_payload,
@@ -435,6 +608,7 @@ mod tests {
             &stripe_store,
             true,
         )
+        .await
         .expect("local mock signature must produce a normalized event");
         assert_eq!(stripe_event.subscription_id, "sub_stripe");
 
@@ -456,9 +630,11 @@ mod tests {
             "mock_lemon_signature".to_string(),
         )]);
         let lemon = LemonSqueezyProvider::new("mock_api", "mock_lemon_signature");
-        let lemon_store = InMemoryWebhookReplayStore::default();
+        let lemon_store =
+            WebhookReplayBackend::Memory(Arc::new(InMemoryWebhookReplayStore::default()));
         let lemon_event =
             verify_payload(&lemon, &lemon_payload, &lemon_headers, &lemon_store, true)
+                .await
                 .expect("local mock signature must produce a normalized event");
         assert_eq!(lemon_event.subscription_id, "sub_lemon");
 
@@ -467,9 +643,12 @@ mod tests {
                 &stripe,
                 &stripe_payload,
                 &stripe_headers,
-                &InMemoryWebhookReplayStore::default(),
+                &WebhookReplayBackend::Memory(Arc::new(
+                    InMemoryWebhookReplayStore::default(),
+                )),
                 false,
-            ),
+            )
+            .await,
             Err(CapitalError::MockWebhookNotAllowed(provider)) if provider == "stripe"
         ));
     }

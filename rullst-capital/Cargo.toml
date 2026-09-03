@@ -24,6 +24,7 @@ actix = ["dep:actix-web", "dep:futures-util"]
 nfse = ["dep:flate2", "dep:oxixml-schema", "dep:p12-keystore", "dep:roxmltree", "dep:xml-sec"]
 invoice-pdf = ["dep:printpdf"]
 quota-sql = ["dep:rullst-orm"]
+webhook-sql = ["dep:rullst-orm"]
 
 [dependencies]
 rullst-core = { workspace = true }

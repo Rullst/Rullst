@@ -211,10 +211,52 @@ async fn serve() -> std::io::Result<()> {
 }
 ```
 
-The in-memory replay store is atomic only inside one process. Before applying
-billing side effects in a multi-instance deployment, claim the provider event
-ID through a durable database or Redis uniqueness transaction and make the
-state transition idempotent.
+The default in-memory replay store is atomic only inside one process. Enable
+`rullst-capital/webhook-sql` (or umbrella `rullst/capital-webhook-sql`) to share
+a bounded replay ledger across SQLite, PostgreSQL, MySQL, or MariaDB processes:
+
+```rust,no_run
+use rullst_capital::{
+    SqlWebhookReplayStore, StripeProvider, WebhookMiddlewareState,
+};
+use std::{sync::Arc, time::Duration};
+
+async fn webhook_state(
+    database_url: String,
+) -> Result<WebhookMiddlewareState, rullst_capital::CapitalError> {
+    let replay = Arc::new(
+        SqlWebhookReplayStore::connect(
+            database_url,
+            100_000,
+            Duration::from_secs(24 * 60 * 60),
+        )
+        .await?,
+    );
+    replay.prepare_schema().await?;
+    let provider = Arc::new(StripeProvider::new(
+        "sk_live_from_secret_store",
+        "whsec_from_secret_store",
+    ));
+    Ok(WebhookMiddlewareState::production_with_provider(
+        provider, replay,
+    ))
+}
+```
+
+Run equivalent reviewed DDL through deployment migrations instead of relying
+on request-time setup. Capacity/TTL are immutable for an existing ledger;
+drift, corruption, storage failure, and a full unexpired ledger fail closed.
+Only provider-scoped SHA-256 claims are stored, not raw payloads or event IDs.
+
+SQL-backed middleware claims the payload before handler dispatch. It prevents
+cross-process replay but cannot make handler delivery exactly once: a crash can
+still occur between admission and a business mutation. For an atomic
+relational path, verify the exact provider payload through its low-level
+contract, select the provider's stable event ID, and call
+`check_and_record_event_key_with_transaction` in the same transaction as the
+domain mutation. Do not also pre-claim that event through SQL middleware.
+External calls, e-mail, and queues still need an outbox, idempotent consumers,
+and reconciliation.
 
 ### 4. Provider-Specific Metered Usage
 

@@ -85,6 +85,7 @@ rullst-capital|axum
 rullst-capital|actix
 rullst-capital|nfse
 rullst-capital|quota-sql
+rullst-capital|webhook-sql
 rullst-mail|mail-smtp
 rullst-mail|sqlite
 rullst-auth|jwt
@@ -124,6 +125,7 @@ rullst|capital
 rullst|capital-actix
 rullst|capital-nfse
 rullst|capital-quota-sql
+rullst|capital-webhook-sql
 rullst|capital-pdf
 rullst|capital-mail
 rullst|security

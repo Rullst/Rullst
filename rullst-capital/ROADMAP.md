@@ -21,7 +21,13 @@ Rullst Capital simplifies the billing and subscription complexities of building 
 
 ## Phase 2: Billing Operations
 - [x] **Fail-closed Axum and Actix Webhooks**: Both framework adapters call one canonical verifier. Supported provider signatures reject empty secrets; timestamped protocols enforce freshness, bodies are bounded and middleware provides bounded TTL replay protection.
-- [ ] **Distributed Idempotency Store**: Persist accepted event keys across processes and deployments before billing side effects.
+- [x] **Bounded Shared Idempotency Store**: The opt-in `webhook-sql` ledger
+  persists provider-scoped payload digests or stable semantic event IDs across
+  processes on SQLite, PostgreSQL, MySQL, and MariaDB. Immutable capacity/TTL,
+  database-time serialized claims, expiry, restart, contention, configuration
+  drift and fail-closed capacity are tested. A caller-owned transaction can bind a
+  semantic event claim to one database mutation; external effects still need
+  an outbox, idempotent consumers and reconciliation.
 - [ ] **Alipay RSA2**: Implement interoperable RSA-SHA256 request signing and notification verification against official contract tests; live Alipay remains disabled until then.
 - [~] **Payment-Bound Invoicing**: Validates the legacy invoice model into exact
   minor units, renders escaped HTML and opt-in bounded native PDF, and binds a

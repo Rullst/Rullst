@@ -1,8 +1,10 @@
 //! Actix Web middleware adapter for the canonical webhook verifier.
 
+#[cfg(test)]
+use super::InMemoryWebhookReplayStore;
 use super::{
-    DEFAULT_REPLAY_STORE, InMemoryWebhookReplayStore, MAX_WEBHOOK_PAYLOAD_BYTES,
-    WebhookMiddlewareState, capital_error_status_code, verify_payload,
+    DEFAULT_REPLAY_STORE, MAX_WEBHOOK_PAYLOAD_BYTES, WebhookMiddlewareState, WebhookReplayBackend,
+    capital_error_status_code, verify_payload,
 };
 #[cfg(test)]
 use crate::capital::WebhookEvent;
@@ -68,7 +70,7 @@ where
 async fn verify_webhook_actix_inner<B>(
     mut req: ServiceRequest,
     next: Next<B>,
-    replay_store: &InMemoryWebhookReplayStore,
+    replay_store: &WebhookReplayBackend,
     allow_mock: bool,
     active_provider: Option<&dyn BillingProvider>,
 ) -> Result<ServiceResponse<EitherBody<B>>, Error>
@@ -96,10 +98,11 @@ where
         return Ok(reject(req, StatusCode::INTERNAL_SERVER_ERROR));
     };
     let headers = collect_headers(&req);
-    let event = match verify_payload(active_provider, &body, &headers, replay_store, allow_mock) {
-        Ok(event) => event,
-        Err(error) => return Ok(reject(req, status_from_error(&error))),
-    };
+    let event =
+        match verify_payload(active_provider, &body, &headers, replay_store, allow_mock).await {
+            Ok(event) => event,
+            Err(error) => return Ok(reject(req, status_from_error(&error))),
+        };
 
     req.extensions_mut().insert(event);
     req.set_payload(Payload::from(body));
@@ -121,8 +124,10 @@ fn collect_headers(req: &ServiceRequest) -> HashMap<String, String> {
 }
 
 fn status_from_error(error: &crate::CapitalError) -> StatusCode {
-    StatusCode::from_u16(capital_error_status_code(error))
-        .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
+    match StatusCode::from_u16(capital_error_status_code(error)) {
+        Ok(status) => status,
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
+    }
 }
 
 fn reject<B>(req: ServiceRequest, status: StatusCode) -> ServiceResponse<EitherBody<B>>

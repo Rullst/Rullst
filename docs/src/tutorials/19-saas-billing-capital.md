@@ -204,6 +204,17 @@ shown in the [Capital crate guide](../5-rullst-capital.md). Apply any CSRF
 exemption only to that exact signed route. Never update access or subscription
 state from an unverified request.
 
+The default replay store protects one process. For multiple processes,
+`rullst-capital/webhook-sql` provides a bounded SQL ledger for SQLite,
+PostgreSQL, MySQL, and MariaDB. Its middleware form claims the signed payload
+before dispatch and therefore does not guarantee exactly-once processing after
+a crash. When a subscription mutation must be atomic, use the provider's
+verified stable event ID with
+`SqlWebhookReplayStore::check_and_record_event_key_with_transaction` in the
+same database transaction as that mutation; do not also pre-claim that event
+through SQL middleware. See the [payment guide](../payment-gateways-guide.md#3-cryptographically-verified-webhook-endpoint)
+for setup and operational boundaries.
+
 ## 7. Use a bounded subscription handle and grace period
 
 ```rust,no_run
