@@ -2,9 +2,9 @@
 //!
 //! The structural suite covers all 270 combinations. This slower suite selects
 //! the smallest set that crosses every public blueprint plus the distinct ORM,
-//! frontend, API, database, hot-reload and release-build boundaries. The LMS
-//! case runs its generated tests as well, so template-only authorization
-//! regressions cannot hide behind a successful `cargo check`.
+//! frontend, API, database, hot-reload and release-build boundaries. Every
+//! materialized case runs its generated tests, so template-only runtime and
+//! authorization regressions cannot hide behind a successful `cargo check`.
 
 #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
 
@@ -27,7 +27,7 @@ struct GeneratedCase {
     release: bool,
 }
 
-const GENERATED_CASES: [GeneratedCase; 7] = [
+const GENERATED_CASES: [GeneratedCase; 8] = [
     GeneratedCase {
         name: "blank-minimal",
         blueprint: BLANK_BLUEPRINT_ID,
@@ -49,40 +49,40 @@ const GENERATED_CASES: [GeneratedCase; 7] = [
         release: false,
     },
     GeneratedCase {
-        name: "lms-repository-liveview",
+        name: "lms-repository-liveview-hot",
         blueprint: LMS_BLUEPRINT_ID,
         api: false,
-        hot_reload: false,
+        hot_reload: true,
         db_needed: true,
         orm_pattern: "Repository",
         frontend: "LiveView",
         release: false,
     },
     GeneratedCase {
-        name: "saas-active-htmx",
+        name: "saas-active-htmx-hot",
         blueprint: SAAS_BLUEPRINT_ID,
         api: false,
-        hot_reload: false,
+        hot_reload: true,
         db_needed: true,
         orm_pattern: "Active Record",
         frontend: "Zero-Bundle HTMX",
         release: false,
     },
     GeneratedCase {
-        name: "blog-hybrid-tera",
+        name: "blog-hybrid-tera-hot",
         blueprint: BLOG_BLUEPRINT_ID,
         api: false,
-        hot_reload: false,
+        hot_reload: true,
         db_needed: true,
         orm_pattern: "Hybrid",
         frontend: "Tera Template",
         release: false,
     },
     GeneratedCase {
-        name: "portfolio-repository-pico",
+        name: "portfolio-repository-pico-hot",
         blueprint: PORTFOLIO_BLUEPRINT_ID,
         api: false,
-        hot_reload: false,
+        hot_reload: true,
         db_needed: true,
         orm_pattern: "Repository",
         frontend: "Pico CSS",
@@ -97,6 +97,16 @@ const GENERATED_CASES: [GeneratedCase; 7] = [
         orm_pattern: "Hybrid",
         frontend: "Zero-Bundle HTMX",
         release: true,
+    },
+    GeneratedCase {
+        name: "erp-hybrid-hot",
+        blueprint: ERP_BLUEPRINT_ID,
+        api: false,
+        hot_reload: true,
+        db_needed: true,
+        orm_pattern: "Hybrid",
+        frontend: "Zero-Bundle HTMX",
+        release: false,
     },
 ];
 
@@ -144,9 +154,29 @@ fn materialize(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
     )
     .unwrap_or_else(|error| panic!("{}: apply blueprint: {error}", case.name));
 
+    if case.hot_reload {
+        add_router_runtime_contract(case, project_dir, &module_name);
+    }
+
     if case.blueprint == SAAS_BLUEPRINT_ID {
         add_saas_generator_smoke(project_dir);
     }
+}
+
+fn add_router_runtime_contract(case: GeneratedCase, project_dir: &Path, module_name: &str) {
+    let tests_dir = project_dir.join("tests");
+    fs::create_dir_all(&tests_dir).expect("generated tests directory");
+    let body = if case.blueprint == BLANK_BLUEPRINT_ID {
+        format!(
+            "#[test]\nfn generated_router_constructs() {{\n    let _router = {module_name}::router();\n}}\n"
+        )
+    } else {
+        format!(
+            "#[test]\nfn generated_router_constructs_without_live_services() {{\n    let result = {module_name}::router();\n    assert!(result.is_ok(), \"generated router must use offline-safe defaults\");\n}}\n"
+        )
+    };
+    fs::write(tests_dir.join("generated_router_contract.rs"), body)
+        .expect("generated router runtime contract");
 }
 
 fn add_saas_generator_smoke(project_dir: &Path) {
@@ -201,15 +231,7 @@ fn cargo_verify(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
         .map(PathBuf::from)
         .unwrap_or_else(|| workspace.join("target"));
     let mut command = Command::new(env!("CARGO"));
-    let cargo_operation = if case.blueprint == LMS_BLUEPRINT_ID {
-        "test"
-    } else {
-        "check"
-    };
-    command
-        .arg(cargo_operation)
-        .arg("--offline")
-        .arg("--all-targets");
+    command.arg("test").arg("--offline").arg("--all-targets");
     if case.release {
         command.arg("--release");
     }
@@ -220,14 +242,20 @@ fn cargo_verify(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
             "CARGO_TARGET_DIR",
             target_root.join("generated-scaffold-check"),
         )
+        // Generated projects are separate Cargo workspaces and therefore do
+        // not inherit the repository's space-conscious test profile. Keep
+        // this matrix reproducible on constrained developer machines.
+        .env("CARGO_PROFILE_DEV_DEBUG", "0")
+        .env("CARGO_PROFILE_TEST_DEBUG", "0")
+        .env("CARGO_PROFILE_TEST_INCREMENTAL", "false")
+        .env("CARGO_BUILD_JOBS", "1")
         .output()
-        .unwrap_or_else(|error| panic!("{}: run cargo check: {error}", case.name));
+        .unwrap_or_else(|error| panic!("{}: run cargo test: {error}", case.name));
 
     if !output.status.success() {
         panic!(
-            "{} failed cargo {}\nstdout:\n{}\nstderr:\n{}",
+            "{} failed cargo test\nstdout:\n{}\nstderr:\n{}",
             case.name,
-            cargo_operation,
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );

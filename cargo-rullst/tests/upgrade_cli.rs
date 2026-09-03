@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use std::{collections::BTreeSet, fs};
 
 struct Fixture {
     root: PathBuf,
@@ -235,4 +236,148 @@ fn failed_upgrade_restores_manifest_source_and_absent_lockfile() {
     assert!(contains_report(
         &fixture.app().join("target/rullst-upgrades")
     ));
+}
+
+#[test]
+fn source_rule_catalog_covers_every_documented_upgrade_origin() {
+    let source = "#[routes]\nfn old() { Server::new(); app.run(); Nexus::build(); }\n// STUDIO_PASSWORD APP_ENV\n";
+    let cases = [
+        (
+            "v5",
+            "5",
+            BTreeSet::from([
+                "V5-ENV-ALIAS",
+                "V5-NEXUS-POLICY",
+                "V5-ROUTES-ATTRIBUTE",
+                "V5-SERVER-CONSTRUCTOR",
+                "V5-SERVER-PORT",
+                "V5-STUDIO-BOUNDARY",
+            ]),
+        ),
+        (
+            "v6",
+            "6",
+            BTreeSet::from(["V5-ENV-ALIAS", "V5-NEXUS-POLICY", "V5-STUDIO-BOUNDARY"]),
+        ),
+        (
+            "v11",
+            "11",
+            BTreeSet::from(["V5-ENV-ALIAS", "V5-NEXUS-POLICY", "V5-STUDIO-BOUNDARY"]),
+        ),
+        ("v12", "12", BTreeSet::new()),
+    ];
+
+    for (name, requirement, expected) in cases {
+        let fixture = Fixture::new(name, requirement, "12.0.0", source);
+        let output = fixture.run(&["upgrade", "--dry-run", "--json"]);
+        assert!(output.status.success(), "{name}: {}", output_text(&output));
+        let report = serde_json::from_slice::<serde_json::Value>(&output.stdout)
+            .unwrap_or_else(|error| panic!("{name}: invalid JSON report: {error}"));
+        let actual = report["source_findings"]
+            .as_array()
+            .expect("source findings array")
+            .iter()
+            .filter_map(|finding| finding["code"].as_str())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(actual, expected, "{name}: wrong source rule selection");
+    }
+}
+
+#[test]
+fn failed_workspace_upgrade_restores_every_member_atomically() {
+    let root = std::env::temp_dir().join(format!(
+        "rullst-upgrade-cli-multi-{}",
+        rand::random::<u64>()
+    ));
+    for directory in ["app-a/src", "app-b/src", "framework/src"] {
+        fs::create_dir_all(root.join(directory)).expect("workspace directory");
+    }
+    fs::write(
+        root.join("Cargo.toml"),
+        "[workspace]\nmembers = [\"app-a\", \"app-b\"]\nexclude = [\"framework\"]\nresolver = \"3\"\n",
+    )
+    .expect("workspace manifest");
+    fs::write(
+        root.join("framework/Cargo.toml"),
+        "[package]\nname = \"rullst\"\nversion = \"5.0.0\"\nedition = \"2024\"\n",
+    )
+    .expect("framework manifest");
+    fs::write(root.join("framework/src/lib.rs"), "pub fn marker() {}\n").expect("framework source");
+
+    let mut originals = Vec::new();
+    for member in ["app-a", "app-b"] {
+        let manifest = format!(
+            "[package]\nname = \"{member}\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = {{ version = \"5\", path = \"../framework\" }}\n"
+        );
+        fs::write(root.join(member).join("Cargo.toml"), &manifest).expect("member manifest");
+        fs::write(root.join(member).join("src/main.rs"), "fn main() {}\n").expect("member source");
+        originals.push((member, manifest));
+    }
+    let fixture = Fixture { root };
+
+    let output = fixture.run_at(&fixture.root, &["upgrade"]);
+
+    assert!(!output.status.success(), "upgrade unexpectedly succeeded");
+    assert!(output_text(&output).contains("were restored"));
+    for (member, original) in originals {
+        assert_eq!(
+            fs::read_to_string(fixture.root.join(member).join("Cargo.toml"))
+                .expect("restored member manifest"),
+            original,
+            "{member} was not restored atomically"
+        );
+    }
+    assert!(contains_report(
+        &fixture.root.join("target/rullst-upgrades")
+    ));
+}
+
+#[test]
+fn keep_on_failure_preserves_review_state_until_explicit_restore() {
+    let fixture = Fixture::new("keep", "5", "5.0.0", "fn main() {}\n");
+    let original_manifest =
+        fs::read_to_string(fixture.app().join("Cargo.toml")).expect("original manifest");
+
+    let output = fixture.run(&["upgrade", "--keep-on-failure"]);
+
+    assert!(!output.status.success(), "upgrade unexpectedly succeeded");
+    assert!(output_text(&output).contains("edited files were kept by request"));
+    let edited = fs::read_to_string(fixture.app().join("Cargo.toml")).expect("edited manifest");
+    assert!(edited.contains("version = \"12.0.0\""));
+
+    let backup = first_backup(&fixture.app().join("target/rullst-upgrades"));
+    let restore = fixture.run(&[
+        "upgrade",
+        "--restore",
+        backup.to_str().expect("UTF-8 backup path"),
+    ]);
+    assert!(restore.status.success(), "{}", output_text(&restore));
+    assert_eq!(
+        fs::read_to_string(fixture.app().join("Cargo.toml")).expect("restored manifest"),
+        original_manifest
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn symlinked_rust_sources_fail_before_the_upgrade_transaction() {
+    use std::os::unix::fs::symlink;
+
+    let fixture = Fixture::new("source-symlink", "5", "12.0.0", "fn main() {}\n");
+    let manifest_path = fixture.app().join("Cargo.toml");
+    let original_manifest = fs::read_to_string(&manifest_path).expect("original manifest");
+    let outside_source = fixture.root.join("outside.rs");
+    fs::write(&outside_source, "#[routes]\nfn outside() {}\n").expect("outside source");
+    fs::remove_file(fixture.app().join("src/main.rs")).expect("remove regular source");
+    symlink(&outside_source, fixture.app().join("src/main.rs")).expect("source symlink");
+
+    let output = fixture.run(&["upgrade", "--dry-run"]);
+
+    assert!(!output.status.success(), "symlinked source was accepted");
+    assert!(output_text(&output).contains("refusing to scan symlinked Rust source"));
+    assert_eq!(
+        fs::read_to_string(manifest_path).expect("manifest after rejection"),
+        original_manifest
+    );
+    assert!(!fixture.app().join("target/rullst-upgrades").exists());
 }

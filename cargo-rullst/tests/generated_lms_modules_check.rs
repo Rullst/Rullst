@@ -72,6 +72,13 @@ fn materialize_and_test(
             "CARGO_TARGET_DIR",
             target_root.join("generated-scaffold-check"),
         )
+        // Generated projects are independent workspaces. Use the same compact,
+        // single-job profile as the broader blueprint matrix so four Rust test
+        // harnesses cannot exhaust a small developer machine in parallel.
+        .env("CARGO_PROFILE_DEV_DEBUG", "0")
+        .env("CARGO_PROFILE_TEST_DEBUG", "0")
+        .env("CARGO_PROFILE_TEST_INCREMENTAL", "false")
+        .env("CARGO_BUILD_JOBS", "1")
         .output()
         .expect("run generated foundation cargo test");
     if !output.status.success() {

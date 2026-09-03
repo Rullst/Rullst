@@ -43,7 +43,7 @@ stricter than the earlier all-B floor and reopens bounded implementation work
 before the feature freeze. It does not pre-approve a commit: the exact SHA
 still earns each ceiling only when every constraining gate succeeds.
 
-## Current audited green-gate scores — 2 September 2026
+## Current audited green-gate scores — 3 September 2026
 
 These are the maximum current scores when every referenced Rust CI gate passes.
 They are not presumed results for a new commit; the exact per-SHA artifact
@@ -64,7 +64,7 @@ being published as an achieved one.
 | `rullst-auth` | 95 | A | Shared ceremonies, multi-host state, refresh workflow and normative WebAuthn conformance |
 | `rullst-mail` | 95 | A | Authoritative malware/CDR inspection, multi-host operations and inbox/provider evidence |
 | `rullst-messaging` | 96 | A | Remote protocols/replication, full metadata encryption and provider operations |
-| `cargo-rullst` | 85 | B | Complete generated-project matrix across every blueprint |
+| `cargo-rullst` | 95 | A | Production deployment, provider accounts and real-application acceptance |
 | `rullst-ai` | 90 | A | Streaming/cancellation, live adaptive evals, distributed audit delivery, provider loops and external retrievers |
 | `rullst-studio` | 83 | B | Distributed observability and remote inspectors |
 | `rullst-capital` | 93 | A | Live authorization, authoritative outbox/reconciliation and homologation |
@@ -72,24 +72,23 @@ being published as an achieved one.
 | `rullst-nexus` | 95 | A | Host identity/domain policy, global/custom-route authorization, immutable audit delivery and production operations |
 | `rullst-macros` | 94 | A | Real browser/network ecosystems and host identity policy remain external |
 | `rullst-iot` | 83 | B | Concrete transport/hardware storage, flashing and bootloader evidence |
-| **Repository (equal-crate aggregate)** | **91** | **A** | **1,456/1,600; exact score remains conditional on the SHA's gates** |
+| **Repository (equal-crate aggregate)** | **92** | **A** | **1,466/1,600; exact score remains conditional on the SHA's gates** |
 
 ## Measured gap to the v12 quality gate
 
 At the audited scores above, Core, ORM, Security, Connect, Auth, Mail,
-Messaging, AI, Capital, Nexus, both macro crates and the umbrella meet A, while
-IoT meets its approved B exception. Two crates remain below their required grade.
-Their individual gaps total **12 audited points**. This is not a count of tasks and
+Messaging, AI, Capital, Nexus, both macro crates, `cargo-rullst` and the umbrella
+meet A, while IoT meets its approved B exception. One crate remains below its
+required grade. Its gap totals **7 audited points**. This is not a count of tasks and
 cannot be closed by editing the policy: every point requires a commensurate
 change in implementation, verification, security/failure design,
 documentation/DX, or operational evidence.
 
-If the two remaining crates reach exactly 90 while the other current scores
-remain unchanged, the equal-crate aggregate becomes 1,468/1,600, or **92/A**.
+If Studio reaches exactly 90 while the other current scores remain unchanged,
+the equal-crate aggregate becomes 1,473/1,600, or **92/A**.
 
 | Crate | Current | Gap to required grade | Next evidence cluster to audit |
 | :--- | ---: | ---: | :--- |
-| `cargo-rullst` | 85/B | +5 | Broader compile/runtime verification of generated blueprint combinations |
 | `rullst-studio` | 83/B | +7 | Distributed trace ingestion and authenticated remote-inspector boundaries |
 
 ## Maximum-local v12 campaign
@@ -109,10 +108,10 @@ provider acceptance, app-store/device testing, fiscal homologation, independent
 audit and production operation remain external even when a bounded
 implementation earns a high A.
 
-Seven of the 15 active crates have now reached their audited local target:
+Eight of the 15 active crates have now reached their audited local target:
 `rullst-macros`, `rullst-orm-macros`, `rullst-messaging`, `rullst-capital`,
-`rullst-mail`, `rullst-auth`, and `rullst-nexus`. Eight remain in the ceiling
-campaign.
+`rullst-mail`, `rullst-auth`, `rullst-nexus`, and `cargo-rullst`. Seven remain
+in the ceiling campaign.
 
 | Crate | Current audited | Provisional local ceiling | Points remaining | Repository-owned evidence cluster | External boundary retained |
 | :--- | ---: | ---: | ---: | :--- | :--- |
@@ -124,7 +123,7 @@ campaign.
 | `rullst-auth` | 95/A | 95/A | 0 | Bounded shared local revocation/device lifecycle, restart and counter-CAS evidence complete for this campaign | Shared ceremonies, multi-host replication, refresh workflow and normative WebAuthn conformance |
 | `rullst-mail` | 95/A | 95/A | 0 | Bounded inspection, durable shared-local suppression and minimized terminal observations complete for this campaign | Authoritative malware/CDR inspection, provider webhook conformance, multi-host operations, inbox placement, DNS reputation and live-provider acceptance |
 | `rullst-messaging` | 96/A | 96/A | 0 | Encrypted local durability, canonical codec/trace and ORM outbox crash-replay contracts complete for this campaign | Remote broker operation, replication, full metadata encryption and cloud acceptance |
-| `cargo-rullst` | 85/B | 95/A | 10 | Complete generated-blueprint/upgrade compile and runtime matrix | Production deployment/account acceptance |
+| `cargo-rullst` | 95/A | 95/A | 0 | All 270 structural profiles, eight generated-test/runtime cases, five public-CLI feature-axis cases and v5/v6/v11 transactional upgrade/recovery fixtures complete for this campaign | Production deployment/account acceptance |
 | `rullst-ai` | 90/A | 95/A | 5 | Cancellation/streaming, distributed authenticated audit delivery and adaptive evaluations | Non-compatible protocols need adapters; model-provider behavior and corpus quality remain external |
 | `rullst-studio` | 83/B | 94/A | 11 | Distributed trace ingestion plus authenticated cache/query inspection boundaries | Production topology and operator authorization |
 | `rullst-iot` | 83/B | 83/B | 0 | Approved B exception retained outside the 15-crate ceiling campaign | Physical hardware, flashing/bootloader, broker/device interoperability and certification |
@@ -132,14 +131,14 @@ campaign.
 | `rullst-orm-macros` | 95/A | 95/A | 0 | Fail-closed structured parser, 24 exact UI diagnostics and generated runtime cross-evidence complete for this campaign | Compiler/ecosystem compatibility beyond the tested matrix |
 | `rullst-nexus` | 95/A | 95/A | 0 | Trusted-context tenant scope, transaction-coupled audit and bounded admin operation contracts complete for this campaign | Host identity/domain policy, global/custom-route authorization, immutable audit delivery and production operation |
 | `rullst-macros` | 94/A | 94/A | 0 | Bounded grammar/diagnostics, native server route, versioned Wasm transport, CSRF composition and generated-project evidence complete for this campaign | Real compiler/browser/network ecosystem matrix and host identity policy beyond CI |
-| **Repository** | **1,456/1,600 = 91.0 (rounded 91/A)** | **1,509/1,600 = 94.3/A** | **53** | **Every gain still requires reviewed evidence** | **A+ remains outside this local planning ceiling** |
+| **Repository** | **1,466/1,600 = 91.6 (rounded 92/A)** | **1,509/1,600 = 94.3/A** | **43** | **Every gain still requires reviewed evidence** | **A+ remains outside this local planning ceiling** |
 
-On this planning scale, **96.5% of the eventual score total is already
-evidenced and 3.5% remains**. That percentage describes point distance, not
+On this planning scale, **97.2% of the eventual score total is already
+evidenced and 2.8% remains**. That percentage describes point distance, not
 elapsed effort: the remaining points are concentrated in integration,
-durability, failure recovery and generated-project matrices and are therefore
-more expensive than early API/documentation points. `rullst-iot` is the only
-accepted campaign result below A; its approved B exception reflects missing
+durability, failure recovery, distributed composition and operational matrices
+and are therefore more expensive than early API/documentation points.
+`rullst-iot` is the only accepted campaign result below A; its approved B exception reflects missing
 physical/device evidence rather than lowering the release gate for the other
 15 crates. This table must be re-audited whenever implementation reveals a
 stronger or weaker boundary.

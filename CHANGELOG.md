@@ -24,6 +24,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Upgrade and compatibility
 
+- `cargo-rullst` now backs project generation with all 270 supported structural
+  profiles, an eight-case generated-test matrix crossing every blueprint plus
+  hot/non-hot and release boundaries, and five cases invoking the public CLI
+  across primary database, frontend, AI, Redis and polyglot axes. Hot profiles
+  construct their generated routers with offline-safe defaults; the CLI-level
+  polyglot case compiles while dedicated ORM matrices retain adapter runtime
+  ownership. Upgrade process fixtures select v5/v6/v11 rules, prove atomic
+  multi-member rollback and explicit keep/restore behavior, and reject
+  symlinked Rust sources before a transaction. Provider accounts, production
+  deployment and application acceptance remain external evidence.
 - `rullst-orm-macros` now parses model, relation, and SQLx attributes as
   structured nested metadata and fails closed on unknown, duplicate, orphaned,
   or conflicting options. Persisted `id`, tenant, soft-delete, and embedding

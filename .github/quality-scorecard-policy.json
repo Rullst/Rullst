@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "audit_date": "2026-09-02",
+  "audit_date": "2026-09-03",
   "dimensions": {
     "api_architecture": 20,
     "verification": 25,
@@ -176,14 +176,14 @@
     },
     {
       "name": "cargo-rullst",
-      "api_architecture": 18,
-      "verification": 22,
-      "security_failure_design": 17,
-      "documentation_dx": 14,
-      "operations_release": 14,
+      "api_architecture": 19,
+      "verification": 25,
+      "security_failure_design": 19,
+      "documentation_dx": 15,
+      "operations_release": 17,
       "specialist_gate": "none",
-      "finding": "Broad generator and upgrade verification; not every generated blueprint/provider combination yet has a full compile/runtime matrix.",
-      "evidence": ["cargo-rullst/Cargo.toml", "cargo-rullst/tests", "docs/src/cli_reference.md"]
+      "finding": "All 270 structurally supported project profiles are materialized without path/manifest drift; a minimal eight-case matrix executes generated tests across every blueprint, hot/non-hot and release boundaries, and constructs each hot router. Five public-CLI profiles verify distinct database/frontend/AI/Redis/polyglot feature axes, with runtime delegated only where adapter matrices are stronger. Process tests cover v5/v6/v11 upgrade rules, multi-member rollback, retained-failure restore and symlink rejection. Provider accounts, deployment targets and real application acceptance remain external.",
+      "evidence": ["cargo-rullst/Cargo.toml", "cargo-rullst/tests/generated_saas_check.rs", "cargo-rullst/tests/generated_cli_profiles.rs", "cargo-rullst/tests/scaffold_contracts.rs", "cargo-rullst/tests/upgrade_cli.rs", "docs/src/cli_reference.md", "docs/src/spec.md"]
     }
   ]
 }

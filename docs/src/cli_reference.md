@@ -67,6 +67,26 @@ and select exactly one strict primary profile (`strict-sqlite`,
 `strict-postgres`, or `strict-mysql`; MariaDB uses the MySQL protocol). This
 prevents an implicit SQLite default from masking the chosen backend.
 
+#### Generated-project verification boundary
+
+The repository does not treat template rendering as sufficient evidence. A
+structural contract materializes all 270 supported blueprint/profile shapes and
+checks paths, Rust syntax and manifests. A slower eight-case set crosses every
+blueprint, hot and non-hot layouts, database/ORM/frontend/API boundaries and a
+release build, runs every generated test target, and constructs the public
+router of each hot-reload project using offline-safe defaults. A separate
+five-case test invokes the public `cargo rullst new` binary and verifies exact
+feature selection for SQLite, PostgreSQL, MySQL, MariaDB, AI, Redis, Turso,
+MongoDB, DuckDB, SurrealDB and Qdrant.
+
+The public polyglot profile uses `cargo check` in that CLI-level set because a
+second bundled-DuckDB test build adds no adapter behavior and can consume
+several GiB on small machines. DuckDB, MongoDB, SurrealDB, Turso and Qdrant
+runtime behavior is exercised by their dedicated ORM matrices instead. These
+gates prove reproducible local generation and bounded offline construction;
+they do not prove provider accounts, production deployment, browser behavior
+or application-specific authorization.
+
 The bounded LMS foundation omits assessment, gamification, automation and
 notification files while retaining authenticated catalog/enrollment/progress:
 
@@ -115,6 +135,14 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 `target/rullst-upgrades/`; a failed Cargo gate restores them by default. The
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
+
+Process-level fixtures select the rule catalog independently for documented v5,
+v6 and v11 origins, verify atomic restoration across multiple workspace
+members, retain a deliberately failed edit only with `--keep-on-failure`, and
+restore that retained snapshot on demand. Symlinked Rust sources are rejected
+before a transaction begins. This is recovery evidence for the bounded file and
+Cargo operation; it is not an automatic application, database or deployment
+migration.
 
 The command does not install the CLI globally, rewrite Axum/SQLx/Tokio imports,
 run database migrations, modify secrets or authorization, validate live
