@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788469796680,
+  "lastUpdate": 1788470992649,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -8585,6 +8585,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1808,
             "range": "± 53",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "34efe8f649fc2049cfe6666639557b9c1cb971b6",
+          "message": "feat(ai): add authenticated audit delivery",
+          "timestamp": "2026-09-03T18:19:17-03:00",
+          "tree_id": "1e5f815cc7b022f7cf389f88634750bfe00f6471",
+          "url": "https://github.com/Rullst/Rullst/commit/34efe8f649fc2049cfe6666639557b9c1cb971b6"
+        },
+        "date": 1788470992183,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1081,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 871,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1996,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4617,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
