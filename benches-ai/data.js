@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788428398827,
+  "lastUpdate": 1788440994793,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -6185,6 +6185,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 747,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "28e2cea9b8aa63ff01156dfb02c29405464a6c17",
+          "message": "feat(orm): add authenticated document recovery",
+          "timestamp": "2026-09-03T09:57:16-03:00",
+          "tree_id": "15481e1f40d4d08ff10f275ba37adf90a9ebe682",
+          "url": "https://github.com/Rullst/Rullst/commit/28e2cea9b8aa63ff01156dfb02c29405464a6c17"
+        },
+        "date": 1788440994286,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1512,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 259,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 698,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
