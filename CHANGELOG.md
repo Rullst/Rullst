@@ -218,21 +218,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   identity/membership, global/custom-route authorization, retention, backup,
   replication and immutable export remain external.
 - Raised the v12 RC quality gate to A (90) for every publishable crate except
-  the approved IoT floor of B (80). Auth, Mail, Messaging, Nexus and both macro
-  crates have reached their bounded local ceilings; the audited plan records
-  three crates below A and a 20-point aggregate gap. Policy values may move
-  only with real implementation and evidence, never to make the release table
-  look greener.
+  the approved IoT floor of B (80). All 15 active non-IoT crates have reached
+  their bounded audited local ceilings, totaling 1,509/1,509 campaign points;
+  IoT remains the approved 83/B exception. Exact-SHA gates still condition each
+  score. Policy values may move only with real implementation and evidence,
+  never to make the release table look greener.
 - Added a `no_std` OTA rollback-counter adapter to `rullst-iot`. The manager can
   load durable state and require an exact, strictly increasing compare-and-set
   before changing local state; public tests cover restart/replay, transient
   retry, corrupt load and stale-writer conflict. The trait does not implement or
   certify flash/HSM persistence, bootloader atomicity or power-loss recovery.
 - Replaced the staged 80% framework-coverage threshold with one blocking 90%
-  minimum for framework libraries and changed lines. The README again exposes
+  minimum for the whole repository, framework libraries, and changed lines.
+  The README again exposes
   dynamic Codecov and OpenSSF values, the declared Rust 1.96.0 MSRV, and the
   tag-only release-provenance workflow while explicitly avoiding a project-wide
   SLSA Level 3 certification claim.
+- Expanded honest whole-repository coverage with isolated process-level CLI
+  contracts. The suite asserts generated files and repeat/failure behavior for
+  scaffolds, inspection, packaging, controlled provider/deployment tools,
+  database forwarding, real SQLite introspection and schema diff, Wasm/Omni,
+  Academy evidence, mail/chat, and forced ejection recovery. Coverage CI now
+  retains the exact JSON and text line summaries for 30 days alongside LCOV;
+  the local line-map projection must still be reproduced by Codecov on the
+  candidate SHA before the 90% gate is considered met.
 - Added category-aware OAuth token revocation. `Provider::revoke_token` and
   `revoke_refresh_token` reject malformed/oversized values before transport;
   bounded protocol fixtures cover Google, GitHub, Discord, Apple, Auth0 and

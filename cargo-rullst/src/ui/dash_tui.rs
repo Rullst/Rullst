@@ -1,4 +1,6 @@
 mod render;
+#[cfg(test)]
+mod render_tests;
 mod state;
 mod terminal;
 

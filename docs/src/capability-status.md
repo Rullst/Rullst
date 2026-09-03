@@ -17,22 +17,24 @@ SHA still earns those dimensions only when its conditioning gates pass. The
 broader [v12 release programme](v12.md) estimates RC readiness at 70.8%; therefore this
 is still a **NO-GO**, not a release announcement.
 
-Coverage is a separate open RC gate. The complete public Codecov checkpoint
-used for this snapshot (`28e2cea9`) records 84.97% across the whole repository
-and 91.26% for the `framework_libraries` component. Both now target at least
-90%; the overall gap must be closed through behavior-asserting tests,
-especially around CLI paths, rather than metric-only execution.
+Coverage is a separate open RC gate. The latest complete predecessor Codecov
+checkpoint used for this snapshot (`194b5c8a`) records 85.16% across the whole
+repository and 91.32% for the `framework_libraries` component. Both target at
+least 90%. The current candidate adds process-level, behavior-asserting CLI
+coverage which projects 90.09% against that exact predecessor line map, but it
+does not become release evidence until Codecov measures the candidate SHA.
 
 | Coverage view | Audited checkpoint | RC meaning |
 | :--- | :---: | :--- |
-| Whole repository | **84.97%** | **Failing / release blocker.** This is the primary public number and includes the CLI and proc-macro production sources. |
-| Framework libraries | **91.26%** | Passing its separate component gate, but it cannot compensate for or replace the whole-repository result. |
+| Whole repository | **85.16% official predecessor; 90.09% local candidate projection** | **Still unverified / release blocker.** This is the primary public number and includes the CLI and proc-macro production sources. |
+| Framework libraries | **91.32%** | Passing its separate component gate on the predecessor, but it cannot compensate for or replace the whole-repository result. |
 | v12 RC requirement | **at least 90% in both views** | Must be reproduced by Codecov on the exact frozen RC commit, together with at least 90% patch coverage. |
 
 The two percentages are neither conflicting measurements nor values to
-average: they answer questions about different path sets. Until the first row
-reaches 90%, Rullst must not present the second row as the repository's total
-coverage.
+average: they answer questions about different path sets. Until Codecov records
+at least 90% in the first row on the exact candidate SHA, Rullst must not
+present the second row or the local projection as the repository's verified
+total coverage.
 
 The latest ceiling gain is the umbrella `rullst` facade's dedicated shared-local
 SQLite profile. It composes Auth revocation, Capital quota, encrypted Connect

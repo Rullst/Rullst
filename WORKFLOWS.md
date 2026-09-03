@@ -180,20 +180,20 @@ unsafe Rust.
 
 ### Coverage
 
-`coverage.yml` runs LLVM coverage over workspace all-features tests plus the
-PostgreSQL/MySQL matrix and uploads LCOV to Codecov using GitHub OIDC rather
-than a long-lived upload secret. `codecov.yml` configures a single minimum of
-90%, with no tolerance, for both the measured framework libraries and changed
-lines; failure to upload the generated LCOV fails the workflow. The report
+`coverage.yml` runs LLVM coverage over workspace all-features and default
+profiles plus the live database matrix, then uploads LCOV to Codecov using
+GitHub OIDC rather than a long-lived upload secret. It also retains exact JSON
+and text line summaries for 30 days so a passing upload cannot be confused
+with the coverage percentage. `codecov.yml` requires at least 90%, with zero
+tolerance, for the whole repository, the framework-library path set, and
+changed lines; failure to upload LCOV also fails the workflow. The report
 filters examples, benchmarks, auxiliary test support, and separate test files.
-CLI and proc-macro code remains visible in the aggregate and as informational
-components, but is excluded from the blocking framework-library status because
-its stronger evidence comes from materialized scaffolds and compile contracts.
-Therefore “90% project and patch targets over the measured framework scope” is
-accurate; “90% of the whole repository is enforced” is not. The public README
-badge shows Codecov's `framework_libraries` component so that it matches the
-blocking status. Codecov still publishes the lower whole-repository aggregate
-and the informational CLI/proc-macro components rather than hiding them.
+CLI and proc-macro code therefore remains part of the blocking repository
+aggregate and is additionally visible as informational components. Their
+stronger semantic evidence still comes from materialized scaffolds and
+compile-pass/compile-fail contracts. The README exposes both the public overall
+badge and the separate `framework_libraries` badge rather than substituting the
+higher component result for the repository total.
 
 ### Formal, dynamic, and stress analysis
 
