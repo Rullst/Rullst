@@ -86,9 +86,12 @@ controls, prompts and source-error tooling.
 | `STUDIO-04` arbitrary source file access | Require debug loopback, canonical allowlisted paths/extensions and bounded files. | Traversal, sensitive-file, non-loopback and extension tests. |
 | `STUDIO-05` forged telemetry | Label local/unverified events accurately; never invent source IP, HMAC verification or provider status. | Telemetry integrity tests. |
 | `STUDIO-06` destructive job/database action | Require verified local policy and same-origin checks; remote production controls remain disabled until separately authenticated, authorized and reviewed. | Data-browser writes additionally require an unforgeable middleware marker, inspected complete PK, typed binds, exactly one affected row and exact delete confirmation. Importing the raw router is denied by an exact release-negative test. Application tenant/RBAC, durable audit and rollback remain open. |
+| `STUDIO-07` forged or replayed remote span batch | Keep ingestion push-only; bind each endpoint to one producer name/key, authenticate the exact body and bounded source/timestamp/nonce fields, consume valid nonces atomically, reject stale/future requests and validate the complete batch before storage. | Wrong-source/key, HMAC tamper, stale timestamp, concurrent replay, schema/cardinality, deduplication and capacity regressions. TLS, key custody/rotation, clock synchronization and producer admission remain deployment work. |
+| `STUDIO-08` cache secret exposure or broad deletion | Return metadata only, replace logical keys with keyed opaque browser tokens, omit values, omit bulk flush and require the verified-local mutation marker for one-entry invalidation. | Memory plus live Redis metadata contracts, HTML non-disclosure tests and forged/missing-marker mutation negatives. Application cache-key classification and operator policy remain external. |
 
-Trust boundaries are local browser ↔ loopback listener, Studio ↔
-telemetry/database and error console ↔ source filesystem.
+Trust boundaries are local browser ↔ loopback listener, authenticated trace
+producer ↔ push-only application endpoint, Studio ↔ telemetry/database/cache,
+and error console ↔ source filesystem.
 
 ## TM-TENANT-1 — multi-tenant data access
 

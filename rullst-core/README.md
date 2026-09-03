@@ -24,6 +24,10 @@
 - **Explicit Completion History:** SQLite deletes successful payloads by
   default. `Queue::sqlite_with_completed_history` opts into a bounded retained
   history for Studio/operations, with atomic pruning and an explicit purge API.
+- **Metadata-only Cache Inspection:** Memory and Redis drivers can return a
+  sorted snapshot of at most 200 logical keys, UTF-8 value lengths and TTLs
+  without returning values. Custom drivers fail explicitly unless they opt in;
+  authorization and safe rendering of logical keys remain caller policy.
 - **Offline Sync Foundation:** The optional native `offline-sync` feature
   provides bounded replay-safe mutations, explicit conflict resolution, and
   account-bound AES-256-GCM snapshots. Its static-dispatch coordinator bounds
@@ -64,6 +68,12 @@ must be between 1 and 100,000; completion and pruning share one transaction.
 Retained rows include the original payload, so the application must restrict
 Studio/inspection access and choose an appropriate retention policy. Use
 `Queue::purge_completed_history` to remove them.
+
+`Cache::inspect(limit)` is opt-in diagnostic data, not an administration
+endpoint. The limit must be 1–200. `CacheEntryMetadata` deliberately redacts
+the logical key from `Debug` and never carries the cached value, but
+`logical_key()` still returns application data to an authorized caller. Rullst
+Studio converts it into a process-bound opaque token before rendering it.
 
 ### Minimal HTTP Server
 

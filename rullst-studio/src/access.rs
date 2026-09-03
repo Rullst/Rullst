@@ -48,6 +48,8 @@ impl LocalStudioAccess {
 pub enum StudioBuildError {
     /// Credential-free Studio access is unavailable in release builds.
     LocalAccessRequiresDebugBuild,
+    /// The OS could not provide the key used for opaque local action tokens.
+    RandomnessUnavailable,
 }
 
 impl fmt::Display for StudioBuildError {
@@ -55,6 +57,9 @@ impl fmt::Display for StudioBuildError {
         match self {
             Self::LocalAccessRequiresDebugBuild => formatter.write_str(
                 "Studio local access requires a debug build; shared environments need an application-owned authenticated boundary",
+            ),
+            Self::RandomnessUnavailable => formatter.write_str(
+                "Studio could not obtain operating-system randomness for local action tokens",
             ),
         }
     }
@@ -82,7 +87,24 @@ async fn loopback_only_middleware(mut request: Request, next: Next) -> Response 
 
     if is_loopback && local_host.is_some() && origin_valid && unsafe_origin_present {
         request.extensions_mut().insert(VerifiedLocalStudioAccess);
-        next.run(request).await
+        let mut response = next.run(request).await;
+        response
+            .headers_mut()
+            .entry(header::CACHE_CONTROL)
+            .or_insert(axum::http::HeaderValue::from_static("no-store"));
+        response
+            .headers_mut()
+            .entry(header::X_CONTENT_TYPE_OPTIONS)
+            .or_insert(axum::http::HeaderValue::from_static("nosniff"));
+        response
+            .headers_mut()
+            .entry(header::X_FRAME_OPTIONS)
+            .or_insert(axum::http::HeaderValue::from_static("DENY"));
+        response
+            .headers_mut()
+            .entry(header::REFERRER_POLICY)
+            .or_insert(axum::http::HeaderValue::from_static("no-referrer"));
+        response
     } else {
         let mut response = Response::new(Body::empty());
         *response.status_mut() = StatusCode::FORBIDDEN;
@@ -172,6 +194,14 @@ mod tests {
             .await
             .expect("local Studio response");
         assert_eq!(local.status(), StatusCode::OK);
+        assert_eq!(
+            local.headers().get(header::CACHE_CONTROL),
+            Some(&axum::http::HeaderValue::from_static("no-store"))
+        );
+        assert_eq!(
+            local.headers().get(header::X_FRAME_OPTIONS),
+            Some(&axum::http::HeaderValue::from_static("DENY"))
+        );
 
         let remote = router
             .clone()

@@ -5,13 +5,15 @@
 > this checkout until the planned `12.0.0-rc.1` is published.
 
 `rullst-studio` is the built-in, local-first administration and monitoring
-dashboard for Rullst. It exposes bounded database, queue and in-process
-telemetry views from the sources explicitly supplied by the application.
+dashboard for Rullst. It exposes bounded database, queue, cache and telemetry
+views from the sources explicitly supplied by the application.
 
 ## ✨ Features
 
-- **Database inspector:** Read and filter configured SQLx tables and inspect a
-  live ER diagram. Record editing/deletion is not implemented.
+- **Database inspector:** Read and filter configured SQLx tables, edit bounded
+  primitive non-key values, delete one complete-primary-key-selected row with
+  exact confirmation, and inspect a live ER diagram. SQLite, PostgreSQL, MySQL
+  and MariaDB run executable mutation contracts.
 - **API playground:** Mount interactive Swagger UI from an `OpenApi` document
   explicitly supplied by the application; Studio does not infer arbitrary Axum
   routes.
@@ -22,7 +24,13 @@ telemetry views from the sources explicitly supplied by the application.
   typed runtime configuration is projected without URLs, paths, or secrets.
 - **Feature flags manager:** Toggle database-backed flags and immediately
   invalidate already-warm `DbFeatureDriver` caches in the same process.
-- **Tracing and telemetry:** Visualize in-process sources exposed by `rullst-core`; disconnected probes remain `Unavailable`.
+- **Distributed diagnostics:** Visualize in-process sources plus bounded,
+  attribute-free v1 spans from a separately mounted HMAC-authenticated push
+  endpoint. Slow-query and repeated-label findings are heuristics; no SQL text,
+  bindings, attributes, headers, bodies or error details are accepted.
+- **Cache inspector:** An explicitly supplied memory or Redis `Cache` exposes
+  bounded metadata and individual invalidation through opaque process-bound
+  tokens. Values, exact keys and bulk flush remain unavailable in the UI.
 - **Local-first security:** The supported launcher binds to loopback, verifies
   the direct peer and local `Host` authority on every request, and requires a
   same-origin `Origin` header for mutations.
@@ -53,6 +61,35 @@ If you don't want to embed it, you can launch it statelessly via the Rullst CLI:
 cargo rullst studio
 ```
 
+### Authenticated trace producers
+
+```rust,no_run
+use rullst_studio::distributed_traces::{
+    DistributedTraceStore, TraceIngestionKey, TraceIngestor,
+};
+use rullst_studio::{LocalStudioAccess, Studio};
+
+# fn build() -> Result<(), Box<dyn std::error::Error>> {
+let store = DistributedTraceStore::new(2_048)?;
+let key = TraceIngestionKey::new(std::env::var("RULLST_TRACE_INGESTION_KEY")?)?;
+let ingestion = TraceIngestor::new(store.clone(), "api-1", key)?;
+let _push_only_application_router = ingestion.router();
+let _local_viewer = Studio::new()
+    .with_distributed_traces(store)
+    .into_router(LocalStudioAccess::loopback_only())?;
+# Ok(())
+# }
+```
+
+Each ingestor binds one exact producer name to one key; mount separate producer
+endpoints over the same store when needed. `TraceBatchSigner::new` binds the
+same pair and produces the byte-identical JSON body plus source,
+timestamp, nonce and signature headers. Mount the push-only router under an
+application path; it exposes no Studio reads or administrative mutations. The
+application/deployment still owns TLS, network policy, key distribution and
+rotation, clock synchronization, availability and label redaction. The store
+is bounded process memory, not OTLP or durable trace storage.
+
 ## 🔐 Security Audit
 
 `rullst-studio` currently supports verified-loopback development access. It does
@@ -73,6 +110,13 @@ session, payment, and personal data. A successful Studio toggle invalidates all
 already-warm `DbFeatureDriver` entries in the same process. Other processes and
 direct database writers remain visible through the configured TTL unless the
 application supplies distributed invalidation.
+
+`Studio::with_cache` opts one `Cache` into metadata-only inspection. The page
+shows a keyed opaque identifier, UTF-8 value byte length and remaining TTL for
+at most 100 entries. It never returns the value or logical key, offers no bulk
+flush, and requires the verified local mutation marker to invalidate one
+entry. Memory and Redis implement this contract; custom drivers return an
+explicit unsupported state unless they implement bounded inspection.
 
 ## 📚 Documentation
 

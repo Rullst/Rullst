@@ -176,7 +176,14 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
                         <span>📊 Distributed Tracing</span>
                         <span class="text-slate-600 group-hover:text-indigo-400">→</span>
                     </div>
-                    <p class="text-slate-400 text-sm">Flamegraph inspector visualizing microsecond-level HTTP requests, SQLx queries, and AI prompt execution spans.</p>
+                    <p class="text-slate-400 text-sm">Inspect local spans and explicitly supplied, authenticated distributed records; profile redacted SQL operation labels heuristically.</p>
+                </a>
+                <a href="#" hx-get="/studio/cache" hx-target="#studio-content" hx-push-url="true" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-cyan-500/80 hover:bg-slate-900 transition-all group block">
+                    <div class="text-cyan-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
+                        <span>🧊 Cache Inspector</span>
+                        <span class="text-slate-600 group-hover:text-cyan-400">→</span>
+                    </div>
+                    <p class="text-slate-400 text-sm">View bounded metadata and invalidate one opaque entry when the application explicitly supplies a supported cache.</p>
                 </a>
             </div>
         </div>"##);

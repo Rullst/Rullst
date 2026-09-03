@@ -70,7 +70,7 @@ jq -e '
     and (.security_failure_design | type == "number" and . >= 0 and . <= 20)
     and (.documentation_dx | type == "number" and . >= 0 and . <= 15)
     and (.operations_release | type == "number" and . >= 0 and . <= 20)
-    and (.specialist_gate | IN("none", "strict-database-redis", "redis", "redis-and-threat", "messaging-contract", "threat-minimum", "ai-evals", "provider-matrix", "release-local-access"))
+    and (.specialist_gate | IN("none", "strict-database-redis", "redis", "redis-and-threat", "redis-and-release-local-access", "messaging-contract", "threat-minimum", "ai-evals", "provider-matrix", "release-local-access"))
     and (.finding | type == "string" and length > 0)
     and (.evidence | type == "array" and length > 0)
   )
@@ -201,6 +201,9 @@ for package in "${packages[@]}"; do
       ;;
     redis-and-threat)
       all_success "$redis_status" "$threat_status" || specialist_status="failure"
+      ;;
+    redis-and-release-local-access)
+      all_success "$redis_status" "$local_access_status" || specialist_status="failure"
       ;;
     threat-minimum)
       specialist_status="$threat_status"

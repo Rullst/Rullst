@@ -60,6 +60,7 @@ async fn test_studio_core_routes() {
         "/studio/features",
         "/studio/er",
         "/studio/requests",
+        "/studio/cache",
     ];
 
     for path in routes {

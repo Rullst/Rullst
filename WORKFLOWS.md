@@ -87,14 +87,15 @@ cargo test --workspace --all-features
 
 `ci.yml` also compiles and exercises each ORM strict database feature in
 isolation (PostgreSQL, MySQL, and SQLite), exercises the runtime-only Core and
-all 43 public umbrella features in isolated additive graphs with automatic
+all 45 public umbrella features in isolated additive graphs with automatic
 manifest-drift detection, runs the portable database matrix on Linux, and
 tests the all-feature workspace on Linux, macOS, and Windows. The umbrella's
 `cfg(doctest)` aggregation reads all 50 public tutorial files directly, so that
-same command discovers 96 Rust blocks, compiles or executes 78 of them, and
-records 18 explicitly contextual fragments as ignored instead of pretending
+same command discovers the versioned Rust blocks, compiles or executes complete
+examples, and records explicitly contextual fragments as ignored instead of pretending
 they are standalone programs. Its pinned live Redis job also proves that
-scheduled Core jobs are not claimed early, plus ORM
+scheduled Core jobs are not claimed early, that Core cache inspection returns
+bounded metadata without values, plus ORM
 cache hit/TTL/recovery, tenant/table invalidation, rollback preservation,
 process-local post-commit observers and Scout commit ordering. A separate
 SQLite outbox contract runs on all three operating systems and covers

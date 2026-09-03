@@ -16,4 +16,7 @@ pub use migrations::handle_studio_tools_migrations;
 pub(crate) use mutations::{handle_table_delete, handle_table_update};
 pub use security::handle_studio_tools_security;
 pub use table::handle_table;
-pub use telemetry::{handle_studio_capital, handle_studio_radar, handle_studio_traces};
+pub use telemetry::{
+    handle_studio_capital, handle_studio_radar, handle_studio_traces,
+    handle_studio_traces_with_store,
+};

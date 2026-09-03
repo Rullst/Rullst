@@ -7197,8 +7197,11 @@ name = "rullst-studio"
 version = "12.0.0"
 dependencies = [
  "axum",
+ "base64 0.23.1",
  "chrono",
  "futures-util",
+ "hmac 0.13.0",
+ "rand 0.10.2",
  "rullst-capital",
  "rullst-core",
  "rullst-macros",
@@ -7206,6 +7209,7 @@ dependencies = [
  "rullst-security",
  "serde",
  "serde_json",
+ "sha2 0.11.0",
  "sqlx",
  "testcontainers",
  "testcontainers-modules",

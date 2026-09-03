@@ -154,14 +154,14 @@
     },
     {
       "name": "rullst-studio",
-      "api_architecture": 17,
-      "verification": 22,
-      "security_failure_design": 17,
-      "documentation_dx": 14,
-      "operations_release": 13,
-      "specialist_gate": "release-local-access",
-      "finding": "Real local telemetry and guarded data tooling are well tested; distributed observability and several remote inspectors remain incomplete.",
-      "evidence": ["rullst-studio/README.md", "rullst-studio/tests", "docs/src/crates/studio.md"]
+      "api_architecture": 19,
+      "verification": 25,
+      "security_failure_design": 19,
+      "documentation_dx": 15,
+      "operations_release": 16,
+      "specialist_gate": "redis-and-release-local-access",
+      "finding": "The viewer remains verified-loopback-only while each distinct push-only route binds one producer name/key and authenticates bounded attribute-free trace batches with exact-body HMAC, clock and atomic replay checks; query findings are explicit heuristics, and memory/live-Redis cache inspection exposes opaque metadata plus one-entry local invalidation without values, exact keys or bulk flush. Durable/OTLP storage, producer key operations, shared Studio identity/RBAC/TLS and production topology remain external.",
+      "evidence": ["rullst-studio/README.md", "rullst-studio/src/distributed_traces", "rullst-studio/src/cache_inspector.rs", "rullst-studio/tests/distributed_diagnostics.rs", "rullst-core/tests/cache_inspection_live.rs", "docs/src/crates/studio.md", "docs/src/threat-models.md"]
     },
     {
       "name": "rullst",

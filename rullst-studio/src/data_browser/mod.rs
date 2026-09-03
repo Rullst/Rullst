@@ -17,6 +17,13 @@ use axum::{Router, extract::DefaultBodyLimit};
 
 /// Central router for Rullst Studio
 pub fn router() -> Router {
+    router_with_trace_store(crate::distributed_traces::DistributedTraceStore::default())
+}
+
+/// Builds the Studio router against an explicitly supplied distributed trace store.
+pub fn router_with_trace_store(
+    trace_store: crate::distributed_traces::DistributedTraceStore,
+) -> Router {
     Router::new()
         // Dashboard
         .route("/", axum::routing::get(handle_dashboard))
@@ -59,8 +66,14 @@ pub fn router() -> Router {
         .route("/studio/radar", axum::routing::get(handle_studio_radar))
         .route("/capital", axum::routing::get(handle_studio_capital))
         .route("/studio/capital", axum::routing::get(handle_studio_capital))
-        .route("/traces", axum::routing::get(handle_studio_traces))
-        .route("/studio/traces", axum::routing::get(handle_studio_traces))
+        .route(
+            "/traces",
+            axum::routing::get(handle_studio_traces_with_store),
+        )
+        .route(
+            "/studio/traces",
+            axum::routing::get(handle_studio_traces_with_store),
+        )
         // API endpoints
         .route(
             "/api/radar",
@@ -74,7 +87,11 @@ pub fn router() -> Router {
             "/api/revenue",
             axum::routing::get(crate::revenue_dashboard::api_revenue_handler),
         )
-        .route("/api/traces", axum::routing::get(handle_studio_traces))
+        .route(
+            "/api/traces",
+            axum::routing::get(handle_studio_traces_with_store),
+        )
+        .with_state(trace_store)
 }
 
 pub trait IntoStudioPort {

@@ -35,6 +35,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 debug-only router for explicit composition. The serving stack must preserve
 Axum `ConnectInfo<SocketAddr>` or requests fail closed. Optional OpenAPI and
 queue views are enabled with `with_openapi` and `with_horizon`.
+`with_cache` opts a supported cache into metadata-only local inspection, while
+`with_distributed_traces` supplies the bounded store shared with a separately
+mounted push-only ingestion router.
 
 ## Current views
 
@@ -48,7 +51,10 @@ queue views are enabled with `with_openapi` and `with_horizon`.
   store. Audit-chain integrity displays `Unavailable` until a verifier is
   connected.
 - `/studio/capital`: the in-process revenue view; it is not an accounting ledger.
-- `/studio/traces`: recorded application spans.
+- `/studio/traces`: local spans plus authenticated attribute-free distributed
+  records and explicit slow/repeated SQL-label heuristics.
+- `/studio/cache`: metadata-only view of an explicitly supplied Memory/Redis
+  cache, using opaque identifiers and one-entry invalidation.
 - `/studio/migrations`, `/studio/ai`, `/studio/env`, `/studio/features`, and
   `/studio/er`: development tools for their corresponding subsystems.
 
@@ -87,6 +93,11 @@ overhead.
 - The environment page redacts values by default and adds only a safe projection
   of process-global `RullstConfig`; URLs, filesystem paths, secrets, cookies and
   credentials are omitted.
+- Cache inspection returns at most 100 UI rows containing an opaque keyed
+  identifier, value byte length and remaining TTL. Values and exact logical
+  keys are never rendered, bulk flush is absent, and individual invalidation
+  requires the verified local mutation marker. Custom cache drivers remain
+  unavailable until they implement Core's bounded metadata contract.
 
 ## Telemetry contract
 
@@ -95,6 +106,18 @@ security store, queues, and configured database connections. A counter means onl
 that the corresponding instrumentation path emitted it; it is not proof that all
 traffic passed through that control. Missing sources must remain visibly
 unavailable.
+
+Remote producers do not connect to the viewer. The application separately
+mounts `TraceIngestor::router`, distributes a 32–128-byte
+`TraceIngestionKey`, and uses `TraceBatchSigner` for the exact body and four
+headers. Each ingestor binds one exact producer name to one key; multiple
+producers use separate endpoints/keys over the same store. The route accepts
+1–128 closed v1 spans under 128 KiB, verifies
+HMAC-SHA256 plus a 60-second timestamp and one-time nonce, then commits to a
+bounded process-local store idempotently. It contains no Studio read or admin
+route. TLS/network policy, key custody and rotation, producer authorization,
+clock synchronization, label redaction, durable storage and OTLP integration
+remain deployment work.
 
 ## Production boundary
 

@@ -117,6 +117,9 @@ pub fn studio_layout(content: String, active_table: Option<&str>, tables: &[Stri
                     <a href="#" hx-get="/studio/traces" hx-target="#studio-content" hx-push-url="true" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
                         <span>"🔍 Traces"</span>
                     </a>
+                    <a href="#" hx-get="/studio/cache" hx-target="#studio-content" hx-push-url="true" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                        <span>"🧊 Cache"</span>
+                    </a>
                 </nav>
 
                 <div class="flex items-center gap-2 bg-slate-950 border border-slate-800/80 px-3 py-1 rounded-full text-xs font-medium text-slate-300">

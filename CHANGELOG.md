@@ -761,6 +761,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Local development and observability
 
+- Studio now accepts bounded distributed diagnostics through separately
+  mounted push-only routers, each bound to one producer name/key. Exact
+  body/source/timestamp/nonce HMAC-SHA256,
+  60-second freshness, atomic replay rejection, closed v1 spans and a bounded
+  idempotent store feed slow-SQL and repeated-label heuristics without
+  accepting SQL, bindings, attributes, headers, bodies or errors. The viewer
+  remains debug-loopback-only; TLS, key rotation, clock sync, durability and
+  producer authorization remain deployment work.
+- Core memory and Redis caches now expose an opt-in, at-most-200-entry
+  metadata-only inspection contract, with a digest-pinned live Redis gate.
+  Studio displays at most 100 entries as process-bound HMAC identifiers with
+  size/TTL and allows only individual verified-local invalidation. Cache
+  values, exact logical keys and bulk flush stay out of the browser; custom
+  drivers fail explicitly until they implement inspection.
 - `cargo rullst new --default` can now pin the ORM architecture, frontend
   profile, hot-reload boundary, AI and Redis capabilities, or an explicit
   database-free blank starter. Generated SQLx applications disable umbrella

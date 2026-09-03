@@ -287,9 +287,11 @@ before interpreting a number.
 
 ### v12 capability highlights
 
-- 🎨 **Studio & Nexus:** a loopback-first developer dashboard at `:5555` and a
-  fail-closed `/nexus` model CRUD panel with explicit metadata, opt-in trusted
-  tenant scoping and transaction-coupled mutation audit.
+- 🎨 **Studio & Nexus:** a loopback-first developer dashboard at `:5555` with
+  live telemetry, metadata-only cache inspection and producer-bound,
+  authenticated trace ingestion with explicitly heuristic SQL diagnostics;
+  `/nexus` is a fail-closed model CRUD panel with explicit metadata, opt-in
+  trusted tenant scoping and transaction-coupled mutation audit.
 - 🛡️ **Security helpers:** bounded request heuristics for selected XSS, SQLi,
   traversal, and command-injection indicators plus explicit role/ownership
   guards. These controls do not replace application authorization or testing.
@@ -439,7 +441,7 @@ Rullst is a unified monorepo. Core, ORM, Connect, and the domain crates are vers
 - 📨 **[rullst-messaging](https://github.com/Rullst/Rullst/tree/main/rullst-messaging)**: Versioned bounded envelopes, topic-scoped idempotent publication, consumer-group fan-out, expiring ACK leases, retry/DLQ, a canonical envelope codec, allowlisted W3C trace context, a deterministic process-local broker and durable local SQLite with an explicit AES-256-GCM header/payload profile. Metadata remains visible and the codec is not a transport; remote Kafka/RabbitMQ/Redis Streams/NATS/cloud adapters remain roadmap work. See [Bounded Brokered Messaging](docs/src/tutorials/49-brokered-messaging.md).
 - 📡 **[rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot)**: `no_std` telemetry/frame helpers, Ed25519-signed OTA manifest verification, and a durable rollback-counter CAS boundary; concrete device storage, flashing/bootloader integration, MQTT transport, HSM, and PQC remain roadmap work.
 - ✉️ **[rullst-mail](https://github.com/Rullst/Rullst/tree/main/rullst-mail)**: Transactional email drivers with mandatory validation, background delivery, opt-in bounded attachment inspection, shared-local suppression and secret-minimized observations, plus safe fiscal-receipt and dunning scaffolds.
-- 📊 **[rullst-studio](https://github.com/Rullst/Rullst/tree/main/rullst-studio)**: Developer Control Room (`:5555`) with live telemetry and data browser.
+- 📊 **[rullst-studio](https://github.com/Rullst/Rullst/tree/main/rullst-studio)**: Loopback-first Developer Control Room (`:5555`) with live telemetry, bounded SQLx data-browser mutations, metadata-only cache inspection and producer-bound authenticated trace ingestion; it is not a remote production admin or OTLP backend.
 - ⚙️ **[rullst-nexus](https://github.com/Rullst/Rullst/tree/main/rullst-nexus)**: Fail-closed registered-model Admin CMS (`/nexus`) with opt-in trusted tenant scope, transaction-coupled mutation audit, and a local security-event view.
 - 🛠️ **[cargo-rullst](https://github.com/Rullst/Rullst/tree/main/cargo-rullst)**: CLI scaffolding, bounded AST IDOR checks, and deployment helpers.
 

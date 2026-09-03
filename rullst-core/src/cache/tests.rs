@@ -61,6 +61,38 @@ async fn test_memory_cache_has() {
 }
 
 #[tokio::test]
+async fn memory_inspection_is_sorted_bounded_metadata_only_and_redacted_in_debug() {
+    let cache = Cache::memory();
+    cache
+        .put("private:user:42", "secret-value", None)
+        .await
+        .unwrap();
+    cache.put("alpha", "abc", Some(60)).await.unwrap();
+    cache.put("zeta", "longer", None).await.unwrap();
+
+    let inspection = cache.inspect(2).await.unwrap();
+    assert_eq!(inspection.entries().len(), 2);
+    assert!(inspection.truncated());
+    assert_eq!(inspection.entries()[0].logical_key(), "alpha");
+    assert_eq!(inspection.entries()[0].value_bytes(), 3);
+    assert!(inspection.entries()[0].remaining_ttl_ms().is_some());
+    assert_eq!(inspection.entries()[1].logical_key(), "private:user:42");
+    let debug = format!("{:?}", inspection.entries()[1]);
+    assert!(debug.contains("[REDACTED]"));
+    assert!(!debug.contains("private:user:42"));
+    assert!(!debug.contains("secret-value"));
+
+    assert!(matches!(
+        cache.inspect(0).await,
+        Err(CacheError::InvalidInspectionLimit)
+    ));
+    assert!(matches!(
+        cache.inspect(MAX_CACHE_INSPECTION_ENTRIES + 1).await,
+        Err(CacheError::InvalidInspectionLimit)
+    ));
+}
+
+#[tokio::test]
 async fn test_memory_cache_remember_miss() {
     let cache = Cache::memory();
     let value = cache
@@ -145,6 +177,15 @@ async fn test_custom_cache_driver() {
     let cache = Cache::custom(Box::new(MockDriver));
     let result = cache.get("anything").await.unwrap();
     assert_eq!(result, Some(Arc::new("mocked".to_string())));
+}
+
+#[tokio::test]
+async fn custom_cache_inspection_fails_explicitly_when_not_implemented() {
+    let cache = Cache::custom(Box::new(MockDriver));
+    assert!(matches!(
+        cache.inspect(1).await,
+        Err(CacheError::InspectionUnsupported)
+    ));
 }
 
 #[cfg(feature = "cache-redis")]

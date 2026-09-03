@@ -9,8 +9,10 @@ pub mod access;
 pub mod ai_playground;
 pub mod api_playground;
 pub use access::{LocalStudioAccess, StudioBuildError};
+pub mod cache_inspector;
 pub mod data_browser;
 pub use data_browser::run_studio;
+pub mod distributed_traces;
 pub mod env_viewer;
 pub mod er_diagram;
 pub mod feature_flags;
@@ -25,6 +27,8 @@ pub mod traces_visualizer;
 pub struct Studio {
     openapi: Option<OpenApi>,
     queue: Option<Queue>,
+    cache: Option<rullst_core::Cache>,
+    distributed_traces: distributed_traces::DistributedTraceStore,
 }
 
 impl Default for Studio {
@@ -38,6 +42,8 @@ impl Studio {
         Self {
             openapi: None,
             queue: None,
+            cache: None,
+            distributed_traces: distributed_traces::DistributedTraceStore::default(),
         }
     }
 
@@ -51,13 +57,32 @@ impl Studio {
         self
     }
 
+    /// Supplies a cache for metadata-only inspection and individual local
+    /// invalidation. Cached values and bulk flush are never exposed by Studio.
+    pub fn with_cache(mut self, cache: rullst_core::Cache) -> Self {
+        self.cache = Some(cache);
+        self
+    }
+
+    /// Supplies the bounded store shared with a separately mounted,
+    /// authenticated distributed trace ingestion endpoint.
+    pub fn with_distributed_traces(
+        mut self,
+        store: distributed_traces::DistributedTraceStore,
+    ) -> Self {
+        self.distributed_traces = store;
+        self
+    }
+
     /// Builds Studio behind an explicit debug-only loopback access capability.
     pub fn into_router(self, access: LocalStudioAccess) -> Result<Router, StudioBuildError> {
         let logger_state = Arc::new(logger::LoggerState::new());
-        let mut router = data_browser::router()
+        let cache_router = cache_inspector::router(self.cache)?;
+        let mut router = data_browser::router_with_trace_store(self.distributed_traces)
             .nest("/studio/requests", logger::router(logger_state.clone()))
             .nest("/studio/env", env_viewer::router())
             .nest("/studio/features", feature_flags::router())
+            .nest("/studio/cache", cache_router)
             .nest("/studio/er", er_diagram::router())
             .merge(security_radar::stats_router());
 

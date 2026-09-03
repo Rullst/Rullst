@@ -49,6 +49,10 @@ pub enum CacheError {
     Serialization(String),
     /// A tenant-scoped cache key was empty, oversized, or contained unsafe bytes.
     InvalidKey(String),
+    /// The selected backend does not expose metadata inspection.
+    InspectionUnsupported,
+    /// A cache inspection requested zero or more than the fixed maximum.
+    InvalidInspectionLimit,
 }
 
 impl std::fmt::Display for CacheError {
@@ -57,6 +61,13 @@ impl std::fmt::Display for CacheError {
             CacheError::Driver(msg) => write!(f, "Cache driver error: {}", msg),
             CacheError::Serialization(msg) => write!(f, "Cache serialization error: {}", msg),
             CacheError::InvalidKey(msg) => write!(f, "Invalid cache key: {}", msg),
+            CacheError::InspectionUnsupported => {
+                write!(f, "Cache metadata inspection is unsupported by this driver")
+            }
+            CacheError::InvalidInspectionLimit => write!(
+                f,
+                "Cache inspection limit must be between 1 and {MAX_CACHE_INSPECTION_ENTRIES}"
+            ),
         }
     }
 }
@@ -81,7 +92,15 @@ pub trait CacheDriver: Send + Sync {
     async fn flush(&self) -> Result<(), CacheError>;
     /// Check if a key exists and is not expired.
     async fn has(&self, key: &str) -> Result<bool, CacheError>;
+    /// Returns bounded metadata without values when the driver supports it.
+    async fn inspect(&self, _limit: usize) -> Result<CacheInspection, CacheError> {
+        Err(CacheError::InspectionUnsupported)
+    }
 }
+
+#[path = "cache/inspection.rs"]
+mod inspection;
+pub use inspection::{CacheEntryMetadata, CacheInspection, MAX_CACHE_INSPECTION_ENTRIES};
 
 // ─── In-Memory Driver ───────────────────────────────────────────────────────
 
@@ -182,6 +201,31 @@ impl CacheDriver for MemoryDriver {
     async fn has(&self, key: &str) -> Result<bool, CacheError> {
         Ok(self.get(key).await?.is_some())
     }
+
+    async fn inspect(&self, limit: usize) -> Result<CacheInspection, CacheError> {
+        inspection::validate_inspection_limit(limit)?;
+        self.cleanup_if_due();
+        let now = Instant::now();
+        let mut entries: Vec<_> = self
+            .store
+            .iter()
+            .filter(|entry| entry.expires_at.is_none_or(|expires_at| expires_at > now))
+            .map(|entry| {
+                CacheEntryMetadata::new(
+                    entry.key().clone(),
+                    entry.value.len(),
+                    entry
+                        .expires_at
+                        .map(|expires_at| expires_at.saturating_duration_since(now).as_millis())
+                        .and_then(|ttl| u64::try_from(ttl).ok()),
+                )
+            })
+            .collect();
+        entries.sort_by(|left, right| left.logical_key.cmp(&right.logical_key));
+        let truncated = entries.len() > limit;
+        entries.truncate(limit);
+        Ok(CacheInspection::new(entries, truncated))
+    }
 }
 
 // ─── Global Memoize Cache ───────────────────────────────────────────────────
@@ -211,155 +255,8 @@ pub mod memory {
 // ─── Redis Driver (behind feature flag) ─────────────────────────────────────
 
 #[cfg(feature = "cache-redis")]
-pub mod redis_driver {
-    //! Redis-backed cache driver. Requires the `cache-redis` feature.
-    use super::*;
-
-    /// Cache driver backed by Redis.
-    ///
-    /// Uses `SET`/`GET` with `EX` for TTL support. Ideal for distributed
-    /// multi-instance deployments where cache must be shared.
-    pub struct RedisDriver {
-        client: redis::Client,
-        prefix: String,
-    }
-
-    impl RedisDriver {
-        /// Create a new Redis cache driver.
-        ///
-        /// All keys are prefixed with `rullst:cache:` to avoid collisions.
-        pub fn new(redis_url: impl Into<String>) -> Result<Self, CacheError> {
-            let redis_url = redis_url.into();
-            let client = redis::Client::open(redis_url)
-                .map_err(|e| CacheError::Driver(format!("Failed to connect to Redis: {}", e)))?;
-            Ok(Self {
-                client,
-                prefix: "rullst:cache:".to_string(),
-            })
-        }
-
-        #[cfg_attr(mutants, mutants::skip)]
-        fn prefixed_key(&self, key: &str) -> String {
-            format!("{}{}", self.prefix, key)
-        }
-    }
-
-    #[async_trait]
-    impl CacheDriver for RedisDriver {
-        #[cfg_attr(mutants, mutants::skip)]
-        async fn get(&self, key: &str) -> Result<Option<Arc<String>>, CacheError> {
-            let mut con = self
-                .client
-                .get_multiplexed_async_connection()
-                .await
-                .map_err(|e| CacheError::Driver(format!("Redis connection failed: {}", e)))?;
-            let result: Option<String> = redis::cmd("GET")
-                .arg(self.prefixed_key(key))
-                .query_async(&mut con)
-                .await
-                .map_err(|e| CacheError::Driver(format!("Redis GET failed: {}", e)))?;
-            Ok(result.map(Arc::new))
-        }
-
-        #[cfg_attr(mutants, mutants::skip)]
-        async fn put(
-            &self,
-            key: &str,
-            value: &str,
-            ttl_secs: Option<u64>,
-        ) -> Result<(), CacheError> {
-            let mut con = self
-                .client
-                .get_multiplexed_async_connection()
-                .await
-                .map_err(|e| CacheError::Driver(format!("Redis connection failed: {}", e)))?;
-            let pk = self.prefixed_key(key);
-            if let Some(ttl) = ttl_secs {
-                redis::cmd("SETEX")
-                    .arg(&pk)
-                    .arg(ttl as i64)
-                    .arg(value)
-                    .query_async::<()>(&mut con)
-                    .await
-                    .map_err(|e| CacheError::Driver(format!("Redis SETEX failed: {}", e)))?;
-            } else {
-                redis::cmd("SET")
-                    .arg(&pk)
-                    .arg(value)
-                    .query_async::<()>(&mut con)
-                    .await
-                    .map_err(|e| CacheError::Driver(format!("Redis SET failed: {}", e)))?;
-            }
-            Ok(())
-        }
-
-        #[cfg_attr(mutants, mutants::skip)]
-        async fn forget(&self, key: &str) -> Result<(), CacheError> {
-            let mut con = self
-                .client
-                .get_multiplexed_async_connection()
-                .await
-                .map_err(|e| CacheError::Driver(format!("Redis connection failed: {}", e)))?;
-            redis::cmd("UNLINK")
-                .arg(self.prefixed_key(key))
-                .query_async::<i64>(&mut con)
-                .await
-                .map_err(|e| CacheError::Driver(format!("Redis UNLINK failed: {}", e)))?;
-            Ok(())
-        }
-
-        #[cfg_attr(mutants, mutants::skip)]
-        async fn flush(&self) -> Result<(), CacheError> {
-            let mut con = self
-                .client
-                .get_multiplexed_async_connection()
-                .await
-                .map_err(|e| CacheError::Driver(format!("Redis connection failed: {}", e)))?;
-            let pattern = format!("{}*", self.prefix);
-            let mut cursor: u64 = 0;
-            loop {
-                let (next_cursor, keys): (u64, Vec<String>) = redis::cmd("SCAN")
-                    .arg(cursor)
-                    .arg("MATCH")
-                    .arg(&pattern)
-                    .arg("COUNT")
-                    .arg(100)
-                    .query_async(&mut con)
-                    .await
-                    .map_err(|e| CacheError::Driver(format!("Redis SCAN failed: {}", e)))?;
-
-                if !keys.is_empty() {
-                    redis::cmd("UNLINK")
-                        .arg(&keys)
-                        .query_async::<i64>(&mut con)
-                        .await
-                        .map_err(|e| CacheError::Driver(format!("Redis UNLINK failed: {}", e)))?;
-                }
-
-                cursor = next_cursor;
-                if cursor == 0 {
-                    break;
-                }
-            }
-            Ok(())
-        }
-
-        #[cfg_attr(mutants, mutants::skip)]
-        async fn has(&self, key: &str) -> Result<bool, CacheError> {
-            let mut con = self
-                .client
-                .get_multiplexed_async_connection()
-                .await
-                .map_err(|e| CacheError::Driver(format!("Redis connection failed: {}", e)))?;
-            let exists: bool = redis::cmd("EXISTS")
-                .arg(self.prefixed_key(key))
-                .query_async(&mut con)
-                .await
-                .map_err(|e| CacheError::Driver(format!("Redis EXISTS failed: {}", e)))?;
-            Ok(exists)
-        }
-    }
-}
+#[path = "cache/redis_driver.rs"]
+pub mod redis_driver;
 
 // ─── Cache Facade ───────────────────────────────────────────────────────────
 
@@ -434,6 +331,11 @@ impl Cache {
     /// Check if a key exists and has not expired.
     pub async fn has(&self, key: &str) -> Result<bool, CacheError> {
         self.driver.has(key).await
+    }
+
+    /// Returns a bounded metadata-only snapshot when supported by the driver.
+    pub async fn inspect(&self, limit: usize) -> Result<CacheInspection, CacheError> {
+        self.driver.inspect(limit).await
     }
 
     /// Retrieve a cached value, or compute it with the provided closure and cache the result.

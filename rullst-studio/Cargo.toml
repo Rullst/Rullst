@@ -41,6 +41,10 @@ urlencoding = { workspace = true }
 chrono = { workspace = true }
 tokio-stream = { version = "0.1.19", features = ["sync"] }
 futures-util = { workspace = true }
+base64 = { workspace = true }
+hmac = { workspace = true }
+rand = { workspace = true }
+sha2 = { workspace = true }
 
 [dev-dependencies]
 testcontainers = "0.27.3"

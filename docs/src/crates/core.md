@@ -16,6 +16,15 @@ mutation. `purge_failed_jobs` is the canonical facade method. The deprecated
 `purge_completed_jobs` name is retained only as a source-compatibility alias for
 the historical operation, which actually removed failed jobs.
 
+Cache diagnostics are driver-specific too. `Cache::inspect(limit)` accepts
+1–200 and returns sorted logical-key, UTF-8 value-length and remaining-TTL
+metadata for Memory and Redis without the value. Exact keys are still
+application data and `CacheEntryMetadata::logical_key()` belongs only inside an
+authorized diagnostic boundary; its `Debug` output redacts the key. Custom
+drivers return `CacheError::InspectionUnsupported` unless they implement the
+bounded method. The live Redis CI/release contract checks metadata, TTL and
+non-disclosure; it does not prove cluster/failover or operator authorization.
+
 SQLite deletes successful jobs by default. Applications that need a real
 Studio/operations history can opt in with
 `Queue::sqlite_with_completed_history(database_url, retained_jobs)`. The
@@ -63,6 +72,10 @@ they explicitly implement durable scheduling.
 - **Opt-in completed-job monitoring:** SQLite can retain and atomically prune a
   configured number of successful jobs; the privacy-safe default remains
   immediate deletion.
+- **Bounded cache metadata:** Memory and Redis expose value length and TTL for
+  at most 200 sorted entries, never cached values. Rullst Studio renders keyed
+  opaque identifiers and one-entry invalidation rather than exact keys or bulk
+  flush.
 
 ---
 
