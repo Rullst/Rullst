@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788396997453,
+  "lastUpdate": 1788400533476,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -4943,6 +4943,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 505,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "9e84fcb6a684a97643b1ef19b405d0d9bb66b24b",
+          "message": "feat(capital): classify provider gateway failures",
+          "timestamp": "2026-09-02T22:40:36-03:00",
+          "tree_id": "0a7775cf4b83fc191afef02da6f037f80396d92e",
+          "url": "https://github.com/Rullst/Rullst/commit/9e84fcb6a684a97643b1ef19b405d0d9bb66b24b"
+        },
+        "date": 1788400533073,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 580,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
