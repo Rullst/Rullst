@@ -24,6 +24,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Upgrade and compatibility
 
+- `rullst-orm` adds a separate identifier-preserving `DocumentInventory<T>`
+  extension and bounded encrypted recovery for portable MongoDB, SurrealDB and
+  deterministic-store documents. AES-256-GCM snapshots bind key-rotation ID,
+  application namespace and collection, cap pagination/count/bytes, require two
+  equal export scans and restore only into an empty or exact matching subset.
+  Restore never replaces or deletes, supports retry after partial insertion and
+  verifies the final inventory; a live matrix crosses
+  MongoDB→SurrealDB→MongoDB. Applications still quiesce writers and own key
+  custody, snapshot durability, retention and vendor backup/replication.
 - `rullst-core` adds an opt-in `ApplicationLifecycle` shared by Server request
   admission and lifecycle-aware health probes. It has monotonic process phases,
   at most 32 immutable required-component bits, aggregate-only readiness JSON,

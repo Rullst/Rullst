@@ -421,6 +421,20 @@ while portability and semantic review remain the model author's responsibility.
 * `DocumentRepository<T>` provides create, find, replace, delete, and
   deterministic bounded listing. Collection names, document IDs, offsets and
   limits are validated before reaching a driver.
+* `DocumentInventory<T>` is the separate identifier-preserving extension used
+  by recovery tooling. Its stable ascending pages avoid breaking existing
+  third-party `DocumentRepository` implementations.
+* `export_document_snapshot` performs two matching bounded observations before
+  sealing a versioned payload with AES-256-GCM. The authentication data binds
+  the key-rotation ID, trusted application namespace and exact collection;
+  decoding is capped at 64 MiB and 100,000 documents. Restoration accepts only
+  an empty destination or an exact matching subset, never replaces or deletes,
+  tolerates only an exact raced duplicate and verifies the complete final
+  inventory. Applications must quiesce source/destination writers and durably
+  store, rotate and protect keys/snapshots. Required destination schema must be
+  provisioned first; driver/schema errors never become an implicit empty
+  collection. The API is crash-resumable, not a cross-store transaction or
+  managed backup service.
 * `MongoDbStore<T>` uses the official MongoDB Rust driver and stores the
   portable `DocumentId` as `_id`; portable models must not define `_id`.
 * `DuckDbStore` serializes access to its native connection and delegates every
@@ -443,9 +457,9 @@ while portability and semantic review remain the model author's responsibility.
   `GraphQuery::read_only` accepts one `MATCH` query, rejects mutation tokens
   and caller-supplied limits, then appends a bounded limit.
 * This boundary does not turn every backend into SQL Active Record, perform
-  cross-database transactions, synchronize records between engines, or prove
-  a third-party deployment. See the
-  [Polyglot Persistence guide](polyglot-persistence.md).
+  cross-database transactions, provide an online-consistent snapshot,
+  synchronize records between engines, or prove a third-party deployment. See
+  the [Polyglot Persistence guide](polyglot-persistence.md).
 
 ### 5.9. Scout Search Projection Contract
 

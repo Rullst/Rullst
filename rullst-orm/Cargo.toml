@@ -36,6 +36,7 @@ uuid = { workspace = true, features = ["v4"] }
 syn = { version = "3.0", features = ["full", "extra-traits"] }
 thiserror = { workspace = true }
 sha2 = { workspace = true, optional = true }
+zeroize = { workspace = true }
 
 walkdir = "2.5.0"
 

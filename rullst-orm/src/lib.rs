@@ -112,8 +112,11 @@ pub use outbox::{ClaimedOutboxEvent, EnqueuedOutboxEvent, Outbox, OutboxMigratio
 pub use pgvector::Vector;
 pub use policy::Policy;
 pub use polyglot::{
-    Backend, BackendCapabilities, Capability, CollectionName, DocumentId, DocumentPage,
-    DocumentRepository, MockDocumentStore, PolyglotError,
+    Backend, BackendCapabilities, Capability, CollectionName, DocumentEntry, DocumentId,
+    DocumentInventory, DocumentPage, DocumentRecoveryBinding, DocumentRecoveryError,
+    DocumentRecoveryKey, DocumentRecoveryPolicy, DocumentRecoveryReport, DocumentRepository,
+    EncryptedDocumentSnapshot, MockDocumentStore, PolyglotError, export_document_snapshot,
+    restore_document_snapshot,
 };
 #[cfg(feature = "qdrant")]
 pub use polyglot::{

@@ -168,6 +168,74 @@ letters, digits, `_` and `-`, and every list requires a 1–500 row page. Models
 must serialize as objects and must not own the driver ID field (`_id` for
 MongoDB, `id` for SurrealDB); the portable `DocumentId` owns that concern.
 
+### Encrypted export and crash-resumable restore
+
+MongoDB, SurrealDB and the deterministic store also implement
+`DocumentInventory<T>`, which retains each validated identifier. That enables
+one deliberately conservative recovery path without pretending the engines
+share transactions:
+
+```rust,no_run
+use rullst_orm::polyglot::{
+    CollectionName, DocumentRecoveryBinding, DocumentRecoveryKey,
+    DocumentRecoveryPolicy, export_document_snapshot,
+    restore_document_snapshot,
+};
+
+# async fn recovery<S, D, Event>(source: &S, destination: &D) -> Result<(), Box<dyn std::error::Error>>
+# where
+#     S: rullst_orm::polyglot::DocumentInventory<Event>,
+#     D: rullst_orm::polyglot::DocumentInventory<Event>,
+#     Event: serde::Serialize + serde::de::DeserializeOwned + Send + Sync,
+# {
+let collection = CollectionName::new("audit_events")?;
+let binding = DocumentRecoveryBinding::try_new(
+    "my_application.production",
+    collection,
+)?;
+let key = DocumentRecoveryKey::try_new(
+    "recovery-2026-09",
+    [42_u8; 32], // load 32 random bytes from a secret manager
+)?;
+let policy = DocumentRecoveryPolicy::try_new(100, 10_000, 16 * 1024 * 1024)?;
+
+// Persist this opaque envelope in application-owned durable storage.
+let snapshot = export_document_snapshot(source, &binding, &key, policy).await?;
+let report = restore_document_snapshot(
+    destination,
+    &snapshot,
+    &binding,
+    &key,
+    policy,
+).await?;
+assert_eq!(report.verified(), report.inserted() + report.replayed());
+# Ok(())
+# }
+```
+
+The key uses AES-256-GCM and a fresh nonce; its authenticated data binds the
+rotation ID, trusted application namespace and exact collection. Key material
+passes through a zeroizing temporary and key/snapshot `Debug` output is
+redacted. The policy permits pages of 1–500, 1–100,000 documents and a 1 KiB–64
+MiB plaintext ceiling. Models in this portability path must be JSON objects
+without either `id` or `_id`.
+
+Export scans twice and refuses to seal unequal observations. This detects
+ordinary concurrent changes, but it is not a database snapshot isolation
+primitive: pause writers or use a source-side transaction/export facility.
+Restore accepts only an empty destination or a matching subset left by an
+earlier attempt. It inserts without replacement, rejects different or extra
+rows before mutation and verifies an exact final inventory. A failed attempt
+can retain earlier successful inserts, so retry the same authenticated
+snapshot. Keep unrelated destination writers paused until verification. The
+destination database, namespace and collection/table must already be
+provisioned where the engine requires them; schema or permission failures stay
+visible and are never reclassified as an empty destination.
+
+The live release matrix exercises MongoDB → SurrealDB → MongoDB. It proves the
+bounded adapter contract on that runner, not backup retention, key custody,
+replication, point-in-time recovery, topology failover or vendor operations.
+
 ### MongoDB
 
 ```rust

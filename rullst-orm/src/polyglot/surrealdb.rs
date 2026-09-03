@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value;
 
 use super::{
-    Backend, BackendCapabilities, Capability, CollectionName, DocumentId, DocumentPage,
-    DocumentRepository, MockDocumentStore, PolyglotError,
+    Backend, BackendCapabilities, Capability, CollectionName, DocumentEntry, DocumentId,
+    DocumentInventory, DocumentPage, DocumentRepository, MockDocumentStore, PolyglotError,
 };
 
 mod config;
@@ -23,7 +23,7 @@ mod graph;
 mod tests;
 
 pub use config::{SurrealAuth, SurrealConfig};
-use config::{is_mock_credential, validate_endpoint};
+use config::{decode_surreal_record_key, is_mock_credential, validate_endpoint};
 pub use graph::{GraphQuery, GraphRepository};
 
 struct LiveSurreal {
@@ -33,6 +33,44 @@ struct LiveSurreal {
     database: CollectionName,
     auth: SurrealAuth,
     response_limit: usize,
+}
+
+#[async_trait]
+impl<T> DocumentInventory<T> for SurrealDbStore<T>
+where
+    T: Serialize + DeserializeOwned + Send + Sync,
+{
+    async fn list_entries(
+        &self,
+        collection: &CollectionName,
+        page: DocumentPage,
+    ) -> Result<Vec<DocumentEntry<T>>, PolyglotError> {
+        let SurrealDbInner::Live { live, .. } = &self.inner else {
+            return surreal_mock(self)?.list_entries(collection, page).await;
+        };
+        let mut url = live.route(&["sql"])?;
+        url.query_pairs_mut()
+            .append_pair("table", collection.as_str())
+            .append_pair("start", &page.offset().to_string())
+            .append_pair("limit", &page.limit().to_string());
+        let envelopes = live
+            .send_text(
+                Method::POST,
+                &url,
+                "SELECT * FROM type::table($table) ORDER BY id START type::int($start) LIMIT type::int($limit)",
+            )
+            .await?;
+        let values = result_values(statement_result(envelopes, false)?)?;
+        if values.len() > page.limit() as usize {
+            return Err(invalid_surreal_response(
+                "server exceeded the requested page limit",
+            ));
+        }
+        values
+            .into_iter()
+            .map(|value| decode_document_entry(collection, value))
+            .collect()
+    }
 }
 
 enum SurrealDbInner<T> {
@@ -390,6 +428,30 @@ fn decode_document<T: DeserializeOwned>(mut value: Value) -> Result<T, PolyglotE
     };
     object.remove("id");
     serde_json::from_value(value).map_err(PolyglotError::serialization)
+}
+
+fn decode_document_entry<T: DeserializeOwned>(
+    collection: &CollectionName,
+    mut value: Value,
+) -> Result<DocumentEntry<T>, PolyglotError> {
+    let Some(object) = value.as_object_mut() else {
+        return Err(invalid_surreal_response(
+            "document inventory row was not a JSON object",
+        ));
+    };
+    let record_id = object
+        .remove("id")
+        .and_then(|id| id.as_str().map(ToOwned::to_owned))
+        .ok_or_else(|| {
+            invalid_surreal_response("document inventory returned a non-portable identifier")
+        })?;
+    let expected_prefix = format!("{}:", collection.as_str());
+    let encoded_id = record_id.strip_prefix(&expected_prefix).ok_or_else(|| {
+        invalid_surreal_response("document inventory identifier crossed its collection boundary")
+    })?;
+    let id = decode_surreal_record_key(encoded_id)?;
+    let entity = serde_json::from_value(value).map_err(PolyglotError::serialization)?;
+    Ok(DocumentEntry::new(id, entity))
 }
 
 fn record_route(

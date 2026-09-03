@@ -57,7 +57,7 @@ being published as an achieved one.
 | Crate | Current audited score | Grade | Principal remaining evidence boundary |
 | :--- | ---: | :---: | :--- |
 | `rullst-core` | 96 | A | Dependency operations, distributed deployment and host authorization |
-| `rullst-orm` | 91 | A | Cross-store semantics, disaster recovery and remaining operational adapters |
+| `rullst-orm` | 96 | A | Online snapshot isolation, managed/PITR backup, vendor operations and application writer/tenant/key policy |
 | `rullst-security` | 90 | A | External SIEM delivery, independent audit and certification |
 | `rullst-connect` | 90 | A | Durable transaction/key operations, distributed refresh and provider conformance |
 | `rullst` | 90 | A | Inherits bounded maturity from opt-in domain crates |
@@ -72,7 +72,7 @@ being published as an achieved one.
 | `rullst-nexus` | 95 | A | Host identity/domain policy, global/custom-route authorization, immutable audit delivery and production operations |
 | `rullst-macros` | 94 | A | Real browser/network ecosystems and host identity policy remain external |
 | `rullst-iot` | 83 | B | Concrete transport/hardware storage, flashing and bootloader evidence |
-| **Repository (equal-crate aggregate)** | **93** | **A** | **1,482/1,600; exact score remains conditional on the SHA's gates** |
+| **Repository (equal-crate aggregate)** | **93** | **A** | **1,487/1,600; exact score remains conditional on the SHA's gates** |
 
 ## Measured gap to the v12 quality gate
 
@@ -103,16 +103,16 @@ provider acceptance, app-store/device testing, fiscal homologation, independent
 audit and production operation remain external even when a bounded
 implementation earns a high A.
 
-Ten of the 15 active crates have now reached their audited local target:
+Eleven of the 15 active crates have now reached their audited local target:
 `rullst-core`, `rullst-macros`, `rullst-orm-macros`, `rullst-messaging`, `rullst-capital`,
-`rullst-mail`, `rullst-auth`, `rullst-nexus`, `cargo-rullst`, and
-`rullst-studio`. Five remain
+`rullst-mail`, `rullst-auth`, `rullst-nexus`, `cargo-rullst`, `rullst-studio`,
+and `rullst-orm`. Four remain
 in the ceiling campaign.
 
 | Crate | Current audited | Provisional local ceiling | Points remaining | Repository-owned evidence cluster | External boundary retained |
 | :--- | ---: | ---: | ---: | :--- | :--- |
 | `rullst-core` | 96/A | 96/A | 0 | Monotonic readiness/admission/drain, explicit supervisor shutdown and startup/concurrency/poisoned-state evidence complete for this campaign | Dependency operations, production topology, replica/load-balancer coordination and host domain authorization |
-| `rullst-orm` | 91/A | 96/A | 5 | Cross-store semantics, recovery rehearsal and remaining bounded adapter matrices | Vendor operations and application tenant policy |
+| `rullst-orm` | 96/A | 96/A | 0 | Authenticated bounded document recovery, fail-closed inventory semantics and real MongoDB → SurrealDB → MongoDB rehearsal complete for this campaign | Online snapshot isolation, managed/PITR backup, vendor operations and application writer/tenant/key policy |
 | `rullst-security` | 90/A | 96/A | 6 | SIEM rotation/acknowledgement contracts, broader threat negatives and recovery/SBOM evidence | Independent audit, certification and real SOC operation |
 | `rullst-connect` | 90/A | 95/A | 5 | Transactional token-generation CAS, remaining revocation fixtures and lifecycle recovery | Live-provider conformance and IdP operations |
 | `rullst` | 90/A | 96/A | 6 | Deeper cross-domain runtime composition and recovery contracts | Maturity inherited from external provider/device evidence |
@@ -127,10 +127,10 @@ in the ceiling campaign.
 | `rullst-orm-macros` | 95/A | 95/A | 0 | Fail-closed structured parser, 24 exact UI diagnostics and generated runtime cross-evidence complete for this campaign | Compiler/ecosystem compatibility beyond the tested matrix |
 | `rullst-nexus` | 95/A | 95/A | 0 | Trusted-context tenant scope, transaction-coupled audit and bounded admin operation contracts complete for this campaign | Host identity/domain policy, global/custom-route authorization, immutable audit delivery and production operation |
 | `rullst-macros` | 94/A | 94/A | 0 | Bounded grammar/diagnostics, native server route, versioned Wasm transport, CSRF composition and generated-project evidence complete for this campaign | Real compiler/browser/network ecosystem matrix and host identity policy beyond CI |
-| **Repository** | **1,482/1,600 = 92.6 (rounded 93/A)** | **1,509/1,600 = 94.3/A** | **27** | **Every gain still requires reviewed evidence** | **A+ remains outside this local planning ceiling** |
+| **Repository** | **1,487/1,600 = 92.9 (rounded 93/A)** | **1,509/1,600 = 94.3/A** | **22** | **Every gain still requires reviewed evidence** | **A+ remains outside this local planning ceiling** |
 
-On this planning scale, **98.2% of the eventual score total is already
-evidenced and 1.8% remains**. That percentage describes point distance, not
+On this planning scale, **98.5% of the eventual score total is already
+evidenced and 1.5% remains**. That percentage describes point distance, not
 elapsed effort: the remaining points are concentrated in integration,
 durability, failure recovery, distributed composition and operational matrices
 and are therefore more expensive than early API/documentation points.

@@ -125,10 +125,10 @@ aliases use SQLx `Any`.
 | Feature | Enables |
 | --- | --- |
 | `redis` | Redis query cache plus bounded namespaced Hash, Set and Sorted Set datastore operations |
-| `mongodb` | Official MongoDB driver plus typed document CRUD and offline fallback |
+| `mongodb` | Official MongoDB driver plus typed document CRUD, identifier inventory, encrypted recovery participation and offline fallback |
 | `duckdb` | Bundled DuckDB client plus parameterized, bounded analytics queries |
 | `turso` | Direct official Hrana HTTP v3 transport, typed primary CRUD/query facade, parameterized SQL, atomic batches, reversible checksummed migrations, and a persistent SQLite-compatible offline fallback |
-| `surrealdb` | SurrealDB HTTP document CRUD and bounded read-only ISO GQL; no embedded SDK |
+| `surrealdb` | SurrealDB HTTP document CRUD, identifier inventory, encrypted recovery participation and bounded read-only ISO GQL; no embedded SDK |
 | `scout-http` | Bounded Meilisearch, Elasticsearch and Algolia adapters with deterministic offline fallbacks; Meilisearch also has a live container contract |
 | `pgvector` | Typed pgvector SQLx values and parameterized L2/cosine/inner-product helpers; the live contract also selects `strict-postgres` |
 | `qdrant` | Bounded dense-vector collection/upsert/delete/cosine query operations over HTTP with offline fallback |
@@ -144,7 +144,10 @@ switch.
 
 The Polyglot features expose capability-specific APIs under
 `rullst_orm::polyglot`; they do not participate in a shared cross-backend
-transaction. Turso can additionally be selected explicitly by
+transaction. The base deterministic document store and the MongoDB/SurrealDB
+adapters implement `DocumentInventory` for an application-operated bounded
+snapshot/restore contract; it does not supply online isolation or managed
+backup. Turso can additionally be selected explicitly by
 `#[orm(backend = "turso")]` and the blank/API scaffold. See the
 [Polyglot Persistence guide](polyglot-persistence.md).
 

@@ -97,6 +97,13 @@ generated API.
 - **Native Redis structures:** `redis` adds an immutable namespace and bounded
   Hash, Set and Sorted Set operations in addition to `.remember`; remote
   endpoints require TLS and live evidence covers isolation and native commands.
+- **Portable document recovery:** MongoDB, SurrealDB and the deterministic
+  store expose identifier-preserving inventory. An application-operated,
+  AES-256-GCM snapshot binds application/collection scope, compares two bounded
+  source observations, resumes only into an exact destination subset and
+  verifies the final inventory. Writers, schema provisioning, key custody and
+  durable backup storage remain explicit operator responsibilities. See
+  [Polyglot Persistence](../polyglot-persistence.md).
 - **Structured telemetry:** generated/raw query and stream spans expose only
   static model/table/operation metadata, managed transactions record bounded
   outcomes, and Rullst-created pools emit checkout timing. Core's opt-in

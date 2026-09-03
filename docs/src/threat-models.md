@@ -1,6 +1,6 @@
 # Rullst v12 threat models
 
-> **Model version:** TM-12.7
+> **Model version:** TM-12.8
 > **Applies to:** the v12 release candidate source and generated applications
 > **Last source review:** 2026-09-03
 > **Status:** maintainer baseline; application owners must extend it for their
@@ -27,10 +27,10 @@ addresses are untrusted unless a separately reviewed proxy policy establishes
 the direct peer as trusted.
 
 The machine-readable release minimum in
-`.github/threat-model-release-minimum.json` binds 51 distinct abuse-case IDs to
-63 evidence rows and 55 exact test executions across twelve crates. The gate rejects missing markers,
-missing tests and zero-test filters before executing Auth, Nexus, Studio,
-tenant ownership, Capital, AI, Mail, IoT, generated-default and Academy
+`.github/threat-model-release-minimum.json` binds 53 distinct abuse-case IDs to
+65 evidence rows and 57 exact test executions across thirteen crates. The gate rejects missing markers,
+missing tests and zero-test filters before executing Core, ORM, Auth, Nexus,
+Studio, tenant ownership, Capital, AI, Mail, IoT, generated-default and Academy
 negatives. Passing that bounded minimum does not imply that every case below is
 closed.
 
@@ -124,6 +124,23 @@ keys, jobs, files, logs and exports.
 
 Trust boundaries are identity ↔ membership, route ID ↔ object and application ↔
 database/cache/queue/storage.
+
+## TM-ORM-1 — portable document recovery
+
+**Assets:** document contents, portable identifiers, application/collection
+scope, snapshot encryption keys and the destination collection.
+
+**Trust boundaries:** application writer ↔ repository inventory; source store ↔
+application-owned snapshot storage; operator key custody ↔ snapshot opener; and
+snapshot contents ↔ destination repository.
+
+| Abuse case | Required disposition | Repository evidence or remaining work |
+| --- | --- | --- |
+| `ORM-01` copied, tampered or cross-scope snapshot discloses or substitutes documents | Encrypt and authenticate the complete versioned payload with a fresh nonce, explicit rotation key ID, length-delimited application/collection binding and fixed decode limits; authenticate before JSON decoding. | The exact negative changes ciphertext, key material and application binding and proves all three fail closed. Key bytes are consumed through a zeroizing temporary, opaque snapshot/key `Debug` output is redacted and plaintext labels are absent from the envelope. Key generation/custody/rotation, external snapshot permissions and deletion remain operator responsibilities. |
+| `ORM-02` partial retry overwrites conflicting destination data or silently accepts extras | Accept only an empty destination or an exact matching subset, insert without replacement, treat only an exact raced duplicate as replay and verify the final complete inventory. Never delete an extra row or claim transactionality across stores. | The exact negative proves a differing row and an extra row fail before mutation. Deterministic tests cover partial resume and idempotent replay; the live matrix exports MongoDB→SurrealDB→MongoDB and checks ordered IDs. Export performs two equal observations, but formal consistency still requires the application to quiesce writers; a failed restore can retain prior successful inserts for the documented retry path. |
+
+**Release-negative minimum:** ciphertext/key/scope substitution and conflicting
+or extra destination state.
 
 ## TM-SEC-1 — declared HTTP payload contracts
 
@@ -306,6 +323,6 @@ registry and CLI ↔ filesystem/process/cloud.
 - New boundaries receive new IDs; IDs are never silently reused.
 - Closing residual risk requires code/configuration, a negative test and
   commit-bound evidence. Documentation alone cannot claim a control is deployed.
-- Before stable v12, maintainers must review TM-12.7 against the exact RC,
+- Before stable v12, maintainers must review TM-12.8 against the exact RC,
   applications must add topology/provider threats and an independent reviewer
   must cover the highest-impact paths.

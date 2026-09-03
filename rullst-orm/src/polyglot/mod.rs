@@ -8,6 +8,7 @@ mod capability;
 mod document;
 mod error;
 mod mock;
+mod recovery;
 
 #[cfg(feature = "duckdb")]
 mod duckdb;
@@ -21,7 +22,9 @@ mod surrealdb;
 mod turso;
 
 pub use capability::{Backend, BackendCapabilities, Capability};
-pub use document::{CollectionName, DocumentId, DocumentPage, DocumentRepository};
+pub use document::{
+    CollectionName, DocumentEntry, DocumentId, DocumentInventory, DocumentPage, DocumentRepository,
+};
 #[cfg(feature = "duckdb")]
 pub use duckdb::{
     AnalyticsRepository, AnalyticsRow, AnalyticsTimeUnit, AnalyticsValue, DuckDbStore, QueryLimit,
@@ -34,6 +37,11 @@ pub use mongodb::MongoDbStore;
 pub use qdrant::{
     QdrantConfig, QdrantStore, VectorCollectionName, VectorDimensions, VectorMatch, VectorPoint,
     VectorQueryLimit, VectorRepository,
+};
+pub use recovery::{
+    DocumentRecoveryBinding, DocumentRecoveryError, DocumentRecoveryKey, DocumentRecoveryPolicy,
+    DocumentRecoveryReport, EncryptedDocumentSnapshot, export_document_snapshot,
+    restore_document_snapshot,
 };
 #[cfg(feature = "surrealdb")]
 pub use surrealdb::{GraphQuery, GraphRepository, SurrealAuth, SurrealConfig, SurrealDbStore};

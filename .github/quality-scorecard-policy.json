@@ -34,13 +34,13 @@
     {
       "name": "rullst-orm",
       "api_architecture": 18,
-      "verification": 23,
-      "security_failure_design": 19,
-      "documentation_dx": 14,
-      "operations_release": 17,
-      "specialist_gate": "strict-database-redis",
-      "finding": "Deep relational, tenant-bound audit/revision and capability-specific persistence evidence; uniform cross-store semantics, disaster-recovery proof and several operational integrations intentionally remain incomplete.",
-      "evidence": ["rullst-orm/README.md", "rullst-orm/tests", "docs/src/polyglot-persistence.md", "docs/src/tutorials/50-auditable-revisions.md"]
+      "verification": 25,
+      "security_failure_design": 20,
+      "documentation_dx": 15,
+      "operations_release": 18,
+      "specialist_gate": "strict-database-redis-and-threat",
+      "finding": "Deep relational and tenant-bound audit/revision evidence now includes authenticated, bounded document recovery with real MongoDB-to-SurrealDB-to-MongoDB rehearsal; online snapshot isolation, managed/PITR backup, vendor operations and application writer/tenant/key policy remain external.",
+      "evidence": ["rullst-orm/README.md", "rullst-orm/src/polyglot/recovery.rs", "rullst-orm/src/polyglot/recovery", "rullst-orm/tests", "docs/src/polyglot-persistence.md", "docs/src/threat-models.md", "docs/src/tutorials/50-auditable-revisions.md"]
     },
     {
       "name": "rullst-core",

@@ -149,6 +149,12 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   graph operations live behind explicit capability APIs instead of pretending
   to be one universal Active Record interface. See the
   [Polyglot guide](../docs/src/polyglot-persistence.md).
+- **Authenticated Portable Document Recovery**: MongoDB, SurrealDB and the
+  deterministic store expose stable identifier-preserving inventory. A bounded
+  AES-256-GCM snapshot performs two equal source scans, binds application and
+  collection scope, resumes only into an empty or exactly matching subset and
+  verifies the final inventory. It is an application-operated recovery
+  primitive, not an online cross-store transaction or managed backup service.
 - **Bounded Turso Primary Profile**: `#[derive(Orm)]` with
   `#[orm(backend = "turso")]` exposes typed CRUD/query methods through
   `TursoOrm`, reversible checked migrations, and a persistent offline or remote

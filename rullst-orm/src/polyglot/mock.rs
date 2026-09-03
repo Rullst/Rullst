@@ -5,8 +5,8 @@ use serde::{Serialize, de::DeserializeOwned};
 use tokio::sync::RwLock;
 
 use super::{
-    Backend, BackendCapabilities, Capability, CollectionName, DocumentId, DocumentPage,
-    DocumentRepository, PolyglotError,
+    Backend, BackendCapabilities, Capability, CollectionName, DocumentEntry, DocumentId,
+    DocumentInventory, DocumentPage, DocumentRepository, PolyglotError,
 };
 
 type DocumentKey = (String, String);
@@ -15,6 +15,37 @@ type DocumentKey = (String, String);
 pub struct MockDocumentStore<T> {
     documents: Arc<RwLock<BTreeMap<DocumentKey, Vec<u8>>>>,
     marker: PhantomData<fn() -> T>,
+}
+
+#[async_trait]
+impl<T> DocumentInventory<T> for MockDocumentStore<T>
+where
+    T: Serialize + DeserializeOwned + Send + Sync,
+{
+    async fn list_entries(
+        &self,
+        collection: &CollectionName,
+        page: DocumentPage,
+    ) -> Result<Vec<DocumentEntry<T>>, PolyglotError> {
+        let documents = self.documents.read().await;
+        let offset =
+            usize::try_from(page.offset()).map_err(|_| PolyglotError::InvalidIdentifier {
+                kind: "document page",
+                reason: "offset exceeds the target index range",
+            })?;
+        documents
+            .iter()
+            .filter(|((stored_collection, _), _)| stored_collection == collection.as_str())
+            .skip(offset)
+            .take(page.limit() as usize)
+            .map(|((_, id), encoded)| {
+                let id = DocumentId::new(id.clone())?;
+                let entity =
+                    serde_json::from_slice(encoded).map_err(PolyglotError::serialization)?;
+                Ok(DocumentEntry::new(id, entity))
+            })
+            .collect()
+    }
 }
 
 impl<T> MockDocumentStore<T> {

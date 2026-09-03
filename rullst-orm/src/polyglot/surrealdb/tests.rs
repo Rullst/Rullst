@@ -11,6 +11,24 @@ use tokio::{net::TcpListener, task::JoinHandle};
 
 use super::*;
 
+#[test]
+fn canonical_surreal_record_keys_preserve_portable_ids() {
+    assert_eq!(
+        decode_surreal_record_key("event_01").unwrap().as_str(),
+        "event_01"
+    );
+    assert_eq!(
+        decode_surreal_record_key("⟨event-01⟩").unwrap().as_str(),
+        "event-01"
+    );
+    assert_eq!(
+        decode_surreal_record_key("`event-02`").unwrap().as_str(),
+        "event-02"
+    );
+    assert!(decode_surreal_record_key("⟨../secret⟩").is_err());
+    assert!(decode_surreal_record_key("⟨event-01").is_err());
+}
+
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct Event {
     label: String,

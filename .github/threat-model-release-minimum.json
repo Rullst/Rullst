@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "TM-12.7",
+  "model_version": "TM-12.8",
   "cases": [
     {
       "id": "CORE-01",
@@ -19,6 +19,24 @@
       "test_filter": "lifecycle::tests::drain_rejects_new_requests_and_waits_for_an_admitted_one",
       "source": "rullst-core/src/lifecycle_tests.rs",
       "marker": "TM-CORE-02"
+    },
+    {
+      "id": "ORM-01",
+      "crate": "rullst-orm",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "polyglot::recovery::tests::tampering_wrong_key_and_cross_scope_copy_fail_closed",
+      "source": "rullst-orm/src/polyglot/recovery/tests.rs",
+      "marker": "TM-ORM-01"
+    },
+    {
+      "id": "ORM-02",
+      "crate": "rullst-orm",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "polyglot::recovery::tests::conflicting_or_extra_destination_content_is_never_overwritten",
+      "source": "rullst-orm/src/polyglot/recovery/tests.rs",
+      "marker": "TM-ORM-02"
     },
     {
       "id": "AUTH-01",

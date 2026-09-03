@@ -69,6 +69,35 @@ pub struct DocumentPage {
     limit: u32,
 }
 
+/// One portable document paired with the identifier owned by its repository.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocumentEntry<T> {
+    id: DocumentId,
+    entity: T,
+}
+
+impl<T> DocumentEntry<T> {
+    /// Creates an inventory entry from an already validated identifier.
+    pub fn new(id: DocumentId, entity: T) -> Self {
+        Self { id, entity }
+    }
+
+    /// Returns the portable identifier.
+    pub fn id(&self) -> &DocumentId {
+        &self.id
+    }
+
+    /// Returns the decoded entity.
+    pub fn entity(&self) -> &T {
+        &self.entity
+    }
+
+    /// Separates the identifier from the decoded entity.
+    pub fn into_parts(self) -> (DocumentId, T) {
+        (self.id, self.entity)
+    }
+}
+
 impl DocumentPage {
     /// Creates a page with a maximum size of 500 documents.
     pub fn new(offset: u64, limit: u32) -> Result<Self, PolyglotError> {
@@ -135,6 +164,21 @@ pub trait DocumentRepository<T>: Send + Sync {
         collection: &CollectionName,
         page: DocumentPage,
     ) -> Result<Vec<T>, PolyglotError>;
+}
+
+/// Identifier-preserving inventory used by bounded export and recovery tools.
+///
+/// This is separate from [`DocumentRepository`] so adding recovery support does
+/// not break third-party CRUD implementations. Implementors must return rows in
+/// strictly increasing [`DocumentId`] order for stable offset pagination.
+#[async_trait]
+pub trait DocumentInventory<T>: DocumentRepository<T> {
+    /// Lists one bounded page with each portable identifier retained.
+    async fn list_entries(
+        &self,
+        collection: &CollectionName,
+        page: DocumentPage,
+    ) -> Result<Vec<DocumentEntry<T>>, PolyglotError>;
 }
 
 #[cfg(test)]

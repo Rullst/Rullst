@@ -107,7 +107,15 @@ compile-time schema verified.
 - [~] **ORM Admin Panel**: A static dashboard shell exists; authenticated data-management CRUD belongs to Nexus.
 - [x] **API Resources & Transformers**: Explicit resource and collection transforms generate bounded JSON projections.
 - [~] **Distributed Graph Traversal**: Manual recursive CTE helpers exist; automatic relationship-graph traversal and distribution do not.
-- [x] **Polyglot Persistence (bounded v12)**: Optional MongoDB document CRUD, DuckDB parameterized/bounded OLAP, Turso/libSQL SQL/transactions/migrations and SurrealDB HTTP document/read-only GQL adapters preserve separate semantics.
+- [x] **Polyglot Persistence (bounded v12)**: Optional MongoDB document CRUD,
+  DuckDB parameterized/bounded OLAP, Turso/libSQL SQL/transactions/migrations
+  and SurrealDB HTTP document/read-only GQL adapters preserve separate
+  semantics. MongoDB, SurrealDB and the deterministic store additionally expose
+  stable identifier inventory plus an application-operated encrypted snapshot
+  that detects ordinary source changes, resumes only into an exact subset and
+  verifies the final collection. Online snapshot isolation, cross-store
+  transactions, managed backups, writer coordination and vendor operations
+  remain external.
 - [x] **Advanced Vector & Key-Value Stores (bounded)**: Qdrant exposes validated dense-cosine collection/upsert/delete/query operations; Redis exposes namespaced Hash, Set and Sorted Set operations. Both select deterministic empty/`mock_*` fallbacks and pass digest-pinned live lifecycles. Named/sparse Qdrant vectors, arbitrary filters, Redis Lists/Streams and distributed topology remain outside this contract.
 - [x] **Schema Visualizer**: `cargo rullst generate:diagram` emits Mermaid from statically inspected models.
 - [~] **Cascading Soft Deletes**: Marked `has_one`/`has_many` relations cascade;

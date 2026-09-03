@@ -2,7 +2,7 @@ use std::{fmt, net::IpAddr};
 
 use reqwest::Url;
 
-use super::PolyglotError;
+use super::{DocumentId, PolyglotError};
 
 const DEFAULT_RESPONSE_LIMIT: usize = 1024 * 1024;
 const MIN_RESPONSE_LIMIT: usize = 1024;
@@ -165,4 +165,17 @@ fn is_loopback_host(host: &str) -> bool {
 
 pub(super) fn is_mock_credential(value: &str) -> bool {
     value.is_empty() || value.starts_with("mock_") || value.starts_with("mock://")
+}
+
+pub(super) fn decode_surreal_record_key(encoded: &str) -> Result<DocumentId, PolyglotError> {
+    let decoded = encoded
+        .strip_prefix('⟨')
+        .and_then(|value| value.strip_suffix('⟩'))
+        .or_else(|| {
+            encoded
+                .strip_prefix('`')
+                .and_then(|value| value.strip_suffix('`'))
+        })
+        .unwrap_or(encoded);
+    DocumentId::new(decoded.to_owned())
 }

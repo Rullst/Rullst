@@ -10,8 +10,8 @@ use mongodb::{
 use serde::{Serialize, de::DeserializeOwned};
 
 use super::{
-    Backend, BackendCapabilities, Capability, CollectionName, DocumentId, DocumentPage,
-    DocumentRepository, MockDocumentStore, PolyglotError,
+    Backend, BackendCapabilities, Capability, CollectionName, DocumentEntry, DocumentId,
+    DocumentInventory, DocumentPage, DocumentRepository, MockDocumentStore, PolyglotError,
 };
 
 /// MongoDB document adapter with deterministic mock fallback.
@@ -24,6 +24,35 @@ pub enum MongoDbStore<T> {
     },
     /// An explicit offline store selected by empty or `mock_*` credentials.
     Mock(MockDocumentStore<T>),
+}
+
+#[async_trait]
+impl<T> DocumentInventory<T> for MongoDbStore<T>
+where
+    T: Serialize + DeserializeOwned + Send + Sync,
+{
+    async fn list_entries(
+        &self,
+        collection: &CollectionName,
+        page: DocumentPage,
+    ) -> Result<Vec<DocumentEntry<T>>, PolyglotError> {
+        let Self::Live { database, .. } = self else {
+            return mock(self)?.list_entries(collection, page).await;
+        };
+        let mut cursor = database
+            .collection::<Document>(collection.as_str())
+            .find(doc! {})
+            .sort(doc! { "_id": 1 })
+            .skip(page.offset())
+            .limit(i64::from(page.limit()))
+            .await
+            .map_err(map_mongodb_error)?;
+        let mut documents = Vec::with_capacity(page.limit() as usize);
+        while let Some(document) = cursor.try_next().await.map_err(map_mongodb_error)? {
+            documents.push(decode_document_entry(document)?);
+        }
+        Ok(documents)
+    }
 }
 
 impl<T> MongoDbStore<T> {
@@ -188,6 +217,21 @@ fn encode_document<T: Serialize>(entity: &T, id: &DocumentId) -> Result<Document
 fn decode_document<T: DeserializeOwned>(mut document: Document) -> Result<T, PolyglotError> {
     document.remove("_id");
     mongodb::bson::from_document(document).map_err(PolyglotError::serialization)
+}
+
+fn decode_document_entry<T: DeserializeOwned>(
+    mut document: Document,
+) -> Result<DocumentEntry<T>, PolyglotError> {
+    let id = document
+        .remove("_id")
+        .and_then(|value| value.as_str().map(ToOwned::to_owned))
+        .ok_or_else(|| PolyglotError::Driver {
+            backend: "MongoDB",
+            message: "document inventory returned a non-portable identifier".to_owned(),
+        })?;
+    let id = DocumentId::new(id)?;
+    let entity = mongodb::bson::from_document(document).map_err(PolyglotError::serialization)?;
+    Ok(DocumentEntry::new(id, entity))
 }
 
 fn is_mock_credential(value: &str) -> bool {
