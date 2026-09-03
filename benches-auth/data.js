@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788470992649,
+  "lastUpdate": 1788472374342,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -8633,6 +8633,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4617,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "26b69982a74d618e768b062065313e823ab3dfef",
+          "message": "feat(ai): add bounded adaptive evaluations",
+          "timestamp": "2026-09-03T18:42:51-03:00",
+          "tree_id": "04032e9f8469b2b811182ca55d67cd2995468eae",
+          "url": "https://github.com/Rullst/Rullst/commit/26b69982a74d618e768b062065313e823ab3dfef"
+        },
+        "date": 1788472373779,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1082,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 869,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1986,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4598,
+            "range": "± 21",
             "unit": "ns/iter"
           }
         ]
