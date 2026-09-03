@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788469992318,
+  "lastUpdate": 1788471201216,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -5662,6 +5662,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "34efe8f649fc2049cfe6666639557b9c1cb971b6",
+          "message": "feat(ai): add authenticated audit delivery",
+          "timestamp": "2026-09-03T18:19:17-03:00",
+          "tree_id": "1e5f815cc7b022f7cf389f88634750bfe00f6471",
+          "url": "https://github.com/Rullst/Rullst/commit/34efe8f649fc2049cfe6666639557b9c1cb971b6"
+        },
+        "date": 1788471200739,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 24,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 7,
             "range": "± 0",
             "unit": "ns/iter"
           }
