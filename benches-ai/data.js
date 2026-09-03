@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788445658263,
+  "lastUpdate": 1788447404977,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -6281,6 +6281,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 752,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "d25f08e6dd5dfdebc8282d4df4916839f44fd04c",
+          "message": "chore(release): update toolchain and coverage status",
+          "timestamp": "2026-09-03T11:33:00-03:00",
+          "tree_id": "a90ae8197584003a7df35369394ba1af0b7a4488",
+          "url": "https://github.com/Rullst/Rullst/commit/d25f08e6dd5dfdebc8282d4df4916839f44fd04c"
+        },
+        "date": 1788447404057,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1657,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 376,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 772,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
