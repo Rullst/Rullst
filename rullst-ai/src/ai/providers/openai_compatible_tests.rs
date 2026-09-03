@@ -1,4 +1,5 @@
 use super::*;
+use crate::ai::{AiCancellation, StreamLimits, StreamingAiClient};
 use std::{
     io::{Read, Write},
     net::TcpListener,
@@ -10,6 +11,14 @@ use std::{
 fn serve_once(
     response_body: &'static str,
     declared_length: Option<usize>,
+) -> (String, mpsc::Receiver<String>) {
+    serve_once_with_content_type(response_body, declared_length, "application/json")
+}
+
+fn serve_once_with_content_type(
+    response_body: &'static str,
+    declared_length: Option<usize>,
+    content_type: &'static str,
 ) -> (String, mpsc::Receiver<String>) {
     let listener = TcpListener::bind("127.0.0.1:0").expect("loopback fixture binds");
     let address = listener.local_addr().expect("fixture address resolves");
@@ -48,7 +57,7 @@ fn serve_once(
         let content_length = declared_length.unwrap_or(response_body.len());
         write!(
             stream,
-            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {content_length}\r\nConnection: close\r\n\r\n{response_body}"
+            "HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {content_length}\r\nConnection: close\r\n\r\n{response_body}"
         )
         .expect("fixture writes response");
     });
@@ -242,5 +251,104 @@ async fn loopback_transport_applies_the_configured_deadline() {
         .await
         .expect_err("slow endpoint reaches the configured deadline");
     assert!(matches!(error, AiError::RequestError(error) if error.is_timeout()));
+    server.join().expect("fixture finishes");
+}
+
+#[tokio::test]
+async fn declared_sse_stream_is_incremental_bounded_and_uses_the_openai_shape() {
+    let body = concat!(
+        "data: {\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}\n\n",
+        "data: {\"choices\":[{\"delta\":{\"content\":\"hel\"}}]}\n\n",
+        "data: {\"choices\":[{\"delta\":{\"content\":\"lo\"}}]}\r\n\r\n",
+        "data: [DONE]\n\n"
+    );
+    let (base_url, request) = serve_once_with_content_type(body, None, "text/event-stream");
+    let provider = OpenAiCompatibleProvider::try_local(base_url, "local-model")
+        .expect("valid loopback provider")
+        .with_capabilities(OpenAiCompatibleCapabilities::chat_only().with_streaming());
+    let client = StreamingAiClient::new(provider)
+        .with_limits(StreamLimits::try_new(2, 3, 5).expect("valid stream limits"));
+    assert!(client.capabilities().streaming);
+    assert!(client.capabilities().explicit_cancellation);
+
+    let cancellation = AiCancellation::new();
+    let mut output = String::new();
+    let mut sink = |chunk: &str| {
+        output.push_str(chunk);
+        Ok(())
+    };
+    let summary = client
+        .stream_prompt("hello", &cancellation, &mut sink)
+        .await
+        .expect("valid SSE response");
+    assert_eq!(output, "hello");
+    assert_eq!(summary.chunks(), 2);
+    assert_eq!(summary.output_bytes(), 5);
+
+    let request = request
+        .recv_timeout(Duration::from_secs(2))
+        .expect("captured streaming request");
+    let body = request
+        .split_once("\r\n\r\n")
+        .map(|(_, body)| body)
+        .expect("request body exists");
+    let body: serde_json::Value = serde_json::from_str(body).expect("request body is JSON");
+    assert_eq!(body["model"], "local-model");
+    assert_eq!(body["messages"][0]["content"], "hello");
+    assert_eq!(body["stream"], true);
+}
+
+#[tokio::test]
+async fn streaming_requires_capability_and_sse_content_type() {
+    let offline = OpenAiCompatibleProvider::mock("local-model").expect("valid mock provider");
+    let client = StreamingAiClient::new(offline);
+    let mut sink = |_: &str| -> Result<(), AiError> { Ok(()) };
+    assert!(matches!(
+        client
+            .stream_prompt("hello", &AiCancellation::new(), &mut sink)
+            .await,
+        Err(AiError::UnsupportedCapability { .. })
+    ));
+
+    let (base_url, _) = serve_once("{}", None);
+    let provider = OpenAiCompatibleProvider::try_local(base_url, "local-model")
+        .expect("valid loopback provider")
+        .with_capabilities(OpenAiCompatibleCapabilities::chat_only().with_streaming());
+    let client = StreamingAiClient::new(provider);
+    assert!(matches!(
+        client
+            .stream_prompt("hello", &AiCancellation::new(), &mut sink)
+            .await,
+        Err(AiError::StreamProtocol(_))
+    ));
+}
+
+#[tokio::test]
+async fn explicit_cancellation_aborts_an_in_flight_stream_request() {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("loopback fixture binds");
+    let address = listener.local_addr().expect("fixture address resolves");
+    let server = thread::spawn(move || {
+        let (_stream, _) = listener.accept().expect("fixture accepts request");
+        thread::sleep(Duration::from_millis(150));
+    });
+    let provider =
+        OpenAiCompatibleProvider::try_local(format!("http://{address}/v1"), "local-model")
+            .expect("valid loopback provider")
+            .with_capabilities(OpenAiCompatibleCapabilities::chat_only().with_streaming());
+    let client = StreamingAiClient::new(provider);
+    let cancellation = AiCancellation::new();
+    let cancellation_trigger = cancellation.clone();
+    let trigger = tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(25)).await;
+        cancellation_trigger.cancel();
+    });
+    let mut sink = |_: &str| -> Result<(), AiError> { Ok(()) };
+    assert!(matches!(
+        client
+            .stream_prompt("hello", &cancellation, &mut sink)
+            .await,
+        Err(AiError::Cancelled)
+    ));
+    trigger.await.expect("cancellation task completes");
     server.join().expect("fixture finishes");
 }

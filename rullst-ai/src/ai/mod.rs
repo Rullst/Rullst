@@ -17,6 +17,7 @@ mod mock;
 pub mod providers;
 /// RAG prompt building utilities.
 pub mod rag;
+mod streaming;
 mod structured;
 /// Function-calling and tool schema utilities.
 pub mod tools;
@@ -38,6 +39,10 @@ pub use memory::{
 };
 #[cfg(feature = "sql-memory")]
 pub use memory::{SqlChatBackend, SqlChatMemory};
+pub use streaming::{
+    AiCancellation, AiStreamSink, StreamLimits, StreamSummary, StreamingAiClient,
+    StreamingAiProvider,
+};
 pub use structured::StructuredOutputSchema;
 pub use tools::*;
 pub use vector::{VectorDocument, VectorIndex, cosine_similarity};
@@ -76,6 +81,15 @@ pub enum AiError {
         /// Capability that was requested.
         capability: &'static str,
     },
+    /// A caller explicitly cancelled an in-flight AI operation.
+    #[error("AI operation was cancelled")]
+    Cancelled,
+    /// A streaming transport violated the bounded protocol contract.
+    #[error("AI stream rejected: {0}")]
+    StreamProtocol(&'static str),
+    /// The application-provided streaming sink rejected an output chunk.
+    #[error("AI stream sink rejected a chunk")]
+    StreamSink,
     /// A local or remote vision source failed its explicit intake policy.
     #[error("Vision input error: {0}")]
     VisionInput(#[from] VisionInputError),

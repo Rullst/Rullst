@@ -65,7 +65,7 @@ being published as an achieved one.
 | `rullst-mail` | 95 | A | Authoritative malware/CDR inspection, multi-host operations and inbox/provider evidence |
 | `rullst-messaging` | 96 | A | Remote protocols/replication, full metadata encryption and provider operations |
 | `cargo-rullst` | 95 | A | Production deployment, provider accounts and real-application acceptance |
-| `rullst-ai` | 90 | A | Streaming/cancellation, live adaptive evals, distributed audit delivery, provider loops and external retrievers |
+| `rullst-ai` | 90 | A | Non-compatible streaming, live adaptive evals, distributed audit delivery, provider loops and external retrievers |
 | `rullst-studio` | 94 | A | Durable/OTLP storage, key operations and shared operator authorization |
 | `rullst-capital` | 93 | A | Live authorization, authoritative outbox/reconciliation and homologation |
 | `rullst-orm-macros` | 95 | A | Compiler/ecosystem compatibility beyond the tested matrix |
@@ -120,7 +120,7 @@ in the ceiling campaign.
 | `rullst-mail` | 95/A | 95/A | 0 | Bounded inspection, durable shared-local suppression and minimized terminal observations complete for this campaign | Authoritative malware/CDR inspection, provider webhook conformance, multi-host operations, inbox placement, DNS reputation and live-provider acceptance |
 | `rullst-messaging` | 96/A | 96/A | 0 | Encrypted local durability, canonical codec/trace and ORM outbox crash-replay contracts complete for this campaign | Remote broker operation, replication, full metadata encryption and cloud acceptance |
 | `cargo-rullst` | 95/A | 95/A | 0 | All 270 structural profiles, eight generated-test/runtime cases, five public-CLI feature-axis cases and v5/v6/v11 transactional upgrade/recovery fixtures complete for this campaign | Production deployment/account acceptance |
-| `rullst-ai` | 90/A | 95/A | 5 | Cancellation/streaming, distributed authenticated audit delivery and adaptive evaluations | Non-compatible protocols need adapters; model-provider behavior and corpus quality remain external |
+| `rullst-ai` | 90/A | 95/A | 5 | OpenAI-compatible SSE/cancellation is complete; distributed authenticated audit delivery, adaptive evaluations and remaining protocol contracts are open | Non-compatible protocols need adapters; model-provider behavior and corpus quality remain external |
 | `rullst-studio` | 94/A | 94/A | 0 | Push-only authenticated trace ingestion, bounded query heuristics and metadata-only Memory/live-Redis inspection complete for this campaign | Durable/OTLP storage, producer key operations, shared operator identity/RBAC/TLS and production topology |
 | `rullst-iot` | 83/B | 83/B | 0 | Approved B exception retained outside the 15-crate ceiling campaign | Physical hardware, flashing/bootloader, broker/device interoperability and certification |
 | `rullst-capital` | 93/A | 93/A | 0 | Signed-environment binding and bounded HMAC-chained local fiscal command audit/recovery complete the local target | Live gateway acceptance, authoritative multi-writer outbox/reconciliation and official fiscal homologation |

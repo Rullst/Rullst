@@ -17,7 +17,7 @@ falling back to another operation.
 | Gemini | yes | yes | yes | yes | native mode | yes | no | no | yes | no | no |
 | DeepSeek | yes | yes | no | no | native mode | default model only | no | no | yes | no | no |
 | Ollama | yes | yes | yes | yes | native mode | yes | no | no | yes | no | no |
-| OpenAI-compatible | yes | yes | declared | declared | declared native mode | declared | no | no | yes | no | no |
+| OpenAI-compatible | yes | yes | declared | declared | declared native mode | declared | declared SSE | no | yes | no | declared for SSE |
 
 `yes` means Rullst constructs and parses that provider request. A configured
 model can still reject vision, embeddings, or schema output. In particular:
@@ -36,7 +36,7 @@ model can still reject vision, embeddings, or schema output. In particular:
   transport marks unsupported.
 - The OpenAI-compatible adapter defaults to text/chat only. Its exact
   endpoint/model configuration must explicitly declare embeddings, vision,
-  native JSON mode, and JSON Schema. This reports which request shapes Rullst
+  native JSON mode, JSON Schema, and SSE streaming. This reports which request shapes Rullst
   will send; it does not discover or certify model behavior.
 
 ## Vision input sources
@@ -66,9 +66,10 @@ at 10 MiB and JSON responses at 2 MiB, and retain the ordinary 30-second
 configurable request deadline.
 
 This adapter covers `/chat/completions`, optional `/embeddings`, OpenAI-shaped
-image content, and the declared response-format modes. It does not claim Azure
-query/header conventions, arbitrary authentication schemes, provider-native
-tools, streaming, retries, automatic model discovery, or compatibility with an
+image content, the declared response-format modes, and opt-in strict
+`text/event-stream` chat deltas. It does not claim Azure query/header
+conventions, arbitrary authentication schemes, provider-native tools, retries,
+automatic model discovery, or compatibility with an
 unrelated HTTP protocol. Implement `AiProvider` for those explicit semantics.
 Local runtimes such as llama.cpp server, LocalAI, LM Studio, and vLLM are
 possible consumers only when their installed configuration exposes these exact
@@ -78,9 +79,14 @@ shapes; Rullst does not certify a product name or infer capabilities from it.
 
 ### Streaming
 
-All generation requests currently wait for a complete response. The DeepSeek
-and Ollama payloads explicitly select `stream: false`; the other adapters use
-their non-streaming response shapes. Rullst exposes no token-stream API in v12.
+`StreamingAiClient<P>` applies provider-independent output limits through
+static dispatch. For an exact OpenAI-compatible configuration that declares
+`with_streaming()`, Rullst parses incremental UTF-8 SSE deltas, requires the
+terminal `[DONE]` marker, rejects an incorrect media type, malformed/truncated
+events and all configured byte/chunk overflows. The maximums are 4,096 chunks,
+64 KiB per chunk and 2 MiB of raw response and delivered text. DeepSeek and
+Ollama ordinary payloads still select `stream: false`; other provider-specific
+streaming protocols remain unimplemented rather than being treated as OpenAI-compatible.
 
 ### Timeouts and cancellation
 
@@ -89,8 +95,10 @@ Each provider exposes `with_request_timeout(Duration)` to select a stricter or
 longer deadline, and a loopback regression proves timeout classification on the
 OpenAI-compatible transport. This bounds the local request future; it is not
 proof that an upstream provider stopped work or billing. The adapters still do
-not expose a provider-neutral cancellation token or abort handle, so dropping
-the future remains the only explicit caller cancellation mechanism.
+not expose cancellation for ordinary `AiProvider` calls. `AiCancellation`
+provides an explicit cloneable signal for `StreamingAiClient`; the compatible
+transport races it against both the initial request and every streamed body
+read. Other provider protocols still use deadline/drop semantics.
 
 ### Retries
 

@@ -14,6 +14,7 @@ use std::{fmt, time::Duration};
 use zeroize::Zeroizing;
 
 mod config;
+mod stream;
 use config::{EndpointScope, validate_api_key, validate_base_url, validate_model};
 
 const MAX_IMAGE_BYTES: usize = 10 * 1_024 * 1_024;
@@ -30,6 +31,7 @@ pub struct OpenAiCompatibleCapabilities {
     vision: bool,
     json_mode: bool,
     json_schema: bool,
+    streaming: bool,
 }
 
 impl OpenAiCompatibleCapabilities {
@@ -41,6 +43,7 @@ impl OpenAiCompatibleCapabilities {
             vision: false,
             json_mode: false,
             json_schema: false,
+            streaming: false,
         }
     }
 
@@ -75,6 +78,13 @@ impl OpenAiCompatibleCapabilities {
         self
     }
 
+    /// Declares support for the OpenAI `text/event-stream` chat shape.
+    #[must_use]
+    pub const fn with_streaming(mut self) -> Self {
+        self.streaming = true;
+        self
+    }
+
     fn provider_capabilities(self) -> ProviderCapabilities {
         ProviderCapabilities {
             text: true,
@@ -87,11 +97,11 @@ impl OpenAiCompatibleCapabilities {
                 JsonCapability::Unsupported
             },
             json_schema: self.json_schema,
-            streaming: false,
+            streaming: self.streaming,
             tools: false,
             request_timeout: true,
             retries: false,
-            explicit_cancellation: false,
+            explicit_cancellation: self.streaming,
         }
     }
 }

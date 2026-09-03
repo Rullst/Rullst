@@ -57,6 +57,45 @@ The guardrail blocks deterministic injection patterns and invisible Unicode cont
 classes are masked before outbound transmission. Like all heuristic filters, this is one boundary in
 a defense-in-depth design; it is not a proof that arbitrary model output is safe.
 
+## Bounded streaming and explicit cancellation
+
+`StreamingAiClient<P>` is a separate static-dispatch extension so the portable
+`AiProvider` trait remains object-safe. v12 implements genuine incremental
+`text/event-stream` parsing for an exact OpenAI-compatible endpoint only after
+that configuration calls `with_streaming()`. It requires the `[DONE]` sentinel,
+accepts at most 4,096 non-empty chunks, 64 KiB per chunk and 2 MiB of raw SSE
+and delivered UTF-8 output, and rejects malformed, truncated or incorrectly
+typed responses.
+
+```rust,no_run
+# use rullst_ai::{AiCancellation, AiError, StreamingAiClient, providers::openai_compatible::{OpenAiCompatibleCapabilities, OpenAiCompatibleProvider}};
+# async fn example() -> Result<(), AiError> {
+let provider = OpenAiCompatibleProvider::try_local(
+    "http://127.0.0.1:11434/v1",
+    "local-model",
+)?.with_capabilities(
+    OpenAiCompatibleCapabilities::chat_only().with_streaming(),
+);
+let client = StreamingAiClient::new(provider);
+let cancellation = AiCancellation::new();
+let mut output = String::new();
+let summary = client
+    .stream_prompt("Answer concisely", &cancellation, &mut |chunk: &str| {
+        output.push_str(chunk);
+        Ok(())
+    })
+    .await?;
+# let _ = (output, summary);
+# Ok(())
+# }
+```
+
+Cancelling the cloneable signal races the request and every body read, dropping
+the local transport future. It does not prove that an upstream server stopped
+generation or billing. Other built-in providers and ordinary non-streaming
+`AiProvider` calls retain deadline/drop semantics until their exact streaming
+protocols receive equivalent evidence.
+
 ## Policy-bound vision sources
 
 Vision accepts three explicit source forms. `prompt_with_image` consumes bytes

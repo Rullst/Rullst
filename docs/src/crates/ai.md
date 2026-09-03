@@ -58,6 +58,21 @@ outbound transmission. This is a bounded heuristic control, not proof that arbit
 output is safe; authorization, tool permissions, output encoding, and domain validation remain
 application responsibilities.
 
+## Bounded streaming and cancellation
+
+`StreamingAiClient<P>` is a static-dispatch extension for genuinely
+incremental providers. The OpenAI-compatible adapter implements the strict SSE
+path only when the exact endpoint/model configuration opts into
+`with_streaming()`. It checks the prompt before I/O, requires
+`text/event-stream` and `[DONE]`, bounds the raw response, chunk count, each
+chunk and aggregate output, and rejects malformed or truncated events.
+
+`AiCancellation` is cloneable and aborts a supported request while it is
+waiting for headers or another body chunk. That drops the local request future;
+it cannot prove that an upstream server stopped work or billing. The other
+built-in transports and ordinary non-streaming calls retain deadline/drop
+semantics until their different wire protocols have equivalent tests.
+
 ## Tenant-aware chat memory
 
 `StatefulChat<M>` is a static-dispatch orchestration boundary over
@@ -171,8 +186,8 @@ semantic validation.
 
 ## Current boundaries
 
-Streaming responses, provider-native tool execution loops, first-party external
-vector-store `RagRetriever` adapters, and compile-time schema derivation remain roadmap work. The
+Streaming for non-compatible provider protocols, provider-native tool execution
+loops, first-party external vector-store `RagRetriever` adapters, and compile-time schema derivation remain roadmap work. The
 SQL memory does not supply raw-text encryption, ownership within a tenant,
 retention or provider auditing; the in-memory vector utilities and tool registry
 do not create an authorization boundary by themselves.

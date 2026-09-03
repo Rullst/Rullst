@@ -13,6 +13,9 @@
 - Capability-declared OpenAI-compatible adapter with explicit unauthenticated
   loopback and HTTPS/Bearer cloud constructors, bounded responses, no ambient
   proxy/redirects, and deterministic offline fixtures.
+- Static-dispatch `StreamingAiClient<P>` with provider-independent chunk/output
+  limits and an explicit cancellation signal, plus strict OpenAI-compatible
+  SSE parsing when the exact endpoint/model declares that capability.
 - Deterministic empty/`mock_*` offline paths for supported provider capabilities.
 - Explicit separation between parseable JSON mode and provider-enforced JSON Schema output.
 - Ordered provider fallback, RAG prompt helper, vector index, and tool registry.
@@ -32,7 +35,8 @@
 
 ## Planned
 
-- Streaming response abstraction and cancellation contract.
+- Equivalent streaming/cancellation implementations for each non-compatible
+  provider protocol; ordinary non-streaming calls retain deadline/drop semantics.
 - Compile-time JSON Schema derivation for Rust response types.
 - Provider-native tool invocation loop with explicit authorization boundaries.
 - Optional transactional ORM/outbox hooks around application-specific chat

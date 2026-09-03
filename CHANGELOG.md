@@ -86,6 +86,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   mock mode from empty/`mock_*` keys. Optional embeddings, vision, JSON, and
   schema paths are declared per configuration; redirects/proxies are disabled
   and image/response sizes are bounded.
+- `rullst-ai` adds a static-dispatch `StreamingAiClient<P>` and cloneable
+  `AiCancellation`. Exact OpenAI-compatible configurations can opt into strict
+  `text/event-stream` chat deltas with bounded raw bytes, chunk size/count,
+  aggregate output, required `[DONE]`, guarded input and cancellation raced
+  against both request and body reads. It does not claim that cancellation
+  stops upstream billing, and non-compatible provider streaming remains explicit
+  roadmap work.
 - `rullst-ai` vision now has explicit guarded byte, local-file and remote-URL
   entry points. Local files require canonical exact-root admission and a byte
   budget; URLs require the deny-by-default `EgressFetcher`. Both paths check
