@@ -50,6 +50,7 @@ redis_status="${RULLST_SCORECARD_REDIS:-unknown}"
 threat_status="${RULLST_SCORECARD_THREAT:-unknown}"
 ai_status="${RULLST_SCORECARD_AI_EVALS:-unknown}"
 local_access_status="${RULLST_SCORECARD_LOCAL_ACCESS:-unknown}"
+facade_status="${RULLST_SCORECARD_FACADE:-unknown}"
 
 jq -e '
   .schema_version == 1
@@ -70,7 +71,7 @@ jq -e '
     and (.security_failure_design | type == "number" and . >= 0 and . <= 20)
     and (.documentation_dx | type == "number" and . >= 0 and . <= 15)
     and (.operations_release | type == "number" and . >= 0 and . <= 20)
-    and (.specialist_gate | IN("none", "strict-database-redis", "strict-database-redis-and-threat", "redis", "redis-and-threat", "redis-and-release-local-access", "messaging-contract", "threat-minimum", "ai-evals", "provider-matrix", "release-local-access"))
+    and (.specialist_gate | IN("none", "strict-database-redis", "strict-database-redis-and-threat", "redis", "redis-and-threat", "redis-and-release-local-access", "messaging-contract", "threat-minimum", "ai-evals", "provider-matrix", "release-local-access", "facade-composition"))
     and (.finding | type == "string" and length > 0)
     and (.evidence | type == "array" and length > 0)
   )
@@ -217,6 +218,9 @@ for package in "${packages[@]}"; do
     release-local-access)
       specialist_status="$local_access_status"
       ;;
+    facade-composition)
+      specialist_status="$facade_status"
+      ;;
   esac
 
   security_score=0
@@ -262,5 +266,5 @@ repository_target_gap=$((repository_target - repository_achieved))
   echo
   echo "The repository score is the equal-crate aggregate. Capability progress is reported separately. Failed/cancelled/skipped applicable gates suppress the dimensions they are meant to prove; they never increase a ceiling."
   echo
-  echo "Global evidence: check=$(status_mark "$check_status"), tests=$(status_mark "$test_status"), features=$(status_mark "$feature_status"), MSRV=$(status_mark "$msrv_status"), threat=$(status_mark "$threat_status"), AI evals=$(status_mark "$ai_status"), strict databases=$(status_mark "$strict_status"), Redis live=$(status_mark "$redis_status"), release local-access=$(status_mark "$local_access_status")."
+  echo "Global evidence: check=$(status_mark "$check_status"), tests=$(status_mark "$test_status"), features=$(status_mark "$feature_status"), MSRV=$(status_mark "$msrv_status"), threat=$(status_mark "$threat_status"), AI evals=$(status_mark "$ai_status"), strict databases=$(status_mark "$strict_status"), Redis live=$(status_mark "$redis_status"), release local-access=$(status_mark "$local_access_status"), facade composition=$(status_mark "$facade_status")."
 } >>"$output_path"

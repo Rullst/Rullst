@@ -24,6 +24,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Upgrade and compatibility
 
+- The umbrella `rullst` facade now has a dedicated shared-local SQLite
+  composition gate spanning Auth revocation, Capital quota, encrypted Connect
+  tokens, Mail suppression, encrypted Messaging, Core queueing and aggregate
+  lifecycle readiness. It proves restart/idempotent recovery, secret plaintext
+  absence and isolated fail-closed corruption. It does not claim a
+  cross-subsystem transaction, online backup, key management or multi-host
+  coordination.
 - `rullst-orm` temporarily constrains the transitive `tinyvec` resolver edge to
   1.12.0 because 1.13.0 does not compile when `unicode-normalization` enables
   its alloc-only profile. This protects fresh published-package resolutions as

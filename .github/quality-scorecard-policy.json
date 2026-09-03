@@ -166,13 +166,13 @@
     {
       "name": "rullst",
       "api_architecture": 18,
-      "verification": 23,
-      "security_failure_design": 17,
-      "documentation_dx": 14,
-      "operations_release": 18,
-      "specialist_gate": "none",
-      "finding": "All 45 public umbrella features have isolated compile boundaries with automatic manifest-drift detection, and the packaged-distribution consumer derives the complete extracted feature set instead of maintaining a partial allowlist; release confidence still inherits the bounded maturity of opt-in domain capabilities.",
-      "evidence": ["rullst/Cargo.toml", "rullst/tests", "rullst/tests/ai_streaming.rs", ".github/check-feature-boundaries.sh", ".github/test-packaged-distribution.sh", "docs/src/feature-matrix.md"]
+      "verification": 25,
+      "security_failure_design": 19,
+      "documentation_dx": 15,
+      "operations_release": 19,
+      "specialist_gate": "facade-composition",
+      "finding": "All 45 public umbrella features have isolated compile boundaries and the extracted packaged-distribution matrix. A dedicated facade profile composes six namespaced SQLite subsystems behind aggregate lifecycle readiness, then proves restart/idempotency, encrypted-secret plaintext absence and isolated fail-closed corruption. Whole-file consistency, key/backup operations, multi-host coordination and the bounded maturity of opt-in domain capabilities remain host or external concerns.",
+      "evidence": ["rullst/Cargo.toml", "rullst/tests", "rullst/tests/facade_recovery.rs", ".github/check-facade-composition.sh", ".github/check-feature-boundaries.sh", ".github/test-packaged-distribution.sh", "docs/src/feature-matrix.md", "docs/src/spec.md"]
     },
     {
       "name": "cargo-rullst",

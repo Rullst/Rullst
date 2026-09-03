@@ -91,6 +91,37 @@ precedence is PostgreSQL, then MySQL, then SQLite. Do not depend on that
 precedence as backend negotiation. Select one strict backend in an application,
 or select none to use SQLx `Any`.
 
+### Shared-local SQLite composition profile
+
+A bounded single-host application may compose the following umbrella features
+over one file-backed SQLite URL:
+
+```toml
+[dependencies]
+rullst = { version = "12.0.0-rc.1", default-features = false, features = [
+  "auth-sqlite",
+  "capital-quota-sql",
+  "mail-sqlite",
+  "messaging-sqlite",
+  "oauth-sqlite",
+  "queue-sqlite",
+] }
+```
+
+The stores use distinct fixed table namespaces. Initialize/check them
+sequentially, keep application readiness false until every required component
+is healthy, and reuse exactly the same URL, quotas, namespaces, and keys after
+restart. Close every handle before file-level backup or restore. The dedicated
+[`facade_recovery` test](../../rullst/tests/facade_recovery.rs) proves restart,
+idempotency, encrypted-secret plaintext absence, queue recovery, aggregate
+readiness, and isolated fail-closed corruption for this exact profile.
+
+Sharing the file is not a cross-domain transaction or a multi-host design. The
+host still owns permissions, encryption-key custody, a consistent whole-file
+backup procedure, recovery drills, contention policy, and domain
+authorization. Prefer separate databases when failure isolation or write
+throughput is more important than simple local operation.
+
 ## Runtime and data crates
 
 ### `rullst-core`

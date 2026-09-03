@@ -284,6 +284,20 @@ jobs:
       - name: Prove Studio rejects its local capability in release builds
         run: cargo test --release -p rullst-studio protected_router_accepts_only_a_verified_loopback_peer
 
+  facade-composition:
+    name: Facade shared-local recovery composition
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout Monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust toolchain (with native cache)
+        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+
+      - name: Prove cross-domain restart and corruption isolation
+        run: bash .github/check-facade-composition.sh
+
   msrv:
     name: Check MSRV (Rust 1.96.0)
     runs-on: ubuntu-latest
@@ -314,6 +328,7 @@ jobs:
       - threat-model-release-minimum
       - versioned-ai-evals
       - generated-release-access
+      - facade-composition
       - msrv
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -328,6 +343,7 @@ jobs:
       RULLST_SCORECARD_THREAT: ${{ needs.threat-model-release-minimum.result }}
       RULLST_SCORECARD_AI_EVALS: ${{ needs.versioned-ai-evals.result }}
       RULLST_SCORECARD_LOCAL_ACCESS: ${{ needs.generated-release-access.result }}
+      RULLST_SCORECARD_FACADE: ${{ needs.facade-composition.result }}
       RULLST_SCORECARD_MSRV: ${{ needs.msrv.result }}
     steps:
       - name: Checkout Monorepo

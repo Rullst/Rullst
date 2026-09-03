@@ -10,11 +10,11 @@ features.
 
 This functionality inventory is deliberately separate from release quality.
 All 15 non-IoT crates currently meet the approved A floor and `rullst-iot`
-meets its approved B exception. Fourteen of the 15 active crates have also
-reached their higher audited local ceiling. The remaining ceiling work is only
-the `rullst` facade: **1,503/1,509 local campaign points are evidenced (99.6%),
-with 6 points remaining**. The broader
-[v12 release programme](v12.md) estimates RC readiness at 70.6%; therefore this
+meets its approved B exception. All 15 active crates have also reached their
+higher audited local ceiling: **1,509/1,509 local campaign points are backed by
+repository evidence (100%), with zero planning points remaining**. The exact
+SHA still earns those dimensions only when its conditioning gates pass. The
+broader [v12 release programme](v12.md) estimates RC readiness at 70.8%; therefore this
 is still a **NO-GO**, not a release announcement.
 
 Coverage is a separate open RC gate. The complete public Codecov checkpoint
@@ -34,12 +34,13 @@ average: they answer questions about different path sets. Until the first row
 reaches 90%, Rullst must not present the second row as the repository's total
 coverage.
 
-The latest ceiling gain is `rullst-connect/sqlite`: an opt-in encrypted
-shared-local token-generation store with a persisted quota, exact transactional
-compare-and-swap and restart/contention/corruption evidence. It deliberately
-does not claim to lease the preceding remote provider call, operate encryption
-keys/directories/backups, reconcile a losing provider rotation, replicate
-across hosts or provide live-provider conformance.
+The latest ceiling gain is the umbrella `rullst` facade's dedicated shared-local
+SQLite profile. It composes Auth revocation, Capital quota, encrypted Connect
+tokens, Mail suppression, encrypted Messaging and Core queueing behind
+aggregate lifecycle readiness, then proves restart/idempotency, plaintext
+secret exclusion and isolated fail-closed corruption. It deliberately does not
+claim a cross-subsystem transaction, whole-file online consistency, key/backup
+operations or multi-host coordination.
 
 `rullst-ai` has now earned its audited 95/A local ceiling. In addition to strict
 opt-in OpenAI-compatible SSE/cancellation, `AuditDeliveryClient` supplies

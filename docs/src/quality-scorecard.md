@@ -21,8 +21,9 @@ evidence fails, but a green run cannot inflate them.
 | Operations and release | 20 | Audited durability/live/recovery/release maturity constrained by feature, MSRV and specialist evidence |
 
 Specialist evidence includes database/Redis live matrices, AI evals, the threat
-minimum, release local-access negatives, provider matrices, and Messaging's
-wire/trace, encrypted SQLite and ORM outbox crash-replay cases. Failed,
+minimum, release local-access negatives, provider matrices, the facade's
+shared-local recovery composition, and Messaging's wire/trace, encrypted
+SQLite and ORM outbox crash-replay cases. Failed,
 cancelled, or skipped applicable gates suppress
 the dimensions they prove; the report is still generated so a red push cannot
 hide its note.
@@ -60,7 +61,7 @@ being published as an achieved one.
 | `rullst-orm` | 96 | A | Online snapshot isolation, managed/PITR backup, vendor operations and application writer/tenant/key policy |
 | `rullst-security` | 96 | A | Trusted rollback checkpoints, external SIEM delivery, independent audit and certification |
 | `rullst-connect` | 95 | A | Remote-provider leases/reconciliation, key/directory/backup operations, multi-host refresh and provider conformance |
-| `rullst` | 90 | A | Inherits bounded maturity from opt-in domain crates |
+| `rullst` | 96 | A | Whole-file recovery/backup operations, multi-host coordination and maturity inherited from opt-in domain crates |
 | `rullst-auth` | 95 | A | Shared ceremonies, multi-host state, refresh workflow and normative WebAuthn conformance |
 | `rullst-mail` | 95 | A | Authoritative malware/CDR inspection, multi-host operations and inbox/provider evidence |
 | `rullst-messaging` | 96 | A | Remote protocols/replication, full metadata encryption and provider operations |
@@ -72,15 +73,15 @@ being published as an achieved one.
 | `rullst-nexus` | 95 | A | Host identity/domain policy, global/custom-route authorization, immutable audit delivery and production operations |
 | `rullst-macros` | 94 | A | Real browser/network ecosystems and host identity policy remain external |
 | `rullst-iot` | 83 | B | Concrete transport/hardware storage, flashing and bootloader evidence |
-| **Repository (equal-crate aggregate)** | **94** | **A** | **1,503/1,600; exact score remains conditional on the SHA's gates** |
+| **Repository (equal-crate aggregate)** | **94** | **A** | **1,509/1,600; exact score remains conditional on the SHA's gates** |
 
 ## Measured gap to the v12 quality gate
 
 Every non-IoT crate now has an audited ceiling of A or better, while IoT meets
 its approved B exception. The gap to the required grade is therefore **zero**.
-This does not close the ceiling campaign or authorize a release: the exact RC
-SHA must still make every conditioning gate green, and the remaining crates
-must earn their higher local targets through implementation and evidence.
+This also closes the repository-owned ceiling campaign, but it does not
+authorize a release: the exact RC SHA must still make every conditioning gate
+green, including the dedicated facade composition job.
 
 | Crate | Current | Gap to required grade | Next evidence cluster to audit |
 | :--- | ---: | ---: | :--- |
@@ -103,11 +104,11 @@ provider acceptance, app-store/device testing, fiscal homologation, independent
 audit and production operation remain external even when a bounded
 implementation earns a high A.
 
-Fourteen of the 15 active crates have now reached their audited local target:
+All 15 active crates have now reached their audited local target:
 `rullst-core`, `rullst-macros`, `rullst-orm-macros`, `rullst-messaging`, `rullst-capital`,
 `rullst-mail`, `rullst-auth`, `rullst-nexus`, `cargo-rullst`, `rullst-studio`,
-`rullst-orm`, `rullst-security`, `rullst-connect`, and `rullst-ai`. Only the
-umbrella `rullst` facade remains in the ceiling campaign.
+`rullst-orm`, `rullst-security`, `rullst-connect`, `rullst-ai`, and the umbrella
+`rullst` facade.
 
 | Crate | Current audited | Provisional local ceiling | Points remaining | Repository-owned evidence cluster | External boundary retained |
 | :--- | ---: | ---: | ---: | :--- | :--- |
@@ -115,7 +116,7 @@ umbrella `rullst` facade remains in the ceiling campaign.
 | `rullst-orm` | 96/A | 96/A | 0 | Authenticated bounded document recovery, fail-closed inventory semantics and real MongoDB → SurrealDB → MongoDB rehearsal complete for this campaign | Online snapshot isolation, managed/PITR backup, vendor operations and application writer/tenant/key policy |
 | `rullst-security` | 96/A | 96/A | 0 | HMAC-chained local SIEM integrity, explicit key rotation and exact forgery/ordering/restart negatives complete for this campaign | Trusted whole-tail checkpoints, external SIEM delivery/acknowledgement, independent audit, certification and real SOC operation |
 | `rullst-connect` | 95/A | 95/A | 0 | Encrypted shared-local token state, immutable quota, transactional generation CAS, restart/contention/corruption evidence and public/facade integration complete for this campaign | Remote-provider lease/reconciliation, key/directory/backup operations, multi-host replication, live-provider conformance and IdP operations |
-| `rullst` | 90/A | 96/A | 6 | Deeper cross-domain runtime composition and recovery contracts | Maturity inherited from external provider/device evidence |
+| `rullst` | 96/A | 96/A | 0 | Six-subsystem shared-local SQLite composition, aggregate readiness, restart/idempotency, secret-exclusion and isolated corruption evidence complete for this campaign | Whole-file backup/recovery operations, multi-host coordination and maturity inherited from external provider/device evidence |
 | `rullst-auth` | 95/A | 95/A | 0 | Bounded shared local revocation/device lifecycle, restart and counter-CAS evidence complete for this campaign | Shared ceremonies, multi-host replication, refresh workflow and normative WebAuthn conformance |
 | `rullst-mail` | 95/A | 95/A | 0 | Bounded inspection, durable shared-local suppression and minimized terminal observations complete for this campaign | Authoritative malware/CDR inspection, provider webhook conformance, multi-host operations, inbox placement, DNS reputation and live-provider acceptance |
 | `rullst-messaging` | 96/A | 96/A | 0 | Encrypted local durability, canonical codec/trace and ORM outbox crash-replay contracts complete for this campaign | Remote broker operation, replication, full metadata encryption and cloud acceptance |
@@ -127,13 +128,12 @@ umbrella `rullst` facade remains in the ceiling campaign.
 | `rullst-orm-macros` | 95/A | 95/A | 0 | Fail-closed structured parser, 24 exact UI diagnostics and generated runtime cross-evidence complete for this campaign | Compiler/ecosystem compatibility beyond the tested matrix |
 | `rullst-nexus` | 95/A | 95/A | 0 | Trusted-context tenant scope, transaction-coupled audit and bounded admin operation contracts complete for this campaign | Host identity/domain policy, global/custom-route authorization, immutable audit delivery and production operation |
 | `rullst-macros` | 94/A | 94/A | 0 | Bounded grammar/diagnostics, native server route, versioned Wasm transport, CSRF composition and generated-project evidence complete for this campaign | Real compiler/browser/network ecosystem matrix and host identity policy beyond CI |
-| **Repository** | **1,503/1,600 = 93.9 (rounded 94/A)** | **1,509/1,600 = 94.3/A** | **6** | **Every gain still requires reviewed evidence** | **A+ remains outside this local planning ceiling** |
+| **Repository** | **1,509/1,600 = 94.3 (rounded 94/A)** | **1,509/1,600 = 94.3/A** | **0** | **Repository-owned ceiling campaign complete; the exact SHA gates remain authoritative** | **A+ remains outside this local planning ceiling** |
 
-On this planning scale, **99.6% of the eventual score total is already
-evidenced and 0.4% remains**. That percentage describes point distance, not
-elapsed effort: the remaining points are concentrated in integration,
-durability, failure recovery, distributed composition and operational matrices
-and are therefore more expensive than early API/documentation points.
+On this planning scale, **100% of the maximum-local v12 target is now backed by
+committed evidence and zero planning points remain**. Awarding those points is
+still conditional on every applicable gate succeeding for the exact SHA; this
+completion is not a release decision or an external validation claim.
 `rullst-iot` is the only accepted campaign result below A; its approved B exception reflects missing
 physical/device evidence rather than lowering the release gate for the other
 15 crates. This table must be re-audited whenever implementation reveals a
