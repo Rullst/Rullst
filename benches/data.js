@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788444769530,
+  "lastUpdate": 1788445062363,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -16247,6 +16247,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2177,
             "range": "± 54",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fbca1ed0aaa2e833f3f0ae38e42249bc8505369e",
+          "message": "docs(coverage): pin audited codecov checkpoint",
+          "timestamp": "2026-09-03T11:14:33-03:00",
+          "tree_id": "0d6d40ed238c782a7c912cf97f320bf9a01431f8",
+          "url": "https://github.com/Rullst/Rullst/commit/fbca1ed0aaa2e833f3f0ae38e42249bc8505369e"
+        },
+        "date": 1788445060589,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 866,
+            "range": "± 43",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1114,
+            "range": "± 49",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 645,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2214,
+            "range": "± 53",
             "unit": "ns/iter"
           }
         ]
