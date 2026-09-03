@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788427362346,
+  "lastUpdate": 1788440391280,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -16139,6 +16139,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2230,
             "range": "± 49",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "28e2cea9b8aa63ff01156dfb02c29405464a6c17",
+          "message": "feat(orm): add authenticated document recovery",
+          "timestamp": "2026-09-03T09:57:16-03:00",
+          "tree_id": "15481e1f40d4d08ff10f275ba37adf90a9ebe682",
+          "url": "https://github.com/Rullst/Rullst/commit/28e2cea9b8aa63ff01156dfb02c29405464a6c17"
+        },
+        "date": 1788440389572,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 616,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 898,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 621,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1829,
+            "range": "± 43",
             "unit": "ns/iter"
           }
         ]
