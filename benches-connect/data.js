@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788393404080,
+  "lastUpdate": 1788396997453,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -4913,6 +4913,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 569,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "f1d78028568cee152f453c1b8bca96b994ac21c0",
+          "message": "feat(capital): add durable webhook replay ledger",
+          "timestamp": "2026-09-02T21:37:50-03:00",
+          "tree_id": "3cf575ad52ce3d390d69efcf46e618692ef85321",
+          "url": "https://github.com/Rullst/Rullst/commit/f1d78028568cee152f453c1b8bca96b994ac21c0"
+        },
+        "date": 1788396996712,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 505,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
