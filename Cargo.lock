@@ -7145,6 +7145,7 @@ dependencies = [
  "testcontainers",
  "testcontainers-modules",
  "thiserror 2.0.20",
+ "tinyvec",
  "tokio",
  "tracing",
  "tracing-subscriber",
