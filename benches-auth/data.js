@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788421435144,
+  "lastUpdate": 1788428088822,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -8201,6 +8201,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4634,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "b58ba7cc07ebc8410c70e854683ff6844c01e37e",
+          "message": "feat(core): add lifecycle-aware request draining",
+          "timestamp": "2026-09-03T06:16:27-03:00",
+          "tree_id": "be96d1f527ec38acd1e1b23c612e8b01fa42d82e",
+          "url": "https://github.com/Rullst/Rullst/commit/b58ba7cc07ebc8410c70e854683ff6844c01e37e"
+        },
+        "date": 1788428088042,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1059,
+            "range": "± 50",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 880,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1961,
+            "range": "± 39",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4596,
+            "range": "± 123",
             "unit": "ns/iter"
           }
         ]
