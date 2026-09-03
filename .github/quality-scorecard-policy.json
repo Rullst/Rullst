@@ -66,14 +66,14 @@
     },
     {
       "name": "rullst-connect",
-      "api_architecture": 18,
-      "verification": 23,
-      "security_failure_design": 19,
-      "documentation_dx": 14,
+      "api_architecture": 19,
+      "verification": 25,
+      "security_failure_design": 20,
+      "documentation_dx": 15,
       "operations_release": 16,
       "specialist_gate": "threat-minimum",
-      "finding": "Substantial OAuth/OIDC protocol and negative evidence plus bounded provider/account-bound encrypted refresh snapshots; durable transactions, key operations, distributed refresh and formal provider conformance remain external/application work.",
-      "evidence": ["rullst-connect/README.md", "rullst-connect/src/refresh/snapshot.rs", "rullst-connect/tests/token_snapshot_contract.rs", "docs/src/crates/connect.md"]
+      "finding": "Substantial OAuth/OIDC protocol evidence now includes bounded provider/account-bound encryption plus a fixed-schema shared-local SQLite token store with persisted quota, exact generation CAS, restart/contention/corruption negatives and public/facade integration. Remote-provider leases and losing-call reconciliation, key/directory/backup operations, multi-host replication and formal provider conformance remain external/application work.",
+      "evidence": ["rullst-connect/README.md", "rullst-connect/src/refresh/snapshot.rs", "rullst-connect/src/refresh/sqlite.rs", "rullst-connect/src/refresh/sqlite", "rullst-connect/tests/token_snapshot_contract.rs", "rullst-connect/tests/sqlite_token_store.rs", "rullst/tests/connect_refresh.rs", "docs/src/crates/connect.md", "docs/src/threat-models.md"]
     },
     {
       "name": "rullst-iot",

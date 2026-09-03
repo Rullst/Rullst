@@ -77,6 +77,7 @@ rullst-connect|axum
 rullst-connect|actix
 rullst-connect|retry
 rullst-connect|axum-session
+rullst-connect|sqlite
 rullst-iot|std
 rullst-iot|experimental-simulators
 rullst-security|redis-rate-limit
@@ -118,6 +119,7 @@ rullst|messaging-sqlite
 rullst|messaging-orm-outbox
 rullst|auth-jwt
 rullst|auth-sqlite
+rullst|oauth-sqlite
 rullst|oauth
 rullst|ai
 rullst|ai-sql-memory

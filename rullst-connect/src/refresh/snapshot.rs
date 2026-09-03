@@ -89,6 +89,11 @@ impl TokenSnapshotBinding {
     pub fn provider(&self) -> &str {
         &self.provider
     }
+
+    #[cfg(feature = "sqlite")]
+    pub(crate) fn account_id(&self) -> &str {
+        &self.account_id
+    }
 }
 
 impl fmt::Debug for TokenSnapshotBinding {

@@ -54,6 +54,10 @@ state of those checks for the referenced commit; they are not an absolute securi
 - 🔏 **Encrypted token snapshots**: AES-256-GCM envelopes preserve validated
   refresh generations across restarts, authenticate provider/account ownership,
   support explicit key IDs, and keep durable storage under application control.
+- 🗄️ **Opt-in local SQLite lifecycle**: The `sqlite` feature adds encrypted
+  shared-local snapshots, a persisted entry ceiling, restart recovery, and
+  exact generation compare-and-swap so a stale local process cannot overwrite
+  a newer token rotation.
 - 🚪 **Typed remote revocation**: Access and refresh tokens are distinct API
   operations. Google, GitHub, Discord, Apple, Auth0 and Cognito have bounded
   protocol adapters; unsupported providers fail explicitly and offline
@@ -335,11 +339,46 @@ Persist only `snapshot.as_str()`. On restart, validate it with
 `try_from_envelope`, select the secret-manager key named by `key_id()`, and call
 `open` with the same trusted binding before constructing a new session. The
 32-byte key must come from a secret manager or CSPRNG, not a human password.
-The envelope is bounded, versioned, redacting, and authenticated; it does not
-provide a database transaction or distributed refresh lock. Cross-process leases,
-retry/backoff, local-session logout/reconciliation, reauthentication and
-revocation for providers outside the named adapter set remain application policy;
-providers without refresh support fail explicitly.
+The envelope is bounded, versioned, redacting, and authenticated; by itself it
+does not provide a database transaction or distributed refresh lock. Enable
+`sqlite` for the bounded shared-local store:
+
+```toml
+rullst-connect = { version = "12.0.0-rc.1", features = ["sqlite"] }
+```
+
+```rust,no_run
+use rullst_connect::{
+    RefreshableTokenState, SqliteTokenSnapshotStore, TokenSnapshotBinding,
+    TokenSnapshotKey, TokenStoreError,
+};
+
+async fn persist_initial_generation(
+    state: &RefreshableTokenState,
+    key: &TokenSnapshotKey,
+    local_account_id: &str,
+) -> Result<(), TokenStoreError> {
+    let store = SqliteTokenSnapshotStore::connect(
+        "sqlite:///var/lib/my-app/oauth-tokens.sqlite",
+        50_000,
+    )
+    .await?;
+    let binding = TokenSnapshotBinding::try_new("github", local_account_id)?;
+    store.insert_initial(&binding, state, key).await?;
+    store.close().await;
+    Ok(())
+}
+```
+
+After a provider refresh, persist the state from `state_snapshot()` through
+`compare_and_swap(binding, observed_generation, replacement, key)`. The store
+accepts only the exact successor and returns `GenerationConflict` to a stale
+writer. It stores a SHA-256 pseudonymous binding—not an anonymous value—plus
+generation/key metadata and AES-256-GCM ciphertext. The application still owns
+authorization, a lease around the remote provider call, losing-call
+reconciliation, retry/backoff, secret-manager key custody/rotation, trusted
+directory permissions, backup, revocation and multi-host replication.
+Providers without refresh support fail explicitly.
 
 ### 🔒 Manual PKCE Support
 

@@ -24,6 +24,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Upgrade and compatibility
 
+- `rullst-connect/sqlite` adds a bounded shared-local lifecycle for encrypted
+  OAuth token generations. The fixed schema stores only a pseudonymous binding
+  digest, generation/key metadata and the existing account-bound AES-256-GCM
+  envelope; it persists a 1–1,000,000 row ceiling and uses serialized
+  transactions plus exact-successor compare-and-swap/conditional deletion.
+  Restart, two-instance contention, stale writer, quota/configuration drift,
+  key/tamper/corruption, plaintext-absence, symlink, public API and umbrella
+  `oauth-sqlite` evidence fail closed. The host still owns the lease around a
+  remote provider refresh, losing-call reconciliation, account authorization,
+  key-manager/directory/backup operations, retries, revocation and multi-host
+  replication.
 - `rullst-orm` adds a separate identifier-preserving `DocumentInventory<T>`
   extension and bounded encrypted recovery for portable MongoDB, SurrealDB and
   deterministic-store documents. AES-256-GCM snapshots bind key-rotation ID,

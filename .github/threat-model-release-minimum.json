@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "TM-12.9",
+  "model_version": "TM-12.10",
   "cases": [
     {
       "id": "CORE-01",
@@ -64,6 +64,15 @@
       "test_filter": "extractors::session::tests::oidc_session_round_trip_is_sequentially_single_use_and_keeps_secrets_server_side",
       "source": "rullst-connect/src/extractors/session/tests.rs",
       "marker": "TM-AUTH-04"
+    },
+    {
+      "id": "CONNECT-24",
+      "crate": "rullst-connect",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "refresh::sqlite::tests::competing_instances_enforce_generation_cas_and_recovery",
+      "source": "rullst-connect/src/refresh/sqlite/tests.rs",
+      "marker": "TM-CONNECT-24"
     },
     {
       "id": "AUTH-05",

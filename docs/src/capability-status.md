@@ -10,11 +10,11 @@ features.
 
 This functionality inventory is deliberately separate from release quality.
 All 15 non-IoT crates currently meet the approved A floor and `rullst-iot`
-meets its approved B exception. Twelve of the 15 active crates have also reached
-their higher audited local ceiling. The remaining ceiling work is
-`rullst-connect`, `rullst-ai`, and the `rullst` facade: **1,493/1,509 local
-campaign points are evidenced (98.9%), with 16 points remaining**. The broader
-[v12 release programme](v12.md) estimates RC readiness at 70.2%; therefore this
+meets its approved B exception. Thirteen of the 15 active crates have also
+reached their higher audited local ceiling. The remaining ceiling work is
+`rullst-ai` and the `rullst` facade: **1,498/1,509 local campaign points are
+evidenced (99.3%), with 11 points remaining**. The broader
+[v12 release programme](v12.md) estimates RC readiness at 70.4%; therefore this
 is still a **NO-GO**, not a release announcement.
 
 Coverage is a separate open RC gate. The complete public Codecov checkpoint
@@ -34,12 +34,12 @@ average: they answer questions about different path sets. Until the first row
 reaches 90%, Rullst must not present the second row as the repository's total
 coverage.
 
-The latest bounded M12 gain is the opt-in `AuthenticatedSiemSpool`: a
-single-writer HMAC-SHA256-chained local journal with explicit active/historical
-key rotation and exact forgery/order/restart negatives. M12 remains partial
-because trusted whole-tail checkpoints, multi-writer operation, external SIEM
-delivery/acknowledgement, independent audit and certification are not supplied
-by that local contract.
+The latest ceiling gain is `rullst-connect/sqlite`: an opt-in encrypted
+shared-local token-generation store with a persisted quota, exact transactional
+compare-and-swap and restart/contention/corruption evidence. It deliberately
+does not claim to lease the preceding remote provider call, operate encryption
+keys/directories/backups, reconcile a losing provider rotation, replicate
+across hosts or provide live-provider conformance.
 
 ## `rullst` facade versus `rullst-core`
 

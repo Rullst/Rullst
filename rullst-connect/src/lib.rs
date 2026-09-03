@@ -26,6 +26,10 @@ pub use refresh::{
     AccessTokenLease, AutoRefreshingSession, EncryptedTokenSnapshot, RefreshableTokenState,
     TokenSnapshotBinding, TokenSnapshotError, TokenSnapshotKey,
 };
+#[cfg(feature = "sqlite")]
+pub use refresh::{
+    SqliteTokenSnapshotStore, TokenStoreError, TokenStoreMetadata, TokenStoreSnapshot,
+};
 pub use user::{ConnectUser, UniversalProfile};
 
 /// The main entry point for the rullst-connect library.

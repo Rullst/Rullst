@@ -13,6 +13,10 @@ pub use crate::refresh::{
     AccessTokenLease, AutoRefreshingSession, EncryptedTokenSnapshot, RefreshableTokenState,
     TokenSnapshotBinding, TokenSnapshotError, TokenSnapshotKey,
 };
+#[cfg(feature = "sqlite")]
+pub use crate::refresh::{
+    SqliteTokenSnapshotStore, TokenStoreError, TokenStoreMetadata, TokenStoreSnapshot,
+};
 pub use crate::user::{ConnectUser, UniversalProfile};
 pub use secrecy::{ExposeSecret, SecretString};
 

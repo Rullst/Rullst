@@ -6,7 +6,7 @@ model_path="docs/src/threat-models.md"
 
 jq -e '
   .schema_version == 1
-  and .model_version == "TM-12.9"
+  and .model_version == "TM-12.10"
   and (.cases | length > 0)
   and ([.cases[].id] | unique | sort == [
     "ACADEMY-02",
@@ -31,6 +31,7 @@ jq -e '
     "AUTH-05",
     "AUTH-06",
     "AUTH-07",
+    "CONNECT-24",
     "CORE-01",
     "CORE-02",
     "DEPLOY-05",

@@ -67,6 +67,7 @@ rullst = { version = "12.0.0-rc.1", default-features = false }
 | `redis` | no | Convenience alias enabling `queue-redis`, `cache-redis` and `orm-redis` |
 | `offline-sync` | no | Native bounded offline queue, explicit conflict state machine, account-bound encrypted snapshots, and static-dispatch push/pull orchestration; platform storage and concrete transport remain application responsibilities |
 | `oauth` | no | OAuth2/OIDC providers from `rullst-connect` |
+| `oauth-sqlite` | no | `oauth` plus bounded encrypted shared-local token-generation state with exact SQLite compare-and-swap |
 | `ai` | no | Provider-agnostic AI clients and local safeguards from `rullst-ai` |
 | `ai-sql-memory` | no | `ai` plus tenant-aware durable chat memory for SQLite, PostgreSQL, MySQL, and MariaDB |
 | `capital` | no | Payment, payout, analytics, DPS builder, and offline fiscal APIs from `rullst-capital` |
@@ -180,6 +181,7 @@ types remain available without a web-framework adapter.
 | `retry` | Retry-aware HTTP client behavior using `reqwest-middleware` and `reqwest-retry` |
 | `reqwest-middleware` | The optional middleware dependency alone; prefer `retry` for retry behavior |
 | `axum-session` | Axum plus a ten-minute, one-active-challenge `tower-sessions` state/PKCE/OIDC-nonce transaction and callback extractor |
+| `sqlite` | File-backed shared-local encrypted token snapshots with persisted quota, restart recovery and exact generation compare-and-swap; remote refresh leases, key custody and multi-host operation remain application concerns |
 | `mock` | Deterministic offline provider modules outside test builds |
 
 ### `rullst-messaging`

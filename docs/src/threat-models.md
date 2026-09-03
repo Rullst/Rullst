@@ -1,6 +1,6 @@
 # Rullst v12 threat models
 
-> **Model version:** TM-12.9
+> **Model version:** TM-12.10
 > **Applies to:** the v12 release candidate source and generated applications
 > **Last source review:** 2026-09-03
 > **Status:** maintainer baseline; application owners must extend it for their
@@ -27,8 +27,8 @@ addresses are untrusted unless a separately reviewed proxy policy establishes
 the direct peer as trusted.
 
 The machine-readable release minimum in
-`.github/threat-model-release-minimum.json` binds 53 distinct abuse-case IDs to
-65 evidence rows and 57 exact test executions across thirteen crates. The gate rejects missing markers,
+`.github/threat-model-release-minimum.json` binds 55 distinct abuse-case IDs to
+67 evidence rows and 59 exact test executions across thirteen crates. The gate rejects missing markers,
 missing tests and zero-test filters before executing Core, ORM, Auth, Nexus,
 Studio, tenant ownership, Capital, AI, Mail, IoT, generated-default and Academy
 negatives. Passing that bounded minimum does not imply that every case below is
@@ -71,6 +71,22 @@ application ↔ session/challenge store; operator ↔ key store.
 **Release-negative minimum:** malformed/expired session, wrong key, cross-origin
 passkey, replayed challenge, wrong RP, invalid callback state and repeated login
 failure.
+
+## TM-CONNECT-1 — durable local OAuth token generations
+
+**Assets:** access and refresh tokens, provider identity, application-account
+binding, encryption keys and the latest accepted token generation.
+
+**Trust boundaries:** application authorization ↔ account binding; provider
+response ↔ refresh coordinator; local processes ↔ shared SQLite state; and
+operator secret manager ↔ encrypted snapshot key.
+
+| Abuse case | Required disposition | Repository evidence or remaining work |
+| --- | --- | --- |
+| `CONNECT-24` stale or competing local writer rolls a rotated token generation back | Store only authenticated ciphertext plus non-secret key/generation metadata, serialize local writes and replace/delete only after an exact generation compare-and-swap. Reject configuration drift, quota exhaustion, malformed rows and unsafe existing file targets without exposing the database path or token material. | The opt-in SQLite store uses `BEGIN IMMEDIATE`, an immutable persisted row ceiling and exact successor CAS. Two independent pools race generation one; exactly one succeeds, the loser fails with `GenerationConflict`, restart recovers the winner, and a stale delete is rejected. Separate negatives cover key mismatch, ciphertext authentication, metadata corruption, quota/configuration, plaintext absence and symlink targets. Provider-call leases, recovery after a losing remote refresh, key-manager operation, trusted directory permissions, backup, multi-host replication and live-provider conformance remain application/deployment work. |
+
+**Release-negative minimum:** two local writers cannot both replace one observed
+generation, and restart cannot turn a stale generation into the winner.
 
 ## TM-NEXUS-1 — administrative CMS
 
@@ -335,6 +351,6 @@ registry and CLI ↔ filesystem/process/cloud.
 - New boundaries receive new IDs; IDs are never silently reused.
 - Closing residual risk requires code/configuration, a negative test and
   commit-bound evidence. Documentation alone cannot claim a control is deployed.
-- Before stable v12, maintainers must review TM-12.9 against the exact RC,
+- Before stable v12, maintainers must review TM-12.10 against the exact RC,
   applications must add topology/provider threats and an independent reviewer
   must cover the highest-impact paths.

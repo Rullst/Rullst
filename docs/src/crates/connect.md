@@ -287,10 +287,51 @@ Persist only `snapshot.as_str()`. On restart, validate it with
 `open` with the same trusted binding. Keys must be 32 bytes from a secret
 manager or CSPRNG; human passwords require an application-selected KDF. The
 envelope authenticates confidentiality, ownership binding and generation but
-does not provide a database transaction. Cross-process refresh leases,
-retry/backoff, local-session logout/reconciliation, reauthentication and
-revocation outside the named adapter set remain application policy. A
-provider that does not support refresh continues to return a typed error.
+does not provide a database transaction by itself.
+
+#### Durable shared-local SQLite state
+
+Enable `rullst-connect/sqlite` (or umbrella `rullst/oauth-sqlite`) to store the
+encrypted generations in one local SQLite file:
+
+```rust,no_run
+use rullst_connect::{
+    RefreshableTokenState, SqliteTokenSnapshotStore, TokenSnapshotBinding,
+    TokenSnapshotKey, TokenStoreError,
+};
+
+async fn persist_initial_generation(
+    state: &RefreshableTokenState,
+    key: &TokenSnapshotKey,
+    account_id: &str,
+) -> Result<(), TokenStoreError> {
+    let store = SqliteTokenSnapshotStore::connect(
+        "sqlite:///var/lib/my-app/oauth-tokens.sqlite",
+        50_000,
+    )
+    .await?;
+    let binding = TokenSnapshotBinding::try_new("github", account_id)?;
+    store.insert_initial(&binding, state, key).await?;
+    store.close().await;
+    Ok(())
+}
+```
+
+After refreshing from generation `n`, call
+`compare_and_swap(&binding, n, &replacement, &key)`. `BEGIN IMMEDIATE`
+serializes local writers and only generation `n + 1` can replace the observed
+row. The fixed schema persists its configured 1–1,000,000 row ceiling and
+restart/key metadata; malformed rows, configuration drift, quota exhaustion
+and stale replacement/deletion fail with typed redacted errors. The account
+locator is a SHA-256 pseudonymous digest, not an anonymity guarantee; the
+provider/account binding is also authenticated inside the ciphertext.
+
+This local CAS does not serialize the earlier call to a remote OAuth provider.
+Applications must still authorize the account, lease that remote operation,
+reconcile a provider rotation lost to CAS, configure retry/backoff and local
+logout, keep keys in a secret manager, protect/backup the directory and provide
+multi-host replication when needed. A provider that does not support refresh
+continues to return a typed error.
 
 ### 🔒 Manual PKCE Support
 

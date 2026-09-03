@@ -1,9 +1,15 @@
 //! Bounded, process-local coordination for automatic OAuth token refresh.
 
 mod snapshot;
+#[cfg(feature = "sqlite")]
+mod sqlite;
 
 pub use snapshot::{
     EncryptedTokenSnapshot, TokenSnapshotBinding, TokenSnapshotError, TokenSnapshotKey,
+};
+#[cfg(feature = "sqlite")]
+pub use sqlite::{
+    SqliteTokenSnapshotStore, TokenStoreError, TokenStoreMetadata, TokenStoreSnapshot,
 };
 
 use crate::{ConnectError, ConnectUser, Provider};

@@ -39,7 +39,7 @@ application/operator's responsibility.
 | State/nonce comparison | `src/extractors.rs`, `src/provider/mod.rs` | Constant-time comparison is one control; the application must still generate, store, expire, and consume transaction state correctly. |
 | Response-size limit | `src/client/reqwest_client.rs` | The built-in client enforces its configured bound. A custom `HttpClient` is a separate trust boundary and must enforce equivalent limits. |
 | Secret wrappers | provider/user types using `secrecy::SecretString` | Debug redaction reduces accidental disclosure; it is not a complete secret-management or memory-erasure guarantee for every copy and dependency. |
-| Encrypted refresh snapshots | `src/refresh/snapshot.rs` | AES-256-GCM authenticates version/key/provider/account binding and restores validated state. The application must supply high-entropy key custody, transactional storage, rotation and distributed refresh coordination. |
+| Encrypted refresh snapshots | `src/refresh/snapshot.rs`, `src/refresh/sqlite.rs` | AES-256-GCM authenticates version/key/provider/account binding and restores validated state. The optional SQLite store adds a persisted quota plus shared-local transaction and generation CAS. The application must still supply high-entropy key custody/rotation, a remote-provider refresh lease, trusted directory operations, backup and multi-host coordination. |
 
 ## Reproduce evidence for a commit
 
