@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788469350825,
+  "lastUpdate": 1788470516411,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -16571,6 +16571,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1338,
             "range": "± 70",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "34efe8f649fc2049cfe6666639557b9c1cb971b6",
+          "message": "feat(ai): add authenticated audit delivery",
+          "timestamp": "2026-09-03T18:19:17-03:00",
+          "tree_id": "1e5f815cc7b022f7cf389f88634750bfe00f6471",
+          "url": "https://github.com/Rullst/Rullst/commit/34efe8f649fc2049cfe6666639557b9c1cb971b6"
+        },
+        "date": 1788470515174,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 735,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 982,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 646,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2284,
+            "range": "± 28",
             "unit": "ns/iter"
           }
         ]
