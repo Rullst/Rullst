@@ -23,6 +23,17 @@ and 91.26% for the `framework_libraries` component. Both now target at least
 90%; the overall gap must be closed through behavior-asserting tests,
 especially around CLI paths, rather than metric-only execution.
 
+| Coverage view | Audited checkpoint | RC meaning |
+| :--- | :---: | :--- |
+| Whole repository | **84.97%** | **Failing / release blocker.** This is the primary public number and includes the CLI and proc-macro production sources. |
+| Framework libraries | **91.26%** | Passing its separate component gate, but it cannot compensate for or replace the whole-repository result. |
+| v12 RC requirement | **at least 90% in both views** | Must be reproduced by Codecov on the exact frozen RC commit, together with at least 90% patch coverage. |
+
+The two percentages are neither conflicting measurements nor values to
+average: they answer questions about different path sets. Until the first row
+reaches 90%, Rullst must not present the second row as the repository's total
+coverage.
+
 The latest bounded M12 gain is the opt-in `AuthenticatedSiemSpool`: a
 single-writer HMAC-SHA256-chained local journal with explicit active/historical
 key rotation and exact forgery/order/restart negatives. M12 remains partial
@@ -36,6 +47,16 @@ by that local contract.
 | :--- | :--- | :--- |
 | `rullst-core` | Low-level runtime engine: HTTP server, routes, lifecycle, queue/realtime, storage/cache and the default browser-security baseline. It deliberately does not aggregate every domain crate. | Use directly when a library/application wants only the runtime primitives and explicit dependencies. |
 | `rullst` | Ergonomic umbrella facade. Cargo features re-export Core plus selected ORM, Auth, Security, AI, Mail, Capital, Studio, Nexus, Messaging and IoT APIs through one dependency. It also exposes the browser/WASM surface used by web-first applications; Omni packaging itself is a CLI workflow, not a re-exported crate. Its maturity cannot exceed the crates selected underneath it. | Use for most Rullst applications and enable only the required features. |
+
+## Documentation release gate
+
+Before the v12 RC is tagged, the complete repository documentation remains an
+explicit review gate: build the mdBook, compile the Rust snippets sourced from
+all public tutorials, validate local links and anchors, reconcile commands,
+features and version examples with the frozen manifests, and manually review
+the upgrade guides and external-provider boundaries. A green documentation
+build proves structural consistency, not that every external service or store
+workflow was homologated.
 
 | Label | Meaning |
 | :--- | :--- |
