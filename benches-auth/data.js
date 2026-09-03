@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788472374342,
+  "lastUpdate": 1788473814938,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -8681,6 +8681,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4598,
             "range": "± 21",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "67b89517575ea37bbb4b089d9a154f0a9f03e335",
+          "message": "fix(orm): pin broken tinyvec resolution",
+          "timestamp": "2026-09-03T18:59:40-03:00",
+          "tree_id": "00f83ccb27f3afff1a8da7a95e5729345f861f9c",
+          "url": "https://github.com/Rullst/Rullst/commit/67b89517575ea37bbb4b089d9a154f0a9f03e335"
+        },
+        "date": 1788473814489,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1044,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 841,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1899,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3994,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
