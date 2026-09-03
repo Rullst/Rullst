@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788474124042,
+  "lastUpdate": 1788476701246,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -6664,6 +6664,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "ai_pii_masking/mask_pii",
             "value": 788,
+            "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "194b5c8a80716962bcd63fe8777adcb083bea260",
+          "message": "fix(ci): constrain semver baseline resolver",
+          "timestamp": "2026-09-03T19:52:22-03:00",
+          "tree_id": "d50d57e4c96e16a63b213b3958be0e75ddaadb93",
+          "url": "https://github.com/Rullst/Rullst/commit/194b5c8a80716962bcd63fe8777adcb083bea260"
+        },
+        "date": 1788476700677,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1285,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 271,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 590,
             "range": "± 7",
             "unit": "ns/iter"
           }
