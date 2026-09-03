@@ -36,6 +36,10 @@ while IFS= read -r package; do
   case "$status" in
     200)
       baseline=$(jq -er '[.versions[] | select(.yanked == false)][0].num' "$response_path")
+      if [[ ! "$baseline" =~ ^[0-9A-Za-z][0-9A-Za-z.+-]{0,127}$ ]]; then
+        echo "Invalid baseline version returned for $package" >&2
+        exit 1
+      fi
       if [[ "$target_kind" != "library" ]]; then
         echo "::notice title=SemVer tool boundary::$package $baseline is a $target_kind target; cargo-semver-checks cannot compare this API surface"
         continue
@@ -71,10 +75,42 @@ while IFS= read -r package; do
         continue
       fi
 
+      baseline_root="$semver_tmp/$package-$baseline"
+      if ! awk -v root="$package-$baseline" '
+        index($0, "\\") != 0 { exit 1 }
+        $0 == root || index($0, root "/") == 1 {
+          relative = substr($0, length(root) + 2)
+          count = split(relative, components, "/")
+          for (part_index = 1; part_index <= count; part_index++) {
+            if (components[part_index] == "..") { exit 1 }
+          }
+          next
+        }
+        { exit 1 }
+      ' "$archive_members"; then
+        echo "Published package $package $baseline contains an unsafe archive path" >&2
+        exit 1
+      fi
+      tar --extract --file "$archive_path" --directory "$semver_tmp" \
+        --no-same-owner --no-same-permissions
+
+      # tinyvec 1.13.0 has an upstream alloc-only compilation regression. The
+      # current package constrains fresh consumer resolution, but registry
+      # baselines are built in a separate graph by cargo-semver-checks. Add the
+      # same temporary resolver-only constraint without changing baseline Rust
+      # source or its public API. Remove this after a fixed release is verified.
+      if ! grep -Eq '^\[dependencies\.tinyvec\][[:space:]]*$' "$baseline_root/Cargo.toml"; then
+        {
+          printf '\n[dependencies.tinyvec]\n'
+          printf 'version = "=1.12.0"\n'
+          printf 'default-features = false\n'
+        } >> "$baseline_root/Cargo.toml"
+      fi
+
       echo "::group::$package against crates.io $baseline"
       cargo semver-checks check-release \
         --package "$package" \
-        --baseline-version "$baseline"
+        --baseline-root "$baseline_root"
       echo "::endgroup::"
       ;;
     404)
