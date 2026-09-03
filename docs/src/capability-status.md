@@ -6,6 +6,37 @@ from the root [ROADMAP](../../ROADMAP.md); that roadmap and the
 The labels here deliberately do not turn partial foundations into completed
 features.
 
+## v12 RC engineering snapshot — 3 September 2026
+
+This functionality inventory is deliberately separate from release quality.
+All 15 non-IoT crates currently meet the approved A floor and `rullst-iot`
+meets its approved B exception. Twelve of the 15 active crates have also reached
+their higher audited local ceiling. The remaining ceiling work is
+`rullst-connect`, `rullst-ai`, and the `rullst` facade: **1,493/1,509 local
+campaign points are evidenced (98.9%), with 16 points remaining**. The broader
+[v12 release programme](v12.md) estimates RC readiness at 70.2%; therefore this
+is still a **NO-GO**, not a release announcement.
+
+Coverage is a separate open RC gate. The latest complete public Codecov report
+for `main` records 84.92% across the whole repository and 91.25% for the
+`framework_libraries` component. Both now target at least 90%; the overall gap
+must be closed through behavior-asserting tests, especially around CLI paths,
+rather than metric-only execution.
+
+The latest bounded M12 gain is the opt-in `AuthenticatedSiemSpool`: a
+single-writer HMAC-SHA256-chained local journal with explicit active/historical
+key rotation and exact forgery/order/restart negatives. M12 remains partial
+because trusted whole-tail checkpoints, multi-writer operation, external SIEM
+delivery/acknowledgement, independent audit and certification are not supplied
+by that local contract.
+
+## `rullst` facade versus `rullst-core`
+
+| Package | Role | Typical user choice |
+| :--- | :--- | :--- |
+| `rullst-core` | Low-level runtime engine: HTTP server, routes, lifecycle, queue/realtime, storage/cache and the default browser-security baseline. It deliberately does not aggregate every domain crate. | Use directly when a library/application wants only the runtime primitives and explicit dependencies. |
+| `rullst` | Ergonomic umbrella facade. Cargo features re-export Core plus selected ORM, Auth, Security, AI, Mail, Capital, Studio, Nexus, Messaging and IoT APIs through one dependency. It also exposes the browser/WASM surface used by web-first applications; Omni packaging itself is a CLI workflow, not a re-exported crate. Its maturity cannot exceed the crates selected underneath it. | Use for most Rullst applications and enable only the required features. |
+
 | Label | Meaning |
 | :--- | :--- |
 | ✅ **Implemented** | The stated bounded scope exists and has automated evidence. |
