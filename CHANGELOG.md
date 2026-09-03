@@ -107,6 +107,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   growth and uncertain durability. The streams are single-process and not
   authenticated; hosts retain permissions, rotation, retention, backup and
   external-delivery responsibility.
+- `rullst-ai` adds an opt-in `AuditDeliveryClient` for bounded authenticated
+  export of application-minimized audit events. It signs the exact JSON
+  envelope with HMAC-SHA256 and key/timestamp metadata, preserves a stable
+  event ID across bounded transient retries, supports explicit cancellation,
+  disables redirects/proxies and requires a size-limited closed
+  acknowledgement bound to that event. HTTPS is mandatory outside literal
+  loopback development; empty/`mock_*` keys are offline. Receiver freshness,
+  deduplication, authorization, persistence, retention, key operations and
+  SIEM availability remain deployment contracts.
 - `rullst-auth` adds the opt-in `sqlite` profile for durable shared local auth
   state. `SqliteJwtRevocationStore` transactionally persists bounded JTI and
   monotonic session-version revocation for `verify_async`, while

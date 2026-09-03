@@ -6834,6 +6834,7 @@ dependencies = [
  "base64 0.23.1",
  "criterion",
  "futures-util",
+ "hmac 0.13.0",
  "libc",
  "reqwest",
  "rullst-core",

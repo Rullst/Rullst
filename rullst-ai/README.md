@@ -198,7 +198,44 @@ pipeline's tenant-tag check is an additional invariant, not datastore authorizat
 local audit files with distinct version headers, SHA-256 frame integrity,
 restart validation and fail-closed quota/corruption handling. They are
 single-process writers, not authenticated or distributed audit services; the
-host owns directory permissions, rotation, retention, backup and export.
+host owns directory permissions, rotation, retention and backup.
+
+`AuditDeliveryClient` is the separate opt-in export boundary for minimized
+RAG, tool or provider observations. A cloud endpoint must use HTTPS; a local
+development endpoint must use a literal loopback IP. The client signs the exact
+bounded JSON envelope with HMAC-SHA256, sends a key ID and timestamp, preserves
+one caller-supplied event ID across bounded retries, and accepts only a small
+closed JSON acknowledgement bound to that ID. Empty or `mock_*` signing keys
+select deterministic offline behavior.
+
+```rust,no_run
+# use rullst_ai::{AiCancellation, AuditDeliveryClient, AuditDeliveryError};
+# async fn example(signing_key: String) -> Result<(), AuditDeliveryError> {
+let delivery = AuditDeliveryClient::try_cloud(
+    "https://audit.example.com/v1/events",
+    "academy-api",
+    "audit-key-2026",
+    signing_key,
+)?;
+let cancellation = AiCancellation::new();
+let receipt = delivery
+    .publish(
+        "evt-0189f6b8",
+        1_788_000_000_000,
+        &serde_json::json!({"kind": "rag.completed", "outcome": "allowed"}),
+        &cancellation,
+    )
+    .await?;
+# let _ = receipt;
+# Ok(())
+# }
+```
+
+The receiver must independently verify freshness/signature, deduplicate the
+event ID and operate its own authorization, persistence, retention and key
+rotation. Rullst does not inspect an arbitrary event value for secrets, run a
+durable delivery queue or claim SIEM availability; callers must export only
+the minimized records their policy permits.
 
 See the [tenant-bound RAG tutorial](../docs/src/tutorials/41-tenant-bound-rag.md) for a complete
 offline example, audit behavior, and the production adapter boundary.

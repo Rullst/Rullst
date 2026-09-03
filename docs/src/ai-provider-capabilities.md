@@ -107,6 +107,27 @@ backoff, idempotency classification, or retry budget in `rullst-ai`. An
 application-level retry must classify operations carefully and must not assume
 that an interrupted provider request was never processed.
 
+These provider-call rules are distinct from `AuditDeliveryClient`. The latter
+supports one to five bounded attempts only for transport/deadline failures,
+HTTP 429 and HTTP 5xx, while preserving a caller-supplied event ID. Its receiver
+must deduplicate that ID because a timed-out request may already have been
+accepted.
+
+### Authenticated audit export
+
+`AuditDeliveryClient` is an opt-in transport for application-minimized audit
+events, not an AI provider adapter. It signs the exact JSON body with
+HMAC-SHA256 plus a key ID and timestamp, caps an event at 16 KiB and an
+acknowledgement at 8 KiB, disables redirects and ambient proxies, and requires
+the acknowledgement to bind the original event ID. Cloud endpoints require
+HTTPS; literal-loopback HTTP(S) is reserved for development fixtures. Empty or
+`mock_*` keys never use the network.
+
+The receiver owns signature/freshness verification, event-ID deduplication,
+authorization, persistence, retention, key distribution/rotation and SIEM
+operations. The client does not automatically attach itself to RAG/tools or
+provider calls and does not inspect an arbitrary serialized event for secrets.
+
 ### Tools
 
 `ToolRegistry` is a separate [guarded local execution

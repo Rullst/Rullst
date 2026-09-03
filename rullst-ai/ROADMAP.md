@@ -32,6 +32,11 @@
   revision compare-and-swap rejects stale cross-process writers.
 - Deny-by-default HTTPS egress fetcher with exact-host allowlist, validated and
   pinned DNS answers, manual redirects, peer verification, and streaming limits.
+- Opt-in bounded remote audit delivery with an exact HMAC-SHA256 body
+  signature, key/timestamp metadata, stable event identity across transient
+  retries, cancellation and a closed acknowledgement contract. Receiver
+  storage, deduplication, freshness enforcement, retention and key operations
+  remain deployment responsibilities.
 
 ## Planned
 
@@ -45,6 +50,8 @@
 - First-party `RagRetriever` adapters for external vector databases; applications can already
   implement the public static-dispatch boundary over ORM pgvector or Qdrant.
 - Configurable guardrail policies and adaptive/live model-specific safety evaluations.
+- Durable outbox orchestration, receiver implementations and external SIEM
+  interoperability for authenticated audit events.
 
 Roadmap items are not part of the current API guarantee until implemented and covered by contract
 tests.

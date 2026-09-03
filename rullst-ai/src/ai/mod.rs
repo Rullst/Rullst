@@ -3,6 +3,7 @@
 use async_trait::async_trait;
 use std::sync::Arc;
 
+mod audit_delivery;
 mod client;
 mod durable_audit;
 mod egress;
@@ -24,6 +25,10 @@ pub mod tools;
 mod vector;
 mod vision;
 
+pub use audit_delivery::{
+    AuditDeliveryClient, AuditDeliveryError, AuditDeliveryMode, AuditDeliveryReceipt,
+    AuditRetryPolicy,
+};
 pub use client::{AiClient, ChatBuilder};
 pub use durable_audit::{
     DurableAuditError, DurableAuditSnapshot, MAX_AI_AUDIT_BYTES, MAX_AI_AUDIT_RECORDS,

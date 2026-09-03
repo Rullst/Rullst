@@ -395,7 +395,7 @@ mod tests {
     #[tokio::test]
     async fn high_level_client_guards_counts_and_bounds_chunks() {
         let client = StreamingAiClient::new(FixtureProvider {
-            chunks: vec!["hel".to_string(), "lo".to_string()],
+            chunks: vec!["he".to_string(), "llo".to_string()],
         })
         .with_limits(StreamLimits::try_new(2, 3, 5).expect("valid limits"));
         let cancellation = AiCancellation::new();

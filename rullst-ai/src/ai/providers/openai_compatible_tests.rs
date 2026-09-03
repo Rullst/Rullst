@@ -258,8 +258,8 @@ async fn loopback_transport_applies_the_configured_deadline() {
 async fn declared_sse_stream_is_incremental_bounded_and_uses_the_openai_shape() {
     let body = concat!(
         "data: {\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}\n\n",
-        "data: {\"choices\":[{\"delta\":{\"content\":\"hel\"}}]}\n\n",
-        "data: {\"choices\":[{\"delta\":{\"content\":\"lo\"}}]}\r\n\r\n",
+        "data: {\"choices\":[{\"delta\":{\"content\":\"he\"}}]}\n\n",
+        "data: {\"choices\":[{\"delta\":{\"content\":\"llo\"}}]}\r\n\r\n",
         "data: [DONE]\n\n"
     );
     let (base_url, request) = serve_once_with_content_type(body, None, "text/event-stream");

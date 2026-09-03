@@ -41,12 +41,14 @@ does not claim to lease the preceding remote provider call, operate encryption
 keys/directories/backups, reconcile a losing provider rotation, replicate
 across hosts or provide live-provider conformance.
 
-The next `rullst-ai` evidence slice is implemented but does not yet promote its
+The next `rullst-ai` evidence slices are implemented but do not yet promote its
 score: `StreamingAiClient<P>` adds bounded static-dispatch output and explicit
-cancellation, with strict opt-in OpenAI-compatible SSE and loopback failure
-contracts. Distributed authenticated audit delivery, adaptive/live evaluation
-and the remaining provider protocols must still close before the 95/A ceiling
-is earned.
+cancellation with strict opt-in OpenAI-compatible SSE, while
+`AuditDeliveryClient` adds bounded HMAC-authenticated export, stable event
+identity, transient retry, cancellation and an event-bound acknowledgement.
+Adaptive/live evaluation and the remaining provider protocol contracts must
+still close before the 95/A ceiling is earned; receiver persistence,
+deduplication, retention and key operations remain external.
 
 ## `rullst` facade versus `rullst-core`
 

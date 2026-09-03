@@ -58,6 +58,24 @@ outbound transmission. This is a bounded heuristic control, not proof that arbit
 output is safe; authorization, tool permissions, output encoding, and domain validation remain
 application responsibilities.
 
+## Authenticated audit delivery
+
+`AuditDeliveryClient` can export an application-minimized RAG, tool or provider
+event to one exact endpoint. Cloud configuration requires HTTPS; local
+development allows HTTP(S) only on a literal loopback IP. Each JSON envelope is
+limited to 16 KiB and HMAC-SHA256 authenticates the exact bytes together with
+the key ID and Unix-millisecond timestamp. A caller-generated event ID remains
+stable across at most five attempts, and success requires a closed JSON
+acknowledgement that repeats that ID. Cancellation covers request, response and
+retry waits; empty or `mock_*` keys select a deterministic offline fixture.
+
+Only transport/deadline failures, HTTP 429 and HTTP 5xx are retryable. Because
+a timeout can happen after remote acceptance, the receiver must enforce
+idempotency by event ID as well as signature/freshness validation. The client
+does not minimize arbitrary serialized data, retain a durable outbox, rotate
+keys, authorize operators or provide a SIEM receiver. Those remain explicit
+application/deployment responsibilities.
+
 ## Bounded streaming and cancellation
 
 `StreamingAiClient<P>` is a static-dispatch extension for genuinely
@@ -190,4 +208,6 @@ Streaming for non-compatible provider protocols, provider-native tool execution
 loops, first-party external vector-store `RagRetriever` adapters, and compile-time schema derivation remain roadmap work. The
 SQL memory does not supply raw-text encryption, ownership within a tenant,
 retention or provider auditing; the in-memory vector utilities and tool registry
-do not create an authorization boundary by themselves.
+do not create an authorization boundary by themselves. Authenticated audit
+delivery does not replace a durable outbox or certify a receiver's retention,
+availability or security operations.
