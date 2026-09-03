@@ -17,7 +17,7 @@ fn signed_dps() -> &'static str {
     SIGNED_DPS.get_or_init(|| {
         sign_fixture(
             &format!(
-                "<DPS xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.01\"><infDPS Id=\"{DPS_ID}\"/></DPS>"
+                "<DPS xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.01\"><infDPS Id=\"{DPS_ID}\"><tpAmb>2</tpAmb></infDPS></DPS>"
             ),
             DPS_ID,
         )
@@ -89,6 +89,7 @@ fn request_is_exact_deterministic_and_round_trips_the_signed_xml() {
     let second = NfseIssueRequest::try_from_signed_dps(signed_dps()).expect("request");
     assert_eq!(request, second);
     assert_eq!(request.dps_id(), DPS_ID);
+    assert_eq!(request.environment(), NfseApiEnvironment::Homologation);
 
     let value: serde_json::Value =
         serde_json::from_slice(&request.to_json().expect("request JSON")).expect("JSON value");
@@ -120,6 +121,20 @@ fn request_rejects_unsigned_wrong_root_doctype_and_oversize() {
         .is_err()
     );
     assert!(NfseIssueRequest::try_from_signed_dps(&"x".repeat(MAX_DPS_XML_BYTES + 1)).is_err());
+
+    for environment_fields in [
+        String::new(),
+        "<tpAmb>3</tpAmb>".to_string(),
+        "<tpAmb>2</tpAmb><tpAmb>2</tpAmb>".to_string(),
+    ] {
+        let invalid_environment = sign_fixture(
+            &format!(
+                "<DPS xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.01\"><infDPS Id=\"{DPS_ID}\">{environment_fields}</infDPS></DPS>"
+            ),
+            DPS_ID,
+        );
+        assert!(NfseIssueRequest::try_from_signed_dps(&invalid_environment).is_err());
+    }
 }
 
 #[test]

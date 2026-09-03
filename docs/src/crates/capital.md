@@ -16,9 +16,10 @@
 | **Metered Billing** | 🟢 `[Implemented / Bounded]` | Current Stripe Meter Events and Lemon Squeezy Usage Records shapes with provider-specific identity/action, bounded response binding and deterministic non-live mocks. Durable application-outbox claiming and provider-account evidence remain explicit. |
 | **Paid Invoice Rendering** | 🟢 `[Implemented / Feature-gated]` | Exact validated minor units, escaped HTML, bounded paginated A4 PDF and a final-success e-mail/amount/currency binding. The downstream Mail bridge sends the attachment but durable outbox claiming and exactly-once delivery remain application work. |
 | **SaaS MRR/ARR Analytics** | 🟢 `[Implemented / Bounded]` | In-memory revenue metrics and churn calculations for supplied records; this is not an accounting ledger or provider reconciliation engine. |
-| **NFS-e 1.01 Local Pipeline** | 🟢 `[Implemented / Bounded]` | Strict ordinary-service DPS builder, checksum-pinned closed-catalog validation of official XSD sources with one exact documented production regex-anchor compatibility normalization, protected PKCS#12 RSA-SHA256/inclusive-C14N XMLDSig, independent local signature verification, deterministic `dpsXmlGZipB64` request JSON, bounded signed-authorization and structured-rejection parsing, and bounded rustls mTLS client construction. |
+| **NFS-e 1.01 Local Pipeline** | 🟢 `[Implemented / Bounded]` | Strict ordinary-service DPS builder, checksum-pinned closed-catalog validation of official XSD sources with one exact documented production regex-anchor compatibility normalization, protected PKCS#12 RSA-SHA256/inclusive-C14N XMLDSig, signed-`tpAmb` binding, independent local signature verification, deterministic `dpsXmlGZipB64` request JSON, bounded signed-authorization and structured-rejection parsing, and bounded rustls mTLS client construction. |
+| **NFS-e Local Command Journal** | 🟢 `[Implemented / Bounded]` | Single-active-writer HMAC-chained prepared/terminal evidence, exact replay/conflict handling, restart recovery of minimized pending descriptors, hard record/byte quotas and externally retainable exact-tip checkpoints. It stores no XML, access key, response messages or certificate data and does not transmit or retry. |
 | **NFS-e Offline Sandbox** | 🟡 `[Offline Mock]` | Deterministic offline mock fixtures (`NfseEnvironment::Mock`) for local development and CI testing. |
-| **SEFIN Live NFS-e Homologation** | 🔵 `[Roadmap / External Evidence]` | Full emitter/ICP-Brasil certificate policy, durable idempotency/audit, retained official protocol fixtures, real A1 restricted-environment tests, independent review, and official homologation. Transmission is disabled. |
+| **SEFIN Live NFS-e Homologation** | 🔵 `[Roadmap / External Evidence]` | Full emitter/ICP-Brasil certificate policy, deployment-owned request/outbox and reconciliation storage, retained official protocol fixtures, real A1 restricted-environment tests, independent review, and official homologation. Transmission is disabled. |
 
 ---
 
@@ -192,7 +193,8 @@ need an outbox, idempotent consumers, and reconciliation.
 `rullst-capital` includes a dedicated fiscal module (`rullst_capital::fiscal`)
 shaped around the National NFS-e domain. Its local schema, signature, bounded
 issuance-codec, and mTLS preparation contracts are implemented and tested; it
-is not yet an officially homologated issuer.
+also supplies a bounded authenticated local command journal, but it is not yet
+an officially homologated issuer.
 
 Enable `rullst-capital/nfse` (or umbrella `rullst/capital-nfse`) for the pinned
 XSD, XMLDSig, GZip/Base64 protocol codec, and mTLS preparation dependencies.
@@ -204,7 +206,7 @@ Selecting the feature does not enable SEFIN transmission.
 [SaaS Sale] ─► [NfseDpsV101] ─► [Pinned XSD] ─► [PKCS#12 XMLDSig] ─► [Bounded JSON codec]
                     │                                                    │
                     ▼                                                    ▼
-          [Offline deterministic fixture]                 [mTLS prepared; transmission disabled]
+          [Offline deterministic fixture]       [HMAC journal; mTLS prepared; transmission disabled]
 ```
 
 ### Emitting an Invoicing Document (DPS)
@@ -262,12 +264,22 @@ candidate](../tutorials/40-nfse-homologation-preparation.md) for pinned artifact
 validation, local signing, and the external gates that still prevent live
 transmission.
 
+The opt-in journal records a caller-owned opaque command before transport and
+then one parsed terminal result. Exact replays are read-only; a reused command
+ID with different request/result material fails closed. `pending()` returns
+only the command ID, environment, signed-request digest, local observation time,
+and sequence needed to reconcile application-owned request storage after a
+restart. The host must keep the 32-byte HMAC key in a secret manager, use one
+active writer in a trusted directory, persist `checkpoint()` independently,
+and own retention, backup, request/outbox storage, retries, and authority
+reconciliation.
+
 ---
 
 ## 🔒 Security Invariants
 
 1. **Constant-Time Verification:** Webhook signatures use `subtle::ConstantTimeEq` to prevent side-channel timing attacks.
-2. **Fail-Closed Live Modes:** Local XMLDSig/XSD/codec/mTLS preparation does not enable a request. `Homologation` and `Production` return a typed `FiscalError::Unsupported` without network I/O until the external trust, audit and homologation gates pass.
+2. **Fail-Closed Live Modes:** Local XMLDSig/XSD/codec/mTLS preparation and command evidence do not enable a request. `Homologation` and `Production` return a typed `FiscalError::Unsupported` without network I/O until the external trust and homologation gates pass.
 3. **Bounded Egress:** Reviewed live provider methods use a pooled client with
    finite connect/request timeouts, disabled redirects and ambient proxy
    discovery, bounded JSON, and redacted typed failure evidence. Returned

@@ -114,10 +114,10 @@
       "verification": 25,
       "security_failure_design": 20,
       "documentation_dx": 15,
-      "operations_release": 13,
+      "operations_release": 14,
       "specialist_gate": "provider-matrix",
-      "finding": "Bounded payments now share a redacted classified egress contract with finite timeouts, disabled redirects/proxies, bounded JSON, HTTPS checkout validation and real fault fixtures; quotas, relational webhook replay/event claims and local fiscal preparation add restart, contention, transaction and four-protocol evidence. Fiscal audit/recovery, live authorization and homologation remain incomplete or external.",
-      "evidence": ["rullst-capital/README.md", "rullst-capital/src/providers/http.rs", "rullst-capital/src/webhook/sql.rs", "rullst-capital/tests", "docs/src/crates/capital.md", "docs/src/payment-gateways-guide.md", "docs/src/spec.md"]
+      "finding": "Bounded payments share a redacted classified egress contract with real fault fixtures; quotas and relational webhook claims add transaction/four-protocol evidence. Signed-tpAmb binding plus a bounded HMAC-chained local fiscal command journal prove idempotent prepared/terminal transitions, restart recovery, tamper/conflict/quota failure and external checkpoints without enabling live authorization. Provider acceptance, authoritative outbox/reconciliation, multi-writer operations and homologation remain external.",
+      "evidence": ["rullst-capital/README.md", "rullst-capital/src/providers/http.rs", "rullst-capital/src/fiscal/journal", "rullst-capital/src/webhook/sql.rs", "rullst-capital/tests", "docs/src/crates/capital.md", "docs/src/payment-gateways-guide.md", "docs/src/tutorials/40-nfse-homologation-preparation.md", "docs/src/spec.md"]
     },
     {
       "name": "rullst-mail",

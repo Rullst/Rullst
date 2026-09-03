@@ -6918,6 +6918,7 @@ dependencies = [
  "flate2",
  "futures-util",
  "hex",
+ "libc",
  "oxixml-schema",
  "p12-keystore",
  "printpdf",

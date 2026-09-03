@@ -82,7 +82,7 @@ impl NfseNationalClient {
                 #[cfg(feature = "nfse")]
                 let _client = build_live_http_client(&self.certificate)?;
                 Err(FiscalError::Unsupported(
-                    "NFS-e homologation transport is disabled until certificate trust, durable idempotency/audit, restricted-environment evidence and official homologation are validated end to end"
+                    "NFS-e homologation transport is disabled until certificate trust, restricted-environment evidence, independent review and official homologation are validated end to end"
                         .to_string(),
                 ))
             }

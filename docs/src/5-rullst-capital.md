@@ -237,12 +237,22 @@ let exact_json_body = request.to_json()?;
 An application may retain this material for a reviewed homologation fixture,
 but the Rullst client does not send it. `parse_response` accepts only the
 documented 201/400/403/500 issuance outcomes, applies four-MiB/cardinality/text
-limits and never turns a rejection or unsigned/tampered XML into authorization.
+limits, binds the selected environment to the signed `infDPS/tpAmb`, and never
+turns a rejection or unsigned/tampered XML into authorization.
+
+The same `nfse` feature exposes `FiscalCommandJournal`: a bounded,
+single-active-writer HMAC-chained file that synchronizes a prepared command
+before a caller-owned transport, records one bound terminal response, suppresses
+exact replay, and recovers minimized pending descriptors after restart. It
+stores no XML, access key, processing message, provider body, or certificate.
+The host must retain the actual request/outbox and the journal checkpoint
+separately, protect and rotate the 32-byte key, enforce an exclusive writer,
+and own reconciliation, retry, retention, and backup.
 
 Live issuance remains disabled until full certificate/emitter and ICP-Brasil
-policy, durable idempotency/audit, retained official fixtures, real A1
-restricted-environment tests, independent review, and official end-to-end
-homologation are complete. Follow the
+policy, deployment of the local journal and authoritative request/outbox,
+retained official fixtures, real A1 restricted-environment tests, independent
+review, and official end-to-end homologation are complete. Follow the
 [NFS-e homologation-preparation tutorial](tutorials/40-nfse-homologation-preparation.md)
 and never account an offline fixture as an issued invoice.
 

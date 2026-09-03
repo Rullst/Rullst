@@ -400,18 +400,34 @@ checksum-pinned validation against official production/restricted XSD sources,
 PKCS#12 RSA-SHA256 XMLDSig with inclusive C14N 1.0, independent local
 signature verification, deterministic GZip/Base64 issuance JSON, bounded
 signed-authorization and structured-rejection parsing, and rustls mTLS client
-construction.
+construction. The signed request now carries its parsed `tpAmb`, so a caller
+cannot reinterpret a homologation DPS as production (or the reverse).
 Certificate bytes, passphrases, and derived PEM are redacted and zeroized where
 owned by Rullst.
 The production profile applies one exact, documented in-memory compatibility
 normalization after hash verification: it removes `.NET` `^...$` anchors from
 the known DPS-series pattern because XSD regex grammar treats them as literals.
 
+The same `nfse` feature includes `FiscalCommandJournal`, a bounded local
+single-active-writer journal for the caller-owned transport workflow. It
+synchronously records one `prepared` command and one bound `authorized` or
+`rejected` terminal result, suppresses exact replays, rejects command-key
+conflicts, and recovers unresolved descriptors after restart. A named 256-bit
+HMAC key authenticates the header and a chain of at most 4,096 frames/16 MiB;
+an independently retained exact-tip checkpoint detects valid-prefix
+truncation. The file contains only the opaque application command ID,
+request/result digests, environment, state, and bounded timestamps—not XML,
+access keys, certificate material, provider bodies, or processing messages.
+
 This is preparation for homologation, not live issuance. `Homologation` and
 `Production` still return `FiscalError::Unsupported` without network I/O until
-full certificate/emitter and ICP-Brasil policy, durable idempotency/audit,
-retained official protocol fixtures, real restricted-environment evidence,
-independent review, and official homologation are complete.
+full certificate/emitter and ICP-Brasil policy, authoritative request/outbox
+storage, reconciliation, retained official protocol fixtures, real
+restricted-environment evidence, independent review, and official homologation
+are complete. The journal itself does not send or retry a request, provide a
+multi-process lock, or prove cross-system exactly-once behavior. The host owns
+a non-PII command namespace, key custody/rotation, trusted directory, exclusive
+writer, actual request storage, external checkpoint, retention, and backup.
 
 Enable the crate's `nfse` feature (or umbrella `rullst/capital-nfse`) for the
 XSD, XMLDSig, protocol codec, and mTLS preparation APIs. The strict DPS builder
@@ -481,4 +497,4 @@ assert!(!response.is_officially_authorized());
 - **Fail-Closed Configuration**: Empty webhook secrets never authenticate a request; mock credentials require a deliberate `mock_*` value.
 - **Freshness and Replay Protection**: Timestamped protocols have a configurable five-minute window, and middleware records provider-scoped payload hashes in a bounded 24-hour TTL store. `webhook-sql` adds bounded durable claims; stable semantic event IDs can share a transaction with the domain mutation.
 - **Alipay Containment**: Live RSA2 checkout and webhook verification return `UnsupportedOperation`; only explicitly mock-prefixed credentials operate offline.
-- **Fiscal Containment**: Local XSD/XMLDSig/mTLS preparation is not an official NFS-e authorization; live transmission remains disabled until the documented external gates pass.
+- **Fiscal Containment**: Local XSD/XMLDSig/mTLS preparation and the authenticated command journal are not an official NFS-e authorization; live transmission remains disabled until the documented external gates pass.

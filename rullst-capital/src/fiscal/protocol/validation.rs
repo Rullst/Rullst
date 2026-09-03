@@ -3,9 +3,11 @@ use crate::fiscal::{
     models::FiscalError, signer::verify_embedded_xml_signature,
 };
 
-use super::{invalid_dps, response_error};
+use super::{NfseApiEnvironment, invalid_dps, response_error};
 
-pub(super) fn validate_signed_dps_shape(xml: &str) -> Result<String, FiscalError> {
+pub(super) fn validate_signed_dps_shape(
+    xml: &str,
+) -> Result<(String, NfseApiEnvironment), FiscalError> {
     if xml.is_empty() || xml.len() > MAX_DPS_XML_BYTES || xml.contains("<!DOCTYPE") {
         return Err(invalid_dps(
             "signed DPS is empty, oversized or contains DOCTYPE",
@@ -22,19 +24,20 @@ pub(super) fn validate_signed_dps_shape(xml: &str) -> Result<String, FiscalError
             "expected a DPS 1.01 root in the official namespace",
         ));
     }
-    let dps_ids = root
+    let information = root
         .children()
         .filter(|node| {
             node.is_element()
                 && node.tag_name().name() == "infDPS"
                 && node.tag_name().namespace() == Some(NFSE_NAMESPACE)
         })
-        .filter_map(|node| node.attribute("Id"))
         .collect::<Vec<_>>();
-    if dps_ids.len() != 1 {
-        return Err(invalid_dps("signed DPS must contain one infDPS Id"));
+    if information.len() != 1 {
+        return Err(invalid_dps("signed DPS must contain one direct infDPS"));
     }
-    let dps_id = dps_ids[0];
+    let dps_id = information[0]
+        .attribute("Id")
+        .ok_or_else(|| invalid_dps("signed DPS infDPS must carry an Id"))?;
     if dps_id.len() != 45
         || !dps_id.starts_with("DPS")
         || !dps_id[3..].bytes().all(|byte| byte.is_ascii_digit())
@@ -52,7 +55,29 @@ pub(super) fn validate_signed_dps_shape(xml: &str) -> Result<String, FiscalError
         .map_err(|_| invalid_dps("XMLDSig must uniquely reference the direct infDPS child"))?;
     verify_embedded_xml_signature(xml)
         .map_err(|_| invalid_dps("embedded DPS XMLDSig did not verify"))?;
-    Ok(dps_id.to_string())
+    let environment = signed_environment(information[0])?;
+    Ok((dps_id.to_string(), environment))
+}
+
+fn signed_environment(
+    information: roxmltree::Node<'_, '_>,
+) -> Result<NfseApiEnvironment, FiscalError> {
+    let values = information
+        .children()
+        .filter(|node| {
+            node.is_element()
+                && node.tag_name().name() == "tpAmb"
+                && node.tag_name().namespace() == Some(NFSE_NAMESPACE)
+        })
+        .collect::<Vec<_>>();
+    if values.len() != 1 {
+        return Err(invalid_dps("infDPS must contain one direct tpAmb"));
+    }
+    match values[0].text() {
+        Some("1") => Ok(NfseApiEnvironment::Production),
+        Some("2") => Ok(NfseApiEnvironment::Homologation),
+        _ => Err(invalid_dps("signed tpAmb must be 1 or 2")),
+    }
 }
 
 pub(super) fn validate_authorized_nfse(xml: &str, access_key: &str) -> Result<(), FiscalError> {

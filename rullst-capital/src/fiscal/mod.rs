@@ -2,6 +2,8 @@ pub mod client;
 pub mod contract;
 pub mod dps;
 pub mod dps_v101;
+#[cfg(feature = "nfse")]
+pub mod journal;
 pub mod models;
 #[cfg(feature = "nfse")]
 pub mod protocol;
@@ -17,6 +19,12 @@ pub use contract::{
 };
 pub use dps::build_dps_xml;
 pub use dps_v101::{IssRetention, IssTaxation, NfseDpsV101, build_dps_xml_v1_01};
+#[cfg(feature = "nfse")]
+pub use journal::{
+    FiscalCommandJournal, FiscalCommandReceipt, FiscalCommandStatus, FiscalJournalCheckpoint,
+    FiscalJournalDisposition, FiscalJournalError, FiscalJournalKey, FiscalJournalSnapshot,
+    FiscalPendingCommand, MAX_FISCAL_JOURNAL_BYTES, MAX_FISCAL_JOURNAL_RECORDS,
+};
 pub use models::{
     FiscalCertificate, FiscalCustomer, FiscalEmitter, FiscalError, FiscalResponse,
     FiscalResponseKind, NfseDps, TaxRegime,

@@ -66,6 +66,7 @@ pub struct NfseProcessingMessage {
 #[non_exhaustive]
 pub struct NfseIssueRequest {
     dps_id: String,
+    environment: NfseApiEnvironment,
     dps_xml_gzip_base64: String,
 }
 
@@ -75,7 +76,7 @@ impl NfseIssueRequest {
     /// This checks envelope structure, not certificate trust or emitter ownership. Callers
     /// should pass the output of [`crate::fiscal::sign_dps_xml`].
     pub fn try_from_signed_dps(signed_xml: &str) -> Result<Self, FiscalError> {
-        let dps_id = validate_signed_dps_shape(signed_xml)?;
+        let (dps_id, environment) = validate_signed_dps_shape(signed_xml)?;
         let compressed = gzip(signed_xml.as_bytes())?;
         if compressed.len() > MAX_COMPRESSED_DPS_BYTES {
             return Err(FiscalError::InvalidInput {
@@ -85,12 +86,18 @@ impl NfseIssueRequest {
         }
         Ok(Self {
             dps_id,
+            environment,
             dps_xml_gzip_base64: STANDARD.encode(compressed),
         })
     }
 
     pub fn dps_id(&self) -> &str {
         &self.dps_id
+    }
+
+    /// Returns the environment encoded inside the signed `infDPS/tpAmb` field.
+    pub const fn environment(&self) -> NfseApiEnvironment {
+        self.environment
     }
 
     pub fn dps_xml_gzip_base64(&self) -> &str {
@@ -112,6 +119,11 @@ impl NfseIssueRequest {
         environment: NfseEnvironment,
         body: &[u8],
     ) -> Result<NfseIssueResponse, FiscalError> {
+        if NfseApiEnvironment::from_execution(environment)? != self.environment {
+            return Err(response_error(
+                "execution environment does not match the signed DPS tpAmb",
+            ));
+        }
         parse_issue_response(http_status, environment, &self.dps_id, body)
     }
 }

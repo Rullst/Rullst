@@ -267,9 +267,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   authorization from 400/403/500 rejection. It binds environment, DPS ID,
   50-digit access key, `infNFSe/@Id` and the embedded XMLDSig, rejecting unknown,
   malformed, mismatched, tampered and decompression-amplified input. Durable
-  idempotency/audit, ICP-Brasil/emitter trust, real A1 restricted-environment
-  evidence, independent review and SEFIN homologation remain open; live modes
-  still perform no network I/O.
+  local command evidence now binds the selected environment to the signed
+  `infDPS/tpAmb` and uses a named 256-bit HMAC chain to synchronize bounded
+  prepared/authorized/rejected digests, suppress exact replay, reject conflicts,
+  recover minimized pending descriptors across restart and expose an externally
+  retainable exact-tip checkpoint. It stores no fiscal XML, access key,
+  processing messages, response body or certificate data. ICP-Brasil/emitter
+  trust, authoritative request/outbox storage, reconciliation, real A1
+  restricted-environment evidence, independent review and SEFIN homologation
+  remain open; live modes still perform no network I/O.
 - Capital's reviewed live provider methods now use one fail-closed outbound
   contract with finite connect/request timeouts, disabled redirects and
   ambient proxies, one-MiB JSON limits, and bounded credential-free HTTPS

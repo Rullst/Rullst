@@ -167,9 +167,10 @@ let body = request.to_json()?;
 ```
 
 Construction verifies that the document has one unique official DPS ID, one
-direct XMLDSig reference to that ID and a cryptographically valid embedded
-signature. GZip output fixes its timestamp to zero, so the JSON is deterministic
-for a given signed document.
+direct signed `infDPS/tpAmb`, one direct XMLDSig reference to that ID and a
+cryptographically valid embedded signature. GZip output fixes its timestamp to
+zero, so the JSON is deterministic for a given signed document. The environment
+passed to `parse_response` must equal that signed `tpAmb`.
 
 For retained protocol fixtures, call `request.parse_response(status,
 environment, body)`. HTTP 201 is represented only as
@@ -180,7 +181,66 @@ XML and decompressed material above four MiB. Embedded-signature verification
 proves document integrity against its declared certificate, not ICP-Brasil trust
 or emitter ownership.
 
-## 6. Do not enable live transmission yet
+## 6. Journal a caller-owned command before transport
+
+The `nfse` feature provides bounded local evidence for a future reviewed
+transport workflow. Load exactly 32 random bytes from a secret manager; never
+derive this key directly from a password or commit it to the repository.
+
+```rust,no_run
+use rullst_capital::fiscal::{
+    FiscalCommandJournal, FiscalJournalDisposition, FiscalJournalKey,
+    NfseEnvironment, NfseIssueRequest, NfseIssueResponse,
+};
+use std::path::Path;
+
+# fn stage(
+#     path: &Path,
+#     key_bytes: &[u8],
+#     request: &NfseIssueRequest,
+#     parsed_response: Option<&NfseIssueResponse>,
+# ) -> Result<(), Box<dyn std::error::Error>> {
+let key = FiscalJournalKey::try_new("fiscal-2026-01", key_bytes)?;
+let journal = FiscalCommandJournal::try_open(path, key)?;
+
+// Use an opaque, stable, non-PII ID from the application's authoritative outbox.
+let prepared = journal.prepare(
+    "nfse-command:01J8YQ2V5M",
+    NfseEnvironment::Homologation,
+    request,
+)?;
+if prepared.disposition() == FiscalJournalDisposition::Recorded {
+    // A future reviewed transport may run only after this synchronized record.
+}
+
+if let Some(response) = parsed_response {
+    journal.record_response("nfse-command:01J8YQ2V5M", request, response)?;
+}
+
+for unresolved in journal.pending()? {
+    // Locate the real request in the application's protected outbox, compare
+    // request_digest(), and reconcile with SEFIN before deciding whether to retry.
+    let _command_id = unresolved.command_id();
+}
+
+// Persist this separately if valid-prefix truncation must be detected on restart.
+let _checkpoint = journal.checkpoint()?;
+# Ok(())
+# }
+```
+
+The HMAC-chained file accepts one active writer and at most 4,096 events/16 MiB.
+It stores no DPS/NFS-e XML, access key, processing message, response body, or
+certificate material. An exact command/request/result replay does not append;
+conflicts, corrupted/reordered frames, wrong keys, symlinks, external growth,
+quota exhaustion, and uncertain synchronization fail closed. `pending()` is a
+recovery index, not the protected request store itself. The host owns key
+rotation, directory permissions, exclusive-writer enforcement, the real
+request/outbox, independent checkpoint retention, backup/retention, retry
+policy, and authority reconciliation. The journal does not perform network I/O
+or establish exactly-once behavior across systems.
+
+## 7. Do not enable live transmission yet
 
 The official endpoints are immutable in `NfseEnvironment`, and the live path
 can already build an HTTPS-only rustls mTLS client with redirects disabled and
@@ -194,8 +254,9 @@ transmission, the exact source revision must still have:
    including every supported success/rejection shape;
 2. certificate validity, key-usage, emitter CPF/CNPJ, and ICP-Brasil chain
    policy reviewed against the current national rules;
-3. durable idempotency, protocol/audit records, redaction, retry policy, and
-   explicit operator reconciliation;
+3. deployment of the local journal with protected authoritative request/outbox
+   storage, exclusive-writer/key/checkpoint operations, retry policy, and
+   explicit authority reconciliation;
 4. positive and negative tests in the restricted environment using an
    authorized real A1 certificate and valid contributor/municipality data;
 5. independent fiscal/security review and retained evidence tied to an

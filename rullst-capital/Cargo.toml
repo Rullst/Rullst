@@ -21,7 +21,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 default = ["axum"]
 axum = ["dep:axum"]
 actix = ["dep:actix-web", "dep:futures-util"]
-nfse = ["dep:flate2", "dep:oxixml-schema", "dep:p12-keystore", "dep:roxmltree", "dep:xml-sec"]
+nfse = ["dep:flate2", "dep:libc", "dep:oxixml-schema", "dep:p12-keystore", "dep:roxmltree", "dep:xml-sec"]
 invoice-pdf = ["dep:printpdf"]
 quota-sql = ["dep:rullst-orm"]
 webhook-sql = ["dep:rullst-orm"]
@@ -40,6 +40,7 @@ base64 = { workspace = true }
 chrono = { workspace = true, features = ["clock", "serde"] }
 thiserror = { workspace = true }
 zeroize = { workspace = true }
+libc = { workspace = true, optional = true }
 flate2 = { workspace = true, optional = true }
 oxixml-schema = { version = "=0.1.2", optional = true }
 xml-sec = { version = "=0.1.16", default-features = false, features = ["xmldsig", "c14n", "xml-backend-xmloxide"], optional = true }

@@ -73,7 +73,7 @@ rullst = { version = "12.0.0-rc.1", default-features = false }
 | `capital-actix` | no | `capital` plus the Actix Web adapter for the canonical signed-webhook verifier |
 | `capital-quota-sql` | no | `capital` and `orm` plus atomic shared resource quotas for SQLite, PostgreSQL, MySQL, and MariaDB |
 | `capital-webhook-sql` | no | `capital` and `orm` plus bounded durable webhook replay/event claims for SQLite, PostgreSQL, MySQL, and MariaDB |
-| `capital-nfse` | no | `capital` plus checksum-pinned official XSD validation, PKCS#12 XMLDSig, and rustls mTLS preparation |
+| `capital-nfse` | no | `capital` plus checksum-pinned official XSD validation, PKCS#12 XMLDSig, signed-environment protocol binding, authenticated local command journal, and rustls mTLS preparation |
 | `capital-pdf` | no | `capital` plus bounded validated native invoice PDF rendering |
 | `capital-mail` | no | `capital-pdf` plus Mail's payment-bound HTML/PDF attachment delivery bridge |
 | `security` | no | RASP/WAF and application-security primitives from `rullst-security` |
@@ -210,7 +210,7 @@ Default feature: `axum`.
 | `actix` | Actix Web middleware for the same verifier; it does not enable Axum when selected directly |
 | `quota-sql` | Durable idempotent shared quota accounting over SQLite, PostgreSQL, MySQL, and MariaDB; schema setup/migrations and authoritative membership/tier state remain application-owned |
 | `webhook-sql` | Bounded durable provider-scoped payload/event claims over SQLite, PostgreSQL, MySQL, and MariaDB, including a caller-owned transaction path; cross-system effects and reconciliation remain application-owned |
-| `nfse` | Checksum-pinned official XSD validation, PKCS#12 RSA-SHA256 XMLDSig, deterministic GZip/Base64 issuance JSON, bounded signed-authorization and structured-rejection parsing, and rustls mTLS preparation; it does not enable live SEFIN transmission or establish certificate trust/homologation |
+| `nfse` | Checksum-pinned official XSD validation, PKCS#12 RSA-SHA256 XMLDSig, signed-`tpAmb` binding, deterministic GZip/Base64 issuance JSON, bounded signed-authorization/rejection parsing, a HMAC-chained single-writer local command journal, and rustls mTLS preparation; it does not enable live SEFIN transmission, provide a distributed outbox/retry engine, or establish certificate trust/homologation |
 | `invoice-pdf` | Bounded paginated A4 invoice PDF with embedded WinAnsi or a validated caller-supplied TTF/OTF; payment/mail orchestration is separate |
 
 ### `rullst-mail`
