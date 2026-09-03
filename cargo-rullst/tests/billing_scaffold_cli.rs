@@ -19,6 +19,18 @@ fn assert_success(output: &Output, action: &str) {
     );
 }
 
+fn clean_generated_package(project: &Path, workspace: &Path, package_name: &str) {
+    let cleaned = run(
+        Command::new("cargo")
+            .current_dir(project)
+            .args(["clean", "--package", package_name])
+            .env("CARGO_TARGET_DIR", workspace.join("target"))
+            .env("CARGO_NET_OFFLINE", "true"),
+        "clean generated billing package",
+    );
+    assert_success(&cleaned, "generated billing package cleanup");
+}
+
 fn billing_migration(project: &Path) -> PathBuf {
     fs::read_dir(project.join("src/migrations"))
         .expect("migration directory")
@@ -251,6 +263,7 @@ fn verify_backend(database: &str) {
         1
     );
 
+    clean_generated_package(&project, workspace, &package_name);
     fs::remove_dir_all(&project).expect("remove generated project");
 }
 

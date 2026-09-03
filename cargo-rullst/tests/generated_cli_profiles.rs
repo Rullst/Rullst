@@ -191,6 +191,26 @@ fn add_router_runtime_contract(project: &Path, returns_result: bool) {
     .expect("generated router runtime contract");
 }
 
+fn clean_generated_package(project: &Path, target_root: &Path) {
+    let manifest = fs::read_to_string(project.join("Cargo.toml")).expect("generated manifest");
+    let parsed: toml::Value = toml::from_str(&manifest).expect("valid generated manifest");
+    let package_name = parsed["package"]["name"]
+        .as_str()
+        .expect("generated package name");
+    let output = Command::new(env!("CARGO"))
+        .current_dir(project)
+        .args(["clean", "--package", package_name])
+        .env("CARGO_TARGET_DIR", target_root)
+        .env("CARGO_NET_OFFLINE", "true")
+        .output()
+        .expect("clean generated CLI package");
+    assert!(
+        output.status.success(),
+        "generated package cleanup failed\n{}",
+        output_text(&output)
+    );
+}
+
 #[test]
 fn public_cli_profiles_compile_across_every_distinct_generation_axis() {
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -270,5 +290,6 @@ fn public_cli_profiles_compile_across_every_distinct_generation_axis() {
             case.name,
             output_text(&tested)
         );
+        clean_generated_package(&project.path, &target_root);
     }
 }

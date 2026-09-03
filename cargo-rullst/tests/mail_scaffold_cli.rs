@@ -19,6 +19,18 @@ fn assert_success(output: &Output, action: &str) {
     );
 }
 
+fn clean_generated_package(project: &Path, workspace: &Path, package_name: &str) {
+    let cleaned = run(
+        Command::new("cargo")
+            .current_dir(project)
+            .args(["clean", "--package", package_name])
+            .env("CARGO_TARGET_DIR", workspace.join("target"))
+            .env("CARGO_NET_OFFLINE", "true"),
+        "clean generated mail package",
+    );
+    assert_success(&cleaned, "generated mail package cleanup");
+}
+
 #[test]
 fn every_mail_scaffold_compiles_escapes_html_and_fails_closed() {
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -62,6 +74,10 @@ fn every_mail_scaffold_compiles_escapes_html_and_fails_closed() {
 
     let manifest = fs::read_to_string(project.join("Cargo.toml")).expect("generated manifest");
     let parsed: toml::Value = toml::from_str(&manifest).expect("valid generated manifest");
+    let package_name = parsed["package"]["name"]
+        .as_str()
+        .expect("generated package name")
+        .to_string();
     let features = parsed["dependencies"]["rullst"]["features"]
         .as_array()
         .expect("rullst feature array");
@@ -341,5 +357,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     assert!(!project.join("src/mail/ambiguous_mail.rs").exists());
 
+    clean_generated_package(&project, workspace, &package_name);
     fs::remove_dir_all(&project).expect("remove generated project");
 }

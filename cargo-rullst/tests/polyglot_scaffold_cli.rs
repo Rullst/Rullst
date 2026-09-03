@@ -2,6 +2,27 @@
 
 use std::{fs, process::Command};
 
+fn clean_generated_package(project: &std::path::Path, workspace: &std::path::Path) {
+    let manifest = fs::read_to_string(project.join("Cargo.toml")).expect("generated manifest");
+    let parsed: toml::Value = toml::from_str(&manifest).expect("valid generated manifest");
+    let package_name = parsed["package"]["name"]
+        .as_str()
+        .expect("generated package name");
+    let output = Command::new("cargo")
+        .current_dir(project)
+        .args(["clean", "--package", package_name])
+        .env("CARGO_TARGET_DIR", workspace.join("target"))
+        .env("CARGO_NET_OFFLINE", "true")
+        .output()
+        .expect("clean generated Turso package");
+    assert!(
+        output.status.success(),
+        "generated Turso package cleanup failed:\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 #[test]
 fn deterministic_cli_materializes_relational_and_specialized_persistence_choices() {
     let workspace = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -167,6 +188,7 @@ fn turso_primary_scaffold_compiles_and_runs_its_real_migration() {
             .contains("Rolled back Turso migration m20260829000000_create_users_table")
     );
 
+    clean_generated_package(&project, workspace);
     fs::remove_dir_all(&project).expect("remove generated Turso-primary test project");
 }
 
@@ -247,5 +269,6 @@ fn turso_primary_make_model_and_migration_remain_on_the_libsql_backend() {
     );
     assert!(String::from_utf8_lossy(&migrated.stdout).contains("Applied 3 Turso migration(s)"));
 
+    clean_generated_package(&project, workspace);
     fs::remove_dir_all(&project).expect("remove generated Turso project");
 }
