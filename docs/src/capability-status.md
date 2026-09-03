@@ -17,11 +17,11 @@ campaign points are evidenced (98.9%), with 16 points remaining**. The broader
 [v12 release programme](v12.md) estimates RC readiness at 70.2%; therefore this
 is still a **NO-GO**, not a release announcement.
 
-Coverage is a separate open RC gate. The latest complete public Codecov report
-for `main` records 84.92% across the whole repository and 91.25% for the
-`framework_libraries` component. Both now target at least 90%; the overall gap
-must be closed through behavior-asserting tests, especially around CLI paths,
-rather than metric-only execution.
+Coverage is a separate open RC gate. The complete public Codecov checkpoint
+used for this snapshot (`28e2cea9`) records 84.97% across the whole repository
+and 91.26% for the `framework_libraries` component. Both now target at least
+90%; the overall gap must be closed through behavior-asserting tests,
+especially around CLI paths, rather than metric-only execution.
 
 The latest bounded M12 gain is the opt-in `AuthenticatedSiemSpool`: a
 single-writer HMAC-SHA256-chained local journal with explicit active/historical
