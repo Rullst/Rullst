@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788400513211,
+  "lastUpdate": 1788403238646,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -8057,6 +8057,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4098,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "95ea6caf6bd5cd00f684de1a4570518e82a7f889",
+          "message": "feat(capital): add authenticated fiscal command journal",
+          "timestamp": "2026-09-02T23:25:54-03:00",
+          "tree_id": "9c46d7a097ec35b8c887faa3c4627ade0b248ed5",
+          "url": "https://github.com/Rullst/Rullst/commit/95ea6caf6bd5cd00f684de1a4570518e82a7f889"
+        },
+        "date": 1788403238128,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 731,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 592,
+            "range": "± 34",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1321,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1698,
+            "range": "± 60",
             "unit": "ns/iter"
           }
         ]
