@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788403492325,
+  "lastUpdate": 1788413434239,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -6041,6 +6041,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 517,
             "range": "± 17",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "74e1b827b1ab7a7d804dfd73011cf2ca439d8a2e",
+          "message": "test(cli): verify generated project recovery matrices",
+          "timestamp": "2026-09-03T02:05:52-03:00",
+          "tree_id": "8a26c63c6c7f3c0b32cb6e28b3e90b55f87ff1fc",
+          "url": "https://github.com/Rullst/Rullst/commit/74e1b827b1ab7a7d804dfd73011cf2ca439d8a2e"
+        },
+        "date": 1788413433644,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1857,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 336,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 748,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
