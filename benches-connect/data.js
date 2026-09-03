@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788400533476,
+  "lastUpdate": 1788403299271,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -4973,6 +4973,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 580,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "95ea6caf6bd5cd00f684de1a4570518e82a7f889",
+          "message": "feat(capital): add authenticated fiscal command journal",
+          "timestamp": "2026-09-02T23:25:54-03:00",
+          "tree_id": "9c46d7a097ec35b8c887faa3c4627ade0b248ed5",
+          "url": "https://github.com/Rullst/Rullst/commit/95ea6caf6bd5cd00f684de1a4570518e82a7f889"
+        },
+        "date": 1788403298707,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 311,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
