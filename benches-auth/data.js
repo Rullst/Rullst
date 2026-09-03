@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788428088822,
+  "lastUpdate": 1788440843278,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -8249,6 +8249,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4596,
             "range": "± 123",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "28e2cea9b8aa63ff01156dfb02c29405464a6c17",
+          "message": "feat(orm): add authenticated document recovery",
+          "timestamp": "2026-09-03T09:57:16-03:00",
+          "tree_id": "15481e1f40d4d08ff10f275ba37adf90a9ebe682",
+          "url": "https://github.com/Rullst/Rullst/commit/28e2cea9b8aa63ff01156dfb02c29405464a6c17"
+        },
+        "date": 1788440842740,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 954,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 797,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1784,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2602,
+            "range": "± 34",
             "unit": "ns/iter"
           }
         ]
