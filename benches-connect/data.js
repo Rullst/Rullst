@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788421512957,
+  "lastUpdate": 1788428167230,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -5063,6 +5063,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 509,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "b58ba7cc07ebc8410c70e854683ff6844c01e37e",
+          "message": "feat(core): add lifecycle-aware request draining",
+          "timestamp": "2026-09-03T06:16:27-03:00",
+          "tree_id": "be96d1f527ec38acd1e1b23c612e8b01fa42d82e",
+          "url": "https://github.com/Rullst/Rullst/commit/b58ba7cc07ebc8410c70e854683ff6844c01e37e"
+        },
+        "date": 1788428166450,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 508,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
