@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788473892878,
+  "lastUpdate": 1788476572719,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -5393,6 +5393,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 567,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "194b5c8a80716962bcd63fe8777adcb083bea260",
+          "message": "fix(ci): constrain semver baseline resolver",
+          "timestamp": "2026-09-03T19:52:22-03:00",
+          "tree_id": "d50d57e4c96e16a63b213b3958be0e75ddaadb93",
+          "url": "https://github.com/Rullst/Rullst/commit/194b5c8a80716962bcd63fe8777adcb083bea260"
+        },
+        "date": 1788476572175,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 400,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
