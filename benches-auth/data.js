@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788473814938,
+  "lastUpdate": 1788476555232,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -8729,6 +8729,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3994,
             "range": "± 27",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "194b5c8a80716962bcd63fe8777adcb083bea260",
+          "message": "fix(ci): constrain semver baseline resolver",
+          "timestamp": "2026-09-03T19:52:22-03:00",
+          "tree_id": "d50d57e4c96e16a63b213b3958be0e75ddaadb93",
+          "url": "https://github.com/Rullst/Rullst/commit/194b5c8a80716962bcd63fe8777adcb083bea260"
+        },
+        "date": 1788476554634,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 866,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 709,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1606,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2128,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
