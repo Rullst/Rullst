@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788471012828,
+  "lastUpdate": 1788472393909,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -5333,6 +5333,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 493,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "26b69982a74d618e768b062065313e823ab3dfef",
+          "message": "feat(ai): add bounded adaptive evaluations",
+          "timestamp": "2026-09-03T18:42:51-03:00",
+          "tree_id": "04032e9f8469b2b811182ca55d67cd2995468eae",
+          "url": "https://github.com/Rullst/Rullst/commit/26b69982a74d618e768b062065313e823ab3dfef"
+        },
+        "date": 1788472393358,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 499,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
