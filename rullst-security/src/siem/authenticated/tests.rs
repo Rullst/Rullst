@@ -1,6 +1,6 @@
 use super::*;
 use std::{
-    fs::{File, OpenOptions},
+    fs::OpenOptions,
     io::{Read, Seek, SeekFrom, Write},
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
@@ -303,7 +303,7 @@ fn symlink_targets_are_rejected() {
 
     let target = temporary_spool("target");
     let link = temporary_spool("link");
-    File::create(&target).expect("create target");
+    std::fs::File::create(&target).expect("create target");
     symlink(&target, &link).expect("create symlink");
     assert!(matches!(
         AuthenticatedSiemSpool::try_open(&link, ring("primary", 0)),

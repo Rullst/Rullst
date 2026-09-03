@@ -115,10 +115,13 @@ impl TraceBatchSigner {
     pub fn sign(&self, batch: &TraceBatchV1) -> Result<SignedTraceBatch, TraceIngestionError> {
         let timestamp = unix_time()?;
         super::validation::validate_batch(batch, timestamp)?;
-        let mut nonce = [0_u8; NONCE_BYTES];
-        SysRng
-            .try_fill_bytes(&mut nonce)
+        let high = SysRng
+            .try_next_u64()
             .map_err(|_| TraceIngestionError::RandomnessUnavailable)?;
+        let low = SysRng
+            .try_next_u64()
+            .map_err(|_| TraceIngestionError::RandomnessUnavailable)?;
+        let nonce = ((u128::from(high) << 64) | u128::from(low)).to_be_bytes();
         self.sign_at(batch, timestamp, nonce)
     }
 
