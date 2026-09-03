@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788440994793,
+  "lastUpdate": 1788445658263,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -6233,6 +6233,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 698,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fbca1ed0aaa2e833f3f0ae38e42249bc8505369e",
+          "message": "docs(coverage): pin audited codecov checkpoint",
+          "timestamp": "2026-09-03T11:14:33-03:00",
+          "tree_id": "0d6d40ed238c782a7c912cf97f320bf9a01431f8",
+          "url": "https://github.com/Rullst/Rullst/commit/fbca1ed0aaa2e833f3f0ae38e42249bc8505369e"
+        },
+        "date": 1788445657507,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1693,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 362,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 752,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
