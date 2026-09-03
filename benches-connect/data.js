@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788447156094,
+  "lastUpdate": 1788463254301,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -5183,6 +5183,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 592,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e61077026114cc168dd4b0862703d8d5db3f35d8",
+          "message": "fix(ci): address security scan and Windows lint",
+          "timestamp": "2026-09-03T15:59:50-03:00",
+          "tree_id": "432b2fea4801facb84eb7859631b5bd47763c07c",
+          "url": "https://github.com/Rullst/Rullst/commit/e61077026114cc168dd4b0862703d8d5db3f35d8"
+        },
+        "date": 1788463253541,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 587,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
