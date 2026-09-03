@@ -10,6 +10,9 @@ coverage:
   range: "90...100"
   status:
     project:
+      default:
+        target: 90%
+        threshold: 0%
       framework_libraries:
         target: 90%
         threshold: 0%
