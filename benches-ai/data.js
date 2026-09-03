@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788469061259,
+  "lastUpdate": 1788469943771,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -6473,6 +6473,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 535,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "f321169fbb6ab4cec913d8524c0348d0e7b3b241",
+          "message": "feat(ai): add bounded streaming cancellation",
+          "timestamp": "2026-09-03T18:00:15-03:00",
+          "tree_id": "7837c0c7d9968d42ec4a7452abd3d15684c974ef",
+          "url": "https://github.com/Rullst/Rullst/commit/f321169fbb6ab4cec913d8524c0348d0e7b3b241"
+        },
+        "date": 1788469943171,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1198,
+            "range": "± 34",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 252,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 532,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
