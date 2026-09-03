@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788468791661,
+  "lastUpdate": 1788469796680,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -8537,6 +8537,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3753,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "f321169fbb6ab4cec913d8524c0348d0e7b3b241",
+          "message": "feat(ai): add bounded streaming cancellation",
+          "timestamp": "2026-09-03T18:00:15-03:00",
+          "tree_id": "7837c0c7d9968d42ec4a7452abd3d15684c974ef",
+          "url": "https://github.com/Rullst/Rullst/commit/f321169fbb6ab4cec913d8524c0348d0e7b3b241"
+        },
+        "date": 1788469796111,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 760,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 647,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1428,
+            "range": "± 59",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1808,
+            "range": "± 53",
             "unit": "ns/iter"
           }
         ]
