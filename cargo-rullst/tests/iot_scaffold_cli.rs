@@ -19,6 +19,23 @@ fn assert_success(output: &Output, action: &str) {
     );
 }
 
+fn install_workspace_lock(project: &Path, workspace: &Path) {
+    fs::copy(workspace.join("Cargo.lock"), project.join("Cargo.lock"))
+        .expect("copy workspace lockfile into generated IoT project");
+}
+
+fn clean_generated_package(project: &Path, workspace: &Path, package_name: &str) {
+    let cleaned = run(
+        Command::new("cargo")
+            .current_dir(project)
+            .args(["clean", "--package", package_name])
+            .env("CARGO_TARGET_DIR", workspace.join("target"))
+            .env("CARGO_NET_OFFLINE", "true"),
+        "clean generated IoT package",
+    );
+    assert_success(&cleaned, "generated IoT package cleanup");
+}
+
 #[test]
 fn iot_scaffold_compiles_registers_the_module_and_fails_closed() {
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -69,6 +86,10 @@ fn iot_scaffold_compiles_registers_the_module_and_fails_closed() {
 
     let manifest = fs::read_to_string(project.join("Cargo.toml")).expect("generated manifest");
     let parsed: toml::Value = toml::from_str(&manifest).expect("valid generated manifest");
+    let package_name = parsed["package"]["name"]
+        .as_str()
+        .expect("generated package name")
+        .to_string();
     let features = parsed["dependencies"]["rullst"]["features"]
         .as_array()
         .expect("rullst feature array");
@@ -80,6 +101,7 @@ fn iot_scaffold_compiles_registers_the_module_and_fails_closed() {
         1,
         "iot feature must be enabled exactly once"
     );
+    install_workspace_lock(&project, workspace);
 
     let checked = run(
         Command::new("cargo")
@@ -113,5 +135,6 @@ fn iot_scaffold_compiles_registers_the_module_and_fails_closed() {
     assert!(!traversal.status.success(), "unsafe name must be rejected");
     assert!(!project.join("escape.rs").exists());
 
+    clean_generated_package(&project, workspace, &package_name);
     fs::remove_dir_all(&project).expect("remove generated project");
 }

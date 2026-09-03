@@ -31,6 +31,11 @@ fn clean_generated_package(project: &Path, workspace: &Path, package_name: &str)
     assert_success(&cleaned, "generated mail package cleanup");
 }
 
+fn install_workspace_lock(project: &Path, workspace: &Path) {
+    fs::copy(workspace.join("Cargo.lock"), project.join("Cargo.lock"))
+        .expect("copy workspace lockfile into generated mail project");
+}
+
 #[test]
 fn every_mail_scaffold_compiles_escapes_html_and_fails_closed() {
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -281,6 +286,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 "##,
     )
     .expect("write generated mail contract");
+    install_workspace_lock(&project, workspace);
 
     let checked = run(
         Command::new("cargo")

@@ -31,6 +31,11 @@ fn clean_generated_package(project: &Path, workspace: &Path, package_name: &str)
     assert_success(&cleaned, "generated billing package cleanup");
 }
 
+fn install_workspace_lock(project: &Path, workspace: &Path) {
+    fs::copy(workspace.join("Cargo.lock"), project.join("Cargo.lock"))
+        .expect("copy workspace lockfile into generated billing project");
+}
+
 fn billing_migration(project: &Path) -> PathBuf {
     fs::read_dir(project.join("src/migrations"))
         .expect("migration directory")
@@ -205,6 +210,7 @@ fn verify_backend(database: &str) {
         contract_source(database),
     )
     .expect("write billing runtime contract");
+    install_workspace_lock(&project, workspace);
 
     let checked = run(
         Command::new("cargo")

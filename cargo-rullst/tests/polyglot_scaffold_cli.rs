@@ -2,6 +2,11 @@
 
 use std::{fs, process::Command};
 
+fn install_workspace_lock(project: &std::path::Path, workspace: &std::path::Path) {
+    fs::copy(workspace.join("Cargo.lock"), project.join("Cargo.lock"))
+        .expect("copy workspace lockfile into generated Turso project");
+}
+
 fn clean_generated_package(project: &std::path::Path, workspace: &std::path::Path) {
     let manifest = fs::read_to_string(project.join("Cargo.toml")).expect("generated manifest");
     let parsed: toml::Value = toml::from_str(&manifest).expect("valid generated manifest");
@@ -131,6 +136,7 @@ fn turso_primary_scaffold_compiles_and_runs_its_real_migration() {
             .lines()
             .any(|line| line.starts_with("DATABASE_URL="))
     );
+    install_workspace_lock(&project, workspace);
 
     let checked = Command::new("cargo")
         .current_dir(&project)
@@ -241,6 +247,7 @@ fn turso_primary_make_model_and_migration_remain_on_the_libsql_backend() {
         fs::read_to_string(project.join("src/migrations/mod.rs")).expect("migration registry");
     assert!(migrations_mod.contains("Vec<rullst_orm::polyglot::TursoMigration>"));
     assert!(migrations_mod.contains("::migration()?"));
+    install_workspace_lock(&project, workspace);
 
     let checked = Command::new("cargo")
         .current_dir(&project)
