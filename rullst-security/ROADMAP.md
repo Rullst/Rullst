@@ -40,17 +40,21 @@
 - [~] **Cross-Site WebSocket Hijacking (CSWSH) Guard (`rullst-security::cswsh`)**: Exact Origin/Host or explicit allowlist validation is implemented. CSRF tickets and application-level frame encryption are not.
 - [x] **Subresource Integrity (SRI) & Asset Signer (`rullst-security::sri`)**: SHA-384 hashes and escaped script/link tags can be generated from bytes or bounded local JS/CSS files; asset discovery/injection remains explicit.
 - [~] **SIEM evidence boundary (`rullst-security::siem`)**: CEF escaping,
-  process-local recording and a bounded single-process durable spool exist; no
+  process-local recording, a compatible unsigned spool and an opt-in
+  HMAC-chained single-process journal with explicit key rotation exist; no
   Datadog, Splunk, Elastic, Slack or Syslog delivery is implemented.
   - **Escopo auditado na v12:** `DurableSiemSpool` writes normalized unsigned v1
     events behind an in-process lock, exact byte/record quotas, a versioned
-    length/digest frame and `sync_data`. Restart, quota, symlink, corruption and
-    external-length-change tests fail closed. SHA-256 detects corruption but
-    does not authenticate an event; the name `dispatch_siem_alert` still does
-    not mean external delivery.
-  - **Ambição restante:** rotation, retention and a delivery contract with
-    retry, backoff, dead-letter, redaction, backpressure, health and
-    acknowledgement, followed by provider contract suites.
+    length/digest frame and `sync_data`. `AuthenticatedSiemSpool` separately
+    chains sequence/predecessor/payload with HMAC-SHA256 and supports one active
+    plus seven historical zeroized keys. Restart, quota, symlink, forgery,
+    wrong/missing key, interior deletion/reordering and external-length-change
+    tests fail closed. Whole-tail rollback still needs a separately trusted
+    checkpoint; the name `dispatch_siem_alert` does not mean external delivery.
+  - **Ambição restante:** file compaction/rotation, key-retirement tooling,
+    retention and a delivery contract with retry, backoff, dead-letter,
+    redaction, backpressure, health and acknowledgement, followed by provider
+    contract suites.
 - [~] **CLI IDOR / BOLA Static Audit Scanner (`cargo rullst audit --idor`)**: Fail-closed bounded source heuristic for parameterized-route classifications and recognized guards; it does not prove handler/domain authorization.
 - [~] **Cargo Geiger Memory Safety Scanner (`cargo rullst audit --geiger`)**: Bounded first-party unsafe-syntax scan plus an explicitly requested `cargo-geiger` run whose absence/failure is fatal. Dependency unsafe does not become a universal safety proof.
 - [~] **Parser Fuzz Testing Suites (`rullst-security/tests/fuzz_robustness.rs` & `fuzz/`)**: Deterministic robustness loops and libFuzzer targets exist; only executed corpora and paths are evidence, never universal panic-freedom.

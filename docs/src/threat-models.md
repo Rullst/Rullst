@@ -1,6 +1,6 @@
 # Rullst v12 threat models
 
-> **Model version:** TM-12.8
+> **Model version:** TM-12.9
 > **Applies to:** the v12 release candidate source and generated applications
 > **Last source review:** 2026-09-03
 > **Status:** maintainer baseline; application owners must extend it for their
@@ -167,6 +167,18 @@ Trust boundaries are host-supplied aggregates ↔ deterministic classifier,
 application subject ↔ challenge and process-local replay state ↔ distributed
 deployment.
 
+## TM-SEC-3 — authenticated local security-event journal
+
+**Assets:** normalized security-event evidence, HMAC keys, key identifiers,
+record order and durable local file state.
+
+| Abuse case | Required disposition | Repository evidence or remaining work |
+| --- | --- | --- |
+| `SEC-33` forged, substituted or rotation-confused local event | Authenticate a domain-separated canonical frame containing sequence, key identifier, predecessor tag, payload length and exact normalized event bytes; reject absent/wrong keys, forgery, reordering and removed interior records before returning an event as HMAC-verified. | The exact negative proves payload tampering, same-identifier wrong-key substitution and absent historical-key rotation fail closed. Additional deterministic tests cover restart across active-key rotation, predecessor/sequence attacks, quotas, symlink targets, external length changes and redacted/zeroizing key storage. This is one local writer and a maximum of eight keys/4,096 records/16 MiB; trusted key/path custody, whole-tail rollback checkpoints, multi-writer coordination, compaction, retention, remote delivery and acknowledgement remain operator/application work. |
+
+Trust boundaries are local event producer ↔ authenticated journal, key manager ↔
+rotation ring and filesystem state ↔ restart verifier.
+
 ## TM-PAY-1 — webhooks, billing, payouts and fiscal boundaries
 
 **Assets:** provider secrets, event IDs, subscription/payout state,
@@ -323,6 +335,6 @@ registry and CLI ↔ filesystem/process/cloud.
 - New boundaries receive new IDs; IDs are never silently reused.
 - Closing residual risk requires code/configuration, a negative test and
   commit-bound evidence. Documentation alone cannot claim a control is deployed.
-- Before stable v12, maintainers must review TM-12.8 against the exact RC,
+- Before stable v12, maintainers must review TM-12.9 against the exact RC,
   applications must add topology/provider threats and an independent reviewer
   must cover the highest-impact paths.

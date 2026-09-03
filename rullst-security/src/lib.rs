@@ -70,7 +70,9 @@ pub use sentinel::{
     ThreatPattern, ThreatSentinel,
 };
 pub use siem::{
-    DurableSiemSpool, MAX_SIEM_SPOOL_BYTES, MAX_SIEM_SPOOL_RECORDS, SiemAlertPayload,
+    AuthenticatedSiemSpool, AuthenticatedSiemSpoolError, AuthenticatedSiemSpoolReceipt,
+    AuthenticatedSiemSpoolSnapshot, DurableSiemSpool, MAX_SIEM_INTEGRITY_KEYS,
+    MAX_SIEM_SPOOL_BYTES, MAX_SIEM_SPOOL_RECORDS, SiemAlertPayload, SiemIntegrityKey, SiemKeyRing,
     SiemSpoolError, SiemSpoolReceipt, SiemSpoolSnapshot, dispatch_siem_alert, format_cef_event,
 };
 pub use sri::{

@@ -8,9 +8,10 @@ The package also embeds and exports the JSON Schema 2020-12 document as
 [`security-event-v1.schema.json`](../../rullst-security/schema/security-event-v1.schema.json).
 
 This is an application telemetry envelope, not a remote SIEM transport. The
-optional local spool provides bounded persistence but the schema itself does
-not provide delivery, retention, correlation, acknowledgement, retry,
-dead-letter handling, source authentication, or regulatory evidence.
+optional local spools provide bounded persistence and one explicit
+authenticated-journal mode, but the schema itself does not provide delivery,
+retention, correlation, acknowledgement, retry, dead-letter handling, source
+identity, or regulatory evidence.
 
 ## JSON fields
 
@@ -66,6 +67,9 @@ The version-one contract has source-controlled serialization, legacy-input,
 normalization, size, UTF-8, and CEF-injection tests. `DurableSiemSpool` can
 persist normalized unsigned v1 values in a local single-process file with exact
 byte/record quotas, versioned length/digest frames and restart validation.
+`AuthenticatedSiemSpool` is a distinct opt-in file format that authenticates
+sequence, named rotation key, predecessor and exact payload before JSON decode;
+verified reads set `verified_hmac=true` only after the complete chain passes.
 Release evidence still belongs to the exact RC tag SHA.
 
 ## CEF boundary
@@ -85,6 +89,21 @@ The spool deliberately supplies no directory creation, multi-process lock,
 rotation, retention, backup, retry, dead-letter handling or remote adapter.
 Operators must provide a trusted, permissioned directory and one writer process
 per file.
+
+## Authenticated local journal boundary
+
+`AuthenticatedSiemSpool` uses domain-separated HMAC-SHA256 frames and a
+`SiemKeyRing` containing one active write key plus at most seven historical
+verification keys. Key material is held in zeroizing storage and omitted from
+`Debug`. Reopen fails closed for an absent/wrong key, forged payload,
+non-canonical sequence, broken predecessor chain, removed/reordered interior
+frame, symlink target, quota violation or external file-length change.
+
+The chain does not identify whether the local producer's semantic assertion was
+true. Removal of a whole valid tail also needs a checkpoint retained in a
+separately trusted system. The journal does not rotate/compact itself or supply
+multi-process locking, remote delivery, retry, acknowledgement or dead-letter
+handling.
 
 A future operational sink should consume the versioned JSON envelope and define
 redaction, backpressure, authentication, durable spool/retry/dead-letter,

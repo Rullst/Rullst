@@ -1,7 +1,12 @@
 use crate::telemetry::{LiveSecurityEvent, SecurityStore};
 use serde::{Deserialize, Serialize};
 
+mod authenticated;
 mod spool;
+pub use authenticated::{
+    AuthenticatedSiemSpool, AuthenticatedSiemSpoolError, AuthenticatedSiemSpoolReceipt,
+    AuthenticatedSiemSpoolSnapshot, MAX_SIEM_INTEGRITY_KEYS, SiemIntegrityKey, SiemKeyRing,
+};
 pub use spool::{
     DurableSiemSpool, MAX_SIEM_SPOOL_BYTES, MAX_SIEM_SPOOL_RECORDS, SiemSpoolError,
     SiemSpoolReceipt, SiemSpoolSnapshot,

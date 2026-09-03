@@ -120,7 +120,7 @@ receives a denial before data or side effects are exposed.
 | Injection | SQLx binds, strict identifier validation, sanitizer and bounded RASP patterns. | Heuristics are not a complete language parser; domain validation and parameterization remain mandatory. |
 | Misconfiguration | Nonce-based CSP and a strict HTTP-header baseline. | Proxies and page content change the deployed policy; no scanner grade is guaranteed. |
 | Authentication abuse | Login jail, local limiter, optional atomic Redis limiter, timing helpers, TOTP, subject-bound recovery-code verifiers and WebAuthn integration. | Real Redis topology/failover, durable transactional recovery consumption and UX, RP/origin configuration, trusted peer identity, and capacity planning remain application concerns. |
-| Data integrity | HMAC audit records with canonical encoding and sequence verification. | Durability, deletion resistance, key protection, and independent verification require external storage and operations. |
+| Data integrity | HMAC audit records plus an opt-in bounded HMAC-chained local SIEM journal with named rotation keys. | Whole-tail rollback detection, independent checkpoints, multi-writer operation, key protection, retention and remote delivery require external storage and operations. |
 | Data leakage | Text-aware DLP, PII masking, and log redaction helpers. | Unsupported content types, encodings, streams, and oversize bodies follow explicit policy and must be tested. |
 | AI input risk | Prompt-injection heuristics and PII masking in the high-level AI client. | No heuristic can prove a prompt safe or guarantee detection of every secret. |
 

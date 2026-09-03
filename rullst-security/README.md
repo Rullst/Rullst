@@ -86,6 +86,19 @@
   permissions, rotation, retention, backup, delivery, retry, acknowledgement,
   dead-letter policy and any Splunk/Datadog/Elastic/Syslog adapter.
 
+### 🔐 10. Authenticated Local SIEM Journal
+
+- **HMAC chain:** `AuthenticatedSiemSpool` binds every normalized event to its
+  one-based sequence, named key, predecessor tag and exact payload using
+  domain-separated HMAC-SHA256.
+- **Explicit rotation:** `SiemKeyRing` writes with one active key and verifies
+  older frames with at most seven historical keys. Secret bytes live in
+  zeroizing storage and are redacted from `Debug`.
+- **Fail-closed recovery:** Restart rejects forged content, wrong or absent
+  keys, reordered/removed interior frames, malformed encoding and quota or
+  external-length violations. A trusted external checkpoint is still needed
+  to detect removal of a complete valid tail.
+
 ---
 
 ## 📦 Installation
@@ -262,6 +275,37 @@ Create and permission the parent directory before opening the spool, use only
 one writer process per file, and deliver/rotate it through an application-owned
 operator. Reopening validates frames but does not authenticate the event source
 or confirm remote receipt.
+
+### 9. Persist and verify an authenticated local SIEM event
+
+```rust
+use rullst_security::{
+    AuthenticatedSiemSpool, AuthenticatedSiemSpoolError, LiveSecurityEvent,
+    SiemIntegrityKey, SiemKeyRing,
+};
+
+fn persist_authenticated() -> Result<(), AuthenticatedSiemSpoolError> {
+    let active = SiemIntegrityKey::try_new(
+        "security-2026-09",
+        b"0123456789abcdef0123456789ABCDEF".to_vec(),
+    )?;
+    let keys = SiemKeyRing::try_new(active, std::iter::empty())?;
+    let spool = AuthenticatedSiemSpool::try_open("var/security-events.auth", keys)?;
+    spool.append_local(LiveSecurityEvent::local(
+        "RBAC_ACCESS_DENIED",
+        "owner mismatch",
+        "192.0.2.50",
+    ))?;
+    let verified = spool.read_verified()?;
+    assert!(verified.iter().all(|event| event.verified_hmac));
+    Ok(())
+}
+```
+
+Generate the key from a cryptographic secret manager rather than using the
+example literal. During rotation, reopen with the new active key and every
+historical key referenced by retained frames. This API does not send events to
+an external SIEM or acknowledge remote receipt.
 
 ---
 

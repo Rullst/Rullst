@@ -88,14 +88,14 @@
     },
     {
       "name": "rullst-security",
-      "api_architecture": 18,
-      "verification": 23,
-      "security_failure_design": 18,
-      "documentation_dx": 14,
+      "api_architecture": 19,
+      "verification": 25,
+      "security_failure_design": 20,
+      "documentation_dx": 15,
       "operations_release": 17,
       "specialist_gate": "redis-and-threat",
-      "finding": "Broad bounded defense-in-depth plus a synchronized local SIEM spool with restart, quota, corruption and external-change evidence; no external SIEM delivery, universal OWASP coverage, audit or certification is implied.",
-      "evidence": ["rullst-security/README.md", "rullst-security/src/siem", "rullst-security/tests", "docs/src/security-architecture.md"]
+      "finding": "Broad bounded defense-in-depth plus compatible unsigned and opt-in HMAC-chained local SIEM journals with rotation, restart, forgery, quota and external-change evidence; trusted tail checkpoints, external SIEM delivery, independent audit and certification remain external.",
+      "evidence": ["rullst-security/README.md", "rullst-security/src/siem", "rullst-security/tests", "docs/src/security-architecture.md", "docs/src/threat-models.md"]
     },
     {
       "name": "rullst-ai",

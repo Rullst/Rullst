@@ -688,6 +688,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   observable. SHA-256 is not source authentication, and directory trust,
   rotation, retention, multi-process exclusion, retry, acknowledgement,
   dead-letter handling and external SIEM delivery remain operator work.
+- `rullst-security` now also provides an opt-in `AuthenticatedSiemSpool` whose
+  domain-separated HMAC-SHA256 frames bind sequence, named rotation key,
+  predecessor and exact normalized event bytes. One active and at most seven
+  historical keys are held in zeroizing storage; restart rejects forgery,
+  wrong/missing keys, reordering and removed interior frames. Valid-tail
+  rollback still requires a separately trusted checkpoint, and external SIEM
+  transport, retry, acknowledgement and dead-letter policy remain outside the
+  bounded local journal.
 - `cargo rullst make:mail` now generates all five exposed variants through the
   public facade, enables `mailer`, validates identifiers, refuses traversal and
   collisions, registers modules and escapes dynamic HTML. A materialized
