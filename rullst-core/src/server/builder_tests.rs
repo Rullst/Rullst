@@ -170,10 +170,93 @@ async fn scheduler_shield_and_missing_hot_library_have_typed_lifecycles() {
             "/definitely/missing/rullst-app".to_string(),
             "127.0.0.1:0".parse().unwrap(),
             Environment::Development,
+            std::future::ready(()),
         )
         .await
         .unwrap_err();
     assert!(matches!(error, ServerError::HotReload(_)));
+}
+
+#[test]
+fn server_accepts_a_shared_application_lifecycle() {
+    let lifecycle = crate::lifecycle::ApplicationLifecycle::new();
+    let server = Server::new(Router::new()).with_lifecycle(lifecycle.clone());
+    assert!(server.lifecycle.is_some());
+    assert_eq!(
+        lifecycle.phase(),
+        crate::lifecycle::ApplicationPhase::Starting
+    );
+}
+
+#[tokio::test]
+async fn lifecycle_helpers_are_monotonic_and_startup_failure_stops() {
+    let lifecycle = crate::lifecycle::ApplicationLifecycle::new();
+    mark_lifecycle_ready(Some(&lifecycle)).expect("ready transition");
+    assert_eq!(lifecycle.phase(), crate::lifecycle::ApplicationPhase::Ready);
+
+    lifecycle.begin_draining().expect("drain transition");
+    assert!(matches!(
+        mark_lifecycle_ready(Some(&lifecycle)),
+        Err(ServerError::Lifecycle(_))
+    ));
+    mark_lifecycle_stopped(Some(&lifecycle));
+    assert_eq!(
+        lifecycle.phase(),
+        crate::lifecycle::ApplicationPhase::Stopped
+    );
+
+    let failed = crate::lifecycle::ApplicationLifecycle::new();
+    failed.begin_draining().expect("pre-start drain");
+    let result = Server::new(Router::new())
+        .with_lifecycle(failed.clone())
+        .run(0)
+        .await;
+    assert!(matches!(result, Err(ServerError::Lifecycle(_))));
+    assert_eq!(failed.phase(), crate::lifecycle::ApplicationPhase::Stopped);
+}
+
+#[tokio::test]
+async fn custom_shutdown_drives_ready_drain_and_stopped_phases() {
+    let _lock = crate::server::TEST_ENV_LOCK.lock().await;
+    let environment = EnvironmentGuard::clear(&[
+        "HOST",
+        "RULLST_HOST",
+        "PORT",
+        "RULLST_ENV",
+        "APP_ENV",
+        "DATABASE_URL",
+    ]);
+    environment.set("RULLST_ENV", "test");
+
+    let lifecycle = crate::lifecycle::ApplicationLifecycle::new();
+    let observed = lifecycle.clone();
+    let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
+    let server = tokio::spawn(async move {
+        Server::new(Router::new())
+            .with_lifecycle(lifecycle)
+            .run_with_shutdown(0, async move {
+                let _ = shutdown_rx.await;
+            })
+            .await
+    });
+
+    tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        while observed.phase() != crate::lifecycle::ApplicationPhase::Ready {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("server became ready");
+    shutdown_tx.send(()).expect("shutdown receiver alive");
+    tokio::time::timeout(std::time::Duration::from_secs(2), server)
+        .await
+        .expect("server stopped before deadline")
+        .expect("server task joined")
+        .expect("server shutdown succeeded");
+    assert_eq!(
+        observed.phase(),
+        crate::lifecycle::ApplicationPhase::Stopped
+    );
 }
 
 #[tokio::test]

@@ -41,6 +41,16 @@ worker poll after it becomes due and retains the queue's at-least-once semantics
 Custom drivers return `QueueError::Unsupported` for future timestamps unless
 they explicitly implement durable scheduling.
 
+`ApplicationLifecycle` supplies an opt-in process-local startup/readiness/drain
+contract. Up to 32 immutable validated component labels can gate readiness and
+application admission; `/ready` publishes only aggregate counts, not labels or
+dependency errors. `Server::with_lifecycle` marks the phase ready after binding,
+begins draining before Axum's graceful wait, and marks it stopped on completion
+or startup failure. `run_with_shutdown` accepts a caller-owned trigger for
+embedded supervisors and deterministic tests. The lifecycle does not run
+dependency probes, coordinate replicas, authorize users, or guarantee load
+balancer propagation.
+
 ## ✨ Core Features & Subsystems
 
 - **Axum-compatible routing:** `rullst::Router` wraps and converts to/from
@@ -55,10 +65,11 @@ they explicitly implement durable scheduling.
   is supported, Tokio task/yield observations when a runtime is available, and
   process uptime. Unsupported probes return `None`.
 - **Prometheus `/metrics` Exporter:** Text-format metrics served at `GET /metrics`; formatting and collection have bounded runtime cost.
-- **Kubernetes probe routes (`rullst::health`):** `GET /health` and `GET
-  /ready` report process availability and uptime. The built-in `/ready` does
-  not test a database, queue, or external dependency; applications that need
-  dependency-aware readiness must supply that check themselves.
+- **Kubernetes probe routes (`rullst::health`):** the simple `health_router`
+  reports process availability and uptime. The opt-in
+  `health_router_with_lifecycle` returns readiness from the same bounded state
+  that gates Server request admission; the application still performs and
+  times out its own dependency checks.
 - **Interactive Scalar API Docs (`rullst::scalar`):** OpenAPI documentation UI
   mounted at `/docs`, with a pinned CDN asset and a status-only fallback. A
   missing or malformed `openapi.json` returns `503`.
@@ -84,25 +95,31 @@ they explicitly implement durable scheduling.
 Most applications can use the re-exports provided by the umbrella `rullst`
 crate instead of depending on `rullst-core` directly.
 
-### Mounting Health Probes & Prometheus Metrics
+### Mounting lifecycle-aware Health Probes & Prometheus Metrics
 
 These optional surfaces are application-owned and must be mounted explicitly.
 Protect or isolate `/metrics` when its operational data should not be public.
 
 ```rust
-use axum::Router;
 use rullst_core::{
-    health::health_router,
+    ApplicationLifecycle, Router, Server,
+    health::health_router_with_lifecycle,
     radar::radar_metrics_router,
     scalar::scalar_docs_router,
 };
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let lifecycle = ApplicationLifecycle::new();
     let app = Router::new()
-        .merge(health_router())         // GET /health & GET /ready
-        .merge(radar_metrics_router())   // GET /metrics (Prometheus)
-        .merge(scalar_docs_router("/openapi.json")); // GET /docs
+        .merge_axum(health_router_with_lifecycle(lifecycle.clone()))
+        .merge_axum(radar_metrics_router())   // GET /metrics (Prometheus)
+        .merge_axum(scalar_docs_router("/openapi.json")); // GET /docs
+    Server::new(app)
+        .with_lifecycle(lifecycle)
+        .run(3000)
+        .await?;
+    Ok(())
 }
 ```
 

@@ -24,6 +24,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Upgrade and compatibility
 
+- `rullst-core` adds an opt-in `ApplicationLifecycle` shared by Server request
+  admission and lifecycle-aware health probes. It has monotonic process phases,
+  at most 32 immutable required-component bits, aggregate-only readiness JSON,
+  fail-closed startup/dependency/drain behavior and a bounded wait for accepted
+  requests. `Server::run_with_shutdown` accepts an explicit supervisor future;
+  the default still handles OS signals. Tests cover a real ephemeral listener,
+  startup failure, hot-swap admission, in-flight drain, timeout and poisoned
+  component state. Dependency probes, authorization, replica/load-balancer
+  coordination and deployment termination deadlines remain host concerns.
 - `cargo-rullst` now backs project generation with all 270 supported structural
   profiles, an eight-case generated-test matrix crossing every blueprint plus
   hot/non-hot and release boundaries, and five cases invoking the public CLI

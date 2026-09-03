@@ -15,6 +15,10 @@
   forwarding, and message-free typed failures. Identity and domain policy stay
   server-owned.
 - **Runtime Telemetry:** Exposes process/runtime snapshots and tracing-span collection for consumers such as Rullst Studio.
+- **Lifecycle-aware Readiness:** An opt-in process lifecycle gates new requests
+  during startup, dependency unavailability, and graceful drain. It accepts at
+  most 32 immutable component labels and exposes counts—not labels or errors—on
+  `/ready`; dependency checks and multi-replica coordination remain host work.
 - **Typed Failures:** Server, scheduler, queue, storage, and resilience APIs expose structured errors for fallible paths. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
 - **Dependency Injection:** Type-safe, intuitive global state management across routes and background workers.
 - **Environment Management:** Native `dotenv` and TOML configuration loaders for different deployment targets (Staging, Production, Local).
@@ -74,6 +78,14 @@ endpoint. The limit must be 1–200. `CacheEntryMetadata` deliberately redacts
 the logical key from `Debug` and never carries the cached value, but
 `logical_key()` still returns application data to an authorized caller. Rullst
 Studio converts it into a process-bound opaque token before rendering it.
+
+For orchestrated deployments, construct `ApplicationLifecycle`, mount
+`health_router_with_lifecycle(lifecycle.clone())`, then pass the same value to
+`Server::with_lifecycle`. The server marks startup complete after binding,
+begins drain before Axum waits for accepted requests, and marks startup failure
+or termination as stopped. `run_with_shutdown` permits a caller-owned trigger.
+The process-local registry does not probe dependencies, authorize application
+requests, coordinate replicas, or guarantee load-balancer propagation.
 
 ### Minimal HTTP Server
 

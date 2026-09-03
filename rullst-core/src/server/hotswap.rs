@@ -23,6 +23,7 @@ pub struct HotSwapService {
     pub(crate) is_dev: bool,
     pub(crate) shield: Option<crate::resilience::TrafficShield>,
     pub(crate) limiter: Option<crate::resilience::RateLimiter>,
+    pub(crate) lifecycle: Option<crate::lifecycle::ApplicationLifecycle>,
 }
 
 impl HotSwapService {
@@ -224,6 +225,9 @@ impl Service<axum::extract::Request> for HotSwapService {
             router = router.layer(axum::middleware::from_fn(move |req, next| {
                 crate::resilience::backpressure_middleware(sh.clone(), req, next)
             }));
+        }
+        if let Some(ref lifecycle) = self.lifecycle {
+            router = crate::lifecycle::apply_lifecycle(router, lifecycle.clone());
         }
         let method = req.method().to_string();
         let path = req.uri().path().to_string();

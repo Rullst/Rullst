@@ -1,4 +1,5 @@
 use crate::Router;
+use crate::lifecycle::{ApplicationLifecycle, apply_lifecycle};
 use crate::scheduler::{Scheduler, SchedulerHandle};
 use crate::server::dylib_loader::load_dylib_router;
 use crate::server::hotswap::HotSwapService;
@@ -28,6 +29,10 @@ pub enum ServerError {
     /// Traffic Shield monitoring could not be started safely.
     #[error("traffic shield lifecycle failed: {0}")]
     TrafficShield(#[from] crate::resilience::TrafficShieldError),
+
+    /// The process readiness or graceful-drain lifecycle became invalid.
+    #[error("application lifecycle failed: {0}")]
+    Lifecycle(#[from] crate::lifecycle::ApplicationLifecycleError),
 
     /// The requested listen address is invalid.
     #[error("invalid server listen address `{host}:{port}`")]
@@ -81,6 +86,7 @@ pub struct Server {
     pub(crate) hot_reload_lib: Option<String>,
     pub(crate) shield: Option<crate::resilience::TrafficShield>,
     pub(crate) limiter: Option<crate::resilience::RateLimiter>,
+    pub(crate) lifecycle: Option<ApplicationLifecycle>,
 }
 
 impl Server {
@@ -94,6 +100,7 @@ impl Server {
             hot_reload_lib: None,
             shield: None,
             limiter: None,
+            lifecycle: None,
         }
     }
 
@@ -108,6 +115,7 @@ impl Server {
             hot_reload_lib: Some(lib_path.into()),
             shield: None,
             limiter: None,
+            lifecycle: None,
         }
     }
 
@@ -157,9 +165,48 @@ impl Server {
         self
     }
 
+    /// Attaches a shared readiness and graceful-drain coordinator.
+    ///
+    /// Static and development hot-reload requests are admitted only while this
+    /// lifecycle and all of its required components are ready. Exact health
+    /// probes remain reachable. Mount
+    /// [`crate::health::health_router_with_lifecycle`] with a clone to expose
+    /// the same aggregate state to an orchestrator.
+    pub fn with_lifecycle(mut self, lifecycle: ApplicationLifecycle) -> Self {
+        self.lifecycle = Some(lifecycle);
+        self
+    }
+
     /// Start the HTTP server on the specified port
     #[cfg_attr(mutants, mutants::skip)]
-    pub async fn run(mut self, port: u16) -> Result<(), ServerError> {
+    pub async fn run(self, port: u16) -> Result<(), ServerError> {
+        self.run_with_shutdown(port, shutdown_signal()).await
+    }
+
+    /// Starts the HTTP server with a caller-supplied graceful-shutdown future.
+    ///
+    /// This is useful for embedded process supervisors and deterministic tests.
+    /// Resolving the future begins lifecycle draining before Axum waits for
+    /// already accepted requests. [`Self::run`] remains the OS-signal default.
+    #[cfg_attr(mutants, mutants::skip)]
+    pub async fn run_with_shutdown<F>(self, port: u16, shutdown: F) -> Result<(), ServerError>
+    where
+        F: std::future::Future<Output = ()> + Send + 'static,
+    {
+        let lifecycle = self.lifecycle.clone();
+        let result = self.run_inner(port, shutdown).await;
+        if result.is_err()
+            && let Some(lifecycle) = lifecycle
+        {
+            lifecycle.mark_stopped();
+        }
+        result
+    }
+
+    async fn run_inner<F>(mut self, port: u16, shutdown: F) -> Result<(), ServerError>
+    where
+        F: std::future::Future<Output = ()> + Send + 'static,
+    {
         let dotenv = Self::load_dotenv_values().await?;
         #[cfg(feature = "orm")]
         let _ = crate::artisan::check_and_run_artisan(vec![], vec![]).await;
@@ -173,9 +220,11 @@ impl Server {
         let shield_lifecycle = self.start_traffic_shield()?;
 
         let server_result = if let Some(lib_path) = self.hot_reload_lib.take() {
-            self.run_hot_reload(lib_path, addr, environment).await
+            self.run_hot_reload(lib_path, addr, environment, shutdown)
+                .await
         } else {
-            self.run_static(app_config, addr, environment).await
+            self.run_static(app_config, addr, environment, shutdown)
+                .await
         };
 
         if let Some(shield) = shield_lifecycle {
@@ -342,12 +391,16 @@ impl Server {
     }
 
     #[cfg_attr(mutants, mutants::skip)]
-    async fn run_hot_reload(
+    async fn run_hot_reload<F>(
         self,
         lib_path: String,
         addr: SocketAddr,
         environment: crate::config::Environment,
-    ) -> Result<(), ServerError> {
+        shutdown: F,
+    ) -> Result<(), ServerError>
+    where
+        F: std::future::Future<Output = ()> + Send + 'static,
+    {
         if !cfg!(debug_assertions) || !environment.allows_development_tools() {
             return Err(ServerError::HotReloadDisabled);
         }
@@ -384,6 +437,7 @@ impl Server {
             is_dev,
             shield: self.shield,
             limiter: self.limiter,
+            lifecycle: self.lifecycle.clone(),
         };
 
         println!(
@@ -396,20 +450,27 @@ impl Server {
         );
 
         let listener = tokio::net::TcpListener::bind(addr).await?;
-        axum::serve(listener, hotswap_service)
-            .with_graceful_shutdown(shutdown_signal())
-            .await?;
-
-        Ok(())
+        mark_lifecycle_ready(self.lifecycle.as_ref())?;
+        let lifecycle = self.lifecycle.clone();
+        let result = axum::serve(listener, hotswap_service)
+            .with_graceful_shutdown(shutdown_with_lifecycle(shutdown, lifecycle.clone()))
+            .await
+            .map_err(ServerError::from);
+        mark_lifecycle_stopped(lifecycle.as_ref());
+        result
     }
 
     #[cfg_attr(mutants, mutants::skip)]
-    async fn run_static(
+    async fn run_static<F>(
         self,
         app_config: crate::config::RullstConfig,
         addr: SocketAddr,
         environment: crate::config::Environment,
-    ) -> Result<(), ServerError> {
+        shutdown: F,
+    ) -> Result<(), ServerError>
+    where
+        F: std::future::Future<Output = ()> + Send + 'static,
+    {
         let is_dev = environment.allows_development_tools();
         let mut app = self.router.into_axum();
 
@@ -467,6 +528,10 @@ impl Server {
             }));
         }
 
+        if let Some(lifecycle) = self.lifecycle.clone() {
+            app = apply_lifecycle(app, lifecycle);
+        }
+
         app = crate::security::apply_security_baseline(app, app_config.security, environment)
             .map_err(|error| ServerError::Configuration(error.to_string()))?;
 
@@ -477,14 +542,17 @@ impl Server {
         );
 
         let listener = tokio::net::TcpListener::bind(addr).await?;
-        axum::serve(
+        mark_lifecycle_ready(self.lifecycle.as_ref())?;
+        let lifecycle = self.lifecycle.clone();
+        let result = axum::serve(
             listener,
             app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
         )
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
-
-        Ok(())
+        .with_graceful_shutdown(shutdown_with_lifecycle(shutdown, lifecycle.clone()))
+        .await
+        .map_err(ServerError::from);
+        mark_lifecycle_stopped(lifecycle.as_ref());
+        result
     }
 }
 
@@ -557,6 +625,29 @@ pub async fn shutdown_signal() {
         _ = terminate => {
             println!("\n🛑 [Rullst Shutdown] Received SIGTERM. Draining in-flight requests...");
         },
+    }
+}
+
+async fn shutdown_with_lifecycle<F>(shutdown: F, lifecycle: Option<ApplicationLifecycle>)
+where
+    F: std::future::Future<Output = ()>,
+{
+    shutdown.await;
+    if let Some(lifecycle) = lifecycle {
+        let _ = lifecycle.begin_draining();
+    }
+}
+
+fn mark_lifecycle_ready(lifecycle: Option<&ApplicationLifecycle>) -> Result<(), ServerError> {
+    match lifecycle {
+        Some(lifecycle) => lifecycle.mark_ready().map_err(ServerError::from),
+        None => Ok(()),
+    }
+}
+
+fn mark_lifecycle_stopped(lifecycle: Option<&ApplicationLifecycle>) {
+    if let Some(lifecycle) = lifecycle {
+        lifecycle.mark_stopped();
     }
 }
 

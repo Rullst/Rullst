@@ -56,6 +56,7 @@ async fn test_hot_swap_service_call() {
         is_dev: false,
         shield: None,
         limiter: None,
+        lifecycle: None,
     };
 
     use tower_service::Service;
@@ -88,6 +89,7 @@ async fn test_hot_swap_service_panic() {
         is_dev: false,
         shield: None,
         limiter: None,
+        lifecycle: None,
     };
 
     use tower_service::Service;
@@ -124,6 +126,7 @@ async fn test_hot_swap_service_poisoned_lock() {
         is_dev: false,
         shield: None,
         limiter: None,
+        lifecycle: None,
     };
 
     use tower_service::Service;
@@ -154,6 +157,7 @@ async fn test_hot_swap_service_reload_route() {
         is_dev: true,
         shield: None,
         limiter: None,
+        lifecycle: None,
     };
 
     use tower_service::Service;

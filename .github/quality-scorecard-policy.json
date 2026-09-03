@@ -44,14 +44,14 @@
     },
     {
       "name": "rullst-core",
-      "api_architecture": 18,
-      "verification": 23,
-      "security_failure_design": 18,
-      "documentation_dx": 14,
+      "api_architecture": 19,
+      "verification": 25,
+      "security_failure_design": 19,
+      "documentation_dx": 15,
       "operations_release": 18,
-      "specialist_gate": "redis",
-      "finding": "Mature bounded runtime with broad negative/live evidence; distributed deployment and application authorization remain explicit host boundaries.",
-      "evidence": ["rullst-core/README.md", "rullst-core/tests", "docs/src/crates/core.md"]
+      "specialist_gate": "redis-and-threat",
+      "finding": "The bounded runtime now couples a monotonic process lifecycle to aggregate-only readiness, fail-closed application admission and graceful in-flight drain across static/hot request paths, with an explicit supervisor shutdown trigger and poisoned-state/startup/concurrency evidence; application dependency probes, identity/domain authorization, replica consensus, load-balancer propagation and production termination operation remain explicit host boundaries.",
+      "evidence": ["rullst-core/README.md", "rullst-core/src/lifecycle.rs", "rullst-core/src/lifecycle_tests.rs", "rullst-core/src/health.rs", "rullst-core/src/server", "rullst-core/tests", "docs/src/crates/core.md", "docs/src/tutorials/25-kubernetes-deployment.md"]
     },
     {
       "name": "rullst-messaging",

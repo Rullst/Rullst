@@ -22,6 +22,7 @@ fn service(router: axum::Router) -> HotSwapService {
         is_dev: true,
         shield: None,
         limiter: None,
+        lifecycle: None,
     }
 }
 
@@ -183,4 +184,32 @@ async fn service_readiness_and_fallback_error_response_are_infallible() {
     let response = HotSwapService::handle_oneshot_error().unwrap();
     assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     assert!(body_text(response).await.is_empty());
+}
+
+#[tokio::test]
+async fn application_lifecycle_also_gates_hot_swapped_routes() {
+    let router = axum::Router::new().route("/ok", axum::routing::get(|| async { "ready" }));
+    let mut service = service(router);
+    let lifecycle = crate::lifecycle::ApplicationLifecycle::new();
+    service.lifecycle = Some(lifecycle.clone());
+
+    let starting = service
+        .call(Request::builder().uri("/ok").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(starting.status(), StatusCode::SERVICE_UNAVAILABLE);
+
+    lifecycle.mark_ready().unwrap();
+    let ready = service
+        .call(Request::builder().uri("/ok").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(ready.status(), StatusCode::OK);
+
+    lifecycle.begin_draining().unwrap();
+    let draining = service
+        .call(Request::builder().uri("/ok").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(draining.status(), StatusCode::SERVICE_UNAVAILABLE);
 }

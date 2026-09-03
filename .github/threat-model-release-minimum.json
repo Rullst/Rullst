@@ -1,7 +1,25 @@
 {
   "schema_version": 1,
-  "model_version": "TM-12.6",
+  "model_version": "TM-12.7",
   "cases": [
+    {
+      "id": "CORE-01",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "health::tests::lifecycle_readiness_is_bounded_and_fails_closed",
+      "source": "rullst-core/src/health.rs",
+      "marker": "TM-CORE-01"
+    },
+    {
+      "id": "CORE-02",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "lifecycle::tests::drain_rejects_new_requests_and_waits_for_an_admitted_one",
+      "source": "rullst-core/src/lifecycle_tests.rs",
+      "marker": "TM-CORE-02"
+    },
     {
       "id": "AUTH-01",
       "crate": "rullst-auth",

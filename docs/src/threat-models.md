@@ -1,8 +1,8 @@
 # Rullst v12 threat models
 
-> **Model version:** TM-12.6
+> **Model version:** TM-12.7
 > **Applies to:** the v12 release candidate source and generated applications
-> **Last source review:** 2026-09-02
+> **Last source review:** 2026-09-03
 > **Status:** maintainer baseline; application owners must extend it for their
 > data, topology and providers. It is not a pentest or certification.
 
@@ -27,12 +27,28 @@ addresses are untrusted unless a separately reviewed proxy policy establishes
 the direct peer as trusted.
 
 The machine-readable release minimum in
-`.github/threat-model-release-minimum.json` binds 49 distinct abuse-case IDs to
-61 evidence rows and 53 exact test executions across twelve crates. The gate rejects missing markers,
+`.github/threat-model-release-minimum.json` binds 51 distinct abuse-case IDs to
+63 evidence rows and 55 exact test executions across twelve crates. The gate rejects missing markers,
 missing tests and zero-test filters before executing Auth, Nexus, Studio,
 tenant ownership, Capital, AI, Mail, IoT, generated-default and Academy
 negatives. Passing that bounded minimum does not imply that every case below is
 closed.
+
+## TM-CORE-1 — readiness and graceful request drain
+
+**Assets:** service availability, readiness state, accepted requests and
+dependency-health observations.
+
+**Trust boundaries:** orchestrator ↔ health endpoint; application dependency
+checks ↔ process-local readiness bits; new requests ↔ draining server.
+
+| Abuse case | Required disposition | Repository evidence or remaining work |
+| --- | --- | --- |
+| `CORE-01` forged readiness or diagnostic disclosure | Readiness must fail during startup, any required-component failure, corrupted component state and drain; keep liveness process-only and return counts rather than component labels or error details. | The lifecycle-aware HTTP regression crosses startup → ready → draining, proves `503`/`200` transitions and verifies that the private component label is absent. Applications still own bounded dependency probes and determine which failures should gate traffic. |
+| `CORE-02` shutdown race admits new work or abandons accepted work | Change admission monotonically to draining before the server's graceful wait, reject later requests and bound the operator's wait for already accepted requests. | The concurrency regression holds one admitted request, begins drain, rejects a second request with `503`, observes a typed timeout, releases the first and reaches zero. A real ephemeral-listener test proves the Server ready → shutdown → stopped lifecycle. Load-balancer propagation, client retry/idempotency, supervisor kill deadlines and multi-replica coordination remain deployment/application work. |
+
+**Release-negative minimum:** unready/draining response without private labels;
+request accepted before drain completes while a later request is denied.
 
 ## TM-AUTH-1 — sessions, passwords, OAuth/OIDC and passkeys
 
@@ -290,6 +306,6 @@ registry and CLI ↔ filesystem/process/cloud.
 - New boundaries receive new IDs; IDs are never silently reused.
 - Closing residual risk requires code/configuration, a negative test and
   commit-bound evidence. Documentation alone cannot claim a control is deployed.
-- Before stable v12, maintainers must review TM-12.6 against the exact RC,
+- Before stable v12, maintainers must review TM-12.7 against the exact RC,
   applications must add topology/provider threats and an independent reviewer
   must cover the highest-impact paths.

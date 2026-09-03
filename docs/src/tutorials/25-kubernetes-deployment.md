@@ -23,26 +23,50 @@ settings only; use a Kubernetes Secret/external secret manager for credentials.
 
 ---
 
-## Step 2: Mount and initialize the health routes
+## Step 2: Mount lifecycle-aware health routes
 
 ```rust,no_run
-use rullst::{Router, Server};
-use rullst::health::{health_router, init_health_boot_time};
+use rullst::{ApplicationLifecycle, Router, Server};
+use rullst::health::{health_router_with_lifecycle, init_health_boot_time};
 
 #[tokio::main]
-async fn main() -> Result<(), rullst::ServerError> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     init_health_boot_time();
-    let app = Router::new().merge_axum(health_router());
-    Server::new(app).run(3000).await
+    let lifecycle =
+        ApplicationLifecycle::with_required_components(["database", "queue"])?;
+
+    // Set these only after the application's own bounded checks succeed.
+    lifecycle.set_component_ready("database", true)?;
+    lifecycle.set_component_ready("queue", true)?;
+
+    let app = Router::new()
+        .merge_axum(health_router_with_lifecycle(lifecycle.clone()));
+    Server::new(app)
+        .with_lifecycle(lifecycle)
+        .run(3000)
+        .await?;
+    Ok(())
 }
 ```
 
-The current `/health` and `/ready` handlers report process availability and
-uptime only. `/ready` does **not** probe the database or external dependencies.
-For an application that must stop receiving traffic when a critical dependency
-is unavailable, replace or wrap readiness with a bounded, timeout-protected
-application check. Keep liveness independent enough to avoid restart loops
-during an external outage.
+`/health` remains process-only so an external database outage does not create a
+restart loop. `/ready` returns `503` during startup, while any registered
+component is unavailable, during drain, and after stop. The JSON carries only
+aggregate counts; it never emits the component labels or their error messages.
+
+The component registry is immutable, accepts at most 32 validated labels, and
+does not execute probes by itself. The application must perform bounded,
+timeout-protected checks and update each bit. `Server` marks startup complete
+after binding, closes new application admission before graceful shutdown, and
+waits through Axum for accepted requests. `run_with_shutdown` accepts a
+supervisor future when OS signals are not the desired trigger.
+
+This is one process contract. Kubernetes removes an unready Pod from service
+according to its own timing; Rullst does not coordinate replica consensus,
+load-balancer propagation, dependency failover, `preStop`, or the Pod's
+`terminationGracePeriodSeconds`. Measure those together in staging. The legacy
+`health_router()` remains the simpler process-only pair when dependency-aware
+admission is not requested.
 
 ---
 

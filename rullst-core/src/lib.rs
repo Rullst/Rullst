@@ -47,6 +47,9 @@ pub mod html;
 /// HTMX helpers for rapid reactive UI design.
 pub mod htmx;
 #[cfg(not(target_arch = "wasm32"))]
+/// Process readiness and graceful request-drain coordination.
+pub mod lifecycle;
+#[cfg(not(target_arch = "wasm32"))]
 /// Live state synchronization and server-push connection handlers.
 pub mod live;
 #[cfg(not(target_arch = "wasm32"))]
@@ -151,6 +154,11 @@ pub mod response {
 // Re-export HTMX primitives for convenience
 #[cfg(not(target_arch = "wasm32"))]
 pub use htmx::{HtmxRequest, HtmxResponse, render_page};
+#[cfg(not(target_arch = "wasm32"))]
+pub use lifecycle::{
+    ApplicationLifecycle, ApplicationLifecycleError, ApplicationPhase, ReadinessSnapshot,
+    apply_lifecycle,
+};
 
 // Re-export Milestone 5: Production Utilities
 #[cfg(not(target_arch = "wasm32"))]
