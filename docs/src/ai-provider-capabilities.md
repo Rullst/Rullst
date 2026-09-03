@@ -128,6 +128,22 @@ authorization, persistence, retention, key distribution/rotation and SIEM
 operations. The client does not automatically attach itself to RAG/tools or
 provider calls and does not inspect an arbitrary serialized event for secrets.
 
+### Adaptive evaluation
+
+`AdaptiveAiEvaluator<P>` is also independent of the provider capability table.
+It wraps the configured text path with mandatory input guards, at most 32
+strategy-directed turns, per-turn prompt/response/deadline limits and explicit
+cancellation. Strategies classify each bounded response or low-cardinality
+guardrail/provider/deadline outcome as passed, failed, inconclusive or another
+prompt. Reports are versioned JSON and retain no raw prompt, response or
+provider error.
+
+The caller supplies the exact suite and provider/model/configuration subject
+labels. Rullst neither discovers nor attests that identity. Repository tests
+prove deterministic orchestration and redaction, not a live provider's safety;
+operators must execute and review their versioned corpora against every exact
+model they deploy.
+
 ### Tools
 
 `ToolRegistry` is a separate [guarded local execution

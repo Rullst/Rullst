@@ -116,6 +116,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   loopback development; empty/`mock_*` keys are offline. Receiver freshness,
   deduplication, authorization, persistence, retention, key operations and
   SIEM availability remain deployment contracts.
+- `rullst-ai` adds `AdaptiveAiEvaluator<P>` for bounded application-defined
+  multi-turn evaluations through static provider dispatch. Strategies can use
+  one bounded response to construct the next prompt; independent turn,
+  prompt/response, deadline and cancellation limits apply, provider failures
+  stay low-cardinality, and the versioned JSON report retains no raw prompt,
+  response or provider error. Deterministic tests validate orchestration and
+  redaction, while every exact live model/configuration and domain corpus still
+  requires operator execution and review.
 - `rullst-auth` adds the opt-in `sqlite` profile for durable shared local auth
   state. `SqliteJwtRevocationStore` transactionally persists bounded JTI and
   monotonic session-version revocation for `verify_async`, while

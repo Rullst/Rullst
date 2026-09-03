@@ -37,6 +37,11 @@
   retries, cancellation and a closed acknowledgement contract. Receiver
   storage, deduplication, freshness enforcement, retention and key operations
   remain deployment responsibilities.
+- Static-dispatch `AdaptiveAiEvaluator<P>` with bounded multi-turn strategy
+  feedback, independent per-turn deadlines, explicit cancellation, typed
+  pass/fail/inconclusive outcomes and raw-content-free versioned JSON reports.
+  The repository tests the runner deterministically; operators still execute
+  and review suites against each exact live model/configuration.
 
 ## Planned
 
@@ -49,7 +54,8 @@
   separate choices.
 - First-party `RagRetriever` adapters for external vector databases; applications can already
   implement the public static-dispatch boundary over ORM pgvector or Qdrant.
-- Configurable guardrail policies and adaptive/live model-specific safety evaluations.
+- Configurable guardrail policies and maintained domain-specific evaluation
+  corpora for tool selection, groundedness and application output policy.
 - Durable outbox orchestration, receiver implementations and external SIEM
   interoperability for authenticated audit events.
 

@@ -240,14 +240,68 @@ the minimized records their policy permits.
 See the [tenant-bound RAG tutorial](../docs/src/tutorials/41-tenant-bound-rag.md) for a complete
 offline example, audit behavior, and the production adapter boundary.
 
-## Versioned offline evals
+## Versioned and adaptive evaluations
 
 `evals/guardrails-v1.json` is the machine-readable deterministic regression
 corpus for the implemented injection, jailbreak, and PII behaviors. Run
 `bash .github/check-ai-evals.sh` from the workspace root to validate the corpus
-and exercise every built-in provider in explicit offline mode. This corpus is
-not a safety benchmark; adaptive attacks, tool selection, hallucination, and
-live model/version evaluations remain separate work.
+and exercise every built-in provider in explicit offline mode.
+
+`AdaptiveAiEvaluator<P>` is the separate static-dispatch runner for
+application-defined multi-turn scenarios. It reapplies the mandatory input
+guardrail, caps turn count and prompt/response bytes, sets an independent
+per-turn deadline, supports `AiCancellation`, and preserves only sizes and
+low-cardinality outcomes in its versioned JSON report. A strategy may use the
+bounded response from one turn to construct the next prompt, but the raw text
+is never retained by the report.
+
+```rust,no_run
+# use rullst_ai::{AdaptiveAiEvaluator, AiCancellation, AiEvaluationDecision, AiEvaluationObservation, AiEvaluationStrategy, providers::openai::OpenAiProvider};
+struct TwoTurnScenario;
+
+impl AiEvaluationStrategy for TwoTurnScenario {
+    fn initial_prompt(&mut self) -> String {
+        "Provide one short policy-safe greeting".to_string()
+    }
+
+    fn observe(&mut self, observation: &AiEvaluationObservation<'_>) -> AiEvaluationDecision {
+        if observation.turn() == 1 {
+            let size = observation.response().map_or(0, str::len);
+            AiEvaluationDecision::continue_with(format!(
+                "Continue the evaluation after a {size}-byte response"
+            ))
+        } else if observation.response().is_some() {
+            AiEvaluationDecision::pass("scenario_passed")
+        } else {
+            AiEvaluationDecision::inconclusive("provider_unavailable")
+        }
+    }
+}
+
+# async fn example(api_key: String) -> Result<(), Box<dyn std::error::Error>> {
+let evaluator = AdaptiveAiEvaluator::new(
+    OpenAiProvider::new(api_key).with_model("exact-reviewed-model"),
+);
+let mut scenario = TwoTurnScenario;
+let report = evaluator
+    .run(
+        "application-safety-v1",
+        "openai:exact-reviewed-model",
+        &mut scenario,
+        &AiCancellation::new(),
+    )
+    .await?;
+# let _ = report;
+# Ok(())
+# }
+```
+
+The strategy executes synchronously and temporarily sees model text; it must
+not log or persist that text without an application policy. The `subject` is a
+caller assertion, not model discovery. The built-in offline regression proves
+runner behavior only: every provider/model/version, adaptive corpus and live
+result must still be evaluated and reviewed by its operator. A passed report is
+not a universal safety, hallucination or jailbreak-resistance claim.
 
 ## Strict egress policy
 

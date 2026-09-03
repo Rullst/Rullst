@@ -17,3 +17,6 @@ jq -e '
 
 cargo test -p rullst-ai --all-features --test versioned_evals \
   versioned_guardrail_evals_match_every_offline_provider -- --exact
+
+cargo test -p rullst-ai --all-features --test adaptive_evaluations \
+  public_adaptive_runner_emits_a_bounded_content_free_report -- --exact

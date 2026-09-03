@@ -10,11 +10,11 @@ features.
 
 This functionality inventory is deliberately separate from release quality.
 All 15 non-IoT crates currently meet the approved A floor and `rullst-iot`
-meets its approved B exception. Thirteen of the 15 active crates have also
-reached their higher audited local ceiling. The remaining ceiling work is
-`rullst-ai` and the `rullst` facade: **1,498/1,509 local campaign points are
-evidenced (99.3%), with 11 points remaining**. The broader
-[v12 release programme](v12.md) estimates RC readiness at 70.4%; therefore this
+meets its approved B exception. Fourteen of the 15 active crates have also
+reached their higher audited local ceiling. The remaining ceiling work is only
+the `rullst` facade: **1,503/1,509 local campaign points are evidenced (99.6%),
+with 6 points remaining**. The broader
+[v12 release programme](v12.md) estimates RC readiness at 70.6%; therefore this
 is still a **NO-GO**, not a release announcement.
 
 Coverage is a separate open RC gate. The complete public Codecov checkpoint
@@ -41,14 +41,13 @@ does not claim to lease the preceding remote provider call, operate encryption
 keys/directories/backups, reconcile a losing provider rotation, replicate
 across hosts or provide live-provider conformance.
 
-The next `rullst-ai` evidence slices are implemented but do not yet promote its
-score: `StreamingAiClient<P>` adds bounded static-dispatch output and explicit
-cancellation with strict opt-in OpenAI-compatible SSE, while
-`AuditDeliveryClient` adds bounded HMAC-authenticated export, stable event
-identity, transient retry, cancellation and an event-bound acknowledgement.
-Adaptive/live evaluation and the remaining provider protocol contracts must
-still close before the 95/A ceiling is earned; receiver persistence,
-deduplication, retention and key operations remain external.
+`rullst-ai` has now earned its audited 95/A local ceiling. In addition to strict
+opt-in OpenAI-compatible SSE/cancellation, `AuditDeliveryClient` supplies
+bounded HMAC-authenticated export and `AdaptiveAiEvaluator<P>` supplies
+bounded multi-turn feedback, explicit pass/fail/inconclusive results and a
+raw-content-free JSON report. Receiver operations, non-compatible provider
+protocols, exact live-model results and corpus quality remain external or v13
+work rather than being mislabeled as v12 guarantees.
 
 ## `rullst` facade versus `rullst-core`
 

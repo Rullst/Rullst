@@ -9,6 +9,7 @@ mod durable_audit;
 mod egress;
 mod egress_fetch;
 mod egress_host;
+mod evaluation;
 /// Mandatory prompt-injection detection and outbound PII masking.
 pub mod guardrails;
 /// Bounded tenant-aware conversational memory and orchestration.
@@ -36,6 +37,11 @@ pub use durable_audit::{
 pub use egress::{EgressPolicy, EgressPolicyError, ValidatedEgressUrl};
 pub use egress_fetch::{
     EgressFetchError, EgressFetcher, EgressResolver, FetchedResource, SystemEgressResolver,
+};
+pub use evaluation::{
+    AdaptiveAiEvaluator, AiEvaluationDecision, AiEvaluationError, AiEvaluationObservation,
+    AiEvaluationOutcome, AiEvaluationPolicy, AiEvaluationReport, AiEvaluationStatus,
+    AiEvaluationStrategy, AiEvaluationTurn,
 };
 pub use guardrails::{AiGuardrails, GuardrailReport, PromptThreat};
 pub use memory::{

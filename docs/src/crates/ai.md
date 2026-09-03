@@ -58,6 +58,24 @@ outbound transmission. This is a bounded heuristic control, not proof that arbit
 output is safe; authorization, tool permissions, output encoding, and domain validation remain
 application responsibilities.
 
+## Adaptive evaluation runner
+
+`AdaptiveAiEvaluator<P>` runs application-defined multi-turn strategies over
+static provider dispatch and the mandatory prompt guardrail. One scenario is
+limited to 32 turns, 16 KiB per generated prompt and 2 MiB per response, with
+an independent deadline and explicit cancellation. Each observation exposes a
+bounded response only while the synchronous strategy chooses pass, fail,
+inconclusive or its next prompt.
+
+The versioned JSON report keeps the exact caller-supplied suite/subject labels,
+provider name, status, terminal code and per-turn byte counts/outcomes. It does
+not retain prompts, responses or provider error bodies and can itself be sent
+through `AuditDeliveryClient`. The subject label is not automatic model
+discovery, and the deterministic offline runner test is not live-model
+evidence. Operators must version their scenario code/corpus and execute it
+against each exact model/configuration they intend to approve; no passing suite
+proves universal safety, groundedness or jailbreak resistance.
+
 ## Authenticated audit delivery
 
 `AuditDeliveryClient` can export an application-minimized RAG, tool or provider
@@ -205,7 +223,8 @@ semantic validation.
 ## Current boundaries
 
 Streaming for non-compatible provider protocols, provider-native tool execution
-loops, first-party external vector-store `RagRetriever` adapters, and compile-time schema derivation remain roadmap work. The
+loops, first-party external vector-store `RagRetriever` adapters, maintained
+domain-specific evaluation corpora, and compile-time schema derivation remain roadmap work. The
 SQL memory does not supply raw-text encryption, ownership within a tenant,
 retention or provider auditing; the in-memory vector utilities and tool registry
 do not create an authorization boundary by themselves. Authenticated audit

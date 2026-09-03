@@ -99,14 +99,14 @@
     },
     {
       "name": "rullst-ai",
-      "api_architecture": 18,
-      "verification": 23,
-      "security_failure_design": 19,
-      "documentation_dx": 14,
-      "operations_release": 16,
+      "api_architecture": 19,
+      "verification": 24,
+      "security_failure_design": 20,
+      "documentation_dx": 15,
+      "operations_release": 17,
       "specialist_gate": "ai-evals",
-      "finding": "Strong guarded/offline/provider boundaries plus bounded local audit, authenticated remote audit export and strict opt-in OpenAI-compatible SSE with provider-independent output limits and explicit cancellation; non-compatible streaming, live adaptive evals, durable audit receiver/provider loops and broad external retrievers remain partial.",
-      "evidence": ["rullst-ai/README.md", "rullst-ai/src/ai/durable_audit.rs", "rullst-ai/src/ai/audit_delivery.rs", "rullst-ai/src/ai/streaming.rs", "rullst-ai/src/ai/providers/openai_compatible.rs", "rullst-ai/src/ai/providers/openai_compatible/stream.rs", "rullst-ai/tests/authenticated_audit_delivery.rs", "rullst-ai/tests/durable_audit.rs", "rullst-ai/tests/openai_compatible_contract.rs", "rullst-ai/tests/versioned_evals.rs", "docs/src/ai-provider-capabilities.md"]
+      "finding": "Bounded guarded provider APIs now include strict opt-in OpenAI-compatible SSE/cancellation, authenticated remote audit export and static-dispatch adaptive evaluation with raw-content-free reports; non-compatible streaming, durable audit receiver/provider loops and broad external retrievers remain partial, while exact live-model results stay external.",
+      "evidence": ["rullst-ai/README.md", "rullst-ai/src/ai/durable_audit.rs", "rullst-ai/src/ai/audit_delivery.rs", "rullst-ai/src/ai/evaluation.rs", "rullst-ai/src/ai/streaming.rs", "rullst-ai/src/ai/providers/openai_compatible.rs", "rullst-ai/src/ai/providers/openai_compatible/stream.rs", "rullst-ai/tests/adaptive_evaluations.rs", "rullst-ai/tests/authenticated_audit_delivery.rs", "rullst-ai/tests/durable_audit.rs", "rullst-ai/tests/openai_compatible_contract.rs", "rullst-ai/tests/versioned_evals.rs", "docs/src/ai-provider-capabilities.md"]
     },
     {
       "name": "rullst-capital",
