@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788413132270,
+  "lastUpdate": 1788421435144,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -8153,6 +8153,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4591,
             "range": "± 17",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ce2c683959077907e0cfc1e3f72a2b33c7a87b7e",
+          "message": "feat(studio): add bounded distributed diagnostics",
+          "timestamp": "2026-09-03T04:25:16-03:00",
+          "tree_id": "f852c289bd9d5537c00e61dfee05487d7cb6ed9a",
+          "url": "https://github.com/Rullst/Rullst/commit/ce2c683959077907e0cfc1e3f72a2b33c7a87b7e"
+        },
+        "date": 1788421434686,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1055,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 865,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1952,
+            "range": "± 98",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4634,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
