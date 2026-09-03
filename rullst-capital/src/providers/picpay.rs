@@ -85,7 +85,7 @@ impl BillingProvider for PicPayProvider {
             ));
         }
 
-        let client = crate::providers::http_client();
+        let client = crate::providers::http_client()?;
         let payload = serde_json::json!({
             "referenceId": format!("sub_{}", plan_id),
             "callbackUrl": redirect_url,
@@ -98,32 +98,24 @@ impl BillingProvider for PicPayProvider {
             }
         });
 
-        let res = client
-            .post("https://appws.picpay.com/ecommerce/public/payments")
-            .header("x-picpay-token", &self.picpay_token)
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
+        let body: Value = crate::providers::send_http_json(
+            client
+                .post("https://appws.picpay.com/ecommerce/public/payments")
+                .header("x-picpay-token", &self.picpay_token)
+                .header("Content-Type", "application/json")
+                .json(&payload),
+            "picpay",
+            "create checkout",
+        )
+        .await?;
 
-        if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!(
-                "PicPay API error: HTTP {}",
-                res.status()
-            )));
-        }
-
-        let body: Value = res.json().await.map_err(|e| {
-            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
+        let url = body["paymentUrl"].as_str().ok_or_else(|| {
+            CapitalError::from(crate::ProviderFailure::contract_mismatch(
+                "picpay",
+                "create checkout",
+            ))
         })?;
-
-        body["paymentUrl"]
-            .as_str()
-            .map(|s| s.to_string())
-            .ok_or_else(|| {
-                CapitalError::PayloadParseError("Missing paymentUrl in PicPay response".to_string())
-            })
+        crate::providers::validate_checkout_url("picpay", url)
     }
 
     fn handle_webhook(

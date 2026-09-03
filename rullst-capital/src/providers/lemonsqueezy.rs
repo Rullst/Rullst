@@ -91,7 +91,7 @@ impl BillingProvider for LemonSqueezyProvider {
             ));
         }
 
-        let client = crate::providers::http_client();
+        let client = crate::providers::http_client()?;
         let payload = serde_json::json!({
             "data": {
                 "type": "checkouts",
@@ -120,35 +120,25 @@ impl BillingProvider for LemonSqueezyProvider {
             }
         });
 
-        let res = client
-            .post("https://api.lemonsqueezy.com/v1/checkouts")
-            .bearer_auth(&self.api_key)
-            .header("Content-Type", "application/vnd.api+json")
-            .header("Accept", "application/vnd.api+json")
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
+        let body: Value = crate::providers::send_http_json(
+            client
+                .post("https://api.lemonsqueezy.com/v1/checkouts")
+                .bearer_auth(&self.api_key)
+                .header("Content-Type", "application/vnd.api+json")
+                .header("Accept", "application/vnd.api+json")
+                .json(&payload),
+            "lemonsqueezy",
+            "create checkout",
+        )
+        .await?;
 
-        if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!(
-                "LemonSqueezy API error: HTTP {}",
-                res.status()
-            )));
-        }
-
-        let body: Value = res.json().await.map_err(|e| {
-            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
+        let url = body["data"]["attributes"]["url"].as_str().ok_or_else(|| {
+            CapitalError::from(crate::ProviderFailure::contract_mismatch(
+                "lemonsqueezy",
+                "create checkout",
+            ))
         })?;
-
-        body["data"]["attributes"]["url"]
-            .as_str()
-            .map(|s| s.to_string())
-            .ok_or_else(|| {
-                CapitalError::PayloadParseError(
-                    "Missing checkout URL in LemonSqueezy response".to_string(),
-                )
-            })
+        crate::providers::validate_checkout_url("lemonsqueezy", url)
     }
 
     fn handle_webhook(
@@ -234,22 +224,19 @@ impl BillingProvider for LemonSqueezyProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = crate::providers::http_client();
-            let res = client
-                .delete(format!(
-                    "https://api.lemonsqueezy.com/v1/subscriptions/{}",
-                    subscription_id
-                ))
-                .bearer_auth(&self.api_key)
-                .send()
-                .await
-                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
-            if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!(
-                    "HTTP {}",
-                    res.status()
-                )));
-            }
+            crate::subscription::validate_provider_subscription_id(subscription_id)?;
+            let client = crate::providers::http_client()?;
+            crate::providers::send_http(
+                client
+                    .delete(format!(
+                        "https://api.lemonsqueezy.com/v1/subscriptions/{}",
+                        subscription_id
+                    ))
+                    .bearer_auth(&self.api_key),
+                "lemonsqueezy",
+                "cancel subscription",
+            )
+            .await?;
         }
         Ok(())
     }
@@ -261,7 +248,8 @@ impl BillingProvider for LemonSqueezyProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = crate::providers::http_client();
+            crate::subscription::validate_provider_subscription_id(subscription_id)?;
+            let client = crate::providers::http_client()?;
             let payload = serde_json::json!({
                 "data": {
                     "type": "subscriptions",
@@ -273,22 +261,18 @@ impl BillingProvider for LemonSqueezyProvider {
                     }
                 }
             });
-            let res = client
-                .patch(format!(
-                    "https://api.lemonsqueezy.com/v1/subscriptions/{}",
-                    subscription_id
-                ))
-                .bearer_auth(&self.api_key)
-                .json(&payload)
-                .send()
-                .await
-                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
-            if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!(
-                    "HTTP {}",
-                    res.status()
-                )));
-            }
+            crate::providers::send_http(
+                client
+                    .patch(format!(
+                        "https://api.lemonsqueezy.com/v1/subscriptions/{}",
+                        subscription_id
+                    ))
+                    .bearer_auth(&self.api_key)
+                    .json(&payload),
+                "lemonsqueezy",
+                "pause subscription",
+            )
+            .await?;
         }
         Ok(())
     }

@@ -1,10 +1,7 @@
-use super::{http_client, url_encode};
+use super::{http_client, read_http_json, send_http, url_encode};
 use crate::{
     CapitalError,
-    subscription::{
-        read_bounded_subscription_json, validate_coupon_code, validate_provider_subscription_id,
-        validate_trial_end,
-    },
+    subscription::{validate_coupon_code, validate_provider_subscription_id, validate_trial_end},
 };
 use serde_json::Value;
 
@@ -44,7 +41,7 @@ async fn apply_coupon_at(
         url_encode(coupon.as_str())
     );
     let response = send_form(api_key, endpoint, body, "discount").await?;
-    let body = read_bounded_subscription_json(response).await?;
+    let body = read_http_json(response, "stripe", "apply coupon").await?;
     bind_coupon_response(subscription_id, coupon.as_str(), &body)
 }
 
@@ -66,9 +63,7 @@ fn bind_coupon_response(
             })
         });
     if !coupon_matches {
-        return Err(CapitalError::ProviderRequestFailed(
-            "Stripe discount response did not contain the requested coupon".to_string(),
-        ));
+        return Err(crate::ProviderFailure::contract_mismatch("stripe", "apply coupon").into());
     }
     Ok(())
 }
@@ -91,12 +86,10 @@ async fn extend_trial_at(
         "trial extension",
     )
     .await?;
-    let body = read_bounded_subscription_json(response).await?;
+    let body = read_http_json(response, "stripe", "extend trial").await?;
     bind_subscription_id(subscription_id, &body, "trial extension")?;
     if body.get("trial_end").and_then(Value::as_i64) != Some(trial_ends_at) {
-        return Err(CapitalError::ProviderRequestFailed(
-            "Stripe trial response did not match the requested expiration".to_string(),
-        ));
+        return Err(crate::ProviderFailure::contract_mismatch("stripe", "extend trial").into());
     }
     Ok(())
 }
@@ -105,27 +98,18 @@ async fn send_form(
     api_key: &str,
     endpoint: &str,
     body: String,
-    operation: &str,
+    operation: &'static str,
 ) -> Result<reqwest::Response, CapitalError> {
-    let response = http_client()
-        .post(endpoint)
-        .bearer_auth(api_key)
-        .header("Content-Type", "application/x-www-form-urlencoded")
-        .body(body)
-        .send()
-        .await
-        .map_err(|_| {
-            CapitalError::ProviderRequestFailed(format!(
-                "Stripe subscription {operation} transport failed"
-            ))
-        })?;
-    let status = response.status();
-    if !status.is_success() {
-        return Err(CapitalError::ProviderRequestFailed(format!(
-            "Stripe subscription {operation} returned HTTP {status}"
-        )));
-    }
-    Ok(response)
+    send_http(
+        http_client()?
+            .post(endpoint)
+            .bearer_auth(api_key)
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .body(body),
+        "stripe",
+        operation,
+    )
+    .await
 }
 
 fn subscription_endpoint(base: &str, subscription_id: &str) -> Result<String, CapitalError> {
@@ -136,14 +120,12 @@ fn subscription_endpoint(base: &str, subscription_id: &str) -> Result<String, Ca
 fn bind_subscription_id(
     subscription_id: &str,
     body: &Value,
-    operation: &str,
+    operation: &'static str,
 ) -> Result<(), CapitalError> {
     if body.get("id").and_then(Value::as_str) != Some(subscription_id)
         || body.get("object").and_then(Value::as_str) != Some("subscription")
     {
-        return Err(CapitalError::ProviderRequestFailed(format!(
-            "Stripe {operation} response did not match the requested subscription"
-        )));
+        return Err(crate::ProviderFailure::contract_mismatch("stripe", operation).into());
     }
     Ok(())
 }

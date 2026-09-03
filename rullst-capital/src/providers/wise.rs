@@ -87,7 +87,7 @@ impl PayoutProvider for WiseProvider {
             ));
         }
 
-        let client = crate::providers::http_client();
+        let client = crate::providers::http_client()?;
         let payload = serde_json::json!({
             "targetAccount": recipient_email,
             "quoteUuid": format!("profile_{}", self.profile_id),
@@ -101,32 +101,23 @@ impl PayoutProvider for WiseProvider {
             "currency": currency
         });
 
-        let res = client
-            .post("https://api.wise.com/v1/transfers")
-            .bearer_auth(&self.api_token)
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
-
-        if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!(
-                "Wise API error: HTTP {}",
-                res.status()
-            )));
-        }
-
-        let body: Value = res.json().await.map_err(|e| {
-            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
-        })?;
+        let body: Value = crate::providers::send_http_json(
+            client
+                .post("https://api.wise.com/v1/transfers")
+                .bearer_auth(&self.api_token)
+                .header("Content-Type", "application/json")
+                .json(&payload),
+            "wise",
+            "create transfer",
+        )
+        .await?;
 
         body["id"]
             .as_i64()
             .map(|id| id.to_string())
             .or_else(|| body["id"].as_str().map(|s| s.to_string()))
             .ok_or_else(|| {
-                CapitalError::PayloadParseError("Missing transfer ID in Wise response".to_string())
+                crate::ProviderFailure::contract_mismatch("wise", "create transfer").into()
             })
     }
 
@@ -141,24 +132,16 @@ impl PayoutProvider for WiseProvider {
             return Ok(PayoutStatus::OutgoingPaymentSent);
         }
 
-        let client = crate::providers::http_client();
-        let res = client
-            .get(format!("https://api.wise.com/v1/transfers/{}", transfer_id))
-            .bearer_auth(&self.api_token)
-            .send()
-            .await
-            .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
-
-        if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!(
-                "Wise API error: HTTP {}",
-                res.status()
-            )));
-        }
-
-        let body: Value = res.json().await.map_err(|e| {
-            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
-        })?;
+        crate::subscription::validate_provider_subscription_id(transfer_id)?;
+        let client = crate::providers::http_client()?;
+        let body: Value = crate::providers::send_http_json(
+            client
+                .get(format!("https://api.wise.com/v1/transfers/{}", transfer_id))
+                .bearer_auth(&self.api_token),
+            "wise",
+            "get transfer status",
+        )
+        .await?;
 
         let status_str = body["status"].as_str().unwrap_or("processing");
         match status_str {

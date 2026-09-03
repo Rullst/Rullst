@@ -110,14 +110,14 @@
     },
     {
       "name": "rullst-capital",
-      "api_architecture": 18,
-      "verification": 24,
-      "security_failure_design": 19,
+      "api_architecture": 19,
+      "verification": 25,
+      "security_failure_design": 20,
       "documentation_dx": 15,
       "operations_release": 13,
       "specialist_gate": "provider-matrix",
-      "finding": "Bounded payments, quotas, shared relational webhook replay/event claims and local fiscal preparation have restart, contention, transaction and four-protocol evidence; shared gateway fault parity, fiscal audit/recovery, live authorization and homologation remain incomplete or external.",
-      "evidence": ["rullst-capital/README.md", "rullst-capital/src/webhook/sql.rs", "rullst-capital/tests", "docs/src/crates/capital.md", "docs/src/payment-gateways-guide.md", "docs/src/spec.md"]
+      "finding": "Bounded payments now share a redacted classified egress contract with finite timeouts, disabled redirects/proxies, bounded JSON, HTTPS checkout validation and real fault fixtures; quotas, relational webhook replay/event claims and local fiscal preparation add restart, contention, transaction and four-protocol evidence. Fiscal audit/recovery, live authorization and homologation remain incomplete or external.",
+      "evidence": ["rullst-capital/README.md", "rullst-capital/src/providers/http.rs", "rullst-capital/src/webhook/sql.rs", "rullst-capital/tests", "docs/src/crates/capital.md", "docs/src/payment-gateways-guide.md", "docs/src/spec.md"]
     },
     {
       "name": "rullst-mail",

@@ -1,7 +1,7 @@
-use super::{StripeProvider, http_client, url_encode};
+use super::{StripeProvider, http_client, send_http_json, url_encode};
 use crate::{
     CapitalError, MeteredBillingProvider, StripeMeterEvent, UsageDeduplication, UsageReceipt,
-    UsageStatus, mock_usage_receipt, read_bounded_usage_json,
+    UsageStatus, mock_usage_receipt,
 };
 use async_trait::async_trait;
 use serde_json::Value;
@@ -42,24 +42,17 @@ async fn execute_at(
         );
     }
 
-    let response = http_client()
-        .post(endpoint)
-        .bearer_auth(api_key)
-        .header("Content-Type", "application/x-www-form-urlencoded")
-        .header("Idempotency-Key", event.identifier())
-        .body(stripe_form_body(event))
-        .send()
-        .await
-        .map_err(|_| {
-            CapitalError::ProviderRequestFailed("Stripe meter-event transport failed".to_string())
-        })?;
-    let status = response.status();
-    if !status.is_success() {
-        return Err(CapitalError::ProviderRequestFailed(format!(
-            "Stripe meter-event API returned HTTP {status}"
-        )));
-    }
-    let body = read_bounded_usage_json(response).await?;
+    let body: Value = send_http_json(
+        http_client()?
+            .post(endpoint)
+            .bearer_auth(api_key)
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .header("Idempotency-Key", event.identifier())
+            .body(stripe_form_body(event)),
+        "stripe",
+        "report metered usage",
+    )
+    .await?;
     bind_response(event, &body)
 }
 
@@ -92,9 +85,9 @@ fn bind_response(event: &StripeMeterEvent, body: &Value) -> Result<UsageReceipt,
         && value_matches
         && customer_matches;
     if !response_matches {
-        return Err(CapitalError::ProviderRequestFailed(
-            "Stripe meter-event response did not match the submitted event".to_string(),
-        ));
+        return Err(
+            crate::ProviderFailure::contract_mismatch("stripe", "report metered usage").into(),
+        );
     }
 
     UsageReceipt::from_verified_provider_response(
@@ -105,6 +98,7 @@ fn bind_response(event: &StripeMeterEvent, body: &Value) -> Result<UsageReceipt,
         UsageStatus::Accepted,
         UsageDeduplication::ProviderRollingWindow,
     )
+    .map_err(|_| crate::ProviderFailure::contract_mismatch("stripe", "report metered usage").into())
 }
 
 #[cfg(all(test, feature = "axum"))]

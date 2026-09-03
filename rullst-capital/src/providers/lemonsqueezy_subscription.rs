@@ -1,9 +1,7 @@
-use super::http_client;
+use super::{http_client, send_http_json};
 use crate::{
     CapitalError,
-    subscription::{
-        read_bounded_subscription_json, validate_provider_subscription_id, validate_trial_end,
-    },
+    subscription::{validate_provider_subscription_id, validate_trial_end},
 };
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde_json::{Value, json};
@@ -38,26 +36,17 @@ async fn extend_trial_at(
     if api_key.is_empty() || api_key.starts_with("mock_") {
         return Ok(());
     }
-    let response = http_client()
-        .patch(endpoint)
-        .bearer_auth(api_key)
-        .header("Accept", "application/vnd.api+json")
-        .header("Content-Type", "application/vnd.api+json")
-        .json(&request_body(subscription_id, &trial_ends_at_iso))
-        .send()
-        .await
-        .map_err(|_| {
-            CapitalError::ProviderRequestFailed(
-                "Lemon Squeezy trial-extension transport failed".to_string(),
-            )
-        })?;
-    let status = response.status();
-    if !status.is_success() {
-        return Err(CapitalError::ProviderRequestFailed(format!(
-            "Lemon Squeezy trial-extension API returned HTTP {status}"
-        )));
-    }
-    let body = read_bounded_subscription_json(response).await?;
+    let body: Value = send_http_json(
+        http_client()?
+            .patch(endpoint)
+            .bearer_auth(api_key)
+            .header("Accept", "application/vnd.api+json")
+            .header("Content-Type", "application/vnd.api+json")
+            .json(&request_body(subscription_id, &trial_ends_at_iso)),
+        "lemonsqueezy",
+        "extend trial",
+    )
+    .await?;
     bind_response(subscription_id, trial_ends_at, &body)
 }
 
@@ -95,10 +84,9 @@ fn bind_response(
         .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
         .map(|value| value.timestamp());
     if !id_matches || !type_matches || response_end != Some(trial_ends_at) {
-        return Err(CapitalError::ProviderRequestFailed(
-            "Lemon Squeezy trial response did not match the requested subscription and expiration"
-                .to_string(),
-        ));
+        return Err(
+            crate::ProviderFailure::contract_mismatch("lemonsqueezy", "extend trial").into(),
+        );
     }
     Ok(())
 }

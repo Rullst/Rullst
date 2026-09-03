@@ -55,6 +55,44 @@ provider sandbox.
 
 ---
 
+## Outbound Provider Safety and Retry Evidence
+
+Reviewed live adapters share one pooled client with finite connect and
+whole-request timeouts. It does not follow redirects or inherit ambient proxy
+environment variables. JSON responses are capped at one MiB, checkout
+locations must be bounded credential-free HTTPS URLs without fragments, and
+public errors never include a request URL, credential, provider body, or raw
+transport diagnostic.
+
+Transport, HTTP, size, JSON, and response-binding failures use
+`CapitalError::Provider(ProviderFailure)`. The stable
+`ProviderFailureClass::{Permanent, Transient, RateLimited}` disposition and
+optional bounded numeric `Retry-After` value support alerting and
+application-owned scheduling:
+
+```rust
+use rullst_capital::{CapitalError, ProviderFailureClass};
+
+fn may_consider_retry(error: &CapitalError) -> bool {
+    matches!(
+        error,
+        CapitalError::Provider(failure)
+            if matches!(
+                failure.class(),
+                ProviderFailureClass::Transient | ProviderFailureClass::RateLimited
+            )
+    )
+}
+```
+
+This classification never authorizes an automatic retry. Repeat a billing
+mutation only after proving that the exact adapter operation forwards a stable
+persisted idempotency key, and retain webhook reconciliation. The built-in
+client intentionally offers no ambient corporate-proxy escape hatch; an
+explicit reviewed configuration boundary is future work.
+
+---
+
 ## 🚀 Quickstart
 
 Add `rullst-capital` to your `Cargo.toml`:

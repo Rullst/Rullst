@@ -1,11 +1,9 @@
 //! Validated subscription-management values shared by billing providers.
 
 use crate::CapitalError;
-use serde_json::Value;
 
 const MAX_COUPON_CODE_BYTES: usize = 256;
 const MAX_PROVIDER_ID_BYTES: usize = 255;
-const MAX_SUBSCRIPTION_RESPONSE_BYTES: usize = 1024 * 1024;
 
 /// Maximum relative trial extension accepted by the portable API.
 pub const MAX_TRIAL_EXTENSION_DAYS: u16 = 730;
@@ -89,27 +87,6 @@ pub(crate) fn validate_trial_end(value: i64) -> Result<(), CapitalError> {
         ));
     }
     Ok(())
-}
-
-pub(crate) async fn read_bounded_subscription_json(
-    mut response: reqwest::Response,
-) -> Result<Value, CapitalError> {
-    let mut body = Vec::new();
-    while let Some(chunk) = response.chunk().await.map_err(|_| {
-        CapitalError::ProviderRequestFailed(
-            "failed to read subscription provider response".to_string(),
-        )
-    })? {
-        if body.len().saturating_add(chunk.len()) > MAX_SUBSCRIPTION_RESPONSE_BYTES {
-            return Err(CapitalError::ProviderRequestFailed(
-                "subscription provider response exceeded 1 MiB".to_string(),
-            ));
-        }
-        body.extend_from_slice(&chunk);
-    }
-    serde_json::from_slice(&body).map_err(|_| {
-        CapitalError::PayloadParseError("subscription provider returned malformed JSON".to_string())
-    })
 }
 
 fn validate_ascii_identifier(

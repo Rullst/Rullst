@@ -91,36 +91,31 @@ impl BillingProvider for PolarProvider {
             ));
         }
 
-        let client = crate::providers::http_client();
+        let client = crate::providers::http_client()?;
         let payload = serde_json::json!({
             "product_price_id": plan_id,
             "customer_email": customer_email,
             "success_url": redirect_url
         });
 
-        let res = client
-            .post("https://api.polar.sh/v1/checkouts/custom/")
-            .bearer_auth(&self.api_key)
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
+        let body: Value = crate::providers::send_http_json(
+            client
+                .post("https://api.polar.sh/v1/checkouts/custom/")
+                .bearer_auth(&self.api_key)
+                .header("Content-Type", "application/json")
+                .json(&payload),
+            "polar",
+            "create checkout",
+        )
+        .await?;
 
-        if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!(
-                "Polar API error: HTTP {}",
-                res.status()
-            )));
-        }
-
-        let body: Value = res.json().await.map_err(|e| {
-            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
+        let url = body["url"].as_str().ok_or_else(|| {
+            CapitalError::from(crate::ProviderFailure::contract_mismatch(
+                "polar",
+                "create checkout",
+            ))
         })?;
-
-        body["url"].as_str().map(|s| s.to_string()).ok_or_else(|| {
-            CapitalError::PayloadParseError("Missing checkout URL in Polar.sh response".to_string())
-        })
+        crate::providers::validate_checkout_url("polar", url)
     }
 
     fn handle_webhook(
@@ -197,22 +192,19 @@ impl BillingProvider for PolarProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = crate::providers::http_client();
-            let res = client
-                .delete(format!(
-                    "https://api.polar.sh/v1/subscriptions/{}",
-                    subscription_id
-                ))
-                .bearer_auth(&self.api_key)
-                .send()
-                .await
-                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
-            if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!(
-                    "HTTP {}",
-                    res.status()
-                )));
-            }
+            crate::subscription::validate_provider_subscription_id(subscription_id)?;
+            let client = crate::providers::http_client()?;
+            crate::providers::send_http(
+                client
+                    .delete(format!(
+                        "https://api.polar.sh/v1/subscriptions/{}",
+                        subscription_id
+                    ))
+                    .bearer_auth(&self.api_key),
+                "polar",
+                "cancel subscription",
+            )
+            .await?;
         }
         Ok(())
     }

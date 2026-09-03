@@ -151,7 +151,7 @@ impl BillingProvider for StripeProvider {
             ));
         }
 
-        let client = crate::providers::http_client();
+        let client = crate::providers::http_client()?;
         let body_str = format!(
             "mode=subscription&success_url={}&cancel_url={}&customer_email={}&line_items[0][price]={}&line_items[0][quantity]=1",
             url_encode(redirect_url),
@@ -160,29 +160,24 @@ impl BillingProvider for StripeProvider {
             url_encode(plan_id)
         );
 
-        let res = client
-            .post("https://api.stripe.com/v1/checkout/sessions")
-            .bearer_auth(&self.api_key)
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .body(body_str)
-            .send()
-            .await
-            .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
+        let body: Value = crate::providers::send_http_json(
+            client
+                .post("https://api.stripe.com/v1/checkout/sessions")
+                .bearer_auth(&self.api_key)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .body(body_str),
+            "stripe",
+            "create checkout",
+        )
+        .await?;
 
-        if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!(
-                "Stripe API error: HTTP {}",
-                res.status()
-            )));
-        }
-
-        let body: Value = res.json().await.map_err(|e| {
-            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
+        let url = body["url"].as_str().ok_or_else(|| {
+            CapitalError::from(crate::ProviderFailure::contract_mismatch(
+                "stripe",
+                "create checkout",
+            ))
         })?;
-
-        body["url"].as_str().map(|s| s.to_string()).ok_or_else(|| {
-            CapitalError::PayloadParseError("Missing checkout URL in Stripe response".to_string())
-        })
+        crate::providers::validate_checkout_url("stripe", url)
     }
 
     async fn charge(&self, request: &ChargeRequest) -> Result<ChargeReceipt, CapitalError> {
@@ -274,22 +269,19 @@ impl BillingProvider for StripeProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = crate::providers::http_client();
-            let res = client
-                .delete(format!(
-                    "https://api.stripe.com/v1/subscriptions/{}",
-                    subscription_id
-                ))
-                .bearer_auth(&self.api_key)
-                .send()
-                .await
-                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
-            if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!(
-                    "HTTP {}",
-                    res.status()
-                )));
-            }
+            crate::subscription::validate_provider_subscription_id(subscription_id)?;
+            let client = crate::providers::http_client()?;
+            crate::providers::send_http(
+                client
+                    .delete(format!(
+                        "https://api.stripe.com/v1/subscriptions/{}",
+                        subscription_id
+                    ))
+                    .bearer_auth(&self.api_key),
+                "stripe",
+                "cancel subscription",
+            )
+            .await?;
         }
         Ok(())
     }
@@ -301,24 +293,21 @@ impl BillingProvider for StripeProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = crate::providers::http_client();
-            let res = client
-                .post(format!(
-                    "https://api.stripe.com/v1/subscriptions/{}",
-                    subscription_id
-                ))
-                .bearer_auth(&self.api_key)
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .body("pause_collection[behavior]=void")
-                .send()
-                .await
-                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
-            if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!(
-                    "HTTP {}",
-                    res.status()
-                )));
-            }
+            crate::subscription::validate_provider_subscription_id(subscription_id)?;
+            let client = crate::providers::http_client()?;
+            crate::providers::send_http(
+                client
+                    .post(format!(
+                        "https://api.stripe.com/v1/subscriptions/{}",
+                        subscription_id
+                    ))
+                    .bearer_auth(&self.api_key)
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .body("pause_collection[behavior]=void"),
+                "stripe",
+                "pause subscription",
+            )
+            .await?;
         }
         Ok(())
     }

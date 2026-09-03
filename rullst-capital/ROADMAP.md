@@ -9,6 +9,11 @@ Rullst Capital simplifies the billing and subscription complexities of building 
 
 ## Phase 1: Payment Gateways Integration
 - [x] **Unified Payment Drivers**: First-class support for Stripe and LemonSqueezy with a standard Rust Trait interface.
+- [x] **Bounded Gateway Failure Contract**: Reviewed live adapter methods share
+  finite connect/request timeouts, disabled redirects and ambient proxies,
+  one-MiB JSON parsing, validated HTTPS checkout locations, and redacted typed
+  permanent/transient/rate-limited evidence. Mutations are never retried
+  automatically; durable idempotency and reconciliation remain caller-owned.
 - [x] **The bounded `Billable` Trait**: `#[derive(rullst::Billable)]` preserves
   generics and exposes checkout subscriptions plus immediate charges through
   the facade. `charge_with`/`charge` require integer minor units, currency,

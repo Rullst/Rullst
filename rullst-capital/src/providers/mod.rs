@@ -7,6 +7,7 @@ use tokio::sync::OnceCell;
 
 pub mod alipay;
 pub mod coinbase;
+mod http;
 pub mod infinitepay;
 pub mod lemonsqueezy;
 mod lemonsqueezy_subscription;
@@ -24,6 +25,9 @@ pub mod wise;
 
 pub use alipay::AlipayProvider;
 pub use coinbase::{CoinbaseCommerceProvider, CoinbaseProvider};
+pub(crate) use http::validate_checkout_url;
+pub(crate) use http::{execute as execute_http, read_json as read_http_json};
+pub(crate) use http::{send as send_http, send_json as send_http_json};
 pub use infinitepay::InfinitePayProvider;
 pub use lemonsqueezy::LemonSqueezyProvider;
 pub use mercadopago::MercadoPagoProvider;
@@ -112,11 +116,9 @@ pub(crate) fn ensure_fresh_timestamp(
 
 static BILLING_PROVIDER: OnceCell<Box<dyn BillingProvider>> = OnceCell::const_new();
 static PAYOUT_PROVIDER: OnceCell<Box<dyn PayoutProvider>> = OnceCell::const_new();
-static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
-
-/// Returns the shared `reqwest::Client` singleton to enable HTTP connection pooling and keep-alive.
-pub(crate) fn http_client() -> &'static reqwest::Client {
-    HTTP_CLIENT.get_or_init(reqwest::Client::new)
+/// Returns the fail-closed shared client used by reviewed live provider adapters.
+pub(crate) fn http_client() -> Result<&'static reqwest::Client, crate::error::CapitalError> {
+    http::client()
 }
 
 /// Initializes the global billing provider.

@@ -270,6 +270,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   idempotency/audit, ICP-Brasil/emitter trust, real A1 restricted-environment
   evidence, independent review and SEFIN homologation remain open; live modes
   still perform no network I/O.
+- Capital's reviewed live provider methods now use one fail-closed outbound
+  contract with finite connect/request timeouts, disabled redirects and
+  ambient proxies, one-MiB JSON limits, and bounded credential-free HTTPS
+  checkout locations. `ProviderFailure` classifies request, transport, HTTP,
+  rate-limit, oversized, malformed, and response-binding failures without
+  retaining URLs, credentials, raw bodies, or transport diagnostics. Rullst
+  performs no automatic billing mutation retry; idempotency, backoff and
+  reconciliation remain application-owned.
 - Capital's signed-webhook boundary now exposes both Axum and feature-gated
   Actix Web middleware over one canonical verifier. Both paths cap raw bodies
   at two megabytes, verify before dispatch, restore the exact payload, attach a

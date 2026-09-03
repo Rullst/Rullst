@@ -1,4 +1,4 @@
-use super::{http_client, url_encode};
+use super::{execute_http, http_client, read_http_json, url_encode};
 use crate::error::CapitalError;
 use crate::{ChargeReceipt, ChargeRequest, ChargeStatus, mock_charge_receipt};
 use serde_json::Value;
@@ -14,23 +14,10 @@ pub(super) async fn execute(
         return mock_charge_receipt("stripe", request);
     }
 
-    let outbound = build_request(http_client(), api_key, request)?;
-    let response = http_client().execute(outbound).await.map_err(|error| {
-        CapitalError::ProviderRequestFailed(format!("Stripe network error: {error}"))
-    })?;
-
-    if !response.status().is_success() {
-        return Err(CapitalError::ProviderRequestFailed(format!(
-            "Stripe direct-charge API error: HTTP {}",
-            response.status()
-        )));
-    }
-
-    let response: Value = response.json().await.map_err(|error| {
-        CapitalError::PayloadParseError(format!(
-            "failed to parse Stripe direct-charge response: {error}"
-        ))
-    })?;
+    let client = http_client()?;
+    let outbound = build_request(client, api_key, request)?;
+    let response = execute_http(outbound, "stripe", "direct charge").await?;
+    let response: Value = read_http_json(response, "stripe", "direct charge").await?;
     parse_response(request, &response)
 }
 
@@ -54,11 +41,7 @@ fn build_request(
         .header("Idempotency-Key", request.idempotency_key())
         .body(body)
         .build()
-        .map_err(|error| {
-            CapitalError::ProviderRequestFailed(format!(
-                "failed to build Stripe direct-charge request: {error}"
-            ))
-        })
+        .map_err(|_| crate::ProviderFailure::request_build("stripe", "direct charge").into())
 }
 
 fn validate_stripe_references(request: &ChargeRequest) -> Result<(), CapitalError> {
@@ -82,51 +65,23 @@ fn parse_response(
     request: &ChargeRequest,
     response: &Value,
 ) -> Result<ChargeReceipt, CapitalError> {
-    let charge_id = response["id"].as_str().ok_or_else(|| {
-        CapitalError::PayloadParseError(
-            "Stripe direct-charge response omitted its payment-intent ID".to_string(),
-        )
-    })?;
-    let amount_minor = response["amount"].as_u64().ok_or_else(|| {
-        CapitalError::PayloadParseError(
-            "Stripe direct-charge response omitted its amount".to_string(),
-        )
-    })?;
-    let currency = response["currency"].as_str().ok_or_else(|| {
-        CapitalError::PayloadParseError(
-            "Stripe direct-charge response omitted its currency".to_string(),
-        )
-    })?;
+    let charge_id = response["id"].as_str().ok_or_else(charge_mismatch)?;
+    let amount_minor = response["amount"].as_u64().ok_or_else(charge_mismatch)?;
+    let currency = response["currency"].as_str().ok_or_else(charge_mismatch)?;
     if amount_minor != request.amount_minor() || currency != request.currency() {
-        return Err(CapitalError::ProviderRequestFailed(
-            "Stripe direct-charge response did not match the requested amount and currency"
-                .to_string(),
-        ));
+        return Err(charge_mismatch());
     }
     let status = match response["status"].as_str() {
         Some("succeeded") => ChargeStatus::Succeeded,
         Some("processing") => ChargeStatus::Processing,
-        Some(status) => {
-            return Err(CapitalError::ProviderRequestFailed(format!(
-                "Stripe did not accept the direct charge: status {status}"
-            )));
-        }
-        None => {
-            return Err(CapitalError::PayloadParseError(
-                "Stripe direct-charge response omitted its status".to_string(),
-            ));
-        }
+        Some(_) | None => return Err(charge_mismatch()),
     };
     if status == ChargeStatus::Succeeded {
-        let amount_received = response["amount_received"].as_u64().ok_or_else(|| {
-            CapitalError::PayloadParseError(
-                "Stripe succeeded response omitted its received amount".to_string(),
-            )
-        })?;
+        let amount_received = response["amount_received"]
+            .as_u64()
+            .ok_or_else(charge_mismatch)?;
         if amount_received != request.amount_minor() {
-            return Err(CapitalError::ProviderRequestFailed(
-                "Stripe succeeded response did not bind the full received amount".to_string(),
-            ));
+            return Err(charge_mismatch());
         }
     }
 
@@ -138,6 +93,11 @@ fn parse_response(
         currency,
         request.customer_email(),
     )
+    .map_err(|_| charge_mismatch())
+}
+
+fn charge_mismatch() -> CapitalError {
+    crate::ProviderFailure::contract_mismatch("stripe", "direct charge").into()
 }
 
 #[cfg(test)]
@@ -195,15 +155,20 @@ mod tests {
         });
         assert!(matches!(
             parse_response(&request, &invalid_id),
-            Err(CapitalError::ProviderRequestFailed(_))
+            Err(CapitalError::Provider(failure))
+                if failure.kind() == crate::ProviderFailureKind::ContractMismatch
         ));
     }
 
     #[test]
     fn outbound_request_carries_exact_money_identity_and_idempotency() {
         let request = request();
-        let outbound =
-            build_request(http_client(), "sk_test_fixture", &request).expect("outbound request");
+        let outbound = build_request(
+            http_client().expect("bounded client"),
+            "sk_test_fixture",
+            &request,
+        )
+        .expect("outbound request");
         assert_eq!(outbound.method(), reqwest::Method::POST);
         assert_eq!(outbound.url().as_str(), PAYMENT_INTENTS_ENDPOINT);
         assert_eq!(

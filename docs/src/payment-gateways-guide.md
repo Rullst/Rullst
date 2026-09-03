@@ -53,6 +53,28 @@ documentation and the concrete trait implementation before selecting an adapter.
 
 ---
 
+## Failures, timeouts, and retry ownership
+
+Reviewed live methods use a single bounded egress contract: five-second connect
+and twenty-second whole-request timeouts, no redirects, no ambient proxy
+variables, and at most one MiB of JSON. Checkout responses additionally require
+an absolute credential-free HTTPS URL without a fragment. These controls do not
+prove that a provider account, product, price, or operation is accepted live.
+
+`CapitalError::Provider` exposes only static provider/operation labels, a
+`ProviderFailureKind`, optional HTTP status, bounded numeric `Retry-After`, and
+one of three dispositions: permanent, transient, or rate-limited. It does not
+retain a raw URL, credential, response body, or `reqwest` diagnostic. Log those
+structured fields instead of formatting the original request.
+
+Rullst deliberately does not retry mutations. A transient classification means
+only that a later attempt may succeed. Before retrying, the application must
+prove that the concrete operation forwards the same persisted idempotency key;
+otherwise reconcile provider state first. Backoff, jitter, attempt budgets,
+dead-letter handling, and operator alerts remain explicit application policy.
+
+---
+
 ## 🔍 Selection model
 
 Choose a provider only after checking which trait methods the Rullst adapter

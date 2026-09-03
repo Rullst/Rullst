@@ -97,7 +97,7 @@ impl BillingProvider for RazorpayProvider {
             ));
         }
 
-        let client = crate::providers::http_client();
+        let client = crate::providers::http_client()?;
         let payload = serde_json::json!({
             "plan_id": plan_id,
             "total_count": 12,
@@ -109,34 +109,24 @@ impl BillingProvider for RazorpayProvider {
             }
         });
 
-        let res = client
-            .post("https://api.razorpay.com/v1/subscriptions")
-            .basic_auth(&self.key_id, Some(&self.key_secret))
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
+        let body: Value = crate::providers::send_http_json(
+            client
+                .post("https://api.razorpay.com/v1/subscriptions")
+                .basic_auth(&self.key_id, Some(&self.key_secret))
+                .header("Content-Type", "application/json")
+                .json(&payload),
+            "razorpay",
+            "create checkout",
+        )
+        .await?;
 
-        if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!(
-                "Razorpay API error: HTTP {}",
-                res.status()
-            )));
-        }
-
-        let body: Value = res.json().await.map_err(|e| {
-            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
+        let url = body["short_url"].as_str().ok_or_else(|| {
+            CapitalError::from(crate::ProviderFailure::contract_mismatch(
+                "razorpay",
+                "create checkout",
+            ))
         })?;
-
-        body["short_url"]
-            .as_str()
-            .map(|s| s.to_string())
-            .ok_or_else(|| {
-                CapitalError::PayloadParseError(
-                    "Missing short_url in Razorpay response".to_string(),
-                )
-            })
+        crate::providers::validate_checkout_url("razorpay", url)
     }
 
     fn handle_webhook(
@@ -227,22 +217,19 @@ impl BillingProvider for RazorpayProvider {
             ));
         }
         if !self.key_id.is_empty() && !self.key_id.starts_with("mock_") {
-            let client = crate::providers::http_client();
-            let res = client
-                .post(format!(
-                    "https://api.razorpay.com/v1/subscriptions/{}/cancel",
-                    subscription_id
-                ))
-                .basic_auth(&self.key_id, Some(&self.key_secret))
-                .send()
-                .await
-                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
-            if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!(
-                    "HTTP {}",
-                    res.status()
-                )));
-            }
+            crate::subscription::validate_provider_subscription_id(subscription_id)?;
+            let client = crate::providers::http_client()?;
+            crate::providers::send_http(
+                client
+                    .post(format!(
+                        "https://api.razorpay.com/v1/subscriptions/{}/cancel",
+                        subscription_id
+                    ))
+                    .basic_auth(&self.key_id, Some(&self.key_secret)),
+                "razorpay",
+                "cancel subscription",
+            )
+            .await?;
         }
         Ok(())
     }
@@ -254,22 +241,19 @@ impl BillingProvider for RazorpayProvider {
             ));
         }
         if !self.key_id.is_empty() && !self.key_id.starts_with("mock_") {
-            let client = crate::providers::http_client();
-            let res = client
-                .post(format!(
-                    "https://api.razorpay.com/v1/subscriptions/{}/pause",
-                    subscription_id
-                ))
-                .basic_auth(&self.key_id, Some(&self.key_secret))
-                .send()
-                .await
-                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
-            if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!(
-                    "HTTP {}",
-                    res.status()
-                )));
-            }
+            crate::subscription::validate_provider_subscription_id(subscription_id)?;
+            let client = crate::providers::http_client()?;
+            crate::providers::send_http(
+                client
+                    .post(format!(
+                        "https://api.razorpay.com/v1/subscriptions/{}/pause",
+                        subscription_id
+                    ))
+                    .basic_auth(&self.key_id, Some(&self.key_secret)),
+                "razorpay",
+                "pause subscription",
+            )
+            .await?;
         }
         Ok(())
     }

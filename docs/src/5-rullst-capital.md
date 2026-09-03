@@ -22,6 +22,16 @@ as deployment secrets. Empty credentials are configuration errors for live
 operations. Credentials deliberately prefixed with `mock_` select deterministic
 offline behavior where that adapter documents support for it.
 
+Every reviewed live method uses the same pooled outbound client with a
+five-second connect timeout, twenty-second whole-request timeout, disabled
+redirects and ambient proxy discovery, and one-MiB JSON limit. Returned
+checkout locations must be bounded absolute HTTPS URLs without credentials or
+fragments. `CapitalError::Provider` exposes redacted static provider/operation
+labels, failure kind, optional HTTP status and bounded numeric `Retry-After`.
+Its permanent/transient/rate-limited class is evidence for application policy,
+not permission to repeat a mutation. Only retry after proving that the exact
+operation forwards a persisted idempotency key and retaining reconciliation.
+
 ### Immediate charges without raw payment data
 
 `Billable::charge_with` accepts only a provider-tokenized customer and payment

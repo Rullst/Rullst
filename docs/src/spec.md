@@ -531,6 +531,20 @@ while portability and semantic review remain the model author's responsibility.
 plus a bounded Brazilian digital-invoicing preparation pipeline (NFS-e
 Nacional). Local cryptographic/schema validity is not tax authorization.
 
+Every reviewed live adapter uses the same fail-closed outbound HTTP boundary:
+redirects and ambient proxy environment variables are disabled, connection and
+whole-request timeouts are finite, and a successful provider response is read
+only up to one MiB before JSON decoding. Failures expose a redacted typed
+`ProviderFailure` contract with permanent, transient, and rate-limited classes;
+only a bounded numeric `Retry-After` delta is retained. Raw response bodies,
+request URLs, credentials, and transport diagnostics are not included in the
+public error. Rullst deliberately does not retry billing mutations: callers may
+retry a transient or rate-limited result only when that exact operation has a
+persisted provider-forwarded idempotency key and a reconciliation policy.
+Returned checkout locations are accepted only as bounded, absolute,
+credential-free HTTPS URLs without fragments; provider/account sandbox
+acceptance remains external evidence.
+
 ### 6.1. Multi-Gateway Payment Architecture
 Billing adapters implement `BillingProvider`; the Wise payout adapter implements
 the separate `PayoutProvider` contract. Individual billing operations may still

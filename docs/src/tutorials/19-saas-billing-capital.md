@@ -56,6 +56,33 @@ owners. The application still owns the identity middleware, correct plan
 configuration, return-URL policy, durable provider-event
 idempotency/reconciliation, and provider sandbox validation.
 
+### 2.1 Handle provider failure without blindly repeating a charge
+
+Built-in live adapters return a redacted `CapitalError::Provider` for outbound
+request construction, transport, HTTP status, bounded-response, JSON, and
+response-contract failures. Inspect its stable class for telemetry or a durable
+job decision:
+
+```rust
+use rullst_capital::{CapitalError, ProviderFailureClass};
+
+fn provider_disposition(error: &CapitalError) -> Option<ProviderFailureClass> {
+    match error {
+        CapitalError::Provider(failure) => Some(failure.class()),
+        _ => None,
+    }
+}
+```
+
+Do not turn `Transient` or `RateLimited` into an unconditional loop. Persist the
+original command and idempotency identity, confirm that the selected operation
+actually forwards that identity, cap attempts with backoff/jitter, and
+reconcile signed provider events. Checkout creation in the legacy unified trait
+does not accept an application idempotency key, so reconcile before repeating
+it. The shared client already applies finite timeouts, disables redirects and
+ambient proxies, caps JSON to one MiB, and validates returned checkout URLs as
+absolute credential-free HTTPS.
+
 ## 3. Make a bounded immediate charge when checkout is not the right flow
 
 For a payment method already tokenized and authorized for off-session reuse at

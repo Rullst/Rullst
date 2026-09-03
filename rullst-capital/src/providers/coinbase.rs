@@ -94,7 +94,7 @@ impl BillingProvider for CoinbaseCommerceProvider {
             ));
         }
 
-        let client = crate::providers::http_client();
+        let client = crate::providers::http_client()?;
         let payload = serde_json::json!({
             "name": format!("Subscription Plan {}", plan_id),
             "description": "SaaS Subscription Payment via Web3 Crypto",
@@ -111,35 +111,25 @@ impl BillingProvider for CoinbaseCommerceProvider {
             "cancel_url": redirect_url
         });
 
-        let res = client
-            .post("https://api.commerce.coinbase.com/charges")
-            .header("X-CC-Api-Key", &self.api_key)
-            .header("X-CC-Version", "2018-03-22")
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
+        let body: Value = crate::providers::send_http_json(
+            client
+                .post("https://api.commerce.coinbase.com/charges")
+                .header("X-CC-Api-Key", &self.api_key)
+                .header("X-CC-Version", "2018-03-22")
+                .header("Content-Type", "application/json")
+                .json(&payload),
+            "coinbase",
+            "create checkout",
+        )
+        .await?;
 
-        if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!(
-                "Coinbase Commerce API error: HTTP {}",
-                res.status()
-            )));
-        }
-
-        let body: Value = res.json().await.map_err(|e| {
-            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
+        let url = body["data"]["hosted_url"].as_str().ok_or_else(|| {
+            CapitalError::from(crate::ProviderFailure::contract_mismatch(
+                "coinbase",
+                "create checkout",
+            ))
         })?;
-
-        body["data"]["hosted_url"]
-            .as_str()
-            .map(|s| s.to_string())
-            .ok_or_else(|| {
-                CapitalError::PayloadParseError(
-                    "Missing hosted_url in Coinbase Commerce response".to_string(),
-                )
-            })
+        crate::providers::validate_checkout_url("coinbase", url)
     }
 
     fn handle_webhook(

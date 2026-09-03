@@ -98,7 +98,7 @@ impl BillingProvider for InfinitePayProvider {
             ));
         }
 
-        let client = crate::providers::http_client();
+        let client = crate::providers::http_client()?;
         let payload = serde_json::json!({
             "items": [{
                 "name": format!("Subscription Plan {}", plan_id),
@@ -112,36 +112,28 @@ impl BillingProvider for InfinitePayProvider {
             "payment_methods": ["pix", "credit_card"]
         });
 
-        let res = client
-            .post("https://api.checkout.infinitepay.io/links")
-            .bearer_auth(&self.api_key)
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
+        let body: Value = crate::providers::send_http_json(
+            client
+                .post("https://api.checkout.infinitepay.io/links")
+                .bearer_auth(&self.api_key)
+                .header("Content-Type", "application/json")
+                .json(&payload),
+            "infinitepay",
+            "create checkout",
+        )
+        .await?;
 
-        if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!(
-                "InfinitePay API error: HTTP {}",
-                res.status()
-            )));
-        }
-
-        let body: Value = res.json().await.map_err(|e| {
-            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
-        })?;
-
-        body["url"]
+        let url = body["url"]
             .as_str()
             .or_else(|| body["checkout_url"].as_str())
             .or_else(|| body["link"].as_str())
-            .map(|s| s.to_string())
             .ok_or_else(|| {
-                CapitalError::PayloadParseError(
-                    "Missing checkout URL in InfinitePay response".to_string(),
-                )
-            })
+                CapitalError::from(crate::ProviderFailure::contract_mismatch(
+                    "infinitepay",
+                    "create checkout",
+                ))
+            })?;
+        crate::providers::validate_checkout_url("infinitepay", url)
     }
 
     fn handle_webhook(

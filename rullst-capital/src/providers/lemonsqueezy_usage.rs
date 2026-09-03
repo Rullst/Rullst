@@ -1,7 +1,7 @@
-use super::{LemonSqueezyProvider, http_client};
+use super::{LemonSqueezyProvider, http_client, send_http_json};
 use crate::{
     CapitalError, LemonSqueezyUsageRecord, MeteredBillingProvider, UsageDeduplication,
-    UsageReceipt, UsageStatus, mock_usage_receipt, read_bounded_usage_json,
+    UsageReceipt, UsageStatus, mock_usage_receipt,
 };
 use async_trait::async_trait;
 use serde_json::{Value, json};
@@ -40,26 +40,17 @@ async fn execute_at(
         );
     }
 
-    let response = http_client()
-        .post(endpoint)
-        .bearer_auth(api_key)
-        .header("Accept", "application/vnd.api+json")
-        .header("Content-Type", "application/vnd.api+json")
-        .json(&request_body(record))
-        .send()
-        .await
-        .map_err(|_| {
-            CapitalError::ProviderRequestFailed(
-                "Lemon Squeezy usage-record transport failed".to_string(),
-            )
-        })?;
-    let status = response.status();
-    if !status.is_success() {
-        return Err(CapitalError::ProviderRequestFailed(format!(
-            "Lemon Squeezy usage-record API returned HTTP {status}"
-        )));
-    }
-    let body = read_bounded_usage_json(response).await?;
+    let body: Value = send_http_json(
+        http_client()?
+            .post(endpoint)
+            .bearer_auth(api_key)
+            .header("Accept", "application/vnd.api+json")
+            .header("Content-Type", "application/vnd.api+json")
+            .json(&request_body(record)),
+        "lemonsqueezy",
+        "report metered usage",
+    )
+    .await?;
     bind_response(record, &body)
 }
 
@@ -106,17 +97,17 @@ fn bind_response(
             == Some(record.action().as_str())
         && item_matches;
     if !response_matches {
-        return Err(CapitalError::ProviderRequestFailed(
-            "Lemon Squeezy usage response did not match the submitted record".to_string(),
-        ));
+        return Err(crate::ProviderFailure::contract_mismatch(
+            "lemonsqueezy",
+            "report metered usage",
+        )
+        .into());
     }
     let record_id = data
         .and_then(|value| value.get("id"))
         .and_then(Value::as_str)
         .ok_or_else(|| {
-            CapitalError::ProviderRequestFailed(
-                "Lemon Squeezy usage response omitted its record ID".to_string(),
-            )
+            crate::ProviderFailure::contract_mismatch("lemonsqueezy", "report metered usage")
         })?;
 
     UsageReceipt::from_verified_provider_response(
@@ -127,6 +118,9 @@ fn bind_response(
         UsageStatus::Accepted,
         UsageDeduplication::ApplicationOutboxRequired,
     )
+    .map_err(|_| {
+        crate::ProviderFailure::contract_mismatch("lemonsqueezy", "report metered usage").into()
+    })
 }
 
 fn numeric_id_matches(value: &Value, expected: &str) -> bool {

@@ -1,7 +1,6 @@
 use crate::CapitalError;
 use async_trait::async_trait;
 use ring::digest::{SHA256, digest};
-use serde_json::Value;
 
 /// Largest quantity accepted by one usage event.
 pub const MAX_USAGE_QUANTITY: u64 = i64::MAX as u64;
@@ -10,7 +9,6 @@ const MAX_PROVIDER_NAME_LEN: usize = 64;
 const MAX_PROVIDER_REFERENCE_LEN: usize = 255;
 const MAX_METRIC_LEN: usize = 100;
 const MAX_EVENT_KEY_LEN: usize = 100;
-const MAX_USAGE_RESPONSE_BYTES: usize = 1024 * 1024;
 const STRIPE_MAX_PAST_SECONDS: i64 = 35 * 24 * 60 * 60;
 const STRIPE_MAX_FUTURE_SECONDS: i64 = 5 * 60;
 
@@ -396,25 +394,6 @@ pub(crate) fn mock_usage_receipt(
         UsageStatus::Mock,
         UsageDeduplication::Mock,
     )
-}
-
-pub(crate) async fn read_bounded_usage_json(
-    mut response: reqwest::Response,
-) -> Result<Value, CapitalError> {
-    let mut body = Vec::new();
-    while let Some(chunk) = response.chunk().await.map_err(|_| {
-        CapitalError::ProviderRequestFailed("failed to read provider response".to_string())
-    })? {
-        if body.len().saturating_add(chunk.len()) > MAX_USAGE_RESPONSE_BYTES {
-            return Err(CapitalError::ProviderRequestFailed(
-                "provider usage response exceeded 1 MiB".to_string(),
-            ));
-        }
-        body.extend_from_slice(&chunk);
-    }
-    serde_json::from_slice(&body).map_err(|_| {
-        CapitalError::PayloadParseError("provider returned malformed usage JSON".to_string())
-    })
 }
 
 fn validate_quantity(quantity: u64) -> Result<(), CapitalError> {

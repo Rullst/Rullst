@@ -146,7 +146,7 @@ impl BillingProvider for MercadoPagoProvider {
             ));
         }
 
-        let client = crate::providers::http_client();
+        let client = crate::providers::http_client()?;
         let payload = serde_json::json!({
             "items": [{
                 "title": format!("Subscription Plan {}", plan_id),
@@ -165,34 +165,24 @@ impl BillingProvider for MercadoPagoProvider {
             "auto_return": "approved"
         });
 
-        let res = client
-            .post("https://api.mercadopago.com/checkout/preferences")
-            .bearer_auth(&self.access_token)
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
+        let body: Value = crate::providers::send_http_json(
+            client
+                .post("https://api.mercadopago.com/checkout/preferences")
+                .bearer_auth(&self.access_token)
+                .header("Content-Type", "application/json")
+                .json(&payload),
+            "mercadopago",
+            "create checkout",
+        )
+        .await?;
 
-        if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!(
-                "Mercado Pago API error: HTTP {}",
-                res.status()
-            )));
-        }
-
-        let body: Value = res.json().await.map_err(|e| {
-            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
+        let url = body["init_point"].as_str().ok_or_else(|| {
+            CapitalError::from(crate::ProviderFailure::contract_mismatch(
+                "mercadopago",
+                "create checkout",
+            ))
         })?;
-
-        body["init_point"]
-            .as_str()
-            .map(|s| s.to_string())
-            .ok_or_else(|| {
-                CapitalError::PayloadParseError(
-                    "Missing init_point in Mercado Pago response".to_string(),
-                )
-            })
+        crate::providers::validate_checkout_url("mercadopago", url)
     }
 
     fn handle_webhook(
@@ -278,23 +268,20 @@ impl BillingProvider for MercadoPagoProvider {
             ));
         }
         if !self.access_token.is_empty() && !self.access_token.starts_with("mock_") {
-            let client = crate::providers::http_client();
-            let res = client
-                .put(format!(
-                    "https://api.mercadopago.com/preapproval/{}",
-                    subscription_id
-                ))
-                .bearer_auth(&self.access_token)
-                .json(&serde_json::json!({ "status": "cancelled" }))
-                .send()
-                .await
-                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
-            if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!(
-                    "HTTP {}",
-                    res.status()
-                )));
-            }
+            crate::subscription::validate_provider_subscription_id(subscription_id)?;
+            let client = crate::providers::http_client()?;
+            crate::providers::send_http(
+                client
+                    .put(format!(
+                        "https://api.mercadopago.com/preapproval/{}",
+                        subscription_id
+                    ))
+                    .bearer_auth(&self.access_token)
+                    .json(&serde_json::json!({ "status": "cancelled" })),
+                "mercadopago",
+                "cancel subscription",
+            )
+            .await?;
         }
         Ok(())
     }
@@ -306,23 +293,20 @@ impl BillingProvider for MercadoPagoProvider {
             ));
         }
         if !self.access_token.is_empty() && !self.access_token.starts_with("mock_") {
-            let client = crate::providers::http_client();
-            let res = client
-                .put(format!(
-                    "https://api.mercadopago.com/preapproval/{}",
-                    subscription_id
-                ))
-                .bearer_auth(&self.access_token)
-                .json(&serde_json::json!({ "status": "paused" }))
-                .send()
-                .await
-                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
-            if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!(
-                    "HTTP {}",
-                    res.status()
-                )));
-            }
+            crate::subscription::validate_provider_subscription_id(subscription_id)?;
+            let client = crate::providers::http_client()?;
+            crate::providers::send_http(
+                client
+                    .put(format!(
+                        "https://api.mercadopago.com/preapproval/{}",
+                        subscription_id
+                    ))
+                    .bearer_auth(&self.access_token)
+                    .json(&serde_json::json!({ "status": "paused" })),
+                "mercadopago",
+                "pause subscription",
+            )
+            .await?;
         }
         Ok(())
     }

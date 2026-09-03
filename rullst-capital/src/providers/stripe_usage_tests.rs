@@ -126,7 +126,8 @@ async fn mock_is_deterministic_and_response_mismatch_fails_closed() {
     });
     assert!(matches!(
         bind_response(&event, &mismatched),
-        Err(CapitalError::ProviderRequestFailed(_))
+        Err(CapitalError::Provider(failure))
+            if failure.kind() == crate::ProviderFailureKind::ContractMismatch
     ));
 
     let live = StripeProvider::new("sk_live_fixture", "mock_webhook");

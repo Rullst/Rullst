@@ -446,6 +446,7 @@ pub(super) fn capital_error_status_code(error: &CapitalError) -> u16 {
         | CapitalError::InvalidInvoice(_)
         | CapitalError::InvalidUsage(_) => 400,
         CapitalError::ProviderRequestFailed(_)
+        | CapitalError::Provider(_)
         | CapitalError::WebhookReplayStoreFull
         | CapitalError::WebhookReplayStoreUnavailable
         | CapitalError::WebhookReplayConfigurationDrift

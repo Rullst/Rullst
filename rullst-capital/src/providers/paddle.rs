@@ -146,7 +146,7 @@ impl BillingProvider for PaddleProvider {
             ));
         }
 
-        let client = crate::providers::http_client();
+        let client = crate::providers::http_client()?;
         let payload = serde_json::json!({
             "items": [{
                 "price_id": plan_id,
@@ -158,34 +158,24 @@ impl BillingProvider for PaddleProvider {
             "return_url": redirect_url
         });
 
-        let res = client
-            .post("https://api.paddle.com/transactions")
-            .bearer_auth(&self.api_key)
-            .header("Content-Type", "application/json")
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|e| CapitalError::ProviderRequestFailed(format!("Network error: {}", e)))?;
+        let body: Value = crate::providers::send_http_json(
+            client
+                .post("https://api.paddle.com/transactions")
+                .bearer_auth(&self.api_key)
+                .header("Content-Type", "application/json")
+                .json(&payload),
+            "paddle",
+            "create checkout",
+        )
+        .await?;
 
-        if !res.status().is_success() {
-            return Err(CapitalError::ProviderRequestFailed(format!(
-                "Paddle API error: HTTP {}",
-                res.status()
-            )));
-        }
-
-        let body: Value = res.json().await.map_err(|e| {
-            CapitalError::PayloadParseError(format!("Failed to parse response: {}", e))
+        let url = body["data"]["checkout"]["url"].as_str().ok_or_else(|| {
+            CapitalError::from(crate::ProviderFailure::contract_mismatch(
+                "paddle",
+                "create checkout",
+            ))
         })?;
-
-        body["data"]["checkout"]["url"]
-            .as_str()
-            .map(|s| s.to_string())
-            .ok_or_else(|| {
-                CapitalError::PayloadParseError(
-                    "Missing checkout URL in Paddle response".to_string(),
-                )
-            })
+        crate::providers::validate_checkout_url("paddle", url)
     }
 
     fn handle_webhook(
@@ -255,22 +245,19 @@ impl BillingProvider for PaddleProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = crate::providers::http_client();
-            let res = client
-                .post(format!(
-                    "https://api.paddle.com/subscriptions/{}/cancel",
-                    subscription_id
-                ))
-                .bearer_auth(&self.api_key)
-                .send()
-                .await
-                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
-            if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!(
-                    "HTTP {}",
-                    res.status()
-                )));
-            }
+            crate::subscription::validate_provider_subscription_id(subscription_id)?;
+            let client = crate::providers::http_client()?;
+            crate::providers::send_http(
+                client
+                    .post(format!(
+                        "https://api.paddle.com/subscriptions/{}/cancel",
+                        subscription_id
+                    ))
+                    .bearer_auth(&self.api_key),
+                "paddle",
+                "cancel subscription",
+            )
+            .await?;
         }
         Ok(())
     }
@@ -282,22 +269,19 @@ impl BillingProvider for PaddleProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            let client = crate::providers::http_client();
-            let res = client
-                .post(format!(
-                    "https://api.paddle.com/subscriptions/{}/pause",
-                    subscription_id
-                ))
-                .bearer_auth(&self.api_key)
-                .send()
-                .await
-                .map_err(|e| CapitalError::ProviderRequestFailed(e.to_string()))?;
-            if !res.status().is_success() {
-                return Err(CapitalError::ProviderRequestFailed(format!(
-                    "HTTP {}",
-                    res.status()
-                )));
-            }
+            crate::subscription::validate_provider_subscription_id(subscription_id)?;
+            let client = crate::providers::http_client()?;
+            crate::providers::send_http(
+                client
+                    .post(format!(
+                        "https://api.paddle.com/subscriptions/{}/pause",
+                        subscription_id
+                    ))
+                    .bearer_auth(&self.api_key),
+                "paddle",
+                "pause subscription",
+            )
+            .await?;
         }
         Ok(())
     }

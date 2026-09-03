@@ -10,6 +10,7 @@
 | Subsystem | Lifecycle Status | Description |
 | :--- | :---: | :--- |
 | **Direct Gateways** | 🟠 `[Partial]` | 11 payment/payout adapter surfaces with pooled HTTP clients and deterministic mocks. Live method coverage, provider acceptance tests, retry semantics, and reconciliation are not uniform yet. |
+| **Outbound Failure Boundary** | 🟢 `[Implemented / Bounded]` | Reviewed live methods share finite timeouts, disabled redirects/ambient proxies, one-MiB JSON parsing, HTTPS checkout-location validation, and redacted permanent/transient/rate-limited failures. Rullst performs no automatic mutation retry. |
 | **Subscription Lifecycle** | 🟠 `[Partial]` | Checkout, portal, cancellation, pause, usage, coupon, trial, status, and webhook APIs exist, but not every provider implements and verifies every method end-to-end. |
 | **Webhook Processing** | 🟢 `[Implemented / Bounded]` | Axum and opt-in Actix middleware call one canonical bounded verifier; named adapters implement signature verification and freshness checks. The opt-in `webhook-sql` ledger shares bounded payload or semantic-event claims across SQLite, PostgreSQL, MySQL, and MariaDB processes. Relational handlers can claim a stable provider event ID with one domain mutation in a caller transaction. Cross-system exactly-once and reconciliation remain application work; Alipay RSA2 remains fail-closed. |
 | **Metered Billing** | 🟢 `[Implemented / Bounded]` | Current Stripe Meter Events and Lemon Squeezy Usage Records shapes with provider-specific identity/action, bounded response binding and deterministic non-live mocks. Durable application-outbox claiming and provider-account evidence remain explicit. |
@@ -40,6 +41,37 @@
 ---
 
 ## 🚀 Usage Examples
+
+### Shared outbound failure contract
+
+`CapitalError::Provider` carries a redacted `ProviderFailure` for request
+construction, transport, non-success HTTP status, oversized/malformed JSON, or
+semantic response mismatch. Its provider and operation labels are static and
+safe for low-cardinality telemetry; the value deliberately omits URLs,
+credentials, bodies, and raw transport errors.
+
+```rust
+use rullst_capital::{CapitalError, ProviderFailureClass};
+
+fn record_disposition(error: &CapitalError) -> &'static str {
+    match error {
+        CapitalError::Provider(failure) => match failure.class() {
+            ProviderFailureClass::Permanent => "permanent",
+            ProviderFailureClass::Transient => "transient",
+            ProviderFailureClass::RateLimited => "rate_limited",
+            _ => "unknown",
+        },
+        _ => "not_provider_transport",
+    }
+}
+```
+
+HTTP 429 is rate-limited; transport failures and HTTP 408, 425, and 5xx are
+transient; request-build, response-shape, and other HTTP failures are
+permanent. Only numeric `Retry-After` delta seconds are retained and they are
+capped at 24 hours. These are scheduling hints, not a generic retry engine:
+non-idempotent operations must not be repeated without a durable,
+provider-forwarded idempotency key and reconciliation.
 
 ### 1. Initializing a Provider and Creating a Checkout Session
 
@@ -236,4 +268,7 @@ transmission.
 
 1. **Constant-Time Verification:** Webhook signatures use `subtle::ConstantTimeEq` to prevent side-channel timing attacks.
 2. **Fail-Closed Live Modes:** Local XMLDSig/XSD/codec/mTLS preparation does not enable a request. `Homologation` and `Production` return a typed `FiscalError::Unsupported` without network I/O until the external trust, audit and homologation gates pass.
-3. **No Phantom Persistences:** All provider drivers use explicit connection pooling (`reqwest::Client`) with keep-alive to avoid socket storms.
+3. **Bounded Egress:** Reviewed live provider methods use a pooled client with
+   finite connect/request timeouts, disabled redirects and ambient proxy
+   discovery, bounded JSON, and redacted typed failure evidence. Returned
+   checkout URLs must be absolute credential-free HTTPS without fragments.

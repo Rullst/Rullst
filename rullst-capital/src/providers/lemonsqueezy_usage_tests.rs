@@ -122,7 +122,8 @@ async fn mock_is_deterministic_and_mismatches_fail_closed() {
     ] {
         assert!(matches!(
             bind_response(&record, &mismatched),
-            Err(CapitalError::ProviderRequestFailed(_))
+            Err(CapitalError::Provider(failure))
+                if failure.kind() == crate::ProviderFailureKind::ContractMismatch
         ));
     }
 
