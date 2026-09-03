@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788463174632,
+  "lastUpdate": 1788464157291,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -8441,6 +8441,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4074,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "837494db69e2456e49d2c3dad9a5ad906a3e4039",
+          "message": "test(cli): clean generated scaffold artifacts",
+          "timestamp": "2026-09-03T16:25:02-03:00",
+          "tree_id": "50821fd40779e0e1a203fcb31e05880564802133",
+          "url": "https://github.com/Rullst/Rullst/commit/837494db69e2456e49d2c3dad9a5ad906a3e4039"
+        },
+        "date": 1788464156521,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 862,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 715,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1592,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2113,
+            "range": "± 26",
             "unit": "ns/iter"
           }
         ]
