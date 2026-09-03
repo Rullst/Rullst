@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788400360584,
+  "lastUpdate": 1788403023672,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst ORM Benchmark": [
@@ -26759,6 +26759,210 @@ window.BENCHMARK_DATA = {
             "name": "orm_comparison/sqlite/insert_delete/seaorm",
             "value": 326688,
             "range": "± 22336",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "95ea6caf6bd5cd00f684de1a4570518e82a7f889",
+          "message": "feat(capital): add authenticated fiscal command journal",
+          "timestamp": "2026-09-02T23:25:54-03:00",
+          "tree_id": "9c46d7a097ec35b8c887faa3c4627ade0b248ed5",
+          "url": "https://github.com/Rullst/Rullst/commit/95ea6caf6bd5cd00f684de1a4570518e82a7f889"
+        },
+        "date": 1788403023147,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "cpu/validate_identifier/short",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cpu/validate_identifier/qualified",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cpu/validate_identifier/invalid",
+            "value": 29,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cpu/to_json/user",
+            "value": 298,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cpu/from_json/user",
+            "value": 226,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "cpu/query_builder/build",
+            "value": 128,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/save/insert",
+            "value": 3996398,
+            "range": "± 21501910",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/find_by_id",
+            "value": 60550,
+            "range": "± 1870",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/where_eq_first",
+            "value": 64200,
+            "range": "± 2112",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/count",
+            "value": 61133,
+            "range": "± 1731",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/all_limit_10",
+            "value": 70893,
+            "range": "± 1487",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/limit_n/1",
+            "value": 61738,
+            "range": "± 2128",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/limit_n/10",
+            "value": 69631,
+            "range": "± 2032",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/limit_n/50",
+            "value": 122742,
+            "range": "± 11154",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "db_roundtrip/query/limit_n/100",
+            "value": 216421,
+            "range": "± 16562",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "orm_comparison/sqlite/find_by_id/rullst",
+            "value": 150083,
+            "range": "± 19399",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "orm_comparison/sqlite/find_by_id/diesel",
+            "value": 4638,
+            "range": "± 41",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "orm_comparison/sqlite/find_by_id/seaorm",
+            "value": 172572,
+            "range": "± 26219",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "orm_comparison/sqlite/filter_email/rullst",
+            "value": 149127,
+            "range": "± 23241",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "orm_comparison/sqlite/filter_email/diesel",
+            "value": 4953,
+            "range": "± 116",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "orm_comparison/sqlite/filter_email/seaorm",
+            "value": 173646,
+            "range": "± 18355",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "orm_comparison/sqlite/count/rullst",
+            "value": 164030,
+            "range": "± 16344",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "orm_comparison/sqlite/count/diesel",
+            "value": 929,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "orm_comparison/sqlite/count/seaorm",
+            "value": 166472,
+            "range": "± 16912",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "orm_comparison/sqlite/list_10/rullst",
+            "value": 170633,
+            "range": "± 22695",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "orm_comparison/sqlite/list_10/diesel",
+            "value": 7221,
+            "range": "± 141",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "orm_comparison/sqlite/list_10/seaorm",
+            "value": 178799,
+            "range": "± 18418",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "orm_comparison/sqlite/insert_delete/rullst",
+            "value": 884644,
+            "range": "± 395154",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "orm_comparison/sqlite/insert_delete/diesel",
+            "value": 177035,
+            "range": "± 100602",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "orm_comparison/sqlite/insert_delete/seaorm",
+            "value": 765276,
+            "range": "± 435276",
             "unit": "ns/iter"
           }
         ]
