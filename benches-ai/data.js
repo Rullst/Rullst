@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788413434239,
+  "lastUpdate": 1788421745723,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -6089,6 +6089,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 748,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ce2c683959077907e0cfc1e3f72a2b33c7a87b7e",
+          "message": "feat(studio): add bounded distributed diagnostics",
+          "timestamp": "2026-09-03T04:25:16-03:00",
+          "tree_id": "f852c289bd9d5537c00e61dfee05487d7cb6ed9a",
+          "url": "https://github.com/Rullst/Rullst/commit/ce2c683959077907e0cfc1e3f72a2b33c7a87b7e"
+        },
+        "date": 1788421745269,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1848,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 339,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 706,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
