@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788397229259,
+  "lastUpdate": 1788400654581,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -5945,6 +5945,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 762,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "9e84fcb6a684a97643b1ef19b405d0d9bb66b24b",
+          "message": "feat(capital): classify provider gateway failures",
+          "timestamp": "2026-09-02T22:40:36-03:00",
+          "tree_id": "0a7775cf4b83fc191afef02da6f037f80396d92e",
+          "url": "https://github.com/Rullst/Rullst/commit/9e84fcb6a684a97643b1ef19b405d0d9bb66b24b"
+        },
+        "date": 1788400654162,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1686,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 360,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 730,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
