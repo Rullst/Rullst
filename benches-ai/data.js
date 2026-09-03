@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788400654581,
+  "lastUpdate": 1788403492325,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -5993,6 +5993,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 730,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "95ea6caf6bd5cd00f684de1a4570518e82a7f889",
+          "message": "feat(capital): add authenticated fiscal command journal",
+          "timestamp": "2026-09-02T23:25:54-03:00",
+          "tree_id": "9c46d7a097ec35b8c887faa3c4627ade0b248ed5",
+          "url": "https://github.com/Rullst/Rullst/commit/95ea6caf6bd5cd00f684de1a4570518e82a7f889"
+        },
+        "date": 1788403491783,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1076,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 215,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 517,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
