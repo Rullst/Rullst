@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788440862516,
+  "lastUpdate": 1788445530327,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -5123,6 +5123,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 460,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "fbca1ed0aaa2e833f3f0ae38e42249bc8505369e",
+          "message": "docs(coverage): pin audited codecov checkpoint",
+          "timestamp": "2026-09-03T11:14:33-03:00",
+          "tree_id": "0d6d40ed238c782a7c912cf97f320bf9a01431f8",
+          "url": "https://github.com/Rullst/Rullst/commit/fbca1ed0aaa2e833f3f0ae38e42249bc8505369e"
+        },
+        "date": 1788445529466,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 582,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
