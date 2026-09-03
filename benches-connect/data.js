@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788464174923,
+  "lastUpdate": 1788468856459,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -5243,6 +5243,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 400,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "c7e8bda4ec0b557e57da10dabcdc32e55ebdb35a",
+          "message": "test(cli): lock generated offline builds",
+          "timestamp": "2026-09-03T17:37:09-03:00",
+          "tree_id": "81d53c088b76ffc431c585b81321c94bea54d2b8",
+          "url": "https://github.com/Rullst/Rullst/commit/c7e8bda4ec0b557e57da10dabcdc32e55ebdb35a"
+        },
+        "date": 1788468855654,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 385,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
