@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788507373569,
+  "lastUpdate": 1788513573428,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -17111,6 +17111,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2354,
             "range": "± 37",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e6f0d559e1c6e5af01d87dffb551b8caa9daed29",
+          "message": "fix(sqlite): normalize Windows store paths",
+          "timestamp": "2026-09-04T06:16:43-03:00",
+          "tree_id": "ec7045a8807c97a3aa6362a1c5178989f7dd81ab",
+          "url": "https://github.com/Rullst/Rullst/commit/e6f0d559e1c6e5af01d87dffb551b8caa9daed29"
+        },
+        "date": 1788513571626,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 442,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 633,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 430,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1217,
+            "range": "± 36",
             "unit": "ns/iter"
           }
         ]
