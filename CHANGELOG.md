@@ -4,7 +4,7 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [12.0.0] - Unreleased 🚀
+## [12.0.0-rc.1] - Unreleased 🚀
 
 > **Unreleased status:** entries below are a development inventory, not release,
 > certification, benchmark, or test evidence. The current capability contract is
@@ -24,6 +24,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Upgrade and compatibility
 
+- Synchronized all 16 publishable packages and their internal requirements at
+  `12.0.0-rc.1`. Release preflight now reads the locked graph; extracted
+  package builds cap native parallelism and omit bundled DuckDB debug symbols
+  so verification remains viable on bounded runners.
+- Package auditing now rejects runtime SQLite state. Named in-memory SQLite
+  DSNs no longer touch a backing file, the three historical zero-byte test
+  artifacts were removed, and `rullst-messaging` now ships the workspace MIT
+  license. The yanked transitive `wnaf 0.14.0` lock entry was replaced by
+  `0.14.1`.
 - The umbrella `rullst` facade now has a dedicated shared-local SQLite
   composition gate spanning Auth revocation, Capital quota, encrypted Connect
   tokens, Mail suppression, encrypted Messaging, Core queueing and aggregate

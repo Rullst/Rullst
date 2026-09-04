@@ -298,7 +298,10 @@ fn test_siem_alerting_and_cef_formatting() {
     );
 
     let cef = format_cef_event(&event);
-    assert!(cef.contains("CEF:0|RullstSecurity|Framework|12.0.0|AI_PROMPT_INJECTION_SHIELDED"));
+    assert!(cef.contains(&format!(
+        "CEF:0|RullstSecurity|Framework|{}|AI_PROMPT_INJECTION_SHIELDED",
+        env!("CARGO_PKG_VERSION")
+    )));
     assert!(cef.contains("src=203.0.113.195"));
     assert!(cef.contains("severity=9") || cef.contains("|9|"));
 

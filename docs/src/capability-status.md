@@ -1,12 +1,12 @@
 # Simple capability status
 
-This is the compact view of Rullst's canonical M1–M38 programme. It is derived
+This is the compact view of Rullst's canonical M1–M39 programme. It is derived
 from the root [ROADMAP](../../ROADMAP.md); that roadmap and the
 [capability ledger](capability-ledger.md) retain the evidence and limitations.
 The labels here deliberately do not turn partial foundations into completed
 features.
 
-## v12 RC engineering snapshot — 3 September 2026
+## v12 RC engineering snapshot — 4 September 2026
 
 This functionality inventory is deliberately separate from release quality.
 All 15 non-IoT crates currently meet the approved A floor and `rullst-iot`
@@ -14,7 +14,7 @@ meets its approved B exception. All 15 active crates have also reached their
 higher audited local ceiling: **1,509/1,509 local campaign points are backed by
 repository evidence (100%), with zero planning points remaining**. The exact
 SHA still earns those dimensions only when its conditioning gates pass. The
-broader [v12 release programme](v12.md) estimates RC readiness at 82.8%; therefore this
+broader [v12 release programme](v12.md) estimates RC readiness at 86.5%; therefore this
 is still a **NO-GO**, not a release announcement.
 
 Coverage is a separate RC gate. Codecov measured candidate `704b6d4d` at
@@ -22,6 +22,12 @@ Coverage is a separate RC gate. Codecov measured candidate `704b6d4d` at
 component, so both candidate views exceed their zero-tolerance 90% targets.
 This is valid candidate evidence, not evidence for a future commit or tag; the
 same gates must pass again on the exact frozen RC SHA.
+
+The latest committed checkpoint `30c3251a` completed all **23/23 automatic
+workflow files** successfully, including the full all-feature workspace suite
+on Linux, macOS and Windows. That is strong cross-platform candidate evidence,
+but the manually dispatched heavy gates and the exact future RC commit still
+remain separate requirements.
 
 | Coverage view | Audited checkpoint | RC meaning |
 | :--- | :---: | :--- |
@@ -116,12 +122,13 @@ workflow was homologated.
 | M36 | Read-only explainable natural-language SQL assistant | ⏳ Still to implement — not started |
 | M37 | Reviewable one-click error-console patch workflow | 🟡 Still to implement — partial |
 | M38 | Vendor-specific SQLite replica/synchronization profile | ⏳ Still to implement — not started |
+| M39 | Optional self-hosted `rullst-gateway` load balancer | ⏳ Still to implement — separate v13 research/foundation; no managed-cloud parity claim |
 
-Current planning snapshot: **5 implemented, 24 partial, and 8 not started**
-inside the 37-milestone web-framework horizon. M31 is excluded because it is a
+Current planning snapshot: **5 implemented, 24 partial, and 9 not started**
+inside the 38-milestone web-framework horizon. M31 is excluded because it is a
 separately governed safety-critical programme. The weighted planning estimate
-is 45.9% complete and 54.1% remaining; this is not v12 release readiness and
-the 32 milestones without strict closure are not 32 blockers for v12.0. The
+is 44.7% complete and 55.3% remaining; this is not v12 release readiness and
+the 33 milestones without strict closure are not 33 blockers for v12.0. The
 [v12 programme](v12.md) owns release gates, while the root roadmap assigns
 confirmed v12 defects to `12.0.x` maintenance and all additive capability work,
 research or major contracts to v13.

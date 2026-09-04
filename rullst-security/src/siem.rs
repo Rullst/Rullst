@@ -32,7 +32,8 @@ pub fn format_cef_event(event: &LiveSecurityEvent) -> String {
     };
 
     format!(
-        "CEF:0|RullstSecurity|Framework|12.0.0|{}|{}|{}|src={} msg={}",
+        "CEF:0|RullstSecurity|Framework|{}|{}|{}|{}|src={} msg={}",
+        env!("CARGO_PKG_VERSION"),
         event.event_type,
         event.event_type,
         severity,
@@ -82,7 +83,10 @@ mod tests {
         );
 
         let cef = format_cef_event(&ev);
-        assert!(cef.starts_with("CEF:0|RullstSecurity|Framework|12.0.0|HONEYPOT_TRAP_TRIGGERED"));
+        assert!(cef.starts_with(&format!(
+            "CEF:0|RullstSecurity|Framework|{}|HONEYPOT_TRAP_TRIGGERED",
+            env!("CARGO_PKG_VERSION")
+        )));
         assert!(cef.contains("src=10.0.0.1"));
     }
 
