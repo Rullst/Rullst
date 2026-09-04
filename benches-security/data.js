@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788520724919,
+  "lastUpdate": 1788530965535,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -8038,6 +8038,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 28,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ac516494771e79c55e5f8ae808d7fc52fb75576e",
+          "message": "fix(ci): make manual verification evidence executable",
+          "timestamp": "2026-09-04T10:56:37-03:00",
+          "tree_id": "db47deb3667d2137074d1d11ae5e8b4c8c1a9419",
+          "url": "https://github.com/Rullst/Rullst/commit/ac516494771e79c55e5f8ae808d7fc52fb75576e"
+        },
+        "date": 1788530965101,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5798,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 719,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 26,
             "range": "± 0",
             "unit": "ns/iter"
           }
