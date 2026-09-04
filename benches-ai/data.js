@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788537233291,
+  "lastUpdate": 1788538783223,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -7193,6 +7193,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 689,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "7c2340f4d2365277c315bd45ea76bed43dd77d50",
+          "message": "fix(ci): harden formal and fuzz campaigns",
+          "timestamp": "2026-09-04T13:07:46-03:00",
+          "tree_id": "c7266b15cfdc8dd36459c5a91316dd2d09fa254e",
+          "url": "https://github.com/Rullst/Rullst/commit/7c2340f4d2365277c315bd45ea76bed43dd77d50"
+        },
+        "date": 1788538782348,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1440,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 281,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 548,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
