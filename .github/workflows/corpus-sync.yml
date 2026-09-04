@@ -52,7 +52,7 @@ jobs:
       - name: Install Rust nightly
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # nightly
         with:
-          toolchain: nightly
+          toolchain: nightly-2026-08-21
 
       - name: Install cargo-fuzz 0.13.2
         run: cargo install cargo-fuzz --version 0.13.2 --locked
@@ -79,8 +79,8 @@ jobs:
           if [ "$FUZZ_TARGET" = "fuzz_parser" ]; then
             args+=(-max_len=2048 -rss_limit_mb=4096)
           fi
-          cargo +nightly fuzz run "$FUZZ_TARGET" -- "${args[@]}"
-          cargo +nightly fuzz cmin "$FUZZ_TARGET" "corpus/$FUZZ_TARGET"
+          cargo +nightly-2026-08-21 fuzz run "$FUZZ_TARGET" -- "${args[@]}"
+          cargo +nightly-2026-08-21 fuzz cmin "$FUZZ_TARGET" "corpus/$FUZZ_TARGET"
 
       - name: Upload warm-up reproducer
         if: steps.corpus.outcome == 'failure'

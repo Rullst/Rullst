@@ -228,12 +228,30 @@ fn ensure_room(datagram: &[u8], additional: usize) -> Result<(), CoapCodecError>
     Ok(())
 }
 
-fn option_component(value: usize) -> Result<(u8, Vec<u8>), CoapCodecError> {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CoapOptionComponent {
+    Inline(u8),
+    ExtendedOne(u8),
+    ExtendedTwo([u8; 2]),
+}
+
+const fn classify_option_component(value: usize) -> Option<CoapOptionComponent> {
     match value {
-        0..=12 => Ok((value as u8, Vec::new())),
-        13..=268 => Ok((13, vec![(value - 13) as u8])),
-        269..=65_804 => Ok((14, ((value - 269) as u16).to_be_bytes().to_vec())),
-        _ => Err(CoapCodecError::OptionTooLarge),
+        0..=12 => Some(CoapOptionComponent::Inline(value as u8)),
+        13..=268 => Some(CoapOptionComponent::ExtendedOne((value - 13) as u8)),
+        269..=65_804 => Some(CoapOptionComponent::ExtendedTwo(
+            ((value - 269) as u16).to_be_bytes(),
+        )),
+        _ => None,
+    }
+}
+
+fn option_component(value: usize) -> Result<(u8, Vec<u8>), CoapCodecError> {
+    match classify_option_component(value) {
+        Some(CoapOptionComponent::Inline(nibble)) => Ok((nibble, Vec::new())),
+        Some(CoapOptionComponent::ExtendedOne(extension)) => Ok((13, vec![extension])),
+        Some(CoapOptionComponent::ExtendedTwo(extension)) => Ok((14, extension.to_vec())),
+        None => Err(CoapCodecError::OptionTooLarge),
     }
 }
 
@@ -315,5 +333,57 @@ mod tests {
             .and_then(|request| request.encode()),
             Err(CoapCodecError::DatagramTooLarge)
         );
+    }
+
+    #[test]
+    fn classifies_every_option_encoding_boundary() {
+        assert_eq!(
+            classify_option_component(12),
+            Some(CoapOptionComponent::Inline(12))
+        );
+        assert_eq!(
+            classify_option_component(13),
+            Some(CoapOptionComponent::ExtendedOne(0))
+        );
+        assert_eq!(
+            classify_option_component(268),
+            Some(CoapOptionComponent::ExtendedOne(u8::MAX))
+        );
+        assert_eq!(
+            classify_option_component(269),
+            Some(CoapOptionComponent::ExtendedTwo([0, 0]))
+        );
+        assert_eq!(
+            classify_option_component(65_804),
+            Some(CoapOptionComponent::ExtendedTwo([u8::MAX, u8::MAX]))
+        );
+        assert_eq!(classify_option_component(65_805), None);
+    }
+}
+
+#[cfg(kani)]
+#[cfg_attr(mutants, mutants::skip)]
+mod kani_proofs {
+    use super::*;
+
+    #[kani::proof]
+    fn proof_coap_option_component_layout() {
+        let value: usize = kani::any();
+
+        match classify_option_component(value) {
+            Some(CoapOptionComponent::Inline(nibble)) => {
+                assert!(value <= 12);
+                assert_eq!(usize::from(nibble), value);
+            }
+            Some(CoapOptionComponent::ExtendedOne(extension)) => {
+                assert!(value >= 13 && value <= 268);
+                assert_eq!(usize::from(extension) + 13, value);
+            }
+            Some(CoapOptionComponent::ExtendedTwo(extension)) => {
+                assert!(value >= 269 && value <= 65_804);
+                assert_eq!(usize::from(u16::from_be_bytes(extension)) + 269, value);
+            }
+            None => assert!(value > 65_804),
+        }
     }
 }

@@ -49,7 +49,7 @@ fn is_safely_bufferable(headers: &HeaderMap, body: &Body) -> bool {
         return false;
     };
 
-    if hint.lower() != upper || upper > MAX_BUFFERED_RESPONSE_BYTES {
+    if !is_fixed_body_size_within_limit(hint.lower(), upper) {
         return false;
     }
 
@@ -61,6 +61,10 @@ fn is_safely_bufferable(headers: &HeaderMap, body: &Body) -> bool {
             .is_some_and(|declared| declared == upper),
         None => true,
     }
+}
+
+const fn is_fixed_body_size_within_limit(lower: u64, upper: u64) -> bool {
+    lower == upper && upper <= MAX_BUFFERED_RESPONSE_BYTES
 }
 
 fn remove_stale_representation_headers(headers: &mut HeaderMap, body_len: usize) {
@@ -458,9 +462,18 @@ mod kani_proofs {
     use super::*;
 
     #[kani::proof]
-    fn proof_dlp_empty_payload() {
-        let (masked, modified) = mask_response_payload(&[]);
-        assert!(!modified);
-        assert!(masked.is_empty());
+    fn proof_buffer_size_gate_boundaries() {
+        let lower: u64 = kani::any();
+        let upper: u64 = kani::any();
+        let accepted = is_fixed_body_size_within_limit(lower, upper);
+
+        assert_eq!(
+            accepted,
+            lower == upper && upper <= MAX_BUFFERED_RESPONSE_BYTES
+        );
+        if accepted {
+            assert_eq!(lower, upper);
+            assert!(upper <= MAX_BUFFERED_RESPONSE_BYTES);
+        }
     }
 }

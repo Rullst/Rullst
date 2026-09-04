@@ -73,19 +73,3 @@ mod tests {
         );
     }
 }
-
-#[cfg(kani)]
-#[cfg_attr(mutants, mutants::skip)]
-mod kani_proofs {
-    use super::*;
-
-    #[kani::proof]
-    fn proof_simulated_fixture_bounds() {
-        let fixture = SimulatedPqcFixture {
-            public_fixture: [0_u8; 32],
-            private_fixture: [0_u8; 32],
-        };
-        assert_eq!(fixture.public_fixture.len(), 32);
-        assert_eq!(fixture.private_fixture.len(), 32);
-    }
-}

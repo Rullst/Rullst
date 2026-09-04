@@ -48,7 +48,7 @@ jobs:
       - name: Install Rust nightly
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # nightly
         with:
-          toolchain: nightly
+          toolchain: nightly-2026-08-21
 
       - name: Install cargo-fuzz 0.13.2
         run: cargo install cargo-fuzz --version 0.13.2 --locked
@@ -68,13 +68,22 @@ jobs:
         env:
           FUZZ_TARGET: ${{ matrix.target }}
         run: |
-          args=(-max_total_time=19800)
           if [ "$FUZZ_TARGET" = "fuzz_parser" ]; then
-            # The parser contract rejects inputs above 2 KiB. Keep generation at
-            # that boundary and leave headroom for libFuzzer's cumulative RSS.
-            args+=(-max_len=2048 -rss_limit_mb=4096)
+            # proc-macro2/syn parsing performs sustained allocation churn under
+            # ASan. Restart only the fuzzer process every 30 minutes so its RSS
+            # does not accumulate for the full campaign. Every batch reuses the
+            # same on-disk corpus, so this preserves the 5.5-hour budget and
+            # coverage discoveries without tolerating crashes or OOMs.
+            for batch in $(seq 1 11); do
+              echo "Parser fuzz batch $batch/11"
+              cargo +nightly-2026-08-21 fuzz run "$FUZZ_TARGET" -- \
+                -max_total_time=1800 \
+                -max_len=2048 \
+                -rss_limit_mb=2048
+            done
+          else
+            cargo +nightly-2026-08-21 fuzz run "$FUZZ_TARGET" -- -max_total_time=19800
           fi
-          cargo +nightly fuzz run "$FUZZ_TARGET" -- "${args[@]}"
 
       - name: Upload reproducer on failure
         if: failure()

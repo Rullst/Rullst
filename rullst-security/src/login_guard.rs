@@ -143,12 +143,7 @@ impl LoginGuard {
         }
 
         // Progressive tarpit delay: 1st=0s, 2nd=1s, 3rd=2s, 4th=4s
-        match current_count {
-            1 => Duration::ZERO,
-            2 => Duration::from_secs(1),
-            3 => Duration::from_secs(2),
-            _ => Duration::from_secs(4),
-        }
+        Duration::from_secs(progressive_delay_seconds(current_count))
     }
 
     /// Records a failed login and applies the returned progressive delay.
@@ -185,6 +180,15 @@ impl LoginGuard {
             now.saturating_duration_since(*last_attempt) < self.window_duration
         });
         self.jails.retain(|_, expiration| now < *expiration);
+    }
+}
+
+const fn progressive_delay_seconds(current_count: u32) -> u64 {
+    match current_count {
+        1 => 0,
+        2 => 1,
+        3 => 2,
+        _ => 4,
     }
 }
 
@@ -318,8 +322,16 @@ mod kani_proofs {
     use super::*;
 
     #[kani::proof]
-    fn proof_login_guard_is_jailed_initially_false() {
-        let guard = LoginGuard::new();
-        assert!(!guard.is_jailed("test_user_initial"));
+    fn proof_progressive_delay_is_bounded() {
+        let current_count: u32 = kani::any();
+        let delay = progressive_delay_seconds(current_count);
+
+        assert!(delay <= 4);
+        match current_count {
+            1 => assert_eq!(delay, 0),
+            2 => assert_eq!(delay, 1),
+            3 => assert_eq!(delay, 2),
+            _ => assert_eq!(delay, 4),
+        }
     }
 }

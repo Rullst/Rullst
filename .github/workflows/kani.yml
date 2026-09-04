@@ -91,21 +91,21 @@ jobs:
           - package: rullst-security
             harness: proof_secure_headers_config_initialization
           - package: rullst-security
-            harness: proof_vault_secret_invariants
+            harness: proof_key_id_byte_policy
           - package: rullst-security
-            harness: proof_login_guard_is_jailed_initially_false
+            harness: proof_progressive_delay_is_bounded
           - package: rullst-security
-            harness: proof_dlp_empty_payload
+            harness: proof_buffer_size_gate_boundaries
           - package: rullst-security
-            harness: proof_rasp_clean_uri
+            harness: proof_ascii_fold_policy
           - package: rullst-security
-            harness: proof_sri_tag_prefix_format
+            harness: proof_sri_asset_size_boundary
           - package: rullst-auth
             harness: proof_make_logout_cookie_invariants
           - package: rullst-connect
             harness: verify_constant_time_eq_safety
           - package: rullst-iot
-            harness: proof_simulated_fixture_bounds
+            harness: proof_coap_option_component_layout
           - package: rullst-iot
             harness: proof_modbus_crc16_no_panic
           - package: rullst-ai

@@ -46,7 +46,7 @@ The workflows below run **only when requested manually**:
 | Workflow | Evidence | RC interpretation |
 | :--- | :--- | :--- |
 | `dast-zap.yml` | OWASP ZAP baseline against a release blog showcase plus fresh generated REST API and complete LMS applications | REST/LMS warnings and failures block unless an exact rule ID is versioned as `INFO` with a local explanation in `.zap/`; those configs are passed explicitly to the pinned scanner and unlisted warnings remain live. The showcase is informational because it deliberately uses third-party presentation assets; reports and application logs are retained. This remains representative, not universal deployment coverage. |
-| `fuzzing.yml` | All 40 declared libFuzzer targets from the validated shared inventory | Every matrix job must finish without a crash for the configured time budget; target-specific corpora are restored and saved, while failure reproducers are retained. This is bounded evidence, not proof for every input. |
+| `fuzzing.yml` | All 40 declared libFuzzer targets from the validated shared inventory | Every matrix job must finish without a crash for the configured time budget; target-specific corpora are restored and saved, while failure reproducers are retained. The proc-macro parser keeps the same 5.5-hour budget in eleven strict 30-minute processes sharing one corpus, which bounds sanitizer RSS without weakening crash detection. This is bounded evidence, not proof for every input. |
 | `kani.yml` | Twenty named bounded formal harnesses in ten supported runtime/library packages | Informational release evidence, but each proof has an isolated strict matrix job. Rullst itself stays on stable Rust 1.98.1 with a Rust 1.96 MSRV; only the separately built Kani verifier uses its pinned `nightly-2026-08-01` compiler (`rustc 1.99.0-nightly`) because the latest stable Kani bundle's Rust 1.93 compiler cannot compile the framework. The proc-macro-only `rullst-macros` target remains unsupported by Kani and is covered by compile-pass/fail and generated-project evidence instead. |
 | `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | Informational release evidence, but every selected scope is strict. Miri is a Rust nightly-only interpreter, so this workflow alone uses pinned `nightly-2026-08-21` (`rustc 1.100.0-nightly`); it does not change the project's stable toolchain or MSRV. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. |
 | `mutants.yml` | Eight mutation-testing shards and their artifacts | Informational: review survived/timed-out mutants and the measured score. “Pass” does not honestly mean every possible mutant was killed. |
@@ -214,9 +214,21 @@ higher component result for the repository total.
   SQLite, OS-syscall and network/provider execution that Miri cannot interpret;
   native CI, integration tests and sanitizers remain the applicable evidence
   for those paths. The `rullst` umbrella re-export facade and Blog example add
-  no separate interpreter scope. A selected-scope failure fails the run.
+  no separate interpreter scope. A selected-scope failure fails the run. The
+  Kani Security harnesses prove pure production decisions such as Vault key-ID
+  character policy, DLP buffer admission, ASCII-folded RASP matching, SRI asset
+  limits and bounded Login Guard delay; the IoT matrix also proves the complete
+  CoAP option-component classification. They do not claim that Kani verifies
+  `zeroize`'s unsupported inline assembly, cryptographic implementations or the
+  entire concurrent middleware implementations.
 - Mutation testing is manual, split into eight shards, and intentionally
   non-blocking while results are uploaded.
+- Fuzzing and corpus maintenance pin `nightly-2026-08-21` instead of following
+  a moving nightly alias. This verifier-only toolchain does not change the
+  framework's stable Rust 1.98.1 toolchain or its Rust 1.96 MSRV. The parser
+  campaign restarts its ASan process every 30 minutes while retaining one
+  corpus and the full 5.5-hour target budget, preventing instrumentation RSS
+  accumulation from masquerading as a parser crash.
 - `cargo-udeps` is weekly/manual and explicitly non-blocking.
 - TSan and ASan run daily/manual across twelve runtime/domain packages;
   Messaging runs its integration contract so its concurrent state is actually
@@ -311,7 +323,7 @@ dependency graph make static estimates unreliable.
 | [`dast-zap.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/dast-zap.yml) | manual | Blocking generated targets plus informational showcase | Pins the ZAP image by digest, scans fresh release/migrated REST API and complete LMS surfaces as blocking gates, scans the CDN-backed blog showcase informationally, and uploads separate reports plus application logs. |
 | [`documentation.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/documentation.yml) | main push and PR, weekly, manual | Blocking plus informational external scan | Builds the mdBook, validates the landing/benchmark HTML templates and local site assets, checks landing JavaScript syntax, and rejects broken repository-local links. Scheduled/manual runs also upload a non-blocking external-link report because third-party availability and rate limits are not deterministic contribution gates. |
 | [`e2e-smoke.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/e2e-smoke.yml) | main push and PR, manual | Blocking | Boots the release blog example and checks HTTP, headers, form flow, and SQLite persistence. |
-| [`fuzzing.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/fuzzing.yml) | manual | On-demand | Forty validated libFuzzer matrix jobs, each capped below six hours, with per-target corpus caching and failure reproducers. |
+| [`fuzzing.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/fuzzing.yml) | manual | On-demand | Forty validated libFuzzer matrix jobs, each capped below six hours, with per-target corpus caching and failure reproducers. The parser's single matrix job restarts its ASan-instrumented process every 30 minutes while sharing the same corpus and preserving the full 5.5-hour campaign budget. |
 | [`iot-integration.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/iot-integration.yml) | main push and PR, manual | Blocking | Host IoT tests, signed OTA invariants, and one Cortex-M no-std build; no hardware claim. |
 | [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | manual | Informational release evidence; proof jobs are strict | Builds an immutable reviewed Kani snapshot with the verifier-only `nightly-2026-08-01` compiler, while Rullst stays on stable Rust 1.98.1 with a Rust 1.96 MSRV. It verifies twenty named bounded harnesses in isolated jobs across ten supported packages. Proof failures fail their matrix jobs; the proc-macro-only crate remains outside Kani's supported targets. |
 | [`machete.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/machete.yml) | main push and PR, manual | Blocking | Unused dependency scan with configured exceptions. |
