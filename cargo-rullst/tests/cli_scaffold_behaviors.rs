@@ -307,7 +307,6 @@ pub struct Marker;
         format!("DATABASE_URL={database_url}\n"),
     )
     .expect("database environment");
-    project.succeeds(&["make:migration:auto"]);
 
     let manifest = fs::read_to_string(project.root.join("Cargo.toml")).expect("manifest");
     assert!(manifest.contains("rullst-example"));
@@ -317,6 +316,13 @@ pub struct Marker;
     assert!(model.contains("pub id: i32"));
     assert!(model.contains("pub total: i64"));
     assert!(model.contains("pub payload: Option<Vec<u8>>"));
+
+    // Keep the schema-diff fixture unambiguous. The introspected Account model
+    // maps to the same table as the deliberately divergent contract below, and
+    // filesystem traversal order differs across platforms.
+    fs::remove_dir_all(project.root.join("src/introspected"))
+        .expect("remove introspection-only models before schema diff");
+    project.succeeds(&["make:migration:auto"]);
     let migrations = fs::read_to_string(project.root.join("src/migrations/mod.rs"))
         .expect("auto-migration registry");
     assert!(migrations.contains("auto_sync"));

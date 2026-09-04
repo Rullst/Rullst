@@ -133,6 +133,7 @@ pub async fn head() {}
         text
     }
 
+    #[cfg(unix)]
     fn succeeds_with_path(&self, arguments: &[&str], path: &Path) -> String {
         let output = self.command_with_path(arguments, path);
         let text = output_text(&output);
