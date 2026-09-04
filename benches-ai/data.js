@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788531057221,
+  "lastUpdate": 1788537233291,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -7145,6 +7145,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 787,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "3373e8236c5f33c1184c16b2bb5756c5775dca67",
+          "message": "fix(ci): isolate bounded Kani proofs",
+          "timestamp": "2026-09-04T12:31:28-03:00",
+          "tree_id": "10b5aab5776795a921f02e684b53a2c89a7df565",
+          "url": "https://github.com/Rullst/Rullst/commit/3373e8236c5f33c1184c16b2bb5756c5775dca67"
+        },
+        "date": 1788537232763,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1505,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 308,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 689,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
