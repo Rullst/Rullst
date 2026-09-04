@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788501681078,
+  "lastUpdate": 1788508399229,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -6953,6 +6953,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 764,
             "range": "± 16",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "eec6ac711af806f41a755035370566d3336cbbd9",
+          "message": "fix(connect): normalize Windows SQLite file URLs",
+          "timestamp": "2026-09-04T04:30:46-03:00",
+          "tree_id": "8129f94aa0b8325f1a7ba4fc7fbce297194ee16d",
+          "url": "https://github.com/Rullst/Rullst/commit/eec6ac711af806f41a755035370566d3336cbbd9"
+        },
+        "date": 1788508398455,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1843,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 348,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 710,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
