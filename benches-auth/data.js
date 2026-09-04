@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788520522110,
+  "lastUpdate": 1788530866369,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -9161,6 +9161,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4601,
             "range": "± 129",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ac516494771e79c55e5f8ae808d7fc52fb75576e",
+          "message": "fix(ci): make manual verification evidence executable",
+          "timestamp": "2026-09-04T10:56:37-03:00",
+          "tree_id": "db47deb3667d2137074d1d11ae5e8b4c8c1a9419",
+          "url": "https://github.com/Rullst/Rullst/commit/ac516494771e79c55e5f8ae808d7fc52fb75576e"
+        },
+        "date": 1788530865937,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1004,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 808,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1815,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3920,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
