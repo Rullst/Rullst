@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788520834764,
+  "lastUpdate": 1788531057221,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -7097,6 +7097,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 688,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "ac516494771e79c55e5f8ae808d7fc52fb75576e",
+          "message": "fix(ci): make manual verification evidence executable",
+          "timestamp": "2026-09-04T10:56:37-03:00",
+          "tree_id": "db47deb3667d2137074d1d11ae5e8b4c8c1a9419",
+          "url": "https://github.com/Rullst/Rullst/commit/ac516494771e79c55e5f8ae808d7fc52fb75576e"
+        },
+        "date": 1788531056788,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1761,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 390,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 787,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
