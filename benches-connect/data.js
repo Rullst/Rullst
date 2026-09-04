@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788514028753,
+  "lastUpdate": 1788520599768,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -5633,6 +5633,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 316,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e35c9c5e564bca1998c7b3ee3d63b81f1cf339ad",
+          "message": "fix(test): make release checks deterministic on Windows",
+          "timestamp": "2026-09-04T07:57:53-03:00",
+          "tree_id": "e1fcbd8d0aeb563cb4045c3f8f5adf111882cc17",
+          "url": "https://github.com/Rullst/Rullst/commit/e35c9c5e564bca1998c7b3ee3d63b81f1cf339ad"
+        },
+        "date": 1788520599315,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 562,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
