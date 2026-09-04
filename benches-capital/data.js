@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788555636469,
+  "lastUpdate": 1788564543811,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -6412,6 +6412,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "45fbdbe795f19602fe25988ae449a2e49e0158a6",
+          "message": "fix(audit): report skipped checks accurately",
+          "timestamp": "2026-09-04T20:08:19-03:00",
+          "tree_id": "495ddaa7bbe4d69c0f0bbb9868765b50dcac1b13",
+          "url": "https://github.com/Rullst/Rullst/commit/45fbdbe795f19602fe25988ae449a2e49e0158a6"
+        },
+        "date": 1788564543274,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 15,
             "range": "± 0",
             "unit": "ns/iter"
           },
