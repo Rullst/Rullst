@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788480964667,
+  "lastUpdate": 1788484299787,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -8825,6 +8825,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4693,
             "range": "± 64",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "704b6d4dd3a4731d5eedd3c70677bd3f2fc97def",
+          "message": "fix(ci): stabilize cross-platform CLI coverage",
+          "timestamp": "2026-09-03T21:57:39-03:00",
+          "tree_id": "e039358b703cdddcc4b9ffd49d08f483f3add2d2",
+          "url": "https://github.com/Rullst/Rullst/commit/704b6d4dd3a4731d5eedd3c70677bd3f2fc97def"
+        },
+        "date": 1788484299252,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 875,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 713,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1608,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2142,
+            "range": "± 63",
             "unit": "ns/iter"
           }
         ]
