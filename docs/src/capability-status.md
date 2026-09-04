@@ -14,27 +14,25 @@ meets its approved B exception. All 15 active crates have also reached their
 higher audited local ceiling: **1,509/1,509 local campaign points are backed by
 repository evidence (100%), with zero planning points remaining**. The exact
 SHA still earns those dimensions only when its conditioning gates pass. The
-broader [v12 release programme](v12.md) estimates RC readiness at 70.8%; therefore this
+broader [v12 release programme](v12.md) estimates RC readiness at 82.8%; therefore this
 is still a **NO-GO**, not a release announcement.
 
-Coverage is a separate open RC gate. The latest complete predecessor Codecov
-checkpoint used for this snapshot (`194b5c8a`) records 85.16% across the whole
-repository and 91.32% for the `framework_libraries` component. Both target at
-least 90%. The current candidate adds process-level, behavior-asserting CLI
-coverage which projects 90.09% against that exact predecessor line map, but it
-does not become release evidence until Codecov measures the candidate SHA.
+Coverage is a separate RC gate. Codecov measured candidate `704b6d4d` at
+90.03% across the whole repository and 91.30% for the `framework_libraries`
+component, so both candidate views exceed their zero-tolerance 90% targets.
+This is valid candidate evidence, not evidence for a future commit or tag; the
+same gates must pass again on the exact frozen RC SHA.
 
 | Coverage view | Audited checkpoint | RC meaning |
 | :--- | :---: | :--- |
-| Whole repository | **85.16% official predecessor; 90.09% local candidate projection** | **Still unverified / release blocker.** This is the primary public number and includes the CLI and proc-macro production sources. |
-| Framework libraries | **91.32%** | Passing its separate component gate on the predecessor, but it cannot compensate for or replace the whole-repository result. |
-| v12 RC requirement | **at least 90% in both views** | Must be reproduced by Codecov on the exact frozen RC commit, together with at least 90% patch coverage. |
+| Whole repository | **90.03%** (74,032/82,227) on `704b6d4d` | **Passing on the candidate.** This primary public number includes CLI and proc-macro production sources and is 27 covered lines above the exact cut. |
+| Framework libraries | **91.30%** (55,932/61,265) on `704b6d4d` | Passing its separate component gate; it does not replace the whole-repository result. |
+| v12 RC requirement | **at least 90% in both views** | Candidate requirement met; must be reproduced by Codecov on the exact frozen RC commit, together with at least 90% patch coverage. |
 
 The two percentages are neither conflicting measurements nor values to
-average: they answer questions about different path sets. Until Codecov records
-at least 90% in the first row on the exact candidate SHA, Rullst must not
-present the second row or the local projection as the repository's verified
-total coverage.
+average: they answer questions about different path sets. Rullst must keep the
+whole-repository result primary and must not reuse this candidate's passing
+result as proof for a later SHA that Codecov has not measured.
 
 The latest ceiling gain is the umbrella `rullst` facade's dedicated shared-local
 SQLite profile. It composes Auth revocation, Capital quota, encrypted Connect
