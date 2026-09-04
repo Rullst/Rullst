@@ -51,6 +51,10 @@ for crate in "${crates[@]}"; do
         echo "Potential secret material in $archive: $relative"
         exit 1
         ;;
+      *.db|*.db-*|*.sqlite|*.sqlite-*|*.sqlite3|*.sqlite3-*|*.wal|*.shm|memdb_*|*/memdb_*|*_test_db|*_test_db_*)
+        echo "Runtime database state must not be packaged: $relative"
+        exit 1
+        ;;
     esac
 
     case "$relative" in

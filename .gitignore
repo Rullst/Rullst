@@ -6,6 +6,10 @@ target_dev_test/
 *.db-journal
 *.db-shm
 *.db-wal
+*_test_db
+*_test_db_*
+**/*_test_db
+**/*_test_db_*
 /storage/
 /*/storage/
 
