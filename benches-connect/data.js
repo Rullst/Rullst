@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788481040366,
+  "lastUpdate": 1788484317098,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -5453,6 +5453,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 497,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "704b6d4dd3a4731d5eedd3c70677bd3f2fc97def",
+          "message": "fix(ci): stabilize cross-platform CLI coverage",
+          "timestamp": "2026-09-03T21:57:39-03:00",
+          "tree_id": "e039358b703cdddcc4b9ffd49d08f483f3add2d2",
+          "url": "https://github.com/Rullst/Rullst/commit/704b6d4dd3a4731d5eedd3c70677bd3f2fc97def"
+        },
+        "date": 1788484316555,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 400,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
