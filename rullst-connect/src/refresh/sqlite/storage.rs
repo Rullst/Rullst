@@ -156,6 +156,13 @@ fn volatile_database_url(database_url: &str, filename: &Path) -> bool {
 }
 
 fn reject_existing_unsafe_target(path: &Path) -> Result<(), TokenStoreError> {
+    #[cfg(windows)]
+    let portable_path = path.as_os_str().to_string_lossy();
+    #[cfg(windows)]
+    let path = windows_file_url_target(&portable_path)
+        .map(Path::new)
+        .unwrap_or(path);
+
     match std::fs::symlink_metadata(path) {
         Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_file() => Err(
             TokenStoreError::InvalidConfiguration("target must be a regular file"),
@@ -163,5 +170,38 @@ fn reject_existing_unsafe_target(path: &Path) -> Result<(), TokenStoreError> {
         Ok(_) => Ok(()),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(_) => Err(unavailable("inspect database target")),
+    }
+}
+
+#[cfg(any(windows, test))]
+fn windows_file_url_target(path: &str) -> Option<&str> {
+    let bytes = path.as_bytes();
+    (bytes.len() >= 3
+        && matches!(bytes[0], b'/' | b'\\')
+        && bytes[1].is_ascii_alphabetic()
+        && bytes[2] == b':')
+        .then(|| &path[1..])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::windows_file_url_target;
+
+    #[test]
+    fn windows_file_url_target_removes_only_a_leading_drive_separator() {
+        assert_eq!(
+            windows_file_url_target("/C:/temp/connect.sqlite"),
+            Some("C:/temp/connect.sqlite")
+        );
+        assert_eq!(
+            windows_file_url_target("\\D:/temp/connect.sqlite"),
+            Some("D:/temp/connect.sqlite")
+        );
+        assert_eq!(windows_file_url_target("C:/temp/connect.sqlite"), None);
+        assert_eq!(windows_file_url_target("/tmp/connect.sqlite"), None);
+        assert_eq!(
+            windows_file_url_target("//server/share/connect.sqlite"),
+            None
+        );
     }
 }
