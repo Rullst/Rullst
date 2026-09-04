@@ -5,7 +5,7 @@ is not evidence that a workflow has passed for a particular commit. A green
 claim must always point to the GitHub Actions run, commit SHA, logs, and produced
 artifacts.
 
-Last source-level review: **2026-09-02**.
+Last source-level review: **2026-09-04**.
 
 ## Status language
 
@@ -336,6 +336,12 @@ These ideas remain valuable, but are not current guarantees:
 | PGO and BOLT | **Not implemented — defer until production profiles exist.** Fixed throughput-gain percentages must not be promised in advance. |
 | Chaos testing with `fail-rs` | **Not implemented — worth implementing** around queues, database retries, and provider timeouts after deterministic failure contracts exist. |
 | AFL.rs/honggfuzz differential fuzzing | **Not implemented — valuable after the 40 libFuzzer targets have healthy corpora and triage ownership.** |
+| Differential database testing | **Not implemented — high-value v13 work.** Run equivalent generated ORM operations against the supported relational backends and compare normalized results, errors and transaction behavior; keep provider-specific semantics explicit instead of forcing false equivalence. |
+| Cross-browser and accessibility testing | **Not implemented — high-value v13 work.** Exercise generated applications with Playwright across Chromium, Firefox and WebKit, add keyboard and automated accessibility checks, and retain traces/screenshots for failures. This would complement, not replace, ZAP and server-level integration tests. |
+| Mobile physical-device farms | **Not implemented — requires external infrastructure.** Add Android and iOS device-farm execution, lifecycle/network interruption scenarios and signed-package evidence when accounts and secrets are governed. Simulator and compile checks must not be presented as physical-device or store-acceptance proof. |
+| Desktop GUI, installer and signing matrix | **Not implemented — requires platform signing operations.** Exercise real WebView sessions and packaged installers on supported Linux, Windows and macOS versions, then validate signatures/notarization without exposing signing credentials to untrusted pull requests. |
+| Live provider sandbox conformance | **Not implemented — requires governed provider accounts.** Add opt-in acceptance suites for payment, mail, OAuth, AI, search and storage providers, recording provider/version/region while preserving deterministic offline fixtures as the contribution baseline. |
+| Independent security review and penetration test | **External evidence — strongly recommended before broad production assurances.** Define scope, remediation ownership and retest criteria; repository automation cannot award this evidence to itself. |
 | Sigstore Cosign signing | **Not implemented.** Consider it for separately distributed binaries/containers; current `.crate` provenance and checksums should remain the immediate priority. |
 | Absolute “100% pure Rustls” mandate | **Not established and not recommended as a marketing absolute.** Enforce an audited TLS dependency policy based on supported platforms and threat model instead. |
 | Complete upstream OSS-Fuzz integration | **Partial draft — worth finishing.** Validate every intended target with `helper.py build_fuzzers` and `check_build`, then submit upstream; do not imply acceptance before merge. |
