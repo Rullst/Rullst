@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788501536133,
+  "lastUpdate": 1788508089983,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -9017,6 +9017,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4104,
             "range": "± 31",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "eec6ac711af806f41a755035370566d3336cbbd9",
+          "message": "fix(connect): normalize Windows SQLite file URLs",
+          "timestamp": "2026-09-04T04:30:46-03:00",
+          "tree_id": "8129f94aa0b8325f1a7ba4fc7fbce297194ee16d",
+          "url": "https://github.com/Rullst/Rullst/commit/eec6ac711af806f41a755035370566d3336cbbd9"
+        },
+        "date": 1788508089188,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1092,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 879,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 2008,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4620,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
