@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788530886146,
+  "lastUpdate": 1788536999524,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -5692,6 +5692,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 564,
+            "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "3373e8236c5f33c1184c16b2bb5756c5775dca67",
+          "message": "fix(ci): isolate bounded Kani proofs",
+          "timestamp": "2026-09-04T12:31:28-03:00",
+          "tree_id": "10b5aab5776795a921f02e684b53a2c89a7df565",
+          "url": "https://github.com/Rullst/Rullst/commit/3373e8236c5f33c1184c16b2bb5756c5775dca67"
+        },
+        "date": 1788536998976,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 462,
             "range": "± 5",
             "unit": "ns/iter"
           }
