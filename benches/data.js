@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788513573428,
+  "lastUpdate": 1788519799205,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -17165,6 +17165,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1217,
             "range": "± 36",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e35c9c5e564bca1998c7b3ee3d63b81f1cf339ad",
+          "message": "fix(test): make release checks deterministic on Windows",
+          "timestamp": "2026-09-04T07:57:53-03:00",
+          "tree_id": "e1fcbd8d0aeb563cb4045c3f8f5adf111882cc17",
+          "url": "https://github.com/Rullst/Rullst/commit/e35c9c5e564bca1998c7b3ee3d63b81f1cf339ad"
+        },
+        "date": 1788519797902,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 815,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1071,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 640,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2346,
+            "range": "± 75",
             "unit": "ns/iter"
           }
         ]
