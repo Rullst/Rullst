@@ -1,4 +1,4 @@
-name: Miri UB Detection (manual informational)
+name: Miri UB Detection (manual bounded evidence)
 
 on:
   workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
@@ -12,29 +12,113 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  MIRI_TOOLCHAIN: nightly-2026-08-21
 
 jobs:
   miri:
-    name: Miri informational (${{ matrix.package }})
+    name: Miri strict (${{ matrix.scope }})
     runs-on: ubuntu-latest
-    timeout-minutes: 60  # Miri can run indefinitely on heavy async crates; cap each job
+    timeout-minutes: 35
     strategy:
       fail-fast: false
+      max-parallel: 4
       matrix:
-        package: ['rullst', 'rullst-macros', 'cargo-rullst', 'rullst-orm-macros', 'rullst-auth', 'rullst-core', 'rullst-ai', 'rullst-capital', 'rullst-security', 'rullst-iot', 'rullst-nexus', 'rullst-studio', 'rullst-mail', 'rullst-connect', 'rullst-orm', 'rullst-messaging', 'rullst-blog-example']
+        include:
+          - scope: rullst-connect/client boundary
+            manifest: rullst-connect/Cargo.toml
+            filter: client::tests
+          - scope: rullst-core/security baseline
+            manifest: rullst-core/Cargo.toml
+            filter: security::baseline::tests
+          - scope: rullst-macros/RPC expansion
+            manifest: rullst-macros/Cargo.toml
+            filter: server_function::tests
+          - scope: rullst-orm/privacy envelopes
+            manifest: rullst-orm/Cargo.toml
+            filter: privacy::tests
+          - scope: rullst-orm-macros/parser
+            manifest: rullst-orm-macros/Cargo.toml
+            filter: parser::tests
+          - scope: rullst-iot/signed OTA
+            manifest: rullst-iot/Cargo.toml
+            filter: ota::tests
+          - scope: rullst-ai/audit validation
+            manifest: rullst-ai/Cargo.toml
+            filter: ai::audit_delivery::validation::validation_tests
+          - scope: rullst-auth/passkey ceremony
+            manifest: rullst-auth/Cargo.toml
+            filter: auth::passkey::ceremony::tests
+          - scope: rullst-capital/billable contract
+            manifest: rullst-capital/Cargo.toml
+            filter: billable::tests
+          - scope: rullst-mail/tracking tokens
+            manifest: rullst-mail/Cargo.toml
+            filter: tracking::tests
+          - scope: rullst-messaging/wire contract
+            manifest: rullst-messaging/Cargo.toml
+            filter: wire::tests
+          - scope: rullst-nexus/input validation
+            manifest: rullst-nexus/Cargo.toml
+            filter: nexus::crud::input::tests
+          - scope: rullst-security/audit chain
+            manifest: rullst-security/Cargo.toml
+            filter: audit::chain::tests
+          - scope: rullst-studio/parameter binding
+            manifest: rullst-studio/Cargo.toml
+            filter: data_browser::handlers::mutations::tests
+          - scope: cargo-rullst/IDOR audit
+            manifest: cargo-rullst/Cargo.toml
+            filter: generators::audit::tests
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      
-      - name: Install Rust Nightly with Miri
+
+      - name: Install pinned Rust Nightly with Miri
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # nightly
         with:
-          toolchain: nightly
+          toolchain: nightly-2026-08-21
           components: miri
 
-      - name: Run Miri (non-blocking, no isolation)
-        working-directory: ${{ matrix.package }}
-        continue-on-error: true
+      - name: Run strict bounded Miri scope
         env:
-          RUSTFLAGS: "-Zrandomize-layout"
-          MIRIFLAGS: "-Zmiri-disable-isolation"
-        run: cargo +nightly miri test
+          MIRI_MANIFEST: ${{ matrix.manifest }}
+          MIRI_TEST_FILTER: ${{ matrix.filter }}
+          RUSTFLAGS: -Zrandomize-layout
+          MIRIFLAGS: -Zmiri-disable-isolation
+        run: |
+          scope_list="$RUNNER_TEMP/miri-scope.txt"
+          cargo +"$MIRI_TOOLCHAIN" miri test \
+            --manifest-path "$MIRI_MANIFEST" \
+            --lib "$MIRI_TEST_FILTER" -- --list | tee "$scope_list"
+
+          if ! grep --fixed-strings --quiet "$MIRI_TEST_FILTER" "$scope_list"; then
+            echo "Selected Miri scope did not discover any tests: $MIRI_TEST_FILTER" >&2
+            exit 1
+          fi
+
+          cargo +"$MIRI_TOOLCHAIN" miri test \
+            --manifest-path "$MIRI_MANIFEST" \
+            --lib "$MIRI_TEST_FILTER"
+
+  boundary:
+    name: Miri evidence boundary
+    if: always()
+    needs: miri
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record interpretation boundary
+        env:
+          MATRIX_RESULT: ${{ needs.miri.result }}
+        run: |
+          {
+            echo "## Miri bounded evidence"
+            echo
+            echo "Strict matrix result: \`$MATRIX_RESULT\`."
+            echo
+            echo "The matrix exercises 15 named pure-Rust/default-feature scopes."
+            echo "The umbrella re-export facade and Blog application add no separate Miri scope."
+            echo "Native ring, AWS-LC, SQLite, OS syscall, network, and provider paths are outside Miri's interpreter boundary and remain covered by native CI, integration tests, and sanitizers."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$MATRIX_RESULT" != "success" ]]; then
+            exit 1
+          fi

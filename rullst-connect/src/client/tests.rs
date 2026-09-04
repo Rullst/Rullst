@@ -1,5 +1,7 @@
 use super::request_builder::{HttpClientExt, RequestBuilder, ResponseWrapper};
-use super::reqwest_client::{ReqwestClient, parse_content_length};
+use super::reqwest_client::ReqwestClient;
+#[cfg(not(miri))]
+use super::reqwest_client::parse_content_length;
 use super::traits::{HttpClient, HttpRequest, HttpResponse};
 use async_trait::async_trait;
 use serde_json::json;

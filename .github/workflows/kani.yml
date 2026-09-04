@@ -1,4 +1,4 @@
-name: Kani Verifier (manual informational)
+name: Kani Verifier (manual bounded evidence)
 
 on:
   workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
@@ -12,29 +12,101 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # The latest stable Kani bundle uses rustc 1.93 and cannot compile Rullst's
+  # declared Rust 1.96 MSRV. This reviewed upstream snapshot uses a compatible
+  # nightly and is built from its immutable source revision in this run.
+  KANI_SOURCE_REV: b07abe8a72f8eb1ef1ea3521ca6b00a973d341bc
+  KANI_CRATE_VERSION: 0.67.0
 
 jobs:
+  build-kani:
+    name: Build pinned Kani development bundle
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout immutable Kani source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: model-checking/kani
+          ref: ${{ env.KANI_SOURCE_REV }}
+          path: .kani-source
+          persist-credentials: false
+
+      - name: Install pinned Kani build dependencies
+        working-directory: .kani-source
+        run: |
+          rustup toolchain install nightly-2026-08-21 \
+            --profile minimal \
+            --component llvm-tools,rustc-dev,rust-src,rustfmt
+          ./scripts/setup/ubuntu/install_deps.sh
+          git config --global --add safe.directory "$PWD"
+          GIT_LFS_SKIP_SMUDGE=1 git submodule update --init --depth 1
+
+      - name: Build Kani bundle and installer crate
+        working-directory: .kani-source
+        run: |
+          cargo bundle -- latest
+          cargo package -p kani-verifier
+
+      - name: Upload immutable Kani bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kani-development-bundle-${{ env.KANI_SOURCE_REV }}
+          path: .kani-source/kani-latest-x86_64-unknown-linux-gnu.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload immutable Kani installer
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kani-development-installer-${{ env.KANI_SOURCE_REV }}
+          path: .kani-source/target/package/kani-verifier-${{ env.KANI_CRATE_VERSION }}.crate
+          if-no-files-found: error
+          retention-days: 7
+
   kani:
-    name: kani informational (${{ matrix.package }})
+    name: kani bounded (${{ matrix.package }})
+    needs: build-kani
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
-        package: ['rullst-core', 'rullst-security', 'rullst-auth', 'rullst-connect', 'rullst-iot', 'rullst-ai', 'rullst-capital', 'rullst-nexus', 'rullst-studio', 'rullst-mail', 'rullst-macros']
+        package: ['rullst-core', 'rullst-security', 'rullst-auth', 'rullst-connect', 'rullst-iot', 'rullst-ai', 'rullst-capital', 'rullst-nexus', 'rullst-studio', 'rullst-mail']
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install Kani 0.67.0
-        run: cargo install kani-verifier --version 0.67.0 --locked && cargo kani setup
+      - name: Download immutable Kani bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: kani-development-bundle-${{ env.KANI_SOURCE_REV }}
+          path: ${{ runner.temp }}/kani-bundle
 
-      - name: Verify with Kani (non-blocking research harnesses)
+      - name: Download immutable Kani installer
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: kani-development-installer-${{ env.KANI_SOURCE_REV }}
+          path: ${{ runner.temp }}/kani-installer
+
+      - name: Install pinned Kani development snapshot
+        run: |
+          mkdir -p "$RUNNER_TEMP/kani-installer/unpacked"
+          tar -xzf \
+            "$RUNNER_TEMP/kani-installer/kani-verifier-${KANI_CRATE_VERSION}.crate" \
+            -C "$RUNNER_TEMP/kani-installer/unpacked"
+          cargo install --locked \
+            --path "$RUNNER_TEMP/kani-installer/unpacked/kani-verifier-${KANI_CRATE_VERSION}"
+          cargo kani setup --use-local-bundle \
+            "$RUNNER_TEMP/kani-bundle/kani-latest-x86_64-unknown-linux-gnu.tar.gz"
+          cargo kani --version
+
+      - name: Verify bounded Kani harnesses
         working-directory: ${{ matrix.package }}
-        continue-on-error: true
         timeout-minutes: 90
         run: |
-          # --default-unwind-bound 5: caps loop unrolling to prevent OOM from
-          # unbounded loops in crypto crates (subtle::ct_eq was at 5733 iterations).
-          # --jobs 1: prevents parallel SAT solvers from competing for runner RAM.
+          # --default-unwind 5 caps loop unrolling to prevent OOM from
+          # unbounded loops in crypto crates. --jobs 1 prevents parallel SAT
+          # solvers from competing for runner RAM. A proof failure now fails
+          # its matrix job instead of being hidden by continue-on-error.
           cargo kani --default-unwind 5 --jobs 1

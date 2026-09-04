@@ -62,10 +62,8 @@ uuid = { workspace = true, features = ["v4", "rng-getrandom"] }
 dashmap = { workspace = true }
 cron = "0.17.0"
 chrono = { workspace = true, features = ["clock"] }
-urlencoding = { workspace = true }
 validator = { workspace = true, features = ["derive"] }
 libloading = { workspace = true }
-notify = { workspace = true }
 ring = { workspace = true, features = ["std"] }
 tracing = { workspace = true }
 tracing-core = { workspace = true }
@@ -86,7 +84,7 @@ uuid = { workspace = true, features = ["v4", "rng-getrandom"] }
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_ProcessStatus", "Win32_System_Threading"] }
 
 [package.metadata.cargo-machete]
-ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth", "windows-sys"]
+ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "base64", "ring", "rullst-auth", "windows-sys"]
 
 [dev-dependencies]
 criterion = { workspace = true, features = ["async_tokio"] }

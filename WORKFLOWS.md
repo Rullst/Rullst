@@ -5,7 +5,7 @@ is not evidence that a workflow has passed for a particular commit. A green
 claim must always point to the GitHub Actions run, commit SHA, logs, and produced
 artifacts.
 
-Last source-level review: **2026-09-02**.
+Last source-level review: **2026-09-04**.
 
 ## Status language
 
@@ -47,8 +47,8 @@ The workflows below run **only when requested manually**:
 | :--- | :--- | :--- |
 | `dast-zap.yml` | OWASP ZAP baseline against a release blog showcase plus fresh generated REST API and complete LMS applications | REST/LMS warnings and failures block unless an exact rule ID is versioned as `INFO` with a local explanation in `.zap/`; those configs are passed explicitly to the pinned scanner and unlisted warnings remain live. The showcase is informational because it deliberately uses third-party presentation assets; reports and application logs are retained. This remains representative, not universal deployment coverage. |
 | `fuzzing.yml` | All 40 declared libFuzzer targets from the validated shared inventory | Every matrix job must finish without a crash for the configured time budget; target-specific corpora are restored and saved, while failure reproducers are retained. This is bounded evidence, not proof for every input. |
-| `kani.yml` | Bounded formal harnesses in the eleven packages that declare them | Informational: Kani 0.67.0 is pinned, but commands use `continue-on-error`, so inspect each step rather than equating a green outer job with proof. |
-| `miri.yml` | Randomized-layout Miri attempt across all 17 workspace packages | Informational for the same reason; unsupported paths and tolerated step failures must be recorded explicitly. |
+| `kani.yml` | Bounded formal harnesses in ten supported runtime/library packages | Informational release evidence, but proof failures fail their matrix jobs. Rullst builds an immutable reviewed Kani development snapshot because the latest stable bundle's Rust 1.93 compiler is older than the framework's Rust 1.96 MSRV. The proc-macro-only `rullst-macros` target remains unsupported by Kani and is covered by compile-pass/fail and generated-project evidence instead. |
+| `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | Informational release evidence, but every selected scope is strict. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. |
 | `mutants.yml` | Eight mutation-testing shards and their artifacts | Informational: review survived/timed-out mutants and the measured score. “Pass” does not honestly mean every possible mutant was killed. |
 
 These workflows are **periodic and manually runnable**:
@@ -197,11 +197,18 @@ higher component result for the repository total.
 
 ### Formal, dynamic, and stress analysis
 
-- Kani and Miri are manual and `continue-on-error`; their results are research
-  evidence scoped to the harnesses/packages that actually execute. Kani 0.67.0
-  attempts every package with a declared proof harness; Miri attempts all 17
-  workspace packages. Kani no longer rewrites workspace or Cargo-registry
-  manifests to bypass MSRV data.
+- Kani and Miri are manual research evidence scoped to the harnesses/packages
+  that actually execute. Kani builds reviewed upstream revision
+  `b07abe8a72f8eb1ef1ea3521ca6b00a973d341bc` into its bundle and installer,
+  then treats proof failures in ten supported packages as real matrix
+  failures. It does not rewrite workspace or Cargo-registry manifests to bypass
+  MSRV data. Kani cannot verify the proc-macro-only `rullst-macros` target.
+  Miri pins `nightly-2026-08-21` and strictly executes 15 named
+  pure-Rust/default-feature scopes. Its matrix excludes native `ring`, AWS-LC,
+  SQLite, OS-syscall and network/provider execution that Miri cannot interpret;
+  native CI, integration tests and sanitizers remain the applicable evidence
+  for those paths. The `rullst` umbrella re-export facade and Blog example add
+  no separate interpreter scope. A selected-scope failure fails the run.
 - Mutation testing is manual, split into eight shards, and intentionally
   non-blocking while results are uploaded.
 - `cargo-udeps` is weekly/manual and explicitly non-blocking.
@@ -300,9 +307,9 @@ dependency graph make static estimates unreliable.
 | [`e2e-smoke.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/e2e-smoke.yml) | main push and PR, manual | Blocking | Boots the release blog example and checks HTTP, headers, form flow, and SQLite persistence. |
 | [`fuzzing.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/fuzzing.yml) | manual | On-demand | Forty validated libFuzzer matrix jobs, each capped below six hours, with per-target corpus caching and failure reproducers. |
 | [`iot-integration.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/iot-integration.yml) | main push and PR, manual | Blocking | Host IoT tests, signed OTA invariants, and one Cortex-M no-std build; no hardware claim. |
-| [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | manual | Informational | Pinned Kani 0.67.0 attempts the bounded research harnesses in all eleven packages that declare them; failures do not fail the workflow job. |
+| [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | manual | Informational release evidence; proof jobs are strict | Builds an immutable reviewed Kani development snapshot compatible with Rullst's MSRV, then verifies bounded harnesses in ten supported packages. Proof failures fail their matrix jobs; the proc-macro-only crate remains outside Kani's supported targets. |
 | [`machete.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/machete.yml) | main push and PR, manual | Blocking | Unused dependency scan with configured exceptions. |
-| [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | manual | Informational | Miri attempts all 17 workspace packages with randomized layouts; unsupported-package failures are tolerated and must be reviewed. |
+| [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | manual | Informational release evidence; selected scopes are strict | Pinned Miri executes 15 named pure-Rust/default-feature scopes with randomized layouts. Native FFI/syscall/network paths, the umbrella re-export facade, and the Blog example are explicit boundaries; selected-scope failures fail the workflow. |
 | [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | Eight pinned cargo-mutants 27.1.0 shards with uploaded results. |
 | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | main push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
 | [`omni-android.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-android.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh deterministic Omni shell, initializes Android and compiles an unsigned aarch64 debug APK. It does not test a physical device, Play testing, signing, privacy declarations or store acceptance. |
