@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788486819065,
+  "lastUpdate": 1788495573850,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -5512,6 +5512,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 589,
+            "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "2f160d7557b716c35b56e60b7db2934a301dc1a3",
+          "message": "fix(ci): harden release test campaigns",
+          "timestamp": "2026-09-04T00:58:24-03:00",
+          "tree_id": "300ce842f5f7489c121ef7092f33fa800fb466e0",
+          "url": "https://github.com/Rullst/Rullst/commit/2f160d7557b716c35b56e60b7db2934a301dc1a3"
+        },
+        "date": 1788495573389,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 578,
             "range": "± 2",
             "unit": "ns/iter"
           }
