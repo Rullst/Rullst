@@ -424,11 +424,11 @@ pub fn run_security_audit_with_exceptions(
                         EvidenceStatus::NoFindings
                     } else {
                         println!(
-                            "  {} No unexcepted advisories reported; governed exceptions remain unresolved: {}.",
+                            "  {} No findings outside the governed exceptions; exceptions remain unresolved: {}.",
                             "[OK]".green(),
                             audit_ignores.join(", ")
                         );
-                        EvidenceStatus::NoUnexceptedFindings(audit_ignores.to_vec())
+                        EvidenceStatus::NoFindingsOutsideExceptions(audit_ignores.to_vec())
                     }
                 }
                 Ok(out) => {
@@ -464,8 +464,14 @@ pub fn run_security_audit_with_exceptions(
         "  {} Auditing memory safety & unsafe code blocks (Cargo Geiger)...",
         "[GEIGER]".bright_cyan()
     );
+    let unsafe_source_available = Path::new("src").is_dir();
     let (unsafe_count, unsafe_warnings) = scan_unsafe_code(Path::new("src"));
-    if unsafe_count == 0 {
+    if !unsafe_source_available {
+        println!(
+            "  {} No project src directory was available; the bounded unsafe scan was not executed.",
+            "[INFO]".blue()
+        );
+    } else if unsafe_count == 0 {
         println!(
             "  {} The bounded project-source heuristic found no unsafe syntax.",
             "[OK]".green()
@@ -640,7 +646,7 @@ pub fn run_security_audit_with_exceptions(
                 EvidenceStatus::Findings(weak_secret_findings)
             },
             dependency_audit,
-            unsafe_scan: if !Path::new("src").is_dir() {
+            unsafe_scan: if !unsafe_source_available {
                 EvidenceStatus::NotChecked("no src directory was available to inspect")
             } else if unsafe_count == 0 {
                 EvidenceStatus::NoFindings

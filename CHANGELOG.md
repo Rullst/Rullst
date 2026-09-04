@@ -255,7 +255,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   gates must still pass on the exact frozen RC SHA.
 - Aligned `cargo rullst audit` with governed RustSec release exceptions through
   a repeatable, strictly validated `--audit-ignore RUSTSEC-YYYY-NNNN` option.
-  Successful excepted scans are reported as `NO UNEXCEPTED FINDINGS` and retain
+  Successful excepted scans are reported as `NO FINDINGS OUTSIDE EXCEPTIONS` and retain
   every unresolved advisory in the evidence report; the release workflow still
   validates its exception IDs, owners and expiry before invoking the CLI.
 - Added category-aware OAuth token revocation. `Provider::revoke_token` and
