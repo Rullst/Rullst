@@ -367,6 +367,13 @@ fn volatile_database_url(database_url: &str, filename: &Path) -> bool {
 }
 
 fn reject_existing_unsafe_target(path: &Path) -> Result<(), JwtError> {
+    #[cfg(windows)]
+    let portable_path = path.as_os_str().to_string_lossy();
+    #[cfg(windows)]
+    let path = windows_file_url_target(&portable_path)
+        .map(Path::new)
+        .unwrap_or(path);
+
     match std::fs::symlink_metadata(path) {
         Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_file() => Err(
             JwtError::InvalidConfiguration("SQLite revocation target must be a regular file"),
@@ -377,6 +384,36 @@ fn reject_existing_unsafe_target(path: &Path) -> Result<(), JwtError> {
     }
 }
 
+#[cfg(any(windows, test))]
+fn windows_file_url_target(path: &str) -> Option<&str> {
+    let bytes = path.as_bytes();
+    (bytes.len() >= 3
+        && matches!(bytes[0], b'/' | b'\\')
+        && bytes[1].is_ascii_alphabetic()
+        && bytes[2] == b':')
+        .then(|| &path[1..])
+}
+
 fn backend_error(operation: &'static str) -> JwtError {
     JwtError::RevocationBackend(operation.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::windows_file_url_target;
+
+    #[test]
+    fn windows_file_url_target_removes_only_a_leading_drive_separator() {
+        assert_eq!(
+            windows_file_url_target("/C:/temp/auth.sqlite"),
+            Some("C:/temp/auth.sqlite")
+        );
+        assert_eq!(
+            windows_file_url_target("\\D:/temp/auth.sqlite"),
+            Some("D:/temp/auth.sqlite")
+        );
+        assert_eq!(windows_file_url_target("C:/temp/auth.sqlite"), None);
+        assert_eq!(windows_file_url_target("/tmp/auth.sqlite"), None);
+        assert_eq!(windows_file_url_target("//server/share/auth.sqlite"), None);
+    }
 }
