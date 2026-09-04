@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788484299787,
+  "lastUpdate": 1788486739382,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -8873,6 +8873,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2142,
             "range": "± 63",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "84d17f72e9a5ac66d05301486742ad52f56cd60e",
+          "message": "docs(release): record verified coverage gate",
+          "timestamp": "2026-09-03T22:34:38-03:00",
+          "tree_id": "328850642e071f51d6940a5cc1e84a1635638cab",
+          "url": "https://github.com/Rullst/Rullst/commit/84d17f72e9a5ac66d05301486742ad52f56cd60e"
+        },
+        "date": 1788486738565,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1055,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 854,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1921,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4081,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
