@@ -1,8 +1,9 @@
+#[cfg(unix)]
+use super::update_child_status;
 use super::{
     LogMsg, bounded_text, database_profile_from_env, exit_status, handle_key, handle_log_message,
     probe_port, render, send_action_output,
     state::{App, FocusPane, LogFilter, LogLevel, ServerStatus},
-    update_child_status,
 };
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{Terminal, backend::TestBackend};
