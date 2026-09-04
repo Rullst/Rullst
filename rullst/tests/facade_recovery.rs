@@ -223,6 +223,8 @@ async fn facade_shared_local_profile_recovers_and_fails_closed() {
     drop(quota);
     connect.close().await;
     mail.close().await;
+    broker.close().await;
+    queue.get_pool().close().await;
     drop(broker);
     drop(queue);
 
@@ -350,6 +352,8 @@ async fn facade_shared_local_profile_recovers_and_fails_closed() {
     drop(quota);
     connect.close().await;
     mail.close().await;
+    broker.close().await;
+    queue.get_pool().close().await;
     drop(broker);
     drop(queue);
     remove_database(&path);

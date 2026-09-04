@@ -119,6 +119,15 @@ impl<C: Clock> SqliteBroker<C> {
     pub fn config(&self) -> &BrokerConfig {
         &self.config
     }
+
+    /// Closes the shared SQLite pool and waits for every connection to stop.
+    ///
+    /// This is useful before replacing, moving, or removing the database file,
+    /// especially on platforms that deny those operations while a connection
+    /// still owns a file handle.
+    pub async fn close(&self) {
+        self.pool.close().await;
+    }
 }
 
 fn reject_existing_unsafe_target(path: &Path) -> Result<()> {

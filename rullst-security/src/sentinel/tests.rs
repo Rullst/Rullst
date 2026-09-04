@@ -38,6 +38,12 @@ fn solve(challenge: &ProofOfWorkChallenge) -> u64 {
         .expect("eight-bit challenge has a bounded solution")
 }
 
+fn find_non_solution(challenge: &ProofOfWorkChallenge) -> u64 {
+    (0..1_000_000)
+        .find(|nonce| !challenge.is_solution(*nonce))
+        .expect("eight-bit challenge has a bounded non-solution")
+}
+
 #[test]
 fn classifier_names_only_threshold_backed_patterns() {
     let classifier = ThreatClassifier::default();
@@ -87,6 +93,7 @@ fn proof_of_work_is_subject_bound_tamper_evident_expiring_and_one_shot() {
         .issue_at("peer:198.51.100.4".to_string(), 1_000)
         .expect("issued challenge");
     let solution = solve(&challenge);
+    let invalid_solution = find_non_solution(&challenge);
     assert_eq!(gate.active_challenges(), 1);
 
     assert_eq!(
@@ -97,7 +104,7 @@ fn proof_of_work_is_subject_bound_tamper_evident_expiring_and_one_shot() {
         gate.verify_at(
             "peer:198.51.100.4",
             challenge.token(),
-            solution.wrapping_add(1),
+            invalid_solution,
             1_001,
         ),
         Err(SentinelError::InvalidProof)
