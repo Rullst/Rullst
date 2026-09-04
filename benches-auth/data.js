@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788536921269,
+  "lastUpdate": 1788538640575,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -9257,6 +9257,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2573,
             "range": "± 17",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "7c2340f4d2365277c315bd45ea76bed43dd77d50",
+          "message": "fix(ci): harden formal and fuzz campaigns",
+          "timestamp": "2026-09-04T13:07:46-03:00",
+          "tree_id": "c7266b15cfdc8dd36459c5a91316dd2d09fa254e",
+          "url": "https://github.com/Rullst/Rullst/commit/7c2340f4d2365277c315bd45ea76bed43dd77d50"
+        },
+        "date": 1788538639660,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 946,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 782,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1710,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3700,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
