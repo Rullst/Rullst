@@ -101,6 +101,7 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M36** | Natural-language-to-SQL Studio data copilot | `[ ] Not implemented` *(worth a read-only, explainable assistant with schema allowlists, parameterization, preview, limits, and approval; autonomous production writes are not worth the risk)* | v13 research |
 | **M37** | One-click AI error-console autofix | `[~] Partial` *(worth retaining as a local, reviewable patch workflow — an autofix endpoint exists, but autonomous edits need diff preview, workspace confinement, audit, tests, and rollback)* | v13 |
 | **M38** | In-memory/local-NVMe SQLite read replicas with background synchronization | `[ ] Not implemented` *(worth vendor-specific adapters when demanded; generic “transparent replication” is not worth claiming because consistency and failover semantics belong to the selected database)* | v13 research |
+| **M39** | Optional self-hosted Rullst Gateway and load balancer | `[ ] Not implemented` *(worth a phased v13 design as a separate opt-in `rullst-gateway` crate/binary, preferably on a maintained proxy foundation such as Pingora. It should consume explicit readiness/drain signals and begin with bounded upstream selection, health checks, WebSocket forwarding and telemetry. It must not live inside `rullst-core` or claim parity with a managed global cloud service, whose network, DDoS controls, multi-zone operations and SLA are external infrastructure.)* | v13 research/foundation |
 
 ## Quantified planning horizon through v13
 
@@ -108,34 +109,34 @@ This second progress lens answers a different question from release readiness:
 how much of the **canonical long-term milestone programme through v13** remains
 if every milestone that is not yet `[x]` stays in scope?
 
-The snapshot below was recalculated on 31 August 2026 from M1–M38. It includes
+The snapshot below was recalculated on 4 September 2026 from M1–M39. It includes
 v12 hardening, continuous, next-SemVer, v13 and v13-research rows. M31 is excluded
 because the tracker explicitly assigns aerospace/autonomous/defence work to a
 separately governed future programme rather than the v12/v13 web framework.
 Detailed crate-roadmap checkboxes are not added again: they overlap with and
 decompose these canonical milestones, so a raw sum would double-count work.
 
-| State | Milestones | Share of the 37-milestone horizon |
+| State | Milestones | Share of the 38-milestone horizon |
 | :--- | ---: | ---: |
-| `[x]` bounded completion | **5** | **13.5%** |
-| `[~]` useful but incomplete foundation | **24** | **64.9%** |
-| `[ ]` not implemented | **8** | **21.6%** |
-| **Total in scope through v13** | **37** | **100%** |
+| `[x]` bounded completion | **5** | **13.2%** |
+| `[~]` useful but incomplete foundation | **24** | **63.2%** |
+| `[ ]` not implemented | **9** | **23.7%** |
+| **Total in scope through v13** | **38** | **100%** |
 
 Two calculations are intentionally retained:
 
-- **Strict closure:** 5/37 are closed, so **86.5% remains open** (32
+- **Strict closure:** 5/38 are closed, so **86.8% remains open** (33
   milestones). This is the correct answer when a partial milestone counts as
   unfinished.
-- **Weighted engineering maturity:** `(5 + 24 × 0.5) / 37` is **45.9% complete**,
-  leaving **54.1% equivalent work**. That remainder is the eight untouched
-  milestones (21.6 percentage points) plus the unfinished half of the 24
-  partial milestones (32.4 points).
+- **Weighted engineering maturity:** `(5 + 24 × 0.5) / 38` is **44.7% complete**,
+  leaving **55.3% equivalent work**. That remainder is the nine untouched
+  milestones (23.7 percentage points) plus the unfinished half of the 24
+  partial milestones (31.6 points).
 
 This is a scope/maturity indicator, not a duration estimate. Provider accounts,
 physical hardware, store acceptance, fiscal homologation, independent audits
 and research-grade cryptography cannot be completed by repository code alone.
-The 54.1% must not be added to the historical-claim campaign or the v12 release
+The 55.3% must not be added to the historical-claim campaign or the v12 release
 checklist because those lenses substantially overlap.
 
 ## AI-native vision, without absolutes
@@ -192,6 +193,12 @@ contains the more detailed evidence and acceptance boundaries.
 - **Framework-wide “production-ready” badge** *(`[!] Do not promise as one
   boolean` — worth publishing stability per crate/capability because routing can
   be stable while live fiscal and hardware integrations remain unavailable).*
+- **A first-party load balancer embedded in every application** *(`[!] Do not
+  make the default` — an opt-in `rullst-gateway` process is worth researching
+  for self-hosted deployments, but application serving and edge proxying need
+  independent failure, upgrade and privilege boundaries. Matching a managed
+  cloud load balancer's global infrastructure or SLA is not a repository-code
+  claim).*
 - **Static competitor matrix claiming other frameworks lack capabilities**
   *(`[!] Do not maintain without dated sources` — comparative research and a
   reproducible benchmark repository are worthwhile; timeless absence claims are
