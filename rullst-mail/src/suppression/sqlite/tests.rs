@@ -1,4 +1,19 @@
 use super::*;
+
+#[test]
+fn windows_file_url_target_removes_only_a_leading_drive_separator() {
+    assert_eq!(
+        windows_file_url_target("/C:/temp/mail.sqlite"),
+        Some("C:/temp/mail.sqlite")
+    );
+    assert_eq!(
+        windows_file_url_target("\\D:/temp/mail.sqlite"),
+        Some("D:/temp/mail.sqlite")
+    );
+    assert_eq!(windows_file_url_target("C:/temp/mail.sqlite"), None);
+    assert_eq!(windows_file_url_target("/tmp/mail.sqlite"), None);
+    assert_eq!(windows_file_url_target("//server/share/mail.sqlite"), None);
+}
 use crate::drivers::MemoryDriver;
 use crate::{MailDriver, MailError, Message, SuppressionGuard};
 use std::path::{Path, PathBuf};
