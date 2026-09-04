@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788501555769,
+  "lastUpdate": 1788508166077,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -5573,6 +5573,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 587,
             "range": "± 17",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "eec6ac711af806f41a755035370566d3336cbbd9",
+          "message": "fix(connect): normalize Windows SQLite file URLs",
+          "timestamp": "2026-09-04T04:30:46-03:00",
+          "tree_id": "8129f94aa0b8325f1a7ba4fc7fbce297194ee16d",
+          "url": "https://github.com/Rullst/Rullst/commit/eec6ac711af806f41a755035370566d3336cbbd9"
+        },
+        "date": 1788508165307,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 496,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
