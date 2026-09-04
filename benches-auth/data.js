@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788538640575,
+  "lastUpdate": 1788540712538,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -9304,6 +9304,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "make_login_cookie",
             "value": 3700,
+            "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "30c3251ae2d35fc96af30994b65b3307e05faae4",
+          "message": "fix(ci): pin verifier toolchains",
+          "timestamp": "2026-09-04T13:34:21-03:00",
+          "tree_id": "683e67c5829e2bc95f41e71ef0cf76f5e4d2936e",
+          "url": "https://github.com/Rullst/Rullst/commit/30c3251ae2d35fc96af30994b65b3307e05faae4"
+        },
+        "date": 1788540712063,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1077,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 867,
+            "range": "± 50",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1981,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4623,
             "range": "± 12",
             "unit": "ns/iter"
           }
