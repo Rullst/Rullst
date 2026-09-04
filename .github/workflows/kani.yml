@@ -21,13 +21,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: ['rullst-core', 'rullst-security', 'rullst-auth', 'rullst-connect', 'rullst-iot', 'rullst-orm', 'rullst-ai', 'rullst-capital', 'rullst-nexus', 'rullst-studio', 'rullst-mail']
+        package: ['rullst-core', 'rullst-security', 'rullst-auth', 'rullst-connect', 'rullst-iot', 'rullst-ai', 'rullst-capital', 'rullst-nexus', 'rullst-studio', 'rullst-mail', 'rullst-macros']
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install Kani
-        run: cargo install kani-verifier && cargo kani setup
+      - name: Install Kani 0.67.0
+        run: cargo install kani-verifier --version 0.67.0 --locked && cargo kani setup
 
       - name: Verify with Kani (non-blocking research harnesses)
         working-directory: ${{ matrix.package }}

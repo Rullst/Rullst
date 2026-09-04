@@ -47,7 +47,9 @@ jobs:
   test:
     name: Run Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    # A clean all-feature Windows build plus the full serial integration suite
+    # can legitimately exceed two hours without a reusable target directory.
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
@@ -56,8 +58,13 @@ jobs:
       - name: Checkout Monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Rust toolchain (with native cache)
+      - name: Set up Rust toolchain (with registry cache)
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        with:
+          # CLI integration tests intentionally create and remove nested Cargo
+          # targets. Caching the whole workspace target races the cache cleanup,
+          # emits false ENOENT annotations and uploads multi-gigabyte archives.
+          cache-targets: false
 
       - name: Run all workspace tests (Unit & Integration, all-features)
         # Note: --all-features activates strict-sqlite+strict-mysql+strict-postgres

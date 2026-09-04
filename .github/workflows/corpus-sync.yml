@@ -17,47 +17,85 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  cmin-corpus:
-    name: Minimize & Sync Fuzz Corpus
+  targets:
+    name: Validate fuzz target inventory
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - name: Checkout Monorepo
+      - name: Checkout monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Install Nightly Rust
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+      - name: Validate and export matrix
+        id: matrix
+        shell: bash
+        run: |
+          python3 .github/validate-fuzz-targets.py
+          matrix="$(jq -c '{include: .}' .github/fuzz-targets.json)"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  cmin-corpus:
+    name: Minimize ${{ matrix.target }} corpus
+    needs: targets
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.targets.outputs.matrix) }}
+
+    steps:
+      - name: Checkout monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # nightly
         with:
           toolchain: nightly
 
-      - name: Install cargo-fuzz
-        run: cargo install cargo-fuzz --locked || true
+      - name: Install cargo-fuzz 0.13.2
+        run: cargo install cargo-fuzz --version 0.13.2 --locked
 
-      - name: Restore Fuzz Corpus Cache
+      - name: Restore target corpus
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: fuzz/corpus/
-          key: fuzz-corpus-${{ github.sha }}
+          path: ${{ matrix.dir }}/corpus/${{ matrix.target }}
+          key: fuzz-corpus-v1-${{ matrix.target }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            fuzz-corpus-
+            fuzz-corpus-v1-${{ matrix.target }}-${{ github.sha }}-
+            fuzz-corpus-v1-${{ matrix.target }}-
 
-      - name: Minimize Seed Corpora (cmin)
+      - name: Warm and minimize target corpus
+        id: corpus
+        working-directory: ${{ matrix.dir }}
+        continue-on-error: true
+        shell: bash
+        env:
+          FUZZ_TARGET: ${{ matrix.target }}
         run: |
-          mkdir -p fuzz/corpus
-          echo "[INFO] Running corpus compaction across active fuzz targets..."
-          # Run cmin if fuzz targets and corpus directory exist
-          if [ -d "fuzz" ]; then
-            for target in $(cargo fuzz list 2>/dev/null || true); do
-              if [ -d "fuzz/corpus/$target" ]; then
-                echo "Minimizing corpus for target: $target"
-                cargo fuzz cmin "$target" || true
-              fi
-            done
+          mkdir -p "corpus/$FUZZ_TARGET"
+          args=(-max_total_time=60)
+          if [ "$FUZZ_TARGET" = "fuzz_parser" ]; then
+            args+=(-max_len=2048 -rss_limit_mb=4096)
           fi
+          cargo +nightly fuzz run "$FUZZ_TARGET" -- "${args[@]}"
+          cargo +nightly fuzz cmin "$FUZZ_TARGET" "corpus/$FUZZ_TARGET"
 
-      - name: Save Optimized Corpus Artifact
+      - name: Upload warm-up reproducer
+        if: steps.corpus.outcome == 'failure'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: minimized-fuzz-corpus
-          path: fuzz/corpus/
+          name: corpus-warmup-reproducer-${{ matrix.target }}
+          path: ${{ matrix.dir }}/artifacts/${{ matrix.target }}/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload minimized target corpus
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: minimized-fuzz-corpus-${{ matrix.target }}
+          path: ${{ matrix.dir }}/corpus/${{ matrix.target }}/
+          if-no-files-found: warn
           retention-days: 30

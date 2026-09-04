@@ -46,7 +46,12 @@ fn temporary_database() -> PathBuf {
 }
 
 fn database_url(path: &Path) -> String {
-    format!("sqlite://{}", path.to_string_lossy().replace('\\', "/"))
+    let portable_path = path.to_string_lossy().replace('\\', "/");
+    #[cfg(windows)]
+    let url = format!("sqlite:///{portable_path}");
+    #[cfg(not(windows))]
+    let url = format!("sqlite://{portable_path}");
+    url
 }
 
 fn remove_database(path: &Path) {

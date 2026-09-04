@@ -102,6 +102,15 @@ impl Drop for Project {
     }
 }
 
+fn sqlite_database_url(path: &Path) -> String {
+    let portable_path = path.to_string_lossy().replace('\\', "/");
+    #[cfg(windows)]
+    let url = format!("sqlite:///{portable_path}?mode=rwc");
+    #[cfg(not(windows))]
+    let url = format!("sqlite://{portable_path}?mode=rwc");
+    url
+}
+
 #[test]
 fn auth_resource_and_service_scaffolds_compose_in_one_project() {
     let project = Project::new();
@@ -241,7 +250,7 @@ fn package_and_database_introspection_commands_report_real_local_state() {
     assert!(!project.run(&["pkg", "add", "serde"]).status.success());
 
     let database = project.root.join("introspection.sqlite");
-    let database_url = format!("sqlite://{}?mode=rwc", database.display());
+    let database_url = sqlite_database_url(&database);
     tokio::runtime::Runtime::new()
         .expect("SQLite fixture runtime")
         .block_on(async {

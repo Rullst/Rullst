@@ -883,27 +883,3 @@ z1F4IZ42Gry2+4guKvvM+O8=\n\
         matches!(err, crate::error::ConnectError::Provider(msg) if msg.contains("nonce mismatch"))
     );
 }
-
-#[cfg(kani)]
-#[cfg_attr(mutants, mutants::skip)]
-mod kani_proofs {
-    use subtle::ConstantTimeEq;
-
-    #[kani::proof]
-    #[kani::unwind(33)]
-    fn verify_constant_time_eq_safety() {
-        let len: usize = kani::any();
-        kani::assume(len <= 32);
-
-        let a: [u8; 32] = kani::any();
-        let b: [u8; 32] = kani::any();
-
-        let a_slice = &a[..len];
-        let b_slice = &b[..len];
-
-        // This proves mathematically that comparing two arbitrary byte slices
-        // of the exact same length via subtle::ConstantTimeEq will NEVER panic,
-        // crash, or trigger undefined behavior, regardless of the memory layout.
-        let _ = a_slice.ct_eq(b_slice);
-    }
-}

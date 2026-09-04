@@ -41,6 +41,9 @@ jobs:
             exit 1
           fi
 
+      - name: Validate shared fuzz target inventory
+        run: python3 .github/validate-fuzz-targets.py
+
       - name: Run actionlint 1.7.7
         run: |
           docker run --rm \

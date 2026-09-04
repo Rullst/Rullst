@@ -538,7 +538,12 @@ mod tests {
             "rullst-capital-webhook-{label}-{}-{sequence}.sqlite",
             std::process::id()
         ));
-        (format!("sqlite://{}?mode=rwc", path.display()), path)
+        let portable_path = path.to_string_lossy().replace('\\', "/");
+        #[cfg(windows)]
+        let url = format!("sqlite:///{portable_path}?mode=rwc");
+        #[cfg(not(windows))]
+        let url = format!("sqlite://{portable_path}?mode=rwc");
+        (url, path)
     }
 
     async fn record_at(

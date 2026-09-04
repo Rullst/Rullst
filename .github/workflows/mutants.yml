@@ -34,7 +34,7 @@ jobs:
       - name: Install cargo-mutants
         uses: taiki-e/install-action@37f7c5781271959fb65b6b35224e28652ff2b63d # v2.87.0
         with:
-          tool: cargo-mutants
+          tool: cargo-mutants@27.1.0
 
       - name: Run mutants shard on whole workspace
         # We test the entire workspace, divided in 8 shards
