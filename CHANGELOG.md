@@ -249,9 +249,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   database forwarding, real SQLite introspection and schema diff, Wasm/Omni,
   Academy evidence, mail/chat, and forced ejection recovery. Coverage CI now
   retains the exact JSON and text line summaries for 30 days alongside LCOV;
-  Codecov measured candidate `704b6d4d` at 90.03% whole-repository coverage
-  (74,032/82,227) and 91.30% for framework libraries. The same zero-tolerance
+  Codecov measured candidate `27e81152` at 90.06% whole-repository coverage
+  (74,219/82,408) and 91.33% for framework libraries (56,119/61,446). The same
+  zero-tolerance
   gates must still pass on the exact frozen RC SHA.
+- Aligned `cargo rullst audit` with governed RustSec release exceptions through
+  a repeatable, strictly validated `--audit-ignore RUSTSEC-YYYY-NNNN` option.
+  Successful excepted scans are reported as `NO UNEXCEPTED FINDINGS` and retain
+  every unresolved advisory in the evidence report; the release workflow still
+  validates its exception IDs, owners and expiry before invoking the CLI.
 - Added category-aware OAuth token revocation. `Provider::revoke_token` and
   `revoke_refresh_token` reject malformed/oversized values before transport;
   bounded protocol fixtures cover Google, GitHub, Discord, Apple, Auth0 and

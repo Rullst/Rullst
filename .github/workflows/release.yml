@@ -186,7 +186,8 @@ jobs:
           # This command intentionally emits NOT CHECKED / NOT EVALUATED for
           # controls that a bounded source audit cannot establish.
           cargo run --locked -p cargo-rullst --bin rullst -- \
-            audit --idor --compliance --sbom
+            audit --idor --compliance --sbom \
+            --audit-ignore RUSTSEC-2023-0071
           mv SECURITY_COMPLIANCE.md \
             "$evidence_dir/security-evidence.md"
           mv sbom-cyclonedx.json \

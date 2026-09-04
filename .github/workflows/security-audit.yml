@@ -51,7 +51,7 @@ jobs:
               grep -oE 'RUSTSEC-[0-9-]+' | sort -u
           )"
           workflow_ids="$(
-            grep -h -oE -- '--ignore RUSTSEC-[0-9-]+' \
+            grep -h -oE -- '--(audit-)?ignore RUSTSEC-[0-9-]+' \
               .github/workflows/audit.yml \
               .github/workflows/security-audit.yml \
               .github/workflows/pqc-compliance.yml \

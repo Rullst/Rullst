@@ -528,6 +528,9 @@ pub enum Commands {
         /// Optional: Export CycloneDX 1.5 JSON Software Bill of Materials (sbom-cyclonedx.json)
         #[arg(long)]
         sbom: bool,
+        /// Explicit RustSec advisory exception already governed by the caller (repeatable)
+        #[arg(long = "audit-ignore", value_name = "RUSTSEC-ID")]
+        audit_ignore: Vec<String>,
         /// Optional: Scan local network surface and interface bindings (inspired by RustScan)
         #[arg(long)]
         network: bool,
@@ -871,14 +874,16 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             idor,
             geiger,
             sbom,
+            audit_ignore,
             network,
         } => {
-            crate::generators::audit::run_security_audit(
+            crate::generators::audit::run_security_audit_with_exceptions(
                 *ai,
                 *compliance,
                 *idor,
                 *geiger,
                 *sbom,
+                audit_ignore,
                 *network,
             )?;
         }

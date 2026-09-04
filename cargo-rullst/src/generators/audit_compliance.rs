@@ -4,6 +4,7 @@ use std::path::Path;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EvidenceStatus {
     NoFindings,
+    NoUnexceptedFindings(Vec<String>),
     Findings(usize),
     Generated(usize),
     Observed(usize),
@@ -15,6 +16,7 @@ impl EvidenceStatus {
     fn label(&self) -> &'static str {
         match self {
             Self::NoFindings => "NO FINDINGS",
+            Self::NoUnexceptedFindings(_) => "NO UNEXCEPTED FINDINGS",
             Self::Findings(_) => "FINDINGS",
             Self::Generated(_) => "GENERATED",
             Self::Observed(_) => "OBSERVED",
@@ -26,6 +28,10 @@ impl EvidenceStatus {
     fn detail(&self) -> String {
         match self {
             Self::NoFindings => "The named check ran and reported no findings.".to_string(),
+            Self::NoUnexceptedFindings(advisories) => format!(
+                "The check completed with explicit governed exception(s): {}. These advisories remain findings and require separate review.",
+                advisories.join(", ")
+            ),
             Self::Findings(count) => format!("{count} finding(s) reported."),
             Self::Generated(count) => format!("Artifact generated with {count} component(s)."),
             Self::Observed(count) => format!("The bounded scan recorded {count} observation(s)."),
@@ -101,6 +107,7 @@ pub fn write_compliance_report(
     report.push_str("| TLS configuration | **NOT EVALUATED** | Requires inspection of the actual ingress and certificate configuration. |\n");
     report.push_str("| SOC 2 / ISO 27001 / FedRAMP readiness | **NOT EVALUATED** | Organizational controls and independent audit evidence are outside this static command. |\n\n");
     report.push_str("NO FINDINGS means only that the named bounded check completed without a finding. It is not a certification result.\n");
+    report.push_str("NO UNEXCEPTED FINDINGS means explicit advisory exceptions were supplied by the caller; those advisories remain unresolved and require separate governance.\n");
 
     fs::write(output, report)?;
     Ok(())
@@ -129,6 +136,30 @@ mod tests {
         assert!(!report.contains("Vault AES-256"));
         assert!(report.contains("NOT EVALUATED"));
         assert!(!report.contains("PASS"));
+        fs::remove_file(output).expect("temporary report cleanup");
+    }
+
+    #[test]
+    fn report_preserves_governed_advisory_exceptions() {
+        let output = std::env::temp_dir().join(format!(
+            "rullst-compliance-exceptions-{}.md",
+            rand::random::<u64>()
+        ));
+        let evidence = ComplianceEvidence {
+            secret_scan: EvidenceStatus::NoFindings,
+            dependency_audit: EvidenceStatus::NoUnexceptedFindings(vec![
+                "RUSTSEC-2023-0071".to_string(),
+            ]),
+            unsafe_scan: EvidenceStatus::NoFindings,
+            idor_scan: EvidenceStatus::NoFindings,
+            sbom: EvidenceStatus::NotChecked("SBOM not requested"),
+            network_scan: EvidenceStatus::NotChecked("network scan not requested"),
+        };
+        write_compliance_report(&output, &evidence).expect("evidence report");
+        let report = fs::read_to_string(&output).expect("evidence contents");
+        assert!(report.contains("NO UNEXCEPTED FINDINGS"));
+        assert!(report.contains("RUSTSEC-2023-0071"));
+        assert!(report.contains("remain unresolved"));
         fs::remove_file(output).expect("temporary report cleanup");
     }
 }

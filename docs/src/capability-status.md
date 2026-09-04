@@ -14,25 +14,26 @@ meets its approved B exception. All 15 active crates have also reached their
 higher audited local ceiling: **1,509/1,509 local campaign points are backed by
 repository evidence (100%), with zero planning points remaining**. The exact
 SHA still earns those dimensions only when its conditioning gates pass. The
-broader [v12 release programme](v12.md) estimates RC readiness at 86.5%; therefore this
+broader [v12 release programme](v12.md) estimates RC readiness at 91.8%; therefore this
 is still a **NO-GO**, not a release announcement.
 
-Coverage is a separate RC gate. Codecov measured candidate `704b6d4d` at
-90.03% across the whole repository and 91.30% for the `framework_libraries`
+Coverage is a separate RC gate. Codecov measured candidate `27e81152` at
+90.06% across the whole repository and 91.33% for the `framework_libraries`
 component, so both candidate views exceed their zero-tolerance 90% targets.
 This is valid candidate evidence, not evidence for a future commit or tag; the
 same gates must pass again on the exact frozen RC SHA.
 
-The latest committed checkpoint `30c3251a` completed all **23/23 automatic
-workflow files** successfully, including the full all-feature workspace suite
-on Linux, macOS and Windows. That is strong cross-platform candidate evidence,
+Candidate `27e81152` completed all **22/22 applicable automatic push
+workflows** successfully, including the full all-feature workspace suite on
+Linux, macOS and Windows. Path-filtered platform workflows remain governed by
+their own release matrix. This is strong cross-platform candidate evidence,
 but the manually dispatched heavy gates and the exact future RC commit still
 remain separate requirements.
 
 | Coverage view | Audited checkpoint | RC meaning |
 | :--- | :---: | :--- |
-| Whole repository | **90.03%** (74,032/82,227) on `704b6d4d` | **Passing on the candidate.** This primary public number includes CLI and proc-macro production sources and is 27 covered lines above the exact cut. |
-| Framework libraries | **91.30%** (55,932/61,265) on `704b6d4d` | Passing its separate component gate; it does not replace the whole-repository result. |
+| Whole repository | **90.06%** (74,219/82,408) on `27e81152` | **Passing on the candidate.** This primary public number includes CLI and proc-macro production sources. |
+| Framework libraries | **91.33%** (56,119/61,446) on `27e81152` | Passing its separate component gate; it does not replace the whole-repository result. |
 | v12 RC requirement | **at least 90% in both views** | Candidate requirement met; must be reproduced by Codecov on the exact frozen RC commit, together with at least 90% patch coverage. |
 
 The two percentages are neither conflicting measurements nor values to
