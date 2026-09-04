@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788514010054,
+  "lastUpdate": 1788520522110,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -9113,6 +9113,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1727,
             "range": "± 38",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "e35c9c5e564bca1998c7b3ee3d63b81f1cf339ad",
+          "message": "fix(test): make release checks deterministic on Windows",
+          "timestamp": "2026-09-04T07:57:53-03:00",
+          "tree_id": "e1fcbd8d0aeb563cb4045c3f8f5adf111882cc17",
+          "url": "https://github.com/Rullst/Rullst/commit/e35c9c5e564bca1998c7b3ee3d63b81f1cf339ad"
+        },
+        "date": 1788520521643,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1082,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 870,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1981,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4601,
+            "range": "± 129",
             "unit": "ns/iter"
           }
         ]
