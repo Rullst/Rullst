@@ -1,8 +1,6 @@
 homepage: "https://github.com/Rullst/Rullst"
 language: rust
-primary_contact: "maintainers@rullst.dev"
-auto_ccs:
-  - "security@rullst.dev"
+primary_contact: "officialrullst@gmail.com"
 sanitizers:
   - address
   - undefined

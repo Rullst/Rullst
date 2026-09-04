@@ -26,7 +26,7 @@ jobs:
       - name: Install Rust Stable
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
         with:
-          toolchain: stable
+          toolchain: 1.98.1
 
       - name: Run Proptests — all features (unit + integration)
         # --all-features activates strict-* flags simultaneously, which correctly
