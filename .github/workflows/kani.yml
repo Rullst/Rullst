@@ -12,10 +12,14 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  # The latest stable Kani bundle uses rustc 1.93 and cannot compile Rullst's
-  # declared Rust 1.96 MSRV. This reviewed upstream snapshot uses a compatible
-  # nightly and is built from its immutable source revision in this run.
-  KANI_SOURCE_REV: b07abe8a72f8eb1ef1ea3521ca6b00a973d341bc
+  # Rullst itself remains pinned to stable Rust 1.98.1 and declares Rust 1.96
+  # as its MSRV. Kani is a separate formal-verification tool that carries its
+  # own compiler: the latest stable Kani bundle uses rustc 1.93 and cannot
+  # compile Rullst, so this reviewed upstream snapshot uses the isolated
+  # nightly-2026-08-01 compiler (reported as rustc 1.99.0-nightly). It predates
+  # a Kani compare_bytes ICE reproduced with rustc 1.100.0-nightly and does not
+  # change either Rullst's stable toolchain or its MSRV.
+  KANI_SOURCE_REV: 8fcd6d90ed07b559e553ca8a92b95f2db69b2c78
   KANI_CRATE_VERSION: 0.67.0
 
 jobs:
@@ -35,7 +39,7 @@ jobs:
       - name: Install pinned Kani build dependencies
         working-directory: .kani-source
         run: |
-          rustup toolchain install nightly-2026-08-21 \
+          rustup toolchain install nightly-2026-08-01 \
             --profile minimal \
             --component llvm-tools,rustc-dev,rust-src,rustfmt
           ./scripts/setup/ubuntu/install_deps.sh
@@ -65,14 +69,55 @@ jobs:
           retention-days: 7
 
   kani:
-    name: kani bounded (${{ matrix.package }})
+    name: kani bounded (${{ matrix.package }} / ${{ matrix.harness }})
     needs: build-kani
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:
       fail-fast: false
+      max-parallel: 4
       matrix:
-        package: ['rullst-core', 'rullst-security', 'rullst-auth', 'rullst-connect', 'rullst-iot', 'rullst-ai', 'rullst-capital', 'rullst-nexus', 'rullst-studio', 'rullst-mail']
+        include:
+          - package: rullst-core
+            harness: proof_escape_str_safety_and_bounds
+          - package: rullst-core
+            harness: proof_escape_ascii_byte_exact
+          - package: rullst-core
+            harness: proof_card_mask_count_boundaries
+          - package: rullst-core
+            harness: verify_token_bucket_math_safety
+          - package: rullst-core
+            harness: verify_traffic_shield_thresholds
+          - package: rullst-security
+            harness: proof_secure_headers_config_initialization
+          - package: rullst-security
+            harness: proof_vault_secret_invariants
+          - package: rullst-security
+            harness: proof_login_guard_is_jailed_initially_false
+          - package: rullst-security
+            harness: proof_dlp_empty_payload
+          - package: rullst-security
+            harness: proof_rasp_clean_uri
+          - package: rullst-security
+            harness: proof_sri_tag_prefix_format
+          - package: rullst-auth
+            harness: proof_make_logout_cookie_invariants
+          - package: rullst-connect
+            harness: verify_constant_time_eq_safety
+          - package: rullst-iot
+            harness: proof_simulated_fixture_bounds
+          - package: rullst-iot
+            harness: proof_modbus_crc16_no_panic
+          - package: rullst-ai
+            harness: proof_tool_param_instantiation
+          - package: rullst-capital
+            harness: proof_invoice_item_amount_valid
+          - package: rullst-nexus
+            harness: proof_sanitize_identifier_alphanumeric_or_underscore
+          - package: rullst-studio
+            harness: proof_sanitize_identifier_length_bound
+          - package: rullst-mail
+            harness: proof_message_builder_recipient
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -101,7 +146,7 @@ jobs:
             "$RUNNER_TEMP/kani-bundle/kani-latest-x86_64-unknown-linux-gnu.tar.gz"
           cargo kani --version
 
-      - name: Verify bounded Kani harnesses
+      - name: Verify named bounded Kani harness
         working-directory: ${{ matrix.package }}
         timeout-minutes: 90
         run: |
@@ -109,4 +154,7 @@ jobs:
           # unbounded loops in crypto crates. --jobs 1 prevents parallel SAT
           # solvers from competing for runner RAM. A proof failure now fails
           # its matrix job instead of being hidden by continue-on-error.
-          cargo kani --default-unwind 5 --jobs 1
+          cargo kani \
+            --harness "${{ matrix.harness }}" \
+            --default-unwind 5 \
+            --jobs 1

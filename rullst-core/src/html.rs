@@ -151,45 +151,78 @@ mod tests {
 mod kani_proofs {
     use super::*;
 
-    /// This Kani proof mathematically verifies that our core HTML escaper:
-    /// 1. Will NEVER panic on any arbitrary valid UTF-8 string input.
-    /// 2. Always produces an escaped string that is >= the length of the original string.
+    /// Proves panic freedom and the length bound for every valid UTF-8 value
+    /// represented by exactly four symbolic bytes.
     #[kani::proof]
     #[kani::unwind(6)]
     fn proof_escape_str_safety_and_bounds() {
-        // Generate a fully non-deterministic sequence of 4 bytes
         let bytes: [u8; 4] = kani::any();
 
-        // Restrict the state space to only valid UTF-8 strings
         if let Ok(s) = std::str::from_utf8(&bytes) {
-            // 1. If this call panics, Kani will fail the proof
             let escaped = escape_str(s);
-
-            // 2. Mathematical post-condition
             assert!(escaped.len() >= s.len());
+        }
+    }
 
-            // 3. Proving specific characters are correctly replaced
-            let s_bytes = s.as_bytes();
-            let mut has_lt = false;
-            for &b in s_bytes {
-                if b == b'<' {
-                    has_lt = true;
-                    break;
-                }
-            }
+    /// Exhaustively proves the exact output for every single-byte ASCII input.
+    /// Keeping exact substitution separate from the four-byte safety proof
+    /// avoids an output-search loop whose SAT formula exhausted hosted runners.
+    #[kani::proof]
+    #[kani::unwind(3)]
+    fn proof_escape_ascii_byte_exact() {
+        let byte: u8 = kani::any();
+        kani::assume(byte.is_ascii());
+        let input = [byte];
 
-            if has_lt {
-                let e_bytes = escaped.as_bytes();
-                let mut found = false;
-                if e_bytes.len() >= 4 {
-                    for i in 0..=(e_bytes.len() - 4) {
-                        if &e_bytes[i..i + 4] == b"&lt;" {
-                            found = true;
-                            break;
-                        }
-                    }
+        if let Ok(s) = std::str::from_utf8(&input) {
+            let escaped = escape_str(s);
+            let output = escaped.as_bytes();
+
+            match byte {
+                b'<' => {
+                    assert!(output.len() == 4);
+                    assert!(output[0] == b'&');
+                    assert!(output[1] == b'l');
+                    assert!(output[2] == b't');
+                    assert!(output[3] == b';');
                 }
-                assert!(found);
+                b'>' => {
+                    assert!(output.len() == 4);
+                    assert!(output[0] == b'&');
+                    assert!(output[1] == b'g');
+                    assert!(output[2] == b't');
+                    assert!(output[3] == b';');
+                }
+                b'&' => {
+                    assert!(output.len() == 5);
+                    assert!(output[0] == b'&');
+                    assert!(output[1] == b'a');
+                    assert!(output[2] == b'm');
+                    assert!(output[3] == b'p');
+                    assert!(output[4] == b';');
+                }
+                b'"' => {
+                    assert!(output.len() == 6);
+                    assert!(output[0] == b'&');
+                    assert!(output[1] == b'q');
+                    assert!(output[2] == b'u');
+                    assert!(output[3] == b'o');
+                    assert!(output[4] == b't');
+                    assert!(output[5] == b';');
+                }
+                b'\'' => {
+                    assert!(output.len() == 6);
+                    assert!(output[0] == b'&');
+                    assert!(output[1] == b'#');
+                    assert!(output[2] == b'x');
+                    assert!(output[3] == b'2');
+                    assert!(output[4] == b'7');
+                    assert!(output[5] == b';');
+                }
+                _ => {
+                    assert!(output.len() == 1);
+                    assert!(output[0] == byte);
+                }
             }
         }
     }

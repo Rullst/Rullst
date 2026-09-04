@@ -257,6 +257,36 @@ fn duration_millis_u64(duration: Duration) -> u64 {
     u64::try_from(duration.as_millis()).unwrap_or(u64::MAX)
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum TrafficPressure {
+    Normal,
+    Moderate,
+    Critical,
+}
+
+fn classify_traffic_pressure(
+    config: &TrafficShieldConfig,
+    lag: Duration,
+    db_latency: Duration,
+    active_requests: usize,
+) -> TrafficPressure {
+    let critical = lag >= config.max_event_loop_lag
+        || (config.enable_db_probe && db_latency >= config.max_db_latency)
+        || active_requests >= config.max_active_requests;
+    if critical {
+        return TrafficPressure::Critical;
+    }
+
+    let moderate = lag >= config.max_event_loop_lag / 2
+        || (config.enable_db_probe && db_latency >= config.max_db_latency / 2)
+        || active_requests >= config.max_active_requests / 2;
+    if moderate {
+        TrafficPressure::Moderate
+    } else {
+        TrafficPressure::Normal
+    }
+}
+
 struct ActiveRequestGuard<'a>(&'a AtomicUsize);
 
 impl<'a> Drop for ActiveRequestGuard<'a> {
@@ -280,15 +310,12 @@ pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: 
     let active = shield.active_requests.fetch_add(1, Ordering::SeqCst);
     let _guard = ActiveRequestGuard(&shield.active_requests);
 
-    let max_active = shield.config.max_active_requests;
     let lag = shield.event_loop_lag();
     let db_lat = shield.db_latency();
 
-    let is_critical_cpu = lag >= shield.config.max_event_loop_lag;
-    let is_critical_db = shield.config.enable_db_probe && db_lat >= shield.config.max_db_latency;
-    let is_critical_active = active >= max_active;
+    let pressure = classify_traffic_pressure(&shield.config, lag, db_lat, active);
 
-    if is_critical_cpu || is_critical_db || is_critical_active {
+    if pressure == TrafficPressure::Critical {
         eprintln!(
             "⚠️ [Rullst Backpressure] Load shedding active! CPU lag: {:?}, DB latency: {:?}, Active requests: {}",
             lag, db_lat, active
@@ -313,12 +340,7 @@ pub async fn backpressure_middleware(shield: TrafficShield, req: Request, next: 
         }
     }
 
-    let is_moderate_cpu = lag >= shield.config.max_event_loop_lag / 2;
-    let is_moderate_db =
-        shield.config.enable_db_probe && db_lat >= shield.config.max_db_latency / 2;
-    let is_moderate_active = active >= max_active / 2;
-
-    if is_moderate_cpu || is_moderate_db || is_moderate_active {
+    if pressure == TrafficPressure::Moderate {
         tokio::time::sleep(Duration::from_millis(25)).await;
     }
 
@@ -367,6 +389,10 @@ struct TokenBucket {
     last_refill: Instant,
 }
 
+fn refill_token_count(current_tokens: f64, elapsed_secs: f64, config: &RateLimitConfig) -> f64 {
+    (current_tokens + elapsed_secs * config.refill_rate).min(config.max_tokens)
+}
+
 /// Thread-safe Token-Bucket rate limiter powered by Shared-Memory DashMap.
 #[derive(Clone)]
 pub struct RateLimiter {
@@ -411,8 +437,7 @@ impl RateLimiter {
             });
 
         let elapsed = now.duration_since(entry.last_refill).as_secs_f64();
-        let new_tokens = entry.tokens + elapsed * self.config.refill_rate;
-        entry.tokens = new_tokens.min(self.config.max_tokens);
+        entry.tokens = refill_token_count(entry.tokens, elapsed, &self.config);
         entry.last_refill = now;
 
         if entry.tokens >= 1.0 {
@@ -539,6 +564,28 @@ mod tests {
             .active_requests
             .fetch_add(5, std::sync::atomic::Ordering::SeqCst);
         assert_eq!(shield.active_requests(), 5);
+    }
+
+    #[test]
+    fn test_traffic_pressure_classification() {
+        let config = TrafficShieldConfig::new().with_db_probe(false);
+
+        assert_eq!(
+            classify_traffic_pressure(&config, Duration::ZERO, Duration::ZERO, 0),
+            TrafficPressure::Normal
+        );
+        assert_eq!(
+            classify_traffic_pressure(&config, config.max_event_loop_lag / 2, Duration::ZERO, 0,),
+            TrafficPressure::Moderate
+        );
+        assert_eq!(
+            classify_traffic_pressure(&config, config.max_event_loop_lag, Duration::ZERO, 0,),
+            TrafficPressure::Critical
+        );
+        assert_eq!(
+            classify_traffic_pressure(&config, Duration::ZERO, config.max_db_latency, 0,),
+            TrafficPressure::Normal
+        );
     }
 
     #[test]
@@ -743,8 +790,8 @@ mod kani_proofs {
         kani::assume(current_tokens >= 0.0 && current_tokens <= max_tokens);
         kani::assume(elapsed_secs >= 0.0 && elapsed_secs < 31_536_000.0); // Up to 1 year
 
-        let new_tokens = current_tokens + elapsed_secs * refill_rate;
-        let final_tokens = new_tokens.min(max_tokens);
+        let config = RateLimitConfig::new(max_tokens, refill_rate);
+        let final_tokens = refill_token_count(current_tokens, elapsed_secs, &config);
 
         // Prove that the math never yields NaN or Infinity under normal constraints
         assert!(!final_tokens.is_nan());
@@ -755,26 +802,43 @@ mod kani_proofs {
 
     #[kani::proof]
     fn verify_traffic_shield_thresholds() {
-        let max_event_loop_lag: u64 = kani::any();
-        let max_db_latency: u64 = kani::any();
+        let max_event_loop_lag_ns: u64 = kani::any();
+        let max_db_latency_ns: u64 = kani::any();
         let max_active_requests: usize = kani::any();
-
-        let lag: u64 = kani::any();
-        let db_lat: u64 = kani::any();
+        let enable_db_probe: bool = kani::any();
+        let lag_ns: u64 = kani::any();
+        let db_latency_ns: u64 = kani::any();
         let active: usize = kani::any();
 
-        // Proves that divisions by 2 in backpressure middleware never panic
-        let moderate_cpu_thresh = max_event_loop_lag / 2;
-        let moderate_db_thresh = max_db_latency / 2;
-        let moderate_active_thresh = max_active_requests / 2;
+        let config = TrafficShieldConfig {
+            max_event_loop_lag: Duration::from_nanos(max_event_loop_lag_ns),
+            max_db_latency: Duration::from_nanos(max_db_latency_ns),
+            max_active_requests,
+            enable_db_probe,
+        };
+        let lag = Duration::from_nanos(lag_ns);
+        let db_latency = Duration::from_nanos(db_latency_ns);
+        let pressure = classify_traffic_pressure(&config, lag, db_latency, active);
 
-        let is_moderate_cpu = lag >= moderate_cpu_thresh;
-        let is_moderate_db = db_lat >= moderate_db_thresh;
-        let is_moderate_active = active >= moderate_active_thresh;
+        let critical = lag >= config.max_event_loop_lag
+            || (enable_db_probe && db_latency >= config.max_db_latency)
+            || active >= max_active_requests;
+        let moderate = lag >= config.max_event_loop_lag / 2
+            || (enable_db_probe && db_latency >= config.max_db_latency / 2)
+            || active >= max_active_requests / 2;
 
-        // Basic sanity assertions
-        if active == 0 {
-            assert!(!is_moderate_active);
+        match pressure {
+            TrafficPressure::Critical => {
+                assert!(critical);
+            }
+            TrafficPressure::Moderate => {
+                assert!(!critical);
+                assert!(moderate);
+            }
+            TrafficPressure::Normal => {
+                assert!(!critical);
+                assert!(!moderate);
+            }
         }
     }
 }

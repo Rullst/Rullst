@@ -13,6 +13,14 @@ use axum::{
 
 const MAX_BUFFERED_RESPONSE_BYTES: u64 = 2 * 1024 * 1024;
 
+pub(super) const fn card_mask_count(digit_count: usize) -> Option<usize> {
+    if digit_count >= 13 && digit_count <= 19 {
+        Some(digit_count - 4)
+    } else {
+        None
+    }
+}
+
 fn is_textual_response(headers: &HeaderMap) -> bool {
     let Some(media_type) = headers
         .get(header::CONTENT_TYPE)
@@ -154,8 +162,7 @@ pub fn mask_pii(text: &str) -> String {
             }
 
             let count = digit_indices.len();
-            if (13..=19).contains(&count) {
-                let mask_count = count - 4;
+            if let Some(mask_count) = card_mask_count(count) {
                 for idx in 0..mask_count {
                     chars[digit_indices[idx]] = '*';
                 }

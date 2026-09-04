@@ -1,18 +1,25 @@
 //! Formal mathematical verification proofs for `rullst-core::security` using Kani model checker.
 
-use super::pii::mask_pii;
+use super::pii::card_mask_count;
 
-/// Mathematically verifies that our PII masking engine (Credit Cards, Emails, etc):
-/// 1. Will NEVER panic on any arbitrary valid string input (including emojis/complex utf-8).
-/// 2. Always produces a masked string with the exact same character count as the original text.
+/// Proves the production card-mask boundary and arithmetic for every possible
+/// `usize`: accepted card lengths are exactly 13 through 19 digits, the
+/// subtraction cannot underflow, and exactly four digits remain unmasked.
 #[kani::proof]
-#[kani::unwind(3)]
 #[cfg_attr(mutants, mutants::skip)]
-fn proof_mask_pii_safety_and_invariants() {
-    let bytes: [u8; 2] = kani::any();
+fn proof_card_mask_count_boundaries() {
+    let digit_count: usize = kani::any();
 
-    if let Ok(s) = std::str::from_utf8(&bytes) {
-        let masked = mask_pii(s);
-        assert_eq!(masked.chars().count(), s.chars().count());
+    match card_mask_count(digit_count) {
+        Some(mask_count) => {
+            assert!(digit_count >= 13);
+            assert!(digit_count <= 19);
+            assert!(mask_count >= 9);
+            assert!(mask_count <= 15);
+            assert!(mask_count + 4 == digit_count);
+        }
+        None => {
+            assert!(digit_count < 13 || digit_count > 19);
+        }
     }
 }

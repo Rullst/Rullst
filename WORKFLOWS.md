@@ -47,8 +47,8 @@ The workflows below run **only when requested manually**:
 | :--- | :--- | :--- |
 | `dast-zap.yml` | OWASP ZAP baseline against a release blog showcase plus fresh generated REST API and complete LMS applications | REST/LMS warnings and failures block unless an exact rule ID is versioned as `INFO` with a local explanation in `.zap/`; those configs are passed explicitly to the pinned scanner and unlisted warnings remain live. The showcase is informational because it deliberately uses third-party presentation assets; reports and application logs are retained. This remains representative, not universal deployment coverage. |
 | `fuzzing.yml` | All 40 declared libFuzzer targets from the validated shared inventory | Every matrix job must finish without a crash for the configured time budget; target-specific corpora are restored and saved, while failure reproducers are retained. This is bounded evidence, not proof for every input. |
-| `kani.yml` | Bounded formal harnesses in ten supported runtime/library packages | Informational release evidence, but proof failures fail their matrix jobs. Rullst builds an immutable reviewed Kani development snapshot because the latest stable bundle's Rust 1.93 compiler is older than the framework's Rust 1.96 MSRV. The proc-macro-only `rullst-macros` target remains unsupported by Kani and is covered by compile-pass/fail and generated-project evidence instead. |
-| `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | Informational release evidence, but every selected scope is strict. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. |
+| `kani.yml` | Twenty named bounded formal harnesses in ten supported runtime/library packages | Informational release evidence, but each proof has an isolated strict matrix job. Rullst itself stays on stable Rust 1.98.1 with a Rust 1.96 MSRV; only the separately built Kani verifier uses its pinned `nightly-2026-08-01` compiler (`rustc 1.99.0-nightly`) because the latest stable Kani bundle's Rust 1.93 compiler cannot compile the framework. The proc-macro-only `rullst-macros` target remains unsupported by Kani and is covered by compile-pass/fail and generated-project evidence instead. |
+| `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | Informational release evidence, but every selected scope is strict. Miri is a Rust nightly-only interpreter, so this workflow alone uses pinned `nightly-2026-08-21` (`rustc 1.100.0-nightly`); it does not change the project's stable toolchain or MSRV. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. |
 | `mutants.yml` | Eight mutation-testing shards and their artifacts | Informational: review survived/timed-out mutants and the measured score. “Pass” does not honestly mean every possible mutant was killed. |
 
 These workflows are **periodic and manually runnable**:
@@ -198,12 +198,18 @@ higher component result for the repository total.
 ### Formal, dynamic, and stress analysis
 
 - Kani and Miri are manual research evidence scoped to the harnesses/packages
-  that actually execute. Kani builds reviewed upstream revision
-  `b07abe8a72f8eb1ef1ea3521ca6b00a973d341bc` into its bundle and installer,
-  then treats proof failures in ten supported packages as real matrix
-  failures. It does not rewrite workspace or Cargo-registry manifests to bypass
-  MSRV data. Kani cannot verify the proc-macro-only `rullst-macros` target.
-  Miri pins `nightly-2026-08-21` and strictly executes 15 named
+  that actually execute. Rullst itself remains pinned to stable Rust 1.98.1
+  and keeps Rust 1.96 as its declared MSRV. Kani builds reviewed upstream
+  revision `8fcd6d90ed07b559e553ca8a92b95f2db69b2c78` with the verifier's own pinned
+  `nightly-2026-08-01` compiler (`rustc 1.99.0-nightly`) into a bundle and
+  installer, then treats proof failures in twenty
+  isolated harness jobs across ten supported packages as real matrix failures.
+  That revision intentionally predates a `compare_bytes` compiler crash
+  reproduced with Kani's first `rustc 1.100.0-nightly` snapshot. The workflow
+  does not patch manifests, bypass MSRV data, or change Rullst's stable
+  toolchain. Kani cannot verify the proc-macro-only `rullst-macros` target.
+  Miri, which only runs on nightly Rust, pins `nightly-2026-08-21`
+  (`rustc 1.100.0-nightly`) and strictly executes 15 named
   pure-Rust/default-feature scopes. Its matrix excludes native `ring`, AWS-LC,
   SQLite, OS-syscall and network/provider execution that Miri cannot interpret;
   native CI, integration tests and sanitizers remain the applicable evidence
@@ -307,9 +313,9 @@ dependency graph make static estimates unreliable.
 | [`e2e-smoke.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/e2e-smoke.yml) | main push and PR, manual | Blocking | Boots the release blog example and checks HTTP, headers, form flow, and SQLite persistence. |
 | [`fuzzing.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/fuzzing.yml) | manual | On-demand | Forty validated libFuzzer matrix jobs, each capped below six hours, with per-target corpus caching and failure reproducers. |
 | [`iot-integration.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/iot-integration.yml) | main push and PR, manual | Blocking | Host IoT tests, signed OTA invariants, and one Cortex-M no-std build; no hardware claim. |
-| [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | manual | Informational release evidence; proof jobs are strict | Builds an immutable reviewed Kani development snapshot compatible with Rullst's MSRV, then verifies bounded harnesses in ten supported packages. Proof failures fail their matrix jobs; the proc-macro-only crate remains outside Kani's supported targets. |
+| [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | manual | Informational release evidence; proof jobs are strict | Builds an immutable reviewed Kani snapshot with the verifier-only `nightly-2026-08-01` compiler, while Rullst stays on stable Rust 1.98.1 with a Rust 1.96 MSRV. It verifies twenty named bounded harnesses in isolated jobs across ten supported packages. Proof failures fail their matrix jobs; the proc-macro-only crate remains outside Kani's supported targets. |
 | [`machete.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/machete.yml) | main push and PR, manual | Blocking | Unused dependency scan with configured exceptions. |
-| [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | manual | Informational release evidence; selected scopes are strict | Pinned Miri executes 15 named pure-Rust/default-feature scopes with randomized layouts. Native FFI/syscall/network paths, the umbrella re-export facade, and the Blog example are explicit boundaries; selected-scope failures fail the workflow. |
+| [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | manual | Informational release evidence; selected scopes are strict | Pinned nightly-only Miri executes 15 named pure-Rust/default-feature scopes with randomized layouts without changing Rullst's stable toolchain or MSRV. Native FFI/syscall/network paths, the umbrella re-export facade, and the Blog example are explicit boundaries; selected-scope failures fail the workflow. |
 | [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | Eight pinned cargo-mutants 27.1.0 shards with uploaded results. |
 | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | main push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
 | [`omni-android.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-android.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh deterministic Omni shell, initializes Android and compiles an unsigned aarch64 debug APK. It does not test a physical device, Play testing, signing, privacy declarations or store acceptance. |
