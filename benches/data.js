@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788486042379,
+  "lastUpdate": 1788494739121,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -16949,6 +16949,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2343,
             "range": "± 57",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "2f160d7557b716c35b56e60b7db2934a301dc1a3",
+          "message": "fix(ci): harden release test campaigns",
+          "timestamp": "2026-09-04T00:58:24-03:00",
+          "tree_id": "300ce842f5f7489c121ef7092f33fa800fb466e0",
+          "url": "https://github.com/Rullst/Rullst/commit/2f160d7557b716c35b56e60b7db2934a301dc1a3"
+        },
+        "date": 1788494737724,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 892,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1180,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 8,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 784,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2758,
+            "range": "± 50",
             "unit": "ns/iter"
           }
         ]
