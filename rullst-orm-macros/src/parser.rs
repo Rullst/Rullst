@@ -1,3 +1,4 @@
+#[path = "parser/attributes.rs"]
 mod attributes;
 
 use attributes::{FieldAttributes, ModelAttributes};

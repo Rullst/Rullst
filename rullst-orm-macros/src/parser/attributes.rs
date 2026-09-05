@@ -1,5 +1,8 @@
+#[path = "attributes/common.rs"]
 mod common;
+#[path = "attributes/field.rs"]
 mod field;
+#[path = "attributes/model.rs"]
 mod model;
 
 #[cfg(test)]
