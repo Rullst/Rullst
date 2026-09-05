@@ -94,6 +94,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   SQLx-specific blueprints. Failed initial migrations keep the generated files
   and print an actionable retry command with their exit status; the progress
   text now identifies the potentially multi-minute clean first build.
+- The manual fuzz campaign now compiles its ORM parser target against the
+  current edition, `syn` API and modular parser source, while the DLP target
+  exercises the public byte-oriented masking boundary. This repairs two stale
+  harnesses that failed during target construction before fuzz input ran.
 - `rullst-orm-macros` now parses model, relation, and SQLx attributes as
   structured nested metadata and fails closed on unknown, duplicate, orphaned,
   or conflicting options. Persisted `id`, tenant, soft-delete, and embedding

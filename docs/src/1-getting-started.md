@@ -97,16 +97,22 @@ A visually stunning, glassmorphic portfolio template designed specifically for R
 - Project cards showcase with live external links.
 
 ## 3. LMS Platform Starter
-**Use Case:** Online course platforms and video streaming.
-An initial learning-management scaffold featuring:
-- Courses and Lessons database models.
-- Migrations pre-populated with seed data.
-- A glassmorphic video player layout integrated with HTMX.
+**Use Case:** Online learning products and course platforms.
+The complete profile is a bounded learning-domain foundation featuring:
+- School-scoped curriculum, enrollment, progress and versioned publication.
+- Quizzes, learning activities, assignments/rubrics, completion records and
+  database-verifiable certificates.
+- Roles, leaderboard updates, transactional outbox/workers, scheduling and
+  localized in-app notifications.
+- Accessible server-rendered catalog, course and media-player shells with
+  explicit source, caption and transcript admission rules.
 
-Enrollment/entitlements, student progress, assessments, certificates, protected
-video delivery, uploads/transcoding, notifications and native offline playback
-are not implemented by this starter. They are worthwhile application modules,
-but require domain authorization, durable jobs/storage and provider contracts.
+It remains a starter rather than a finished education product. Upload hosting,
+media transcoding and signed delivery, advanced/localized search, billing-linked
+entitlements, distributed failover, native offline playback, real-browser/WCAG
+evidence and PostgreSQL/MySQL isolation evidence remain application or roadmap
+work. Smaller `auth`, `auth,learning` and `auth,learning,assessment` profiles are
+available when the complete domain scaffold is unnecessary.
 
 ## 4. SaaS App Starter
 **Use Case:** Subscription-based products and billing.
