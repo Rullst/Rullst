@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788613384854,
+  "lastUpdate": 1788632339184,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -6502,6 +6502,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a6198cf595e7d28d5a76c50f28416cc2c20c98aa",
+          "message": "test(coverage): exercise release edge cases\n\nTest malformed local manifests and stable repeated DLP redaction.",
+          "timestamp": "2026-09-05T14:55:05-03:00",
+          "tree_id": "77d861cfdb3618f512201b5902ba8580f40f754b",
+          "url": "https://github.com/Rullst/Rullst/commit/a6198cf595e7d28d5a76c50f28416cc2c20c98aa"
+        },
+        "date": 1788632338424,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
