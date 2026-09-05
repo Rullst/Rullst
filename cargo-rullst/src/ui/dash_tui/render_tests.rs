@@ -167,7 +167,10 @@ async fn probes_output_and_process_exit_paths_have_real_effects() {
     let port = listener.local_addr().expect("listener address").port();
     assert!(probe_port(port).await);
     drop(listener);
-    assert!(!probe_port(port).await);
+    // Port zero is reserved for requesting an ephemeral bind and cannot be a
+    // reachable TCP service. Reusing the released ephemeral port is racy with
+    // unrelated concurrent tests and local processes.
+    assert!(!probe_port(0).await);
 
     let (log_tx, mut log_rx) = tokio::sync::mpsc::channel(8);
     send_action_output(&log_tx, b"first\nsecond\n", b"warning: third\n").await;
