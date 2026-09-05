@@ -102,8 +102,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   a real UTF-8 boundary panic in database-URL redaction. The DLP cursor now
   follows the shortened `*****` replacement rather than the pre-redaction `@`
   offset. A Unicode regression corpus seed and unit test preserve the failing
-  shape; the repaired log-redactor and HTML/text-sanitizer targets each passed
-  100,000 local libFuzzer/AddressSanitizer executions.
+  shape; the repaired ORM parser, log-redactor and HTML/text-sanitizer targets
+  each passed 100,000 local libFuzzer/AddressSanitizer executions.
 - The manual mutation campaign now divides the workspace into sixteen shards
   after the previous eight-way layout exhausted one job's 5h30 runner bound;
   survived and timed-out mutants remain explicit informational evidence.

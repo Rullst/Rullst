@@ -34,9 +34,10 @@ The later manual campaign on `45fbdbe7` produced passing bounded Miri, Kani and
 sanitizer evidence, while fuzzing usefully exposed three stale harnesses and a
 real Unicode-boundary panic in database-URL redaction. All four findings are
 fixed in the current candidate worktree; the exact panic is a unit regression
-and corpus seed, and both affected security targets passed 100,000 local
-libFuzzer/AddressSanitizer executions. This is remediation evidence, not a
-substitute for rerunning the complete heavy matrix on the frozen RC SHA.
+and corpus seed, and the repaired ORM parser plus both affected security targets
+passed 100,000 local libFuzzer/AddressSanitizer executions. This is remediation
+evidence, not a substitute for rerunning the complete heavy matrix on the
+frozen RC SHA.
 
 | Coverage view | Audited checkpoint | RC meaning |
 | :--- | :---: | :--- |
