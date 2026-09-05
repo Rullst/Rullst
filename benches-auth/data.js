@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788613003945,
+  "lastUpdate": 1788631953562,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -9545,6 +9545,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3964,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a6198cf595e7d28d5a76c50f28416cc2c20c98aa",
+          "message": "test(coverage): exercise release edge cases\n\nTest malformed local manifests and stable repeated DLP redaction.",
+          "timestamp": "2026-09-05T14:55:05-03:00",
+          "tree_id": "77d861cfdb3618f512201b5902ba8580f40f754b",
+          "url": "https://github.com/Rullst/Rullst/commit/a6198cf595e7d28d5a76c50f28416cc2c20c98aa"
+        },
+        "date": 1788631952801,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1119,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 904,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 2056,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2738,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
