@@ -168,8 +168,12 @@ pub fn mask_response_payload(input: &[u8]) -> (Vec<u8>, bool) {
                     if &sanitized[pass_start..pass_end] != "*****" {
                         sanitized.replace_range(pass_start..pass_end, "*****");
                         modified = true;
+                        // The replacement can shorten the URL. Continue immediately after
+                        // the `@` in the updated string instead of reusing its stale offset.
+                        cursor = pass_start + "*****".len() + 1;
+                    } else {
+                        cursor = pass_end + 1;
                     }
-                    cursor = start + scheme.len() + at_idx + 1;
                     if cursor >= sanitized.len() {
                         break;
                     }
@@ -350,6 +354,19 @@ mod tests {
         assert!(!masked_str.contains(":p2@"));
         assert!(masked_str.contains("postgres://u1:*****@h1:5432/d1"));
         assert!(masked_str.contains("postgres://u2:*****@h2:5432/d2"));
+    }
+
+    #[test]
+    fn database_url_masking_preserves_unicode_boundaries_after_shortening() {
+        // A fuzzing reproducer placed the stale, pre-redaction cursor inside this NBSP.
+        let payload = "redis://user:abcdefghijklmnopqrst@abcdefghijklmn\u{a0}z";
+        let (masked, was_modified) = mask_response_payload(payload.as_bytes());
+
+        assert!(was_modified);
+        assert_eq!(
+            String::from_utf8(masked).unwrap(),
+            "redis://user:*****@abcdefghijklmn\u{a0}z"
+        );
     }
 
     #[tokio::test]

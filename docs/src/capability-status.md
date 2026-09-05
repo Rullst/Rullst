@@ -6,7 +6,7 @@ from the root [ROADMAP](../../ROADMAP.md); that roadmap and the
 The labels here deliberately do not turn partial foundations into completed
 features.
 
-## v12 RC engineering snapshot — 4 September 2026
+## v12 RC engineering snapshot — 5 September 2026
 
 This functionality inventory is deliberately separate from release quality.
 All 15 non-IoT crates currently meet the approved A floor and `rullst-iot`
@@ -29,6 +29,14 @@ Linux, macOS and Windows. Path-filtered platform workflows remain governed by
 their own release matrix. This is strong cross-platform candidate evidence,
 but the manually dispatched heavy gates and the exact future RC commit still
 remain separate requirements.
+
+The later manual campaign on `45fbdbe7` produced passing bounded Miri, Kani and
+sanitizer evidence, while fuzzing usefully exposed three stale harnesses and a
+real Unicode-boundary panic in database-URL redaction. All four findings are
+fixed in the current candidate worktree; the exact panic is a unit regression
+and corpus seed, and both affected security targets passed 100,000 local
+libFuzzer/AddressSanitizer executions. This is remediation evidence, not a
+substitute for rerunning the complete heavy matrix on the frozen RC SHA.
 
 | Coverage view | Audited checkpoint | RC meaning |
 | :--- | :---: | :--- |
