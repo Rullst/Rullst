@@ -19,6 +19,7 @@ const GREEN_GRADIENT: [u8; 6] = [118, 82, 46, 40, 34, 28];
 const ORANGE_GRADIENT: [u8; 6] = [215, 214, 208, 202, 166, 130];
 const FINAL_SIGNATURE: [u8; 6] = [33, 27, 46, 34, 215, 166];
 const PULSE_COLORS: [u8; 6] = FINAL_SIGNATURE;
+const LOGO_FRAME_DELAY_MILLIS: u64 = 55;
 const ANIMATION_FRAMES: [usize; 24] = [
     0, 0, 0, 1, 2, 3, 4, 5, 6, 6, 6, 7, 8, 9, 10, 11, 12, 12, 12, 13, 14, 15, 16, 16,
 ];
@@ -40,7 +41,7 @@ pub(super) fn print_neon_logo() -> std::io::Result<()> {
         }
         stdout.flush()?;
         if index + 1 < animation.len() {
-            std::thread::sleep(std::time::Duration::from_millis(110));
+            std::thread::sleep(std::time::Duration::from_millis(LOGO_FRAME_DELAY_MILLIS));
         }
     }
     writeln!(
