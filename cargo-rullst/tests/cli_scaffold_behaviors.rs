@@ -94,6 +94,17 @@ serde = { version = "1", features = ["derive"] }
         }
         directory
     }
+
+    #[cfg(unix)]
+    fn install_failing_cargo(&self) -> PathBuf {
+        let directory = self.root.join("failing-cargo");
+        fs::create_dir_all(&directory).expect("failing Cargo fixture directory");
+        let cargo = directory.join("cargo");
+        fs::write(&cargo, "#!/bin/sh\nexit 17\n").expect("failing Cargo fixture");
+        fs::set_permissions(&cargo, fs::Permissions::from_mode(0o755))
+            .expect("failing Cargo permissions");
+        directory
+    }
 }
 
 impl Drop for Project {
@@ -360,6 +371,27 @@ fn automatic_migration_reports_missing_and_unsupported_configuration() {
     .expect("unsupported database environment");
     unsupported.succeeds(&["make:migration:auto"]);
     assert!(!unsupported.root.join("src/migrations").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn project_creation_keeps_files_and_explains_a_failed_initial_migration() {
+    let project = Project::new();
+    let tools = project.install_failing_cargo();
+    let output = project.run_with_path(&["new", "migration-failure", "--default"], Some(&tools));
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    assert!(
+        output.status.success(),
+        "project files must be retained: {text}"
+    );
+    assert!(project.root.join("migration-failure/Cargo.toml").is_file());
+    assert!(text.contains("Initial migration exited with"));
+    assert!(text.contains("cargo run -- db:migrate"));
 }
 
 #[cfg(unix)]

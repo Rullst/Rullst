@@ -34,10 +34,13 @@ cd Rullst
 cargo install --locked --path cargo-rullst
 ```
 
-Run the following project-creation steps from the repository root during this
-source-only phase. The generator will then use the sibling framework crates as
-path dependencies. Once an immutable v12 RC exists on crates.io, install that
-exact CLI version and use its matching registry packages instead.
+During this source-only phase, the pre-release CLI reuses the exact checkout
+from which it was compiled, even when project creation is invoked from another
+directory, provided that checkout has not been moved or deleted. Generated
+manifests therefore contain absolute path dependencies and are not portable yet.
+Running from the repository root remains an explicit fallback. Once an immutable
+v12 RC exists on crates.io, install that exact CLI version and use its matching
+registry packages instead.
 
 ## 2. Creating Your First Project
 
@@ -48,7 +51,7 @@ cargo rullst
 ```
 
 The **Rullst App Creator** will launch an interactive wizard. The example below
-creates a Portfolio inside the source checkout while v12 remains unpublished:
+creates a Portfolio while v12 remains unpublished:
 1. Select **Create New App**.
 2. **App Name**: Provide a simple lowercase name (e.g., `my_portfolio`).
 3. **Starter Blueprint**: Choose **Portfolio 🔥 (showcase for Rullst/AI developers) - HOT**.
@@ -163,6 +166,11 @@ The wizard deliberately makes two separate decisions:
    documents, **DuckDB** analytics, or **SurrealDB** documents/graph reads.
    These use explicit capability APIs and do not silently replace the primary
    pool.
+
+After generation, the default flow compiles the new application once and runs
+its initial migration. A clean first build can take several minutes for larger
+blueprints. Use `--skip-initial-migration` when the network database is not yet
+configured, then run `cargo rullst db:migrate` from the generated project.
 
 The non-interactive flags mirror the second step:
 

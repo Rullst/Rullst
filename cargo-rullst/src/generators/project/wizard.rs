@@ -8,6 +8,32 @@ use crate::blueprints::{
 };
 use crate::generators::project::ProjectScaffoldOptions;
 
+const SQLX_DATABASE_OPTIONS: [(&str, &str); 4] = [
+    ("SQLite (zero setup; recommended for a first run)", "Sqlite"),
+    ("Postgres (requires localhost:5432)", "Postgres"),
+    ("MySQL (requires localhost:3306)", "MySQL"),
+    (
+        "MariaDB (MySQL protocol; separately contract-tested)",
+        "MariaDB",
+    ),
+];
+
+const BLANK_DATABASE_OPTIONS: [(&str, &str); 5] = [
+    SQLX_DATABASE_OPTIONS[0],
+    SQLX_DATABASE_OPTIONS[1],
+    SQLX_DATABASE_OPTIONS[2],
+    SQLX_DATABASE_OPTIONS[3],
+    ("Turso / libSQL (primary edge SQL)", "Turso"),
+];
+
+fn primary_database_options(blueprint_selection: usize) -> &'static [(&'static str, &'static str)] {
+    if blueprint_selection == BLANK_BLUEPRINT_ID {
+        &BLANK_DATABASE_OPTIONS
+    } else {
+        &SQLX_DATABASE_OPTIONS
+    }
+}
+
 /// Optional persistence capabilities that complement the primary SQL ORM.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PolyglotIntegration {
@@ -271,25 +297,27 @@ pub(crate) fn run_project_wizard_with_blueprint(
         }
 
         if db_needed {
-            let db_options = &[
-                "Sqlite (Zero setup)",
-                "Postgres (Requires localhost:5432 running)",
-                "MySQL (Requires localhost:3306 running)",
-                "MariaDB (MySQL protocol; separately contract-tested)",
-                "Turso / libSQL (primary edge SQL; explicit typed model API)",
-            ];
+            let db_options = primary_database_options(blueprint_selection);
+            let db_labels = db_options
+                .iter()
+                .map(|(label, _)| *label)
+                .collect::<Vec<_>>();
             let db_selection = dialoguer::Select::with_theme(&theme)
-                .with_prompt("💾 Select a DB Provider (Network DBs will hang on setup if not running locally)")
+                .with_prompt(
+                    "💾 Select the primary DB (network choices need a running local server)",
+                )
                 .default(0)
-                .items(&db_options[..])
+                .items(&db_labels)
                 .interact()?;
-            db_provider = match db_selection {
-                1 => "Postgres".to_string(),
-                2 => "MySQL".to_string(),
-                3 => "MariaDB".to_string(),
-                4 => "Turso".to_string(),
-                _ => "Sqlite".to_string(),
-            };
+            db_provider = db_options
+                .get(db_selection)
+                .map(|(_, provider)| (*provider).to_string())
+                .ok_or_else(|| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        "database selection was outside the displayed choices",
+                    )
+                })?;
             if db_provider == "Turso"
                 && !polyglot_integrations.contains(&PolyglotIntegration::Turso)
             {
@@ -297,28 +325,35 @@ pub(crate) fn run_project_wizard_with_blueprint(
             }
         }
 
-        let persistence_options = &[
-            "Turso / libSQL (edge SQL; Hrana v3 + offline fallback)",
-            "MongoDB (document CRUD)",
-            "DuckDB (in-process OLAP / analytics)",
-            "SurrealDB (document CRUD + bounded read-only graph queries)",
-            "Qdrant (bounded dense-vector search)",
-        ];
-        let persistence_selection = dialoguer::MultiSelect::with_theme(&theme)
-            .with_prompt("🧩 Select optional persistence capabilities (space toggles)")
-            .items(&persistence_options[..])
-            .interact()?;
-        for selected in persistence_selection {
-            let integration = match selected {
-                0 => PolyglotIntegration::Turso,
-                1 => PolyglotIntegration::MongoDb,
-                2 => PolyglotIntegration::DuckDb,
-                3 => PolyglotIntegration::SurrealDb,
-                4 => PolyglotIntegration::Qdrant,
-                _ => continue,
-            };
-            if !polyglot_integrations.contains(&integration) {
-                polyglot_integrations.push(integration);
+        let persistence_options = [
+            ("Turso / libSQL (edge add-on)", PolyglotIntegration::Turso),
+            ("MongoDB (document CRUD)", PolyglotIntegration::MongoDb),
+            ("DuckDB (in-process analytics)", PolyglotIntegration::DuckDb),
+            (
+                "SurrealDB (documents + read-only graph queries)",
+                PolyglotIntegration::SurrealDb,
+            ),
+            ("Qdrant (vector search)", PolyglotIntegration::Qdrant),
+        ]
+        .into_iter()
+        .filter(|(_, integration)| !polyglot_integrations.contains(integration))
+        .collect::<Vec<_>>();
+        if !persistence_options.is_empty() {
+            let labels = persistence_options
+                .iter()
+                .map(|(label, _)| *label)
+                .collect::<Vec<_>>();
+            let persistence_selection = dialoguer::MultiSelect::with_theme(&theme)
+                .with_prompt(
+                    "🧩 Optional storage add-ons (select zero or more; Space toggles, Enter confirms)",
+                )
+                .items(&labels)
+                .interact()?;
+            for selected in persistence_selection {
+                let Some((_, integration)) = persistence_options.get(selected) else {
+                    continue;
+                };
+                polyglot_integrations.push(*integration);
             }
         }
 
@@ -404,87 +439,5 @@ pub(crate) fn run_project_wizard_with_blueprint(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn deterministic_wizard_preserves_requested_persistence_features() {
-        let selected = [
-            PolyglotIntegration::Turso,
-            PolyglotIntegration::MongoDb,
-            PolyglotIntegration::DuckDb,
-            PolyglotIntegration::SurrealDb,
-            PolyglotIntegration::Qdrant,
-        ];
-        let options = run_project_wizard_with_blueprint(
-            Some("polyglot-app"),
-            ProjectScaffoldOptions {
-                use_defaults: true,
-                database: Some("MariaDB"),
-                ..ProjectScaffoldOptions::default()
-            },
-            &selected,
-            Some(BLANK_BLUEPRINT_ID),
-        )
-        .expect("deterministic wizard");
-
-        assert_eq!(options.db_provider, "MariaDB");
-        assert_eq!(options.polyglot_integrations, selected);
-        assert!(options.turso);
-    }
-
-    #[test]
-    fn deterministic_wizard_preserves_every_build_axis() {
-        let options = run_project_wizard_with_blueprint(
-            Some("profiled-app"),
-            ProjectScaffoldOptions {
-                use_defaults: true,
-                database: Some("Postgres"),
-                orm_pattern: Some("Hybrid"),
-                frontend_engine: Some("Tera Templates"),
-                hot_reload: true,
-                wants_ai: true,
-                wants_redis: true,
-                ..ProjectScaffoldOptions::default()
-            },
-            &[],
-            Some(ERP_BLUEPRINT_ID),
-        )
-        .expect("deterministic build axes");
-
-        assert_eq!(options.db_provider, "Postgres");
-        assert_eq!(options.orm_pattern, "Hybrid");
-        assert_eq!(options.frontend_engine, "Tera Templates");
-        assert!(options.hot_reload);
-        assert!(options.wants_ai);
-        assert!(options.wants_redis);
-    }
-
-    #[test]
-    fn impossible_deterministic_profiles_fail_instead_of_being_ignored() {
-        let no_database_lms = run_project_wizard_with_blueprint(
-            Some("invalid-lms"),
-            ProjectScaffoldOptions {
-                use_defaults: true,
-                no_database: true,
-                ..ProjectScaffoldOptions::default()
-            },
-            &[],
-            Some(LMS_BLUEPRINT_ID),
-        );
-        assert!(no_database_lms.is_err());
-
-        let turso_hot_reload = run_project_wizard_with_blueprint(
-            Some("invalid-edge"),
-            ProjectScaffoldOptions {
-                use_defaults: true,
-                database: Some("Turso"),
-                hot_reload: true,
-                ..ProjectScaffoldOptions::default()
-            },
-            &[PolyglotIntegration::Turso],
-            Some(BLANK_BLUEPRINT_ID),
-        );
-        assert!(turso_hot_reload.is_err());
-    }
-}
+#[path = "wizard_tests.rs"]
+mod tests;

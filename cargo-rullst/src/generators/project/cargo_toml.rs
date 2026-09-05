@@ -1,9 +1,22 @@
-// cargo-rullst/src/generators/project/cargo_toml.rs — Cargo.toml generator (< 300 lines).
-
-use std::path::Path;
+use std::{fs, path::Path};
 
 use crate::blueprints::{BLANK_BLUEPRINT_ID, LMS_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
 use crate::generators::project::PolyglotIntegration;
+
+fn is_matching_local_package(path: &Path, crate_name: &str, crate_version: &str) -> bool {
+    let Ok(contents) = fs::read_to_string(path.join("Cargo.toml")) else {
+        return false;
+    };
+    let Ok(manifest) = toml::from_str::<toml::Value>(&contents) else {
+        return false;
+    };
+
+    let Some(package) = manifest.get("package").and_then(toml::Value::as_table) else {
+        return false;
+    };
+    package.get("name").and_then(toml::Value::as_str) == Some(crate_name)
+        && package.get("version").and_then(toml::Value::as_str) == Some(crate_version)
+}
 
 fn dependency_source(
     current_dir: &Path,
@@ -11,14 +24,33 @@ fn dependency_source(
     crate_version: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
     let sibling = current_dir.join(crate_name);
-    if sibling.exists() {
-        let absolute_path = sibling
+    let source_checkout = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .map(|root| root.join(crate_name));
+    let invocation_is_matching_checkout = is_matching_local_package(
+        &current_dir.join("cargo-rullst"),
+        "cargo-rullst",
+        env!("CARGO_PKG_VERSION"),
+    );
+    let local_path = (invocation_is_matching_checkout
+        && is_matching_local_package(&sibling, crate_name, crate_version))
+    .then_some(sibling)
+    .or_else(|| {
+        (crate_version == env!("CARGO_PKG_VERSION") && crate_version.contains('-'))
+            .then_some(source_checkout)
+            .flatten()
+            .filter(|path| is_matching_local_package(path, crate_name, crate_version))
+    });
+
+    if let Some(local_path) = local_path {
+        let absolute_path = local_path
             .canonicalize()?
             .display()
             .to_string()
             .replace(r"\\?\", "")
             .replace('\\', "/");
-        Ok(format!("path = \"{absolute_path}\""))
+        let path_literal = toml_edit::value(absolute_path).to_string();
+        Ok(format!("path = {path_literal}"))
     } else {
         Ok(format!("version = \"{crate_version}\""))
     }
@@ -310,6 +342,29 @@ mod tests {
     }
 
     #[test]
+    fn arbitrary_matching_sibling_is_not_trusted_as_a_framework_checkout() {
+        let root = tempfile::tempdir().expect("isolated invocation directory");
+        let sibling = root.path().join("rullst");
+        fs::create_dir(&sibling).expect("lookalike crate directory");
+        fs::write(
+            sibling.join("Cargo.toml"),
+            "[package]\nname = \"rullst\"\nversion = \"12.0.0-rc.7\"\n",
+        )
+        .expect("lookalike manifest");
+        assert_eq!(
+            dependency_source(root.path(), "rullst", "12.0.0-rc.7").expect("registry fallback"),
+            "version = \"12.0.0-rc.7\""
+        );
+    }
+
+    #[test]
+    fn source_checkout_is_available_to_the_current_prerelease() {
+        let source = dependency_source(Path::new("/tmp"), "rullst", env!("CARGO_PKG_VERSION"))
+            .expect("current dependency source");
+        assert!(source.starts_with("path = "), "unexpected source: {source}");
+    }
+
+    #[test]
     fn generated_tera_dependency_remains_available_offline() {
         let engine = tera::Tera::default();
         assert_eq!(engine.get_template_names().count(), 0);
@@ -340,7 +395,6 @@ mod tests {
             &isolated_root(),
         )
         .expect("polyglot manifest");
-
         for feature in [
             "orm-turso",
             "orm-mongodb",

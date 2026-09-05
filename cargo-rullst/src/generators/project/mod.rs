@@ -314,8 +314,8 @@ pub(crate) fn create_new_project_with_cli_options(
 
     if db_needed && !skip_initial_migration {
         println!("\n{}", "📦 Bootstrapping Database...".cyan().bold());
-        let migrate_success = crate::ui::components::with_spinner(
-            "Running initial migrations (this may take a moment to compile)...",
+        let migration = crate::ui::components::with_spinner(
+            "First build + initial migrations (the first compile can take several minutes)...",
             || {
                 std::process::Command::new("cargo")
                     .arg("run")
@@ -324,18 +324,36 @@ pub(crate) fn create_new_project_with_cli_options(
                     .arg("db:migrate")
                     .current_dir(path)
                     .output()
-                    .map(|s| s.status.success())
-                    .unwrap_or(false)
             },
         );
 
-        if migrate_success {
-            println!("{}", "  ✅ Database tables created successfully.".green());
-        } else {
-            println!(
-                "{}",
-                "  ⚠️ Warning: Failed to run initial database migrations.".yellow()
-            );
+        match migration {
+            Ok(output) if output.status.success() => {
+                println!("{}", "  ✅ Database tables created successfully.".green());
+            }
+            Ok(output) => {
+                println!(
+                    "{}",
+                    format!(
+                        "  ⚠️ Initial migration exited with {}. Project files were kept.",
+                        output.status
+                    )
+                    .yellow()
+                );
+                println!(
+                    "  Configure the selected database, then run: cd {path:?} && cargo run -- db:migrate"
+                );
+            }
+            Err(error) => {
+                println!(
+                    "{}",
+                    format!("  ⚠️ Could not invoke Cargo for the initial migration: {error}")
+                        .yellow()
+                );
+                println!(
+                    "  Project files were kept. Retry with: cd {path:?} && cargo run -- db:migrate"
+                );
+            }
         }
     }
 

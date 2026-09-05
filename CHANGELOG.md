@@ -78,7 +78,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   coordination and deployment termination deadlines remain host concerns.
 - `cargo-rullst` now backs project generation with all 270 supported structural
   profiles, an eight-case generated-test matrix crossing every blueprint plus
-  hot/non-hot and release boundaries, and five cases invoking the public CLI
+  hot/non-hot and release boundaries, and seven cases invoking the public CLI
   across primary database, frontend, AI, Redis and polyglot axes. Hot profiles
   construct their generated routers with offline-safe defaults; the CLI-level
   polyglot case compiles while dedicated ORM matrices retain adapter runtime
@@ -86,6 +86,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   multi-member rollback and explicit keep/restore behavior, and reject
   symlinked Rust sources before a transaction. Provider accounts, production
   deployment and application acceptance remain external evidence.
+- Source-built pre-release CLIs now retain the exact matching framework
+  checkout when invoked outside the repository, instead of generating
+  unavailable registry requirements. The interactive wizard labels optional
+  persistence as a zero-or-more selection, removes capabilities already chosen
+  by the primary profile or flags, and no longer offers Turso-primary to
+  SQLx-specific blueprints. Failed initial migrations keep the generated files
+  and print an actionable retry command with their exit status; the progress
+  text now identifies the potentially multi-minute clean first build.
 - `rullst-orm-macros` now parses model, relation, and SQLx attributes as
   structured nested metadata and fails closed on unknown, duplicate, orphaned,
   or conflicting options. Persisted `id`, tenant, soft-delete, and embedding

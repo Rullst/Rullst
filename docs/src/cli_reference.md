@@ -16,8 +16,10 @@ Creates a Rullst project from scratch. This command presents an interactive wiza
 * **ORM Architecture:** Active Record (`User::find(id)`), Data Mapper / Repository (`UserRepository::find()`), or Hybrid.
 * **Persistence:** a primary relational backend (SQLite, PostgreSQL, MySQL,
   MariaDB, or bounded Turso-primary for blank/API) plus optional Turso/libSQL,
-  MongoDB, DuckDB, SurrealDB, and Qdrant capabilities. Specialized adapters remain
-  separate from SQLx Active Record.
+  MongoDB, DuckDB, SurrealDB, and Qdrant capabilities. The optional selector
+  accepts zero or more choices and omits capabilities already selected by the
+  primary profile or flags. Specialized adapters remain separate from SQLx
+  Active Record.
 * **Frontend profile:** HTMX + Tailwind SSR is the audited default. The LiveView,
   Wasm Island, Pico.css and Tera selections record compatibility intent and add
   limited dependencies/scaffold markers; they do not yet generate four complete,
@@ -47,6 +49,12 @@ Creates a Rullst project from scratch. This command presents an interactive wiza
   * `--lms-modules <modules>`: With `--default --blueprint lms`, selects a detached LMS profile. Version 12 currently accepts `auth`, `auth,learning`, or `auth,learning,assessment`; unsupported/duplicate combinations and the profiles' not-yet-supported hot reload fail explicitly. Omitting the flag generates the complete LMS starter.
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. Run `cargo rullst db:migrate` explicitly after configuring the database.
 
+Without `--skip-initial-migration`, project creation performs the first Cargo
+build before applying migrations. A clean first build can take several minutes,
+especially for the larger LMS/SaaS profiles; the animated status remains visible
+while Cargo is working. Later migration and server runs reuse that project-local
+build cache.
+
 For example, the release gate can generate a SaaS starter without prompts or
 network-dependent bootstrap work:
 
@@ -75,9 +83,12 @@ checks paths, Rust syntax and manifests. A slower eight-case set crosses every
 blueprint, hot and non-hot layouts, database/ORM/frontend/API boundaries and a
 release build, runs every generated test target, and constructs the public
 router of each hot-reload project using offline-safe defaults. A separate
-five-case test invokes the public `cargo rullst new` binary and verifies exact
+seven-case test invokes the public `cargo rullst new` binary and verifies exact
 feature selection for SQLite, PostgreSQL, MySQL, MariaDB, AI, Redis, Turso,
-MongoDB, DuckDB, SurrealDB and Qdrant.
+MongoDB, DuckDB, SurrealDB and Qdrant across all six public blueprints plus a
+polyglot profile. The invocation starts outside the source checkout, proving
+that an unpublished pre-release CLI retains its exact matching checkout as a
+path source instead of requesting unavailable registry packages.
 
 The public polyglot profile uses `cargo check` in that CLI-level set because a
 second bundled-DuckDB test build adds no adapter behavior and can consume

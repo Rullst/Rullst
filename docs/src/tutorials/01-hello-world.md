@@ -108,9 +108,10 @@ cargo rullst --help
 ```
 
 The CLI's `new` generator will target the CLI's framework version. Until v12 is
-published, review generated dependency sources before moving the project out of
-the Rullst workspace. See the [CLI reference](../cli_reference.md) for every
-command and boundary.
+published, a pre-release CLI built from this checkout emits absolute path
+dependencies to that exact checkout, including when invoked elsewhere. Keep the
+checkout in place and review those sources before sharing the generated project.
+See the [CLI reference](../cli_reference.md) for every command and boundary.
 
 ## Key takeaways
 

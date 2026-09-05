@@ -46,7 +46,7 @@ struct ProfileCase {
     run_tests: bool,
 }
 
-const PROFILE_CASES: [ProfileCase; 5] = [
+const PROFILE_CASES: [ProfileCase; 7] = [
     ProfileCase {
         name: "blank-no-database-api-hot",
         arguments: &[
@@ -59,6 +59,42 @@ const PROFILE_CASES: [ProfileCase; 5] = [
         required_rullst_features: &["studio"],
         rejected_rullst_features: &["orm", "strict-sqlite", "strict-postgres", "strict-mysql"],
         router_returns_result: Some(false),
+        run_tests: true,
+    },
+    ProfileCase {
+        name: "lms-sqlite-active-htmx",
+        arguments: &[
+            "--blueprint",
+            "lms",
+            "--database",
+            "sqlite",
+            "--orm",
+            "active-record",
+            "--frontend",
+            "htmx",
+            "--hot-reload",
+        ],
+        required_rullst_features: &["orm", "strict-sqlite", "studio", "nexus", "auth"],
+        rejected_rullst_features: &["strict-postgres", "strict-mysql", "capital"],
+        router_returns_result: Some(true),
+        run_tests: true,
+    },
+    ProfileCase {
+        name: "saas-sqlite-active-htmx",
+        arguments: &[
+            "--blueprint",
+            "saas",
+            "--database",
+            "sqlite",
+            "--orm",
+            "active-record",
+            "--frontend",
+            "htmx",
+            "--hot-reload",
+        ],
+        required_rullst_features: &["orm", "strict-sqlite", "studio", "nexus", "auth", "capital"],
+        rejected_rullst_features: &["strict-postgres", "strict-mysql"],
+        router_returns_result: Some(true),
         run_tests: true,
     },
     ProfileCase {
@@ -223,7 +259,7 @@ fn public_cli_profiles_compile_across_every_distinct_generation_axis() {
     for case in PROFILE_CASES {
         let project = GeneratedProject::new(case.name);
         let generated = Command::new(env!("CARGO_BIN_EXE_rullst"))
-            .current_dir(workspace)
+            .current_dir(project.path.parent().expect("external project parent"))
             .arg("new")
             .arg(&project.path)
             .arg("--default")
