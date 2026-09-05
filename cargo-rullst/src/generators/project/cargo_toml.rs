@@ -358,6 +358,29 @@ mod tests {
     }
 
     #[test]
+    fn malformed_or_package_less_local_manifests_are_not_trusted() {
+        let root = tempfile::tempdir().expect("isolated manifest directory");
+        let candidate = root.path().join("candidate");
+        fs::create_dir(&candidate).expect("candidate directory");
+
+        fs::write(candidate.join("Cargo.toml"), "[package\nname = broken")
+            .expect("malformed manifest");
+        assert!(!is_matching_local_package(
+            &candidate,
+            "candidate",
+            "12.0.0-rc.1"
+        ));
+
+        fs::write(candidate.join("Cargo.toml"), "[workspace]\nmembers = []\n")
+            .expect("package-less manifest");
+        assert!(!is_matching_local_package(
+            &candidate,
+            "candidate",
+            "12.0.0-rc.1"
+        ));
+    }
+
+    #[test]
     fn source_checkout_is_available_to_the_current_prerelease() {
         let source = dependency_source(Path::new("/tmp"), "rullst", env!("CARGO_PKG_VERSION"))
             .expect("current dependency source");
