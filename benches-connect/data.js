@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788564282361,
+  "lastUpdate": 1788613079126,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -5872,6 +5872,36 @@ window.BENCHMARK_DATA = {
           {
             "name": "github_provider_creation",
             "value": 311,
+            "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": false,
+          "id": "7a0810fe224195b0c5839448ce4c9df97719fe19",
+          "message": "docs(v12): record repaired fuzz target evidence",
+          "timestamp": "2026-09-05T09:18:58-03:00",
+          "tree_id": "a459923516b321c84229d7f22fbe404f8f3a5b06",
+          "url": "https://github.com/Rullst/Rullst/commit/7a0810fe224195b0c5839448ce4c9df97719fe19"
+        },
+        "date": 1788613078721,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 565,
             "range": "± 2",
             "unit": "ns/iter"
           }
