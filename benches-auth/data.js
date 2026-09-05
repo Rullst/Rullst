@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788564220193,
+  "lastUpdate": 1788613003945,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -9497,6 +9497,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1723,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": false,
+          "id": "7a0810fe224195b0c5839448ce4c9df97719fe19",
+          "message": "docs(v12): record repaired fuzz target evidence",
+          "timestamp": "2026-09-05T09:18:58-03:00",
+          "tree_id": "a459923516b321c84229d7f22fbe404f8f3a5b06",
+          "url": "https://github.com/Rullst/Rullst/commit/7a0810fe224195b0c5839448ce4c9df97719fe19"
+        },
+        "date": 1788613003562,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1014,
+            "range": "± 46",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 794,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1825,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3964,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
