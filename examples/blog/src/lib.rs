@@ -345,6 +345,14 @@ pub mod app {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub fn router() -> Result<rullst::Router, Box<dyn std::error::Error>> {
+    let nexus_auth = rullst_nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
+    router_with_nexus_auth(nexus_auth)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn router_with_nexus_auth(
+    nexus_auth: rullst_nexus::NexusAuthPolicy,
+) -> Result<rullst::Router, Box<dyn std::error::Error>> {
     use app::*;
     use rullst::routes;
 
@@ -359,7 +367,6 @@ pub fn router() -> Result<rullst::Router, Box<dyn std::error::Error>> {
     ])?
     .with_default("community")?;
 
-    let nexus_auth = rullst_nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus_router = rullst_nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
         .with_brand("Rullst Sovereign Publisher")
@@ -422,11 +429,20 @@ mod tests {
     use std::sync::atomic::Ordering;
     use tower::ServiceExt;
 
+    fn test_router() -> rullst::Router {
+        let nexus_auth = rullst_nexus::NexusAuthPolicy::basic(
+            "integration-fixture-operator",
+            "integration-fixture-credential",
+        )
+        .expect("valid test-only Nexus policy");
+        super::router_with_nexus_auth(nexus_auth).expect("blog router")
+    }
+
     #[tokio::test]
     async fn honeypot_button_hits_the_real_deception_middleware() {
         let store = rullst_security::SecurityStore::global();
         let before = store.honeypot_traps_count.load(Ordering::Relaxed);
-        let app = super::router().expect("blog router").into_axum();
+        let app = test_router().into_axum();
         let mut request = Request::get("/wp-admin")
             .body(Body::empty())
             .expect("honeypot request");
@@ -450,7 +466,7 @@ mod tests {
 
     #[tokio::test]
     async fn showcase_forms_render_and_enforce_the_double_submit_csrf_token() {
-        let app = super::router().expect("blog router").into_axum();
+        let app = test_router().into_axum();
 
         for path in ["/", "/pricing"] {
             let response = app
