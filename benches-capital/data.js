@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788564543811,
+  "lastUpdate": 1788613384854,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -6460,6 +6460,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": false,
+          "id": "7a0810fe224195b0c5839448ce4c9df97719fe19",
+          "message": "docs(v12): record repaired fuzz target evidence",
+          "timestamp": "2026-09-05T09:18:58-03:00",
+          "tree_id": "a459923516b321c84229d7f22fbe404f8f3a5b06",
+          "url": "https://github.com/Rullst/Rullst/commit/7a0810fe224195b0c5839448ce4c9df97719fe19"
+        },
+        "date": 1788613384448,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
