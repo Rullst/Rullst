@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788612313601,
+  "lastUpdate": 1788631237457,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -17651,6 +17651,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2224,
             "range": "± 52",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a6198cf595e7d28d5a76c50f28416cc2c20c98aa",
+          "message": "test(coverage): exercise release edge cases\n\nTest malformed local manifests and stable repeated DLP redaction.",
+          "timestamp": "2026-09-05T14:55:05-03:00",
+          "tree_id": "77d861cfdb3618f512201b5902ba8580f40f754b",
+          "url": "https://github.com/Rullst/Rullst/commit/a6198cf595e7d28d5a76c50f28416cc2c20c98aa"
+        },
+        "date": 1788631235140,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 623,
+            "range": "± 71",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 894,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 663,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1752,
+            "range": "± 47",
             "unit": "ns/iter"
           }
         ]
