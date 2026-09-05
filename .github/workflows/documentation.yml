@@ -56,6 +56,9 @@ jobs:
           python3 .github/validate-site.py
           node --check docs/site.js
 
+      - name: Validate the historical roadmap ledger
+        run: bash .github/check-historical-roadmap-ledger.sh
+
       - name: Validate repository-local links
         run: >-
           lychee --offline --no-progress --include-fragments=anchor-only
