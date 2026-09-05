@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788613200024,
+  "lastUpdate": 1788632151109,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -8470,6 +8470,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 26,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a6198cf595e7d28d5a76c50f28416cc2c20c98aa",
+          "message": "test(coverage): exercise release edge cases\n\nTest malformed local manifests and stable repeated DLP redaction.",
+          "timestamp": "2026-09-05T14:55:05-03:00",
+          "tree_id": "77d861cfdb3618f512201b5902ba8580f40f754b",
+          "url": "https://github.com/Rullst/Rullst/commit/a6198cf595e7d28d5a76c50f28416cc2c20c98aa"
+        },
+        "date": 1788632150347,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5247,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 602,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 9,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 24,
             "range": "± 0",
             "unit": "ns/iter"
           }
