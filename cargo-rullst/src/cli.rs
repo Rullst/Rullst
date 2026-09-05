@@ -877,15 +877,26 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             audit_ignore,
             network,
         } => {
-            crate::generators::audit::run_security_audit_with_exceptions(
-                *ai,
-                *compliance,
-                *idor,
-                *geiger,
-                *sbom,
-                audit_ignore,
-                *network,
-            )?;
+            if audit_ignore.is_empty() {
+                crate::generators::audit::run_security_audit(
+                    *ai,
+                    *compliance,
+                    *idor,
+                    *geiger,
+                    *sbom,
+                    *network,
+                )?;
+            } else {
+                crate::generators::audit::run_security_audit_with_exceptions(
+                    *ai,
+                    *compliance,
+                    *idor,
+                    *geiger,
+                    *sbom,
+                    audit_ignore,
+                    *network,
+                )?;
+            }
         }
         Commands::HookInstall => {
             crate::generators::hook::install_git_pre_commit_hook()?;

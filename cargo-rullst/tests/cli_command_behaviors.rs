@@ -382,6 +382,24 @@ fn diagnostics_audit_and_build_are_exercised_with_controlled_tool_processes() {
         ],
         &tools,
     );
+    let governed = fixture.succeeds_with_path(
+        &[
+            "audit",
+            "--audit-ignore",
+            "RUSTSEC-2023-0071",
+            "--audit-ignore",
+            "RUSTSEC-2026-0001",
+        ],
+        &tools,
+    );
+    assert!(
+        governed.contains("exceptions remain unresolved: RUSTSEC-2023-0071, RUSTSEC-2026-0001")
+    );
+    assert!(
+        fixture
+            .fails(&["audit", "--audit-ignore", "RUSTSEC-2023-0071 --quiet"])
+            .contains("expected RUSTSEC-YYYY-NNNN")
+    );
     fixture.succeeds_with_path(&["build", "--debug"], &tools);
     fixture.succeeds_with_path(&["build"], &tools);
     fs::create_dir_all(fixture.root.join("src/migrations")).expect("migration directory");
@@ -413,6 +431,26 @@ fn diagnostics_audit_and_build_are_exercised_with_controlled_tool_processes() {
             "static/app.css.zst",
         ],
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn audit_reports_missing_project_sources_as_not_checked() {
+    let fixture = Fixture::new("audit-missing-source");
+    fs::remove_dir_all(fixture.root.join("src")).expect("remove fixture source tree");
+    let tools = fixture.install_successful_tool_fixtures();
+
+    let output = fixture.succeeds_with_path(&["audit", "--compliance"], &tools);
+    assert!(output.contains("bounded unsafe scan was not executed"));
+
+    let report = fs::read_to_string(fixture.root.join("SECURITY_COMPLIANCE.md"))
+        .expect("security evidence report");
+    assert!(report.contains(
+        "| Project-source unsafe scan | **NOT CHECKED** | no src directory was available to inspect |"
+    ));
+    assert!(report.contains(
+        "| Parameterized-route IDOR heuristic | **NOT CHECKED** | no scannable Rust source was available |"
+    ));
 }
 
 #[cfg(unix)]
