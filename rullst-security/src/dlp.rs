@@ -369,6 +369,18 @@ mod tests {
         );
     }
 
+    #[test]
+    fn already_masked_database_urls_remain_stable_during_other_redactions() {
+        let payload = b"AKIAIOSFODNN7EXAMPLE redis://user:*****@cache.internal:6379/session";
+        let (masked, was_modified) = mask_response_payload(payload);
+
+        assert!(was_modified);
+        assert_eq!(
+            String::from_utf8(masked).unwrap(),
+            "AKIA**************** redis://user:*****@cache.internal:6379/session"
+        );
+    }
+
     #[tokio::test]
     async fn test_dlp_layer_middleware() {
         use axum::http::{Request, StatusCode, header};
