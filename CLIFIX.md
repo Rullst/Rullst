@@ -145,4 +145,3 @@ At handoff, provide:
 - unresolved or subjective observations;
 - any behavior that could not be tested on that computer; and
 - confirmation that the worktree is clean and no change reached `main`.
-
