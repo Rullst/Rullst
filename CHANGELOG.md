@@ -98,6 +98,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   current edition, `syn` API and modular parser source, while the DLP target
   exercises the public byte-oriented masking boundary. This repairs two stale
   harnesses that failed during target construction before fuzz input ran.
+- The manual mutation campaign now divides the workspace into sixteen shards
+  after the previous eight-way layout exhausted one job's 5h30 runner bound;
+  survived and timed-out mutants remain explicit informational evidence.
 - `rullst-orm-macros` now parses model, relation, and SQLx attributes as
   structured nested metadata and fails closed on unknown, duplicate, orphaned,
   or conflicting options. Persisted `id`, tenant, soft-delete, and embedding

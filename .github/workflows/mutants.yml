@@ -17,13 +17,13 @@ jobs:
   mutants:
     permissions:
       contents: read
-    name: cargo-mutants informational shard ${{ matrix.shard }}/8
+    name: cargo-mutants informational shard ${{ matrix.shard }}/16
     runs-on: ubuntu-latest
     timeout-minutes: 330
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -39,11 +39,14 @@ jobs:
           tool: cargo-mutants@27.1.0
 
       - name: Run mutants shard on whole workspace
-        # We test the entire workspace, divided in 8 shards
+        # We test the entire workspace, divided in 16 shards. The former
+        # eight-way matrix produced one 5h30 job-level timeout on the full v12
+        # workspace, so the finer split keeps every result and artifact within
+        # the existing bounded runner budget.
         # Exit code 2 = missed mutants found; continue-on-error so CI doesn't
         # hard-fail — results are captured in the uploaded artifact for review.
         continue-on-error: true
-        run: cargo mutants --workspace --shard ${{ matrix.shard }}/8 --in-place
+        run: cargo mutants --workspace --shard ${{ matrix.shard }}/16 --in-place
 
       - name: Upload shard results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
