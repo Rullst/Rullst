@@ -129,10 +129,11 @@ insta = { version = "1.41", features = ["yaml"] }
 reqwest = "0.13.4"
 base64 = "0.23.0"
 sqlx = { workspace = true, features = ["sqlite", "runtime-tokio"] }
+actix-web = { version = "4", default-features = false }
 
 [[bench]]
 name = "rullst_bench"
 harness = false
 
 [package.metadata.cargo-machete]
-ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]
+ignored = ["actix-web", "async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]

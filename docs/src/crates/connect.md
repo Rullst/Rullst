@@ -135,11 +135,15 @@ Choose your provider and pass your credentials and callback URL:
 ```rust
 use rullst_connect::prelude::*;
 
+# fn main() -> Result<(), ConnectError> {
 let github = GithubProvider::try_new(
     "YOUR_CLIENT_ID",
     "YOUR_CLIENT_SECRET".to_string().into(),
     "http://localhost:3000/auth/github/callback",
 )?;
+# let _ = github;
+# Ok(())
+# }
 ```
 
 ### Signed local OIDC fixture
@@ -163,14 +167,24 @@ on ambient `HTTP_PROXY` state:
 
 ```rust
 use rullst_connect::client::ReqwestClient;
+use rullst_connect::prelude::{ConnectError, GithubProvider};
 use std::sync::Arc;
 
-let proxy = ReqwestClient::try_with_proxy_basic_auth(
-    "https://proxy.corp.example:8443",
-    "proxy-user",
-    proxy_password,
-)?;
-let github = github.with_http_client(Arc::new(proxy));
+fn github_through_corporate_proxy(
+    proxy_password: impl Into<String>,
+) -> Result<GithubProvider, ConnectError> {
+    let proxy = ReqwestClient::try_with_proxy_basic_auth(
+        "https://proxy.corp.example:8443",
+        "proxy-user",
+        proxy_password,
+    )?;
+    let github = GithubProvider::try_new(
+        "YOUR_CLIENT_ID",
+        "YOUR_CLIENT_SECRET".to_string().into(),
+        "http://localhost:3000/auth/github/callback",
+    )?;
+    Ok(github.with_http_client(Arc::new(proxy)))
+}
 ```
 
 Proxy URLs are limited to an HTTP(S) scheme and authority, with no embedded
@@ -185,13 +199,19 @@ The recommended Axum path generates state and PKCE, stores their private
 counterparts in `tower-sessions` for ten minutes, and returns only the redirect
 URL:
 
-```rust
+```rust,no_run
 use axum::response::Redirect;
+use rullst_connect::prelude::{ConnectError, GithubProvider};
 use rullst_connect::extractors::begin_oauth_session;
 use tower_sessions::Session;
 
-let authorization = begin_oauth_session(&session, &github).await?;
-return Ok(Redirect::temporary(authorization.url()));
+async fn start_github_authorization(
+    session: &Session,
+    github: &GithubProvider,
+) -> Result<Redirect, ConnectError> {
+    let authorization = begin_oauth_session(session, github).await?;
+    Ok(Redirect::temporary(authorization.url()))
+}
 ```
 
 Use `begin_oidc_session` instead for Google, Apple, or a custom OIDC provider.
@@ -202,12 +222,20 @@ It adds and stores an OIDC nonce as well.
 `AuthSession` consumes the challenge before checking its expiry and state. It
 then supplies the exact PKCE verifier and optional OIDC nonce to the provider:
 
-```rust
+```rust,no_run
 use rullst_connect::extractors::AuthSession;
+use rullst_connect::prelude::{
+    ConnectError, GithubProvider, Provider as _, UniversalProfile,
+};
 
-let params = auth_session.exchange_params()?;
-let user = github.get_user(params).await?;
-let public_profile = user.universal_profile();
+async fn finish_github_callback(
+    auth_session: AuthSession,
+    github: &GithubProvider,
+) -> Result<UniversalProfile, ConnectError> {
+    let params = auth_session.exchange_params()?;
+    let user = github.get_user(params).await?;
+    Ok(user.universal_profile())
+}
 ```
 
 Only one managed challenge is active per browser session. Starting another
@@ -222,7 +250,10 @@ Non-Axum hosts may use the framework-neutral primitives directly. The host must
 atomically take the expected value from a short-lived server-side store before
 comparison; a reusable cookie value is not equivalent.
 
-```rust
+The following fragment is host pseudocode because the durable one-time store
+and callback extractor are deliberately application-provided:
+
+```rust,ignore
 use rullst_connect::pkce::generate_oauth_state;
 
 let state = generate_oauth_state();
@@ -240,7 +271,11 @@ statically dispatched, process-local coordinator when the callback receives it:
 
 ```rust,no_run
 use rullst_connect::{AutoRefreshingSession, ConnectError, ConnectUser};
-use secrecy::ExposeSecret as _;
+use rullst_connect::prelude::ExposeSecret as _;
+
+# async fn send_token_to_the_authorized_api(_: &str) -> Result<(), ConnectError> {
+#     Ok(())
+# }
 
 async fn call_provider_api(
     github: &rullst_connect::providers::GithubProvider,
@@ -335,26 +370,40 @@ continues to return a typed error.
 
 ### 🔒 Manual PKCE Support
 
-Provider adapters expose PKCE (Proof Key for Code Exchange) where supported by the provider protocol. Some providers such as **X (Twitter) v2** require it; applications must preserve and validate the verifier/state for the complete authorization transaction.
+Provider adapters expose PKCE (Proof Key for Code Exchange) where supported by
+the provider protocol. Some providers such as **X (Twitter) v2** require it;
+applications must preserve and validate the verifier/state for the complete
+authorization transaction. The generic provider boundary accepts both values
+explicitly:
 
-```rust
-use rullst_connect::pkce::generate_pkce;
-
-// 1. Generate challenge and verifier
-let (code_verifier, code_challenge) = generate_pkce();
-
-// 2. Save `code_verifier` in the user's session or a secure HttpOnly cookie!
-
-// 3. Get the URL with PKCE natively using the builder pattern
-let auth_url = provider.with_pkce(&code_challenge).redirect_url();
-
-// 4. In the callback route, fetch the user using the saved verifier:
-let params = rullst_connect::provider::ExchangeParams {
-    auth_code: &code,
-    code_verifier: Some(&code_verifier),
-    ..Default::default()
+```rust,no_run
+use rullst_connect::{
+    ConnectError, ConnectUser,
+    pkce::{generate_oauth_state, generate_pkce},
+    provider::{ExchangeParams, Provider},
 };
-let user = provider.get_user(params).await?;
+
+async fn exchange_with_pkce<P: Provider>(
+    provider: &P,
+    authorization_code: &str,
+) -> Result<ConnectUser, ConnectError> {
+    let state = generate_oauth_state();
+    let (code_verifier, code_challenge) = generate_pkce();
+
+    // Persist state + verifier in a short-lived server-side record before redirecting.
+    let authorization_url =
+        provider.redirect_url_with_pkce_and_state(&code_challenge, &state);
+    let _ = authorization_url;
+
+    // After atomically consuming and validating that state in the callback:
+    provider
+        .get_user(ExchangeParams {
+            auth_code: authorization_code,
+            code_verifier: Some(&code_verifier),
+            ..Default::default()
+        })
+        .await
+}
 ```
 
 ## 🧑‍💻 Full Example with Axum

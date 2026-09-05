@@ -19,12 +19,14 @@ probes available on the current platform:
 ```rust
 use rullst_core::radar::RadarSnapshot;
 
+# async fn inspect_process() {
 let snapshot = RadarSnapshot::collect_async().await;
 println!("uptime: {}s", snapshot.uptime_seconds);
 println!("rss: {:?} MB", snapshot.memory_rss_mb);
 println!("cpu: {:?}%", snapshot.cpu_usage_percent);
 println!("tokio tasks: {:?}", snapshot.active_tokio_tasks);
 println!("yield observation: {:?} us", snapshot.tokio_latency_micros);
+# }
 ```
 
 The option-valued fields are deliberately `None` when a real probe is not
@@ -94,7 +96,10 @@ RUST_LOG=info
 Then initialize the tracing subscriber once at startup:
 
 ```rust
+# fn initialize() -> Result<(), Box<dyn std::error::Error>> {
 rullst_core::telemetry::init_telemetry()?;
+# Ok(())
+# }
 ```
 
 `Server::run` also attempts this initialization, but an application that needs

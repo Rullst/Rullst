@@ -20,9 +20,11 @@ toda configuração final de CORS é segura.
 
 ## Como identificar uma aplicação potencialmente afetada
 
-Revise o middleware CORS gerado e procure qualquer um destes padrões:
+Revise o middleware CORS gerado e procure qualquer um destes padrões. O trecho
+abaixo é deliberadamente incompleto e inseguro: serve somente como padrão de
+busca, não como código para copiar ou executar.
 
-```rust
+```rust,ignore
 AllowOrigin::mirror_request()
 .allow_origin(Any)
 .allow_credentials(true)

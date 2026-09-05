@@ -61,7 +61,7 @@ pub use rullst_security as security_runtime;
 #[cfg(feature = "iot")]
 pub use rullst_iot as iot;
 
-// Compile the public tutorials as doctests without exposing their aggregation
+// Compile the public guides and tutorials as doctests without exposing their aggregation
 // module in normal builds or generated API documentation.
 #[cfg(doctest)]
 #[doc(hidden)]

@@ -91,7 +91,7 @@ handling are external contractual properties, not guarantees made by Rullst.
 
 In your `main.rs`:
 
-```rust
+```rust,no_run
 use rullst_capital::{
     init_provider, StripeProvider, LemonSqueezyProvider, InfinitePayProvider,
     PolarProvider, PaddleProvider, MercadoPagoProvider, CoinbaseCommerceProvider,
@@ -193,7 +193,8 @@ pub fn billing_routes() -> Router {
 #### Actix Web adapter
 
 Enable `rullst-capital` with `default-features = false, features = ["actix"]`,
-or enable `rullst/capital-actix` through the umbrella crate. An explicit
+or enable `rullst/capital-actix` through the umbrella crate, and add
+`actix-web` as a direct application dependency. An explicit
 provider-bound state avoids global provider configuration and makes the replay
 boundary visible:
 

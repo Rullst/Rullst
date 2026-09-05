@@ -47,13 +47,13 @@
 
 ### 1. Composing and Sending an Email
 
-```rust
+```rust,no_run
 use rullst_mail::{Mail, Message};
 use chrono::{Utc, Duration};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let logo_bytes = include_bytes!("../assets/logo.png");
+    let logo_bytes = b"replace with application-owned PNG bytes";
 
     let message = Message::new()
         .to("alice@example.com")
@@ -114,6 +114,7 @@ exactly-once provider delivery, or provider acceptance.
 use rullst_mail::drivers::{FailoverDriver, PostmarkDriver, ResendDriver};
 use std::time::Duration;
 
+# fn build_failover() -> Result<FailoverDriver, rullst_mail::MailError> {
 let primary = ResendDriver::try_new("re_...")?;
 let fallback_1 = PostmarkDriver::try_new("pm_token_...")?;
 
@@ -121,16 +122,21 @@ let failover_driver = FailoverDriver::new(primary)
     .with_fallback(fallback_1)
     .with_threshold(3) // Trip circuit after 3 consecutive failures
     .with_cooldown(Duration::from_secs(60)); // Cooldown for 60s
+# Ok(failover_driver)
+# }
 ```
 
 ---
 
 ### 3. Dynamic B2B Multi-Tenancy Routing
 
-```rust
+```rust,no_run
 use rullst_core::security::TenantMembership;
-use rullst_mail::{ResendDriver, TenantMailResolver};
+use rullst_mail::{Message, ResendDriver, TenantMailResolver};
 
+async fn send_tenant_message(
+    message: &Message,
+) -> Result<(), Box<dyn std::error::Error>> {
 let resolver = TenantMailResolver::new();
 let membership = TenantMembership::try_new(["tenant_globex"])?;
 let context = membership.select("tenant_globex")?;
@@ -143,6 +149,8 @@ resolver.register_for_context(
 
 // The context must be derived from trusted authentication/membership state.
 resolver.send_for_context(&context, &message).await?;
+Ok(())
+}
 ```
 
 The registry is intentionally process-local. Durable encrypted credential storage,
@@ -312,7 +320,9 @@ privacy-law decisions.
 use rullst_mail::{TrackingEngine, TrackingVerifier, PIXEL_1X1_GIF, Message};
 use std::time::Duration;
 
+fn tracking_example() -> Result<(), Box<dyn std::error::Error>> {
 let secret = b"replace-with-32-or-more-random-key-bytes";
+let now_unix_seconds = 1_800_000_000;
 
 // Fluent open & click tracking injection
 let tracked_msg = Message::new()
@@ -322,6 +332,13 @@ let tracked_msg = Message::new()
     .try_with_open_tracking("https://app.com", secret, "campaign_2026")?
     .try_with_click_tracking("https://app.com", secret)?;
 
+let token = TrackingEngine::try_generate_open_token(
+    secret,
+    "user@example.com",
+    "campaign_2026",
+    now_unix_seconds,
+)?;
+
 // Default verification enforces a 30-day TTL.
 let event = TrackingEngine::verify_open_token(secret, &token)?;
 println!("Email opened by {} for campaign {}", event.email, event.campaign_id);
@@ -329,6 +346,9 @@ println!("Email opened by {} for campaign {}", event.email, event.campaign_id);
 // Endpoints needing single-consumption semantics can reject replay explicitly.
 let verifier = TrackingVerifier::new(Duration::from_secs(24 * 60 * 60), 100_000)?;
 let event = verifier.verify_open_once(secret, &token, now_unix_seconds)?;
+let _ = (tracked_msg, event, PIXEL_1X1_GIF);
+Ok(())
+}
 ```
 
 ---
@@ -368,7 +388,11 @@ an explicit trusted proxy URL.
 Long-running services should inject a refreshing credential provider or a
 caller-built SDK config instead of freezing credentials:
 
-```rust,no_run
+This snippet intentionally uses the application's direct `aws-config`
+dependency shown above, which is not re-exported by Rullst; it is therefore
+checked in the AWS integration workflow rather than the umbrella doctest:
+
+```rust,ignore
 use rullst_mail::{AwsSesDriver, MailDriver, Message, aws_ses_sdk};
 
 # async fn deliver() -> Result<(), Box<dyn std::error::Error>> {

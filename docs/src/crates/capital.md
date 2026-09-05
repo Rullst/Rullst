@@ -51,7 +51,7 @@ semantic response mismatch. Its provider and operation labels are static and
 safe for low-cardinality telemetry; the value deliberately omits URLs,
 credentials, bodies, and raw transport errors.
 
-```rust
+```rust,no_run
 use rullst_capital::{CapitalError, ProviderFailureClass};
 
 fn record_disposition(error: &CapitalError) -> &'static str {
@@ -76,7 +76,7 @@ provider-forwarded idempotency key and reconciliation.
 
 ### 1. Initializing a Provider and Creating a Checkout Session
 
-```rust
+```rust,no_run
 use rullst_capital::providers::stripe::StripeProvider;
 use rullst_capital::BillingProvider;
 
@@ -211,13 +211,14 @@ Selecting the feature does not enable SEFIN transmission.
 
 ### Emitting an Invoicing Document (DPS)
 
-```rust
+```rust,no_run
 use rullst_capital::fiscal::{
     build_dps_xml_v1_01, FiscalCustomer, FiscalEmitter, IssRetention,
     IssTaxation, NfseDpsV101, NfseEnvironment, TaxRegime,
 };
 use chrono::{NaiveDate, Utc};
 
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
 let emitter = FiscalEmitter {
     cnpj: "12.345.678/0001-90".to_string(),
     inscricao_municipal: "1234567".to_string(),
@@ -257,6 +258,9 @@ let unsigned_xml = build_dps_xml_v1_01(
     &dps,
     NfseEnvironment::Homologation,
 )?;
+# let _ = unsigned_xml;
+# Ok(())
+# }
 ```
 
 See [Preparing a National NFS-e 1.01 homologation

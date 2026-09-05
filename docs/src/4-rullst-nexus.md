@@ -20,7 +20,7 @@ use rullst::db::{FromRow, Nexus, Orm};
 #[orm(table = "users")]
 #[nexus(label = "Users", icon = "👥")]
 pub struct User {
-    pub id: i64,
+    pub id: i32,
     pub name: String,
     #[nexus(kind = "email")]
     pub email: String,
@@ -74,7 +74,7 @@ use rullst::db::{FromRow, Nexus, Orm};
 #[derive(Debug, Clone, FromRow, Orm, Nexus)]
 #[orm(table = "projects", tenant = "organization_id")]
 pub struct Project {
-    pub id: i64,
+    pub id: i32,
     pub organization_id: String,
     pub name: String,
     pub active: bool,

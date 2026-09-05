@@ -88,9 +88,10 @@ than this layer; consolidation remains roadmap work.
 
 ## 🚫 3. Anti-Bruteforce Login Guard & Tarpit
 
-```rust
+```rust,no_run
 use rullst_security::LoginGuard;
 
+async fn apply_login_delay() {
 let guard = LoginGuard::new(); // defaults: 5 failures, 15-minute local jail
 
 // Record failure and apply the returned progressive delay in the async handler.
@@ -99,6 +100,7 @@ tokio::time::sleep(delay).await;
 
 if guard.is_jailed("account:alice") {
     println!("Identity is in the local Login Jail");
+}
 }
 ```
 

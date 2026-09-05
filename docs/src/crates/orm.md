@@ -153,7 +153,7 @@ cargo add tokio -F full
 
 ### Zero-to-Hero Example
 
-```rust
+```rust,no_run
 use rullst_orm::{Orm, FromRow};
 
 // 1. Just add the Orm macro to your struct!

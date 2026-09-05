@@ -180,19 +180,29 @@ PostgreSQL/MySQL contention evidence also remains open.
 ### 4.1. Server & Routing (`rullst::routing`)
 * **Routing Macro:** Central declarative routing declared via the `routes!` macro wrapping Axum routing handlers:
   ```rust
+  use rullst::{response::Html, routes};
+
+  async fn home() -> Html<&'static str> {
+      Html("Home")
+  }
+
+  async fn posts_index() -> Html<&'static str> {
+      Html("Posts")
+  }
+
   let router = routes![
       get("/" => home),
-      get("/posts" => posts_controller::index),
-      post("/posts" => posts_controller::store),
-      get("/posts/:id" => posts_controller::show),
+      get("/posts" => posts_index),
   ];
   ```
 * **Server Lifecycle & Graceful Shutdown:**
-  ```rust
-  Server::new(router)
-      .with_graceful_shutdown()
-      .run(3000)
-      .await?;
+  ```rust,no_run
+  use rullst::{Server, routes};
+
+  async fn serve() -> Result<(), rullst::server::ServerError> {
+      let router = routes![get("/" => || async { "OK" })];
+      Server::new(router).run(3000).await
+  }
   ```
   `ApplicationLifecycle` is the opt-in orchestration contract behind a
   lifecycle-aware server. Its phase is monotonic, its immutable registry has at
@@ -224,6 +234,8 @@ PostgreSQL/MySQL contention evidence also remains open.
 * **Raw Unescaped HTML:** Explicitly bypassed using the wrapper `rullst::html::RawHtml(String)`.
 * **Example:**
   ```rust
+  use rullst::html;
+
   let username = "<script>alert('xss')</script>";
   let rendered = html! {
       <div class="user-badge">
@@ -251,8 +263,10 @@ PostgreSQL/MySQL contention evidence also remains open.
 ## 🗄️ 5. Active Record ORM & Schema Engine (`rullst-orm`)
 
 ### 5.1. Model Definition & CRUD
-```rust
-#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+```rust,no_run
+use rullst_orm::{FromRow, Orm};
+
+#[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "users")]
 pub struct User {
     pub id: i32,
@@ -262,7 +276,8 @@ pub struct User {
     pub secret_token: Option<String>,
 }
 
-// Queries
+async fn use_users() -> Result<(), rullst_orm::Error> {
+// Queries (after `Orm::init(...)` and schema migration at startup).
 let all_users: Vec<User> = User::all().await?;
 let user: Option<User> = User::find(1).await?;
 
@@ -270,6 +285,9 @@ let user: Option<User> = User::find(1).await?;
 let mut new_user = User { id: 0, name: "Alice".into(), email: "alice@example.com".into(), secret_token: None };
 new_user.save().await?; // Auto-executes parameterized INSERT or UPDATE
 new_user.delete().await?;
+let _ = (all_users, user);
+Ok(())
+}
 ```
 
 The `Orm` derive grammar is fail-closed. Model and field attributes are parsed
@@ -605,14 +623,22 @@ acceptance remains external evidence.
 Billing adapters implement `BillingProvider`; the Wise payout adapter implements
 the separate `PayoutProvider` contract. Individual billing operations may still
 return `Unsupported` when a provider adapter has no reviewed implementation:
-```rust
+```rust,no_run
 use rullst_capital::providers::stripe::StripeProvider;
 use rullst_capital::providers::BillingProvider;
 
-let provider = StripeProvider::new(api_key, webhook_secret);
+async fn create_checkout() -> Result<(), rullst_capital::CapitalError> {
+let provider = StripeProvider::new("mock_api_key", "mock_webhook_secret");
 let session = provider
-    .create_checkout_session(customer_email, plan_id, redirect_url)
+    .create_checkout_session(
+        "customer@example.com",
+        "price_monthly",
+        "https://example.com/billing/complete",
+    )
     .await?;
+let _ = session;
+Ok(())
+}
 ```
 
 `#[derive(rullst::Billable)]` is the umbrella convenience for named structs with
