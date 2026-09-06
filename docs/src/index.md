@@ -1,10 +1,16 @@
-# Welcome to Rullst Framework!
+# Your ambition. Rust's foundations.
 
 Rullst is a modular full-stack web framework for Rust built on Tokio, Axum, and
 SQLx. Version 12 is under active development; use the capability and release
 documents to distinguish implemented behavior from roadmap work.
 
-> "Pragmatic, built for developer happiness, and production-minded."
+**Welcome to the Rullst documentation.** Build a small application, understand
+the code behind it, then explore the tools that fit your next idea.
+
+> **New here? [Start with the guided learning path →](start-here.md)**
+>
+> Choose a generated application, a hand-written first route or a JSON API.
+> Each path tells you what to run, what to expect and where to go next.
 
 ## Documentation Hub
 
@@ -22,7 +28,7 @@ documents to distinguish implemented behavior from roadmap work.
 - [🛡️ Audit Report](https://github.com/Rullst/Rullst/blob/main/AUDIT.md)
 - [📦 View on Crates.io](https://crates.io/crates/rullst)
 
-### Why Rullst?
+## Learn the foundations, then explore
 - 🚀 **Measured performance:** Criterion suites and CI track regressions;
   application latency must be measured on the target workload.
 - 🧩 **Server-rendered UI:** `html!` and HTMX-oriented scaffolds are the audited

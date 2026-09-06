@@ -2,6 +2,10 @@
 
 Welcome to the **Rullst** Getting Started guide!
 
+**Your goal:** install the matching preview CLI, generate a small application,
+open it locally and make your first change. Prefer to write the first route
+yourself? Use [Zero to Hello Rullst](tutorials/01-hello-world.md).
+
 Rullst is a strictly typed full-stack web framework designed around explicit APIs,
 measurable performance, and defense-in-depth defaults.
 
@@ -32,6 +36,7 @@ install the CLI from that exact checkout instead:
 git clone --branch main https://github.com/Rullst/Rullst.git
 cd Rullst
 cargo install --locked --path cargo-rullst
+cd ..
 ```
 
 During this source-only phase, the pre-release CLI reuses the exact checkout
@@ -54,20 +59,44 @@ The **Rullst App Creator** will launch an interactive wizard. The example below
 creates a Portfolio while v12 remains unpublished:
 1. Select **Create New App**.
 2. **App Name**: Provide a simple lowercase name (e.g., `my_portfolio`).
-3. **Starter Blueprint**: Choose **Portfolio 🔥 (showcase for Rullst/AI developers) - HOT**.
+3. **Starter Blueprint**: Choose **Portfolio**. Labels and decorative suffixes
+   can change; use the blueprint name as your reference.
+4. Choose your primary database. **SQLite** is the simplest local first run;
+   PostgreSQL, MySQL and MariaDB require their database service to be running.
+5. Leave **optional persistence capabilities** empty unless you need an add-on.
+   That selector accepts zero or more choices; it is not another required database.
 
 ```bash
 cd my_portfolio
 cargo rullst dev
 ```
 
+Open the local URL reported by the command. Find the generated page code,
+change a heading and save. Confirm that the changed page appears after the
+successful rebuild/restart. Stop development with `Ctrl+C` before moving or
+removing the project directory.
+
+Prefer a small deterministic starter without navigating the wizard?
+
+```bash
+cargo rullst new first_app --default --blueprint blank --database sqlite \
+  --skip-initial-migration
+cd first_app
+cargo rullst dev
+```
+
+The first source build can take several minutes. `--skip-initial-migration`
+defers the generator's bootstrap work; the development command runs the
+initial migration before starting a generated database-backed app. Never point
+this learning project at a production database.
+
 > [!TIP]
 > The `cargo rullst dev` command compiles the project and starts the local
-> server. When the project was generated with `--hot-reload`, a change triggers
-> a real library rebuild, an authenticated router swap, and a browser refresh;
-> a failed build leaves the previous router serving. The CLI reports observed
-> duration rather than promising a fixed reload time. See the bounded behavior
-> and limitations in the [CLI reference](cli_reference.md#cargo-rullst-dev).
+> server. Saving changes triggers a real rebuild and supervised process restart;
+> a failed build leaves the previous application serving. The same-origin
+> browser client refreshes after the new process responds with its generation
+> marker. In-memory state resets. No hot-reload scaffold option is required.
+> See the [CLI reference](cli_reference.md#cargo-rullst-dev).
 > 
 > Rullst v12 deliberately generates one audited application profile: Active
 > Record with server-rendered `html!` views and HTMX enhancement. The framework
@@ -127,7 +156,7 @@ An opinionated SaaS starting point, pre-wired with:
 
 ## 5. Blog / Press
 **Use Case:** Content creation and articles.
-A static site generator pre-wired with Nexus CMS. It features:
+A database-backed, server-rendered blog/CMS blueprint. It features:
 - A beautiful article reading view with typography optimized for readability.
 - Article CRUD and a server-rendered reading view. Markdown parsing is not part
   of the current generated starter.

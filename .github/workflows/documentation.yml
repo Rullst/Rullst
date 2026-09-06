@@ -51,10 +51,18 @@ jobs:
       - name: Build the documentation book
         run: mdbook build docs
 
+      - name: Setup Node for dependency-free browser checks
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
       - name: Validate the landing page and benchmark templates
         run: |
           python3 .github/validate-site.py
           node --check docs/site.js
+
+      - name: Check the landing page in real Chromium
+        run: node .github/site-browser-smoke.mjs
 
       - name: Validate the historical roadmap ledger
         run: bash .github/check-historical-roadmap-ledger.sh
