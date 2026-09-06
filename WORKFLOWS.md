@@ -336,6 +336,7 @@ These ideas remain valuable, but are not current guarantees:
 | PGO and BOLT | **Not implemented — defer until production profiles exist.** Fixed throughput-gain percentages must not be promised in advance. |
 | Chaos testing with `fail-rs` | **Not implemented — worth implementing** around queues, database retries, and provider timeouts after deterministic failure contracts exist. |
 | AFL.rs/honggfuzz differential fuzzing | **Not implemented — valuable after the 40 libFuzzer targets have healthy corpora and triage ownership.** |
+| Cross-platform CI acceleration | **Not implemented — immediate v13 priority, with a bounded v12 experiment permitted.** Preserve the exact Linux/macOS/Windows workspace, feature, doctest, generated-project, outbox and live-provider contracts while isolating disposable CLI build trees and evaluating compiled-artifact caching, `sccache`, test scheduling and `cargo-nextest`. Speed alone must never reduce the assertions or supported-platform evidence. |
 | Differential database testing | **Not implemented — high-value v13 work.** Run equivalent generated ORM operations against the supported relational backends and compare normalized results, errors and transaction behavior; keep provider-specific semantics explicit instead of forcing false equivalence. |
 | Cross-browser and accessibility testing | **Not implemented — high-value v13 work.** Exercise generated applications with Playwright across Chromium, Firefox and WebKit, add keyboard and automated accessibility checks, and retain traces/screenshots for failures. This would complement, not replace, ZAP and server-level integration tests. |
 | Mobile physical-device farms | **Not implemented — requires external infrastructure.** Add Android and iOS device-farm execution, lifecycle/network interruption scenarios and signed-package evidence when accounts and secrets are governed. Simulator and compile checks must not be presented as physical-device or store-acceptance proof. |
@@ -345,6 +346,46 @@ These ideas remain valuable, but are not current guarantees:
 | Sigstore Cosign signing | **Not implemented.** Consider it for separately distributed binaries/containers; current `.crate` provenance and checksums should remain the immediate priority. |
 | Absolute “100% pure Rustls” mandate | **Not established and not recommended as a marketing absolute.** Enforce an audited TLS dependency policy based on supported platforms and threat model instead. |
 | Complete upstream OSS-Fuzz integration | **Partial draft — worth finishing.** Validate every intended target with `helper.py build_fuzzers` and `check_build`, then submit upstream; do not imply acceptance before merge. |
+
+### Cross-platform CI acceleration acceptance plan
+
+The September 6 v12 candidate measurements establish the clean-run baseline:
+the all-feature workspace and follow-up contracts took approximately 70 minutes
+on Linux, 59 minutes on macOS, and 107 minutes on Windows. Most time was spent
+in the clean `cargo test --workspace --all-features` build. Only Cargo registry
+data is currently cached. Workspace `target/` caching was disabled after CLI
+integration tests reused and cleaned nested target paths while the post-job
+cache collector traversed them, producing false missing-file annotations and
+multi-gigabyte uploads.
+
+An acceleration change is acceptable only when all of these conditions hold:
+
+1. Give repository compilation and every generated-project family distinct,
+   explicit target roots. A generated fixture may clean only its own disposable
+   root and must never mutate a cached workspace target.
+2. Record cold and warm wall time, cache size/hit data, discovered test counts,
+   failures and doctest results on Linux, macOS and Windows. Compare equivalent
+   commit content; queue time is reported separately from execution time.
+3. Preserve the exact all-feature workspace command, portable transactional
+   outbox contract and Linux live-provider matrices until an alternative proves
+   identical coverage. Package sharding must not weaken Cargo feature unification.
+4. Evaluate a pinned compiled-artifact cache and `sccache` independently before
+   composing them. Keys must include OS, compiler, lockfile and relevant profile
+   inputs; caches are performance hints, never release artifacts or evidence that
+   tests ran. Bound storage and prevent untrusted pull requests from replacing a
+   protected default-branch cache.
+5. Trial `cargo-nextest` only if ordinary tests, ignored-test policy, retries,
+   process cleanup and failure reporting remain equivalent. Run Cargo doctests
+   separately because nextest does not replace them. Keep plain `cargo test` as
+   a documented recovery path.
+6. Promote the experiment to blocking CI only after repeated green cold and warm
+   runs on every supported OS show a material wall-time reduction without new
+   flakes, lost tests, hidden failures or multi-gigabyte cache churn. Retain the
+   previous workflow as a quick rollback during the observation window.
+
+This work optimizes feedback latency, not the evidence boundary. Any v12 trial
+must be isolated from the frozen release candidate and merged only with its own
+cross-platform A/B receipts; otherwise this plan remains the first v13 CI task.
 
 The goal of this roadmap is stronger, reproducible evidence—not a larger number
 of badges or absolute claims that no finite test suite can establish.
