@@ -1,5 +1,6 @@
 [files]
 extend-exclude = [
+    "cargo-rullst/src/blueprints/assets/htmx-1.9.12.min.js",
     "rullst-connect/src/providers/apple.rs",
     "rullst-connect/src/providers/google.rs",
     "rullst-connect/src/providers/oidc.rs",
