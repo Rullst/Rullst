@@ -102,13 +102,15 @@ impl Provider for AppleProvider {
             )
         })?;
 
-        let mut user = self.get_user_from_token(access_token).await?;
+        let id_token = token_res["id_token"].as_str().ok_or_else(|| {
+            crate::error::ConnectError::Token("Apple refresh response omitted id_token".into())
+        })?;
+        let mut user = self.decode_apple_id_token(id_token, None).await?;
+        user.access_token = access_token.to_owned().into();
         user.refresh_token = token_res["refresh_token"]
             .as_str()
             .map(|s| secrecy::SecretString::from(s.to_string()));
-        user.expires_in = token_res["expires_in"]
-            .as_u64()
-            .or_else(|| token_res["expires_in"].as_i64().map(|v| v as u64));
+        user.expires_in = crate::provider::token_lifetime(&token_res)?;
         Ok(user)
     }
 

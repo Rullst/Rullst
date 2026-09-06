@@ -98,13 +98,17 @@ fn normalize_port(scheme: &str, port: Option<u16>) -> Option<u16> {
 }
 
 /// Middleware that protects WebSocket upgrades against Cross-Site WebSocket Hijacking (CSWSH).
+/// HTTP/2+ CONNECT requests on guarded routes use the same origin policy even
+/// without the HTTP/1-only `Upgrade` header.
 pub async fn cswsh_guard_middleware(req: Request, next: Next) -> Response {
     let is_ws_upgrade = req
         .headers()
         .get(header::UPGRADE)
         .and_then(|v| v.to_str().ok())
         .map(|v| v.eq_ignore_ascii_case("websocket"))
-        .unwrap_or(false);
+        .unwrap_or(false)
+        || (req.method() == axum::http::Method::CONNECT
+            && req.version() >= axum::http::Version::HTTP_2);
 
     if is_ws_upgrade {
         let origin = req
@@ -153,6 +157,38 @@ mod tests {
         Router::new()
             .route("/", get(|| async { "ok" }))
             .layer(middleware::from_fn(cswsh_guard_middleware))
+    }
+
+    #[tokio::test]
+    async fn extended_connect_cannot_bypass_the_origin_guard() {
+        let app = Router::new()
+            .route("/", axum::routing::any(|| async { "upgraded" }))
+            .layer(middleware::from_fn(cswsh_guard_middleware));
+        for origin in [None, Some("https://attacker.example")] {
+            let mut request = HttpRequest::builder()
+                .version(axum::http::Version::HTTP_2)
+                .method(axum::http::Method::CONNECT)
+                .uri("/")
+                .header(header::HOST, "app.example.com");
+            if let Some(origin) = origin {
+                request = request.header(header::ORIGIN, origin);
+            }
+            let response = app
+                .clone()
+                .oneshot(request.body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        }
+        let valid = HttpRequest::builder()
+            .version(axum::http::Version::HTTP_2)
+            .method(axum::http::Method::CONNECT)
+            .uri("/")
+            .header(header::HOST, "app.example.com")
+            .header(header::ORIGIN, "https://app.example.com")
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(app.oneshot(valid).await.unwrap().status(), StatusCode::OK);
     }
 
     #[tokio::test]

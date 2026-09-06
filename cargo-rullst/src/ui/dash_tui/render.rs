@@ -85,7 +85,7 @@ fn render_header(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Pal
         elapsed % 60
     );
     let status_color = match app.server_status {
-        ServerStatus::Starting => palette.yellow,
+        ServerStatus::Starting | ServerStatus::Unverified => palette.yellow,
         ServerStatus::Ready => palette.green,
         ServerStatus::Exited { success: true, .. } => palette.muted,
         ServerStatus::Exited { success: false, .. } => palette.red,
@@ -119,9 +119,9 @@ fn render_header(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Pal
         ),
         Span::styled(
             if app.hmr_enabled {
-                "   HMR ACTIVE"
+                "   AUTO-RELOAD"
             } else {
-                "   HMR DISABLED"
+                "   RELOAD OFF"
             },
             Style::default().fg(if app.hmr_enabled {
                 palette.magenta
@@ -140,9 +140,9 @@ fn render_header(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Pal
         Span::styled("│", Style::default().fg(palette.muted)),
         Span::styled(
             if app.hmr_enabled {
-                " same-origin /_rullst_hmr "
+                " supervised process restart "
             } else {
-                " generate with --hot-reload "
+                " use cargo rullst dev "
             },
             Style::default().fg(palette.magenta),
         ),
@@ -258,7 +258,7 @@ fn render_inspector(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: 
         status_line(
             "Hot reload",
             if app.hmr_enabled {
-                "same-origin /_rullst_hmr"
+                "supervised restart"
             } else {
                 "disabled"
             },

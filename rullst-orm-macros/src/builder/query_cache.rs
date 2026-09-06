@@ -7,8 +7,6 @@ pub fn generate_cache_read(
     name: &syn::Ident,
     table_name: &str,
     decrypt_results: &TokenStream,
-    hook_after_fetch: &TokenStream,
-    eager_loads: &TokenStream,
 ) -> TokenStream {
     quote! {
         #[cfg(feature = "redis")]
@@ -30,8 +28,6 @@ pub fn generate_cache_read(
                 if !cached_data.is_empty() {
                     if let Ok(mut results) = #name::from_cache_json_array(&cached_data) {
                         #decrypt_results
-                        #hook_after_fetch
-                        #eager_loads
                         return Ok(results);
                     }
                 }

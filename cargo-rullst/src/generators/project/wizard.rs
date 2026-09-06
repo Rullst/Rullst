@@ -148,6 +148,13 @@ pub(crate) fn run_project_wizard_with_blueprint(
     requested_integrations: &[PolyglotIntegration],
     blueprint_override: Option<usize>,
 ) -> Result<ProjectWizardOptions, Box<dyn std::error::Error>> {
+    if options.hot_reload {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "DLL hot reload is unavailable in v12: generate without --hot-reload and use `cargo rullst dev` for supervised process reload",
+        )
+        .into());
+    }
     let prompt_project_profile =
         should_prompt_project_profile(name_arg.is_some(), options.use_defaults);
     let mut api = options.api;
@@ -273,7 +280,7 @@ pub(crate) fn run_project_wizard_with_blueprint(
 
     let mut db_provider = "Sqlite".to_string();
     let mut db_needed = true;
-    let mut hot_reload = false;
+    let hot_reload = false;
     let mut blueprint_selection = blueprint_override.unwrap_or(BLANK_BLUEPRINT_ID);
     let mut polyglot_integrations = requested_integrations.to_vec();
 
@@ -375,15 +382,6 @@ pub(crate) fn run_project_wizard_with_blueprint(
                 };
                 polyglot_integrations.push(*integration);
             }
-        }
-
-        if db_provider == "Turso" {
-            hot_reload = false;
-        } else {
-            hot_reload = dialoguer::Confirm::with_theme(&theme)
-                .with_prompt("🔥 Enable Hot Reloading by default? (Auto-recompiles on save)")
-                .default(true)
-                .interact()?;
         }
     }
 

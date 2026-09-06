@@ -455,7 +455,7 @@ pub fn dashboard_page(
                 <title>"Rullst ERP Pocket — Inventory Dashboard"</title>
                 <link rel="icon" type="image/png" href="/static/rullst.png" />
                 <link rel="stylesheet" href="/static/rullst.css" />
-                <script nonce={csp_nonce} src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+                <script nonce={csp_nonce} src="/static/htmx-1.9.12.min.js"></script>
             </head>
             <body class="text-slate-100 min-height-screen pb-12">
                 <div class="max-w-6xl mx-auto px-4 pt-8">

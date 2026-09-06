@@ -110,6 +110,7 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
             let mut cursor: Option<i32> = None;
             loop {
                 let mut builder = self.clone().order_by("id");
+                builder.freeze_scope();
                 builder.limit = Some(size);
                 builder.offset = None;
                 if let Some(last_seen_id) = cursor {
@@ -139,6 +140,7 @@ pub fn generate_chunk_methods(parsed: &ParsedModel) -> Vec<TokenStream> {
             let mut cursor: Option<i32> = None;
             loop {
                 let mut builder = self.clone().order_by("id");
+                builder.freeze_scope();
                 builder.limit = Some(size);
                 builder.offset = None;
                 if let Some(last_seen_id) = cursor {

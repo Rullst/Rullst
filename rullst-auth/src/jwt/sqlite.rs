@@ -4,9 +4,8 @@ use super::{
     ApplicationJwtClaims, AsyncJwtRevocationStore, JwtError, JwtRevocationMode, unix_time,
     valid_identifier, valid_identity,
 };
-use sqlx::pool::PoolConnection;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
-use sqlx::{Executor, Sqlite, SqliteConnection, SqlitePool};
+use sqlx::{Executor, Sqlite, SqliteConnection, SqlitePool, Transaction};
 use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
@@ -117,7 +116,7 @@ impl SqliteJwtRevocationStore {
         let result = self
             .revoke_token_in_transaction(&mut connection, &claims.jti, claims.exp, now)
             .await;
-        finish(&mut connection, result, "finish token revocation").await
+        finish(connection, result, "finish token revocation").await
     }
 
     /// Rejects subject tokens below a monotonic session version.
@@ -137,7 +136,7 @@ impl SqliteJwtRevocationStore {
         let result = self
             .revoke_subject_in_transaction(&mut connection, &subject, minimum_session_version, now)
             .await;
-        finish(&mut connection, result, "finish subject revocation").await
+        finish(connection, result, "finish subject revocation").await
     }
 
     /// Returns active token and subject counts after pruning expired tokens.
@@ -154,7 +153,7 @@ impl SqliteJwtRevocationStore {
             })
         }
         .await;
-        finish(&mut connection, result, "finish revocation snapshot").await
+        finish(connection, result, "finish revocation snapshot").await
     }
 
     /// Gracefully closes all pooled connections, useful before rotating a file.
@@ -165,17 +164,11 @@ impl SqliteJwtRevocationStore {
     async fn begin_write(
         &self,
         operation: &'static str,
-    ) -> Result<PoolConnection<Sqlite>, JwtError> {
-        let mut connection = self
-            .pool
-            .acquire()
+    ) -> Result<Transaction<'static, Sqlite>, JwtError> {
+        self.pool
+            .begin_with("BEGIN IMMEDIATE")
             .await
-            .map_err(|_| backend_error(operation))?;
-        connection
-            .execute("BEGIN IMMEDIATE")
-            .await
-            .map_err(|_| backend_error(operation))?;
-        Ok(connection)
+            .map_err(|_| backend_error(operation))
     }
 
     async fn revoke_token_in_transaction(
@@ -336,15 +329,18 @@ async fn counts(connection: &mut SqliteConnection) -> Result<(usize, usize), Jwt
 }
 
 async fn finish<T>(
-    connection: &mut PoolConnection<Sqlite>,
+    transaction: Transaction<'static, Sqlite>,
     result: Result<T, JwtError>,
     operation: &'static str,
 ) -> Result<T, JwtError> {
-    let statement = if result.is_ok() { "COMMIT" } else { "ROLLBACK" };
-    if connection.execute(statement).await.is_err() {
-        connection.close_on_drop();
-        return Err(backend_error(operation));
+    // SQLx owns rollback on task cancellation, including cancellation while
+    // beginning or finishing the transaction. A raw pooled BEGIN does not.
+    if result.is_ok() {
+        transaction.commit().await
+    } else {
+        transaction.rollback().await
     }
+    .map_err(|_| backend_error(operation))?;
     result
 }
 
@@ -400,7 +396,49 @@ fn backend_error(operation: &'static str) -> JwtError {
 
 #[cfg(test)]
 mod tests {
-    use super::windows_file_url_target;
+    use super::*;
+
+    #[tokio::test]
+    async fn cancelled_revocation_rolls_back_before_pool_reuse() {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .expect("isolated test database");
+        prepare_schema(&pool, 16).await.expect("revocation schema");
+        let store = SqliteJwtRevocationStore {
+            pool,
+            max_entries: 16,
+        };
+        let writer = store.clone();
+        let (ready, started) = tokio::sync::oneshot::channel();
+        let task = tokio::spawn(async move {
+            let mut transaction = writer.begin_write("cancelled write").await.unwrap();
+            sqlx::query("INSERT INTO rullst_auth_jwt_subjects VALUES ('cancelled-subject', 3)")
+                .execute(&mut *transaction)
+                .await
+                .unwrap();
+            ready.send(()).unwrap();
+            std::future::pending::<()>().await;
+            drop(transaction);
+        });
+        started.await.unwrap();
+        task.abort();
+        assert!(task.await.unwrap_err().is_cancelled());
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM rullst_auth_jwt_subjects")
+            .fetch_one(&store.pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            count.0, 0,
+            "cancelled transaction must not leak pooled state"
+        );
+        store
+            .revoke_subject_before("completed-subject", 2)
+            .await
+            .expect("next transaction must not inherit an open transaction");
+        store.close().await;
+    }
 
     #[test]
     fn windows_file_url_target_removes_only_a_leading_drive_separator() {

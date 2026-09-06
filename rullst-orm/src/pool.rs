@@ -286,6 +286,7 @@ impl Orm {
     /// Fallible variant of [`Orm::pool`]: returns `Err` instead of panicking
     /// when the ORM has not been initialized yet.
     pub fn try_pool() -> Result<&'static RullstPool, crate::Error> {
+        crate::__transaction_access::ensure_allowed()?;
         Ok(&Self::state()?.primary)
     }
 
@@ -299,6 +300,7 @@ impl Orm {
     /// Fallible variant of [`Orm::read_pool`].
     #[cfg_attr(test, mutants::skip)]
     pub fn try_read_pool() -> Result<&'static RullstPool, crate::Error> {
+        crate::__transaction_access::ensure_allowed()?;
         Ok(Self::state()?.read_pool())
     }
 

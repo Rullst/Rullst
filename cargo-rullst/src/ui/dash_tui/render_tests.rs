@@ -1,12 +1,40 @@
-#[cfg(unix)]
-use super::update_child_status;
 use super::{
-    LogMsg, bounded_text, database_profile_from_env, exit_status, handle_key, handle_log_message,
-    probe_port, render, send_action_output,
+    LogMsg, database_profile_from_env, exit_status, handle_log_message, probe_port, render,
     state::{App, FocusPane, LogFilter, LogLevel, ServerStatus},
 };
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{Terminal, backend::TestBackend};
+
+fn handle_key(key: KeyEvent, app: &mut App, logs: &tokio::sync::mpsc::Sender<LogMsg>) -> bool {
+    let (commands, _rx) = tokio::sync::mpsc::channel(1);
+    super::handle_key(key, app, logs, &commands)
+}
+
+#[test]
+fn migration_is_a_single_supervisor_command_and_unverified_status_is_not_ready() {
+    use crate::generators::dev::{DevCommand, DevStatus};
+    let (logs, _log_rx) = tokio::sync::mpsc::channel(8);
+    let (commands, mut rx) = tokio::sync::mpsc::channel(1);
+    let mut app = App::new(3000, true, "SQLite".into(), false, false);
+    for _ in 0..2 {
+        assert!(!super::handle_key(
+            KeyEvent::new(KeyCode::Char('m'), KeyModifiers::NONE),
+            &mut app,
+            &logs,
+            &commands
+        ));
+    }
+    assert!(matches!(rx.try_recv(), Ok(DevCommand::Migrate)));
+    assert!(rx.try_recv().is_err());
+    assert!(app.migration_running);
+    app.server_status = super::supervisor_status(DevStatus::Unverified);
+    assert_eq!(app.server_status, ServerStatus::Unverified);
+    assert!(rendered(&app, 104, 30).contains("UNVERIFIED"));
+    assert_eq!(
+        super::supervisor_status(DevStatus::Ready),
+        ServerStatus::Ready
+    );
+}
 
 fn rendered(app: &App, width: u16, height: u16) -> String {
     let backend = TestBackend::new(width, height);
@@ -47,7 +75,7 @@ fn wide_dashboard_renders_live_state_logs_search_and_inspector() {
         "RULLST",
         "DEV CONTROL",
         "READY",
-        "HMR ACTIVE",
+        "AUTO-RELOAD",
         "request warning",
         "request failed",
         "VERIFIED PROJECT STATE",
@@ -73,7 +101,7 @@ fn compact_dashboard_renders_no_color_static_and_exit_states() {
 
     let stopped = rendered(&app, 80, 26);
     assert!(stopped.contains("EXITED (0)"));
-    assert!(stopped.contains("HMR DISABLED"));
+    assert!(stopped.contains("RELOAD OFF"));
     assert!(stopped.contains("server stopped"));
 
     app.server_status = ServerStatus::Exited {
@@ -182,7 +210,7 @@ fn log_messages_and_keyboard_navigation_update_only_bounded_state() {
 }
 
 #[tokio::test]
-async fn probes_output_and_process_exit_paths_have_real_effects() {
+async fn probes_and_supervised_process_exit_paths_have_real_effects() {
     let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
         .await
         .expect("test listener");
@@ -194,30 +222,20 @@ async fn probes_output_and_process_exit_paths_have_real_effects() {
     // unrelated concurrent tests and local processes.
     assert!(!probe_port(0).await);
 
-    let (log_tx, mut log_rx) = tokio::sync::mpsc::channel(8);
-    send_action_output(&log_tx, b"first\nsecond\n", b"warning: third\n").await;
-    assert!(matches!(log_rx.recv().await, Some(LogMsg::AppStdout(line)) if line == "first"));
-    assert!(matches!(log_rx.recv().await, Some(LogMsg::AppStdout(line)) if line == "second"));
-    assert!(matches!(log_rx.recv().await, Some(LogMsg::AppStderr(line)) if line.contains("third")));
-    assert_eq!(bounded_text(&[b'x'; 5_000]).len(), 4_096);
-
     #[cfg(unix)]
     {
         let mut child = std::process::Command::new("/bin/sh")
             .args(["-c", "exit 7"])
             .spawn()
             .expect("short-lived child");
-        let _ = child.wait().expect("child exit");
-        let mut app = App::new(3_000, false, "not configured".to_string(), false, false);
-        update_child_status(&mut app, &mut child).expect("observe child exit");
+        let status = child.wait().expect("child exit");
         assert!(matches!(
-            app.server_status,
+            super::supervisor_status(crate::generators::dev::DevStatus::Exited(status)),
             ServerStatus::Exited {
                 success: false,
                 code: Some(7)
             }
         ));
-        update_child_status(&mut app, &mut child).expect("terminal state is stable");
     }
 
     #[cfg(unix)]

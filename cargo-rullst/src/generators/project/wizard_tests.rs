@@ -91,7 +91,7 @@ fn deterministic_wizard_locks_the_supported_v12_application_profile() {
         ProjectScaffoldOptions {
             use_defaults: true,
             database: Some("Postgres"),
-            hot_reload: true,
+            hot_reload: false,
             wants_ai: true,
             wants_redis: true,
             ..ProjectScaffoldOptions::default()
@@ -104,7 +104,7 @@ fn deterministic_wizard_locks_the_supported_v12_application_profile() {
     assert_eq!(options.db_provider, "Postgres");
     assert_eq!(options.orm_pattern, V12_ORM_PATTERN);
     assert_eq!(options.frontend_engine, V12_FRONTEND_ENGINE);
-    assert!(options.hot_reload);
+    assert!(!options.hot_reload);
     assert!(options.wants_ai);
     assert!(options.wants_redis);
 }

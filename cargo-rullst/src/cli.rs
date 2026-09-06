@@ -162,8 +162,8 @@ pub enum Commands {
         /// Generates a blank project without a primary relational database
         #[arg(long, requires = "default", conflicts_with = "database")]
         no_database: bool,
-        /// Enables the generated hot-reload library boundary in deterministic/CI mode
-        #[arg(long, requires = "default")]
+        /// Legacy DLL profile; rejected in v12 because runtime globals cross an unstable ABI
+        #[arg(long, requires = "default", hide = true)]
         hot_reload: bool,
         /// Enables the Rullst AI facade in deterministic/CI mode
         #[arg(long, requires = "default")]

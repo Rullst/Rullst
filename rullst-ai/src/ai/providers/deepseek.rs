@@ -1,4 +1,5 @@
 use super::support::{DEFAULT_REQUEST_TIMEOUT, endpoint, openai_chat_content, success_response};
+use super::support::{http_client, read_json};
 use crate::ai::{
     AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
     StructuredOutputSchema,
@@ -18,7 +19,6 @@ pub struct DeepSeekProvider {
     model: String,
     base_url: String,
     mode: ProviderMode,
-    client: reqwest::Client,
     request_timeout: Duration,
 }
 
@@ -32,7 +32,6 @@ impl DeepSeekProvider {
             model: "deepseek-v4-flash".to_string(),
             base_url: "https://api.deepseek.com".to_string(),
             mode,
-            client: reqwest::Client::new(),
             request_timeout: DEFAULT_REQUEST_TIMEOUT,
         }
     }
@@ -56,16 +55,16 @@ impl DeepSeekProvider {
     }
 
     async fn send_chat_body(&self, body: serde_json::Value) -> Result<String, AiError> {
-        let response = self
-            .client
+        let response = http_client()?
             .post(endpoint(&self.base_url, "chat/completions"))
             .timeout(self.request_timeout)
             .bearer_auth(&self.api_key)
             .json(&body)
             .send()
-            .await?;
+            .await
+            .map_err(|error| AiError::RequestError(error.without_url()))?;
         let response = success_response(response, self.provider_name()).await?;
-        let json: serde_json::Value = response.json().await?;
+        let json = read_json(response, self.provider_name()).await?;
         openai_chat_content(&json, self.provider_name())
     }
 }
@@ -166,8 +165,7 @@ impl AiProvider for DeepSeekProvider {
             return mock::structured_response(schema);
         }
 
-        let response = self
-            .client
+        let response = http_client()?
             .post(endpoint(&self.base_url, "responses"))
             .timeout(self.request_timeout)
             .bearer_auth(&self.api_key)
@@ -181,9 +179,10 @@ impl AiProvider for DeepSeekProvider {
                 }}
             }))
             .send()
-            .await?;
+            .await
+            .map_err(|error| AiError::RequestError(error.without_url()))?;
         let response = success_response(response, self.provider_name()).await?;
-        let json: serde_json::Value = response.json().await?;
+        let json = read_json(response, self.provider_name()).await?;
         json["output"]
             .as_array()
             .and_then(|items| {

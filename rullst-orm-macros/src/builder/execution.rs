@@ -1,6 +1,6 @@
 // src/builder/execution.rs — Terminal database execution, pagination, streaming, and mutation methods.
 
-use crate::parser::{EncryptedFieldKind, ParsedModel, SoftDeleteConfig};
+use crate::parser::{ParsedModel, SoftDeleteConfig};
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -95,26 +95,22 @@ pub fn generate_execution_methods(
     } else {
         quote! { row.__rullst_decrypt_encrypted_fields()?; }
     };
-    let encrypted_string_columns = parsed
-        .encrypted_fields
-        .iter()
-        .filter(|field| field.kind == EncryptedFieldKind::String)
-        .map(|field| field.name.to_string())
-        .collect::<Vec<_>>();
-    let encrypted_optional_columns = parsed
-        .encrypted_fields
-        .iter()
-        .filter(|field| field.kind == EncryptedFieldKind::OptionalString)
-        .map(|field| field.name.to_string())
-        .collect::<Vec<_>>();
+    let pluck_methods = super::pluck::generate_pluck_methods(parsed);
     let delete_all_logic = generate_delete_all_logic(parsed);
-    let cache_read = super::query_cache::generate_cache_read(
-        name,
-        table_name,
-        &decrypt_results,
-        &hook_after_fetch,
-        eager_loads,
-    );
+    let has_policy = !parsed.policy.is_empty();
+    let has_after_fetch = !parsed.after_fetch.is_empty();
+    let eager_flags = parsed
+        .relations
+        .iter()
+        .map(|relation| quote::format_ident!("load_{}", relation.field_name));
+    let explicit_read_validation = quote! {
+        if #has_after_fetch #(|| self.#eager_flags)* {
+            return Err(rullst_orm::Error::Validation(
+                "eager loading and after_fetch hooks require Orm::transaction(...) with get(); a caller-owned raw transaction cannot provide their task-scoped executor".to_string()
+            ));
+        }
+    };
+    let cache_read = super::query_cache::generate_cache_read(name, table_name, &decrypt_results);
     let cache_write = super::query_cache::generate_cache_write(name);
 
     vec![quote! {
@@ -125,14 +121,24 @@ pub fn generate_execution_methods(
             fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "select_many")
         )]
         pub async fn get(&self) -> Result<Vec<#name>, rullst_orm::Error> {
-            if let Ok(tx_arc) = rullst_orm::CURRENT_TX.try_with(|tx| tx.clone()) {
+            rullst_orm::__transaction_access::ensure_allowed()?;
+            let mut results = if let Ok(tx_arc) = rullst_orm::CURRENT_TX.try_with(|tx| tx.clone()) {
                 let mut tx_guard = tx_arc.lock().await;
                 if let Some(tx) = tx_guard.as_mut() {
-                    return self.get_with_tx_internal(&mut **tx, false).await;
+                    self.get_with_tx_internal(&mut **tx, false).await?
+                } else {
+                    let pool = rullst_orm::Orm::read_pool()?;
+                    self.get_with_tx_internal(pool, true).await?
                 }
-            }
-            let pool = rullst_orm::Orm::read_pool()?;
-            self.get_with_tx_internal(pool, true).await
+            } else {
+                let pool = rullst_orm::Orm::read_pool()?;
+                self.get_with_tx_internal(pool, true).await?
+            };
+            // Nested queries must acquire the transaction independently, after
+            // the fetch releases its mutex guard.
+            #hook_after_fetch
+            #eager_loads
+            Ok(results)
         }
 
         #[rullst_orm::_tracing::instrument(
@@ -142,6 +148,7 @@ pub fn generate_execution_methods(
             fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "select_many_with_tx")
         )]
         pub async fn get_with_tx(&self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<Vec<#name>, rullst_orm::Error> {
+            #explicit_read_validation
             self.get_with_tx_internal(&mut **tx, false).await
         }
 
@@ -182,8 +189,6 @@ pub fn generate_execution_methods(
             #cache_write
 
             #decrypt_results
-            #hook_after_fetch
-            #eager_loads
             Ok(results)
         }
 
@@ -329,8 +334,20 @@ pub fn generate_execution_methods(
         pub fn stream<'a>(&'a self) -> impl rullst_orm::_futures::Stream<Item = Result<#name, rullst_orm::Error>> + 'a {
             rullst_orm::telemetry::instrument_query_stream(
                 rullst_orm::_async_stream::try_stream! {
+                rullst_orm::__transaction_access::ensure_allowed()?;
                 if !self.errors.is_empty() {
                     Err(self.errors[0].clone())?;
+                }
+                if let Ok(tx_arc) = rullst_orm::CURRENT_TX.try_with(|tx| tx.clone()) {
+                    let mut tx_guard = tx_arc.lock().await;
+                    if let Some(tx) = tx_guard.as_mut() {
+                        let stream = self.stream_with_tx(tx);
+                        rullst_orm::_futures::pin_mut!(stream);
+                        while let Some(row) = rullst_orm::_futures::StreamExt::next(&mut stream).await {
+                            yield row?;
+                        }
+                        return;
+                    }
                 }
                 let query_str = self.to_sql();
                 let query_bindings = self.select_bindings();
@@ -368,6 +385,11 @@ pub fn generate_execution_methods(
                 rullst_orm::_async_stream::try_stream! {
                 if !self.errors.is_empty() {
                     Err(self.errors[0].clone())?;
+                }
+                if #has_after_fetch {
+                    Err(rullst_orm::Error::Validation(
+                        "transactional streams cannot run after_fetch hooks while retaining the transaction; use get() inside Orm::transaction(...)".to_string()
+                    ))?;
                 }
                 let query_str = self.to_sql();
                 let query_bindings = self.select_bindings();
@@ -425,33 +447,23 @@ pub fn generate_execution_methods(
             if !self.errors.is_empty() {
                 return Err(self.errors[0].clone());
             }
+            if #has_policy {
+                return Err(rullst_orm::Error::Validation(
+                    "delete_all() cannot authorize a policy-protected model; load the records and call each model's delete() inside Orm::transaction(...)".to_string()
+                ));
+            }
             #delete_all_logic
 
-            if !self.wheres.is_empty() {
-                query_str.push_str(" WHERE ");
-                let mut first = true;
-                for (operator, condition) in &self.wheres {
-                    if first {
-                        query_str.push('(');
-                        query_str.push_str(condition);
-                        query_str.push(')');
-                        first = false;
-                    } else {
-                        query_str.push(' ');
-                        query_str.push_str(operator);
-                        query_str.push_str(" (");
-                        query_str.push_str(condition);
-                        query_str.push(')');
-                    }
-                }
-            }
+            let first_where = self.push_wheres(&mut query_str);
+            self.push_soft_deletes(&mut query_str, first_where);
+            let query_bindings = self.scope_bindings.iter().chain(self.bindings.iter());
             if rullst_orm::schema::is_query_log_enabled() {
-                println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, self.bindings.len());
+                println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, self.scope_bindings.len() + self.bindings.len());
             }
             let query_str = rullst_orm::replace_placeholders(&query_str);
             let result = {
                 let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
-                for binding in &self.bindings {
+                for binding in query_bindings {
                     match binding {
                         rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
                         rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
@@ -471,77 +483,6 @@ pub fn generate_execution_methods(
             Ok(result.rows_affected())
         }
 
-        pub async fn pluck_string(&self, column: &str) -> Result<Vec<String>, rullst_orm::Error> {
-            if !self.errors.is_empty() {
-                return Err(self.errors[0].clone());
-            }
-            let pool = rullst_orm::Orm::try_read_pool()?;
-            const ENCRYPTED_STRING_COLUMNS: &[&str] = &[#(#encrypted_string_columns),*];
-            const ENCRYPTED_OPTIONAL_COLUMNS: &[&str] = &[#(#encrypted_optional_columns),*];
-            if ENCRYPTED_OPTIONAL_COLUMNS.contains(&column) {
-                return Err(rullst_orm::Error::Validation(format!(
-                    "pluck_string() cannot decode nullable encrypted column `{}`; load the model instead",
-                    column
-                )));
-            }
-            let is_encrypted = ENCRYPTED_STRING_COLUMNS.contains(&column);
-            let query_str = self.to_pluck_sql(column);
-            let query_bindings = self.select_bindings();
-            let rows: Vec<(String,)> = {
-                let mut query = rullst_orm::_sqlx::query_as::<_, (String,)>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
-                for binding in &query_bindings {
-                    match binding {
-                        rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
-                        rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
-                        rullst_orm::RullstValue::Float(f) => { query = query.bind(*f); }
-                        rullst_orm::RullstValue::Bool(b) => { query = query.bind(*b); }
-                    }
-                }
-                let timeout = rullst_orm::schema::get_query_timeout();
-                if let Some(t) = timeout {
-                    tokio::time::timeout(t, query.fetch_all(pool))
-                        .await
-                        .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
-                } else {
-                    query.fetch_all(pool).await?
-                }
-            };
-            if is_encrypted {
-                rows.into_iter()
-                    .map(|(value,)| rullst_orm::privacy::decrypt_model_field(&value, #table_name, column).map_err(Into::into))
-                    .collect()
-            } else {
-                Ok(rows.into_iter().map(|(value,)| value).collect())
-            }
-        }
-
-        pub async fn pluck_i32(&self, column: &str) -> Result<Vec<i32>, rullst_orm::Error> {
-            if !self.errors.is_empty() {
-                return Err(self.errors[0].clone());
-            }
-            let pool = rullst_orm::Orm::try_read_pool()?;
-            let query_str = self.to_pluck_sql(column);
-            let query_bindings = self.select_bindings();
-            let rows: Vec<(i32,)> = {
-                let mut query = rullst_orm::_sqlx::query_as::<_, (i32,)>(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
-                for binding in &query_bindings {
-                    match binding {
-                        rullst_orm::RullstValue::String(s) => { query = query.bind(s.clone()); }
-                        rullst_orm::RullstValue::Int(i) => { query = query.bind(*i); }
-                        rullst_orm::RullstValue::Float(f) => { query = query.bind(*f); }
-                        rullst_orm::RullstValue::Bool(b) => { query = query.bind(*b); }
-                    }
-                }
-                let timeout = rullst_orm::schema::get_query_timeout();
-                if let Some(t) = timeout {
-                    tokio::time::timeout(t, query.fetch_all(pool))
-                        .await
-                        .map_err(|_| rullst_orm::Error::DatabaseError("Query execution timed out".to_string()))??
-                } else {
-                    query.fetch_all(pool).await?
-                }
-            };
-            Ok(rows.into_iter().map(|(s,)| s).collect())
-        }
+        #pluck_methods
     }]
 }

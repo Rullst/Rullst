@@ -6,6 +6,20 @@
 
 `rullst-mail` is Rullst's transactional email and mailables engine. Every official dispatch path now passes through one pre-flight pipeline for CRLF protection, recipient deliverability checks, content security scanning, and DLP sanitization before queueing or transport delivery.
 
+Resend, SendGrid, Postmark and the explicit SES bearer-proxy adapter share a
+pooled REST client with redirects and ambient proxy settings disabled, a
+five-second connection deadline and a 30-second request deadline, including
+error-body reads. Error details remain capped at four KiB and secret-redacted.
+Configure the final trusted endpoint directly. Native SES uses its separate
+AWS SDK transport and SMTP uses Lettre; the REST deadline claim does not
+describe those transports or prove provider acceptance.
+
+The optional SQLite suppression store uses SQLx transaction guards: dropping
+an uncommitted writer schedules rollback before the connection is reused.
+Cancellation racing an already dispatched commit still needs outcome
+reconciliation. This protects local atomicity; provider authentication and the
+application's recipient/tenant policy remain separate responsibilities.
+
 ---
 
 ## ✨ Features

@@ -43,7 +43,6 @@ the generated application:
   * `--blueprint <blank|lms|saas|blog|portfolio|erp>`: Selects a blueprint when used with `--default`.
   * `--database <sqlite|postgres|mysql|mariadb|turso>`: Selects the primary relational backend with `--default`; network databases must be configured before migration bootstrap. Turso-primary currently supports the blank/API starter and rejects SQLx-specific blueprints explicitly.
   * `--no-database`: Generates the blank blueprint without a primary relational database; it conflicts with `--database` and rejects database-dependent blueprints.
-  * `--hot-reload`: Generates the library boundary used by the development hot-reload workflow. Unsupported Turso-primary and detached LMS combinations fail explicitly.
   * `--ai`: Enables the umbrella AI facade in the generated manifest.
   * `--redis`: Enables the umbrella Redis queue/cache/ORM capabilities and the direct ORM Redis feature.
   * `--lms-modules <modules>`: With `--default --blueprint lms`, selects a detached LMS profile. Version 12 currently accepts `auth`, `auth,learning`, or `auth,learning,assessment`; unsupported/duplicate combinations and the profiles' not-yet-supported hot reload fail explicitly. Omitting the flag generates the complete LMS starter.
@@ -67,7 +66,7 @@ A complete deterministic profile can pin every supported v12 generation axis:
 ```bash
 cargo rullst new operations-portal --default --blueprint erp \
   --database mariadb \
-  --hot-reload --ai --redis --skip-initial-migration
+  --ai --redis --skip-initial-migration
 ```
 
 Generated SQLx applications disable the umbrella dependency's default features
@@ -78,8 +77,8 @@ prevents an implicit SQLite default from masking the chosen backend.
 #### Generated-project verification boundary
 
 The repository does not treat template rendering as sufficient evidence. A
-structural contract materializes all 18 supported public v12 blueprint/profile
-shapes and checks paths, Rust syntax and manifests. A slower eight-case set
+structural contract materializes 18 internal blueprint/profile shapes (nine
+public directly linked layouts plus nine legacy DLL layouts retained for regression) and checks paths, Rust syntax and manifests. A slower eight-case set
 crosses every blueprint, hot and non-hot layouts, database/API boundaries and a
 release build, runs every generated test target, and constructs the public
 router of each hot-reload project using offline-safe defaults. A separate
@@ -464,7 +463,7 @@ Statically expands and inspects macro code or structural definitions directly in
 
 ### `cargo rullst dash`
 Opens the Ratatui development control surface in an interactive terminal. The
-dashboard reports the probed application port, explicit hot-reload profile
+dashboard reports the probed application port, supervised auto-reload
 state, the child process exit state, and the configured database profile; it
 does not label a database as connected merely because a URL exists. Logs and
 input queues are bounded, ANSI control sequences are removed, terminal state is
@@ -488,40 +487,29 @@ for a color-free, static interface. Non-interactive automation should use
 `cargo rullst dev`; `dash` fails clearly when no terminal is attached.
 
 ### `cargo rullst dev`
-Runs the development server. Projects generated with the explicit
-`--hot-reload` profile receive the bounded dynamic-library workflow below;
-other projects run normally and the CLI explains that source swapping is not
-enabled instead of pretending to watch them.
+Builds and starts a directly linked application. Saving source, static assets,
+templates, `Cargo.toml`, `Cargo.lock`, `Rullst.toml` or `.env` schedules a
+coalesced rebuild. A failed build leaves the current application running. A
+successful build creates an owned executable snapshot, stops the previous
+process and starts its replacement. The snapshot avoids locking Cargo's build
+output on Windows. Initial migrations run before startup; later migrations
+remain an explicit command.
 
-For a hot-reload profile, the CLI:
+The same-origin browser client polls an opaque process-generation marker and
+refreshes only when a different generation serves successfully. This is enabled
+only in debug/development. Readiness verifies that marker, not just an open port.
+Changing the configured port requires restarting the CLI. In-memory state and
+unsaved browser state reset during reload. The process receives a bounded
+shutdown interval before forced termination; this is a development facility.
 
-1. detects and coalesces changed Rust/manifest paths before starting a build;
-2. runs `cargo build --lib` asynchronously and captures a bounded diagnostic;
-3. keeps the currently serving router unchanged when compilation fails;
-4. sends a five-second, session-token-authenticated loopback reload request only
-   after a successful build;
-5. serializes router swaps, lets in-flight requests finish on their prior
-   router, and reports the measured build-plus-swap duration;
-6. tells connected browsers to perform a reliable full-page refresh through a
-   same-origin, offline JavaScript client and same-origin WebSocket.
+No scaffold question is required: `dev` and `dash` enable auto-reload, while
+`cargo run` runs the application normally. The legacy `--hot-reload` scaffold
+flag is rejected in v12 because DLLs can split ORM/Tokio globals. Existing
+legacy scaffolds can use their directly linked router; the supervisor removes
+`HOT_RELOAD` from its child's environment.
 
-The token is a fresh 256-bit value passed to the owned application process; it
-is not printed. Direct unauthenticated calls to the internal reload route fail
-closed. To avoid unloading code that an in-flight request might still execute,
-the development server retains loaded library generations and stops accepting
-swaps at 64 total libraries. Restart `cargo rullst dev` or `cargo rullst dash`
-at that point to release them.
-
-This is a debug/development facility built on a Rust-ABI-compatible `cdylib`,
-not a production plugin ABI. It does not migrate arbitrary process state or
-preserve unsaved browser state, and a view-only AST classification still uses a
-real Rust compilation. Rullst therefore makes no universal “sub-millisecond”
-claim: the CLI prints the observed duration, which depends on the application,
-cache, linker, toolchain, and machine.
-
-See [Authenticated Development Hot Reload](tutorials/51-authenticated-hot-reload.md)
-for the complete lifecycle, failure table, security boundary, and troubleshooting
-expectations.
+See [Supervised Development Auto-Reload](tutorials/51-authenticated-hot-reload.md)
+for limitations, failure recovery and the v13 architecture decision.
 
 * **Optional Flags:**
   * `--ts-sync`: Automatically watches controller and model file changes and syncs the TypeScript client SDK (`sdk.ts`) live during development.

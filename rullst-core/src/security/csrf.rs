@@ -104,11 +104,7 @@ async fn handle_csrf_get(mut req: Request, next: Next) -> Response {
         return next.run(req).await;
     }
 
-    let cookie_token = req
-        .headers()
-        .get(header::COOKIE)
-        .and_then(|v| v.to_str().ok())
-        .and_then(csrf_token_from_cookie_header);
+    let cookie_token = csrf_token_from_cookies(req.headers());
 
     if let Some(token) = cookie_token {
         req.extensions_mut().insert(CsrfToken(token));
@@ -149,45 +145,43 @@ async fn handle_csrf_get(mut req: Request, next: Next) -> Response {
     }
 }
 
-fn csrf_token_from_cookie_header(cookie_header: &str) -> Option<String> {
-    cookie_header.split(';').find_map(|cookie| {
-        cookie
-            .trim()
-            .strip_prefix("rullst_csrf=")
-            .filter(|token| !token.is_empty())
-            .map(ToOwned::to_owned)
-    })
+fn csrf_token_from_cookies(headers: &header::HeaderMap) -> Option<String> {
+    let mut found = None;
+    for value in headers.get_all(header::COOKIE) {
+        for cookie in value.to_str().ok()?.split(';') {
+            if let Some(token) = cookie.trim().strip_prefix("rullst_csrf=") {
+                if found.is_some()
+                    || !(1..=128).contains(&token.len())
+                    || !token
+                        .bytes()
+                        .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
+                {
+                    return None;
+                }
+                found = Some(token.to_owned());
+            }
+        }
+    }
+    found
 }
 
 #[cfg_attr(mutants, mutants::skip)]
 async fn handle_csrf_state_modifying(mut req: Request, next: Next) -> Response {
-    let csrf_cookie = req
-        .headers()
-        .get(header::COOKIE)
-        .and_then(|v| v.to_str().ok())
-        .and_then(|cookie_str| {
-            for cookie in cookie_str.split(';') {
-                let trimmed = cookie.trim();
-                if let Some(stripped) = trimmed.strip_prefix("rullst_csrf=") {
-                    return Some(stripped.to_string());
-                }
-            }
-            None
-        });
+    let csrf_cookie = csrf_token_from_cookies(req.headers());
 
     let Some(cookie_token) = csrf_cookie else {
         return (StatusCode::FORBIDDEN, "CSRF token cookie missing").into_response();
     };
 
     // Check header first (common for AJAX/HTMX)
-    let header_token = req
-        .headers()
-        .get("X-CSRF-Token")
-        .and_then(|v| v.to_str().ok())
-        .map(|s| s.to_string());
+    let mut header_values = req.headers().get_all("X-CSRF-Token").iter();
+    let header_token = header_values.next();
+    if header_values.next().is_some() {
+        return (StatusCode::FORBIDDEN, "Ambiguous CSRF token").into_response();
+    }
 
     if let Some(token) = header_token {
-        if token.len() == cookie_token.len()
+        if token.as_bytes().len() == cookie_token.len()
             && token.as_bytes().ct_eq(cookie_token.as_bytes()).into()
         {
             req.extensions_mut().insert(CsrfToken(cookie_token.clone()));
@@ -203,7 +197,11 @@ async fn handle_csrf_state_modifying(mut req: Request, next: Next) -> Response {
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 
-    if content_type.contains("application/x-www-form-urlencoded") {
+    if content_type.split(';').next().is_some_and(|media_type| {
+        media_type
+            .trim()
+            .eq_ignore_ascii_case("application/x-www-form-urlencoded")
+    }) {
         let (mut parts, body) = req.into_parts();
 
         // Read request body (limited to 1MB to prevent memory exhaustion)
@@ -241,6 +239,81 @@ mod tests {
     use super::*;
     use axum::{Router, body::Body, http::Request, routing::any};
     use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn empty_or_ambiguous_csrf_proofs_do_not_reach_the_handler() {
+        let token = generate_csrf_token();
+        let cookie = format!("rullst_csrf={token}");
+        let app = Router::new()
+            .route("/write", any(|| async { StatusCode::NO_CONTENT }))
+            .layer(axum::middleware::from_fn(csrf_middleware));
+        let requests = [
+            Request::post("/write")
+                .header(header::COOKIE, "rullst_csrf=")
+                .header("x-csrf-token", "")
+                .body(Body::empty())
+                .unwrap(),
+            Request::post("/write")
+                .header(header::COOKIE, "rullst_csrf=")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .body(Body::from("_token="))
+                .unwrap(),
+            Request::post("/write")
+                .header(header::COOKIE, format!("{cookie}; {cookie}"))
+                .header("x-csrf-token", &token)
+                .body(Body::empty())
+                .unwrap(),
+            Request::post("/write")
+                .header(header::COOKIE, &cookie)
+                .header(header::COOKIE, &cookie)
+                .header("x-csrf-token", &token)
+                .body(Body::empty())
+                .unwrap(),
+            Request::post("/write")
+                .header(header::COOKIE, &cookie)
+                .header("x-csrf-token", &token)
+                .header("x-csrf-token", "different-token")
+                .body(Body::empty())
+                .unwrap(),
+            Request::post("/write")
+                .header(header::COOKIE, &cookie)
+                .header(
+                    header::CONTENT_TYPE,
+                    "text/plain; application/x-www-form-urlencoded",
+                )
+                .body(Body::from(format!("_token={token}")))
+                .unwrap(),
+            Request::post("/write")
+                .header(header::COOKIE, format!("rullst_csrf={}", "x".repeat(129)))
+                .header("x-csrf-token", "x".repeat(129))
+                .body(Body::empty())
+                .unwrap(),
+        ];
+        for request in requests {
+            assert_eq!(
+                app.clone().oneshot(request).await.unwrap().status(),
+                StatusCode::FORBIDDEN
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn split_cookie_fields_support_one_unambiguous_valid_csrf_token() {
+        let token = generate_csrf_token();
+        let app = Router::new()
+            .route("/write", any(|| async { StatusCode::NO_CONTENT }))
+            .layer(axum::middleware::from_fn(csrf_middleware));
+        let request = Request::post("/write")
+            .header(header::COOKIE, "other_cookie=value")
+            .header(header::COOKIE, format!("rullst_csrf={token}"))
+            .header("x-csrf-token", token)
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(
+            app.oneshot(request).await.unwrap().status(),
+            StatusCode::NO_CONTENT
+        );
+    }
 
     #[tokio::test]
     async fn safe_http_methods_do_not_require_a_token() {

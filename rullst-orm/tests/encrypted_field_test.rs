@@ -110,6 +110,36 @@ async fn encrypted_fields_round_trip_rotate_and_reject_unsafe_queries() {
         .expect("non-null encrypted strings should decrypt when plucked");
     assert_eq!(plucked, vec!["first secret"]);
 
+    assert_eq!(
+        EncryptedRecord::query()
+            .pluck_string("encrypted_records.secret")
+            .await
+            .expect("qualified encrypted projection must decrypt with the canonical field AAD"),
+        vec!["first secret"]
+    );
+    for query in [
+        EncryptedRecord::query().where_eq("encrypted_records.secret", "first secret"),
+        EncryptedRecord::query().order_by("encrypted_records.secret"),
+        EncryptedRecord::query().select(&["encrypted_records.secret"]),
+    ] {
+        assert!(matches!(
+            query.get().await,
+            Err(rullst_orm::Error::Validation(_))
+        ));
+    }
+    assert!(matches!(
+        EncryptedRecord::query()
+            .pluck_i32("encrypted_records.secret")
+            .await,
+        Err(rullst_orm::Error::Validation(_))
+    ));
+    assert!(matches!(
+        EncryptedRecord::query()
+            .pluck_string("encrypted_records.optional_secret")
+            .await,
+        Err(rullst_orm::Error::Validation(_))
+    ));
+
     configure_rotated_key();
     let mut loaded_with_old_key = EncryptedRecord::find(record.id)
         .await

@@ -182,7 +182,12 @@ impl BillingProvider for LemonSqueezyProvider {
             .map(|id| id.to_string())
             .or_else(|| attrs["variant_id"].as_str().map(|s| s.to_string()))
             .unwrap_or_else(|| attrs["variant_id"].to_string());
-        let status_str = attrs["status"].as_str().unwrap_or("active");
+        let status_str = attrs["status"]
+            .as_str()
+            .filter(|status| !status.trim().is_empty())
+            .ok_or_else(|| {
+                CapitalError::PayloadParseError("Webhook status is missing or invalid".into())
+            })?;
 
         let ends_at = attrs["ends_at"].as_str().and_then(|s| {
             chrono::DateTime::parse_from_rfc3339(s)
@@ -210,6 +215,8 @@ impl BillingProvider for LemonSqueezyProvider {
                 "Customer email cannot be empty".to_string(),
             ));
         }
+
+        super::require_mock_operation(&self.api_key, self.name(), "create customer portal")?;
 
         Ok(format!(
             "https://app.lemonsqueezy.com/my-orders?email={}",

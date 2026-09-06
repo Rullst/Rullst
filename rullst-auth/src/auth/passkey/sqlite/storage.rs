@@ -1,7 +1,6 @@
 use super::PasskeyStoreError;
-use sqlx::pool::PoolConnection;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
-use sqlx::{Executor, Sqlite, SqlitePool};
+use sqlx::{Executor, Sqlite, SqlitePool, Transaction};
 use std::path::Path;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -71,15 +70,17 @@ pub(super) async fn prepare_schema(
 }
 
 pub(super) async fn finish<T>(
-    connection: &mut PoolConnection<Sqlite>,
+    transaction: Transaction<'static, Sqlite>,
     result: Result<T, PasskeyStoreError>,
     operation: &'static str,
 ) -> Result<T, PasskeyStoreError> {
-    let statement = if result.is_ok() { "COMMIT" } else { "ROLLBACK" };
-    if connection.execute(statement).await.is_err() {
-        connection.close_on_drop();
-        return Err(unavailable(operation));
+    // Dropping the SQLx transaction also rolls back on task cancellation.
+    if result.is_ok() {
+        transaction.commit().await
+    } else {
+        transaction.rollback().await
     }
+    .map_err(|_| unavailable(operation))?;
     result
 }
 

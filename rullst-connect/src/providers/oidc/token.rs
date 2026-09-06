@@ -21,7 +21,7 @@ impl OidcProvider {
     #[tracing::instrument(skip(self, form_data))]
     pub(crate) async fn get_user_from_form(
         &self,
-        form_data: &crate::provider::TokenExchangeForm<'_>,
+        form_data: &(impl serde::Serialize + Sync),
         expected_nonce: Option<&str>,
     ) -> Result<ConnectUser, ConnectError> {
         let token_res = self
@@ -75,13 +75,8 @@ impl OidcProvider {
                         ));
                     }
                 };
-                let mut validation = jsonwebtoken::Validation::new(alg);
-                validation.set_audience(&[&self.client_id]);
-                validation.set_issuer(&[&self.issuer]);
-                validation.validate_exp = true;
-                if expected_nonce.is_some() {
-                    validation.set_required_spec_claims(&["nonce"]);
-                }
+                let validation =
+                    crate::provider::id_token::validation(alg, &self.client_id, &[&self.issuer]);
 
                 let token_data =
                     jsonwebtoken::decode::<Value>(id_token, &decoding_key, &validation).map_err(
@@ -94,14 +89,11 @@ impl OidcProvider {
                     )?;
                 let payload = token_data.claims;
 
-                if let Some(nonce) = expected_nonce {
-                    let token_nonce = payload["nonce"].as_str().unwrap_or("");
-                    if !crate::provider::verify_nonce(token_nonce, nonce) {
-                        return Err(crate::error::ConnectError::Provider(
-                            "OIDC id_token nonce mismatch".to_owned(),
-                        ));
-                    }
-                }
+                crate::provider::id_token::validate_claims(
+                    &payload,
+                    &self.client_id,
+                    expected_nonce,
+                )?;
 
                 ConnectUser {
                     id: payload["sub"].as_str().map(String::from).ok_or_else(|| {
@@ -124,6 +116,11 @@ impl OidcProvider {
                 ));
             }
         } else {
+            if expected_nonce.is_some() && !self.credential_mode.is_mock() {
+                return Err(ConnectError::Provider(
+                    "OIDC nonce-bound login requires an id_token".into(),
+                ));
+            }
             use crate::provider::Provider;
             self.get_user_from_token(access_token).await?
         };
@@ -131,9 +128,7 @@ impl OidcProvider {
         user.refresh_token = token_res["refresh_token"]
             .as_str()
             .map(|s| secrecy::SecretString::from(s.to_string()));
-        user.expires_in = token_res["expires_in"]
-            .as_u64()
-            .or_else(|| token_res["expires_in"].as_i64().map(|v| v as u64));
+        user.expires_in = crate::provider::token_lifetime(&token_res)?;
 
         Ok(user)
     }
@@ -212,14 +207,15 @@ impl Provider for OidcProvider {
     }
 
     async fn refresh_token(&self, refresh_token: &str) -> Result<ConnectUser, ConnectError> {
-        let form_data = crate::provider::TokenExchangeForm {
-            client_id: self.client_id.as_str(),
-            client_secret: Some(secrecy::ExposeSecret::expose_secret(&self.client_secret)),
-            code: refresh_token,
-            grant_type: Some("refresh_token"),
-            redirect_uri: self.redirect_url.as_str(),
-            code_verifier: None,
-        };
+        let form_data = [
+            ("client_id", self.client_id.as_str()),
+            (
+                "client_secret",
+                secrecy::ExposeSecret::expose_secret(&self.client_secret),
+            ),
+            ("refresh_token", refresh_token),
+            ("grant_type", "refresh_token"),
+        ];
         self.get_user_from_form(&form_data, None).await
     }
 }

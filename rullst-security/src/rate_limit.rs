@@ -7,7 +7,7 @@ use axum::{
 };
 use dashmap::DashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 #[cfg(feature = "redis-rate-limit")]
@@ -16,30 +16,33 @@ mod redis;
 pub use redis::{RateLimitDecision, RedisRateLimitMode, RedisRateLimiter};
 
 static RATE_LIMIT_STORE: OnceLock<DashMap<String, (Instant, AtomicU64)>> = OnceLock::new();
+static RATE_LIMIT_ADMISSION: OnceLock<Mutex<AdmissionState>> = OnceLock::new();
+const MAX_RATE_LIMIT_IDENTITIES: usize = 16_384;
+const MAX_RATE_LIMIT_KEY_BYTES: usize = 256;
+
+#[derive(Debug)]
+struct AdmissionState {
+    last_cleanup: Instant,
+    longest_window: Duration,
+}
+
+impl Default for AdmissionState {
+    fn default() -> Self {
+        Self {
+            last_cleanup: Instant::now(),
+            longest_window: Duration::ZERO,
+        }
+    }
+}
 
 pub fn global_rate_limit_store() -> &'static DashMap<String, (Instant, AtomicU64)> {
-    RATE_LIMIT_STORE.get_or_init(|| {
-        let store = DashMap::new();
-        if tokio::runtime::Handle::try_current().is_ok() {
-            tokio::spawn(async move {
-                let mut interval = tokio::time::interval(Duration::from_secs(300));
-                loop {
-                    interval.tick().await;
-                    let now = Instant::now();
-                    global_rate_limit_store().retain(|_, (start_time, _)| {
-                        now.duration_since(*start_time) < Duration::from_secs(600)
-                    });
-                }
-            });
-        }
-        store
-    })
+    RATE_LIMIT_STORE.get_or_init(DashMap::new)
 }
 
 /// Supported rate limiting backend strategies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RateLimitBackend {
-    /// High-throughput in-memory sliding window using DashMap.
+    /// Bounded process-local fixed window using DashMap.
     #[default]
     Memory,
     /// Reserved distributed mode. Construction currently returns
@@ -69,6 +72,8 @@ pub enum RateLimitError {
 }
 
 /// Configurable builder for application rate limiters.
+/// Each shared local store retains at most 16,384 identities with keys up to
+/// 256 bytes. Invalid/zero budgets and exhausted admission fail closed.
 #[derive(Debug, Clone)]
 pub struct RateLimiter {
     /// Maximum accepted requests in one window.
@@ -78,6 +83,7 @@ pub struct RateLimiter {
     /// Selected backend mode.
     pub backend: RateLimitBackend,
     store: Arc<DashMap<String, (Instant, AtomicU64)>>,
+    admission: Arc<Mutex<AdmissionState>>,
 }
 
 impl Default for RateLimiter {
@@ -87,6 +93,7 @@ impl Default for RateLimiter {
             window: Duration::from_secs(60),
             backend: RateLimitBackend::Memory,
             store: Arc::new(DashMap::new()),
+            admission: Arc::new(Mutex::new(AdmissionState::default())),
         }
     }
 }
@@ -99,6 +106,7 @@ impl RateLimiter {
             window,
             backend: RateLimitBackend::Memory,
             store: Arc::new(DashMap::new()),
+            admission: Arc::new(Mutex::new(AdmissionState::default())),
         }
     }
 
@@ -124,14 +132,21 @@ impl RateLimiter {
         if self.backend == RateLimitBackend::Distributed {
             return true;
         }
-        is_rate_limited_in(&self.store, key, self.max_requests, self.window)
+        is_rate_limited_in(
+            &self.store,
+            &self.admission,
+            key,
+            self.max_requests,
+            self.window,
+        )
     }
 }
 
-/// In-memory sliding-window IP rate limiter checking request rates.
+/// Bounded in-memory fixed-window IP rate limiter checking request rates.
 pub fn is_rate_limited(client_ip: &str, max_requests: u64, window_duration: Duration) -> bool {
     is_rate_limited_in(
         global_rate_limit_store(),
+        RATE_LIMIT_ADMISSION.get_or_init(|| Mutex::new(AdmissionState::default())),
         client_ip,
         max_requests,
         window_duration,
@@ -140,33 +155,62 @@ pub fn is_rate_limited(client_ip: &str, max_requests: u64, window_duration: Dura
 
 fn is_rate_limited_in(
     store: &DashMap<String, (Instant, AtomicU64)>,
+    admission: &Mutex<AdmissionState>,
     client_ip: &str,
     max_requests: u64,
     window_duration: Duration,
 ) -> bool {
+    if max_requests == 0
+        || window_duration.is_zero()
+        || client_ip.is_empty()
+        || client_ip.len() > MAX_RATE_LIMIT_KEY_BYTES
+    {
+        return record_block();
+    }
+    // Serialize capacity checks and insertion across clones. A len check
+    // outside this lock can over-admit concurrent new identities.
+    let Ok(mut admission) = admission.lock() else {
+        return record_block();
+    };
     let now = Instant::now();
+    admission.longest_window = admission.longest_window.max(window_duration);
+    if now.saturating_duration_since(admission.last_cleanup)
+        >= admission.longest_window.min(Duration::from_secs(1))
+    {
+        // The legacy global API can serve differing windows; never expire
+        // another caller's longer active window using this request's policy.
+        store.retain(|_, (start, _)| {
+            now.saturating_duration_since(*start) < admission.longest_window
+        });
+        admission.last_cleanup = now;
+    }
+    if !store.contains_key(client_ip) && store.len() >= MAX_RATE_LIMIT_IDENTITIES {
+        return record_block();
+    }
 
     let mut entry = store
         .entry(client_ip.to_string())
         .or_insert_with(|| (now, AtomicU64::new(0)));
 
     let (start_time, count) = entry.value_mut();
-    if now.saturating_duration_since(*start_time) > window_duration {
+    if now.saturating_duration_since(*start_time) >= window_duration {
         *start_time = now;
-        count.store(1, Ordering::Relaxed);
-        false
-    } else {
-        let current = count.fetch_add(1, Ordering::Relaxed) + 1;
-        if current > max_requests {
-            SecurityStore::global().inc_rate_limit_blocks();
-            true
-        } else {
-            false
-        }
+        count.store(0, Ordering::Relaxed);
     }
+    let current = count.load(Ordering::Relaxed);
+    if current >= max_requests {
+        return record_block();
+    }
+    count.store(current + 1, Ordering::Relaxed);
+    false
 }
 
-/// Axum middleware enforcing a sliding window rate limit (default 120 req / minute per IP).
+fn record_block() -> bool {
+    SecurityStore::global().inc_rate_limit_blocks();
+    true
+}
+
+/// Axum middleware enforcing a fixed window rate limit (default 120 req / minute per IP).
 pub async fn rate_limit_middleware(req: Request, next: Next) -> Response {
     static LIMITER: OnceLock<RateLimiter> = OnceLock::new();
     let Some(client_ip) = req
@@ -197,6 +241,79 @@ mod tests {
     use super::*;
     use axum::{Router, body::Body, extract::ConnectInfo, http::Request, middleware, routing::get};
     use tower::ServiceExt;
+
+    #[test]
+    fn zero_budget_denies_requests_even_after_a_window_reset() {
+        let limiter = RateLimiter::new(0, Duration::from_millis(1));
+        limiter.store.insert(
+            "no-budget".to_string(),
+            (Instant::now() - Duration::from_secs(1), AtomicU64::new(99)),
+        );
+        assert!(limiter.check("no-budget"));
+        assert!(RateLimiter::new(1, Duration::ZERO).check("zero-window"));
+    }
+
+    #[test]
+    fn arbitrary_client_keys_cannot_grow_memory_without_a_bound() {
+        let limiter = RateLimiter::new(1, Duration::from_secs(60));
+        assert!(limiter.check(&"x".repeat(257)));
+        assert!(limiter.check(""));
+        for index in 0..16_384 {
+            assert!(!limiter.check(&format!("bounded-client-{index}")));
+        }
+        assert!(limiter.check("over-capacity-client"));
+        assert_eq!(limiter.store.len(), 16_384);
+    }
+
+    #[test]
+    fn counter_saturation_cannot_reopen_the_request_budget() {
+        let limiter = RateLimiter::new(u64::MAX, Duration::from_secs(60));
+        limiter.store.insert(
+            "saturated".to_string(),
+            (Instant::now(), AtomicU64::new(u64::MAX)),
+        );
+        assert!(limiter.check("saturated"));
+    }
+
+    #[test]
+    fn expired_identities_are_reclaimed_without_a_background_runtime() {
+        let limiter = RateLimiter::new(1, Duration::from_secs(60));
+        let expired = Instant::now() - Duration::from_secs(120);
+        for index in 0..MAX_RATE_LIMIT_IDENTITIES {
+            limiter
+                .store
+                .insert(format!("expired-{index}"), (expired, AtomicU64::new(1)));
+        }
+        limiter.admission.lock().unwrap().last_cleanup = expired;
+        assert!(!limiter.check("new-identity"));
+        assert_eq!(limiter.store.len(), 1);
+    }
+
+    #[test]
+    fn concurrent_new_identities_share_one_remaining_slot() {
+        let limiter = RateLimiter::new(1, Duration::from_secs(60));
+        for index in 1..MAX_RATE_LIMIT_IDENTITIES {
+            limiter.store.insert(
+                format!("occupied-{index}"),
+                (Instant::now(), AtomicU64::new(1)),
+            );
+        }
+        let barrier = std::sync::Barrier::new(16);
+        let admitted = AtomicU64::new(0);
+        std::thread::scope(|scope| {
+            for index in 0..16 {
+                let (limiter, barrier, admitted) = (&limiter, &barrier, &admitted);
+                scope.spawn(move || {
+                    barrier.wait();
+                    if !limiter.check(&format!("contender-{index}")) {
+                        admitted.fetch_add(1, Ordering::Relaxed);
+                    }
+                });
+            }
+        });
+        assert_eq!(admitted.load(Ordering::Relaxed), 1);
+        assert_eq!(limiter.store.len(), MAX_RATE_LIMIT_IDENTITIES);
+    }
 
     #[test]
     fn test_sliding_window_rate_limiter() {

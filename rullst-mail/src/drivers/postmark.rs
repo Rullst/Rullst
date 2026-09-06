@@ -64,8 +64,7 @@ impl MailDriver for PostmarkDriver {
         }
         DeliveryPipeline::require_due("Postmark", message)?;
 
-        static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
-        let client = HTTP_CLIENT.get_or_init(reqwest::Client::new);
+        let client = super::http::client()?;
 
         let from_addr = message.from.as_deref().unwrap_or("noreply@rullst.dev");
 

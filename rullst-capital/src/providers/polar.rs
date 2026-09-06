@@ -4,10 +4,10 @@ use super::{
 };
 use crate::error::CapitalError;
 use async_trait::async_trait;
+#[cfg(test)]
 use ring::hmac;
 use serde_json::Value;
 use std::collections::HashMap;
-use subtle::ConstantTimeEq;
 
 /// Billing provider implementation for Polar.sh (Developer-First MoR & Open Source).
 pub struct PolarProvider {
@@ -24,10 +24,11 @@ impl PolarProvider {
         }
     }
 
-    /// Verifies the webhook signature using HMAC-SHA256.
+    /// Offline compatibility helper. Live verification requires all Standard
+    /// Webhooks headers and must use `BillingProvider::handle_webhook`.
     pub fn verify_signature(
         &self,
-        payload: &[u8],
+        _payload: &[u8],
         signature_hex: &str,
     ) -> Result<(), CapitalError> {
         if self.webhook_verification_mode()? == WebhookVerificationMode::Mock {
@@ -38,19 +39,9 @@ impl PolarProvider {
             );
         }
 
-        let sig_bytes = hex::decode(signature_hex)
-            .map_err(|e| CapitalError::InvalidSignature(format!("Invalid hex signature: {}", e)))?;
-
-        let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
-        let tag = hmac::sign(&key, payload);
-
-        if tag.as_ref().ct_eq(&sig_bytes).unwrap_u8() == 0 {
-            return Err(CapitalError::InvalidSignature(
-                "Polar.sh signature verification failed".to_string(),
-            ));
-        }
-
-        Ok(())
+        Err(CapitalError::UnsupportedOperation(
+            "Polar live verification requires Standard Webhooks ID, timestamp and signature headers".into(),
+        ))
     }
 }
 
@@ -123,14 +114,22 @@ impl BillingProvider for PolarProvider {
         payload: &[u8],
         headers: &HashMap<String, String>,
     ) -> Result<WebhookEvent, CapitalError> {
-        let _ = self.webhook_verification_mode()?;
-        let sig_header = headers
-            .get("polar-signature")
-            .or_else(|| headers.get("webhook-signature"))
-            .ok_or_else(|| {
-                CapitalError::InvalidSignature("Missing Polar-Signature header".to_string())
-            })?;
-        self.verify_signature(payload, sig_header)?;
+        if self.webhook_verification_mode()? == WebhookVerificationMode::Mock {
+            let signature = headers
+                .get("polar-signature")
+                .or_else(|| headers.get("webhook-signature"))
+                .ok_or_else(|| {
+                    CapitalError::InvalidSignature("Missing Polar-Signature header".into())
+                })?;
+            self.verify_signature(payload, signature)?;
+        } else {
+            super::polar_webhook::verify(
+                &self.webhook_secret,
+                payload,
+                headers,
+                chrono::Utc::now().timestamp(),
+            )?;
+        }
 
         let json: Value = serde_json::from_slice(payload)
             .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
@@ -155,7 +154,12 @@ impl BillingProvider for PolarProvider {
             .unwrap_or("")
             .to_string();
 
-        let status_str = data["status"].as_str().unwrap_or("active");
+        let status_str = data["status"]
+            .as_str()
+            .filter(|status| !status.trim().is_empty())
+            .ok_or_else(|| {
+                CapitalError::PayloadParseError("Webhook status is missing or invalid".into())
+            })?;
         let ends_at = data["current_period_end"].as_i64();
 
         Ok(WebhookEvent {
@@ -178,6 +182,8 @@ impl BillingProvider for PolarProvider {
                 "Customer email cannot be empty".to_string(),
             ));
         }
+
+        super::require_mock_operation(&self.api_key, self.name(), "create customer portal")?;
 
         Ok(format!(
             "https://polar.sh/purchases?email={}",
@@ -215,6 +221,8 @@ impl BillingProvider for PolarProvider {
                 "Subscription ID cannot be empty".to_string(),
             ));
         }
+        super::require_mock_operation(&self.api_key, self.name(), "pause subscription")?;
+
         Ok(())
     }
 
@@ -229,6 +237,8 @@ impl BillingProvider for PolarProvider {
                 "Subscription ID cannot be empty".to_string(),
             ));
         }
+        super::require_mock_operation(&self.api_key, self.name(), "report usage")?;
+
         Ok(())
     }
 
@@ -332,7 +342,10 @@ mod tests {
         let sig = hmac::sign(&key, payload);
         let sig_hex = hex::encode(sig.as_ref());
 
-        assert!(provider.verify_signature(payload, &sig_hex).is_ok());
+        assert!(matches!(
+            provider.verify_signature(payload, &sig_hex),
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
 
         // Signature error paths
         let no_sec = PolarProvider::new("t", "");
@@ -351,8 +364,21 @@ mod tests {
         );
 
         // 6. Handle webhook
+        use base64::Engine;
+        let timestamp = chrono::Utc::now().timestamp();
+        let mut signer = hmac::Context::with_key(&key);
+        signer.update(format!("evt_polar.{timestamp}.").as_bytes());
+        signer.update(payload);
         let mut headers = HashMap::new();
-        headers.insert("webhook-signature".to_string(), sig_hex);
+        headers.insert("webhook-id".into(), "evt_polar".into());
+        headers.insert("webhook-timestamp".into(), timestamp.to_string());
+        headers.insert(
+            "webhook-signature".into(),
+            format!(
+                "v1,{}",
+                base64::engine::general_purpose::STANDARD.encode(signer.sign().as_ref())
+            ),
+        );
 
         let event = provider.handle_webhook(payload, &headers).unwrap();
         assert_eq!(event.subscription_id, "sub_polar_100");

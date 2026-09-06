@@ -2,6 +2,7 @@ use super::support::{
     DEFAULT_REQUEST_TIMEOUT, embedding_values, endpoint, image_mime_type, openai_chat_content,
     success_response,
 };
+use super::support::{http_client, read_json};
 use crate::ai::{
     AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
     StructuredOutputSchema,
@@ -19,7 +20,6 @@ pub struct OpenAiProvider {
     embedding_model: String,
     base_url: String,
     mode: ProviderMode,
-    client: reqwest::Client,
     request_timeout: Duration,
 }
 
@@ -34,7 +34,6 @@ impl OpenAiProvider {
             embedding_model: "text-embedding-3-small".to_string(),
             base_url: "https://api.openai.com/v1".to_string(),
             mode,
-            client: reqwest::Client::new(),
             request_timeout: DEFAULT_REQUEST_TIMEOUT,
         }
     }
@@ -64,16 +63,16 @@ impl OpenAiProvider {
     }
 
     async fn send_chat_body(&self, body: serde_json::Value) -> Result<String, AiError> {
-        let response = self
-            .client
+        let response = http_client()?
             .post(endpoint(&self.base_url, "chat/completions"))
             .timeout(self.request_timeout)
             .bearer_auth(&self.api_key)
             .json(&body)
             .send()
-            .await?;
+            .await
+            .map_err(|error| AiError::RequestError(error.without_url()))?;
         let response = success_response(response, self.provider_name()).await?;
-        let json: serde_json::Value = response.json().await?;
+        let json = read_json(response, self.provider_name()).await?;
         openai_chat_content(&json, self.provider_name())
     }
 }
@@ -156,8 +155,7 @@ impl AiProvider for OpenAiProvider {
             return Ok(mock::embedding(&text));
         }
 
-        let response = self
-            .client
+        let response = http_client()?
             .post(endpoint(&self.base_url, "embeddings"))
             .timeout(self.request_timeout)
             .bearer_auth(&self.api_key)
@@ -166,9 +164,10 @@ impl AiProvider for OpenAiProvider {
                 "input": text,
             }))
             .send()
-            .await?;
+            .await
+            .map_err(|error| AiError::RequestError(error.without_url()))?;
         let response = success_response(response, self.provider_name()).await?;
-        let json: serde_json::Value = response.json().await?;
+        let json = read_json(response, self.provider_name()).await?;
         embedding_values(
             json["data"][0]["embedding"].as_array(),
             self.provider_name(),

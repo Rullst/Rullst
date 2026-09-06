@@ -2,6 +2,7 @@
 
 /// Fluent server builder and HTTP runner.
 pub mod builder;
+mod dev_reload;
 /// Dynamic library router loader for hot-reload mode.
 pub mod dylib_loader;
 /// Atomic hot-swappable Tower service.

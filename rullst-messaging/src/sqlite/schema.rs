@@ -70,11 +70,7 @@ async fn prepare_storage_profile(
     storage: &StorageProfile,
 ) -> Result<()> {
     let mut connection = pool
-        .acquire()
-        .await
-        .map_err(|_| storage_error("acquire storage profile"))?;
-    connection
-        .execute("BEGIN IMMEDIATE")
+        .begin_with("BEGIN IMMEDIATE")
         .await
         .map_err(|_| storage_error("begin storage profile"))?;
     let result = async {
@@ -151,7 +147,7 @@ async fn prepare_storage_profile(
         Ok(())
     }
     .await;
-    finish(&mut connection, result, "finish storage profile").await
+    finish(connection, result, "finish storage profile").await
 }
 
 fn as_i64(value: usize, context: &'static str) -> Result<i64> {

@@ -56,8 +56,8 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
 - **Generated CRUD**: Derive insert, update, delete, and find helpers from model metadata.
 - **Typed Fluent Query Builder**: Generated primitive filters such as
   `.where_id(i32)` and `.where_name(impl Into<String>)` reject mismatched value
-  types at compile time; dynamic string-column methods remain explicit escape
-  hatches.
+  types at compile time; string-column methods validate identifiers at runtime,
+  while explicitly named raw methods remain caller-owned SQL escape hatches.
 - **Eager Loading**: Batch supported `has_many`, `belongs_to`, `morph_many`,
   `morph_one`, and typed `morph_to` targets. Inverse polymorphic fields use an
   explicit target per relation and a persisted `<morph_name>_id` plus
@@ -141,7 +141,10 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   Generated model saves/deletes invalidate keys for the active tenant and table
   only after commit, using a bounded non-blocking scan; cluster/failover
   evidence remains outside the current contract.
-- **Model Policies (Authorization)**: Laravel-style fine-grained access control securely tied to your structs via `#[orm(policy = "MyPolicy")]`.
+- **Model Policies (Authorization)**: `#[orm(policy = "MyPolicy")]` checks generated
+  instance mutations. Policy-protected models reject `delete_all()` because
+  bulk SQL cannot invoke per-row authorization; load the intended rows and call
+  their instance `delete()` methods inside `Orm::transaction` instead.
 - **Development lazy-loading diagnostics**: An opt-in development policy can fail loudly when a guarded lazy load would hide an N+1 query.
 - **Explicit Capability Boundaries**: Unsupported replication paths fail closed instead of reporting simulated success.
 - **Optional Polyglot Persistence**: Feature-gated MongoDB document CRUD,
@@ -163,6 +166,59 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   other blueprints are not claimed as parity.
 
 ---
+
+### Query and transaction boundaries
+
+`select`, `pluck_string`, and `pluck_i32` accept validated column identifiers,
+including `table.column`. Expressions and aliases belong in explicit raw SQL
+APIs. Qualified names retain skipped/encrypted-field restrictions; supported
+encrypted string projections use the original field name when decrypting.
+
+`where_in` and `or_where_in` with an empty vector emit a false predicate, so an
+empty selected-ID list cannot become an unrestricted read or delete. An empty
+`where_not_in` remains true. Unfiltered `delete_all` on models without policies
+is still deliberately a bulk operation. Model-wide, tenant, and soft-delete
+scopes constrain every user `OR` branch, and keyset traversal applies its cursor
+to the entire original filter. Nested generated subqueries propagate validation
+errors, including a missing tenant context, into their containing query.
+Generated `Model::search()` uses those same model-wide and tenant scopes for
+both its SQL fallback and external Scout result IDs. Missing tenant context
+fails before contacting Scout, and an empty provider result remains an empty
+match even when a database contains an explicitly inserted ID of zero. Search
+index access controls still belong to the application/operator.
+
+Prefer `Orm::transaction` with ordinary model/query methods when combining
+eager relationships or `after_fetch` hooks with transactional reads. Fetches
+release the managed transaction lock before invoking hooks and loading related
+records, and scalar projections use that same transaction. Caller-owned raw
+SQLx transactions still support plain `get_with_tx` reads, but eager-loading or
+`after_fetch` configurations fail with an actionable error because their
+secondary queries require the managed executor context.
+
+A transaction-backed stream retains exclusive access to the transaction until
+it is consumed or dropped. Consume/drop it before starting another operation
+on that transaction. Transactional streams reject `after_fetch` hooks to avoid
+reentrant queries while retaining that access; use `get()` inside
+`Orm::transaction` for those models. Streaming does not eagerly load relations.
+
+Full `save`/`delete` policies and their lifecycle callbacks run while their
+executor is borrowed.
+Ordinary ORM calls made recursively from those callbacks on the same task fail
+with a typed `Validation` error instead of waiting on their own transaction.
+Perform database authorization and any required row locking explicitly within
+the managed transaction before invoking the mutation; the policy can then
+validate trusted context and in-memory model values. Defer only post-commit
+effects to `after_commit`/`committed`, which run outside that callback scope.
+Failure in an `after_save` hook still rolls back the generated mutation.
+Independently spawned tasks and separately retained raw connections do not
+inherit this executor contract and must not be used to bypass atomicity.
+
+Raw SQL, unscoped `QueryBuilder::new()` construction, direct editing of builder
+SQL fields, and custom `SubqueryBuilder`
+implementations remain trusted application code. Custom subqueries should
+expose their validation failure through `validation_error()`; the trait's
+compatibility default does not validate arbitrary custom SQL. These controls
+do not authenticate users or decide who may invoke `unscoped()`.
 
 ## 🛠️ Quick Start
 

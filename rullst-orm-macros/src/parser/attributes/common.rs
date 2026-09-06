@@ -139,7 +139,7 @@ pub(super) fn validate_rust_identifier(
     Ok(())
 }
 
-pub(super) fn validate_sql_identifier(
+pub(in crate::parser) fn validate_sql_identifier(
     value: &str,
     label: &str,
     span: proc_macro2::Span,

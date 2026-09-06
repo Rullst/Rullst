@@ -146,6 +146,10 @@ pub use tenant::{get_tenant_id, with_tenant};
 pub use types::Json;
 pub use value::RullstValue;
 
+#[doc(hidden)]
+#[path = "transaction_access.rs"]
+pub mod __transaction_access;
+
 tokio::task_local! {
     pub static CURRENT_TX: std::sync::Arc<tokio::sync::Mutex<Option<crate::db::Transaction<'static>>>>;
 }
@@ -158,7 +162,8 @@ pub static TEST_SANDBOX_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const
 
 #[macro_export]
 macro_rules! execute_query {
-    ($query:expr, $method:ident, $pool_fn:ident) => {
+    ($query:expr, $method:ident, $pool_fn:ident) => {{
+        $crate::__transaction_access::ensure_allowed()?;
         if let Ok(tx_arc) = $crate::CURRENT_TX.try_with(|tx| tx.clone()) {
             let mut tx_guard = tx_arc.lock().await;
             if let Some(tx) = tx_guard.as_mut() {
@@ -171,12 +176,13 @@ macro_rules! execute_query {
             let pool = $crate::Orm::$pool_fn()?;
             $query.$method(pool).await
         }
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! dispatch_executor {
-    ($pool_fn:ident, |$executor:ident| $e:expr) => {
+    ($pool_fn:ident, |$executor:ident| $e:expr) => {{
+        $crate::__transaction_access::ensure_allowed()?;
         if let Ok(tx_arc) = $crate::CURRENT_TX.try_with(|tx| tx.clone()) {
             let mut tx_guard = tx_arc.lock().await;
             if let Some(tx) = tx_guard.as_mut() {
@@ -190,5 +196,5 @@ macro_rules! dispatch_executor {
             let $executor = $crate::Orm::$pool_fn()?;
             $e
         }
-    };
+    }};
 }

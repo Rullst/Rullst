@@ -224,7 +224,12 @@ impl BillingProvider for StripeProvider {
             .unwrap_or("")
             .to_string();
 
-        let status_str = data["status"].as_str().unwrap_or("active");
+        let status_str = data["status"]
+            .as_str()
+            .filter(|status| !status.trim().is_empty())
+            .ok_or_else(|| {
+                CapitalError::PayloadParseError("Webhook status is missing or invalid".into())
+            })?;
         let ends_at = data["current_period_end"].as_i64();
 
         Ok(WebhookEvent {
@@ -255,6 +260,8 @@ impl BillingProvider for StripeProvider {
                 url_encode(return_url)
             ));
         }
+
+        super::require_mock_operation(&self.api_key, self.name(), "create customer portal")?;
 
         Ok(format!(
             "https://billing.stripe.com/p/session/portal?email={}",

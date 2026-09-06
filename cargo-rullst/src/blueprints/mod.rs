@@ -121,6 +121,14 @@ pub fn apply_with_lms_modules(
         let static_dir = path.join("static");
         fs::create_dir_all(&static_dir)?;
         fs::write(static_dir.join("rullst.png"), blank::BLANK_FAVICON)?;
+        fs::write(
+            static_dir.join("htmx-1.9.12.min.js"),
+            include_bytes!("assets/htmx-1.9.12.min.js"),
+        )?;
+        fs::write(
+            static_dir.join("HTMX-LICENSE"),
+            include_bytes!("assets/HTMX-LICENSE"),
+        )?;
     }
 
     Ok(())
@@ -210,6 +218,10 @@ mod tests {
                 fs::read(root.path().join("static/rullst.png")).expect("blueprint favicon");
             assert_eq!(favicon, blank::BLANK_FAVICON);
             assert!(favicon.starts_with(&[0x89, b'P', b'N', b'G']));
+            let script = fs::read(root.path().join("static/htmx-1.9.12.min.js"))
+                .expect("offline HTMX client must be materialized");
+            assert_eq!(script, include_bytes!("assets/htmx-1.9.12.min.js"));
+            assert!(root.path().join("static/HTMX-LICENSE").is_file());
         }
     }
 }

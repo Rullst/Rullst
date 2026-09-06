@@ -28,6 +28,7 @@ pub fn generate_builder_struct(
         .map(|field| field.name.to_string())
         .collect();
     let encrypted_columns_lit = encrypted_columns.clone();
+    let subquery_methods = super::subqueries::generate_subquery_methods();
 
     quote! {
         #[derive(Clone)]
@@ -40,6 +41,8 @@ pub fn generate_builder_struct(
             pub group_by: Option<String>,
             pub joins: Vec<String>,
             pub wheres: Vec<(String, String)>,
+            scope_wheres: Vec<String>,
+            scope_bindings: Vec<rullst_orm::RullstValue>,
             pub havings: Vec<(String, String)>,
             pub cte_bindings: Vec<rullst_orm::RullstValue>,
             pub join_bindings: Vec<rullst_orm::RullstValue>,
@@ -65,6 +68,9 @@ pub fn generate_builder_struct(
             fn ordered_bindings(&self) -> Vec<rullst_orm::RullstValue> {
                 self.select_bindings()
             }
+            fn validation_error(&self) -> Option<rullst_orm::Error> {
+                self.errors.first().cloned()
+            }
         }
 
         impl #builder_name {
@@ -72,10 +78,12 @@ pub fn generate_builder_struct(
             const ENCRYPTED_COLUMNS: &'static [&'static str] = &[#(#encrypted_columns_lit),*];
 
             fn is_skipped_column(column: &str) -> bool {
+                let column = column.rsplit('.').next().unwrap_or(column);
                 Self::SKIPPED_COLUMNS.iter().any(|c| *c == column)
             }
 
             fn reject_skipped_column(&mut self, column: &str) -> bool {
+                let column = column.rsplit('.').next().unwrap_or(column);
                 if Self::is_skipped_column(column) {
                     self.errors.push(rullst_orm::Error::Validation(format!(
                         "column `{}` is declared with `#[orm(skip)]` / `#[sqlx(skip)]` and does not exist in the table; it must not be used in WHERE / ORDER BY / GROUP BY / SELECT",
@@ -97,6 +105,7 @@ pub fn generate_builder_struct(
                 self.cte_bindings
                     .iter()
                     .chain(self.join_bindings.iter())
+                    .chain(self.scope_bindings.iter())
                     .chain(self.bindings.iter())
                     .chain(self.order_bindings.iter())
                     .cloned()
@@ -107,6 +116,7 @@ pub fn generate_builder_struct(
                 self.cte_bindings
                     .iter()
                     .chain(self.join_bindings.iter())
+                    .chain(self.scope_bindings.iter())
                     .chain(self.bindings.iter())
                     .cloned()
                     .collect()
@@ -122,6 +132,8 @@ pub fn generate_builder_struct(
                     group_by: None,
                     joins: vec![],
                     wheres: vec![],
+                    scope_wheres: vec![],
+                    scope_bindings: vec![],
                     havings: vec![],
                     cte_bindings: vec![],
                     join_bindings: vec![],
@@ -175,65 +187,7 @@ pub fn generate_builder_struct(
                 self
             }
 
-            pub fn where_exists<B: rullst_orm::schema::SubqueryBuilder>(mut self, subquery: B) -> Self {
-                let sql = subquery.to_sql();
-                self.wheres.push(("AND".to_string(), format!("EXISTS ({})", sql)));
-                for binding in subquery.ordered_bindings() {
-                    self.bindings.push(binding);
-                }
-                self
-            }
-
-            pub fn or_where_exists<B: rullst_orm::schema::SubqueryBuilder>(mut self, subquery: B) -> Self {
-                let sql = subquery.to_sql();
-                self.wheres.push(("OR".to_string(), format!("EXISTS ({})", sql)));
-                for binding in subquery.ordered_bindings() {
-                    self.bindings.push(binding);
-                }
-                self
-            }
-
-            pub fn with_raw(mut self, cte_name: &str, query: &str) -> Self {
-                if let Err(e) = rullst_orm::schema::validate_identifier(cte_name) {
-                    self.errors.push(rullst_orm::Error::Validation(format!("with_raw() — invalid CTE identifier: {}", e)));
-                }
-                self.ctes.push(format!("{} AS ({})", cte_name, query));
-                self
-            }
-
-            pub fn with_recursive_raw(mut self, cte_name: &str, query: &str) -> Self {
-                if let Err(e) = rullst_orm::schema::validate_identifier(cte_name) {
-                    self.errors.push(rullst_orm::Error::Validation(format!("with_recursive_raw() — invalid CTE identifier: {}", e)));
-                }
-                self.ctes.push(format!("{} AS ({})", cte_name, query));
-                self.has_recursive_cte = true;
-                self
-            }
-
-            pub fn with_cte<B: rullst_orm::schema::SubqueryBuilder>(mut self, cte_name: &str, subquery: B) -> Self {
-                if let Err(e) = rullst_orm::schema::validate_identifier(cte_name) {
-                    self.errors.push(rullst_orm::Error::Validation(format!("with_cte() — invalid CTE identifier: {}", e)));
-                }
-                let sql = subquery.to_sql();
-                self.ctes.push(format!("{} AS ({})", cte_name, sql));
-                for binding in subquery.ordered_bindings() {
-                    self.cte_bindings.push(binding);
-                }
-                self
-            }
-
-            pub fn with_recursive<B: rullst_orm::schema::SubqueryBuilder>(mut self, cte_name: &str, subquery: B) -> Self {
-                if let Err(e) = rullst_orm::schema::validate_identifier(cte_name) {
-                    self.errors.push(rullst_orm::Error::Validation(format!("with_recursive() — invalid CTE identifier: {}", e)));
-                }
-                let sql = subquery.to_sql();
-                self.ctes.push(format!("{} AS ({})", cte_name, sql));
-                self.has_recursive_cte = true;
-                for binding in subquery.ordered_bindings() {
-                    self.cte_bindings.push(binding);
-                }
-                self
-            }
+            #subquery_methods
 
             pub fn select_raw(mut self, query: &str) -> Self {
                 self.selects = Some(query.to_string());

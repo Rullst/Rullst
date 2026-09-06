@@ -147,17 +147,20 @@ impl IntoResponse for HtmxResponse {
 /// - If it is triggered by HTMX, it returns just the inner `content` as a fragment.
 /// - Otherwise, it wraps `content` in an HTML5 skeleton that loads the generated
 ///   same-origin stylesheet and the version-pinned HTMX browser client.
+///   CLI scaffolds supply `/static/htmx-1.9.12.min.js`; manually built
+///   applications must serve that asset themselves. `content` is trusted HTML:
+///   escape untrusted values before constructing this fragment.
 pub fn render_page(htmx: &HtmxRequest, title: &str, content: String) -> Html<String> {
     if htmx.is_htmx {
         Html(content)
     } else {
         let htmx_script = if let Some(nonce) = htmx.csp_nonce.as_ref() {
             crate::html! {
-                <script nonce={nonce.as_str()} crossorigin="anonymous" src="https://unpkg.com/htmx.org@1.9.12"></script>
+                <script nonce={nonce.as_str()} src="/static/htmx-1.9.12.min.js"></script>
             }
         } else {
             crate::html! {
-                <script crossorigin="anonymous" src="https://unpkg.com/htmx.org@1.9.12"></script>
+                <script src="/static/htmx-1.9.12.min.js"></script>
             }
         };
         let html_content = crate::html! {
@@ -307,7 +310,8 @@ mod tests {
         assert!(res_normal.0.contains("/static/rullst.css"));
         assert!(res_normal.0.contains("/static/rullst.png"));
         assert!(!res_normal.0.contains("https://cdn.tailwindcss.com"));
-        assert!(res_normal.0.contains("https://unpkg.com/htmx.org"));
+        assert!(res_normal.0.contains("/static/htmx-1.9.12.min.js"));
+        assert!(!res_normal.0.contains("https://unpkg.com"));
     }
 
     #[test]

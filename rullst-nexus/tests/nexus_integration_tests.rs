@@ -1,5 +1,8 @@
+mod support;
+use support::local_request;
+
 use axum::body::Body;
-use axum::http::{Request, StatusCode};
+use axum::http::StatusCode;
 use rullst_nexus::*;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tower::ServiceExt;
@@ -106,7 +109,7 @@ async fn test_nexus_dashboard_and_views() {
     ];
 
     for route in routes {
-        let req = Request::builder()
+        let req = local_request()
             .uri(route)
             .body(Body::empty())
             .expect("valid request");
@@ -130,7 +133,7 @@ async fn test_nexus_crud_lifecycle_requests() {
 
     // 1. POST create record
     let form_body = "username=testuser&is_active=true";
-    let req = Request::builder()
+    let req = local_request()
         .method("POST")
         .uri("/table/users")
         .header("Content-Type", "application/x-www-form-urlencoded")
@@ -148,7 +151,7 @@ async fn test_nexus_crud_lifecycle_requests() {
 
     // 2. PUT update record
     let update_body = "username=updated_user&is_active=false";
-    let req = Request::builder()
+    let req = local_request()
         .method("PUT")
         .uri("/table/users/1")
         .header("Content-Type", "application/x-www-form-urlencoded")
@@ -165,7 +168,7 @@ async fn test_nexus_crud_lifecycle_requests() {
     );
 
     // 3. DELETE record
-    let req = Request::builder()
+    let req = local_request()
         .method("DELETE")
         .uri("/table/users/1")
         .header("Cookie", format!("rullst_csrf={}", csrf_token))
@@ -182,7 +185,7 @@ async fn test_nexus_crud_lifecycle_requests() {
 
     // 4. Batch action
     let batch_body = "action=delete";
-    let req = Request::builder()
+    let req = local_request()
         .method("POST")
         .uri("/table/users/batch")
         .header("Content-Type", "application/x-www-form-urlencoded")
@@ -216,7 +219,7 @@ async fn test_nexus_ai_chat_queries_and_responses() {
     for msg in test_queries {
         let encoded_msg = msg.replace(' ', "+").replace('?', "%3F");
         let form_body = format!("message={}", encoded_msg);
-        let req = Request::builder()
+        let req = local_request()
             .method("POST")
             .uri("/chat/query")
             .header(
@@ -244,7 +247,7 @@ async fn test_nexus_htmx_partial_headers() {
     let nexus = Nexus::new().register::<UserModel>();
     let app = local_test_router(nexus);
 
-    let req = Request::builder()
+    let req = local_request()
         .uri("/table/users")
         .header("hx-request", "true")
         .body(Body::empty())
@@ -253,7 +256,7 @@ async fn test_nexus_htmx_partial_headers() {
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 
-    let req = Request::builder()
+    let req = local_request()
         .uri("/table/users/search?q=test")
         .header("hx-request", "true")
         .body(Body::empty())
@@ -342,7 +345,7 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
     let csrf = "valid_test_csrf_token";
 
     // 1. Table rows render with populated database
-    let req = Request::builder()
+    let req = local_request()
         .uri("/table/users?page=1&sort_by=username&order=asc")
         .body(Body::empty())
         .unwrap();
@@ -350,7 +353,7 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
     assert_eq!(res.status(), StatusCode::OK);
 
     // 2. Search query matching 'alice'
-    let req = Request::builder()
+    let req = local_request()
         .uri("/table/users/search?q=alice")
         .body(Body::empty())
         .unwrap();
@@ -358,7 +361,7 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
     assert_eq!(res.status(), StatusCode::OK);
 
     // 3. New record form rendering
-    let req = Request::builder()
+    let req = local_request()
         .uri("/table/users/new")
         .body(Body::empty())
         .unwrap();
@@ -366,7 +369,7 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
     assert_eq!(res.status(), StatusCode::OK);
 
     // 4. Edit record form rendering
-    let req = Request::builder()
+    let req = local_request()
         .uri("/table/users/1/edit")
         .body(Body::empty())
         .unwrap();
@@ -374,7 +377,7 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
     assert_eq!(res.status(), StatusCode::OK);
 
     // 5. POST create record
-    let req = Request::builder()
+    let req = local_request()
         .method("POST")
         .uri("/table/users")
         .header("Content-Type", "application/x-www-form-urlencoded")
@@ -390,7 +393,7 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
     );
 
     // 6. PUT update record
-    let req = Request::builder()
+    let req = local_request()
         .method("PUT")
         .uri("/table/users/1")
         .header("Content-Type", "application/x-www-form-urlencoded")
@@ -406,7 +409,7 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
     );
 
     // 7. DELETE record
-    let req = Request::builder()
+    let req = local_request()
         .method("DELETE")
         .uri("/table/users/2")
         .header("Cookie", format!("rullst_csrf={}", csrf))
@@ -427,7 +430,7 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
     )))]
     {
         // 8. Batch deactivate a model that explicitly exposes a writable is_active flag.
-        let req = Request::builder()
+        let req = local_request()
             .method("POST")
             .uri("/table/users/batch")
             .header("Content-Type", "application/x-www-form-urlencoded")
@@ -454,7 +457,7 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
         assert_eq!(row.get::<i64, _>("is_active"), 0);
 
         // 9. Batch delete remains bound and removes only the selected record.
-        let req = Request::builder()
+        let req = local_request()
             .method("POST")
             .uri("/table/users/batch")
             .header("Content-Type", "application/x-www-form-urlencoded")

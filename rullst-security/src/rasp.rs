@@ -289,7 +289,8 @@ where
             return Box::pin(async move { Ok(res) });
         }
 
-        let mut inner = self.inner.clone();
+        let clone = self.inner.clone();
+        let mut inner = std::mem::replace(&mut self.inner, clone);
         if !should_inspect_body(req.headers()) {
             return Box::pin(async move { inner.call(req).await });
         }

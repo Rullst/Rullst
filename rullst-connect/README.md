@@ -90,6 +90,28 @@ Official support for 11 core providers:
 10. **LinkedIn**
 11. **OIDC (OpenID Connect Custom Provider)**
 
+ID-token verification is implemented by Google, Apple and `OidcProvider`.
+Those paths require signed `iss`, `aud`, `sub`, `exp` and `iat` claims, bind the
+configured issuer/client, check a supplied `azp`, and reject an expected nonce
+when the ID token is missing. Additional audiences are rejected because these
+adapters have no independently configured trust list for other clients. The
+other adapters expose OAuth access-token/UserInfo flows and reject requests
+that require OIDC nonce validation; use `OidcProvider` with the appropriate
+issuer when that guarantee is needed for Auth0, Cognito or another OIDC host.
+Apple refresh verifies the returned ID token separately from its opaque access
+token. A refresh response without an ID token cannot establish a fresh Apple
+identity through this API.
+
+Token responses may omit `expires_in`, but a supplied value must be an integer
+from one second through 366 days, matching the managed refresh-state bound.
+Negative, zero, excessive and malformed lifetimes fail closed instead of
+wrapping to an unsigned lifetime or becoming an unknown expiry. The manual
+callback state comparator also rejects an empty expected or returned state.
+
+These are local signed-protocol contracts, not OpenID certification or proof
+of a provider account's configuration. Applications own callback state,
+account/tenant binding, account linking and durable session authorization.
+
 Remote token revocation is deliberately narrower than login support. Use
 `Provider::revoke_token` for an access token and
 `Provider::revoke_refresh_token` for a refresh token; Auth0/Cognito accept only

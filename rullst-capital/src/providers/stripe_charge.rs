@@ -68,7 +68,14 @@ fn parse_response(
     let charge_id = response["id"].as_str().ok_or_else(charge_mismatch)?;
     let amount_minor = response["amount"].as_u64().ok_or_else(charge_mismatch)?;
     let currency = response["currency"].as_str().ok_or_else(charge_mismatch)?;
-    if amount_minor != request.amount_minor() || currency != request.currency() {
+    if amount_minor != request.amount_minor()
+        || currency != request.currency()
+        || !charge_id.starts_with("pi_")
+        || response["object"].as_str() != Some("payment_intent")
+        || response["customer"].as_str() != Some(request.customer_id())
+        || response["payment_method"].as_str() != Some(request.payment_method_id())
+        || response["receipt_email"].as_str() != Some(request.customer_email())
+    {
         return Err(charge_mismatch());
     }
     let status = match response["status"].as_str() {
@@ -109,9 +116,37 @@ mod tests {
     }
 
     #[test]
+    fn charge_response_rejects_cross_customer_and_payment_method_evidence() {
+        let request = request();
+        let valid = serde_json::json!({
+            "id":"pi_1", "object":"payment_intent", "amount":2500,
+            "amount_received":2500, "currency":"brl", "status":"succeeded",
+            "customer":"cus_1", "payment_method":"pm_1", "receipt_email":"a@b.co"
+        });
+        assert!(parse_response(&request, &valid).is_ok());
+        for (field, value) in [
+            ("customer", serde_json::json!("cus_other")),
+            ("payment_method", serde_json::json!("pm_other")),
+            ("receipt_email", serde_json::json!("other@example.invalid")),
+            ("object", serde_json::json!("refund")),
+            ("id", serde_json::json!("re_1")),
+            ("customer", serde_json::Value::Null),
+            ("payment_method", serde_json::Value::Null),
+        ] {
+            let mut invalid = valid.clone();
+            invalid[field] = value;
+            assert!(
+                parse_response(&request, &invalid).is_err(),
+                "accepted mismatched {field}"
+            );
+        }
+    }
+
+    #[test]
     fn response_is_bound_to_request_and_closed_to_non_accepted_statuses() {
         let request = request();
         let succeeded = serde_json::json!({
+            "object":"payment_intent", "customer":"cus_1", "payment_method":"pm_1", "receipt_email":"a@b.co",
             "id": "pi_1",
             "amount": 2_500,
             "amount_received": 2_500,
@@ -124,6 +159,7 @@ mod tests {
                 .is_succeeded()
         );
         let processing = serde_json::json!({
+            "object":"payment_intent", "customer":"cus_1", "payment_method":"pm_1", "receipt_email":"a@b.co",
             "id": "pi_2",
             "amount": 2_500,
             "currency": "brl",
@@ -136,17 +172,21 @@ mod tests {
             ChargeStatus::Processing
         );
 
-        for invalid in [
+        for mut invalid in [
             serde_json::json!({"id":"pi_1","amount":2_501,"amount_received":2_500,"currency":"brl","status":"succeeded"}),
             serde_json::json!({"id":"pi_1","amount":2_500,"amount_received":2_500,"currency":"usd","status":"succeeded"}),
             serde_json::json!({"id":"pi_1","amount":2_500,"amount_received":2_499,"currency":"brl","status":"succeeded"}),
             serde_json::json!({"id":"pi_1","amount":2_500,"currency":"brl","status":"requires_action"}),
             serde_json::json!({"amount":2_500,"amount_received":2_500,"currency":"brl","status":"succeeded"}),
         ] {
+            for field in ["object", "customer", "payment_method", "receipt_email"] {
+                invalid[field] = succeeded[field].clone();
+            }
             assert!(parse_response(&request, &invalid).is_err());
         }
 
         let invalid_id = serde_json::json!({
+            "object":"payment_intent", "customer":"cus_1", "payment_method":"pm_1", "receipt_email":"a@b.co",
             "id": "line\nbreak",
             "amount": 2_500,
             "amount_received": 2_500,

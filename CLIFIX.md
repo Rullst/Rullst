@@ -1,5 +1,68 @@
 # Rullst CLI Final UX Review
 
+## Model-switch checkpoint — September 6, 2026
+
+The owner requested a pause after the difficult audit/correction batch so they
+can select the next model. **Do not interpret this checkpoint as RC approval.**
+The current working branch is `fix/cli-logo-animation-speed`; the second-PC
+handoff at `7743bab3` is already integrated. Preserve its faster logo animation.
+The owner expanded this session beyond the earlier CLI-only objective below:
+all published crates received the bounded review recorded in the release audit,
+except IoT's intentionally light README/manifest triage.
+
+Read these before resuming:
+
+1. `AGENTS.md` and `docs/src/spec.md` for invariants and validation requirements.
+2. `docs/src/v12-release-audit.md` for corrected defects, actual test receipts,
+   residual limitations and open gates. Earlier ceiling scores/percentages are
+   historical; do not silently restore them as current audited readiness.
+3. `docs/src/tutorials/51-authenticated-hot-reload.md` for the accepted supervised
+   restart contract. Public DLL generation is removed, not a v12 feature to restore.
+4. `docs/src/website-maintenance.md` for the two-site export/deployment order.
+
+### Next bounded work
+
+Completed batch receipts: CLI 211 library tests; focused ORM/macros, identity,
+security, payment, mail, AI, Nexus and messaging regressions; default-feature
+all-target workspace Clippy with `-D warnings`; formatting; mdBook/static site
+and real Chromium checks. Exact scopes and exclusions are in the audit report.
+
+- Run `cargo test --workspace --all-features` and
+  `cargo clippy --workspace --all-targets --all-features -- -D warnings` after
+  checking free disk and active processes. Serialize Cargo on this small machine
+  with `CARGO_BUILD_JOBS=1`. Bundled DuckDB can cause a substantial native build;
+  a cancelled earlier attempt is not a passed gate.
+- Run the materialized public CLI profiles and actual fresh blueprint HTTP/browser
+  checks. The supervisor has real process tests, but those do not establish
+  complete Windows/macOS/LMS acceptance or all database backends.
+- Complete the docs/link/tutorial checks and applicable release matrices on the
+  frozen candidate. Keep fixes proportional; do not add v13 features to finish v12.
+- Integrate reviewed work through `main` only after its relevant checks. Then
+  deploy framework Pages and the organization site, checking both URLs. The
+  prepared organization export is reproducible from tracked source; see the
+  website maintenance guide. A checkpoint push alone does not update either site.
+- Remove temporary branches only after their changes are confirmed integrated.
+  Keep `main`, `v5`, `v13` **and `gh-pages`**; `gh-pages` contains benchmark history.
+  `docs/roadmap-ledger-counts` must also be checked before deletion.
+- Do not publish crates, create release tags, invent higher quality scores or
+  describe v12 as production-ready merely because a focused suite is green.
+
+The README, landing page and beginner learning hub were refreshed without
+removing the two dedication lines or the workflow dashboard. Social links are
+plain links; the privacy notice is limited to observed website behavior rather
+than unverifiable global-compliance promises. `start-here.md` is the dedicated
+learning entry point, linking the existing tutorials instead of duplicating APIs.
+
+---
+
+> Integration follow-up: the second-computer delivery was committed as
+> `7743bab3` and fetched by the primary workspace. Statements below about
+> uncommitted work refer to that earlier session. Current corrections and
+> the expanded per-crate audit are tracked in
+> [docs/src/v12-release-audit.md](docs/src/v12-release-audit.md).
+> The accepted v12 direction is automatic supervised process restart through
+> `cargo rullst dev` / `dash`; the old DLL wizard question is removed.
+
 This file is the handoff contract for the AI agent and human testing the Rullst
 CLI on the second computer. Read the repository-root `AGENTS.md` and
 `docs/src/spec.md` before changing code. Those documents remain authoritative

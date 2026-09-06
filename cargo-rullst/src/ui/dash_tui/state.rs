@@ -68,6 +68,7 @@ impl FocusPane {
 pub(super) enum ServerStatus {
     Starting,
     Ready,
+    Unverified,
     Exited { success: bool, code: Option<i32> },
 }
 
@@ -76,6 +77,7 @@ impl ServerStatus {
         match self {
             Self::Starting => "STARTING".to_string(),
             Self::Ready => "READY".to_string(),
+            Self::Unverified => "UNVERIFIED".to_string(),
             Self::Exited {
                 success: true,
                 code,
