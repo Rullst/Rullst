@@ -655,16 +655,21 @@ fn doctor_reports_outdated_unrecognized_and_failing_toolchains() {
         ),
     )
     .expect("repair-aware Cargo fixture");
+    fs::set_permissions(&cargo, fs::Permissions::from_mode(0o755))
+        .expect("repair-aware Cargo fixture permissions");
     let rustup = tools.join("rustup");
     fs::write(
         &rustup,
-        format!("#!/bin/sh\n/bin/touch '{}'\n", repaired.display()),
+        format!("#!/bin/sh\n: > '{}'\n", repaired.display()),
     )
     .expect("repairing rustup fixture");
     fs::set_permissions(&rustup, fs::Permissions::from_mode(0o755))
         .expect("rustup fixture permissions");
     let fixed = fixture.succeeds_with_path(&["doctor", "--fix"], &tools);
-    assert!(fixed.contains("[FIXED]"));
+    assert!(
+        fixed.contains("[FIXED]"),
+        "doctor did not report the repaired components:\n{fixed}"
+    );
 }
 
 #[cfg(unix)]
