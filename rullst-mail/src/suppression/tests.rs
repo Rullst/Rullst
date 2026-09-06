@@ -183,3 +183,128 @@ async fn guard_blocks_suppressed_recipients_and_store_failure_before_transport()
     );
     assert!(deliveries.lock().expect("deliveries").is_empty());
 }
+
+#[test]
+fn suppression_contract_exposes_stable_labels_bounds_and_minimized_errors() {
+    assert_eq!(SuppressionReason::Manual.as_str(), "manual");
+    assert_eq!(SuppressionReason::HardBounce.as_str(), "hard_bounce");
+    assert_eq!(SuppressionReason::SpamComplaint.as_str(), "spam_complaint");
+
+    #[cfg(feature = "sqlite")]
+    {
+        assert_eq!(
+            SuppressionReason::from_rank(1),
+            Ok(SuppressionReason::Manual)
+        );
+        assert_eq!(
+            SuppressionReason::from_rank(2),
+            Ok(SuppressionReason::HardBounce)
+        );
+        assert_eq!(
+            SuppressionReason::from_rank(3),
+            Ok(SuppressionReason::SpamComplaint)
+        );
+        assert_eq!(
+            SuppressionReason::from_rank(4),
+            Err(SuppressionError::CorruptStorage("suppression reason"))
+        );
+    }
+
+    for (error, expected) in [
+        (
+            SuppressionError::InvalidConfiguration("fixture"),
+            "invalid suppression configuration: fixture",
+        ),
+        (
+            SuppressionError::InvalidEvent("fixture"),
+            "invalid suppression event: fixture",
+        ),
+        (
+            SuppressionError::EventConflict,
+            "provider event identifier was reused with different contents",
+        ),
+        (
+            SuppressionError::CapacityExceeded,
+            "suppression store capacity is exhausted",
+        ),
+        (
+            SuppressionError::StorageUnavailable("fixture"),
+            "suppression storage operation failed: fixture",
+        ),
+        (
+            SuppressionError::CorruptStorage("fixture"),
+            "suppression storage is corrupt: fixture",
+        ),
+    ] {
+        assert_eq!(error.to_string(), expected);
+    }
+    assert_eq!(
+        unavailable("lookup"),
+        SuppressionError::StorageUnavailable("lookup")
+    );
+
+    for (recipients, events) in [(0, 1), (1, 0), (MAX_STORE_ENTRIES + 1, 1)] {
+        assert_eq!(
+            validate_limits(recipients, events),
+            Err(SuppressionError::InvalidConfiguration("store limits"))
+        );
+    }
+}
+
+#[tokio::test]
+async fn event_record_and_guard_accessors_preserve_the_bounded_contract() {
+    let now = unix_time().expect("clock");
+    for observed_at in [0, now.saturating_add(MAX_FUTURE_SKEW_SECONDS + 1)] {
+        assert_eq!(
+            SuppressionEvent::try_new(
+                "provider",
+                "event",
+                "reader@example.com",
+                SuppressionReason::Manual,
+                observed_at,
+            ),
+            Err(SuppressionError::InvalidEvent("observation time"))
+        );
+    }
+
+    let store = InMemorySuppressionStore::new(2, 2).expect("bounded store");
+    let suppression = event(
+        "operator",
+        "manual-reader",
+        "Reader@Example.COM",
+        SuppressionReason::Manual,
+        now,
+    );
+    assert_eq!(suppression.provider(), "operator");
+    assert_eq!(suppression.event_id(), "manual-reader");
+    assert_eq!(suppression.recipient(), "Reader@example.com");
+    assert_eq!(suppression.reason(), SuppressionReason::Manual);
+    assert_eq!(suppression.observed_at(), now);
+
+    let record = store.record(suppression).await.expect("record");
+    assert_eq!(record.first_seen_at(), now);
+    assert_eq!(record.last_seen_at(), now);
+    let record_debug = format!("{record:?}");
+    assert!(!record_debug.contains("Reader@example.com"));
+    assert!(record_debug.contains("operator"));
+
+    let (driver, deliveries) = MemoryDriver::isolated();
+    let guard = SuppressionGuard::new(driver, InMemorySuppressionStore::new(2, 2).expect("store"));
+    assert_eq!(
+        guard.store().snapshot().expect("snapshot").max_recipients(),
+        2
+    );
+    assert_eq!(guard.store().snapshot().expect("snapshot").max_events(), 2);
+    let _ = guard.driver();
+    guard
+        .send_for_tenant(
+            "tenant_acme",
+            &Message::new()
+                .to("allowed@example.com")
+                .subject("allowed")
+                .text("bounded"),
+        )
+        .await
+        .expect("tenant delivery");
+    assert_eq!(deliveries.lock().expect("deliveries").len(), 1);
+}

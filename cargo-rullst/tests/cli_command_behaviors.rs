@@ -298,6 +298,46 @@ fn public_generators_materialize_and_preserve_reviewable_outputs() {
 }
 
 #[test]
+fn diagram_generator_discovers_all_relation_shapes_and_missing_source() {
+    let fixture = Fixture::new("diagram-relations");
+    fs::write(
+        fixture.root.join("src/models/relations.rs"),
+        r#"#[derive(Orm)]
+pub struct Course {
+    pub id: i64,
+    pub lessons: HasMany<Lesson>,
+    pub owner: BelongsTo<User>,
+    pub profile: HasOne<Profile>,
+    pub tags: BelongsToMany<Tag>,
+}
+"#,
+    )
+    .expect("relation model fixture");
+    fixture.succeeds(&["generate:diagram"]);
+    let diagram = fs::read_to_string(fixture.root.join("diagram.md")).expect("Mermaid diagram");
+    for expected in [
+        "Course {",
+        "i64 id",
+        "Course ||--o{ Lesson : \"lessons\"",
+        "Course }o--|| User : \"owner\"",
+        "Course ||--o| Profile : \"profile\"",
+        "Course }o--o{ Tag : \"tags\"",
+    ] {
+        assert!(
+            diagram.contains(expected),
+            "missing `{expected}` in:\n{diagram}"
+        );
+    }
+
+    fs::remove_dir_all(fixture.root.join("src")).expect("remove source fixture");
+    assert!(
+        fixture
+            .fails(&["generate:diagram"])
+            .contains("No src/ directory found")
+    );
+}
+
+#[test]
 fn inspection_packaging_and_deploy_scaffolds_cover_safe_offline_paths() {
     let fixture = Fixture::new("operations");
 
@@ -456,6 +496,175 @@ fn audit_reports_missing_project_sources_as_not_checked() {
     assert!(report.contains(
         "| Parameterized-route IDOR heuristic | **NOT CHECKED** | no scannable Rust source was available |"
     ));
+}
+
+#[cfg(unix)]
+#[test]
+fn audit_fails_closed_for_source_secret_tool_and_evidence_findings() {
+    let fixture = Fixture::new("audit-findings");
+    fs::write(
+        fixture.root.join(".env"),
+        "# ignored\n\nEMPTY_SECRET=\"\"\nSAFE_KEY=fixture-secret-long-enough\nAPI_KEY=short\n",
+    )
+    .expect("audit environment fixture");
+    fs::write(
+        fixture.root.join("src/unsafe_route.rs"),
+        r#"pub unsafe fn unchecked() {}
+
+pub fn routes() {
+    get("/accounts/:id", show);
+}
+"#,
+    )
+    .expect("unsafe and unclassified route fixture");
+
+    let output = fixture.fails(&[
+        "audit",
+        "--ai",
+        "--compliance",
+        "--idor",
+        "--geiger",
+        "--sbom",
+    ]);
+    for expected in [
+        "Weak or short secret detected for key 'API_KEY'",
+        "cargo-audit not installed",
+        "Unsafe Rust detected",
+        "cargo-geiger is unavailable",
+        "missing an adjacent",
+        "IDOR/BOLA audit found 1 unclassified or unguarded parameterized route",
+    ] {
+        assert!(
+            output.contains(expected),
+            "missing `{expected}` in:\n{output}"
+        );
+    }
+    let report =
+        fs::read_to_string(fixture.root.join("SECURITY_COMPLIANCE.md")).expect("audit report");
+    assert!(report.contains("| Local secret-strength heuristic | **FINDINGS** | 1 finding(s)"));
+    assert!(report.contains("| Project-source unsafe scan | **FINDINGS** | 1 finding(s)"));
+    assert!(report.contains("| Parameterized-route IDOR heuristic | **FINDINGS** | 1 finding(s)"));
+
+    fs::remove_file(fixture.root.join(".env")).expect("remove environment fixture");
+    fs::create_dir(fixture.root.join(".env")).expect("unreadable environment fixture");
+    let output = fixture.fails(&["audit", "--compliance"]);
+    assert!(output.contains("Could not read .env for the bounded secret scan"));
+    let report =
+        fs::read_to_string(fixture.root.join("SECURITY_COMPLIANCE.md")).expect("updated report");
+    assert!(report.contains("| Local secret-strength heuristic | **ERROR** |"));
+}
+
+#[cfg(unix)]
+#[test]
+fn audit_surfaces_nonzero_dependency_and_geiger_tool_results() {
+    let fixture = Fixture::new("audit-tool-failures");
+    let tools = fixture.install_successful_tool_fixtures();
+    let cargo = tools.join("cargo");
+    fs::write(
+        &cargo,
+        r#"#!/bin/sh
+if [ "$1" = "audit" ] && [ "$2" = "--version" ]; then
+  exit 0
+fi
+if [ "$1" = "audit" ]; then
+  echo 'fixture advisory result' >&2
+  exit 9
+fi
+if [ "$1" = "geiger" ] && [ "$2" = "--version" ]; then
+  exit 0
+fi
+if [ "$1" = "geiger" ]; then
+  exit 8
+fi
+exit 0
+"#,
+    )
+    .expect("failing cargo tool fixture");
+    fs::set_permissions(&cargo, fs::Permissions::from_mode(0o755))
+        .expect("cargo tool fixture permissions");
+
+    let result = fixture.command_with_path(&["audit", "--compliance", "--geiger"], &tools);
+    let output = output_text(&result);
+    assert!(
+        !result.status.success(),
+        "failing tools must fail the audit"
+    );
+    assert!(output.contains("cargo-audit did not complete successfully"));
+    assert!(output.contains("cargo-geiger reported findings or failed with status"));
+    let report =
+        fs::read_to_string(fixture.root.join("SECURITY_COMPLIANCE.md")).expect("audit report");
+    assert!(report.contains("fixture advisory result"));
+
+    fs::remove_file(fixture.root.join("Cargo.lock")).expect("remove lockfile fixture");
+    let result = fixture.command_with_path(&["audit", "--sbom"], &tools);
+    let output = output_text(&result);
+    assert!(
+        !result.status.success(),
+        "missing lockfile must fail SBOM audit"
+    );
+    assert!(output.contains("Failed to generate SBOM"));
+}
+
+#[cfg(unix)]
+#[test]
+fn doctor_reports_outdated_unrecognized_and_failing_toolchains() {
+    let fixture = Fixture::new("doctor-failures");
+    let tools = fixture.install_successful_tool_fixtures();
+    let cargo = tools.join("cargo");
+    fs::write(
+        &cargo,
+        "#!/bin/sh\ncase \"$1\" in fmt|clippy|audit|geiger|deny|mutants|kani|llvm-cov) exit 7;; esac\nexit 0\n",
+    )
+    .expect("unavailable Cargo tools fixture");
+    fs::set_permissions(&cargo, fs::Permissions::from_mode(0o755))
+        .expect("Cargo fixture permissions");
+    for program in ["docker", "git"] {
+        let path = tools.join(program);
+        fs::write(&path, "#!/bin/sh\nexit 8\n").expect("failing tool fixture");
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o755))
+            .expect("tool fixture permissions");
+    }
+
+    let rustc = tools.join("rustc");
+    fs::write(&rustc, "#!/bin/sh\necho 'rustc 1.80.0 (fixture)'\n")
+        .expect("outdated rustc fixture");
+    fs::set_permissions(&rustc, fs::Permissions::from_mode(0o755))
+        .expect("rustc fixture permissions");
+    let outdated = fixture.succeeds_with_path(&["doctor"], &tools);
+    assert!(outdated.contains("[OUTDATED]"));
+    assert!(outdated.contains("cargo install cargo-audit"));
+    assert!(outdated.contains("Install Docker Desktop / Engine"));
+
+    fs::write(&rustc, "#!/bin/sh\necho 'unexpected fixture version'\n")
+        .expect("unrecognized rustc fixture");
+    let unrecognized = fixture.succeeds_with_path(&["doctor"], &tools);
+    assert!(unrecognized.contains("[UNRECOGNIZED VERSION]"));
+
+    fs::write(&rustc, "#!/bin/sh\nexit 9\n").expect("failing rustc fixture");
+    let failing = fixture.succeeds_with_path(&["doctor"], &tools);
+    assert!(failing.contains("Rust Toolchain"));
+    assert!(failing.contains("[FAIL]"));
+
+    fs::write(&rustc, "#!/bin/sh\necho 'rustc 1.98.1 (fixture)'\n").expect("healthy rustc fixture");
+    let repaired = fixture.root.join("components-repaired");
+    fs::write(
+        &cargo,
+        format!(
+            "#!/bin/sh\nif [ \"$1\" = fmt ] || [ \"$1\" = clippy ]; then [ -f '{}' ]; else exit 0; fi\n",
+            repaired.display()
+        ),
+    )
+    .expect("repair-aware Cargo fixture");
+    let rustup = tools.join("rustup");
+    fs::write(
+        &rustup,
+        format!("#!/bin/sh\n/bin/touch '{}'\n", repaired.display()),
+    )
+    .expect("repairing rustup fixture");
+    fs::set_permissions(&rustup, fs::Permissions::from_mode(0o755))
+        .expect("rustup fixture permissions");
+    let fixed = fixture.succeeds_with_path(&["doctor", "--fix"], &tools);
+    assert!(fixed.contains("[FIXED]"));
 }
 
 #[cfg(unix)]

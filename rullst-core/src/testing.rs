@@ -350,3 +350,7 @@ mod tests {
         assert_eq!(DEFAULT_MAX_BODY, 10 * 1024 * 1024); // Kills * replaced with + mutant
     }
 }
+
+#[cfg(test)]
+#[path = "testing_contract_tests.rs"]
+mod contract_tests;

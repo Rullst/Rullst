@@ -206,7 +206,15 @@ fn configured_port() -> io::Result<u16> {
     } else {
         toml::Value::Table(Default::default())
     };
-    let value = std::env::var_os("PORT")
+    resolve_configured_port(std::env::var_os("PORT"), &dotenv, &config)
+}
+
+fn resolve_configured_port(
+    process_port: Option<std::ffi::OsString>,
+    dotenv: &std::collections::HashMap<String, String>,
+    config: &toml::Value,
+) -> io::Result<u16> {
+    let value = process_port
         .map(|value| {
             value
                 .into_string()
@@ -230,3 +238,7 @@ fn configured_port() -> io::Result<u16> {
         None => Ok(3000),
     }
 }
+
+#[cfg(test)]
+#[path = "dev_tests.rs"]
+mod tests;

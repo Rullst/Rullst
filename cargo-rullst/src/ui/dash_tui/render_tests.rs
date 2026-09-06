@@ -34,6 +34,27 @@ fn migration_is_a_single_supervisor_command_and_unverified_status_is_not_ready()
         super::supervisor_status(DevStatus::Ready),
         ServerStatus::Ready
     );
+    assert_eq!(
+        super::supervisor_status(DevStatus::Starting),
+        ServerStatus::Starting
+    );
+}
+
+#[tokio::test]
+async fn non_interactive_dashboard_fails_with_actionable_guidance() {
+    let (_log_tx, log_rx) = tokio::sync::mpsc::channel(1);
+    let (log_tx, _logs) = tokio::sync::mpsc::channel(1);
+    let (_status_tx, status_rx) =
+        tokio::sync::watch::channel(crate::generators::dev::DevStatus::Starting);
+    let (commands, _command_rx) = tokio::sync::mpsc::channel(1);
+    let error = super::run(log_rx, log_tx, 3_000, true, status_rx, commands)
+        .await
+        .expect_err("the test process has no interactive stdout");
+    assert!(
+        error
+            .to_string()
+            .contains("requires an interactive terminal")
+    );
 }
 
 fn rendered(app: &App, width: u16, height: u16) -> String {
@@ -207,6 +228,77 @@ fn log_messages_and_keyboard_navigation_update_only_bounded_state() {
     app.clear_logs();
     assert!(app.app_logs().is_empty());
     assert!(app.system_logs().is_empty());
+}
+
+#[test]
+fn busy_migration_search_and_clear_shortcuts_remain_bounded() {
+    let (log_tx, _log_rx) = tokio::sync::mpsc::channel(8);
+    let (commands, command_rx) = tokio::sync::mpsc::channel(1);
+    drop(command_rx);
+    let mut app = App::new(3_000, true, "configured: SQLite".to_string(), true, true);
+    app.push_app(LogLevel::Info, "application log".to_string());
+
+    assert!(!super::handle_key(
+        KeyEvent::new(KeyCode::Char('m'), KeyModifiers::NONE),
+        &mut app,
+        &log_tx,
+        &commands,
+    ));
+    assert!(!app.migration_running);
+    assert!(
+        app.system_logs()
+            .iter()
+            .any(|line| line.contains("could not be queued"))
+    );
+
+    app.search_editing = true;
+    assert!(!super::handle_key(
+        KeyEvent::new(KeyCode::Left, KeyModifiers::NONE),
+        &mut app,
+        &log_tx,
+        &commands,
+    ));
+    assert!(app.search_editing);
+    assert!(!super::handle_key(
+        KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE),
+        &mut app,
+        &log_tx,
+        &commands,
+    ));
+    assert!(!app.search_editing);
+
+    assert!(!super::handle_key(
+        KeyEvent::new(KeyCode::Char('c'), KeyModifiers::NONE),
+        &mut app,
+        &log_tx,
+        &commands,
+    ));
+    assert!(app.app_logs().is_empty());
+    assert!(app.system_logs().is_empty());
+    assert!(!super::handle_key(
+        KeyEvent::new(KeyCode::F(12), KeyModifiers::NONE),
+        &mut app,
+        &log_tx,
+        &commands,
+    ));
+}
+
+#[test]
+fn platform_browser_command_and_motion_policy_are_explicit() {
+    let command = super::browser_command("https://example.invalid/docs")
+        .expect("supported desktop browser command");
+    #[cfg(all(unix, not(target_os = "macos")))]
+    assert_eq!(command.get_program(), "xdg-open");
+    #[cfg(target_os = "macos")]
+    assert_eq!(command.get_program(), "open");
+    #[cfg(target_os = "windows")]
+    assert_eq!(command.get_program(), "cmd");
+
+    assert!(!super::reduced_motion_value(None));
+    assert!(!super::reduced_motion_value(Some("0")));
+    for value in ["1", "TRUE", "Yes"] {
+        assert!(super::reduced_motion_value(Some(value)));
+    }
 }
 
 #[tokio::test]

@@ -1,4 +1,44 @@
 use super::*;
+use std::{collections::VecDeque, io};
+
+#[derive(Default)]
+struct FakeWizardUi {
+    inputs: VecDeque<String>,
+    selections: VecDeque<usize>,
+    confirmations: VecDeque<bool>,
+    multiple: VecDeque<Vec<usize>>,
+    prompts: Vec<String>,
+}
+
+impl ProjectWizardUi for FakeWizardUi {
+    fn input(&mut self, prompt: &str) -> WizardResult<String> {
+        self.prompts.push(prompt.to_string());
+        self.inputs.pop_front().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::UnexpectedEof, "missing fake input").into()
+        })
+    }
+
+    fn select(&mut self, prompt: &str, choices: &[String]) -> WizardResult<usize> {
+        self.prompts.push(format!("{prompt}|{}", choices.join("|")));
+        self.selections.pop_front().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::UnexpectedEof, "missing fake selection").into()
+        })
+    }
+
+    fn confirm(&mut self, prompt: &str, default: bool) -> WizardResult<bool> {
+        self.prompts.push(format!("{prompt}|default={default}"));
+        self.confirmations.pop_front().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::UnexpectedEof, "missing fake confirmation").into()
+        })
+    }
+
+    fn multi_select(&mut self, prompt: &str, choices: &[String]) -> WizardResult<Vec<usize>> {
+        self.prompts.push(format!("{prompt}|{}", choices.join("|")));
+        self.multiple.pop_front().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::UnexpectedEof, "missing fake multi-selection").into()
+        })
+    }
+}
 
 #[test]
 fn positional_name_does_not_skip_interactive_project_profile() {
@@ -147,4 +187,203 @@ fn impossible_deterministic_profiles_fail_instead_of_being_ignored() {
         Some(BLANK_BLUEPRINT_ID),
     );
     assert!(turso_hot_reload.is_err());
+
+    for database in ["MongoDB", "sqlite", "TURSO"] {
+        assert!(
+            run_project_wizard_with_blueprint(
+                Some("invalid-provider"),
+                ProjectScaffoldOptions {
+                    use_defaults: true,
+                    database: Some(database),
+                    ..ProjectScaffoldOptions::default()
+                },
+                &[],
+                Some(BLANK_BLUEPRINT_ID),
+            )
+            .is_err()
+        );
+    }
+    assert!(
+        run_project_wizard_with_blueprint(
+            Some("invalid-blueprint"),
+            ProjectScaffoldOptions {
+                use_defaults: true,
+                ..ProjectScaffoldOptions::default()
+            },
+            &[],
+            Some(usize::MAX),
+        )
+        .is_err()
+    );
+}
+
+#[test]
+fn public_wizard_wrapper_preserves_default_and_turso_requests() {
+    let default =
+        run_project_wizard(Some("default-app"), false, true, false).expect("default public wizard");
+    assert_eq!(default.name, "default-app");
+    assert!(!default.turso);
+    assert!(default.polyglot_integrations.is_empty());
+
+    let turso =
+        run_project_wizard(Some("edge-app"), false, true, true).expect("Turso public wizard");
+    assert!(turso.turso);
+    assert_eq!(turso.polyglot_integrations, [PolyglotIntegration::Turso]);
+}
+
+#[test]
+fn interactive_blank_wizard_validates_names_and_composes_the_full_profile() {
+    let mut ui = FakeWizardUi {
+        inputs: ["", "space name", "1number", "bad!", "learning_hub"]
+            .into_iter()
+            .map(str::to_string)
+            .collect(),
+        selections: [BLANK_BLUEPRINT_ID, 1, 4].into(),
+        confirmations: [true, true, false].into(),
+        multiple: [vec![0, 1, 2, 3]].into(),
+        ..FakeWizardUi::default()
+    };
+
+    let result =
+        run_project_wizard_with_ui(None, ProjectScaffoldOptions::default(), &[], None, &mut ui)
+            .expect("interactive blank profile");
+
+    assert_eq!(result.name, "learning_hub");
+    assert!(result.api);
+    assert!(result.db_needed);
+    assert_eq!(result.db_provider, "Turso");
+    assert_eq!(result.orm_pattern, "Turso Active Record");
+    assert!(result.wants_ai);
+    assert!(!result.wants_redis);
+    assert_eq!(
+        result.polyglot_integrations,
+        [
+            PolyglotIntegration::Turso,
+            PolyglotIntegration::MongoDb,
+            PolyglotIntegration::DuckDb,
+            PolyglotIntegration::SurrealDb,
+            PolyglotIntegration::Qdrant,
+        ]
+    );
+    assert!(
+        ui.prompts
+            .iter()
+            .any(|prompt| prompt.contains("zero or more"))
+    );
+}
+
+#[test]
+fn interactive_nonblank_and_database_free_profiles_keep_explicit_boundaries() {
+    let mut lms_ui = FakeWizardUi {
+        selections: [LMS_BLUEPRINT_ID, 3].into(),
+        confirmations: [false, true].into(),
+        multiple: [vec![]].into(),
+        ..FakeWizardUi::default()
+    };
+    let lms = run_project_wizard_with_ui(
+        Some("academy"),
+        ProjectScaffoldOptions::default(),
+        &[],
+        None,
+        &mut lms_ui,
+    )
+    .expect("interactive LMS profile");
+    assert_eq!(lms.blueprint_selection, LMS_BLUEPRINT_ID);
+    assert_eq!(lms.db_provider, "MariaDB");
+    assert!(lms.db_needed);
+    assert!(!lms.api);
+    assert!(!lms.wants_ai);
+    assert!(lms.wants_redis);
+
+    let mut no_database_ui = FakeWizardUi {
+        selections: [BLANK_BLUEPRINT_ID, 0].into(),
+        confirmations: [false, true, false].into(),
+        multiple: [vec![]].into(),
+        ..FakeWizardUi::default()
+    };
+    let no_database = run_project_wizard_with_ui(
+        Some("static-app"),
+        ProjectScaffoldOptions::default(),
+        &[],
+        None,
+        &mut no_database_ui,
+    )
+    .expect("database-free blank profile");
+    assert!(!no_database.db_needed);
+    assert_eq!(no_database.db_provider, "Sqlite");
+    assert!(no_database.wants_ai);
+}
+
+#[test]
+fn interactive_wizard_rejects_invalid_choices_and_propagates_input_errors() {
+    let mut invalid_database = FakeWizardUi {
+        selections: [0, usize::MAX].into(),
+        confirmations: [true].into(),
+        ..FakeWizardUi::default()
+    };
+    assert!(
+        run_project_wizard_with_ui(
+            Some("invalid-db"),
+            ProjectScaffoldOptions::default(),
+            &[],
+            Some(BLANK_BLUEPRINT_ID),
+            &mut invalid_database,
+        )
+        .is_err()
+    );
+
+    let mut ignored_multi_index = FakeWizardUi {
+        selections: [0, 0].into(),
+        confirmations: [true, false, false].into(),
+        multiple: [vec![usize::MAX]].into(),
+        ..FakeWizardUi::default()
+    };
+    let result = run_project_wizard_with_ui(
+        Some("bounded-multi"),
+        ProjectScaffoldOptions::default(),
+        &[],
+        Some(BLANK_BLUEPRINT_ID),
+        &mut ignored_multi_index,
+    )
+    .expect("out-of-range optional add-on is ignored");
+    assert!(result.polyglot_integrations.is_empty());
+
+    let mut missing_name = FakeWizardUi::default();
+    assert!(
+        run_project_wizard_with_ui(
+            None,
+            ProjectScaffoldOptions::default(),
+            &[],
+            None,
+            &mut missing_name,
+        )
+        .is_err()
+    );
+
+    let mut missing_blueprint = FakeWizardUi::default();
+    assert!(
+        run_project_wizard_with_ui(
+            Some("missing-choice"),
+            ProjectScaffoldOptions::default(),
+            &[],
+            None,
+            &mut missing_blueprint,
+        )
+        .is_err()
+    );
+
+    let mut api_nonblank = FakeWizardUi::default();
+    assert!(
+        run_project_wizard_with_ui(
+            Some("api-lms"),
+            ProjectScaffoldOptions {
+                api: true,
+                ..ProjectScaffoldOptions::default()
+            },
+            &[],
+            Some(LMS_BLUEPRINT_ID),
+            &mut api_nonblank,
+        )
+        .is_err()
+    );
 }

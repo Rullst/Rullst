@@ -360,9 +360,11 @@ fn database_profile_from_env(contents: &str) -> String {
 }
 
 fn reduced_motion_requested() -> bool {
-    std::env::var("RULLST_REDUCED_MOTION")
-        .ok()
-        .is_some_and(|value| matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
+    reduced_motion_value(std::env::var("RULLST_REDUCED_MOTION").ok().as_deref())
+}
+
+fn reduced_motion_value(value: Option<&str>) -> bool {
+    value.is_some_and(|value| matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
 }
 
 fn strip_ansi(value: &str) -> String {
