@@ -124,7 +124,23 @@ try {
   const layout = async (width, height) => {
     await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
     await navigate();
-    assert(await evaluate("document.documentElement.scrollWidth <= innerWidth"), `Horizontal overflow at ${width}px`);
+    const horizontal = await evaluate(`(() => ({
+      viewport: innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      overflowers: [...document.querySelectorAll("body *")]
+        .map(element => ({
+          element: element.tagName.toLowerCase() + (element.id ? "#" + element.id : "") +
+            [...element.classList].map(name => "." + name).join(""),
+          left: Math.round(element.getBoundingClientRect().left * 10) / 10,
+          right: Math.round(element.getBoundingClientRect().right * 10) / 10,
+        }))
+        .filter(rect => rect.left < -0.5 || rect.right > innerWidth + 0.5)
+        .slice(0, 8),
+    }))()`);
+    assert(
+      horizontal.scrollWidth <= horizontal.viewport,
+      `Horizontal overflow at ${width}px: ${JSON.stringify(horizontal)}`,
+    );
     assert.equal(await evaluate("document.querySelectorAll('h1').length"), 1);
     assert.equal(await evaluate("document.querySelectorAll('.social-links a').length"), 13);
     assert(await evaluate("[...document.images].filter(i => i.loading !== 'lazy').every(i => i.complete && i.naturalWidth > 0)"), "Hero image failed");
