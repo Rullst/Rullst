@@ -398,7 +398,7 @@ mod tests {
     fn nexus_rejects_invalid_registered_metadata_during_build() {
         let result = Nexus::new()
             .register::<InvalidMetadataModel>()
-            .with_local_access(LocalNexusAccess::loopback_only())
+            .with_auth("metadata-audit", "metadata-registry-test-secret-7a42")
             .try_build();
 
         assert!(matches!(
