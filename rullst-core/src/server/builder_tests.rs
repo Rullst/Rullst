@@ -174,7 +174,17 @@ async fn scheduler_shield_and_missing_hot_library_have_typed_lifecycles() {
         )
         .await
         .unwrap_err();
-    assert!(matches!(error, ServerError::HotReload(_)));
+    if cfg!(debug_assertions) {
+        assert!(
+            matches!(&error, ServerError::HotReload(_)),
+            "debug hot reload should reach the missing-library boundary, got {error:?}"
+        );
+    } else {
+        assert!(
+            matches!(&error, ServerError::HotReloadDisabled),
+            "release builds must reject hot reload before loading a library, got {error:?}"
+        );
+    }
 }
 
 #[test]

@@ -1,19 +1,13 @@
 mod support;
-use support::local_request;
+use support::{authenticated_test_router, local_request};
 
 use axum::body::Body;
 use axum::http::StatusCode;
 use rullst_nexus::*;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tower::ServiceExt;
 
 fn local_test_router(nexus: Nexus) -> axum::Router {
-    let loopback = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 3000);
-    nexus
-        .with_local_access(LocalNexusAccess::loopback_only())
-        .try_build()
-        .expect("debug-only loopback policy should build in tests")
-        .layer(axum::Extension(axum::extract::ConnectInfo(loopback)))
+    authenticated_test_router(nexus)
 }
 
 struct UserModel;
