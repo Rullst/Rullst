@@ -403,7 +403,13 @@ fn diagnostics_audit_and_build_are_exercised_with_controlled_tool_processes() {
     fixture.succeeds_with_path(&["build", "--debug"], &tools);
     fixture.succeeds_with_path(&["build"], &tools);
     fs::create_dir_all(fixture.root.join("src/migrations")).expect("migration directory");
-    fixture.succeeds_with_path(&["dev"], &tools);
+    let dev = fixture.command_with_path(&["dev"], &tools);
+    let dev_output = output_text(&dev);
+    assert!(
+        !dev.status.success(),
+        "a mock Cargo process without compiler-artifact metadata must not launch dev:\n{dev_output}"
+    );
+    assert!(dev_output.contains("Cargo produced no application executable"));
     assert!(
         !fixture
             .command_with_path(&["dash"], &tools)

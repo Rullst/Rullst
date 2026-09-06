@@ -21,35 +21,34 @@ a finding. Regressions are run before and after corrections when feasible.
 This is repository-owned code review and testing, not an independent security
 assessment, provider certification, or a claim that every line or deployment
 configuration has been exhaustively analyzed. Tests are serialized on the
-memory-limited local machine; the final workspace gate follows the fix batch.
+memory-limited local machine. The final local workspace gate completed after
+the correction batch.
 
 ## Coverage ledger
 
 | Crate / surface | Review scope | Current status |
 | --- | --- | --- |
-| `rullst-orm` | Projection identifiers, empty-set predicates, tenant/global scopes, transactions, policy mutations, nested queries and search | Reproduced isolation/transaction defects corrected; focused default/strict-SQLite/Redis regressions green; final workspace/backend gates pending |
+| `rullst-orm` | Projection identifiers, empty-set predicates, tenant/global scopes, transactions, policy mutations, nested queries and search | Reproduced isolation/transaction defects corrected; focused default/strict-SQLite/Redis regressions and the final all-feature workspace gate are green; live external-backend matrices remain release evidence |
 | `rullst-orm-macros` | Generated SQL bindings, parser diagnostics, portable identifiers and scope generation | Corrected generated contracts; 41 unit tests, one smoke test and 24 compile-fail cases green |
 | `rullst-core` | HTTP security composition, CSRF, lifecycle and development state ownership | CSRF/security composition 21 tests green; four reload tests and actual Node client behavior tests green |
-| `cargo-rullst` | Remote CLI handoff, public profile accuracy, supervised restart, generated contracts | All 211 library tests green, including seven supervisor tests and 15 dashboard tests; fresh materialized public-profile gate pending |
+| `cargo-rullst` | Remote CLI handoff, public profile accuracy, supervised restart, generated contracts | Supervisor, dashboard, command-behavior, public-profile and materialized blueprint gates are green; snapshot launch now retries bounded transient Linux executable-busy races |
 | `rullst-auth` | JWT expiry/revocation, encrypted sessions, role guards, passkey/SQLite cancellation | Corrections green: 60 library tests and five durable JWT integrations |
 | `rullst-security` | WebSocket origin enforcement, middleware readiness, bounded redaction, crypto/input policies | 159 library tests and two Tower tests green; final rate-limit run passed 11 tests including two added afterward (161 library cases now) |
 | `rullst-connect` | OIDC claims/nonce, refresh semantics, callback state and token lifetimes | Corrections green: 204 library tests with Axum-session and SQLite features |
 | `rullst-capital` | Provider side effects, pricing, charge binding, authenticated payload schema and signature protocols | 99 library plus 22 integration tests green with Actix; one later Actix duplicate-header regression also green |
 | `rullst-nexus` | Admin transport/origin/authorization and tenant/audit boundaries | Corrections green: 50 library plus 11 integration tests, including real SQLite tenant/audit cases |
-| `rullst-studio` | Local operator boundary, handoff layout/telemetry changes, dynamic HTML | Static boundary review found no additional reproduced defect; fresh workspace test gate pending |
-| `rullst-macros` | Escaping/raw HTML, generated handler/runtime contracts | Static trust-context review completed; no new reproduced defect; fresh workspace test gate pending |
+| `rullst-studio` | Local operator boundary, handoff layout/telemetry changes, dynamic HTML | Static boundary review found no additional reproduced defect; 48 library tests, integrations and the final workspace gate are green |
+| `rullst-macros` | Escaping/raw HTML, generated handler/runtime contracts | Static trust-context review completed; no new reproduced defect; final all-feature workspace tests and doctests are green |
 | `rullst-ai` | Provider/mock separation, redirect handling, response limits and tool-policy boundaries | 102 library tests green, including real local HTTP regressions for all five native transports |
 | `rullst-mail` | Provider side effects, transport limits, attachments/headers, suppression and delivery evidence | 98 library tests green with SQLite, including actual HTTP and cancelled-write regressions |
-| `rullst-messaging` | Publication/lease/retry/idempotency, local durability and outbox composition | Cancellation defect corrected; 42 tests green with SQLite (ten library and 32 integration); optional ORM outbox was not enabled in this run |
-| `rullst` | Facade feature wiring, composed subsystem and tutorial contracts | Static facade/feature review; existing verified-TLS composition retained; fresh composed workspace tests pending |
+| `rullst-messaging` | Publication/lease/retry/idempotency, local durability and outbox composition | Cancellation defect corrected; focused SQLite evidence and final all-feature workspace coverage, including the optional ORM outbox relay, are green |
+| `rullst` | Facade feature wiring, composed subsystem and tutorial contracts | Static facade/feature review; existing verified-TLS composition retained; final composed all-feature workspace tests and doctests are green |
 | `rullst-iot` | Manifest/public capability honesty only; no hardware or deep audit | Light review complete; README/manifest agree on helper/simulator/transport boundaries; approved scope exception |
 
-Counts above describe separate focused runs, not one complete green workspace
-run. Some runs overlap; do not sum them into an invented total coverage metric.
-
-The final default-feature, all-target workspace Clippy run also passed with
-`-D warnings`, after removing one newly unused example import. This is broader
-compile/lint evidence, but it is **not** the required all-feature Clippy gate.
+Counts above describe separate focused runs and overlap; do not sum them into an
+invented coverage metric. In addition, the complete workspace test suite passed
+with all features, and workspace Clippy passed with all targets, all features
+and `-D warnings`.
 
 ## Reproduced defects and correction boundaries
 
@@ -128,13 +127,12 @@ operating systems before considering a different architecture.
 
 - Review all changed paths together and freeze the candidate; the broad review
   above is bounded repository-owned evidence, not an independent audit.
-- Finish the final public-CLI profile and real HTTP blueprint acceptance pass.
-- Validate local HTMX assets, browser CSP and representative responsive views.
-- Run formatting, strict workspace Clippy and the all-feature workspace suite
-  once the correction batch is stable.
+- Finish the real HTTP/browser acceptance pass for representative generated
+  blueprints; materialized compile/test contracts are already green.
 - Review CI/dependency/security alerts and run the applicable manual release
   matrices on the actual candidate commit.
-- Repeat package/preflight and documentation checks on that candidate.
+- Repeat package/preflight, site/browser and documentation checks on that
+  candidate.
 - Reassess quality/readiness using these results; do not carry forward 91.8%
   readiness or 100% local-ceiling completion as current audited facts.
 
@@ -168,8 +166,8 @@ and be documented as unsupported; mock success is not live-provider evidence.
 
 ## Repeatable focused verification receipts
 
-These commands succeeded during the September 5–6 correction batch. They do
-not replace the required final all-feature workspace preflight:
+These focused commands and the final local preflight succeeded during the
+September 5–6 correction batch:
 
 ```bash
 CARGO_BUILD_JOBS=1 cargo test -p cargo-rullst --lib -- --test-threads=1
@@ -185,13 +183,14 @@ CARGO_BUILD_JOBS=1 cargo test -p rullst-capital --features actix --lib middlewar
 CARGO_BUILD_JOBS=1 cargo test -p rullst-messaging --features sqlite -- --test-threads=1 --quiet
 CARGO_BUILD_JOBS=1 cargo clippy -p cargo-rullst -p rullst-core --lib -- -D warnings
 CARGO_BUILD_JOBS=1 cargo clippy --workspace --all-targets --keep-going -- -D warnings
-cargo fmt --all
+CARGO_BUILD_JOBS=1 cargo test --workspace --all-features
+CARGO_BUILD_JOBS=1 cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo fmt --all -- --check
 git diff --check
 bash .github/check-historical-roadmap-ledger.sh
 bash .github/check-crate-architecture.sh
 ```
 
 ORM default/strict-SQLite/Redis and macro compile-fail results are recorded in
-the coverage ledger. An attempted ORM all-feature Clippy run was interrupted
-while building bundled DuckDB to release the serialized test queue; it did not
-complete and must not be reported as a passing gate.
+the coverage ledger. Live-service backend verification remains distinct from
+the passing all-feature compile, lint and local workspace gates.

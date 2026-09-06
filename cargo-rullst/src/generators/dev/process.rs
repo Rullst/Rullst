@@ -10,6 +10,8 @@ use tokio::sync::mpsc;
 mod group;
 use group::ProcessGroup;
 
+const SNAPSHOT_SPAWN_RETRIES: u32 = 5;
+
 pub(super) struct Application {
     child: Option<Child>,
     executable: PathBuf,
@@ -71,7 +73,7 @@ impl Application {
         if dashboard {
             command.stdout(Stdio::piped()).stderr(Stdio::piped());
         }
-        let mut child = command.spawn()?;
+        let mut child = spawn_snapshot(&mut command)?;
         if dashboard {
             if let Some(stdout) = child.stdout.take() {
                 forward(stdout, logs.clone(), false);
@@ -214,6 +216,24 @@ impl Application {
         self.group = None;
         self.exit_status = None;
         Ok(())
+    }
+}
+
+fn spawn_snapshot(command: &mut Command) -> io::Result<Child> {
+    let mut retries = 0_u32;
+    loop {
+        match command.spawn() {
+            Ok(child) => return Ok(child),
+            Err(error)
+                if error.kind() == io::ErrorKind::ExecutableFileBusy
+                    && retries < SNAPSHOT_SPAWN_RETRIES =>
+            {
+                let delay_ms = 10_u64 << retries;
+                std::thread::sleep(Duration::from_millis(delay_ms));
+                retries += 1;
+            }
+            Err(error) => return Err(error),
+        }
     }
 }
 

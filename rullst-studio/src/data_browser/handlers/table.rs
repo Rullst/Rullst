@@ -352,6 +352,6 @@ mod tests {
         let body = String::from_utf8(body.to_vec()).expect("UTF-8 full-page error body");
         assert!(body.contains("<!DOCTYPE html>"));
         assert!(body.contains("missing"));
-        assert!(body.contains("records"));
+        assert!(body.contains("id=\"studio-content\""));
     }
 }

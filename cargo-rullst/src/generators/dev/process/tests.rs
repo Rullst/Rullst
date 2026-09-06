@@ -176,6 +176,27 @@ async fn restarting_the_same_snapshot_has_a_new_process_generation() {
     app.wait_ready(port_from(&port_file).await).await.unwrap();
 }
 
+#[cfg(target_os = "linux")]
+#[test]
+fn transiently_busy_snapshot_is_retried_before_launch() {
+    let temp = tempfile::tempdir().unwrap();
+    let source = temp.path().join("source");
+    fs::copy("/bin/true", &source).unwrap();
+    let mut app = Application::prepare(&source).unwrap();
+    let writer = fs::OpenOptions::new()
+        .write(true)
+        .open(&app.executable)
+        .unwrap();
+    let release = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(25));
+        drop(writer);
+    });
+    let (logs, _rx) = mpsc::channel(1);
+    app.start(false, &logs).unwrap();
+    release.join().unwrap();
+    app.stop().unwrap();
+}
+
 #[cfg(unix)]
 fn active_process(pid: u32) -> bool {
     ProcessGroup::new(pid)

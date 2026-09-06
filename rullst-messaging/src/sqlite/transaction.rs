@@ -3,6 +3,53 @@ use sqlx::{Sqlite, Transaction};
 
 use super::SqliteBroker;
 
+pub(super) fn storage_error(operation: &'static str) -> MessagingError {
+    MessagingError::StorageUnavailable { operation }
+}
+
+impl<C: Clock> SqliteBroker<C> {
+    pub(super) fn now(&self) -> Result<i64> {
+        let now = self.clock.now_millis()?;
+        if now < 0 {
+            return Err(MessagingError::ClockOutOfRange);
+        }
+        Ok(now)
+    }
+
+    pub(super) async fn begin_write(
+        &self,
+        operation: &'static str,
+    ) -> Result<Transaction<'static, Sqlite>> {
+        self.pool
+            .begin_with("BEGIN IMMEDIATE")
+            .await
+            .map_err(|_| storage_error(operation))
+    }
+}
+
+pub(super) async fn finish<T>(
+    connection: Transaction<'static, Sqlite>,
+    result: Result<T>,
+    operation: &'static str,
+) -> Result<T> {
+    match result {
+        Ok(value) => {
+            connection
+                .commit()
+                .await
+                .map_err(|_| storage_error(operation))?;
+            Ok(value)
+        }
+        Err(error) => {
+            connection
+                .rollback()
+                .await
+                .map_err(|_| storage_error(operation))?;
+            Err(error)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::storage::StorageProfile;
@@ -58,52 +105,5 @@ mod tests {
             .unwrap();
         next.commit().await.unwrap();
         pool.close().await;
-    }
-}
-
-pub(super) fn storage_error(operation: &'static str) -> MessagingError {
-    MessagingError::StorageUnavailable { operation }
-}
-
-impl<C: Clock> SqliteBroker<C> {
-    pub(super) fn now(&self) -> Result<i64> {
-        let now = self.clock.now_millis()?;
-        if now < 0 {
-            return Err(MessagingError::ClockOutOfRange);
-        }
-        Ok(now)
-    }
-
-    pub(super) async fn begin_write(
-        &self,
-        operation: &'static str,
-    ) -> Result<Transaction<'static, Sqlite>> {
-        self.pool
-            .begin_with("BEGIN IMMEDIATE")
-            .await
-            .map_err(|_| storage_error(operation))
-    }
-}
-
-pub(super) async fn finish<T>(
-    connection: Transaction<'static, Sqlite>,
-    result: Result<T>,
-    operation: &'static str,
-) -> Result<T> {
-    match result {
-        Ok(value) => {
-            connection
-                .commit()
-                .await
-                .map_err(|_| storage_error(operation))?;
-            Ok(value)
-        }
-        Err(error) => {
-            connection
-                .rollback()
-                .await
-                .map_err(|_| storage_error(operation))?;
-            Err(error)
-        }
     }
 }
