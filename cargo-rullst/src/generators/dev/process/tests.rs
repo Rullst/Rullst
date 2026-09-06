@@ -1,6 +1,11 @@
 use super::super::build::compile_in;
 use super::*;
 
+// These tests launch nested Cargo builds and real process groups. Running both
+// fixture compilers at once can starve their tiny HTTP children on constrained
+// machines without exercising any additional supervisor concurrency contract.
+static APPLICATION_FIXTURE_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 fn write_fixture(root: &Path, port_file: &Path, body: &str) {
     fs::create_dir_all(root.join("src")).unwrap();
     fs::write(
@@ -46,6 +51,7 @@ async fn port_from(path: &Path) -> u16 {
 
 #[tokio::test]
 async fn failed_build_keeps_previous_process_then_fixed_build_restarts_and_reaps() {
+    let _fixture_guard = APPLICATION_FIXTURE_LOCK.lock().await;
     let temp = tempfile::tempdir().unwrap();
     let port_file = temp.path().join("port");
     write_fixture(temp.path(), &port_file, "old application");
@@ -160,6 +166,7 @@ async fn readiness_requires_our_generation_not_an_arbitrary_open_port() {
 
 #[tokio::test]
 async fn restarting_the_same_snapshot_has_a_new_process_generation() {
+    let _fixture_guard = APPLICATION_FIXTURE_LOCK.lock().await;
     let temp = tempfile::tempdir().unwrap();
     let port_file = temp.path().join("port");
     write_fixture(temp.path(), &port_file, "same binary");

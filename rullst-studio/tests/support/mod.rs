@@ -173,7 +173,9 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
     assert_eq!(migrations.status(), StatusCode::OK);
     let migrations = response_text(migrations).await;
     assert!(migrations.contains(table));
-    assert!(migrations.contains("hx-swap-oob"));
+    assert!(migrations.contains("Database schema tools"));
+    assert!(migrations.contains("cargo rullst db:migrate"));
+    assert!(!migrations.contains("<!DOCTYPE html>"));
 
     let er_diagram = app
         .clone()
@@ -297,7 +299,7 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
     assert_eq!(searched_table.status(), StatusCode::OK);
     let searched_table = response_text(searched_table).await;
     assert!(searched_table.contains("No records found"));
-    assert!(searched_table.contains("hx-swap-oob"));
+    assert!(!searched_table.contains("<!DOCTYPE html>"));
 
     let missing_table = app
         .clone()

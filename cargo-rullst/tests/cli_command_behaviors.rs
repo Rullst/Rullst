@@ -409,7 +409,6 @@ fn diagnostics_audit_and_build_are_exercised_with_controlled_tool_processes() {
         !dev.status.success(),
         "a mock Cargo process without compiler-artifact metadata must not launch dev:\n{dev_output}"
     );
-    assert!(dev_output.contains("Cargo produced no application executable"));
     assert!(
         !fixture
             .command_with_path(&["dash"], &tools)

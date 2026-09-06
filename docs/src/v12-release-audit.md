@@ -127,8 +127,9 @@ operating systems before considering a different architecture.
 
 - Review all changed paths together and freeze the candidate; the broad review
   above is bounded repository-owned evidence, not an independent audit.
-- Finish the real HTTP/browser acceptance pass for representative generated
-  blueprints; materialized compile/test contracts are already green.
+- Repeat the real HTTP/Chromium acceptance pass for the representative Blog
+  application on the final candidate; materialized compile/test contracts for
+  every generated blueprint are already green.
 - Review CI/dependency/security alerts and run the applicable manual release
   matrices on the actual candidate commit.
 - Repeat package/preflight, site/browser and documentation checks on that

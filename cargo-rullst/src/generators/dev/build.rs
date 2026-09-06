@@ -55,6 +55,10 @@ pub(super) async fn compile_in(root: &std::path::Path) -> io::Result<PathBuf> {
             "Cargo build failed.\n{messages}\n{errors}"
         )));
     }
+    select_application_executable(executables)
+}
+
+fn select_application_executable(executables: Vec<PathBuf>) -> io::Result<PathBuf> {
     match executables.as_slice() {
         [executable] => Ok(executable.clone()),
         [] => Err(io::Error::other(
@@ -158,6 +162,29 @@ fn append(output: &mut String, value: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn build_requires_exactly_one_application_executable() {
+        let missing = select_application_executable(Vec::new()).unwrap_err();
+        assert!(
+            missing
+                .to_string()
+                .contains("Cargo produced no application executable")
+        );
+
+        let selected = select_application_executable(vec![PathBuf::from("app")]).unwrap();
+        assert_eq!(selected, PathBuf::from("app"));
+
+        let ambiguous =
+            select_application_executable(vec![PathBuf::from("app"), PathBuf::from("worker")])
+                .unwrap_err();
+        assert!(
+            ambiguous
+                .to_string()
+                .contains("multiple application binaries")
+        );
+    }
+
     #[tokio::test]
     async fn oversized_records_are_drained_and_diagnostics_stay_bounded() {
         let input = format!("{}\nactionable error\n", "x".repeat(RECORD_LIMIT + 10));

@@ -14,8 +14,10 @@ meets its approved B exception. All 15 active crates have also reached their
 higher audited local ceiling: **1,509/1,509 local campaign points are backed by
 repository evidence (100%), with zero planning points remaining**. The exact
 SHA still earns those dimensions only when its conditioning gates pass. The
-broader [v12 release programme](v12.md) estimates RC readiness at 91.8%; therefore this
-is still a **NO-GO**, not a release announcement.
+older 91.8% readiness estimate in the [v12 release programme](v12.md) is a
+superseded planning snapshot, not the current percentage. The
+[post-audit release report](v12-release-audit.md) is authoritative and keeps the
+RC at **NO-GO** until its candidate gates and explicit approval are complete.
 
 Coverage is a separate RC gate. Codecov measured candidate `27e81152` at
 90.06% across the whole repository and 91.33% for the `framework_libraries`
@@ -23,27 +25,25 @@ component, so both candidate views exceed their zero-tolerance 90% targets.
 This is valid candidate evidence, not evidence for a future commit or tag; the
 same gates must pass again on the exact frozen RC SHA.
 
-Candidate `27e81152` completed all **22/22 applicable automatic push
+Historical candidate `27e81152` completed all **22/22 applicable automatic push
 workflows** successfully, including the full all-feature workspace suite on
-Linux, macOS and Windows. Path-filtered platform workflows remain governed by
-their own release matrix. This is strong cross-platform candidate evidence,
-but the manually dispatched heavy gates and the exact future RC commit still
-remain separate requirements.
+Linux, macOS and Windows. It predates the reopened audit and is therefore
+background evidence only. The post-audit candidate must independently pass its
+applicable hosted and manually dispatched release matrices.
 
 The later manual campaign on `45fbdbe7` produced passing bounded Miri, Kani and
 sanitizer evidence, while fuzzing usefully exposed three stale harnesses and a
-real Unicode-boundary panic in database-URL redaction. All four findings are
-fixed in the current candidate worktree; the exact panic is a unit regression
-and corpus seed, and the repaired ORM parser plus both affected security targets
-passed 100,000 local libFuzzer/AddressSanitizer executions. This is remediation
-evidence, not a substitute for rerunning the complete heavy matrix on the
-frozen RC SHA.
+real Unicode-boundary panic in database-URL redaction. Those findings have
+committed regressions and corrections; the repaired ORM parser plus both
+affected security targets passed 100,000 local libFuzzer/AddressSanitizer
+executions. This is remediation evidence, not a substitute for rerunning the
+complete heavy matrix on the frozen RC SHA.
 
 | Coverage view | Audited checkpoint | RC meaning |
 | :--- | :---: | :--- |
-| Whole repository | **90.06%** (74,219/82,408) on `27e81152` | **Passing on the candidate.** This primary public number includes CLI and proc-macro production sources. |
-| Framework libraries | **91.33%** (56,119/61,446) on `27e81152` | Passing its separate component gate; it does not replace the whole-repository result. |
-| v12 RC requirement | **at least 90% in both views** | Candidate requirement met; must be reproduced by Codecov on the exact frozen RC commit, together with at least 90% patch coverage. |
+| Whole repository | **90.06%** (74,219/82,408) on `27e81152` | Historical passing checkpoint. This primary public number includes CLI and proc-macro production sources, but does not approve the post-audit candidate. |
+| Framework libraries | **91.33%** (56,119/61,446) on `27e81152` | Historical component pass; it does not replace either the repository aggregate or a fresh post-audit result. |
+| v12 RC requirement | **at least 90% in both views** | Must be reproduced by Codecov on the exact frozen RC commit, together with at least 90% patch coverage. |
 
 The two percentages are neither conflicting measurements nor values to
 average: they answer questions about different path sets. Rullst must keep the

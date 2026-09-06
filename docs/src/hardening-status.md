@@ -4,6 +4,9 @@
 > `27e81152` como último lote integral auditado. Este documento
 > mapeia as recomendações da [avaliação técnica](../../gpt.md); não é certificado,
 > pentest, homologação de provedor nem declaração geral de production-readiness.
+> A [auditoria de release posterior](v12-release-audit.md) substitui este
+> retrato como fonte do estado atual; listas de lacunas e recibos abaixo devem
+> ser lidos como histórico datado, não como checklist da candidata pós-auditoria.
 
 ## Como ler este relatório
 
