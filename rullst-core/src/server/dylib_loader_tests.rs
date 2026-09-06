@@ -2,6 +2,18 @@
 
 use super::*;
 
+#[cfg(target_os = "windows")]
+#[test]
+fn loaded_library_lock_errors_defer_cleanup_without_a_warning() {
+    for code in [5, 32] {
+        let error = std::io::Error::from_raw_os_error(code);
+        assert!(is_expected_loaded_library_removal_error(&error));
+    }
+
+    let unexpected = std::io::Error::from_raw_os_error(3);
+    assert!(!is_expected_loaded_library_removal_error(&unexpected));
+}
+
 #[test]
 fn missing_library_errors_include_the_resolved_platform_path() {
     let base =

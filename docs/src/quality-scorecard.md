@@ -1,5 +1,12 @@
 # Quality scorecard
 
+> **Audit reopening (2026-09-05):** the second-computer CLI handoff and new
+> negative regressions revealed gaps outside the earlier test inventory.
+> Scores and ceiling-completion statements below describe the previous
+> campaign; they are not a current release approval. See the
+> [v12 release audit](v12-release-audit.md) for reviewed scopes, corrections
+> and gates that must pass before reconfirming those conclusions.
+
 Rullst generates an evidence-bound quality scorecard for every push to `main`
 and every pull request. The report is attached to the corresponding **Rust CI**
 run as `quality-scorecard-<commit SHA>` and is also written to that run's job

@@ -234,7 +234,8 @@ where
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let mut inner = self.inner.clone();
+        let clone = self.inner.clone();
+        let mut inner = std::mem::replace(&mut self.inner, clone);
         let request_method = req.method().clone();
 
         Box::pin(async move {

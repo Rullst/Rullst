@@ -2,6 +2,8 @@
 
 use super::common;
 
+const ERP_STYLES: &str = include_str!("erp/styles.css");
+
 pub fn file_manifest(
     project_name_safe: &str,
     hot_reload: bool,
@@ -333,10 +335,16 @@ use serde::Deserialize;
 
 pub async fn index(
     Extension(csrf_token): Extension<rullst::security::CsrfToken>,
+    Extension(csp_nonce): Extension<rullst::security::CspNonce>,
 ) -> impl IntoResponse {
     let products = Product::all().await.unwrap_or_default();
     let orders = Order::all().await.unwrap_or_default();
-    Html(erp::dashboard_page(products, orders, csrf_token.as_str()))
+    Html(erp::dashboard_page(
+        products,
+        orders,
+        csrf_token.as_str(),
+        csp_nonce.as_str(),
+    ))
 }
 
 #[derive(Deserialize)]
@@ -430,6 +438,7 @@ pub fn dashboard_page(
     products: Vec<Product>,
     orders: Vec<Order>,
     csrf_token: &str,
+    csp_nonce: &str,
 ) -> String {
     let total_sales: f64 = orders.iter()
         .filter(|o| o.status == "Paid")
@@ -438,22 +447,15 @@ pub fn dashboard_page(
     let low_stock_alerts = products.iter().filter(|p| p.stock <= 5).count();
     let total_orders = orders.len();
 
-    html! {
+    let document = html! {
         <html lang="pt-BR" class="dark">
             <head>
-            <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
                 <meta charset="UTF-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst ERP Pocket — Inventory Dashboard"</title>
-                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-                <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
-                <script src="https://cdn.tailwindcss.com"></script>
-                <style>
-                    "
-                    body { font-family: 'Outfit', sans-serif; background-color: #050811; }
-                    .glass { background: rgba(10, 18, 36, 0.6); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); }
-                    .glass-accent { border: 1px solid rgba(167, 139, 250, 0.2); }
-                    "
-                </style>
+                <link rel="icon" type="image/png" href="/static/rullst.png" />
+                <link rel="stylesheet" href="/static/rullst.css" />
+                <script nonce={csp_nonce} src="/static/htmx-1.9.12.min.js"></script>
             </head>
             <body class="text-slate-100 min-height-screen pb-12">
                 <div class="max-w-6xl mx-auto px-4 pt-8">
@@ -471,7 +473,8 @@ pub fn dashboard_page(
                 </div>
             </body>
         </html>
-    }
+    };
+    format!("<!DOCTYPE html>{document}")
 }
 
 fn render_header() -> String {
@@ -579,7 +582,7 @@ fn render_orders_table(orders: &[Order]) -> String {
                     <tbody class="divide-y divide-slate-800/40 text-sm">
                         { rullst::html::RawHtml::new(orders.iter().map(|o| html! {
                             <tr>
-                                <td class="py-3.5 px-4 text-slate-400 font-mono">"#{}"{format!("{}", o.id)}</td>
+                                <td class="py-3.5 px-4 text-slate-400 font-mono">"#"{format!("{}", o.id)}</td>
                                 <td class="py-3.5 px-4 font-medium text-white">{&o.customer_name}</td>
                                 <td class="py-3.5 px-4 text-slate-400">{format!("{} un. (Ref: Product #{})", o.quantity, o.product_id)}</td>
                                 <td class="py-3.5 px-4 text-emerald-400 font-medium">"$ "{format!("{:.2}", o.total_price)}</td>
@@ -661,6 +664,7 @@ fn render_forms(products: &[Product], csrf_token: &str) -> String {
 }
 "##;
     manifest.push(("src/pages/erp.rs", erp_page.to_string()));
+    manifest.push(("static/rullst.css", ERP_STYLES.to_string()));
 
     // Repository layer (if applicable)
     if is_repo {

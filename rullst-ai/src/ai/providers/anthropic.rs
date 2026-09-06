@@ -1,4 +1,5 @@
 use super::support::{DEFAULT_REQUEST_TIMEOUT, endpoint, image_mime_type, success_response};
+use super::support::{http_client, read_json};
 use crate::ai::{
     AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
     guardrails::prepare_messages,
@@ -14,7 +15,6 @@ pub struct AnthropicProvider {
     model: String,
     base_url: String,
     mode: ProviderMode,
-    client: reqwest::Client,
     request_timeout: Duration,
 }
 
@@ -28,7 +28,6 @@ impl AnthropicProvider {
             model: "claude-sonnet-5".to_string(),
             base_url: "https://api.anthropic.com/v1".to_string(),
             mode,
-            client: reqwest::Client::new(),
             request_timeout: DEFAULT_REQUEST_TIMEOUT,
         }
     }
@@ -81,17 +80,17 @@ impl AnthropicProvider {
     }
 
     async fn send_body(&self, body: serde_json::Value) -> Result<String, AiError> {
-        let response = self
-            .client
+        let response = http_client()?
             .post(endpoint(&self.base_url, "messages"))
             .timeout(self.request_timeout)
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", "2023-06-01")
             .json(&body)
             .send()
-            .await?;
+            .await
+            .map_err(|error| AiError::RequestError(error.without_url()))?;
         let response = success_response(response, self.provider_name()).await?;
-        let json: serde_json::Value = response.json().await?;
+        let json = read_json(response, self.provider_name()).await?;
         json["content"]
             .as_array()
             .and_then(|content| {

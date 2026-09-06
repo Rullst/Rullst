@@ -102,3 +102,19 @@ jobs:
           echo "$FEED" | grep -i "Smoke Test Post"
           echo "$FEED" | grep -i "Automated E2E Verification Passed"
           echo "✅ End-to-end post creation and SSR rendering passed."
+
+      - name: Verify the persisted page in real Chromium
+        run: |
+          google-chrome --headless=new \
+            --no-sandbox \
+            --disable-dev-shm-usage \
+            --disable-background-networking \
+            --disable-component-update \
+            --dump-dom \
+            http://localhost:3000/ > browser-dom.html
+
+          grep -F "Rullst Sovereign SaaS Blog &amp; Publisher" browser-dom.html
+          grep -F "Smoke Test Post" browser-dom.html
+          grep -F "Automated E2E Verification Passed" browser-dom.html
+          grep -F 'name="_token"' browser-dom.html
+          echo "✅ Chromium parsed the live SSR page and its persisted post."

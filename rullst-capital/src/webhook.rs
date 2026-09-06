@@ -331,6 +331,19 @@ async fn verify_webhook_inner(
     active_provider: Option<&dyn BillingProvider>,
 ) -> Result<Response, StatusCode> {
     let (parts, body) = req.into_parts();
+    if ["webhook-id", "webhook-timestamp", "webhook-signature"]
+        .iter()
+        .any(|name| {
+            parts
+                .headers
+                .iter()
+                .filter(|(key, _)| key.as_str() == *name)
+                .count()
+                > 1
+        })
+    {
+        return Err(StatusCode::BAD_REQUEST);
+    }
     let body_bytes = axum::body::to_bytes(body, MAX_WEBHOOK_PAYLOAD_BYTES)
         .await
         .map_err(|_| StatusCode::PAYLOAD_TOO_LARGE)?;

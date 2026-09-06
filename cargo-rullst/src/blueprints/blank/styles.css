@@ -1,0 +1,124 @@
+:root {
+    color-scheme: dark;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    min-height: 100%;
+    margin: 0;
+}
+
+body {
+    background: #020617;
+    color: #f1f5f9;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.rullst-starter {
+    display: flex;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.rullst-starter__content {
+    width: min(100%, 36rem);
+    text-align: center;
+}
+
+.rullst-starter__content > * + * {
+    margin-top: 1.5rem;
+}
+
+.rullst-starter__title {
+    margin: 0;
+    background: linear-gradient(90deg, #38bdf8, #818cf8, #a855f7);
+    background-clip: text;
+    color: transparent;
+    font-size: clamp(2.5rem, 8vw, 3rem);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1;
+}
+
+.rullst-starter__lede {
+    color: #94a3b8;
+    font-size: 1.125rem;
+    line-height: 1.65;
+}
+
+.rullst-starter__status {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border: 1px solid #1e293b;
+    border-radius: 0.5rem;
+    background: #0f172a;
+    color: #38bdf8;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.875rem;
+}
+
+.rullst-starter__card {
+    padding: 1.5rem;
+    border: 1px solid #1e293b;
+    border-radius: 0.75rem;
+    background: rgba(15, 23, 42, 0.72);
+    box-shadow: 0 24px 60px rgba(2, 6, 23, 0.35);
+}
+
+.rullst-starter__card h2 {
+    margin: 0 0 1rem;
+    color: #e2e8f0;
+    font-size: 1.25rem;
+}
+
+.rullst-starter__counter-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.rullst-starter__button {
+    padding: 0.625rem 1.5rem;
+    border: 0;
+    border-radius: 0.5rem;
+    background: linear-gradient(90deg, #0ea5e9, #4f46e5);
+    box-shadow: 0 10px 25px rgba(79, 70, 229, 0.25);
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    transition: transform 150ms ease, filter 150ms ease, box-shadow 150ms ease;
+}
+
+.rullst-starter__button:hover {
+    filter: brightness(1.12);
+    box-shadow: 0 12px 30px rgba(79, 70, 229, 0.4);
+}
+
+.rullst-starter__button:active {
+    transform: scale(0.97);
+}
+
+.rullst-starter__button:focus-visible {
+    outline: 3px solid #7dd3fc;
+    outline-offset: 3px;
+}
+
+.rullst-starter__count {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 0.875rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rullst-starter__button {
+        transition: none;
+    }
+}

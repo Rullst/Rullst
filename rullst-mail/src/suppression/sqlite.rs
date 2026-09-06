@@ -5,9 +5,8 @@ use super::{
     SuppressionRecord, SuppressionSnapshot, SuppressionStore, normalize_recipient, unavailable,
     validate_identifier, validate_limits,
 };
-use sqlx::pool::PoolConnection;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
-use sqlx::{Executor, Sqlite, SqliteConnection, SqlitePool};
+use sqlx::{Executor, Sqlite, SqliteConnection, SqlitePool, Transaction};
 use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
@@ -106,7 +105,7 @@ impl SqliteSuppressionStore {
                 .map_err(|_| SuppressionError::CorruptStorage("deleted event count"))
         }
         .await;
-        finish(&mut connection, result, "finish event pruning").await
+        finish(connection, result, "finish event pruning").await
     }
 
     /// Gracefully closes all pooled connections, useful before rotating a file.
@@ -120,7 +119,7 @@ impl SqliteSuppressionStore {
     ) -> Result<SuppressionRecord, SuppressionError> {
         let mut connection = self.begin_write("begin suppression event").await?;
         let result = self.record_in_transaction(&mut connection, &event).await;
-        finish(&mut connection, result, "finish suppression event").await
+        finish(connection, result, "finish suppression event").await
     }
 
     async fn record_in_transaction(
@@ -190,17 +189,12 @@ impl SqliteSuppressionStore {
     async fn begin_write(
         &self,
         operation: &'static str,
-    ) -> Result<PoolConnection<Sqlite>, SuppressionError> {
-        let mut connection = self
-            .pool
-            .acquire()
+    ) -> Result<Transaction<'static, Sqlite>, SuppressionError> {
+        // Dropping a cancelled writer must enqueue rollback before pool reuse.
+        self.pool
+            .begin_with("BEGIN IMMEDIATE")
             .await
-            .map_err(|_| unavailable(operation))?;
-        connection
-            .execute("BEGIN IMMEDIATE")
-            .await
-            .map_err(|_| unavailable(operation))?;
-        Ok(connection)
+            .map_err(|_| unavailable(operation))
     }
 }
 
@@ -313,14 +307,20 @@ where
 }
 
 async fn finish<T>(
-    connection: &mut PoolConnection<Sqlite>,
+    transaction: Transaction<'_, Sqlite>,
     result: Result<T, SuppressionError>,
     operation: &'static str,
 ) -> Result<T, SuppressionError> {
-    let statement = if result.is_ok() { "COMMIT" } else { "ROLLBACK" };
-    if connection.execute(statement).await.is_err() {
-        connection.close_on_drop();
-        return Err(unavailable(operation));
+    if result.is_ok() {
+        transaction
+            .commit()
+            .await
+            .map_err(|_| unavailable(operation))?;
+    } else {
+        transaction
+            .rollback()
+            .await
+            .map_err(|_| unavailable(operation))?;
     }
     result
 }

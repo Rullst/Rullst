@@ -41,6 +41,14 @@ jobs:
       - name: Check formatting (Workspace)
         run: cargo fmt --all -- --check
 
+      - name: Set up Node for the development browser contract
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Check reload generation, singleton and refresh behavior
+        run: node rullst-core/src/server/dev_reload/client_tests.cjs
+
       - name: Run Clippy (Workspace)
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 

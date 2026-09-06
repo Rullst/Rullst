@@ -11,13 +11,13 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
 
     let hook_before_save = if !parsed.before_save.is_empty() {
         let method = syn::Ident::new(&parsed.before_save, name.span());
-        quote! { self.#method().await?; }
+        quote! { rullst_orm::__transaction_access::run(self.#method()).await?; }
     } else {
         quote! {}
     };
     let hook_after_save = if !parsed.after_save.is_empty() {
         let method = syn::Ident::new(&parsed.after_save, name.span());
-        quote! { self.#method().await?; }
+        quote! { rullst_orm::__transaction_access::run(self.#method()).await?; }
     } else {
         quote! {}
     };
@@ -129,11 +129,11 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                 list.clone()
             };
             for obs in &observers {
-                obs.saving(self).await?;
+                rullst_orm::__transaction_access::run(obs.saving(self)).await?;
             }
             if self.id == 0 {
                 for obs in &observers {
-                    obs.creating(self).await?;
+                    rullst_orm::__transaction_access::run(obs.creating(self)).await?;
                 }
                 let driver = rullst_orm::Orm::driver()?;
                 if driver == "postgres" || driver == "sqlite" {
@@ -182,10 +182,10 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                     }
                 }
                 let futures = observers.iter().map(|obs| obs.created(&*self));
-                rullst_orm::_futures::future::try_join_all(futures).await?;
+                rullst_orm::__transaction_access::run(rullst_orm::_futures::future::try_join_all(futures)).await?;
             } else {
                 for obs in &observers {
-                    obs.updating(self).await?;
+                    rullst_orm::__transaction_access::run(obs.updating(self)).await?;
                 }
                 use rullst_orm::_sqlx::Execute;
                 let mut final_sql = format!(
@@ -212,10 +212,10 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                 };
                 #update_tenant_result_check
                 let futures = observers.iter().map(|obs| obs.updated(&*self));
-                rullst_orm::_futures::future::try_join_all(futures).await?;
+                rullst_orm::__transaction_access::run(rullst_orm::_futures::future::try_join_all(futures)).await?;
             }
             let futures = observers.iter().map(|obs| obs.saved(&*self));
-            rullst_orm::_futures::future::try_join_all(futures).await?;
+            rullst_orm::__transaction_access::run(rullst_orm::_futures::future::try_join_all(futures)).await?;
             #hook_after_save
             let operation = if is_new {
                 rullst_orm::ModelOperation::Created
@@ -289,13 +289,13 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
 
     let hook_before_delete = if !parsed.before_delete.is_empty() {
         let method = syn::Ident::new(&parsed.before_delete, name.span());
-        quote! { self.#method().await?; }
+        quote! { rullst_orm::__transaction_access::run(self.#method()).await?; }
     } else {
         quote! {}
     };
     let hook_after_delete = if !parsed.after_delete.is_empty() {
         let method = syn::Ident::new(&parsed.after_delete, name.span());
-        quote! { self.#method().await?; }
+        quote! { rullst_orm::__transaction_access::run(self.#method()).await?; }
     } else {
         quote! {}
     };
@@ -437,7 +437,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
     let policy_check_delete = if !parsed.policy.is_empty() {
         let policy_type = syn::Ident::new(&parsed.policy, parsed.name.span());
         quote! {
-            if !<#policy_type as rullst_orm::Policy<Self>>::can_delete(self).await? {
+            if !rullst_orm::__transaction_access::run(<#policy_type as rullst_orm::Policy<Self>>::can_delete(self)).await? {
                 return Err(rullst_orm::Error::Validation("Policy prevents deleting this record".to_string()));
             }
         }
@@ -503,6 +503,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "delete")
         )]
         pub async fn delete(&self) -> Result<(), rullst_orm::Error> {
+            rullst_orm::__transaction_access::ensure_allowed()?;
             let scoped_transaction = rullst_orm::CURRENT_TX
                 .try_with(|transaction| transaction.clone())
                 .ok();
@@ -582,7 +583,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
                 list.clone()
             };
             let futures = observers.iter().map(|obs| obs.deleting(&*self));
-            rullst_orm::_futures::future::try_join_all(futures).await?;
+            rullst_orm::__transaction_access::run(rullst_orm::_futures::future::try_join_all(futures)).await?;
             #delete_logic
             if rullst_orm::schema::is_query_log_enabled() {
                 println!("[SQL Debug] {:?} | ID: {}", query, self.id);
@@ -599,7 +600,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             };
             #tenant_rows_check
             let futures = observers.iter().map(|obs| obs.deleted(&*self));
-            rullst_orm::_futures::future::try_join_all(futures).await?;
+            rullst_orm::__transaction_access::run(rullst_orm::_futures::future::try_join_all(futures)).await?;
             #hook_after_delete
             #[cfg(feature = "redis")]
             {
@@ -641,6 +642,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "restore")
         )]
         pub async fn restore(&self) -> Result<(), rullst_orm::Error> {
+            rullst_orm::__transaction_access::ensure_allowed()?;
             #tenant_guard
             #policy_check_restore
             #restore_logic
@@ -654,6 +656,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "force_delete")
         )]
         pub async fn force_delete(&self) -> Result<(), rullst_orm::Error> {
+            rullst_orm::__transaction_access::ensure_allowed()?;
             #tenant_guard
             #policy_check_force_delete
             let pool = rullst_orm::Orm::try_pool()?;

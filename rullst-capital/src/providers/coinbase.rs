@@ -67,7 +67,6 @@ impl BillingProvider for CoinbaseCommerceProvider {
         webhook_mode_from_secret(self.name(), &self.webhook_secret)
     }
 
-    #[cfg_attr(mutants, mutants::skip)]
     async fn create_checkout_session(
         &self,
         customer_email: &str,
@@ -94,42 +93,9 @@ impl BillingProvider for CoinbaseCommerceProvider {
             ));
         }
 
-        let client = crate::providers::http_client()?;
-        let payload = serde_json::json!({
-            "name": format!("Subscription Plan {}", plan_id),
-            "description": "SaaS Subscription Payment via Web3 Crypto",
-            "pricing_type": "fixed_price",
-            "local_price": {
-                "amount": "29.00",
-                "currency": "USD"
-            },
-            "metadata": {
-                "customer_email": customer_email,
-                "plan_id": plan_id
-            },
-            "redirect_url": redirect_url,
-            "cancel_url": redirect_url
-        });
-
-        let body: Value = crate::providers::send_http_json(
-            client
-                .post("https://api.commerce.coinbase.com/charges")
-                .header("X-CC-Api-Key", &self.api_key)
-                .header("X-CC-Version", "2018-03-22")
-                .header("Content-Type", "application/json")
-                .json(&payload),
-            "coinbase",
-            "create checkout",
-        )
-        .await?;
-
-        let url = body["data"]["hosted_url"].as_str().ok_or_else(|| {
-            CapitalError::from(crate::ProviderFailure::contract_mismatch(
-                "coinbase",
-                "create checkout",
-            ))
-        })?;
-        crate::providers::validate_checkout_url("coinbase", url)
+        Err(CapitalError::UnsupportedOperation(
+            "coinbase plan-only checkout has no reviewed authoritative pricing contract".into(),
+        ))
     }
 
     fn handle_webhook(
@@ -165,13 +131,14 @@ impl BillingProvider for CoinbaseCommerceProvider {
             .unwrap_or("default")
             .to_string();
 
-        let event_type = event["type"].as_str().unwrap_or("charge:confirmed");
-        let status = if event_type.contains("confirmed") || event_type.contains("resolved") {
-            SubscriptionStatus::Active
-        } else if event_type.contains("failed") {
-            SubscriptionStatus::Unpaid
-        } else {
-            SubscriptionStatus::Active
+        let status = match event["type"].as_str() {
+            Some("charge:confirmed" | "charge:resolved") => SubscriptionStatus::Active,
+            Some("charge:failed") => SubscriptionStatus::Unpaid,
+            _ => {
+                return Err(CapitalError::PayloadParseError(
+                    "Unsupported Coinbase event".into(),
+                ));
+            }
         };
 
         let ends_at = data["expires_at"]
@@ -200,6 +167,8 @@ impl BillingProvider for CoinbaseCommerceProvider {
             ));
         }
 
+        super::require_mock_operation(&self.api_key, self.name(), "create customer portal")?;
+
         Ok(format!(
             "https://commerce.coinbase.com/portal?email={}",
             url_encode(customer_email)
@@ -212,6 +181,8 @@ impl BillingProvider for CoinbaseCommerceProvider {
                 "Subscription ID cannot be empty".to_string(),
             ));
         }
+        super::require_mock_operation(&self.api_key, self.name(), "cancel subscription")?;
+
         Ok(())
     }
 

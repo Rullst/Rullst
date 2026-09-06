@@ -202,7 +202,12 @@ impl BillingProvider for PaddleProvider {
             .unwrap_or("")
             .to_string();
 
-        let status_str = data["status"].as_str().unwrap_or("active");
+        let status_str = data["status"]
+            .as_str()
+            .filter(|status| !status.trim().is_empty())
+            .ok_or_else(|| {
+                CapitalError::PayloadParseError("Webhook status is missing or invalid".into())
+            })?;
         let ends_at = data["current_billing_period"]["ends_at"]
             .as_str()
             .and_then(|s| {
@@ -231,6 +236,8 @@ impl BillingProvider for PaddleProvider {
                 "Customer email cannot be empty".to_string(),
             ));
         }
+
+        super::require_mock_operation(&self.api_key, self.name(), "create customer portal")?;
 
         Ok(format!(
             "https://paddle.com/portal?email={}",
@@ -297,6 +304,8 @@ impl BillingProvider for PaddleProvider {
                 "Subscription ID cannot be empty".to_string(),
             ));
         }
+        super::require_mock_operation(&self.api_key, self.name(), "report usage")?;
+
         Ok(())
     }
 

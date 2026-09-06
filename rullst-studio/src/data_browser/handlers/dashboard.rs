@@ -64,19 +64,19 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
     }
 
     let mut dash_content_str = String::from(
-        r##"<div class="p-8 font-mono space-y-8 max-w-7xl mx-auto overflow-y-auto">
+        r##"<div class="w-full p-4 sm:p-6 lg:p-8 font-mono space-y-6 lg:space-y-8 max-w-7xl mx-auto">
         <!-- Hero Header -->
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
-            <div class="flex items-center gap-4">
-                <div class="h-14 w-14 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 p-2" aria-hidden="true">R</div>
+            <div class="flex items-start sm:items-center gap-4 min-w-0">
+                <div class="h-12 w-12 sm:h-14 sm:w-14 flex-shrink-0 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 p-2" aria-hidden="true">R</div>
                 <div>
-                    <h1 class="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+                    <h1 class="text-2xl sm:text-3xl leading-tight font-extrabold text-white tracking-tight flex items-center gap-3">
                         <span>Rullst Studio Control Center</span>
                     </h1>
                     <p class="text-slate-400 text-sm mt-1">Full-Stack Developer Hub — Database Inspector, AI Sentinel, Security Radar & Telemetry</p>
                 </div>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-3">
                 <span class="px-3.5 py-1.5 bg-slate-900 border border-slate-800 rounded-full text-xs font-semibold text-slate-300 flex items-center gap-2 shadow-inner">
                     <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
                     <span>Supported mode: loopback</span>
@@ -88,7 +88,7 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
         </div>
 
         <!-- Top Metric KPI Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
             <div class="p-5 bg-slate-900/90 border border-slate-800 rounded-xl shadow-md">
                 <div class="text-slate-500 text-xs uppercase font-bold tracking-wider">Database Engine</div>
                 <div class="text-2xl font-bold text-sky-400 mt-1 uppercase">"##,
@@ -117,8 +117,8 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
         </div>
 
         <!-- Security Protection Banner -->
-        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-xl flex flex-col items-start sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-start gap-3">
                 <span class="text-amber-400 text-xl">🛡️</span>
                 <div>
                     <h4 class="text-xs font-bold text-amber-400 uppercase tracking-wider">Studio Security & Auth Protection</h4>
@@ -135,7 +135,7 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
             <h2 class="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
                 <span>⚡ Studio Tools Hub</span>
             </h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
                 <a href="#" hx-get="/studio/migrations" hx-target="#studio-content" hx-push-url="true" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-purple-500/80 hover:bg-slate-900 transition-all group block">
                     <div class="text-purple-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
                         <span>🛠️ Database Tools & Migrations</span>
@@ -203,12 +203,7 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
     dash_content_str.push_str("</div></div></div>");
 
     if is_htmx {
-        Html(format!(
-            "{}{}",
-            dash_content_str,
-            render_sidebar_oob(&tables, None)
-        ))
-        .into_response()
+        Html(dash_content_str).into_response()
     } else {
         Html(studio_layout(dash_content_str, None, &tables)).into_response()
     }

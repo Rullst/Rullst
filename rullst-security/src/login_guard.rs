@@ -24,6 +24,7 @@ pub struct LoginGuard {
     /// Maximum identities retained in either in-memory map.
     pub max_identities: usize,
     last_cleanup: Mutex<Instant>,
+    transitions: Mutex<()>,
 }
 
 impl Default for LoginGuard {
@@ -36,6 +37,7 @@ impl Default for LoginGuard {
             window_duration: Duration::from_secs(600), // 10 minutes
             max_identities: 100_000,
             last_cleanup: Mutex::new(Instant::now()),
+            transitions: Mutex::new(()),
         }
     }
 }
@@ -53,14 +55,20 @@ impl LoginGuard {
 
     /// Checks if a client IP or user identity is currently jailed.
     pub fn is_jailed(&self, identity: &str) -> bool {
+        let Ok(_transition) = self.transitions.lock() else {
+            return true;
+        };
         self.cleanup_if_due();
-        let identity_key = identity_key(identity);
-        if let Some(exp) = self.jails.get(&identity_key) {
+        self.is_jailed_key(&identity_key(identity))
+    }
+
+    fn is_jailed_key(&self, identity_key: &str) -> bool {
+        if let Some(exp) = self.jails.get(identity_key) {
             if Instant::now() < *exp {
                 return true;
             } else {
                 drop(exp);
-                self.jails.remove(&identity_key);
+                self.jails.remove(identity_key);
             }
         }
         false
@@ -68,6 +76,9 @@ impl LoginGuard {
 
     /// Returns the remaining jail duration for an identity, if jailed.
     pub fn remaining_jail_time(&self, identity: &str) -> Option<Duration> {
+        let Ok(_transition) = self.transitions.lock() else {
+            return Some(Duration::from_secs(5));
+        };
         self.cleanup_if_due();
         let identity_key = identity_key(identity);
         if let Some(exp) = self.jails.get(&identity_key) {
@@ -84,12 +95,15 @@ impl LoginGuard {
 
     /// Records a failed authentication attempt. Returns the progressive tarpit delay duration.
     pub fn record_login_failure(&self, identity: &str) -> Duration {
+        let Ok(_transition) = self.transitions.lock() else {
+            return Duration::from_secs(5);
+        };
         self.cleanup_if_due();
         let now = Instant::now();
         let identity_key = identity_key(identity);
 
         // Check if already jailed
-        if self.is_jailed(identity) {
+        if self.is_jailed_key(&identity_key) {
             return Duration::from_secs(5);
         }
 
@@ -160,6 +174,9 @@ impl LoginGuard {
 
     /// Records a successful authentication, resetting the failure history.
     pub fn record_login_success(&self, identity: &str) {
+        let Ok(_transition) = self.transitions.lock() else {
+            return;
+        };
         let identity_key = identity_key(identity);
         self.failures.remove(&identity_key);
         self.jails.remove(&identity_key);
@@ -212,6 +229,32 @@ fn bounded_identity_for_log(identity: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn concurrent_identity_admission_preserves_the_failure_and_jail_limits() {
+        for max_failures in [1, 5] {
+            for _ in 0..16 {
+                let guard = LoginGuard {
+                    max_identities: 1,
+                    max_failures,
+                    ..LoginGuard::default()
+                };
+                let barrier = std::sync::Barrier::new(16);
+                std::thread::scope(|scope| {
+                    for index in 0..16 {
+                        let guard = &guard;
+                        let barrier = &barrier;
+                        scope.spawn(move || {
+                            barrier.wait();
+                            guard.record_login_failure(&format!("concurrent-{index}"));
+                        });
+                    }
+                });
+                assert!(guard.failures.len() <= 1);
+                assert!(guard.jails.len() <= 1);
+            }
+        }
+    }
 
     #[test]
     // TM-AUTH-07: repeated failures receive bounded delay and temporary jailing.

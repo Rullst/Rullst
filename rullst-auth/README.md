@@ -60,6 +60,8 @@ device registry: registration quotas, listing/renaming/revocation, restart-safe
 public credentials and optimistic counter CAS are shared by processes using the
 same SQLite file. `finish_authenticate` verifies the ES256 ceremony first and
 then atomically advances the stored counter; a concurrent stale update fails.
+Multi-statement SQLite mutations use cancellation-safe transactions: dropping
+an unfinished registration rolls it back before the pooled connection is reused.
 Revoked entries remain visible in device inventory and continue to count toward
 the configured quota so revocation history is not silently recycled.
 
@@ -77,9 +79,13 @@ scope policy, and `kid`-based key rotation. Every verification receives a
 `JwtRevocationStore`. Production policies reject the bundled bounded in-memory
 store because it is process-local.
 
+Token expiration is an exclusive deadline: verification rejects `now >= exp`,
+including when clock skew is configured. Skew only tolerates a future `iat` or
+`nbf`; it cannot revive an expired token after its revocation entry is pruned.
+
 With `sqlite`, `SqliteJwtRevocationStore` persists token IDs and monotonic
 subject session versions behind a stored entry quota. Mutations serialize with
-`BEGIN IMMEDIATE`, expired token rows are pruned before capacity checks, and
+`BEGIN IMMEDIATE` in cancellation-safe transactions, expired token rows are pruned before capacity checks, and
 `ApplicationJwtPolicy::verify_async` reads the shared state:
 
 ```rust,no_run

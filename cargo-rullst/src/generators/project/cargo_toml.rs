@@ -102,7 +102,7 @@ pub fn build_cargo_toml(
     }
 
     rullst_features.push("studio");
-    if blueprint_selection != BLANK_BLUEPRINT_ID || db_needed {
+    if blueprint_selection != BLANK_BLUEPRINT_ID {
         rullst_features.push("nexus");
     }
     if matches!(blueprint_selection, LMS_BLUEPRINT_ID | SAAS_BLUEPRINT_ID) {
@@ -128,7 +128,8 @@ pub fn build_cargo_toml(
             r#"[package]
 name = "{package_name}"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.96.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -141,7 +142,8 @@ crate-type = ["cdylib", "rlib"]
             r#"[package]
 name = "{package_name}"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.96.0"
 
 [dependencies]
 "#
@@ -322,6 +324,26 @@ mod tests {
     }
 
     #[test]
+    fn blank_database_project_does_not_compile_an_unmounted_nexus() {
+        let blank = build_cargo_toml(
+            "blank-db",
+            false,
+            true,
+            "Sqlite",
+            &[],
+            false,
+            false,
+            BLANK_BLUEPRINT_ID,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("Blank database manifest");
+
+        assert!(blank.contains("\"studio\""));
+        assert!(!blank.contains("\"nexus\""));
+    }
+
+    #[test]
     fn registry_dependencies_preserve_the_cli_prerelease_version() {
         let root = isolated_root();
         for crate_name in [
@@ -455,6 +477,49 @@ mod tests {
         assert!(manifest.contains("features = [\"turso\"]"));
         assert!(manifest.contains("dotenvy = \"0.15\""));
         assert!(!manifest.lines().any(|line| line.starts_with("sqlx = ")));
+    }
+
+    #[test]
+    fn relational_hot_reload_does_not_add_a_duplicate_database_bootstrap_dependency() {
+        let manifest = build_cargo_toml(
+            "hot-sqlite-app",
+            true,
+            true,
+            "Sqlite",
+            &[],
+            false,
+            false,
+            BLANK_BLUEPRINT_ID,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("hot SQLite manifest");
+
+        assert!(!manifest.contains("dotenvy = \"0.15\""));
+        assert!(manifest.contains("edition = \"2024\""));
+    }
+
+    #[test]
+    fn generated_projects_use_the_frameworks_rust_edition() {
+        for hot_reload in [false, true] {
+            let manifest = build_cargo_toml(
+                "edition-app",
+                hot_reload,
+                false,
+                "Sqlite",
+                &[],
+                false,
+                false,
+                BLANK_BLUEPRINT_ID,
+                "Zero-Bundle HTMX",
+                &isolated_root(),
+            )
+            .expect("generated manifest");
+
+            assert!(manifest.contains("edition = \"2024\""));
+            assert!(manifest.contains("rust-version = \"1.96.0\""));
+            assert!(!manifest.contains("edition = \"2021\""));
+        }
     }
 
     #[test]

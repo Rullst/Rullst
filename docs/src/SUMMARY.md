@@ -1,9 +1,12 @@
 # Summary
 
 - [Welcome to Rullst](index.md)
+- [Start Here: Your First Idea in Rust](start-here.md)
 - [Why Rullst?](why-Rullst.md)
 - [Simple Capability Status](capability-status.md)
 - [Per-Commit Quality Scorecard](quality-scorecard.md)
+- [v12 Release Audit Follow-up](v12-release-audit.md)
+- [Website Maintenance & Privacy Boundaries](website-maintenance.md)
 - [Rullst Academy Product Programme](rullst-academy.md)
 - [💡 The Rullst Philosophy](philosophy.md)
 
@@ -79,7 +82,7 @@
 - [48. Signed Local OIDC Testing](tutorials/48-local-oidc-testing.md)
 - [49. Bounded Brokered Messaging](tutorials/49-brokered-messaging.md)
 - [50. Auditable Revisions](tutorials/50-auditable-revisions.md)
-- [51. Authenticated Development Hot Reload](tutorials/51-authenticated-hot-reload.md)
+- [51. Supervised Development Auto-Reload](tutorials/51-authenticated-hot-reload.md)
 - [52. Typed Server Functions](tutorials/52-typed-server-functions.md)
 
 # Reference

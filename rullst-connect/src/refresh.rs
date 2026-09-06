@@ -18,7 +18,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 
 const MAX_TOKEN_BYTES: usize = 64 * 1024;
-const MAX_TOKEN_LIFETIME_SECONDS: u64 = 366 * 24 * 60 * 60;
+pub(crate) const MAX_TOKEN_LIFETIME_SECONDS: u64 = 366 * 24 * 60 * 60;
 const MAX_REFRESH_LEEWAY_SECONDS: u64 = 60 * 60;
 const DEFAULT_REFRESH_LEEWAY_SECONDS: u64 = 60;
 

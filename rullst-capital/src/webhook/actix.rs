@@ -77,6 +77,18 @@ async fn verify_webhook_actix_inner<B>(
 where
     B: MessageBody + 'static,
 {
+    if ["webhook-id", "webhook-timestamp", "webhook-signature"]
+        .iter()
+        .any(|name| {
+            req.headers()
+                .iter()
+                .filter(|(key, _)| key.as_str() == *name)
+                .count()
+                > 1
+        })
+    {
+        return Ok(reject(req, StatusCode::BAD_REQUEST));
+    }
     let mut payload = req.take_payload();
     let mut body = web::BytesMut::new();
     while let Some(chunk) = payload.next().await {

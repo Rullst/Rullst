@@ -46,6 +46,7 @@ serde_json = { workspace = true }
 semver = "1.0.28"
 toml_edit = "0.25.13"
 toml = { workspace = true }
+dotenvy = { workspace = true }
 thiserror = { workspace = true }
 walkdir = "2.5.0"
 axum = { workspace = true, features = ["ws"] }

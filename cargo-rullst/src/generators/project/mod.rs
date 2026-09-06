@@ -28,8 +28,6 @@ pub struct ProjectScaffoldOptions {
     pub qdrant: bool,
     pub database: Option<&'static str>,
     pub no_database: bool,
-    pub orm_pattern: Option<&'static str>,
-    pub frontend_engine: Option<&'static str>,
     pub hot_reload: bool,
     pub wants_ai: bool,
     pub wants_redis: bool,
@@ -367,6 +365,25 @@ pub(crate) fn create_new_project_with_cli_options(
             .green()
             .bold()
     );
+    let generated_application_profile = if wizard_opts.api {
+        "Headless JSON API"
+    } else {
+        "Zero-Bundle HTMX (html! SSR)"
+    };
+    println!(
+        "{}",
+        format!("  v12 application profile: {generated_application_profile}")
+            .white()
+            .dimmed()
+    );
+    if db_needed {
+        println!(
+            "{}",
+            format!("  v12 ORM profile: {}", wizard_opts.orm_pattern)
+                .white()
+                .dimmed()
+        );
+    }
     println!("{}", "How to run:".magenta());
     println!("{}", format!("  cd {path:?}").cyan());
     println!("{}", "  Then, choose your experience:".white().dimmed());
@@ -377,6 +394,14 @@ pub(crate) fn create_new_project_with_cli_options(
             .bold()
     );
     println!("{}", "    cargo rullst dev   (standard output)".white());
+    if blueprint_selection == BLANK_BLUEPRINT_ID {
+        println!(
+            "{}",
+            "  Nexus CMS: not included in the minimal Blank starter. CMS-backed blueprints configure it explicitly."
+                .white()
+                .dimmed()
+        );
+    }
 
     Ok(())
 }
@@ -410,8 +435,6 @@ pub fn create_new_project(
             qdrant: false,
             database: None,
             no_database: false,
-            orm_pattern: None,
-            frontend_engine: None,
             hot_reload: false,
             wants_ai: false,
             wants_redis: false,

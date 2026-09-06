@@ -166,10 +166,71 @@ fn parse_soft_delete(meta: &ParseNestedMeta<'_>) -> Result<SoftDeleteConfig, syn
 
 fn bounded_sql_fragment(meta: &ParseNestedMeta<'_>) -> Result<String, syn::Error> {
     let value = string_value(meta)?;
-    if value.len() > 128 || value.contains([';', '\0']) || value.contains("--") {
+    if value.len() > 128
+        || value.contains([';', '\0', '#'])
+        || value.contains("--")
+        || value.contains("/*")
+        || value.contains("*/")
+    {
         return Err(meta.error(
             "soft-delete SQL fragments are limited to 128 bytes and cannot contain separators or comments",
         ));
     }
     Ok(value)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn persisted_column_names_must_match_the_portable_sql_grammar() {
+        for column in ["r#type".to_string(), "café".to_string(), "a".repeat(65)] {
+            let identifier =
+                syn::parse_str::<syn::Ident>(&column).expect("valid Rust field identifier");
+            let input: syn::DeriveInput = syn::parse_quote! {
+                struct Record { id: i32, #identifier: String }
+            };
+            assert!(
+                crate::parser::parse(&input).is_err(),
+                "accepted non-portable column: {column}"
+            );
+        }
+    }
+
+    #[test]
+    fn soft_delete_fragments_reject_every_supported_dialect_comment() {
+        for fragment in [
+            "0 /*",
+            "0 /* hidden */",
+            "0 */",
+            "0 # trailing",
+            "0 -- trailing",
+        ] {
+            for option in ["value", "delval"] {
+                let option = syn::Ident::new(option, proc_macro2::Span::call_site());
+                let input: syn::DeriveInput = syn::parse_quote! {
+                    #[orm(soft_delete(#option = #fragment))]
+                    struct Record { id: i32, deleted_at: Option<String> }
+                };
+                assert!(
+                    crate::parser::parse(&input).is_err(),
+                    "accepted SQL comment: {fragment}"
+                );
+            }
+        }
+        for fragment in [
+            "0",
+            "NULL",
+            "CURRENT_TIMESTAMP",
+            "strftime('%Y-%m-%d', 'now')",
+        ] {
+            let input: syn::DeriveInput = syn::parse_quote! {
+                #[orm(soft_delete(delval = #fragment))]
+                struct Record { id: i32, deleted_at: Option<String> }
+            };
+            assert!(
+                crate::parser::parse(&input).is_ok(),
+                "rejected bounded expression: {fragment}"
+            );
+        }
+    }
 }

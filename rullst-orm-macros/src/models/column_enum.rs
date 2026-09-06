@@ -8,7 +8,7 @@ pub fn generate_column_enum(parsed: &ParsedModel) -> TokenStream {
     let normal_fields = &parsed.normal_fields;
     let column_enum_name = quote::format_ident!("{}Column", name);
 
-    let column_variants: Vec<_> = normal_fields
+    let column_variants: Result<Vec<_>, _> = normal_fields
         .iter()
         .map(|ident| {
             let name_str = ident.to_string();
@@ -27,9 +27,16 @@ pub fn generate_column_enum(parsed: &ParsedModel) -> TokenStream {
                     }
                 })
                 .collect();
-            quote::format_ident!("{}", camel)
+            syn::parse_str::<syn::Ident>(&camel).map_err(|_| syn::Error::new(
+                ident.span(),
+                "column name must produce a valid Rust column-enum variant; use a descriptive alphabetic field name",
+            ))
         })
         .collect();
+    let column_variants = match column_variants {
+        Ok(variants) => variants,
+        Err(error) => return error.to_compile_error(),
+    };
 
     let column_to_string: Vec<_> = normal_fields
         .iter()
@@ -51,6 +58,22 @@ pub fn generate_column_enum(parsed: &ParsedModel) -> TokenStream {
                     #(#column_to_string),*
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn unusual_portable_fields_report_compile_errors_instead_of_panicking() {
+        for field in ["__", "_1"] {
+            let field = syn::Ident::new(field, proc_macro2::Span::call_site());
+            let input: syn::DeriveInput = syn::parse_quote! {
+                struct Record { id: i32, #field: String }
+            };
+            let parsed = crate::parser::parse(&input).expect("portable SQL field");
+            let generated = super::generate_column_enum(&parsed);
+            assert!(generated.to_string().contains("compile_error"));
         }
     }
 }

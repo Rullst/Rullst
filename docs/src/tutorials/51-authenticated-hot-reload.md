@@ -1,137 +1,129 @@
-# Authenticated Development Hot Reload
+# Supervised Development Auto-Reload
 
-Rullst v12 offers an explicit hot-reload profile for local debug development.
-It rebuilds an application dynamic library, atomically replaces the serving
-router after a successful build, and refreshes connected browsers. It is
-designed to fail closed and to describe its measured behavior honestly.
+> Release-audit follow-up: the implementation and final workspace validation are
+> still in progress. See the [audit evidence](../v12-release-audit.md); this
+> tutorial is not a claim that the current branch is already release-ready.
 
-## Generate the explicit profile
+Rullst v12's development command rebuilds and restarts a directly linked
+application. This keeps Tokio, ORM pools, sessions and other process globals in
+one runtime. It replaces the advertised DLL-swap profile after Windows/LMS
+testing exposed an uninitialized ORM in the loaded library.
 
-Choose hot reload in the interactive project wizard, or pin it in a
-deterministic scaffold:
+## Run the development loop
+
+Generate a normal application and use either development command:
 
 ```bash
 cargo rullst new learning-app --default --blueprint blank \
-  --database sqlite --hot-reload --skip-initial-migration
+  --database sqlite --skip-initial-migration
 cd learning-app
 cargo rullst dev
-```
-
-`--hot-reload` adds a `cdylib`/`rlib` library target and the explicit
-`rullst_router_init` development boundary. The CLI checks for both before
-activating swaps. A project without that profile still starts normally, but the
-CLI reports that source swapping is disabled.
-
-Use the interactive control surface instead when you want bounded log panes,
-status probes, search, filtering, and shortcuts:
-
-```bash
+# Or, in an interactive terminal:
 cargo rullst dash
 ```
 
-## What happens after a save
+There is no hot-reload question in the v12 wizard. Both commands supervise
+reloads automatically; use `cargo run` for ordinary execution.
+
+## What a save does
 
 ```mermaid
 flowchart LR
-    A[notify paths] --> B[150 ms coalescing]
-    B --> C[cargo build --lib]
-    C -->|failure| D[keep current router]
-    C -->|success| E[authenticated loopback POST]
-    E --> F[serialized router swap]
-    F --> G[WebSocket UI_UPDATE]
-    G --> H[full-page browser refresh]
+    A[Save source or assets] --> B[Coalesce changes]
+    B --> C[Compile executable]
+    C -->|Failure| D[Keep current application and show diagnostic]
+    C -->|Success| E[Snapshot new executable]
+    E -->|Failure| D
+    E -->|Success| F[Stop owned child and start replacement]
+    F --> G[Verify process generation over HTTP]
+    G --> H[Browser refresh]
 ```
 
-The AST comparison distinguishes a view-only edit from other Rust changes for
-the diagnostic message. Both paths still perform a real incremental Rust build;
-Rullst does not describe view edits as compilation-free.
+The watcher observes source, static assets, templates and manifest/configuration
+files, including atomic editor renames. It excludes build outputs, Git data and
+runtime database/log files. Events while a build is running remain pending for
+a later rebuild. Saving CSS also triggers this conservative rebuild/restart
+path; no compilation-free claim is made.
 
-The CLI prints the observed build-plus-swap duration. Warm incremental builds
-are normally faster than cold builds, but the result depends on the crate graph,
-linker, cache, toolchain, host, and code change. There is no universal
-sub-millisecond guarantee.
+Initial migrations run before the first start when the generated migration
+directory exists. Later migrations are explicit: use the dashboard migration
+action or `cargo rullst db:migrate`. The dashboard queues migrations through the
+supervisor, using its current executable snapshot with bounded output and
+cancellation cleanup; the action is serialized with rebuilds. It does not compile
+an unsaved or unbuilt migration into that snapshot. Restarting a process does
+not apply arbitrary database-schema changes safely.
 
-## Failure behavior
+## Failure and state boundaries
 
 | Event | Behavior |
-|---|---|
-| Rust compilation fails | The bounded compiler diagnostic is shown and the prior router keeps serving. |
-| Reload endpoint returns non-2xx | No browser refresh is broadcast; the prior router remains active. |
-| Reload request exceeds five seconds | The attempt fails and is reported without claiming success. |
-| Two saves arrive together | Paths are merged, deduplicated, and compiled as one candidate generation. |
-| A swap is already running | The next authenticated swap waits on the reload lock. |
-| 64 library handles are retained | Further swaps return `503`; restart the development command to release them. |
+| --- | --- |
+| Compiler error | Keep the current process running; retain bounded diagnostics. |
+| Snapshot copy/create error | Keep the current process running and report the failure before stopping anything. |
+| Successful build | Snapshot the executable, stop the owned child, start the replacement. |
+| Replacement cannot spawn | Attempt to restart the prior executable snapshot and report the error. |
+| Replacement exits during startup | Report the exit; save a correction to rebuild and retry. |
+| Readiness cannot be verified in 15 seconds | Report the limitation; do not claim successful readiness. |
+| Dashboard exit / Ctrl+C | Cancel owned build/migration work and terminate/reap the application, subject to the Windows descendant limitation below. |
+| Configured port changes | Restart the CLI so its dashboard/readiness target follows the new port. |
 
-Old library handles are deliberately retained because an in-flight request can
-still be executing their code. Unloading such code would be unsafe. The finite
-generation ceiling bounds this development trade-off.
+The old binary is copied before execution so Windows does not lock Cargo's
+output during the next build. Cleanup targets only the snapshot created by
+this supervisor. On Unix the child receives a two-second shutdown interval,
+followed by termination of its owned process group if needed; group cleanup
+precedes reaping the leader. Windows uses best-effort tree termination: without
+Job Objects it cannot guarantee cleanup of orphan descendants after their
+parent has exited, and it does not promise graceful request drain.
 
-## Local security boundary
+All process-local state resets, including in-memory sessions/queues/caches.
+Persist important state explicitly. In-flight requests may be interrupted.
+This is a local development loop, not zero-downtime production deployment.
 
-At startup, the CLI creates a fresh 64-character hexadecimal token (256 bits)
-and passes it only to the child application through `RULLST_HMR_TOKEN`. The
-internal swap route requires that token in `x-rullst-hmr-token` and compares it
-in constant time. Missing, malformed, or incorrect tokens receive `403`.
+## Browser and security boundary
 
-The browser-notification WebSocket shares the application's origin and port, so
-the default `connect-src 'self'` policy permits it without a CSP exception. A
-development server binds to loopback by default; explicitly overriding its host
-also exposes this notification-only channel wherever the application listens.
-Its client script is served by the application with `Cache-Control: no-store`;
-hot reload does not fetch Morphdom or another runtime from a CDN. The browser
-channel can request only a page refresh—it cannot load a library or authorize a
-swap.
+The debug/development server serves a local reload script and an opaque
+generation marker under `/_rullst/dev-*`. The script polls the same origin
+and refreshes only after a different valid generation responds. Readiness
+checks match the child generation rather than trusting any service on the port.
+The marker is not a secret or an authentication credential. These endpoints
+cannot instruct the server to compile, launch a process, or swap a library.
 
-HTML with a known body size up to 10 MiB receives the development client.
-Streaming HTML and responses declared above that bounded injection limit pass
-through unchanged, so those pages do not receive automatic browser refresh.
+Eligible full-document, known-size, uncompressed HTML up to 10 MiB receives the
+script and a nonce seeded before inner header middleware. HTMX partial requests,
+streaming/larger/compressed responses pass through without injection. A browser
+singleton prevents duplicate pollers, and changed HTML is marked no-store.
+Polling has a request timeout and bounded retry delay. Browser refresh loses
+unsaved DOM-only state. Custom routers that do not use the Rullst Server
+development composition may need manual browser refresh.
 
-Never expose or reuse `RULLST_HMR_TOKEN`, and never enable this development
-boundary in production. Rullst Core also rejects hot reload outside a debug
-build and a development-capable environment.
+Production/release builds do not mount this browser surface. Keep development
+servers on loopback and do not override their host for an untrusted network.
+The current supervisor probes `127.0.0.1` and the configured port; custom `HOST`
+or `RULLST_HOST` bindings, including IPv6-only loopback, are not equivalent
+verified-readiness configurations. Keep the default host and restart the CLI
+after changing its port configuration.
 
-## State and ABI limitations
+## Existing DLL scaffolds and the v13 decision
 
-The swap preserves in-flight request safety; it does not promise to migrate
-arbitrary application state into the new router. Process-global resources and
-external services remain application responsibilities. The browser performs a
-full-page refresh, so unsaved DOM-only state is not preserved unless the
-application persists it explicitly.
+The v12 CLI rejects the old `--hot-reload` generation flag and removes
+`HOT_RELOAD` when it launches a child, so old generated projects use their
+directly linked router unless their application reloads that variable itself.
+Remove legacy `HOT_RELOAD` entries from `.env` as well: application-owned dotenv
+loading can otherwise restore them. Regenerate fresh projects for release acceptance;
+already edited application code may need application-specific migration.
 
-The dynamic entry point uses Rust types and must be built by a compatible Rullst
-and Rust toolchain. It is a first-party development mechanism, not a stable C
-ABI or a general third-party plugin system.
+The existing library loader is retained only as a legacy experimental boundary.
+Passing Rust, Axum, Tokio or SQLx objects across a library ABI does not provide a
+stable interoperability contract. Do not reintroduce cross-library ORM pools.
 
-## Troubleshooting
+For v13, compare supervised restart with any proposed replacement using real
+blueprints and databases on Windows, Linux and macOS. Measure cold/warm reload
+time, failed-build recovery, cancellation, memory growth, process cleanup and
+state ownership. Restore DLL swapping only if its safety requirements can be
+established and it offers a measured practical benefit; keeping supervised
+restart remains a valid v13 outcome.
 
-- **“source swapping is disabled”**: the project lacks either the `cdylib`
-  target or `rullst_router_init`; regenerate an appropriate starter with
-  `--hot-reload` rather than hand-editing only one half of the contract.
-- **browser does not refresh**: confirm the page can open the same-origin
-  `/_rullst_hmr` WebSocket and that a proxy forwards WebSocket upgrades. No
-  second development port is required.
-- **reload returns `403`**: start the application through `cargo rullst dev` or
-  `cargo rullst dash`. Manual calls do not receive the private session token.
-- **reload returns `503` after many edits**: restart the development command to
-  release retained library generations.
-- **dynamic-library load error after a toolchain change**: stop the development
-  process and rebuild the application with one consistent Rust/Rullst toolchain.
-  Do not copy a library built by another toolchain into the target directory.
+## Terminal accessibility
 
-## Motion and terminal accessibility
-
-The hot-reload semantics are identical in `dev` and `dash`. Dashboard animation
-can be disabled while retaining color:
-
-```bash
-RULLST_REDUCED_MOTION=1 cargo rullst dash
-```
-
-For a static color-free terminal, use:
-
-```bash
-NO_COLOR=1 cargo rullst dash
-```
-
-For CI or redirected output, use `cargo rullst dev`; the full-screen dashboard
-requires an interactive terminal.
+Use `RULLST_REDUCED_MOTION=1 cargo rullst dash` for static rendering with
+colors, or `NO_COLOR=1 cargo rullst dash` for static color-free output.
+Use `cargo rullst dev` with redirected/non-interactive output.

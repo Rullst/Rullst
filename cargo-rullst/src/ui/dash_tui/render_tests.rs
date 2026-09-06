@@ -1,12 +1,61 @@
-#[cfg(unix)]
-use super::update_child_status;
 use super::{
-    LogMsg, bounded_text, database_profile_from_env, exit_status, handle_key, handle_log_message,
-    probe_port, render, send_action_output,
+    LogMsg, database_profile_from_env, exit_status, handle_log_message, probe_port, render,
     state::{App, FocusPane, LogFilter, LogLevel, ServerStatus},
 };
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{Terminal, backend::TestBackend};
+
+fn handle_key(key: KeyEvent, app: &mut App, logs: &tokio::sync::mpsc::Sender<LogMsg>) -> bool {
+    let (commands, _rx) = tokio::sync::mpsc::channel(1);
+    super::handle_key(key, app, logs, &commands)
+}
+
+#[test]
+fn migration_is_a_single_supervisor_command_and_unverified_status_is_not_ready() {
+    use crate::generators::dev::{DevCommand, DevStatus};
+    let (logs, _log_rx) = tokio::sync::mpsc::channel(8);
+    let (commands, mut rx) = tokio::sync::mpsc::channel(1);
+    let mut app = App::new(3000, true, "SQLite".into(), false, false);
+    for _ in 0..2 {
+        assert!(!super::handle_key(
+            KeyEvent::new(KeyCode::Char('m'), KeyModifiers::NONE),
+            &mut app,
+            &logs,
+            &commands
+        ));
+    }
+    assert!(matches!(rx.try_recv(), Ok(DevCommand::Migrate)));
+    assert!(rx.try_recv().is_err());
+    assert!(app.migration_running);
+    app.server_status = super::supervisor_status(DevStatus::Unverified);
+    assert_eq!(app.server_status, ServerStatus::Unverified);
+    assert!(rendered(&app, 104, 30).contains("UNVERIFIED"));
+    assert_eq!(
+        super::supervisor_status(DevStatus::Ready),
+        ServerStatus::Ready
+    );
+    assert_eq!(
+        super::supervisor_status(DevStatus::Starting),
+        ServerStatus::Starting
+    );
+}
+
+#[tokio::test]
+async fn non_interactive_dashboard_fails_with_actionable_guidance() {
+    let (_log_tx, log_rx) = tokio::sync::mpsc::channel(1);
+    let (log_tx, _logs) = tokio::sync::mpsc::channel(1);
+    let (_status_tx, status_rx) =
+        tokio::sync::watch::channel(crate::generators::dev::DevStatus::Starting);
+    let (commands, _command_rx) = tokio::sync::mpsc::channel(1);
+    let error = super::run(log_rx, log_tx, 3_000, true, status_rx, commands)
+        .await
+        .expect_err("the test process has no interactive stdout");
+    assert!(
+        error
+            .to_string()
+            .contains("requires an interactive terminal")
+    );
+}
 
 fn rendered(app: &App, width: u16, height: u16) -> String {
     let backend = TestBackend::new(width, height);
@@ -47,7 +96,7 @@ fn wide_dashboard_renders_live_state_logs_search_and_inspector() {
         "RULLST",
         "DEV CONTROL",
         "READY",
-        "HMR ACTIVE",
+        "AUTO-RELOAD",
         "request warning",
         "request failed",
         "VERIFIED PROJECT STATE",
@@ -73,7 +122,7 @@ fn compact_dashboard_renders_no_color_static_and_exit_states() {
 
     let stopped = rendered(&app, 80, 26);
     assert!(stopped.contains("EXITED (0)"));
-    assert!(stopped.contains("HMR DISABLED"));
+    assert!(stopped.contains("RELOAD OFF"));
     assert!(stopped.contains("server stopped"));
 
     app.server_status = ServerStatus::Exited {
@@ -84,6 +133,28 @@ fn compact_dashboard_renders_no_color_static_and_exit_states() {
     let failed = rendered(&app, 104, 30);
     assert!(failed.contains("FAILED (signal)"));
     assert!(failed.contains("type to filter both log panes"));
+}
+
+#[test]
+fn docs_shortcut_feedback_stays_visible_when_system_logs_are_full() {
+    let (log_tx, _log_rx) = tokio::sync::mpsc::channel(8);
+    let mut app = App::new(3_000, true, "configured: SQLite".to_string(), true, true);
+    for index in 0..5 {
+        app.push_system(format!(
+            "Earlier system event {index} contains enough detail to wrap across the compact dashboard panel."
+        ));
+    }
+
+    assert!(!handle_key(
+        KeyEvent::new(KeyCode::Char('d'), KeyModifiers::NONE),
+        &mut app,
+        &log_tx
+    ));
+
+    let output = rendered(&app, 104, 22);
+    assert!(output.contains("API docs unavailable"));
+    assert!(output.contains("make:scalar"));
+    assert!(app.action_notice.is_some());
 }
 
 #[test]
@@ -147,7 +218,7 @@ fn log_messages_and_keyboard_navigation_update_only_bounded_state() {
     assert!(
         app.system_logs()
             .iter()
-            .any(|line| line.contains("not scaffolded"))
+            .any(|line| line.contains("API docs unavailable") && line.contains("make:scalar"))
     );
     assert!(handle_key(
         KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE),
@@ -159,8 +230,79 @@ fn log_messages_and_keyboard_navigation_update_only_bounded_state() {
     assert!(app.system_logs().is_empty());
 }
 
+#[test]
+fn busy_migration_search_and_clear_shortcuts_remain_bounded() {
+    let (log_tx, _log_rx) = tokio::sync::mpsc::channel(8);
+    let (commands, command_rx) = tokio::sync::mpsc::channel(1);
+    drop(command_rx);
+    let mut app = App::new(3_000, true, "configured: SQLite".to_string(), true, true);
+    app.push_app(LogLevel::Info, "application log".to_string());
+
+    assert!(!super::handle_key(
+        KeyEvent::new(KeyCode::Char('m'), KeyModifiers::NONE),
+        &mut app,
+        &log_tx,
+        &commands,
+    ));
+    assert!(!app.migration_running);
+    assert!(
+        app.system_logs()
+            .iter()
+            .any(|line| line.contains("could not be queued"))
+    );
+
+    app.search_editing = true;
+    assert!(!super::handle_key(
+        KeyEvent::new(KeyCode::Left, KeyModifiers::NONE),
+        &mut app,
+        &log_tx,
+        &commands,
+    ));
+    assert!(app.search_editing);
+    assert!(!super::handle_key(
+        KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE),
+        &mut app,
+        &log_tx,
+        &commands,
+    ));
+    assert!(!app.search_editing);
+
+    assert!(!super::handle_key(
+        KeyEvent::new(KeyCode::Char('c'), KeyModifiers::NONE),
+        &mut app,
+        &log_tx,
+        &commands,
+    ));
+    assert!(app.app_logs().is_empty());
+    assert!(app.system_logs().is_empty());
+    assert!(!super::handle_key(
+        KeyEvent::new(KeyCode::F(12), KeyModifiers::NONE),
+        &mut app,
+        &log_tx,
+        &commands,
+    ));
+}
+
+#[test]
+fn platform_browser_command_and_motion_policy_are_explicit() {
+    let command = super::browser_command("https://example.invalid/docs")
+        .expect("supported desktop browser command");
+    #[cfg(all(unix, not(target_os = "macos")))]
+    assert_eq!(command.get_program(), "xdg-open");
+    #[cfg(target_os = "macos")]
+    assert_eq!(command.get_program(), "open");
+    #[cfg(target_os = "windows")]
+    assert_eq!(command.get_program(), "cmd");
+
+    assert!(!super::reduced_motion_value(None));
+    assert!(!super::reduced_motion_value(Some("0")));
+    for value in ["1", "TRUE", "Yes"] {
+        assert!(super::reduced_motion_value(Some(value)));
+    }
+}
+
 #[tokio::test]
-async fn probes_output_and_process_exit_paths_have_real_effects() {
+async fn probes_and_supervised_process_exit_paths_have_real_effects() {
     let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0))
         .await
         .expect("test listener");
@@ -172,30 +314,20 @@ async fn probes_output_and_process_exit_paths_have_real_effects() {
     // unrelated concurrent tests and local processes.
     assert!(!probe_port(0).await);
 
-    let (log_tx, mut log_rx) = tokio::sync::mpsc::channel(8);
-    send_action_output(&log_tx, b"first\nsecond\n", b"warning: third\n").await;
-    assert!(matches!(log_rx.recv().await, Some(LogMsg::AppStdout(line)) if line == "first"));
-    assert!(matches!(log_rx.recv().await, Some(LogMsg::AppStdout(line)) if line == "second"));
-    assert!(matches!(log_rx.recv().await, Some(LogMsg::AppStderr(line)) if line.contains("third")));
-    assert_eq!(bounded_text(&[b'x'; 5_000]).len(), 4_096);
-
     #[cfg(unix)]
     {
         let mut child = std::process::Command::new("/bin/sh")
             .args(["-c", "exit 7"])
             .spawn()
             .expect("short-lived child");
-        let _ = child.wait().expect("child exit");
-        let mut app = App::new(3_000, false, "not configured".to_string(), false, false);
-        update_child_status(&mut app, &mut child).expect("observe child exit");
+        let status = child.wait().expect("child exit");
         assert!(matches!(
-            app.server_status,
+            super::supervisor_status(crate::generators::dev::DevStatus::Exited(status)),
             ServerStatus::Exited {
                 success: false,
                 code: Some(7)
             }
         ));
-        update_child_status(&mut app, &mut child).expect("terminal state is stable");
     }
 
     #[cfg(unix)]

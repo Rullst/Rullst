@@ -55,7 +55,6 @@ impl BillingProvider for PicPayProvider {
         webhook_mode_from_secret(self.name(), &self.seller_token)
     }
 
-    #[cfg_attr(mutants, mutants::skip)]
     async fn create_checkout_session(
         &self,
         customer_email: &str,
@@ -73,10 +72,7 @@ impl BillingProvider for PicPayProvider {
             ));
         }
 
-        if self.picpay_token.is_empty()
-            || self.picpay_token.starts_with("mock_")
-            || self.picpay_token == "picpay_token"
-        {
+        if self.picpay_token.is_empty() || self.picpay_token.starts_with("mock_") {
             return Ok(format!(
                 "https://app.picpay.com/checkout/mock_session?email={}&plan={}&return_url={}",
                 url_encode(customer_email),
@@ -85,37 +81,9 @@ impl BillingProvider for PicPayProvider {
             ));
         }
 
-        let client = crate::providers::http_client()?;
-        let payload = serde_json::json!({
-            "referenceId": format!("sub_{}", plan_id),
-            "callbackUrl": redirect_url,
-            "returnUrl": redirect_url,
-            "value": 49.90,
-            "buyer": {
-                "email": customer_email,
-                "firstName": "Customer",
-                "lastName": "User"
-            }
-        });
-
-        let body: Value = crate::providers::send_http_json(
-            client
-                .post("https://appws.picpay.com/ecommerce/public/payments")
-                .header("x-picpay-token", &self.picpay_token)
-                .header("Content-Type", "application/json")
-                .json(&payload),
-            "picpay",
-            "create checkout",
-        )
-        .await?;
-
-        let url = body["paymentUrl"].as_str().ok_or_else(|| {
-            CapitalError::from(crate::ProviderFailure::contract_mismatch(
-                "picpay",
-                "create checkout",
-            ))
-        })?;
-        crate::providers::validate_checkout_url("picpay", url)
+        Err(CapitalError::UnsupportedOperation(
+            "picpay plan-only checkout has no reviewed authoritative pricing contract".into(),
+        ))
     }
 
     fn handle_webhook(
@@ -149,7 +117,12 @@ impl BillingProvider for PicPayProvider {
             .as_str()
             .unwrap_or("default")
             .to_string();
-        let status_str = json["status"].as_str().unwrap_or("paid");
+        let status_str = json["status"]
+            .as_str()
+            .filter(|status| !status.trim().is_empty())
+            .ok_or_else(|| {
+                CapitalError::PayloadParseError("Webhook status is missing or invalid".into())
+            })?;
 
         Ok(WebhookEvent {
             subscription_id,
@@ -172,6 +145,8 @@ impl BillingProvider for PicPayProvider {
             ));
         }
 
+        super::require_mock_operation(&self.picpay_token, self.name(), "create customer portal")?;
+
         Ok(format!(
             "https://picpay.com/portal?email={}",
             url_encode(customer_email)
@@ -184,6 +159,8 @@ impl BillingProvider for PicPayProvider {
                 "Subscription ID cannot be empty".to_string(),
             ));
         }
+        super::require_mock_operation(&self.picpay_token, self.name(), "cancel subscription")?;
+
         Ok(())
     }
 

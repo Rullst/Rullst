@@ -4,19 +4,19 @@ mod render_tests;
 mod state;
 mod terminal;
 
+use crate::generators::dev::{DevCommand, DevStatus};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{Terminal, backend::CrosstermBackend};
 use state::{App, LogLevel, ServerStatus};
 use std::{
     fs::File,
     io::{self, IsTerminal, Read},
-    process::{Child, Command, ExitStatus, Stdio},
-    time::{Duration, Instant},
+    process::{Command, ExitStatus, Stdio},
+    time::Duration,
 };
 use tokio::sync::mpsc::{Receiver, Sender};
 
 const ENV_READ_LIMIT: u64 = 64 * 1_024;
-const ACTION_OUTPUT_LIMIT: usize = 4 * 1_024;
 
 #[derive(Debug)]
 pub enum LogMsg {
@@ -27,12 +27,13 @@ pub enum LogMsg {
     StudioProbe { available: bool },
 }
 
-pub async fn run(
+pub(crate) async fn run(
     mut log_rx: Receiver<LogMsg>,
     log_tx: Sender<LogMsg>,
     port: u16,
     hmr_enabled: bool,
-    app_child: &mut Child,
+    mut process_status: tokio::sync::watch::Receiver<DevStatus>,
+    commands: Sender<DevCommand>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if !io::stdout().is_terminal() {
         return Err(io::Error::new(
@@ -48,6 +49,9 @@ pub async fn run(
     let (key_tx, mut key_rx) = tokio::sync::mpsc::channel(32);
     std::thread::spawn(move || {
         loop {
+            if key_tx.is_closed() {
+                break;
+            }
             if let Ok(true) = crossterm::event::poll(Duration::from_millis(150))
                 && let Ok(event) = crossterm::event::read()
                 && key_tx.blocking_send(event).is_err()
@@ -68,7 +72,7 @@ pub async fn run(
     );
     app.push_system("Dashboard ready; waiting for the application port.".to_string());
     app.push_system(if hmr_enabled {
-        "Hot reload uses the authenticated same-origin application channel.".to_string()
+        "Auto-reload rebuilds and restarts the owned application process.".to_string()
     } else {
         "Hot reload is disabled for this project profile.".to_string()
     });
@@ -79,9 +83,7 @@ pub async fn run(
         Duration::from_secs(1)
     };
     let mut ticker = tokio::time::interval(tick_duration);
-    let mut last_app_probe = Instant::now()
-        .checked_sub(Duration::from_secs(1))
-        .unwrap_or_else(Instant::now);
+    app.server_status = supervisor_status(*process_status.borrow_and_update());
 
     loop {
         terminal.draw(|frame| render::ui(frame, &app))?;
@@ -89,18 +91,10 @@ pub async fn run(
         tokio::select! {
             _ = ticker.tick() => {
                 app.tick_count = app.tick_count.wrapping_add(1);
-                update_child_status(&mut app, app_child)?;
-                if !matches!(app.server_status, ServerStatus::Exited { .. })
-                    && last_app_probe.elapsed() >= Duration::from_millis(750)
-                {
-                    let ready = probe_port(port).await;
-                    app.server_status = if ready {
-                        ServerStatus::Ready
-                    } else {
-                        ServerStatus::Starting
-                    };
-                    last_app_probe = Instant::now();
-                }
+            }
+            changed = process_status.changed() => {
+                if changed.is_err() { break; }
+                app.server_status = supervisor_status(*process_status.borrow_and_update());
             }
             message = log_rx.recv() => {
                 if let Some(message) = message {
@@ -112,7 +106,7 @@ pub async fn run(
                     continue;
                 };
                 if key.kind == KeyEventKind::Press
-                    && handle_key(key, &mut app, &log_tx)
+                    && handle_key(key, &mut app, &log_tx, &commands)
                 {
                     break;
                 }
@@ -165,7 +159,12 @@ fn handle_log_message(app: &mut App, message: LogMsg) {
     }
 }
 
-fn handle_key(key: KeyEvent, app: &mut App, log_tx: &Sender<LogMsg>) -> bool {
+fn handle_key(
+    key: KeyEvent,
+    app: &mut App,
+    log_tx: &Sender<LogMsg>,
+    commands: &Sender<DevCommand>,
+) -> bool {
     if key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL) {
         return true;
     }
@@ -191,9 +190,16 @@ fn handle_key(key: KeyEvent, app: &mut App, log_tx: &Sender<LogMsg>) -> bool {
         }
         KeyCode::Char('d') => open_api_docs(app, log_tx.clone()),
         KeyCode::Char('m') if !app.migration_running => {
-            app.migration_running = true;
-            app.push_system("Running db:migrate asynchronously...".to_string());
-            spawn_migration(log_tx.clone());
+            if commands.try_send(DevCommand::Migrate).is_ok() {
+                app.migration_running = true;
+                app.push_system(
+                    "Queued db:migrate for the owned application snapshot...".to_string(),
+                );
+            } else {
+                app.push_system(
+                    "Migration could not be queued; the supervisor is busy or stopped.".to_string(),
+                );
+            }
         }
         KeyCode::Char('c') => app.clear_logs(),
         KeyCode::Char('f') => {
@@ -212,24 +218,19 @@ fn handle_key(key: KeyEvent, app: &mut App, log_tx: &Sender<LogMsg>) -> bool {
     false
 }
 
-fn update_child_status(app: &mut App, child: &mut Child) -> io::Result<()> {
-    if matches!(app.server_status, ServerStatus::Exited { .. }) {
-        return Ok(());
-    }
-    if let Some(status) = child.try_wait()? {
-        app.server_status = exit_status(status);
-        app.push_system(format!(
-            "Application process ended: {}.",
-            app.server_status.label()
-        ));
-    }
-    Ok(())
-}
-
 fn exit_status(status: ExitStatus) -> ServerStatus {
     ServerStatus::Exited {
         success: status.success(),
         code: status.code(),
+    }
+}
+
+fn supervisor_status(status: DevStatus) -> ServerStatus {
+    match status {
+        DevStatus::Starting => ServerStatus::Starting,
+        DevStatus::Ready => ServerStatus::Ready,
+        DevStatus::Unverified => ServerStatus::Unverified,
+        DevStatus::Exited(status) => exit_status(status),
     }
 }
 
@@ -252,61 +253,17 @@ fn spawn_studio_probe(log_tx: Sender<LogMsg>) {
     });
 }
 
-fn spawn_migration(log_tx: Sender<LogMsg>) {
-    tokio::spawn(async move {
-        let result = tokio::process::Command::new("cargo")
-            .args(["run", "-q", "--", "db:migrate"])
-            .output()
-            .await;
-        let message = match result {
-            Ok(output) => {
-                send_action_output(&log_tx, &output.stdout, &output.stderr).await;
-                let code = output
-                    .status
-                    .code()
-                    .map_or_else(|| "signal".to_string(), |code| code.to_string());
-                LogMsg::MigrationFinished {
-                    success: output.status.success(),
-                    summary: if output.status.success() {
-                        "Database migration completed successfully.".to_string()
-                    } else {
-                        format!("Database migration failed with exit status {code}.")
-                    },
-                }
-            }
-            Err(error) => LogMsg::MigrationFinished {
-                success: false,
-                summary: format!("Could not start the migration command: {error}"),
-            },
-        };
-        let _ = log_tx.send(message).await;
-    });
-}
-
-async fn send_action_output(log_tx: &Sender<LogMsg>, stdout: &[u8], stderr: &[u8]) {
-    for line in bounded_text(stdout).lines() {
-        let _ = log_tx.send(LogMsg::AppStdout(line.to_string())).await;
-    }
-    for line in bounded_text(stderr).lines() {
-        let _ = log_tx.send(LogMsg::AppStderr(line.to_string())).await;
-    }
-}
-
-fn bounded_text(bytes: &[u8]) -> String {
-    let end = bytes.len().min(ACTION_OUTPUT_LIMIT);
-    String::from_utf8_lossy(&bytes[..end]).into_owned()
-}
-
 fn open_api_docs(app: &mut App, log_tx: Sender<LogMsg>) {
     let spec_exists = std::path::Path::new("openapi.json").is_file();
     let controller_exists = std::path::Path::new("src/controllers/docs_controller.rs").is_file();
     if spec_exists && controller_exists {
+        app.action_notice = Some("Opening API docs at /docs...".to_string());
         open_browser(format!("http://127.0.0.1:{}/docs", app.port), log_tx);
     } else {
-        app.push_system(
-            "API docs are not scaffolded. Run `cargo rullst make:scalar` explicitly, review the generated files, then press [d] again."
-                .to_string(),
-        );
+        let notice = "API docs unavailable: start with `cargo rullst make:scalar`, then mount the router and provide openapi.json."
+            .to_string();
+        app.action_notice = Some(notice.clone());
+        app.push_system(notice);
     }
 }
 
@@ -403,9 +360,11 @@ fn database_profile_from_env(contents: &str) -> String {
 }
 
 fn reduced_motion_requested() -> bool {
-    std::env::var("RULLST_REDUCED_MOTION")
-        .ok()
-        .is_some_and(|value| matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
+    reduced_motion_value(std::env::var("RULLST_REDUCED_MOTION").ok().as_deref())
+}
+
+fn reduced_motion_value(value: Option<&str>) -> bool {
+    value.is_some_and(|value| matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
 }
 
 fn strip_ansi(value: &str) -> String {
@@ -420,12 +379,6 @@ fn strip_ansi(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn action_output_is_hard_bounded() {
-        let bytes = vec![b'x'; ACTION_OUTPUT_LIMIT + 100];
-        assert_eq!(bounded_text(&bytes).len(), ACTION_OUTPUT_LIMIT);
-    }
 
     #[test]
     fn ansi_sequences_are_removed_from_dashboard_logs() {
@@ -455,6 +408,7 @@ mod tests {
         let (log_tx, _log_rx) = tokio::sync::mpsc::channel(1);
         let mut app = App::new(3_000, true, "not configured".to_string(), true, true);
         let key = KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL);
-        assert!(handle_key(key, &mut app, &log_tx));
+        let (commands, _rx) = tokio::sync::mpsc::channel(1);
+        assert!(handle_key(key, &mut app, &log_tx, &commands));
     }
 }

@@ -4,6 +4,9 @@
     feature = "strict-sqlite"
 )))]
 
+mod support;
+use support::local_request;
+
 use axum::{
     Extension,
     body::Body,
@@ -67,7 +70,7 @@ fn tenant_router(tenant_id: &str, required_audit: bool) -> axum::Router {
 }
 
 fn mutation_request(method: &str, uri: &str, body: impl Into<Body>) -> Request<Body> {
-    Request::builder()
+    local_request()
         .method(method)
         .uri(uri)
         .header("content-type", "application/x-www-form-urlencoded")
@@ -124,7 +127,7 @@ async fn tenant_scope_and_required_audit_are_enforced_atomically() {
     let listing = app
         .clone()
         .oneshot(
-            Request::builder()
+            local_request()
                 .uri("/table/nexus_tenant_records")
                 .body(Body::empty())
                 .expect("valid list request"),
@@ -303,7 +306,7 @@ async fn scoped_model_denies_requests_without_trusted_tenant_context() {
         )))));
     let response = app
         .oneshot(
-            Request::builder()
+            local_request()
                 .uri("/table/nexus_tenant_records")
                 .body(Body::empty())
                 .expect("valid tenantless request"),

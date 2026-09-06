@@ -1,9 +1,17 @@
 # Tutorial 01: From Zero to Hello Rullst 🚀
 
+**What you will build:** one complete web application with a typed route and
+server-rendered HTML. No database account or AI provider is needed. By the end,
+you will be able to point to the handler that produced the page in your browser.
+
+[Choose a different starting path](../start-here.md) ·
+[Next: CLI generators](02-cli-generators.md)
+
 This tutorial takes a new developer from installing Rust to a running Rullst
 web application. It uses the unreleased v12 development snapshot documented by
-this site. For production, use a versioned crates.io release or an immutable
-release tag instead of the mutable `main` branch.
+this site. It is not a production recommendation. A future production adoption
+needs a supported release and reviewed immutable artifacts; neither moving
+`main` nor merely pinning end-of-life v5 satisfies that requirement.
 
 ## 1. Install Rust and Cargo
 
@@ -51,9 +59,10 @@ Cargo records the resolved Git commit in `Cargo.lock`. This makes one checkout
 repeatable, but a future dependency update can select a newer `main` commit. Do
 not use this mutable preview source in production.
 
-Applications that must remain on stable v5 should use its
+Applications that must remain on end-of-life v5 should use its
 [versioned API documentation](https://docs.rs/rullst/5.0.0/rullst/) instead;
-the v12 API below is intentionally different.
+the v12 API below is intentionally different. That reference preserves the old
+API, not a promise of ongoing maintenance or a deployment recommendation.
 
 ## 4. Define the first route
 
@@ -94,6 +103,15 @@ cargo run
 ```
 
 Open [http://localhost:3000](http://localhost:3000). Stop it with `Ctrl+C`.
+
+**Make it yours:** change the heading to your project name, restart with
+`cargo run`, and confirm the response changed. The example's utility class
+names do not install Tailwind by themselves; seeing an unstyled page is not a
+server failure. Use a generated HTML blueprint for a bundled local stylesheet.
+
+If the port is already occupied, stop the conflicting process you own or change
+the `.run(3000)` port above. Keep the terminal output: it is the first place to
+look for a build or startup diagnostic.
 
 ## 6. Continue with the CLI
 

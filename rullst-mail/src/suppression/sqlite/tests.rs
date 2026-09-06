@@ -19,6 +19,58 @@ use crate::{MailDriver, MailError, Message, SuppressionGuard};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[tokio::test]
+async fn cancelled_suppression_write_rolls_back_before_pool_reuse() {
+    // A one-connection pool deterministically reuses the cancelled writer.
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .unwrap();
+    prepare_schema(&pool, 4, 4).await.unwrap();
+    let store = SqliteSuppressionStore {
+        pool,
+        max_recipients: 4,
+        max_events: 4,
+    };
+    let writer = store.clone();
+    let (ready, started) = tokio::sync::oneshot::channel();
+    let task = tokio::spawn(async move {
+        let mut transaction = writer.begin_write("test cancellation").await.unwrap();
+        writer
+            .record_in_transaction(
+                &mut transaction,
+                &event(1, "cancelled@example.com", SuppressionReason::HardBounce),
+            )
+            .await
+            .unwrap();
+        ready.send(()).unwrap();
+        std::future::pending::<()>().await;
+        drop(transaction);
+    });
+    tokio::time::timeout(Duration::from_secs(2), started)
+        .await
+        .unwrap()
+        .unwrap();
+    task.abort();
+    assert!(task.await.unwrap_err().is_cancelled());
+    let snapshot = tokio::time::timeout(Duration::from_secs(2), store.snapshot())
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(snapshot.recipients(), 0, "cancelled suppression leaked");
+    assert_eq!(snapshot.events(), 0, "cancelled replay evidence leaked");
+    tokio::time::timeout(
+        Duration::from_secs(2),
+        store.record(event(2, "kept@example.com", SuppressionReason::HardBounce)),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(store.snapshot().await.unwrap().recipients(), 1);
+    store.close().await;
+}
+
 fn now() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)

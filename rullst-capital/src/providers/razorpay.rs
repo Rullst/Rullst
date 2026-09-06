@@ -178,7 +178,11 @@ impl BillingProvider for RazorpayProvider {
             "subscription.cancelled" => SubscriptionStatus::Canceled,
             "subscription.pending" => SubscriptionStatus::PastDue,
             "subscription.halted" | "payment.failed" => SubscriptionStatus::Unpaid,
-            _ => SubscriptionStatus::Active,
+            _ => {
+                return Err(CapitalError::PayloadParseError(
+                    "Unsupported Razorpay event".into(),
+                ));
+            }
         };
 
         let ends_at = sub_data["current_end"].as_i64();
@@ -203,6 +207,8 @@ impl BillingProvider for RazorpayProvider {
                 "Customer email cannot be empty".to_string(),
             ));
         }
+
+        super::require_mock_operation(&self.key_id, self.name(), "create customer portal")?;
 
         Ok(format!(
             "https://dashboard.razorpay.com/portal?email={}",
@@ -269,6 +275,8 @@ impl BillingProvider for RazorpayProvider {
                 "Subscription ID cannot be empty".to_string(),
             ));
         }
+        super::require_mock_operation(&self.key_id, self.name(), "report usage")?;
+
         Ok(())
     }
 

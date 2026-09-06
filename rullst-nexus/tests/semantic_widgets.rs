@@ -1,5 +1,8 @@
+mod support;
+use support::local_request;
+
 use axum::body::Body;
-use axum::http::{Request, StatusCode};
+use axum::http::StatusCode;
 use rullst_nexus::{FieldKind, FieldMeta, LocalNexusAccess, Nexus, NexusModel};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tower::ServiceExt;
@@ -47,7 +50,7 @@ async fn semantic_widgets_render_and_reject_unregistered_values() {
     let form = app
         .clone()
         .oneshot(
-            Request::builder()
+            local_request()
                 .uri("/table/semantic_records/new")
                 .body(Body::empty())
                 .expect("semantic widget form request"),
@@ -75,7 +78,7 @@ async fn semantic_widgets_render_and_reject_unregistered_values() {
         let response = app
             .clone()
             .oneshot(
-                Request::builder()
+                local_request()
                     .method("POST")
                     .uri("/table/semantic_records")
                     .header("Content-Type", "application/x-www-form-urlencoded")

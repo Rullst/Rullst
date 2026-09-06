@@ -140,6 +140,7 @@ fn request_from(peer: Option<&str>) -> Request<Body> {
 fn request_to(path: &str, peer: Option<&str>) -> Request<Body> {
     let mut request = Request::builder()
         .uri(path)
+        .header(header::HOST, "127.0.0.1:3000")
         .body(Body::empty())
         .expect("valid test request");
     if let Some(peer) = peer {
@@ -235,6 +236,69 @@ fn test_request(authorization: &str, tls_verified: bool) -> Request<Body> {
             .insert(NexusVerifiedTls::from_trusted_tls_termination());
     }
     request
+}
+
+#[tokio::test]
+async fn absolute_https_request_target_is_not_verified_tls() {
+    let secret = dynamic_test_secret();
+    let credentials = NexusBasicAuth::new("ops", &secret).unwrap();
+    let app = protected_test_router(credentials);
+    let mut request = test_request(&basic_header("ops", &secret), false);
+    *request.uri_mut() = "https://app.example.com/".parse().unwrap();
+    request
+        .headers_mut()
+        .insert("x-forwarded-proto", HeaderValue::from_static("https"));
+    let response = app.oneshot(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::UPGRADE_REQUIRED);
+}
+
+#[tokio::test]
+async fn loopback_access_rejects_dns_rebinding_and_cross_origin_mutations() {
+    let router = Router::new()
+        .route("/", axum::routing::any(|| async { StatusCode::OK }))
+        .layer(middleware::from_fn(loopback_only_middleware));
+    for (method, host, origin, expected) in [
+        ("GET", "attacker.example", None, StatusCode::FORBIDDEN),
+        ("POST", "127.0.0.1:3000", None, StatusCode::FORBIDDEN),
+        (
+            "POST",
+            "127.0.0.1:3000",
+            Some("null"),
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "POST",
+            "127.0.0.1:3000",
+            Some("https://attacker.example"),
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "POST",
+            "127.0.0.1:3000",
+            Some("http://127.0.0.1:3001"),
+            StatusCode::FORBIDDEN,
+        ),
+        ("GET", "127.0.0.1:3000", None, StatusCode::OK),
+        (
+            "POST",
+            "127.0.0.1:3000",
+            Some("http://127.0.0.1:3000"),
+            StatusCode::OK,
+        ),
+    ] {
+        let mut request = request_from(Some("127.0.0.1:41000"));
+        *request.method_mut() = method.parse().unwrap();
+        request
+            .headers_mut()
+            .insert(header::HOST, host.parse().unwrap());
+        if let Some(origin) = origin {
+            request
+                .headers_mut()
+                .insert(header::ORIGIN, origin.parse().unwrap());
+        }
+        let response = router.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), expected, "{method} {host} {origin:?}");
+    }
 }
 
 #[tokio::test]

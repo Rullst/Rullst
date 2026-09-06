@@ -4,8 +4,7 @@ use super::{Passkey, PasskeyAuth, PublicKeyCredential};
 use crate::AuthError;
 use base64::Engine as _;
 mod storage;
-use sqlx::pool::PoolConnection;
-use sqlx::{Executor, Sqlite, SqliteConnection, SqlitePool};
+use sqlx::{Sqlite, SqliteConnection, SqlitePool, Transaction};
 use storage::*;
 use subtle::ConstantTimeEq as _;
 
@@ -144,7 +143,7 @@ impl SqlitePasskeyStore {
         let result = self
             .register_in_transaction(&mut connection, &subject, &label, passkey, now)
             .await;
-        finish(&mut connection, result, "finish registration").await
+        finish(connection, result, "finish registration").await
     }
 
     /// Returns bounded device metadata, including revoked entries, in creation order.
@@ -367,17 +366,11 @@ impl SqlitePasskeyStore {
     async fn begin_write(
         &self,
         operation: &'static str,
-    ) -> Result<PoolConnection<Sqlite>, PasskeyStoreError> {
-        let mut connection = self
-            .pool
-            .acquire()
+    ) -> Result<Transaction<'static, Sqlite>, PasskeyStoreError> {
+        self.pool
+            .begin_with("BEGIN IMMEDIATE")
             .await
-            .map_err(|_| unavailable(operation))?;
-        connection
-            .execute("BEGIN IMMEDIATE")
-            .await
-            .map_err(|_| unavailable(operation))?;
-        Ok(connection)
+            .map_err(|_| unavailable(operation))
     }
 }
 

@@ -17,7 +17,7 @@ impl<C: Clock> SqliteBroker<C> {
         let result = self
             .publish_in_transaction(&mut connection, request, now)
             .await;
-        finish(&mut connection, result, "finish publication").await
+        finish(connection, result, "finish publication").await
     }
 
     async fn publish_in_transaction(
@@ -157,7 +157,7 @@ impl<C: Clock> SqliteBroker<C> {
         let result = self
             .subscribe_in_transaction(&mut connection, request)
             .await;
-        finish(&mut connection, result, "finish subscription").await
+        finish(connection, result, "finish subscription").await
     }
 
     async fn subscribe_in_transaction(

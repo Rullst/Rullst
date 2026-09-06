@@ -239,6 +239,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
                 hidden_fields.push(field_name);
             }
         } else {
+            attributes::validate_sql_identifier(&field_name_str, "column name", field.span())?;
             normal_fields.push(field_name.clone());
             normal_fields_types.push(field.ty.clone());
             if field_attributes.is_hidden {

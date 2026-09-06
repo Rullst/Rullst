@@ -1,7 +1,54 @@
 use crate::ai::AiError;
+use std::sync::OnceLock;
 use std::time::Duration;
 
 pub(super) const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+pub(super) const MAX_RESPONSE_BYTES: usize = 2 * 1024 * 1024;
+
+pub(super) fn http_client() -> Result<&'static reqwest::Client, AiError> {
+    static CLIENT: OnceLock<Result<reqwest::Client, reqwest::Error>> = OnceLock::new();
+    CLIENT
+        .get_or_init(|| {
+            reqwest::Client::builder()
+                .redirect(reqwest::redirect::Policy::none())
+                .no_proxy()
+                .connect_timeout(Duration::from_secs(5))
+                .timeout(DEFAULT_REQUEST_TIMEOUT)
+                .build()
+        })
+        .as_ref()
+        .map_err(|_| AiError::ConfigError("cannot initialize provider HTTP client".into()))
+}
+
+pub(super) async fn read_json(
+    mut response: reqwest::Response,
+    provider: &'static str,
+) -> Result<serde_json::Value, AiError> {
+    let oversized = || {
+        AiError::ApiError(format!(
+            "{provider} response exceeds {MAX_RESPONSE_BYTES} bytes"
+        ))
+    };
+    if response
+        .content_length()
+        .is_some_and(|length| length > MAX_RESPONSE_BYTES as u64)
+    {
+        return Err(oversized());
+    }
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|error| AiError::RequestError(error.without_url()))?
+    {
+        if bytes.len().saturating_add(chunk.len()) > MAX_RESPONSE_BYTES {
+            return Err(oversized());
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    serde_json::from_slice(&bytes)
+        .map_err(|_| AiError::ApiError(format!("{provider} returned invalid JSON")))
+}
 
 pub(super) fn endpoint(base_url: &str, path: &str) -> String {
     format!(

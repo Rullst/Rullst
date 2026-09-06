@@ -58,6 +58,55 @@ fn development_round_trip_is_bound_to_claims_and_revocation() {
     assert_eq!(policy.verify(&token, &revocations), Err(JwtError::Revoked));
 }
 
+#[test]
+fn expired_tokens_are_rejected_inside_clock_skew_after_revocation_expiry() {
+    let policy = development_policy()
+        .with_clock_skew(Duration::from_secs(300))
+        .expect("bounded clock skew");
+    let store = InMemoryJwtRevocationStore::new(16).expect("revocation store");
+    let now = unix_time().expect("clock");
+    let token = policy
+        .issue_at(
+            "learner-7".to_string(),
+            ["course:read"],
+            1,
+            Duration::from_secs(60),
+            now - 120,
+        )
+        .expect("historically issued token");
+
+    // Revocation backends may discard entries at exp. Verification must use
+    // the same hard expiry, even when future iat/nbf clock skew is tolerated.
+    assert_eq!(policy.verify(&token, &store), Err(JwtError::InvalidToken));
+}
+
+#[test]
+fn expiry_is_exclusive_while_future_issuance_clock_skew_is_preserved() {
+    let policy = development_policy();
+    let now = unix_time().expect("clock");
+    let token = policy
+        .issue_at(
+            "learner-7".to_string(),
+            ["course:read"],
+            1,
+            Duration::from_secs(60),
+            now + 10,
+        )
+        .expect("issuer clock is ahead");
+    let claims = policy
+        .decode_and_validate(&token, now)
+        .expect("bounded future clock skew remains supported");
+    let store = InMemoryJwtRevocationStore::new(16).expect("revocation store");
+    store.revoke_token(&claims).expect("revoke live token");
+    assert!(store.is_revoked(&claims, claims.exp - 1).unwrap());
+    assert!(!store.is_revoked(&claims, claims.exp).unwrap());
+    assert!(policy.validate_claims(&claims, claims.exp - 1).is_ok());
+    assert_eq!(
+        policy.validate_claims(&claims, claims.exp),
+        Err(JwtError::InvalidToken)
+    );
+}
+
 // TM-AUTH-06: production rejects process-local revocation while a rotation
 // retains the previous key only for bounded verification of existing tokens.
 #[test]
