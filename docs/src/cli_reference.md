@@ -11,24 +11,26 @@ documents the principal version 12 commands and their security boundaries.
 ## 🏗️ 1. Project Initialization & Maintenance
 
 ### `cargo rullst new <name>`
-Creates a Rullst project from scratch. This command presents an interactive wizard prompting for project options:
+Creates a Rullst project from scratch. Version 12 intentionally generates one
+audited application architecture: Active Record for database-backed code and
+server-rendered `html!` views enhanced with HTMX for full-stack pages. The
+interactive wizard prompts for the product capabilities that materially change
+the generated application:
 * **Starter Blueprint:** Blank Starter, Portfolio, LMS Platform, SaaS App, Blog/Press, ERP Pocket.
-* **ORM Architecture:** Active Record (`User::find(id)`), Data Mapper / Repository (`UserRepository::find()`), or Hybrid.
 * **Persistence:** a primary relational backend (SQLite, PostgreSQL, MySQL,
   MariaDB, or bounded Turso-primary for blank/API) plus optional Turso/libSQL,
   MongoDB, DuckDB, SurrealDB, and Qdrant capabilities. The optional selector
   accepts zero or more choices and omits capabilities already selected by the
   primary profile or flags. Specialized adapters remain separate from SQLx
   Active Record.
-* **Frontend profile:** HTMX + Tailwind SSR is the audited default. The LiveView,
-  Wasm Island, Pico.css and Tera selections record compatibility intent and add
-  limited dependencies/scaffold markers; they do not yet generate four complete,
-  interchangeable application renderers. Wire and test the selected runtime and
-  browser assets explicitly.
+* **Application profile:** HTML blueprints use the audited `html!` SSR/HTMX path;
+  `--api` uses the headless JSON path. Repository, LiveView, Wasm Island,
+  Pico.css and Tera foundations remain application-owned APIs and are not
+  presented as equivalent v12 generated profiles.
 * **Arguments:**
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**
-  * `--api`: Scaffolds a headless JSON API project (no HTML view rendering).
+  * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering); SQLx-specific product blueprints reject it instead of ignoring it.
   * `--docker`: Adds the current multi-stage `Dockerfile` packaging scaffold; Compose services and deployment hardening remain explicit project work.
   * `--turso`: Adds the direct Hrana HTTP v3 Turso/libSQL adapter, checked migrations, and its real-SQL offline development fallback to the selected primary backend. It does not imply transparent replication.
   * `--mongodb`: Enables typed MongoDB document CRUD and its deterministic offline store.
@@ -40,9 +42,7 @@ Creates a Rullst project from scratch. This command presents an interactive wiza
   * `--default`: Uses deterministic non-interactive defaults, intended for CI and reproducible scaffolding.
   * `--blueprint <blank|lms|saas|blog|portfolio|erp>`: Selects a blueprint when used with `--default`.
   * `--database <sqlite|postgres|mysql|mariadb|turso>`: Selects the primary relational backend with `--default`; network databases must be configured before migration bootstrap. Turso-primary currently supports the blank/API starter and rejects SQLx-specific blueprints explicitly.
-  * `--no-database`: Generates the blank blueprint without a primary relational database; it conflicts with `--database` and rejects database-dependent blueprints and explicit ORM choices.
-  * `--orm <active-record|repository|hybrid>`: Selects the generated ORM architecture with `--default`. Turso-primary selects its bounded typed Active Record profile and rejects an incompatible override.
-  * `--frontend <htmx|liveview|wasm-island|pico|tera>`: Selects the recorded frontend profile with `--default`, subject to the frontend limitations above.
+  * `--no-database`: Generates the blank blueprint without a primary relational database; it conflicts with `--database` and rejects database-dependent blueprints.
   * `--hot-reload`: Generates the library boundary used by the development hot-reload workflow. Unsupported Turso-primary and detached LMS combinations fail explicitly.
   * `--ai`: Enables the umbrella AI facade in the generated manifest.
   * `--redis`: Enables the umbrella Redis queue/cache/ORM capabilities and the direct ORM Redis feature.
@@ -62,11 +62,11 @@ network-dependent bootstrap work:
 cargo rullst new packaged-saas --default --blueprint saas --skip-initial-migration
 ```
 
-A complete deterministic profile can pin every supported generation axis:
+A complete deterministic profile can pin every supported v12 generation axis:
 
 ```bash
 cargo rullst new operations-portal --default --blueprint erp \
-  --database mariadb --orm hybrid --frontend liveview \
+  --database mariadb \
   --hot-reload --ai --redis --skip-initial-migration
 ```
 
@@ -78,9 +78,9 @@ prevents an implicit SQLite default from masking the chosen backend.
 #### Generated-project verification boundary
 
 The repository does not treat template rendering as sufficient evidence. A
-structural contract materializes all 270 supported blueprint/profile shapes and
-checks paths, Rust syntax and manifests. A slower eight-case set crosses every
-blueprint, hot and non-hot layouts, database/ORM/frontend/API boundaries and a
+structural contract materializes all 18 supported public v12 blueprint/profile
+shapes and checks paths, Rust syntax and manifests. A slower eight-case set
+crosses every blueprint, hot and non-hot layouts, database/API boundaries and a
 release build, runs every generated test target, and constructs the public
 router of each hot-reload project using offline-safe defaults. A separate
 seven-case test invokes the public `cargo rullst new` binary and verifies exact

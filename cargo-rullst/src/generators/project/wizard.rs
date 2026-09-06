@@ -26,12 +26,19 @@ const BLANK_DATABASE_OPTIONS: [(&str, &str); 5] = [
     ("Turso / libSQL (primary edge SQL)", "Turso"),
 ];
 
+const V12_ORM_PATTERN: &str = "Active Record";
+const V12_FRONTEND_ENGINE: &str = "Zero-Bundle HTMX";
+
 fn primary_database_options(blueprint_selection: usize) -> &'static [(&'static str, &'static str)] {
     if blueprint_selection == BLANK_BLUEPRINT_ID {
         &BLANK_DATABASE_OPTIONS
     } else {
         &SQLX_DATABASE_OPTIONS
     }
+}
+
+const fn should_prompt_project_profile(_has_positional_name: bool, use_defaults: bool) -> bool {
+    !use_defaults
 }
 
 /// Optional persistence capabilities that complement the primary SQL ORM.
@@ -71,6 +78,29 @@ impl PolyglotIntegration {
             Self::Qdrant => "orm-qdrant",
         }
     }
+}
+
+const OPTIONAL_STORAGE_OPTIONS: [(&str, PolyglotIntegration); 5] = [
+    (
+        "Turso / libSQL adapter (add-on; application integration remains explicit in v12)",
+        PolyglotIntegration::Turso,
+    ),
+    ("MongoDB (document CRUD)", PolyglotIntegration::MongoDb),
+    ("DuckDB (in-process analytics)", PolyglotIntegration::DuckDb),
+    (
+        "SurrealDB (documents + read-only graph queries)",
+        PolyglotIntegration::SurrealDb,
+    ),
+    ("Qdrant (vector search)", PolyglotIntegration::Qdrant),
+];
+
+fn available_optional_storage_options(
+    selected: &[PolyglotIntegration],
+) -> Vec<(&'static str, PolyglotIntegration)> {
+    OPTIONAL_STORAGE_OPTIONS
+        .into_iter()
+        .filter(|(_, integration)| !selected.contains(integration))
+        .collect()
 }
 
 pub struct ProjectWizardOptions {
@@ -118,6 +148,8 @@ pub(crate) fn run_project_wizard_with_blueprint(
     requested_integrations: &[PolyglotIntegration],
     blueprint_override: Option<usize>,
 ) -> Result<ProjectWizardOptions, Box<dyn std::error::Error>> {
+    let prompt_project_profile =
+        should_prompt_project_profile(name_arg.is_some(), options.use_defaults);
     let mut api = options.api;
     let db_provider_override = options.database;
     if db_provider_override.is_some_and(|provider| {
@@ -150,21 +182,21 @@ pub(crate) fn run_project_wizard_with_blueprint(
         .into());
     }
 
-    if options.use_defaults {
+    if !prompt_project_profile {
         let name = name_arg.unwrap_or("app").to_string();
         let blueprint_selection = blueprint_override.unwrap_or(BLANK_BLUEPRINT_ID);
         let db_provider = db_provider_override.unwrap_or("Sqlite").to_string();
+        if api && blueprint_selection != BLANK_BLUEPRINT_ID {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "--api is available only for the blank blueprint",
+            )
+            .into());
+        }
         if options.no_database && blueprint_selection != BLANK_BLUEPRINT_ID {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 "--no-database is available only for the blank blueprint",
-            )
-            .into());
-        }
-        if options.no_database && options.orm_pattern.is_some() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "an ORM architecture cannot be selected without a primary database",
             )
             .into());
         }
@@ -175,20 +207,13 @@ pub(crate) fn run_project_wizard_with_blueprint(
             )
             .into());
         }
-        if db_provider == "Turso" && options.orm_pattern.is_some() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "Turso-primary selects its typed Active Record profile automatically",
-            )
-            .into());
-        }
         return Ok(ProjectWizardOptions {
             name,
             api,
             orm_pattern: if db_provider == "Turso" {
                 "Turso Active Record"
             } else {
-                options.orm_pattern.unwrap_or("Active Record")
+                V12_ORM_PATTERN
             }
             .to_string(),
             db_provider,
@@ -199,10 +224,7 @@ pub(crate) fn run_project_wizard_with_blueprint(
             wants_redis: options.wants_redis,
             turso: requested_integrations.contains(&PolyglotIntegration::Turso),
             polyglot_integrations: requested_integrations.to_vec(),
-            frontend_engine: options
-                .frontend_engine
-                .unwrap_or("Zero-Bundle HTMX")
-                .to_string(),
+            frontend_engine: V12_FRONTEND_ENGINE.to_string(),
         });
     }
 
@@ -255,13 +277,15 @@ pub(crate) fn run_project_wizard_with_blueprint(
     let mut blueprint_selection = blueprint_override.unwrap_or(BLANK_BLUEPRINT_ID);
     let mut polyglot_integrations = requested_integrations.to_vec();
 
-    if name_arg.is_none() {
+    // A positional name replaces only the name prompt. `--default` is the
+    // explicit contract for skipping the interactive project-profile choices.
+    if prompt_project_profile {
         let portfolio_title = format!(
             "Portfolio 🔥 (showcase for Rullst/AI developers) - {}",
             "HOT".bright_red().bold()
         );
         let blueprint_choices = vec![
-            "Blank Starter (Minimal template with HTMX reactive counter)".to_string(),
+            "Blank Starter (Minimal HTMX counter; Nexus CMS is not included)".to_string(),
             "LMS Platform (Courses, lessons, video player, HTMX integration)".to_string(),
             "SaaS App Starter (Authentication + Stripe payments billing template)".to_string(),
             "Blog / Press (Static site generator pre-wired with Nexus CMS)".to_string(),
@@ -274,6 +298,14 @@ pub(crate) fn run_project_wizard_with_blueprint(
                 .default(0)
                 .items(&blueprint_choices)
                 .interact()?;
+        }
+
+        if api && blueprint_selection != BLANK_BLUEPRINT_ID {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "--api is available only for the blank blueprint",
+            )
+            .into());
         }
 
         if blueprint_selection == BLANK_BLUEPRINT_ID {
@@ -325,19 +357,7 @@ pub(crate) fn run_project_wizard_with_blueprint(
             }
         }
 
-        let persistence_options = [
-            ("Turso / libSQL (edge add-on)", PolyglotIntegration::Turso),
-            ("MongoDB (document CRUD)", PolyglotIntegration::MongoDb),
-            ("DuckDB (in-process analytics)", PolyglotIntegration::DuckDb),
-            (
-                "SurrealDB (documents + read-only graph queries)",
-                PolyglotIntegration::SurrealDb,
-            ),
-            ("Qdrant (vector search)", PolyglotIntegration::Qdrant),
-        ]
-        .into_iter()
-        .filter(|(_, integration)| !polyglot_integrations.contains(integration))
-        .collect::<Vec<_>>();
+        let persistence_options = available_optional_storage_options(&polyglot_integrations);
         if !persistence_options.is_empty() {
             let labels = persistence_options
                 .iter()
@@ -367,50 +387,13 @@ pub(crate) fn run_project_wizard_with_blueprint(
         }
     }
 
-    let mut orm_pattern = "Active Record".to_string();
-    let mut frontend_engine = "Zero-Bundle HTMX".to_string();
-
-    if db_needed && db_provider != "Turso" {
-        let orm_options = &[
-            "Active Record Mode (Recommended — User::find(id), concise model-oriented CRUD)",
-            "Data Mapper / Repository (For Enterprise DDD — UserRepository::find(), decoupled domain structs)",
-            "Hybrid Architecture (Active Record for simple models + Repository Pattern for complex domain entities)",
-        ];
-        let orm_selection = dialoguer::Select::with_theme(&theme)
-            .with_prompt("🏗️ Select ORM Pattern / Architecture")
-            .default(0)
-            .items(&orm_options[..])
-            .interact()?;
-        orm_pattern = match orm_selection {
-            1 => "Repository".to_string(),
-            2 => "Hybrid".to_string(),
-            _ => "Active Record".to_string(),
-        };
-    } else if db_provider == "Turso" {
-        orm_pattern = "Turso Active Record".to_string();
+    let orm_pattern = if db_provider == "Turso" {
+        "Turso Active Record"
+    } else {
+        V12_ORM_PATTERN
     }
-
-    if !api && blueprint_selection != BLANK_BLUEPRINT_ID {
-        let fe_options = &[
-            "HTMX + Tailwind SSR (Recommended — html! views; HTMX remains a browser dependency)",
-            "LiveView compatibility profile (rullst::live primitives; wire routes and client transport)",
-            "Wasm Island compatibility profile (rullst::island; build and load generated artifacts)",
-            "Pico.css compatibility profile (semantic HTML; add and serve the stylesheet)",
-            "Tera compatibility profile (adds Tera; application templates remain explicit)",
-        ];
-        let fe_selection = dialoguer::Select::with_theme(&theme)
-            .with_prompt("🎨 Select Frontend Engine")
-            .default(0)
-            .items(&fe_options[..])
-            .interact()?;
-        frontend_engine = match fe_selection {
-            1 => "LiveView".to_string(),
-            2 => "Wasm Island".to_string(),
-            3 => "Pico CSS".to_string(),
-            4 => "Tera Templates".to_string(),
-            _ => "Zero-Bundle HTMX".to_string(),
-        };
-    }
+    .to_string();
+    let frontend_engine = V12_FRONTEND_ENGINE.to_string();
 
     let wants_ai = dialoguer::Confirm::with_theme(&theme)
         .with_prompt("🤖 Will your project need Artificial Intelligence features (rullst-ai)?")

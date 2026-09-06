@@ -5,6 +5,9 @@ use super::common;
 mod client;
 mod turso;
 
+const BLANK_STYLES: &str = include_str!("blank/styles.css");
+pub(super) const BLANK_FAVICON: &[u8] = include_bytes!("blank/rullst.png");
+
 pub fn file_manifest(
     project_name: &str,
     project_name_safe: &str,
@@ -33,7 +36,9 @@ pub fn file_manifest(
         ""
     };
 
-    let db_status_code = if turso_primary {
+    let db_status_code = if hot_reload && db_needed {
+        "    // Server::run validates the configured database before loading the hot router.\n    // The dynamic library must not create a second Tokio/SQLx runtime boundary.\n    let db_status = \"Database connected.\".to_string();"
+    } else if turso_primary {
         "    // Typed Turso Active Record query through the primary Hrana transport.\n    let db_status = match User::all().await {\n        Ok(_) => \"Database connected.\".to_string(),\n        Err(error) => {\n            tracing::warn!(error = %error, \"database status check failed\");\n            \"Database unavailable.\".to_string()\n        }\n    };"
     } else if db_needed {
         "    // ORM usage example: verify availability without exposing database details.\n    let db_status = match User::all().await {\n        Ok(_) => \"Database connected.\".to_string(),\n        Err(error) => {\n            tracing::warn!(error = %error, \"database status check failed\");\n            \"Database unavailable.\".to_string()\n        }\n    };"
@@ -98,6 +103,16 @@ pub fn file_manifest(
         ""
     };
     let rpc_module = if !api { "mod rpc;\n" } else { "" };
+    let studio_startup = r#"    #[cfg(debug_assertions)]
+    {
+        rullst::runtime::spawn(async {
+            if let Err(error) = rullst::studio::run_studio(5555).await {
+                eprintln!("Rullst Studio could not start: {error}");
+            }
+        });
+        println!("Rullst Studio running on http://127.0.0.1:5555");
+    }
+"#;
 
     if hot_reload {
         let lib_rs = if api {
@@ -160,34 +175,34 @@ pub async fn home(
 {db_status_code}
 
     let content = html! {{
-        <div class="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
-            <div class="max-w-xl text-center space-y-6">
-                <h1 class="text-5xl font-extrabold tracking-tight bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
+        <div class="rullst-starter flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
+            <div class="rullst-starter__content max-w-xl text-center space-y-6">
+                <h1 class="rullst-starter__title text-5xl font-extrabold tracking-tight bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
                     "Welcome to " {{name}}
                 </h1>
                 
-                <p class="text-slate-400 text-lg">
+                <p class="rullst-starter__lede text-slate-400 text-lg">
                     "A full-stack Rust framework focused on explicit security boundaries, maintainability, and measured speed."
                 </p>
 
-                <div class="inline-block px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-sky-400 font-mono">
+                <div class="rullst-starter__status inline-block px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-sky-400 font-mono">
                     {{db_status}}
                 </div>
 
-                <div class="bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
+                <div class="rullst-starter__card bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
                     <h2 class="text-xl font-bold text-slate-200">"HTMX Reactive Counter"</h2>
-                    <div id="counter-box" class="flex flex-col items-center gap-3">
+                    <div id="counter-box" class="rullst-starter__counter-box flex flex-col items-center gap-3">
                         <form method="post" action="/clicked" hx-post="/clicked" hx-target="#counter-box" hx-swap="outerHTML">
                             <input type="hidden" name="_token" value={{csrf_token.as_str()}} />
-                            <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                            <button type="submit" class="rullst-starter__button px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
                             "Click here to increment"
                             </button>
                         </form>
-                        <p class="text-sm text-slate-400">"Clicks received on server: 0"</p>
+                        <p class="rullst-starter__count text-sm text-slate-400">"Clicks received on server: 0"</p>
                     </div>
                 </div>
 
-                <div class="bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
+                <div class="rullst-starter__card bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
                     <h2 class="text-xl font-bold text-slate-200">"Wasm Island (Client Side)"</h2>
                     <div data-island="counter" data-props="{{\"props\": {{\"initial_value\": 0}}}}"></div>
                 </div>
@@ -209,14 +224,14 @@ pub async fn clicked(
     let current_clicks = CLICK_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
     
     Html(html! {{
-        <div id="counter-box" class="flex flex-col items-center gap-3">
+        <div id="counter-box" class="rullst-starter__counter-box flex flex-col items-center gap-3">
             <form method="post" action="/clicked" hx-post="/clicked" hx-target="#counter-box" hx-swap="outerHTML">
                 <input type="hidden" name="_token" value={{csrf_token.as_str()}} />
-                <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                <button type="submit" class="rullst-starter__button px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
                     "Click here to increment"
                 </button>
             </form>
-            <p class="text-sm text-emerald-400 font-medium">"Clicks received on server: " {{current_clicks.to_string()}}</p>
+            <p class="rullst-starter__count text-sm text-emerald-400 font-medium">"Clicks received on server: " {{current_clicks.to_string()}}</p>
         </div>
     }})
 }}
@@ -259,6 +274,7 @@ pub extern "C" fn rullst_router_init() -> *mut Router {{
 #[rullst::runtime::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 {artisan_call}
+{studio_startup}
     let is_hot = std::env::var("HOT_RELOAD").is_ok();
 
     let server = if is_hot {{
@@ -280,7 +296,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 "##,
             project_name_safe = project_name_safe,
             migrations_mod_declaration = migrations_mod_declaration,
-            artisan_call = artisan_call
+            artisan_call = artisan_call,
+            studio_startup = studio_startup
         );
 
         manifest.push(("src/main.rs", main_rs));
@@ -313,6 +330,7 @@ async fn home() -> impl IntoResponse {{
 #[rullst::runtime::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 {artisan_call}
+{studio_startup}
     let router = routes![
         get("/" => home),
     ].layer(rullst::server::from_fn(rullst::security::headers_middleware));
@@ -327,7 +345,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
                 migrations_mod_declaration = migrations_mod_declaration,
                 db_model_code = db_model_code,
                 db_status_code = db_status_code,
-                artisan_call = artisan_call
+                artisan_call = artisan_call,
+                studio_startup = studio_startup
             )
         } else {
             format!(
@@ -346,30 +365,30 @@ async fn home(
 {db_status_code}
 
     let content = html! {{
-        <div class="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
-            <div class="max-w-xl text-center space-y-6">
-                <h1 class="text-5xl font-extrabold tracking-tight bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
+        <div class="rullst-starter flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
+            <div class="rullst-starter__content max-w-xl text-center space-y-6">
+                <h1 class="rullst-starter__title text-5xl font-extrabold tracking-tight bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
                     "Welcome to " {{name}}
                 </h1>
                 
-                <p class="text-slate-400 text-lg">
+                <p class="rullst-starter__lede text-slate-400 text-lg">
                     "A full-stack Rust framework focused on explicit security boundaries, maintainability, and measured speed."
                 </p>
 
-                <div class="inline-block px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-sky-400 font-mono">
+                <div class="rullst-starter__status inline-block px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-sky-400 font-mono">
                     {{db_status}}
                 </div>
 
-                <div class="bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
+                <div class="rullst-starter__card bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
                     <h2 class="text-xl font-bold text-slate-200">"HTMX Reactive Counter"</h2>
-                    <div id="counter-box" class="flex flex-col items-center gap-3">
+                    <div id="counter-box" class="rullst-starter__counter-box flex flex-col items-center gap-3">
                         <form method="post" action="/clicked" hx-post="/clicked" hx-target="#counter-box" hx-swap="outerHTML">
                             <input type="hidden" name="_token" value={{csrf_token.as_str()}} />
-                            <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                            <button type="submit" class="rullst-starter__button px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
                             "Click here to increment"
                             </button>
                         </form>
-                        <p class="text-sm text-slate-400">"Clicks received on server: 0"</p>
+                        <p class="rullst-starter__count text-sm text-slate-400">"Clicks received on server: 0"</p>
                     </div>
                 </div>
             </div>
@@ -390,14 +409,14 @@ async fn clicked(
     let current_clicks = CLICK_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
     
     Html(html! {{
-        <div id="counter-box" class="flex flex-col items-center gap-3">
+        <div id="counter-box" class="rullst-starter__counter-box flex flex-col items-center gap-3">
             <form method="post" action="/clicked" hx-post="/clicked" hx-target="#counter-box" hx-swap="outerHTML">
                 <input type="hidden" name="_token" value={{csrf_token.as_str()}} />
-                <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                <button type="submit" class="rullst-starter__button px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
                     "Click here to increment"
                 </button>
             </form>
-            <p class="text-sm text-emerald-400 font-medium">"Clicks received on server: " {{current_clicks.to_string()}}</p>
+            <p class="rullst-starter__count text-sm text-emerald-400 font-medium">"Clicks received on server: " {{current_clicks.to_string()}}</p>
         </div>
     }})
 }}
@@ -405,6 +424,7 @@ async fn clicked(
 #[rullst::runtime::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
 {artisan_call}
+{studio_startup}
     let router = routes![
         get("/" => home),
         post("/clicked" => clicked),
@@ -424,7 +444,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
                 rpc_module = rpc_module,
                 db_model_code = db_model_code,
                 db_status_code = db_status_code,
-                artisan_call = artisan_call
+                artisan_call = artisan_call,
+                studio_startup = studio_startup
             )
         };
 
@@ -432,6 +453,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     }
 
     if !api {
+        manifest.push(("static/rullst.css", BLANK_STYLES.to_string()));
         manifest.push(("src/rpc.rs", client::rpc_source()));
     }
 

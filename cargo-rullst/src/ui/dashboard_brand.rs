@@ -19,7 +19,7 @@ const GREEN_GRADIENT: [u8; 6] = [118, 82, 46, 40, 34, 28];
 const ORANGE_GRADIENT: [u8; 6] = [215, 214, 208, 202, 166, 130];
 const FINAL_SIGNATURE: [u8; 6] = [33, 27, 46, 34, 215, 166];
 const PULSE_COLORS: [u8; 6] = FINAL_SIGNATURE;
-const LOGO_FRAME_DELAY_MILLIS: u64 = 55;
+const LOGO_FRAME_DELAY_MILLIS: u64 = 26;
 const ANIMATION_FRAMES: [usize; 24] = [
     0, 0, 0, 1, 2, 3, 4, 5, 6, 6, 6, 7, 8, 9, 10, 11, 12, 12, 12, 13, 14, 15, 16, 16,
 ];
@@ -193,6 +193,16 @@ fn visual_effects_enabled() -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn opening_animation_keeps_all_frames_with_a_six_tenths_second_pacing() {
+        assert_eq!(super::ANIMATION_FRAMES.len(), 24);
+        assert_eq!(super::LOGO_FRAME_DELAY_MILLIS, 26);
+        assert_eq!(
+            (super::ANIMATION_FRAMES.len() as u64 - 1) * super::LOGO_FRAME_DELAY_MILLIS,
+            598
+        );
+    }
+
     #[test]
     fn logo_visits_each_full_gradient_then_settles_on_signature() {
         let blue = (0..6)

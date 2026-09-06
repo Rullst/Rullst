@@ -301,12 +301,13 @@ fn open_api_docs(app: &mut App, log_tx: Sender<LogMsg>) {
     let spec_exists = std::path::Path::new("openapi.json").is_file();
     let controller_exists = std::path::Path::new("src/controllers/docs_controller.rs").is_file();
     if spec_exists && controller_exists {
+        app.action_notice = Some("Opening API docs at /docs...".to_string());
         open_browser(format!("http://127.0.0.1:{}/docs", app.port), log_tx);
     } else {
-        app.push_system(
-            "API docs are not scaffolded. Run `cargo rullst make:scalar` explicitly, review the generated files, then press [d] again."
-                .to_string(),
-        );
+        let notice = "API docs unavailable: start with `cargo rullst make:scalar`, then mount the router and provide openapi.json."
+            .to_string();
+        app.action_notice = Some(notice.clone());
+        app.push_system(notice);
     }
 }
 

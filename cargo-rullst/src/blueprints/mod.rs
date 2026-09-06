@@ -117,6 +117,12 @@ pub fn apply_with_lms_modules(
         fs::write(&full_path, content)?;
     }
 
+    if !api {
+        let static_dir = path.join("static");
+        fs::create_dir_all(&static_dir)?;
+        fs::write(static_dir.join("rullst.png"), blank::BLANK_FAVICON)?;
+    }
+
     Ok(())
 }
 
@@ -181,5 +187,29 @@ mod tests {
         );
         assert!(result.is_err());
         assert!(!root.exists());
+    }
+
+    #[test]
+    fn html_blueprints_write_the_official_favicon() {
+        for blueprint in [BLANK_BLUEPRINT_ID, SAAS_BLUEPRINT_ID, ERP_BLUEPRINT_ID] {
+            let root = tempfile::tempdir().expect("temporary blueprint directory");
+            apply(
+                blueprint,
+                root.path(),
+                "demo",
+                "demo",
+                false,
+                false,
+                blueprint == BLANK_BLUEPRINT_ID,
+                "Active Record",
+                "Zero-Bundle HTMX",
+            )
+            .expect("HTML blueprint");
+
+            let favicon =
+                fs::read(root.path().join("static/rullst.png")).expect("blueprint favicon");
+            assert_eq!(favicon, blank::BLANK_FAVICON);
+            assert!(favicon.starts_with(&[0x89, b'P', b'N', b'G']));
+        }
     }
 }

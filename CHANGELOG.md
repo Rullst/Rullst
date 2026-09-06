@@ -76,10 +76,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   startup failure, hot-swap admission, in-flight drain, timeout and poisoned
   component state. Dependency probes, authorization, replica/load-balancer
   coordination and deployment termination deadlines remain host concerns.
-- `cargo-rullst` now backs project generation with all 270 supported structural
+- `cargo-rullst` now backs project generation with all 18 public v12 structural
   profiles, an eight-case generated-test matrix crossing every blueprint plus
   hot/non-hot and release boundaries, and seven cases invoking the public CLI
-  across primary database, frontend, AI, Redis and polyglot axes. Hot profiles
+  across primary database, AI, Redis and polyglot axes. Version 12 fixes
+  database-backed scaffolds to Active Record and HTML applications to
+  server-rendered `html!`/HTMX; the prerelease ORM/frontend selectors were
+  removed because their implementations were not equivalent across blueprints.
+  The optional storage multi-select and deterministic add-on flags remain. Hot
+  profiles
   construct their generated routers with offline-safe defaults; the CLI-level
   polyglot case compiles while dedicated ORM matrices retain adapter runtime
   ownership. Upgrade process fixtures select v5/v6/v11 rules, prove atomic

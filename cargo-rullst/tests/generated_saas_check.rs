@@ -1,8 +1,9 @@
 //! Compile representative generated projects across every public blueprint.
 //!
-//! The structural suite covers all 270 combinations. This slower suite selects
-//! the smallest set that crosses every public blueprint plus the distinct ORM,
-//! frontend, API, database, hot-reload and release-build boundaries. Every
+//! The structural suite covers all 18 public v12 project shapes. This slower suite selects
+//! the smallest set that crosses every public blueprint plus the API, database,
+//! hot-reload and release-build boundaries. Rullst v12 fixes generated projects
+//! to Active Record plus `html!` SSR/HTMX. Every
 //! materialized case runs its generated tests, so template-only runtime and
 //! authorization regressions cannot hide behind a successful `cargo check`.
 
@@ -39,23 +40,23 @@ const GENERATED_CASES: [GeneratedCase; 8] = [
         release: false,
     },
     GeneratedCase {
-        name: "blank-api-hot-wasm",
+        name: "blank-api-hot",
         blueprint: BLANK_BLUEPRINT_ID,
         api: true,
         hot_reload: true,
         db_needed: false,
         orm_pattern: "Active Record",
-        frontend: "Wasm Island",
+        frontend: "Zero-Bundle HTMX",
         release: false,
     },
     GeneratedCase {
-        name: "lms-repository-liveview-hot",
+        name: "lms-active-htmx-hot",
         blueprint: LMS_BLUEPRINT_ID,
         api: false,
         hot_reload: true,
         db_needed: true,
-        orm_pattern: "Repository",
-        frontend: "LiveView",
+        orm_pattern: "Active Record",
+        frontend: "Zero-Bundle HTMX",
         release: false,
     },
     GeneratedCase {
@@ -69,42 +70,42 @@ const GENERATED_CASES: [GeneratedCase; 8] = [
         release: false,
     },
     GeneratedCase {
-        name: "blog-hybrid-tera-hot",
+        name: "blog-active-htmx-hot",
         blueprint: BLOG_BLUEPRINT_ID,
         api: false,
         hot_reload: true,
         db_needed: true,
-        orm_pattern: "Hybrid",
-        frontend: "Tera Template",
+        orm_pattern: "Active Record",
+        frontend: "Zero-Bundle HTMX",
         release: false,
     },
     GeneratedCase {
-        name: "portfolio-repository-pico-hot",
+        name: "portfolio-active-htmx-hot",
         blueprint: PORTFOLIO_BLUEPRINT_ID,
         api: false,
         hot_reload: true,
         db_needed: true,
-        orm_pattern: "Repository",
-        frontend: "Pico CSS",
+        orm_pattern: "Active Record",
+        frontend: "Zero-Bundle HTMX",
         release: false,
     },
     GeneratedCase {
-        name: "erp-hybrid-release",
+        name: "erp-active-htmx-release",
         blueprint: ERP_BLUEPRINT_ID,
         api: false,
         hot_reload: false,
         db_needed: true,
-        orm_pattern: "Hybrid",
+        orm_pattern: "Active Record",
         frontend: "Zero-Bundle HTMX",
         release: true,
     },
     GeneratedCase {
-        name: "erp-hybrid-hot",
+        name: "erp-active-htmx-hot",
         blueprint: ERP_BLUEPRINT_ID,
         api: false,
         hot_reload: true,
         db_needed: true,
-        orm_pattern: "Hybrid",
+        orm_pattern: "Active Record",
         frontend: "Zero-Bundle HTMX",
         release: false,
     },

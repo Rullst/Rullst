@@ -1,23 +1,30 @@
 # Architecture choices in generated projects
 
-`cargo rullst new` records several project choices. This page distinguishes
-code that the current generator materially changes from compatibility profiles
-that still require application integration. The [framework specification](spec.md)
-and [capability ledger](capability-ledger.md) remain authoritative.
+`cargo rullst new` records product capabilities that materially change the
+generated application. Version 12 intentionally exposes one audited application
+architecture instead of presenting incomplete compatibility markers as equal
+implementations. The [framework specification](spec.md) and
+[capability ledger](capability-ledger.md) remain authoritative.
 
 ## ORM style
 
-Projects with a database can select Active Record, Repository, or Hybrid.
+Version 12 database-backed projects are generated with Active Record. The CLI
+does not ask for a global ORM architecture and does not expose an `--orm` flag.
+The framework's repository APIs remain available when an application needs an
+explicit persistence boundary.
 
-| Selection | Generated intent | Trade-off |
+| Architecture | v12/v13 direction | Trade-off |
 | --- | --- | --- |
-| Active Record | Model-oriented CRUD helpers | Concise, but persistence concerns remain close to models. |
-| Repository | Repository modules in supported blueprints | More explicit persistence boundary and more code to maintain. |
-| Hybrid | Both styles may coexist | Useful for incremental adoption, but teams need a convention per domain. |
+| Active Record | The single generated v12 profile and a retained v13 option | Concise, but persistence concerns remain close to models. |
+| Data Mapper / Repository | Application-owned in v12; planned as a separately complete v13 profile | More explicit persistence boundary and more code to maintain. |
+| Hybrid | Not a global project profile | The two styles may naturally coexist per module, but the application must define that boundary. |
 
-These selections alter scaffold output; they do not convert an existing domain
-model automatically or guarantee strict Domain-Driven Design. All database
-operations still need parameter binding, authorization and transaction design.
+Earlier v12 prerelease menus offered three labels, but Repository and Hybrid
+shared generation branches and support varied by blueprint. Removing those
+selectors does not remove ORM APIs; it prevents the generator from claiming
+equivalent end-to-end profiles before the generated routes, services and tests
+support them consistently. All database operations still need parameter
+binding, authorization and transaction design.
 
 For most CRUD-oriented applications, start with Active Record and introduce a
 repository around domains that genuinely need a separate persistence boundary.
@@ -39,8 +46,9 @@ A second multi-select adds zero or more independent capabilities and accepts
 or CLI flags are omitted. Turso supplies explicit edge SQL, transactions and
 checked migrations; MongoDB supplies portable document CRUD; DuckDB supplies
 bounded analytics; SurrealDB supplies document CRUD and bounded read-only graph
-queries. Selecting one adds the precise Cargo features and environment keys,
-but does not make every model portable between different database families.
+queries; Qdrant supplies bounded dense-vector operations. Selecting one adds the
+precise Cargo features and environment keys, but does not make every model
+portable between different database families.
 
 This split prevents a Turso, MongoDB, analytics, or graph label from generating
 an application whose SQL Active Record migrations cannot run. See the
@@ -48,8 +56,10 @@ an application whose SQL Active Record migrations cannot run. See the
 
 ## Frontend profile
 
-The current wizard exposes five selections, but they are not five complete,
-interchangeable renderers:
+Version 12 generates server-rendered `html!` views with HTMX enhancement and
+does not ask for a frontend engine or expose a `--frontend` flag. The five labels
+shown by earlier prerelease wizards were not five complete, interchangeable
+renderers:
 
 | Selection | Current v12 boundary |
 | --- | --- |
@@ -59,17 +69,19 @@ interchangeable renderers:
 | Pico.css | Records the compatibility profile; the application must add, pin and serve Pico.css and validate the resulting pages. |
 | Tera | Adds the Tera dependency in the generated manifest. A complete file-template renderer and migration of every blueprint view are not generated automatically. |
 
-The selector is therefore an architectural starting point, not proof that the
-resulting application has a production-ready frontend. Use HTMX SSR when you
-want the most exercised path in this repository. Select another profile only
-when you intend to own and test its integration.
+Version 13 should model independent capabilities instead of one misleading
+global frontend selector: rendering (SSR or API), interaction (HTMX, LiveView or
+Wasm islands), styling (the bundled design or an explicitly materialized CSS
+system), and templating (`html!` or a fully generated file-template path). A
+combination should appear only after its assets, routes and browser behavior
+have equivalent tests.
 
 ## Full-stack versus headless API
 
 - Full-stack blueprints include server-rendered routes and relevant local tool
   integration.
-- `--api` generates a JSON-oriented project and skips the interactive frontend
-  selection.
+- `--api` generates a JSON-oriented Blank project without HTML view rendering;
+  product blueprints reject it instead of silently retaining their HTML routes.
 
 Generated code is application code. Review its routes, auth boundaries,
 database schema and dependencies before deployment.
@@ -170,13 +182,16 @@ observability composition belongs to the application.
 
 ## Practical starting points
 
-- Single-process CRUD application: Active Record, HTMX SSR and memory cache.
-- Domain-heavy service: Repository or Hybrid, with explicit transaction
-  boundaries.
+- Single-process CRUD application: use the generated Active Record, `html!` SSR
+  and HTMX profile with memory cache.
+- Domain-heavy service on v12: introduce repositories per module with explicit
+  transaction boundaries. In v13, select a Data Mapper / Repository project
+  profile only after its blueprint has full generated-route and test parity.
 - Multi-process application: a configured shared cache/queue plus deployment
   tests; do not assume realtime is distributed.
 - Rich browser interaction: opt into LiveView or Wasm foundations only with
-  integration and browser tests in the application.
+  application-owned integration and browser tests until a complete v13 profile
+  exists.
 
 Revisit these choices as evidence changes. Do not infer performance, security or
 availability from a wizard label.

@@ -1,8 +1,9 @@
 //! End-to-end compile proof for deterministic `cargo rullst new` profiles.
 //!
 //! The structural blueprint matrix proves every template variant parses. This
-//! suite crosses the distinct primary-database, ORM, frontend, hot-reload,
-//! API, AI, Redis and polyglot boundaries through the public CLI. Ordinary
+//! suite crosses the distinct primary-database, hot-reload, API, AI, Redis and
+//! polyglot boundaries through the public CLI. Rullst v12 deliberately fixes
+//! generated projects to Active Record plus `html!` SSR/HTMX. Ordinary
 //! profiles execute their test targets and hot-reload routers; the additive
 //! polyglot profile compiles here and relies on each ORM adapter's runtime
 //! matrix, avoiding redundant generated-test linking and adapter execution.
@@ -62,34 +63,20 @@ const PROFILE_CASES: [ProfileCase; 7] = [
         run_tests: true,
     },
     ProfileCase {
-        name: "lms-sqlite-active-htmx",
-        arguments: &[
-            "--blueprint",
-            "lms",
-            "--database",
-            "sqlite",
-            "--orm",
-            "active-record",
-            "--frontend",
-            "htmx",
-            "--hot-reload",
-        ],
+        name: "lms-sqlite-hot",
+        arguments: &["--blueprint", "lms", "--database", "sqlite", "--hot-reload"],
         required_rullst_features: &["orm", "strict-sqlite", "studio", "nexus", "auth"],
         rejected_rullst_features: &["strict-postgres", "strict-mysql", "capital"],
         router_returns_result: Some(true),
         run_tests: true,
     },
     ProfileCase {
-        name: "saas-sqlite-active-htmx",
+        name: "saas-sqlite-hot",
         arguments: &[
             "--blueprint",
             "saas",
             "--database",
             "sqlite",
-            "--orm",
-            "active-record",
-            "--frontend",
-            "htmx",
             "--hot-reload",
         ],
         required_rullst_features: &["orm", "strict-sqlite", "studio", "nexus", "auth", "capital"],
@@ -98,48 +85,28 @@ const PROFILE_CASES: [ProfileCase; 7] = [
         run_tests: true,
     },
     ProfileCase {
-        name: "blog-postgres-repository-tera",
-        arguments: &[
-            "--blueprint",
-            "blog",
-            "--database",
-            "postgres",
-            "--orm",
-            "repository",
-            "--frontend",
-            "tera",
-        ],
+        name: "blog-postgres",
+        arguments: &["--blueprint", "blog", "--database", "postgres"],
         required_rullst_features: &["orm", "strict-postgres", "studio", "nexus"],
         rejected_rullst_features: &["strict-sqlite", "strict-mysql"],
         router_returns_result: None,
         run_tests: true,
     },
     ProfileCase {
-        name: "portfolio-mysql-hybrid-pico",
-        arguments: &[
-            "--blueprint",
-            "portfolio",
-            "--database",
-            "mysql",
-            "--orm",
-            "hybrid",
-            "--frontend",
-            "pico",
-        ],
+        name: "portfolio-mysql",
+        arguments: &["--blueprint", "portfolio", "--database", "mysql"],
         required_rullst_features: &["orm", "strict-mysql", "studio", "nexus"],
         rejected_rullst_features: &["strict-sqlite", "strict-postgres"],
         router_returns_result: None,
         run_tests: true,
     },
     ProfileCase {
-        name: "erp-mariadb-liveview-ai-redis",
+        name: "erp-mariadb-ai-redis",
         arguments: &[
             "--blueprint",
             "erp",
             "--database",
             "mariadb",
-            "--frontend",
-            "liveview",
             "--ai",
             "--redis",
             "--hot-reload",

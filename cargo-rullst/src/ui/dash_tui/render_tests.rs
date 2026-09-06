@@ -87,6 +87,28 @@ fn compact_dashboard_renders_no_color_static_and_exit_states() {
 }
 
 #[test]
+fn docs_shortcut_feedback_stays_visible_when_system_logs_are_full() {
+    let (log_tx, _log_rx) = tokio::sync::mpsc::channel(8);
+    let mut app = App::new(3_000, true, "configured: SQLite".to_string(), true, true);
+    for index in 0..5 {
+        app.push_system(format!(
+            "Earlier system event {index} contains enough detail to wrap across the compact dashboard panel."
+        ));
+    }
+
+    assert!(!handle_key(
+        KeyEvent::new(KeyCode::Char('d'), KeyModifiers::NONE),
+        &mut app,
+        &log_tx
+    ));
+
+    let output = rendered(&app, 104, 22);
+    assert!(output.contains("API docs unavailable"));
+    assert!(output.contains("make:scalar"));
+    assert!(app.action_notice.is_some());
+}
+
+#[test]
 fn log_messages_and_keyboard_navigation_update_only_bounded_state() {
     let (log_tx, _log_rx) = tokio::sync::mpsc::channel(8);
     let mut app = App::new(3_000, true, "configured: SQLite".to_string(), true, true);
@@ -147,7 +169,7 @@ fn log_messages_and_keyboard_navigation_update_only_bounded_state() {
     assert!(
         app.system_logs()
             .iter()
-            .any(|line| line.contains("not scaffolded"))
+            .any(|line| line.contains("API docs unavailable") && line.contains("make:scalar"))
     );
     assert!(handle_key(
         KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE),

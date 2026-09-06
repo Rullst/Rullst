@@ -75,48 +75,6 @@ pub enum DatabaseChoice {
     Turso,
 }
 
-/// ORM architectures accepted by deterministic project generation.
-#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum OrmChoice {
-    ActiveRecord,
-    Repository,
-    Hybrid,
-}
-
-impl OrmChoice {
-    const fn pattern(self) -> &'static str {
-        match self {
-            Self::ActiveRecord => "Active Record",
-            Self::Repository => "Repository",
-            Self::Hybrid => "Hybrid",
-        }
-    }
-}
-
-/// Frontend profiles accepted by deterministic project generation.
-#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum FrontendChoice {
-    Htmx,
-    Liveview,
-    WasmIsland,
-    Pico,
-    Tera,
-}
-
-impl FrontendChoice {
-    const fn engine(self) -> &'static str {
-        match self {
-            Self::Htmx => "Zero-Bundle HTMX",
-            Self::Liveview => "LiveView",
-            Self::WasmIsland => "Wasm Island",
-            Self::Pico => "Pico CSS",
-            Self::Tera => "Tera Templates",
-        }
-    }
-}
-
 /// Platforms accepted by deterministic Omni scaffolding.
 #[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -180,7 +138,7 @@ pub enum Commands {
     New {
         /// Project name
         name: Option<String>,
-        /// Optional: creates a headless REST API (no HTML)
+        /// Optional: creates a headless REST API from the Blank starter (no HTML)
         #[arg(long)]
         api: bool,
         /// Optional: generates the current Dockerfile packaging scaffold
@@ -204,12 +162,6 @@ pub enum Commands {
         /// Generates a blank project without a primary relational database
         #[arg(long, requires = "default", conflicts_with = "database")]
         no_database: bool,
-        /// Selects the generated ORM architecture in deterministic/CI mode
-        #[arg(long, value_enum, requires = "default")]
-        orm: Option<OrmChoice>,
-        /// Selects the generated frontend profile in deterministic/CI mode
-        #[arg(long, value_enum, requires = "default")]
-        frontend: Option<FrontendChoice>,
         /// Enables the generated hot-reload library boundary in deterministic/CI mode
         #[arg(long, requires = "default")]
         hot_reload: bool,
@@ -580,8 +532,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             blueprint,
             database,
             no_database,
-            orm,
-            frontend,
             hot_reload,
             ai,
             redis,
@@ -620,8 +570,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                     qdrant: *qdrant,
                     database: database.map(DatabaseChoice::provider),
                     no_database: *no_database,
-                    orm_pattern: orm.map(OrmChoice::pattern),
-                    frontend_engine: frontend.map(FrontendChoice::engine),
                     hot_reload: *hot_reload,
                     wants_ai: *ai,
                     wants_redis: *redis,
@@ -953,6 +901,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::CommandFactory;
 
     #[test]
     fn parses_nix_and_buildah_flags_without_swapping_them() {
@@ -1057,7 +1006,7 @@ mod tests {
     }
 
     #[test]
-    fn parses_complete_deterministic_project_profile() {
+    fn parses_streamlined_deterministic_project_profile() {
         let cli = Cli::try_parse_from([
             "rullst",
             "new",
@@ -1067,10 +1016,6 @@ mod tests {
             "erp",
             "--database",
             "postgres",
-            "--orm",
-            "repository",
-            "--frontend",
-            "tera",
             "--hot-reload",
             "--ai",
             "--redis",
@@ -1083,8 +1028,6 @@ mod tests {
             Commands::New {
                 blueprint: Some(BlueprintChoice::Erp),
                 database: Some(DatabaseChoice::Postgres),
-                orm: Some(OrmChoice::Repository),
-                frontend: Some(FrontendChoice::Tera),
                 hot_reload: true,
                 ai: true,
                 redis: true,
@@ -1096,19 +1039,9 @@ mod tests {
 
     #[test]
     fn deterministic_profile_flags_require_default_mode() {
-        for flag in [
-            "--no-database",
-            "--hot-reload",
-            "--ai",
-            "--redis",
-            "--orm",
-            "--frontend",
-        ] {
+        for flag in ["--no-database", "--hot-reload", "--ai", "--redis"] {
             let mut arguments = vec!["rullst", "new", "profile"];
             arguments.push(flag);
-            if matches!(flag, "--orm" | "--frontend") {
-                arguments.push(if flag == "--orm" { "hybrid" } else { "pico" });
-            }
             let error = Cli::try_parse_from(arguments)
                 .err()
                 .expect("profile flag without deterministic defaults must fail");
@@ -1117,6 +1050,35 @@ mod tests {
                 clap::error::ErrorKind::MissingRequiredArgument,
                 "unexpected parser result for {flag}"
             );
+        }
+    }
+
+    #[test]
+    fn removed_v12_architecture_flags_are_not_advertised_or_accepted() {
+        let command = Cli::command();
+        let new = command
+            .get_subcommands()
+            .find(|subcommand| subcommand.get_name() == "new")
+            .expect("new command");
+        let argument_ids = new
+            .get_arguments()
+            .map(|argument| argument.get_id().as_str())
+            .collect::<Vec<_>>();
+        assert!(!argument_ids.contains(&"orm"));
+        assert!(!argument_ids.contains(&"frontend"));
+
+        for removed in [["--orm", "repository"], ["--frontend", "tera"]] {
+            let error = Cli::try_parse_from([
+                "rullst",
+                "new",
+                "profile",
+                "--default",
+                removed[0],
+                removed[1],
+            ])
+            .err()
+            .expect("removed v12 selector must fail");
+            assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument);
         }
     }
 
