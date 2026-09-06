@@ -1,10 +1,9 @@
 mod support;
-use support::local_request;
+use support::{authenticated_test_router, local_request};
 
 use axum::body::Body;
 use axum::http::StatusCode;
-use rullst_nexus::{FieldKind, FieldMeta, LocalNexusAccess, Nexus, NexusModel};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use rullst_nexus::{FieldKind, FieldMeta, Nexus, NexusModel};
 use tower::ServiceExt;
 
 struct SemanticModel;
@@ -35,13 +34,7 @@ impl NexusModel for SemanticModel {
 }
 
 fn local_test_router() -> axum::Router {
-    let loopback = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 3000);
-    Nexus::new()
-        .register::<SemanticModel>()
-        .with_local_access(LocalNexusAccess::loopback_only())
-        .try_build()
-        .expect("valid semantic-widget Nexus metadata")
-        .layer(axum::Extension(axum::extract::ConnectInfo(loopback)))
+    authenticated_test_router(Nexus::new().register::<SemanticModel>())
 }
 
 #[tokio::test]
