@@ -164,9 +164,9 @@ mod tests {
     #[test]
     #[cfg_attr(miri, ignore)]
     fn test_synthetic_cpu_work_runs_safely() {
-        let start = Instant::now();
+        // Wall-clock ceilings belong in benchmarks: sanitizer instrumentation
+        // deliberately changes execution time by a large, host-dependent factor.
         synthetic_argon2_cpu_work();
-        assert!(start.elapsed() < Duration::from_millis(50));
     }
 
     #[test]
