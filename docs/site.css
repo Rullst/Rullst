@@ -145,6 +145,7 @@ h1 { margin: 0; font-size: clamp(3.5rem, 5.5vw, 5.35rem); line-height: 1.05; fon
 .evidence-card p { margin: 0 0 1.6rem; color: var(--muted); font-size: 0.84rem; }
 .evidence-action { margin-top: auto; color: #d9e3d2; font-size: 0.75rem; }
 .community { display: grid; grid-template-columns: 1.5fr 0.5fr; gap: 2rem; align-items: center; padding: 3.5rem; border: 1px solid #415435; border-radius: 10px; background: radial-gradient(ellipse at right, #52703426, transparent 70%), #131d12; }
+.community > * { min-width: 0; }
 .community p:not(.eyebrow) { max-width: 590px; color: var(--muted); font-size: 0.9rem; }
 .community-mark { display: flex; align-items: center; justify-content: center; gap: 0.4rem; font: clamp(0.9rem, 2vw, 1.6rem)/1.8 var(--mono); color: #bdd39d; transform: rotate(-6deg); }
 .community-mark > span:first-child, .community-mark > span:last-child { color: #709055; font-size: 6rem; font-weight: 200; }
@@ -239,6 +240,7 @@ h1 { margin: 0; font-size: clamp(3.5rem, 5.5vw, 5.35rem); line-height: 1.05; fon
   .shot-heading { font-size: 0.55rem; }
   .shot-heading > span:last-child { display: none; }
   .community { padding: 1.6rem; }
+  .community h2 { font-size: 1.95rem; }
   .community .button { width: 100%; }
   .release-card { grid-template-columns: 1fr; gap: 1.5rem; }
   .footer { margin-top: 3rem; }
