@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788814648548,
+  "lastUpdate": 1788825054707,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -7767,6 +7767,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 749,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "317168277ed8a031ae9251a489d8a2b512fcdd19",
+          "message": "fix(ci): install Clippy for release property shards (#178)",
+          "timestamp": "2026-09-07T20:28:49-03:00",
+          "tree_id": "4229da9f0d5a44e6526fd3e0910f06d5eca57db5",
+          "url": "https://github.com/Rullst/Rullst/commit/317168277ed8a031ae9251a489d8a2b512fcdd19"
+        },
+        "date": 1788825054302,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1663,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 378,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 752,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
