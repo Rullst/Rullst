@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788773456726,
+  "lastUpdate": 1788783841535,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -5991,6 +5991,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 588,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4c9c7daba729fa411f8aacf6fc69c1356e5e45e7",
+          "message": "Merge pull request #165 from Rullst/fix/security-tsan-timing-test\n\ntest(security): remove sanitizer timing assumption",
+          "timestamp": "2026-09-07T08:56:27-03:00",
+          "tree_id": "609492e302de6f25d38f45c9c843a2e0e927e6c6",
+          "url": "https://github.com/Rullst/Rullst/commit/4c9c7daba729fa411f8aacf6fc69c1356e5e45e7"
+        },
+        "date": 1788783841099,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 503,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
