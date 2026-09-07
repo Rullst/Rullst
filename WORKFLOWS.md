@@ -5,7 +5,7 @@ is not evidence that a workflow has passed for a particular commit. A green
 claim must always point to the GitHub Actions run, commit SHA, logs, and produced
 artifacts.
 
-Last source-level review: **2026-09-06**.
+Last source-level review: **2026-09-07**.
 
 ## Status language
 
@@ -27,6 +27,16 @@ continuous workflows accept pushes to `main` and pull requests targeting it,
 and expose `workflow_dispatch` where a safe rerun is useful. Superseded runs of
 these workflows are cancelled per workflow and ref so rapid development does
 not spend runner capacity proving an obsolete commit.
+
+`ci.yml` deliberately treats the expensive operating-system matrix differently.
+Format and Clippy continue to give feedback on draft pull requests. The complete
+Linux/macOS/Windows test matrix starts for a pull request only when it is ready
+for review, and it can always be requested manually. After that reviewed commit
+is merged, the automatic `main` push repeats Linux rather than paying for the
+same macOS and Windows proof twice. A direct push to `main` therefore has Linux
+evidence only until a maintainer explicitly runs `ci.yml`; release candidates
+must use the manual full matrix when no successful ready-PR run points to the
+exact candidate tree.
 
 GitHub executes `schedule` events from the repository's default branch, so
 scheduled and continuous v12 evidence now share the active `main` source line.
@@ -84,6 +94,17 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 ```
+
+The cross-platform test job disables Cargo incremental compilation and uses
+the pinned `sccache` Action and binary to store content-addressed compiler
+outputs in GitHub Actions cache. The current `cc` build dependency also honors
+the same Rust compiler wrapper, so compatible bundled DuckDB C++ objects can be
+reused. The raw workspace `target` directory remains deliberately uncached:
+CLI integration tests create and remove nested Cargo targets, and archiving the
+whole mutable tree previously produced false missing-directory annotations and
+multi-gigabyte uploads. A first run on a new cache namespace is still a cold
+build; evaluate acceleration using the reported cache hit ratio and a later
+compatible run, never by weakening or omitting assertions.
 
 `ci.yml` also compiles and exercises each ORM strict database feature in
 isolation (PostgreSQL, MySQL, and SQLite), exercises the runtime-only Core and
