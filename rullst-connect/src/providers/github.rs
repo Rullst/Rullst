@@ -38,9 +38,7 @@ impl GithubProvider {
         user.refresh_token = token_res["refresh_token"]
             .as_str()
             .map(|s| secrecy::SecretString::from(s.to_string()));
-        user.expires_in = token_res["expires_in"]
-            .as_u64()
-            .or_else(|| token_res["expires_in"].as_i64().map(|v| v as u64));
+        user.expires_in = crate::provider::token_lifetime(&token_res)?;
         Ok(user)
     }
 }
@@ -53,6 +51,7 @@ impl Provider for GithubProvider {
         &self,
         params: crate::provider::ExchangeParams<'_>,
     ) -> Result<ConnectUser, crate::error::ConnectError> {
+        crate::provider::require_oauth_only(params.expected_nonce)?;
         let form_data = crate::provider::TokenExchangeForm {
             client_id: self.client_id.as_str(),
             client_secret: Some(secrecy::ExposeSecret::expose_secret(&self.client_secret)),
@@ -215,9 +214,7 @@ impl Provider for GithubProvider {
         user.refresh_token = token_res["refresh_token"]
             .as_str()
             .map(|s| secrecy::SecretString::from(s.to_string()));
-        user.expires_in = token_res["expires_in"]
-            .as_u64()
-            .or_else(|| token_res["expires_in"].as_i64().map(|v| v as u64));
+        user.expires_in = crate::provider::token_lifetime(&token_res)?;
         Ok(user)
     }
 }

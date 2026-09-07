@@ -239,12 +239,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc7bb162ec39d46ab1ca8c77bf72e890535becd1751bb45f64c597edb4c8c6b3"
 
 [[package]]
+name = "alloc-no-stdlib"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2fb6cfd47bf496ff64095c20eaba0c201404ee38714d4142fcfa1dc334fcc7a"
+
+[[package]]
 name = "alloc-stdlib"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e76a019e91224d279006ff972f1e984179a6e9feb050adba6ce8274aef23195"
 dependencies = [
- "alloc-no-stdlib",
+ "alloc-no-stdlib 2.0.4",
+]
+
+[[package]]
+name = "alloc-stdlib"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b5c1865780388bfa186411ab5f247819487fc4864c6e9c3106611fa347586e1"
+dependencies = [
+ "alloc-no-stdlib 3.0.0",
 ]
 
 [[package]]
@@ -269,7 +284,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab097a7be305dd66b2b6917f5efb6b723129ce4b2cd11aa1a0afcc293c7dc08e"
 dependencies = [
  "bitflags 2.13.1",
- "brotli-decompressor",
+ "brotli-decompressor 5.0.3",
  "encoding_rs",
  "enumflags2",
  "flate2",
@@ -403,13 +418,13 @@ checksum = "03918c3dbd7701a85c6b9887732e2921175f26c350b4563841d0958c21d57e6d"
 
 [[package]]
 name = "argon2"
-version = "0.5.3"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c3610892ee6e0cbce8ae2700349fcf8f98adb0dbfbee85aec3c9179d29cc072"
+checksum = "134c52ddac6d63c576bef8168db10c83c49c26444ecbc68060fef078925a901c"
 dependencies = [
  "base64ct",
  "blake2",
- "cpufeatures 0.2.17",
+ "cpufeatures 0.3.1",
  "password-hash",
 ]
 
@@ -1206,11 +1221,11 @@ dependencies = [
 
 [[package]]
 name = "blake2"
-version = "0.10.6"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46502ad458c9a52b69d4d4d32775c788b7a1b85e8bc9d482d92250fc0e3f8efe"
+checksum = "5b5d4d889834ee8ecfc0f8426ad30faf7cdcb10f741a8e6d7224d95325479f6f"
 dependencies = [
- "digest 0.10.7",
+ "digest 0.11.3",
 ]
 
 [[package]]
@@ -1322,13 +1337,13 @@ checksum = "dc0b364ead1874514c8c2855ab558056ebfeb775653e7ae45ff72f28f8f3166c"
 
 [[package]]
 name = "brotli"
-version = "8.0.4"
+version = "9.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cc91aac060a7a1e25823bdccbfb6af1875b88f17c6daac97894eed8207166b3"
+checksum = "f8b851b75c23ca7873623d612fe49bd1989aeb03d08fb9432187eb253d3d4c6b"
 dependencies = [
- "alloc-no-stdlib",
- "alloc-stdlib",
- "brotli-decompressor",
+ "alloc-no-stdlib 3.0.0",
+ "alloc-stdlib 0.3.0",
+ "brotli-decompressor 6.0.0",
 ]
 
 [[package]]
@@ -1337,8 +1352,18 @@ version = "5.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a32acac15fe1967bc3986b2a6347dffc965602354ea6f450ad07e8bfd253583"
 dependencies = [
- "alloc-no-stdlib",
- "alloc-stdlib",
+ "alloc-no-stdlib 2.0.4",
+ "alloc-stdlib 0.2.4",
+]
+
+[[package]]
+name = "brotli-decompressor"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46087801e40b785410c352bee60e9b6226312709cf52d5fff92776cdf5cf6490"
+dependencies = [
+ "alloc-no-stdlib 3.0.0",
+ "alloc-stdlib 0.3.0",
 ]
 
 [[package]]
@@ -1430,7 +1455,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-rullst"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "axum",
  "brotli",
@@ -1439,6 +1464,7 @@ dependencies = [
  "colored",
  "crossterm 0.29.0",
  "dialoguer",
+ "dotenvy",
  "insta",
  "notify",
  "proc-macro2 1.0.107",
@@ -4186,9 +4212,9 @@ dependencies = [
 
 [[package]]
 name = "jsonschema"
-version = "0.52.1"
+version = "0.53.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93e842fa72fd1e50ca4676a527641c13f5ee0d423ac699bfe1cd2afa3a4fdbac"
+checksum = "ca2ea2207f8ccb34b6d4d041fe9deb08fff3cbc43750012caa2c3d1e860188e4"
 dependencies = [
  "ahash",
  "bytecount",
@@ -4214,22 +4240,23 @@ dependencies = [
 
 [[package]]
 name = "jsonschema-regex"
-version = "0.52.1"
+version = "0.53.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5d90ea83fa606c96f0b4737ecedf1fa6b624272022edc42039565f8d8af0b78"
+checksum = "5426a01d944d044c9c5e459f603419d1b539358f5496b1041df45a7a86d2d38f"
 dependencies = [
  "regex-syntax",
 ]
 
 [[package]]
 name = "jsonschema-value"
-version = "0.52.1"
+version = "0.53.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da4ab4cbe58181a117d8c3582844ce20b07184319b51ba6d756596c1c451aebc"
+checksum = "65b6ec7deaeaab6320efc3084d8a9e91d5b4985ee36ffffef45dbff9516ff7a8"
 dependencies = [
  "ahash",
  "bytecount",
  "fraction",
+ "getrandom 0.3.4",
  "num-cmp",
  "num-traits",
  "serde_json",
@@ -5528,13 +5555,12 @@ dependencies = [
 
 [[package]]
 name = "password-hash"
-version = "0.5.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "346f04948ba92c43e8469c1ee6736c7563d71012b17d40745260fe106aac2166"
+checksum = "aab41826031698d6ffcd9cff78ef56ef998e39dc7e5067cdfebe373842d4723b"
 dependencies = [
- "base64ct",
- "rand_core 0.6.4",
- "subtle",
+ "getrandom 0.4.3",
+ "phc",
 ]
 
 [[package]]
@@ -5656,6 +5682,17 @@ checksum = "3673cba5b9a124916096a423b806a9f29620972c6c97b08db5f2053e9428b481"
 dependencies = [
  "serde",
  "sqlx",
+]
+
+[[package]]
+name = "phc"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44dc769b75f93afdddd8c7fa12d685292ddeff1e66f7f0f3a234cf1818afe892"
+dependencies = [
+ "base64ct",
+ "ctutils",
+ "getrandom 0.4.3",
 ]
 
 [[package]]
@@ -6553,9 +6590,9 @@ dependencies = [
 
 [[package]]
 name = "referencing"
-version = "0.52.1"
+version = "0.53.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d38a014525040cdc9893361b7419bcf1f43b7ba7055eabaf6d91d6b75caa8b3f"
+checksum = "fb406ba984c08d1b91781d7507d103296cf6dec3256c33c388b468957f4b43bb"
 dependencies = [
  "ahash",
  "fluent-uri",
@@ -6734,9 +6771,12 @@ dependencies = [
 
 [[package]]
 name = "roxmltree"
-version = "0.19.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cd14fd5e3b777a7422cca79358c57a8f6e3a703d9ac187448d0daf220c2407f"
+checksum = "f1964b10c76125c36f8afe190065a4bf9a87bf324842c05701330bba9f1cacbb"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "rsa"
@@ -6770,8 +6810,9 @@ dependencies = [
 
 [[package]]
 name = "rullst"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
+ "actix-web",
  "async-trait",
  "axum",
  "base64 0.23.1",
@@ -6828,7 +6869,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-ai"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -6851,7 +6892,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-auth"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -6865,7 +6906,6 @@ dependencies = [
  "jsonwebtoken",
  "p256 0.14.0",
  "rand 0.10.2",
- "rand_core 0.6.4",
  "ring",
  "rullst-connect",
  "rullst-core",
@@ -6882,7 +6922,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-blog-example"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "async-trait",
  "axum",
@@ -6908,7 +6948,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-capital"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "actix-web",
  "async-trait",
@@ -6943,7 +6983,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-connect"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "actix-web",
  "aes-gcm",
@@ -6979,7 +7019,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-core"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "aes-gcm",
  "async-trait",
@@ -6995,7 +7035,6 @@ dependencies = [
  "http 1.5.0",
  "js-sys",
  "libloading",
- "notify",
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
@@ -7021,7 +7060,6 @@ dependencies = [
  "tracing-core",
  "tracing-opentelemetry",
  "tracing-subscriber",
- "urlencoding",
  "uuid",
  "validator",
  "wasm-bindgen",
@@ -7033,7 +7071,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-iot"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "ed25519-dalek 2.2.0",
  "serde",
@@ -7043,7 +7081,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-macros"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "proc-macro2 1.0.107",
  "quote 1.0.47",
@@ -7053,7 +7091,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-mail"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "async-trait",
  "aws-sdk-sesv2",
@@ -7076,7 +7114,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-messaging"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "aes-gcm",
  "rullst-orm",
@@ -7094,7 +7132,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-nexus"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "ammonia",
  "axum",
@@ -7117,7 +7155,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "aes-gcm",
  "async-stream",
@@ -7157,7 +7195,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm-macros"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "mutants",
  "proc-macro2 1.0.107",
@@ -7168,7 +7206,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-security"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "aes-gcm",
  "ammonia",
@@ -7200,7 +7238,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-studio"
-version = "12.0.0"
+version = "12.0.0-rc.1"
 dependencies = [
  "axum",
  "base64 0.23.1",
@@ -8819,9 +8857,9 @@ dependencies = [
 
 [[package]]
 name = "tinyvec"
-version = "1.12.0"
+version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb4ebadaa0af04fab11ae01eb5f9fdb5f9c5b875506e210e71c07873528baa7f"
+checksum = "4cf0ded5c4e56918d8f8a339e1bb67d038d3bc6d144ac407904015ba2e4cde9b"
 dependencies = [
  "tinyvec_macros",
 ]
@@ -10214,13 +10252,14 @@ checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 
 [[package]]
 name = "wnaf"
-version = "0.14.0"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab12e7090f27e2ffd9322651492942d50c2926094af30601e1964337db39daf1"
+checksum = "795ca18b3fdb5e62bf982199278341ddcf7ebf7d32e25e212ad05d496e95f6fa"
 dependencies = [
  "ff 0.14.0",
  "group 0.14.0",
  "hybrid-array",
+ "primefield",
 ]
 
 [[package]]

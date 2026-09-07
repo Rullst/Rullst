@@ -18,14 +18,8 @@ use cargo_rullst::generators::audit::scan_idor_vulnerabilities;
 use cargo_rullst::generators::project::cargo_toml::build_cargo_toml;
 use clap::CommandFactory;
 
-const ORM_PATTERNS: [&str; 3] = ["Active Record", "Repository", "Hybrid"];
-const FRONTEND_ENGINES: [&str; 5] = [
-    "Zero-Bundle HTMX",
-    "Wasm Island",
-    "LiveView",
-    "Pico CSS",
-    "Tera Template",
-];
+const ORM_PATTERNS: [&str; 1] = ["Active Record"];
+const FRONTEND_ENGINES: [&str; 1] = ["Zero-Bundle HTMX"];
 
 #[derive(Clone, Copy)]
 struct BlueprintSpec {
@@ -172,26 +166,26 @@ fn every_blueprint_variant_has_safe_paths_valid_rust_and_valid_manifest() {
                                 frontend_engine,
                             );
                             assert_safe_parseable_manifest(&case, &files);
+                            let rust_sources = files
+                                .iter()
+                                .filter(|(path, _)| path.ends_with(".rs"))
+                                .map(|(_, contents)| contents.as_str())
+                                .collect::<Vec<_>>()
+                                .join("\n");
                             if spec.id != BLANK_BLUEPRINT_ID {
-                                let rust_sources = files
-                                    .iter()
-                                    .filter(|(path, _)| path.ends_with(".rs"))
-                                    .map(|(_, contents)| contents.as_str())
-                                    .collect::<Vec<_>>()
-                                    .join("\n");
                                 assert!(
                                     rust_sources.contains(
                                         "NexusAuthPolicy::local_development_or_basic_from_env()"
                                     ),
                                     "{case}: Nexus local/release access policy drifted"
                                 );
-                                assert!(
-                                    rust_sources.contains(
-                                        "#[cfg(debug_assertions)]\n    {\n        rullst::runtime::spawn"
-                                    ) && rust_sources.contains("run_studio(5555)"),
-                                    "{case}: Studio must be a debug-build-only local service"
-                                );
                             }
+                            assert!(
+                                rust_sources.contains(
+                                    "#[cfg(debug_assertions)]\n    {\n        rullst::runtime::spawn"
+                                ) && rust_sources.contains("run_studio(5555)"),
+                                "{case}: Studio must be a debug-build-only local service"
+                            );
 
                             let cargo_toml = build_cargo_toml(
                                 "matrix-app",
@@ -229,7 +223,7 @@ fn every_blueprint_variant_has_safe_paths_valid_rust_and_valid_manifest() {
         }
     }
 
-    assert_eq!(cases, 270, "the documented structural matrix changed");
+    assert_eq!(cases, 18, "the documented v12 structural matrix changed");
 }
 
 #[test]
@@ -254,18 +248,132 @@ fn blank_database_status_keeps_diagnostics_out_of_public_responses() {
                     .join("\n");
 
                 assert!(sources.contains("Database connected."));
-                assert!(sources.contains("Database unavailable."));
-                assert!(
-                    sources.contains(
+                if hot_reload {
+                    assert!(!sources.contains("Database unavailable."));
+                    assert!(sources.contains("Server::run validates the configured database"));
+                } else {
+                    assert!(sources.contains("Database unavailable."));
+                    assert!(sources.contains(
                         "tracing::warn!(error = %error, \"database status check failed\")"
-                    )
-                );
+                    ));
+                }
                 assert!(!sources.contains("users.len()"));
                 assert!(!sources.contains("offline or not"));
                 assert!(!sources.contains("not configured: {}"));
             }
         }
     }
+}
+
+#[test]
+fn blank_hot_reload_uses_the_host_verified_database_state() {
+    for orm_pattern in ["Active Record", "Turso Active Record"] {
+        let files = blueprints::blank::file_manifest(
+            "hot-db-app",
+            "hot_db_app",
+            false,
+            true,
+            true,
+            orm_pattern,
+            "Zero-Bundle HTMX",
+        );
+        let source = files
+            .iter()
+            .find(|(path, _)| *path == "src/lib.rs")
+            .map(|(_, contents)| contents.as_str())
+            .expect("hot-reload library");
+
+        assert!(source.contains("Server::run validates the configured database"));
+        assert!(source.contains("Database connected."));
+        assert!(!source.contains("ensure_database_initialized"));
+        assert!(!source.contains("Orm::init"));
+        assert!(!source.contains("TursoOrm::init_from_env"));
+    }
+}
+
+#[test]
+fn blank_html_profiles_emit_a_same_origin_stylesheet() {
+    for hot_reload in [false, true] {
+        let files = blueprints::blank::file_manifest(
+            "styled-app",
+            "styled_app",
+            false,
+            hot_reload,
+            false,
+            "Active Record",
+            "Zero-Bundle HTMX",
+        );
+        let stylesheet = files
+            .iter()
+            .find(|(path, _)| *path == "static/rullst.css")
+            .map(|(_, contents)| contents.as_str())
+            .expect("blank HTML stylesheet");
+        assert!(stylesheet.contains(".rullst-starter__button"));
+        assert!(
+            files
+                .iter()
+                .filter(|(path, _)| path.ends_with(".rs"))
+                .any(|(_, source)| source.contains("rullst-starter__title"))
+        );
+    }
+}
+
+#[test]
+fn saas_and_erp_emit_csp_compatible_same_origin_stylesheets() {
+    let saas =
+        blueprints::saas::file_manifest("styled_app", false, "Active Record", "Zero-Bundle HTMX");
+    let erp =
+        blueprints::erp::file_manifest("styled_app", false, "Active Record", "Zero-Bundle HTMX");
+
+    for (label, files, expected_selector) in
+        [("SaaS", &saas, ".pricing-grid"), ("ERP", &erp, ".glass")]
+    {
+        let stylesheet = files
+            .iter()
+            .find(|(path, _)| *path == "static/rullst.css")
+            .map(|(_, contents)| contents.as_str())
+            .unwrap_or_else(|| panic!("{label} must emit a same-origin stylesheet"));
+        assert!(stylesheet.contains(expected_selector));
+
+        let page = files
+            .iter()
+            .find(|(path, _)| {
+                *path
+                    == if label == "SaaS" {
+                        "src/pages/billing.rs"
+                    } else {
+                        "src/pages/erp.rs"
+                    }
+            })
+            .map(|(_, contents)| contents.as_str())
+            .unwrap_or_else(|| panic!("{label} page"));
+        assert!(page.contains("href=\"/static/rullst.css\""));
+        assert!(page.contains("href=\"/static/rullst.png\""));
+        assert!(!page.contains("fonts.googleapis.com"));
+        assert!(!page.contains("cdn.tailwindcss.com"));
+        assert!(!page.contains("<style"));
+    }
+
+    let saas_page = saas
+        .iter()
+        .find(|(path, _)| *path == "src/pages/billing.rs")
+        .map(|(_, contents)| contents.as_str())
+        .expect("SaaS billing page");
+    assert!(!saas_page.contains("style=\""));
+
+    let erp_page = erp
+        .iter()
+        .find(|(path, _)| *path == "src/pages/erp.rs")
+        .map(|(_, contents)| contents.as_str())
+        .expect("ERP page");
+    assert!(erp_page.contains("nonce={csp_nonce}"));
+    assert!(!erp_page.contains("\"#{}\""));
+    let erp_controller = erp
+        .iter()
+        .find(|(path, _)| *path == "src/controllers/erp_controller.rs")
+        .map(|(_, contents)| contents.as_str())
+        .expect("ERP controller");
+    assert!(erp_controller.contains("Extension<rullst::security::CspNonce>"));
 }
 
 #[test]

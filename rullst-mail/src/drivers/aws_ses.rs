@@ -236,8 +236,7 @@ impl AwsSesDriver {
             )
         })?;
 
-        static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
-        let client = HTTP_CLIENT.get_or_init(reqwest::Client::new);
+        let client = super::http::client()?;
         let payload = proxy_payload(message);
         let response = client
             .post(endpoint)

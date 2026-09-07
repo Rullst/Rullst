@@ -473,6 +473,7 @@ impl Server {
     {
         let is_dev = environment.allows_development_tools();
         let mut app = self.router.into_axum();
+        app = super::dev_reload::mount(app, is_dev, std::env::var("RULLST_DEV_GENERATION").ok());
 
         app = app.layer(axum::middleware::from_fn(
             |req: axum::extract::Request, next: axum::middleware::Next| async move {

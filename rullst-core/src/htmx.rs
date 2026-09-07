@@ -20,6 +20,7 @@ pub struct HtmxRequest {
     pub prompt: Option<String>,
     /// The browser's active URL when the request was initiated (`HX-Current-URL`).
     pub current_url: Option<String>,
+    csp_nonce: Option<crate::security::CspNonce>,
 }
 
 impl<S> FromRequestParts<S> for HtmxRequest
@@ -60,12 +61,15 @@ where
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string());
 
+        let csp_nonce = parts.extensions.get::<crate::security::CspNonce>().cloned();
+
         Ok(HtmxRequest {
             is_htmx,
             trigger,
             target,
             prompt,
             current_url,
+            csp_nonce,
         })
     }
 }
@@ -141,19 +145,33 @@ impl IntoResponse for HtmxResponse {
 
 /// Helper function to render a hybrid SSR layout page.
 /// - If it is triggered by HTMX, it returns just the inner `content` as a fragment.
-/// - Otherwise, it automatically wraps the `content` inside a beautiful HTML5 skeleton pre-configured with TailwindCSS and HTMX script links.
+/// - Otherwise, it wraps `content` in an HTML5 skeleton that loads the generated
+///   same-origin stylesheet and the version-pinned HTMX browser client.
+///   CLI scaffolds supply `/static/htmx-1.9.12.min.js`; manually built
+///   applications must serve that asset themselves. `content` is trusted HTML:
+///   escape untrusted values before constructing this fragment.
 pub fn render_page(htmx: &HtmxRequest, title: &str, content: String) -> Html<String> {
     if htmx.is_htmx {
         Html(content)
     } else {
+        let htmx_script = if let Some(nonce) = htmx.csp_nonce.as_ref() {
+            crate::html! {
+                <script nonce={nonce.as_str()} src="/static/htmx-1.9.12.min.js"></script>
+            }
+        } else {
+            crate::html! {
+                <script src="/static/htmx-1.9.12.min.js"></script>
+            }
+        };
         let html_content = crate::html! {
             <html lang="pt-BR" class="h-full bg-slate-950 text-slate-100">
                 <head>
                     <meta charset="utf-8" />
                     <title>{title}</title>
                     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                    <script src="https://cdn.tailwindcss.com"></script>
-                    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+                    <link rel="icon" type="image/png" href="/static/rullst.png" />
+                    <link rel="stylesheet" href="/static/rullst.css" />
+                    { crate::html::RawHtml(htmx_script) }
                 </head>
                 <body class="h-full">
                     { crate::html::RawHtml(content) }
@@ -187,7 +205,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_htmx_request_extractor_headers() {
-        let req = Request::builder()
+        let nonce = crate::security::CspNonce::generate();
+        let mut req = Request::builder()
             .header("HX-Request", "true")
             .header("HX-Trigger", "my-btn")
             .header("HX-Target", "content-div")
@@ -195,6 +214,7 @@ mod tests {
             .header("HX-Current-URL", "http://localhost/home")
             .body(())
             .unwrap();
+        req.extensions_mut().insert(nonce.clone());
         let (mut parts, _) = req.into_parts();
         let htmx_req = HtmxRequest::from_request_parts(&mut parts, &())
             .await
@@ -208,6 +228,7 @@ mod tests {
             htmx_req.current_url.as_deref(),
             Some("http://localhost/home")
         );
+        assert_eq!(htmx_req.csp_nonce.as_ref(), Some(&nonce));
     }
 
     #[test]
@@ -262,6 +283,7 @@ mod tests {
             target: None,
             prompt: None,
             current_url: None,
+            csp_nonce: None,
         };
         let req_normal = HtmxRequest {
             is_htmx: false,
@@ -269,6 +291,7 @@ mod tests {
             target: None,
             prompt: None,
             current_url: None,
+            csp_nonce: None,
         };
 
         // HTMX request -> only the inner content fragment
@@ -284,8 +307,11 @@ mod tests {
         assert!(res_normal.0.contains("<!DOCTYPE html>"));
         assert!(res_normal.0.contains("<title>My Page Title</title>"));
         assert!(res_normal.0.contains("<div>Body Content</div>"));
-        assert!(res_normal.0.contains("https://cdn.tailwindcss.com"));
-        assert!(res_normal.0.contains("https://unpkg.com/htmx.org"));
+        assert!(res_normal.0.contains("/static/rullst.css"));
+        assert!(res_normal.0.contains("/static/rullst.png"));
+        assert!(!res_normal.0.contains("https://cdn.tailwindcss.com"));
+        assert!(res_normal.0.contains("/static/htmx-1.9.12.min.js"));
+        assert!(!res_normal.0.contains("https://unpkg.com"));
     }
 
     #[test]
@@ -296,6 +322,7 @@ mod tests {
             target: None,
             prompt: None,
             current_url: None,
+            csp_nonce: None,
         };
 
         // Empty content
@@ -313,6 +340,24 @@ mod tests {
             res_special
                 .0
                 .contains("<title>&lt;script&gt;alert(1)&lt;/script&gt;</title>")
+        );
+    }
+
+    #[tokio::test]
+    async fn rendered_htmx_script_uses_the_request_csp_nonce() {
+        let nonce = crate::security::CspNonce::generate();
+        let mut request = Request::new(());
+        request.extensions_mut().insert(nonce.clone());
+        let (mut parts, _) = request.into_parts();
+        let htmx = HtmxRequest::from_request_parts(&mut parts, &())
+            .await
+            .unwrap();
+
+        let response = render_page(&htmx, "Nonce", "content".to_string());
+        assert!(
+            response
+                .0
+                .contains(&format!("nonce=\"{}\"", nonce.as_str()))
         );
     }
 }

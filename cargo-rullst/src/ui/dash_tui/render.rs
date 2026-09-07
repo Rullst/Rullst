@@ -57,7 +57,11 @@ pub(super) fn ui(frame: &mut ratatui::Frame, app: &App) {
         .constraints([
             Constraint::Length(4),
             Constraint::Min(12),
-            Constraint::Length(if app.search_editing { 5 } else { 3 }),
+            Constraint::Length(if app.search_editing || app.action_notice.is_some() {
+                5
+            } else {
+                3
+            }),
         ])
         .split(frame.area());
 
@@ -81,7 +85,7 @@ fn render_header(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Pal
         elapsed % 60
     );
     let status_color = match app.server_status {
-        ServerStatus::Starting => palette.yellow,
+        ServerStatus::Starting | ServerStatus::Unverified => palette.yellow,
         ServerStatus::Ready => palette.green,
         ServerStatus::Exited { success: true, .. } => palette.muted,
         ServerStatus::Exited { success: false, .. } => palette.red,
@@ -115,9 +119,9 @@ fn render_header(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Pal
         ),
         Span::styled(
             if app.hmr_enabled {
-                "   HMR ACTIVE"
+                "   AUTO-RELOAD"
             } else {
-                "   HMR DISABLED"
+                "   RELOAD OFF"
             },
             Style::default().fg(if app.hmr_enabled {
                 palette.magenta
@@ -136,9 +140,9 @@ fn render_header(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Pal
         Span::styled("│", Style::default().fg(palette.muted)),
         Span::styled(
             if app.hmr_enabled {
-                " same-origin /_rullst_hmr "
+                " supervised process restart "
             } else {
-                " generate with --hot-reload "
+                " use cargo rullst dev "
             },
             Style::default().fg(palette.magenta),
         ),
@@ -217,7 +221,10 @@ fn render_system_logs(frame: &mut ratatui::Frame, area: Rect, app: &App, palette
                 palette.red
             } else if entry.contains("complete") || entry.contains("ready") {
                 palette.green
-            } else if entry.contains("Running") || entry.contains("Checking") {
+            } else if entry.contains("Running")
+                || entry.contains("Checking")
+                || entry.contains("API docs unavailable")
+            {
                 palette.yellow
             } else {
                 palette.magenta
@@ -251,7 +258,7 @@ fn render_inspector(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: 
         status_line(
             "Hot reload",
             if app.hmr_enabled {
-                "same-origin /_rullst_hmr"
+                "supervised restart"
             } else {
                 "disabled"
             },
@@ -303,7 +310,7 @@ fn render_footer(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Pal
         key("s", palette.magenta),
         Span::raw(" studio  "),
         key("d", palette.blue),
-        Span::raw(" docs  "),
+        Span::raw(" api docs  "),
         key("m", palette.yellow),
         Span::raw(" migrate  "),
         key("/", palette.cyan),
@@ -330,6 +337,11 @@ fn render_footer(frame: &mut ratatui::Frame, area: Rect, app: &App, palette: Pal
                     .add_modifier(Modifier::UNDERLINED),
             ),
             Span::styled("   Enter/Esc close", Style::default().fg(palette.muted)),
+        ]));
+    } else if let Some(notice) = &app.action_notice {
+        lines.push(Line::from(vec![
+            Span::styled(" notice › ", Style::default().fg(palette.yellow)),
+            Span::styled(notice, Style::default().fg(palette.text)),
         ]));
     }
     frame.render_widget(

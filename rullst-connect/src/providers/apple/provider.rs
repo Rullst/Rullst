@@ -232,9 +232,7 @@ impl AppleProvider {
         user.refresh_token = token_res["refresh_token"]
             .as_str()
             .map(|s| secrecy::SecretString::from(s.to_string()));
-        user.expires_in = token_res["expires_in"]
-            .as_u64()
-            .or_else(|| token_res["expires_in"].as_i64().map(|v| v as u64));
+        user.expires_in = crate::provider::token_lifetime(&token_res)?;
         Ok(user)
     }
 
@@ -267,13 +265,11 @@ impl AppleProvider {
             .find(kid)
             .ok_or_else(|| crate::error::ConnectError::JwkNotFound(kid.to_string()))?;
         let decoding_key = jsonwebtoken::DecodingKey::from_jwk(jwk)?;
-        let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::RS256);
-        validation.set_audience(&[&self.client_id]);
-        validation.set_issuer(&["https://appleid.apple.com"]);
-        validation.validate_exp = true;
-        if expected_nonce.is_some() {
-            validation.set_required_spec_claims(&["nonce"]);
-        }
+        let validation = crate::provider::id_token::validation(
+            jsonwebtoken::Algorithm::RS256,
+            &self.client_id,
+            &["https://appleid.apple.com"],
+        );
         let payload = jsonwebtoken::decode::<Value>(id_token_str, &decoding_key, &validation)
             .map_err(|error| {
                 crate::error::ConnectError::Provider(format!(
@@ -282,14 +278,7 @@ impl AppleProvider {
             })?
             .claims;
 
-        if let Some(nonce) = expected_nonce {
-            let token_nonce = payload["nonce"].as_str().unwrap_or("");
-            if !crate::provider::verify_nonce(token_nonce, nonce) {
-                return Err(crate::error::ConnectError::Provider(
-                    "Apple id_token nonce mismatch".to_owned(),
-                ));
-            }
-        }
+        crate::provider::id_token::validate_claims(&payload, &self.client_id, expected_nonce)?;
 
         Ok(ConnectUser {
             id: payload["sub"].as_str().map(String::from).ok_or_else(|| {

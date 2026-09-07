@@ -160,6 +160,7 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
             #(#builder_methods)*
 
             pub async fn save(mut self) -> Result<(), rullst_orm::Error> {
+                rullst_orm::__transaction_access::ensure_allowed()?;
                 let mut sets = vec![];
                 #(#set_clauses)*
 

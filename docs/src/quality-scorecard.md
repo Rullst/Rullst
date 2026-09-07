@@ -1,5 +1,12 @@
 # Quality scorecard
 
+> **Audit reopening (2026-09-05):** the second-computer CLI handoff and new
+> negative regressions revealed gaps outside the earlier test inventory.
+> Scores and ceiling-completion statements below describe the previous
+> campaign; they are not a current release approval. See the
+> [v12 release audit](v12-release-audit.md) for reviewed scopes, corrections
+> and gates that must pass before reconfirming those conclusions.
+
 Rullst generates an evidence-bound quality scorecard for every push to `main`
 and every pull request. The report is attached to the corresponding **Rust CI**
 run as `quality-scorecard-<commit SHA>` and is also written to that run's job
@@ -120,7 +127,7 @@ All 15 active crates have now reached their audited local target:
 | `rullst-auth` | 95/A | 95/A | 0 | Bounded shared local revocation/device lifecycle, restart and counter-CAS evidence complete for this campaign | Shared ceremonies, multi-host replication, refresh workflow and normative WebAuthn conformance |
 | `rullst-mail` | 95/A | 95/A | 0 | Bounded inspection, durable shared-local suppression and minimized terminal observations complete for this campaign | Authoritative malware/CDR inspection, provider webhook conformance, multi-host operations, inbox placement, DNS reputation and live-provider acceptance |
 | `rullst-messaging` | 96/A | 96/A | 0 | Encrypted local durability, canonical codec/trace and ORM outbox crash-replay contracts complete for this campaign | Remote broker operation, replication, full metadata encryption and cloud acceptance |
-| `cargo-rullst` | 95/A | 95/A | 0 | All 270 structural profiles, eight generated-test/runtime cases, five public-CLI feature-axis cases and v5/v6/v11 transactional upgrade/recovery fixtures complete for this campaign | Production deployment/account acceptance |
+| `cargo-rullst` | 95/A | 95/A | 0 | All 270 structural profiles, eight generated-test/runtime cases, seven public-CLI profiles covering all six blueprints plus polyglot axes, and v5/v6/v11 transactional upgrade/recovery fixtures complete for this campaign | Production deployment/account acceptance |
 | `rullst-ai` | 95/A | 95/A | 0 | OpenAI-compatible SSE/cancellation, bounded authenticated audit export and static-dispatch adaptive evaluation with content-free reports complete the repository-owned campaign | Non-compatible protocols need adapters; audit receiver operation, exact live-model behavior/results and corpus quality remain external |
 | `rullst-studio` | 94/A | 94/A | 0 | Push-only authenticated trace ingestion, bounded query heuristics and metadata-only Memory/live-Redis inspection complete for this campaign | Durable/OTLP storage, producer key operations, shared operator identity/RBAC/TLS and production topology |
 | `rullst-iot` | 83/B | 83/B | 0 | Approved B exception retained outside the 15-crate ceiling campaign | Physical hardware, flashing/bootloader, broker/device interoperability and certification |

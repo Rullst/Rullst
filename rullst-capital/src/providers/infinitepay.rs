@@ -67,7 +67,6 @@ impl BillingProvider for InfinitePayProvider {
         webhook_mode_from_secret(self.name(), &self.webhook_secret)
     }
 
-    #[cfg_attr(mutants, mutants::skip)]
     async fn create_checkout_session(
         &self,
         customer_email: &str,
@@ -85,10 +84,7 @@ impl BillingProvider for InfinitePayProvider {
             ));
         }
 
-        if self.api_key.is_empty()
-            || self.api_key.starts_with("mock_")
-            || self.api_key.starts_with("handle_")
-        {
+        if self.api_key.is_empty() || self.api_key.starts_with("mock_") {
             return Ok(format!(
                 "https://checkout.infinitepay.io/pay/mock_session?email={}&plan={}&redirect={}&handle={}",
                 url_encode(customer_email),
@@ -98,42 +94,9 @@ impl BillingProvider for InfinitePayProvider {
             ));
         }
 
-        let client = crate::providers::http_client()?;
-        let payload = serde_json::json!({
-            "items": [{
-                "name": format!("Subscription Plan {}", plan_id),
-                "amount": 1000, // Amount in cents
-                "quantity": 1
-            }],
-            "customer": {
-                "email": customer_email
-            },
-            "redirect_url": redirect_url,
-            "payment_methods": ["pix", "credit_card"]
-        });
-
-        let body: Value = crate::providers::send_http_json(
-            client
-                .post("https://api.checkout.infinitepay.io/links")
-                .bearer_auth(&self.api_key)
-                .header("Content-Type", "application/json")
-                .json(&payload),
-            "infinitepay",
-            "create checkout",
-        )
-        .await?;
-
-        let url = body["url"]
-            .as_str()
-            .or_else(|| body["checkout_url"].as_str())
-            .or_else(|| body["link"].as_str())
-            .ok_or_else(|| {
-                CapitalError::from(crate::ProviderFailure::contract_mismatch(
-                    "infinitepay",
-                    "create checkout",
-                ))
-            })?;
-        crate::providers::validate_checkout_url("infinitepay", url)
+        Err(CapitalError::UnsupportedOperation(
+            "infinitepay plan-only checkout has no reviewed authoritative pricing contract".into(),
+        ))
     }
 
     fn handle_webhook(
@@ -181,7 +144,10 @@ impl BillingProvider for InfinitePayProvider {
         let status_str = json["status"]
             .as_str()
             .or_else(|| json["event"].as_str())
-            .unwrap_or("paid");
+            .filter(|status| !status.trim().is_empty())
+            .ok_or_else(|| {
+                CapitalError::PayloadParseError("Webhook status is missing or invalid".into())
+            })?;
 
         let ends_at = json["ends_at"].as_i64();
 
@@ -206,6 +172,8 @@ impl BillingProvider for InfinitePayProvider {
             ));
         }
 
+        super::require_mock_operation(&self.api_key, self.name(), "create customer portal")?;
+
         Ok(format!(
             "https://app.infinitepay.io/client-portal?email={}",
             url_encode(customer_email)
@@ -218,6 +186,8 @@ impl BillingProvider for InfinitePayProvider {
                 "Subscription ID cannot be empty".to_string(),
             ));
         }
+        super::require_mock_operation(&self.api_key, self.name(), "cancel subscription")?;
+
         Ok(())
     }
 

@@ -1,3 +1,5 @@
+#![cfg(debug_assertions)]
+
 use axum::{
     body::Body,
     extract::{ConnectInfo, Request as AxumRequest},

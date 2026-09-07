@@ -264,8 +264,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                 pub fn #method_name(&self) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
                     Box::pin(async move {
                         #lazy_load_check
-                        let related_pk = format!("{}.{}", #rel_model_ident::table_name(), "id");
-                        let select_raw = format!("{}.*", #rel_model_ident::table_name());
+                        let related_pk = format!("{}.{}", <#rel_model_ident as rullst_orm::RullstModel>::table_name(), "id");
+                        let select_raw = format!("{}.*", <#rel_model_ident as rullst_orm::RullstModel>::table_name());
                         #rel_model_ident::query()
                             .select_raw(&select_raw)
                             .join(#pivot_table, &related_pk, "=", #pivot_rk)
@@ -276,8 +276,8 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                 pub fn #method_name_constrained(&self, modifier: std::sync::Arc<dyn Fn(#rel_model_builder_ident) -> #rel_model_builder_ident + Send + Sync>) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Vec<#rel_model_ident>, rullst_orm::Error>> + Send + '_>> {
                     Box::pin(async move {
                         #lazy_load_check
-                        let related_pk = format!("{}.{}", #rel_model_ident::table_name(), "id");
-                        let select_raw = format!("{}.*", #rel_model_ident::table_name());
+                        let related_pk = format!("{}.{}", <#rel_model_ident as rullst_orm::RullstModel>::table_name(), "id");
+                        let select_raw = format!("{}.*", <#rel_model_ident as rullst_orm::RullstModel>::table_name());
                         let mut q = #rel_model_ident::query()
                             .select_raw(&select_raw)
                             .join(#pivot_table, &related_pk, "=", #pivot_rk)
@@ -407,7 +407,6 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                     if self.#load_flag {
                         let parent_ids: Vec<i32> = results.iter().map(|m| m.#lk_ident).collect();
                         if !parent_ids.is_empty() {
-                            let pool = rullst_orm::Orm::try_read_pool()?;
                             let driver = rullst_orm::Orm::driver()?;
                             // Q1: pivot table pairs
                             rullst_orm::schema::validate_identifier(#foreign_key)?;
@@ -442,7 +441,9 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                             for id in &parent_ids {
                                 pivot_query = pivot_query.bind(*id);
                             }
-                            let pivot_pairs: Vec<(i32, i32)> = pivot_query.fetch_all(pool).await?;
+                            let pivot_pairs: Vec<(i32, i32)> = rullst_orm::dispatch_executor!(read_pool, |executor| {
+                                pivot_query.fetch_all(executor).await
+                            })?;
 
                             if !pivot_pairs.is_empty() {
                                 // Deduplicate related IDs for Q2

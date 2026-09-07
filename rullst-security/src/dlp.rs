@@ -49,7 +49,7 @@ fn is_safely_bufferable(headers: &HeaderMap, body: &Body) -> bool {
         return false;
     };
 
-    if hint.lower() != upper || upper > MAX_BUFFERED_RESPONSE_BYTES {
+    if !is_fixed_body_size_within_limit(hint.lower(), upper) {
         return false;
     }
 
@@ -61,6 +61,10 @@ fn is_safely_bufferable(headers: &HeaderMap, body: &Body) -> bool {
             .is_some_and(|declared| declared == upper),
         None => true,
     }
+}
+
+const fn is_fixed_body_size_within_limit(lower: u64, upper: u64) -> bool {
+    lower == upper && upper <= MAX_BUFFERED_RESPONSE_BYTES
 }
 
 fn remove_stale_representation_headers(headers: &mut HeaderMap, body_len: usize) {
@@ -164,8 +168,12 @@ pub fn mask_response_payload(input: &[u8]) -> (Vec<u8>, bool) {
                     if &sanitized[pass_start..pass_end] != "*****" {
                         sanitized.replace_range(pass_start..pass_end, "*****");
                         modified = true;
+                        // The replacement can shorten the URL. Continue immediately after
+                        // the `@` in the updated string instead of reusing its stale offset.
+                        cursor = pass_start + "*****".len() + 1;
+                    } else {
+                        cursor = pass_end + 1;
                     }
-                    cursor = start + scheme.len() + at_idx + 1;
                     if cursor >= sanitized.len() {
                         break;
                     }
@@ -226,7 +234,8 @@ where
     }
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let mut inner = self.inner.clone();
+        let clone = self.inner.clone();
+        let mut inner = std::mem::replace(&mut self.inner, clone);
         let request_method = req.method().clone();
 
         Box::pin(async move {
@@ -348,6 +357,31 @@ mod tests {
         assert!(masked_str.contains("postgres://u2:*****@h2:5432/d2"));
     }
 
+    #[test]
+    fn database_url_masking_preserves_unicode_boundaries_after_shortening() {
+        // A fuzzing reproducer placed the stale, pre-redaction cursor inside this NBSP.
+        let payload = "redis://user:abcdefghijklmnopqrst@abcdefghijklmn\u{a0}z";
+        let (masked, was_modified) = mask_response_payload(payload.as_bytes());
+
+        assert!(was_modified);
+        assert_eq!(
+            String::from_utf8(masked).unwrap(),
+            "redis://user:*****@abcdefghijklmn\u{a0}z"
+        );
+    }
+
+    #[test]
+    fn already_masked_database_urls_remain_stable_during_other_redactions() {
+        let payload = b"AKIAIOSFODNN7EXAMPLE redis://user:*****@cache.internal:6379/session";
+        let (masked, was_modified) = mask_response_payload(payload);
+
+        assert!(was_modified);
+        assert_eq!(
+            String::from_utf8(masked).unwrap(),
+            "AKIA**************** redis://user:*****@cache.internal:6379/session"
+        );
+    }
+
     #[tokio::test]
     async fn test_dlp_layer_middleware() {
         use axum::http::{Request, StatusCode, header};
@@ -458,9 +492,18 @@ mod kani_proofs {
     use super::*;
 
     #[kani::proof]
-    fn proof_dlp_empty_payload() {
-        let (masked, modified) = mask_response_payload(&[]);
-        assert!(!modified);
-        assert!(masked.is_empty());
+    fn proof_buffer_size_gate_boundaries() {
+        let lower: u64 = kani::any();
+        let upper: u64 = kani::any();
+        let accepted = is_fixed_body_size_within_limit(lower, upper);
+
+        assert_eq!(
+            accepted,
+            lower == upper && upper <= MAX_BUFFERED_RESPONSE_BYTES
+        );
+        if accepted {
+            assert_eq!(lower, upper);
+            assert!(upper <= MAX_BUFFERED_RESPONSE_BYTES);
+        }
     }
 }

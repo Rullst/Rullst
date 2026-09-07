@@ -123,20 +123,20 @@ async fn test_provider_initialization_and_portals() {
 
     let mp = MercadoPagoProvider::new("test_token".to_string(), "test_secret".to_string());
     assert_eq!(mp.name(), "mercadopago");
-    let portal_mp = mp
-        .create_customer_portal("alice@example.com", "http://return")
-        .await
-        .unwrap();
-    assert!(portal_mp.contains("alice%40example.com"));
+    assert!(matches!(
+        mp.create_customer_portal("alice@example.com", "http://return")
+            .await,
+        Err(rullst_capital::CapitalError::UnsupportedOperation(_))
+    ));
     assert!(mp.verify_signature(b"payload", "invalid_format").is_err());
 
     let ls = LemonSqueezyProvider::new("test_key".to_string(), "test_wh".to_string());
     assert_eq!(ls.name(), "lemonsqueezy");
-    let portal_ls = ls
-        .create_customer_portal("bob@example.com", "http://return")
-        .await
-        .unwrap();
-    assert!(portal_ls.contains("bob%40example.com"));
+    assert!(matches!(
+        ls.create_customer_portal("bob@example.com", "http://return")
+            .await,
+        Err(rullst_capital::CapitalError::UnsupportedOperation(_))
+    ));
 
     let uninteresting = serde_json::json!({
         "meta": { "event_name": "order_created" },
@@ -151,17 +151,17 @@ async fn test_provider_initialization_and_portals() {
 
     let ip = InfinitePayProvider::new("test_ip".to_string(), "test_secret".to_string());
     assert_eq!(ip.name(), "infinitepay");
-    let portal_ip = ip
-        .create_customer_portal("carol@example.com", "http://return")
-        .await
-        .unwrap();
-    assert!(portal_ip.contains("carol%40example.com"));
+    assert!(matches!(
+        ip.create_customer_portal("carol@example.com", "http://return")
+            .await,
+        Err(rullst_capital::CapitalError::UnsupportedOperation(_))
+    ));
 
     let cb = CoinbaseCommerceProvider::new("test_cb".to_string(), "wh_secret".to_string());
     assert_eq!(cb.name(), "coinbase");
-    let portal_cb = cb
-        .create_customer_portal("dan@example.com", "http://return")
-        .await
-        .unwrap();
-    assert!(portal_cb.contains("dan%40example.com"));
+    assert!(matches!(
+        cb.create_customer_portal("dan@example.com", "http://return")
+            .await,
+        Err(rullst_capital::CapitalError::UnsupportedOperation(_))
+    ));
 }

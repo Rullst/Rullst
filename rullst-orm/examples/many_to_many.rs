@@ -1,5 +1,5 @@
 use rullst_orm::schema::Schema;
-use rullst_orm::{FromRow, Orm, RullstModel};
+use rullst_orm::{FromRow, Orm};
 
 #[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
 #[orm(table = "roles")]

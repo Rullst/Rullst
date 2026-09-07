@@ -48,8 +48,7 @@ impl MailDriver for ResendDriver {
             return record_offline_delivery("resend", message);
         }
 
-        static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
-        let client = HTTP_CLIENT.get_or_init(reqwest::Client::new);
+        let client = super::http::client()?;
 
         let from_addr = message.from.as_deref().unwrap_or("noreply@rullst.dev");
         let mut body = serde_json::json!({

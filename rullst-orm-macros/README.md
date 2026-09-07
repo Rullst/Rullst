@@ -23,7 +23,10 @@ ignoring them. Every model must expose a persisted `id`; explicitly configured
 tenant, soft-delete, and embedding targets must name persisted fields. Table,
 column, relation-key, and pivot identifiers use the 1–64 byte portable ASCII
 identifier grammar, while hook, policy, scope, and model names must also be
-valid Rust identifiers.
+valid Rust identifiers. Persisted Rust field names follow that same portable
+SQL grammar: raw identifiers, non-ASCII names, and names longer than 64 bytes
+are rejected before SQL generation. A field that cannot form its generated
+Rust column-enum variant receives a compile error instead of a macro panic.
 
 Exactly one relation declaration is accepted per relation field. Orphan
 relation options are rejected, `belongs_to_many` requires a pivot table,
@@ -43,6 +46,7 @@ Generated query values remain parameterized by the runtime; raw SQL escape
 hatches are caller-owned. Soft-delete sentinel expressions are compile-time
 literals capped at 128 bytes and reject separators, NUL, and SQL comments, but
 they remain author-supplied SQL fragments rather than parameterized data.
+Comment rejection covers `--`, block-comment delimiters, and MySQL's `#`.
 Database enums accept 1–64 unit variants with unique labels of at most 63 bytes
 from the portable ASCII allowlist. PostgreSQL native enums require the
 `strict-postgres` runtime profile; SQLx Any cannot decode its custom types.
@@ -52,6 +56,13 @@ columns. Tenant scope and model policies are generated only when explicitly
 declared; the macro does not authenticate a principal or authorize `unscoped`
 access. Post-commit callbacks are process-local unless the application composes
 the transactional outbox.
+
+Generated mandatory scopes form separate `AND` groups around user filters;
+empty positive `IN` predicates remain false. Scalar projections and nested
+queries preserve identifier validation and the managed transaction context.
+Policy models reject bulk deletion rather than skipping per-row checks. See
+the [ORM query and transaction boundaries](../rullst-orm/README.md#query-and-transaction-boundaries)
+for the explicit raw-transaction and streaming limitations.
 
 ## Verification
 

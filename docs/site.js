@@ -4,49 +4,40 @@ const toggle = document.querySelector("[data-nav-toggle]");
 const navigation = document.querySelector("[data-navigation]");
 
 if (toggle && navigation) {
+  const closeNavigation = () => {
+    toggle.setAttribute("aria-expanded", "false");
+    navigation.classList.remove("is-open");
+  };
   toggle.addEventListener("click", () => {
     const open = toggle.getAttribute("aria-expanded") === "true";
     toggle.setAttribute("aria-expanded", String(!open));
     navigation.classList.toggle("is-open", !open);
   });
-
   navigation.querySelectorAll("a").forEach((link) => {
-    link.addEventListener("click", () => {
-      toggle.setAttribute("aria-expanded", "false");
-      navigation.classList.remove("is-open");
-    });
+    link.addEventListener("click", closeNavigation);
   });
-}
-
-const copyButton = document.querySelector("[data-copy-command]");
-const copyStatus = document.querySelector("[data-copy-status]");
-
-if (copyButton && copyStatus) {
-  copyButton.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText("cargo rullst new my_app");
-      copyStatus.textContent = "Copied";
-    } catch (_error) {
-      copyStatus.textContent = "Select the command below";
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && toggle.getAttribute("aria-expanded") === "true") {
+      closeNavigation();
+      toggle.focus();
     }
   });
 }
 
-const reveals = document.querySelectorAll(".reveal");
-
-if ("IntersectionObserver" in window) {
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("is-visible");
-          observer.unobserve(entry.target);
-        }
-      });
-    },
-    { threshold: 0.12 },
-  );
-  reveals.forEach((element) => observer.observe(element));
-} else {
-  reveals.forEach((element) => element.classList.add("is-visible"));
-}
+const copyStatus = document.querySelector("[data-copy-status]");
+document.querySelectorAll("[data-copy-command]").forEach((button) => {
+  const command = document.getElementById(button.dataset.copyCommand);
+  if (!command) return;
+  button.addEventListener("click", async () => {
+    let message;
+    try {
+      await navigator.clipboard.writeText(command.textContent.trim());
+      message = "Command copied.";
+      button.textContent = "Copied";
+    } catch (_error) {
+      message = "Clipboard unavailable. Select and copy the displayed command.";
+      button.textContent = "Select text";
+    }
+    if (copyStatus) copyStatus.textContent = message;
+  });
+});

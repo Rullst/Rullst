@@ -1,11 +1,11 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
 
-// Include the parser logic directly to test it without needing to restructure
-// the `rullst-orm-macros` proc-macro crate.
-mod internal_parser {
-    include!("../../../rullst-orm-macros/src/parser.rs");
-}
+// Compile the parser as a real module so its `attributes` submodule resolves
+// relative to the production source instead of the fuzz target directory.
+#[allow(dead_code)]
+#[path = "../../../rullst-orm-macros/src/parser.rs"]
+mod parser;
 
 fuzz_target!(|data: &[u8]| {
     if data.len() > 2048 {
@@ -27,11 +27,10 @@ fuzz_target!(|data: &[u8]| {
 
         // We attempt to parse the random string as a Rust TokenStream
         if let Ok(ts) = s.parse::<proc_macro2::TokenStream>() {
-
             // Attempt to parse it as a struct definition (DeriveInput)
             if let Ok(ast) = syn::parse2::<syn::DeriveInput>(ts) {
                 // Fuzz our parser! It should never panic, only return Ok or Err.
-                let _ = internal_parser::parse(&ast);
+                let _ = parser::parse(&ast);
             }
         }
     }

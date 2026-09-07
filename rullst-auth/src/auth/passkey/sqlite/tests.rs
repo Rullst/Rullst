@@ -42,6 +42,47 @@ fn remove_database(path: &Path) {
 }
 
 #[tokio::test]
+async fn cancelled_registration_rolls_back_before_pool_reuse() {
+    let pool = sqlx::sqlite::SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .expect("isolated test database");
+    prepare_schema(&pool, 16, 4)
+        .await
+        .expect("credential schema");
+    let store = SqlitePasskeyStore {
+        pool,
+        max_total_credentials: 16,
+        max_credentials_per_subject: 4,
+    };
+    let writer = store.clone();
+    let (ready, started) = tokio::sync::oneshot::channel();
+    let task = tokio::spawn(async move {
+        let mut transaction = writer.begin_write("cancelled registration").await.unwrap();
+        sqlx::query("UPDATE rullst_auth_passkey_meta SET max_total_credentials = 1 WHERE id = 1")
+            .execute(&mut *transaction)
+            .await
+            .unwrap();
+        ready.send(()).unwrap();
+        std::future::pending::<()>().await;
+        drop(transaction);
+    });
+    started.await.unwrap();
+    task.abort();
+    assert!(task.await.unwrap_err().is_cancelled());
+    let quota: (i64,) =
+        sqlx::query_as("SELECT max_total_credentials FROM rullst_auth_passkey_meta WHERE id = 1")
+            .fetch_one(&store.pool)
+            .await
+            .unwrap();
+    assert_eq!(quota.0, 16, "cancelled write must not leak pooled state");
+    let transaction = store.begin_write("next registration").await.unwrap();
+    drop(transaction);
+    store.close().await;
+}
+
+#[tokio::test]
 // TM-AUTH-05: durable device state preserves ceremony and revocation invariants.
 async fn complete_device_lifecycle_survives_restart_and_rejects_replay() {
     let path = temporary_database("lifecycle");

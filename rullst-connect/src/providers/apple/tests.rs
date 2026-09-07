@@ -281,6 +281,7 @@ z1F4IZ42Gry2+4guKvvM+O8=\n\
         "iss": "https://appleid.apple.com",
         "aud": "client_id",
         "exp": exp,
+        "iat": exp - 3600,
         "sub": "apple_sub_123",
         "email": "apple@example.com",
         "nonce": "test_nonce"
@@ -410,7 +411,7 @@ z1F4IZ42Gry2+4guKvvM+O8=\n\
         .as_secs()
         + 3600;
     let claims = serde_json::json!({
-        "iss": "https://appleid.apple.com", "aud": "client_id", "exp": exp,
+        "iss": "https://appleid.apple.com", "aud": "client_id", "exp": exp, "iat": exp - 3600,
         "sub": "apple_sub_refreshed", "email": "apple@example.com"
     });
     let id_token = jsonwebtoken::encode(&header, &claims, &priv_key).unwrap();
@@ -428,7 +429,8 @@ z1F4IZ42Gry2+4guKvvM+O8=\n\
                 Ok(HttpResponse {
                     status: 200,
                     body: serde_json::json!({
-                        "access_token": self.id_token,
+                        "access_token": "opaque-access-token",
+                        "id_token": self.id_token,
                         "refresh_token": "new_refresh",
                         "expires_in": 3600
                     }),
@@ -535,6 +537,7 @@ async fn test_apple_id_token_invalid_algorithm() {
         "iss": "https://appleid.apple.com",
         "aud": "client_id",
         "exp": 9999999999u64,
+        "iat": 1,
         "sub": "user_123",
         "nonce": "test_nonce"
     });

@@ -3,7 +3,50 @@
 use super::dashboard_brand::{play_launch_pulse, print_neon_logo};
 use colored::*;
 
-pub fn execute_command(cmd_args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+type DashboardResult<T> = Result<T, Box<dyn std::error::Error>>;
+
+trait DashboardUi {
+    fn show_brand(&mut self) -> DashboardResult<()>;
+    fn select(&mut self, prompt: &str, choices: &[String]) -> DashboardResult<usize>;
+    fn input(&mut self, prompt: &str) -> DashboardResult<String>;
+}
+
+struct DialoguerUi {
+    theme: dialoguer::theme::ColorfulTheme,
+}
+
+impl DialoguerUi {
+    fn new() -> Self {
+        Self {
+            theme: dialoguer::theme::ColorfulTheme::default(),
+        }
+    }
+}
+
+impl DashboardUi for DialoguerUi {
+    fn show_brand(&mut self) -> DashboardResult<()> {
+        print!("\x1B[2J\x1B[1;1H");
+        print_neon_logo()?;
+        play_launch_pulse()?;
+        Ok(())
+    }
+
+    fn select(&mut self, prompt: &str, choices: &[String]) -> DashboardResult<usize> {
+        Ok(dialoguer::Select::with_theme(&self.theme)
+            .with_prompt(prompt)
+            .default(0)
+            .items(choices)
+            .interact()?)
+    }
+
+    fn input(&mut self, prompt: &str) -> DashboardResult<String> {
+        Ok(dialoguer::Input::with_theme(&self.theme)
+            .with_prompt(prompt)
+            .interact_text()?)
+    }
+}
+
+pub fn execute_command(cmd_args: Vec<String>) -> DashboardResult<()> {
     let Some((program, arguments)) = cmd_args.split_first() else {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
@@ -23,9 +66,11 @@ pub fn execute_command(cmd_args: Vec<String>) -> Result<(), Box<dyn std::error::
     Ok(())
 }
 
-fn handle_scaffold_code(
-    theme: &dialoguer::theme::ColorfulTheme,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_scaffold_code<U, F>(ui: &mut U, program: &str, run: &mut F) -> DashboardResult<()>
+where
+    U: DashboardUi,
+    F: FnMut(Vec<String>) -> DashboardResult<()>,
+{
     let choices = [
         "🎮  Controller            (cargo rullst make:controller)",
         "💾  Model & Migration     (cargo rullst make:model -m)",
@@ -38,12 +83,9 @@ fn handle_scaffold_code(
         "☸️  Kubernetes Manifests  (cargo rullst make:k8s)",
         "🔌  gRPC Microservice     (cargo rullst make:grpc)",
         "🤖  Introspect DB Models  (cargo rullst generate:models)",
-    ];
-    let selection = dialoguer::Select::with_theme(theme)
-        .with_prompt("Choose component to scaffold:\n")
-        .default(0)
-        .items(&choices[..])
-        .interact()?;
+    ]
+    .map(str::to_string);
+    let selection = ui.select("Choose component to scaffold:\n", &choices)?;
 
     let (prompt, action, extra_args) = match selection {
         0 => (
@@ -82,59 +124,40 @@ fn handle_scaffold_code(
             vec![],
         ),
         7 => {
-            return execute_command(vec![
-                std::env::args().next().unwrap_or_default(),
-                "make:scalar".to_string(),
-            ]);
+            return run(vec![program.to_string(), "make:scalar".to_string()]);
         }
         8 => {
-            return execute_command(vec![
-                std::env::args().next().unwrap_or_default(),
-                "make:k8s".to_string(),
-            ]);
+            return run(vec![program.to_string(), "make:k8s".to_string()]);
         }
         9 => {
-            return execute_command(vec![
-                std::env::args().next().unwrap_or_default(),
-                "make:grpc".to_string(),
-            ]);
+            return run(vec![program.to_string(), "make:grpc".to_string()]);
         }
         10 => {
-            return execute_command(vec![
-                std::env::args().next().unwrap_or_default(),
-                "generate:models".to_string(),
-            ]);
+            return run(vec![program.to_string(), "generate:models".to_string()]);
         }
         _ => return Ok(()),
     };
 
-    let name: String = dialoguer::Input::with_theme(theme)
-        .with_prompt(prompt)
-        .interact_text()?;
-    let mut args = vec![
-        std::env::args().next().unwrap_or_default(),
-        action.to_string(),
-        name,
-    ];
+    let name = ui.input(prompt)?;
+    let mut args = vec![program.to_string(), action.to_string(), name];
     args.extend(extra_args);
-    execute_command(args)
+    run(args)
 }
 
-fn handle_database_operations(
-    theme: &dialoguer::theme::ColorfulTheme,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_database_operations<U, F>(ui: &mut U, program: &str, run: &mut F) -> DashboardResult<()>
+where
+    U: DashboardUi,
+    F: FnMut(Vec<String>) -> DashboardResult<()>,
+{
     let choices = [
         "🚀  Run Migrations       (cargo rullst db:migrate)",
         "🔄  Rollback Last Batch  (cargo rullst db:rollback)",
         "📊  Migration Status     (cargo rullst db:status)",
         "🌱  Run Seeders          (cargo rullst db:seed)",
         "🖥️  Open Studio Browser  (cargo rullst studio)",
-    ];
-    let selection = dialoguer::Select::with_theme(theme)
-        .with_prompt("Choose database operation:\n")
-        .default(0)
-        .items(&choices[..])
-        .interact()?;
+    ]
+    .map(str::to_string);
+    let selection = ui.select("Choose database operation:\n", &choices)?;
     let cmd = match selection {
         0 => "db:migrate",
         1 => "db:rollback",
@@ -143,15 +166,14 @@ fn handle_database_operations(
         4 => "studio",
         _ => return Ok(()),
     };
-    execute_command(vec![
-        std::env::args().next().unwrap_or_default(),
-        cmd.to_string(),
-    ])
+    run(vec![program.to_string(), cmd.to_string()])
 }
 
-fn handle_auth_billing(
-    theme: &dialoguer::theme::ColorfulTheme,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_auth_billing<U, F>(ui: &mut U, program: &str, run: &mut F) -> DashboardResult<()>
+where
+    U: DashboardUi,
+    F: FnMut(Vec<String>) -> DashboardResult<()>,
+{
     let choices = [
         "🔐  Scaffold Full Auth System  (cargo rullst auth)",
         "📲  Scaffold 2FA TOTP System   (cargo rullst make:mfa)",
@@ -159,13 +181,10 @@ fn handle_auth_billing(
         "💳  Scaffold Stripe Billing    (cargo rullst make:billing)",
         "🌐  Add CORS Middleware        (cargo rullst make:cors)",
         "🔑  Add JWT Middleware         (cargo rullst make:jwt)",
-    ];
-    let selection = dialoguer::Select::with_theme(theme)
-        .with_prompt("Choose auth & security action:\n")
-        .default(0)
-        .items(&choices[..])
-        .interact()?;
-    let mut args = vec![std::env::args().next().unwrap_or_default()];
+    ]
+    .map(str::to_string);
+    let selection = ui.select("Choose auth & security action:\n", &choices)?;
+    let mut args = vec![program.to_string()];
     match selection {
         0 => args.push("auth".to_string()),
         1 => args.push("make:mfa".to_string()),
@@ -181,37 +200,35 @@ fn handle_auth_billing(
         5 => args.push("make:jwt".to_string()),
         _ => return Ok(()),
     };
-    execute_command(args)
+    run(args)
 }
 
-fn handle_deploy(
-    theme: &dialoguer::theme::ColorfulTheme,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_deploy<U, F>(ui: &mut U, program: &str, run: &mut F) -> DashboardResult<()>
+where
+    U: DashboardUi,
+    F: FnMut(Vec<String>) -> DashboardResult<()>,
+{
     let choices = [
         "🚀  Guided PaaS Deploy         (cargo rullst deploy)",
         "⚙️  Initialize Foundry Config  (cargo rullst foundry:init)",
         "🚀  Deploy via SSH Pipeline    (cargo rullst foundry:deploy)",
-    ];
-    let selection = dialoguer::Select::with_theme(theme)
-        .with_prompt("Choose deployment action:\n")
-        .default(0)
-        .items(&choices[..])
-        .interact()?;
+    ]
+    .map(str::to_string);
+    let selection = ui.select("Choose deployment action:\n", &choices)?;
     let cmd = match selection {
         0 => "deploy",
         1 => "foundry:init",
         2 => "foundry:deploy",
         _ => return Ok(()),
     };
-    execute_command(vec![
-        std::env::args().next().unwrap_or_default(),
-        cmd.to_string(),
-    ])
+    run(vec![program.to_string(), cmd.to_string()])
 }
 
-fn handle_existing_project(
-    theme: &dialoguer::theme::ColorfulTheme,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn handle_existing_project<U, F>(ui: &mut U, program: &str, run: &mut F) -> DashboardResult<()>
+where
+    U: DashboardUi,
+    F: FnMut(Vec<String>) -> DashboardResult<()>,
+{
     let choices = [
         format!(
             "🚀  Start Dev Server (Standard)  {}",
@@ -256,35 +273,32 @@ fn handle_existing_project(
         "🔙  Back to Main Menu        ".to_string(),
     ];
 
-    let selection = dialoguer::Select::with_theme(theme)
-        .with_prompt("Project Operations:\n")
-        .default(0)
-        .items(&choices[..])
-        .interact()?;
-    let base_cmd = std::env::args().next().unwrap_or_default();
+    let selection = ui.select("Project Operations:\n", &choices)?;
 
     match selection {
-        0 => execute_command(vec![base_cmd, "dev".to_string()]),
-        1 => execute_command(vec![base_cmd, "dash".to_string()]),
-        2 => handle_scaffold_code(theme),
-        3 => handle_database_operations(theme),
-        4 => handle_auth_billing(theme),
-        5 => execute_command(vec![base_cmd, "make:omni".to_string()]),
-        6 => execute_command(vec![base_cmd, "dockerize".to_string()]),
-        7 => execute_command(vec![base_cmd, "nixify".to_string()]),
-        8 => handle_deploy(theme),
-        9 => execute_command(vec![base_cmd, "upgrade".to_string()]),
-        10 => show_interactive_dashboard(),
+        0 => run(vec![program.to_string(), "dev".to_string()]),
+        1 => run(vec![program.to_string(), "dash".to_string()]),
+        2 => handle_scaffold_code(ui, program, run),
+        3 => handle_database_operations(ui, program, run),
+        4 => handle_auth_billing(ui, program, run),
+        5 => run(vec![program.to_string(), "make:omni".to_string()]),
+        6 => run(vec![program.to_string(), "dockerize".to_string()]),
+        7 => run(vec![program.to_string(), "nixify".to_string()]),
+        8 => handle_deploy(ui, program, run),
+        9 => run(vec![program.to_string(), "upgrade".to_string()]),
+        10 => {
+            ui.show_brand()?;
+            run_dashboard(ui, program, run)
+        }
         _ => Ok(()),
     }
 }
 
-pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
-    print!("\x1B[2J\x1B[1;1H");
-    print_neon_logo()?;
-    play_launch_pulse()?;
-
-    let theme = dialoguer::theme::ColorfulTheme::default();
+fn run_dashboard<U, F>(ui: &mut U, program: &str, run: &mut F) -> DashboardResult<()>
+where
+    U: DashboardUi,
+    F: FnMut(Vec<String>) -> DashboardResult<()>,
+{
     let choices = [
         format!(
             "✨  Create New Project       {}",
@@ -304,18 +318,11 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
         ),
     ];
 
-    let selection = dialoguer::Select::with_theme(&theme)
-        .with_prompt("Navigate with ↑↓, confirm with Enter\n")
-        .default(0)
-        .items(&choices[..])
-        .interact()?;
+    let selection = ui.select("Navigate with ↑↓, confirm with Enter\n", &choices)?;
 
     match selection {
-        0 => execute_command(vec![
-            std::env::args().next().unwrap_or_default(),
-            "new".to_string(),
-        ]),
-        1 => handle_existing_project(&theme),
+        0 => run(vec![program.to_string(), "new".to_string()]),
+        1 => handle_existing_project(ui, program, run),
         2 => {
             super::help::show_help_reference();
             Ok(())
@@ -328,10 +335,13 @@ pub fn show_interactive_dashboard() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn dashboard_never_indexes_an_empty_command() {
-        assert!(super::execute_command(Vec::new()).is_err());
-    }
+pub fn show_interactive_dashboard() -> DashboardResult<()> {
+    let program = std::env::args().next().unwrap_or_default();
+    let mut ui = DialoguerUi::new();
+    ui.show_brand()?;
+    run_dashboard(&mut ui, &program, &mut execute_command)
 }
+
+#[cfg(test)]
+#[path = "dashboard_tests.rs"]
+mod tests;

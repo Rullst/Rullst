@@ -1,4 +1,7 @@
-#![cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+#![cfg(all(
+    debug_assertions,
+    not(any(feature = "strict-postgres", feature = "strict-mysql"))
+))]
 
 mod support;
 

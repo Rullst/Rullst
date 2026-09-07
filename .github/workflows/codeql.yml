@@ -5,6 +5,7 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * 0' # Run weekly
@@ -22,6 +23,7 @@ env:
 jobs:
   analyze:
     name: Analyze (Rust)
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
@@ -34,6 +36,10 @@ jobs:
 
     - name: Set up Rust toolchain
       uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+      with:
+        # CodeQL must observe compilation for this exact run; do not restore a
+        # target archive that could bypass extractor-visible rustc work.
+        cache: false
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9

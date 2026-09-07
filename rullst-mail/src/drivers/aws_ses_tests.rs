@@ -12,6 +12,7 @@ fn spawn_response(
     body: &str,
 ) -> (String, JoinHandle<Vec<u8>>) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    listener.set_nonblocking(true).unwrap();
     let address = listener.local_addr().unwrap();
     let body = body.to_string();
     let headers = extra_headers
@@ -19,18 +20,40 @@ fn spawn_response(
         .map(|(name, value)| ((*name).to_string(), (*value).to_string()))
         .collect::<Vec<_>>();
     let handle = std::thread::spawn(move || {
-        let (mut stream, _) = listener.accept().unwrap();
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        let mut stream = loop {
+            match listener.accept() {
+                Ok((stream, _)) => break stream,
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                    assert!(
+                        std::time::Instant::now() < deadline,
+                        "fixture accept timed out"
+                    );
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                Err(error) => panic!("fixture accept failed: {error}"),
+            }
+        };
+        stream.set_nonblocking(false).unwrap();
         stream
             .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        stream
+            .set_write_timeout(Some(Duration::from_secs(5)))
             .unwrap();
         let mut request = Vec::new();
         let mut buffer = [0_u8; 4_096];
         loop {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "fixture request timed out"
+            );
             let read = stream.read(&mut buffer).unwrap();
             if read == 0 {
                 break;
             }
             request.extend_from_slice(&buffer[..read]);
+            assert!(request.len() <= 1024 * 1024, "fixture request too large");
             let Some(header_end) = request.windows(4).position(|bytes| bytes == b"\r\n\r\n") else {
                 continue;
             };
@@ -81,6 +104,45 @@ fn message() -> Message {
         .text("plain text")
         .unsubscribe_email("leave@example.com")
         .unsubscribe_url("https://example.com/unsubscribe")
+}
+
+#[tokio::test]
+async fn bearer_proxy_does_not_redirect_private_message_payloads() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let destination = format!("http://{}/capture", listener.local_addr().unwrap());
+    let capture = tokio::spawn(async move {
+        let Ok(Ok((mut stream, _))) =
+            tokio::time::timeout(Duration::from_secs(1), listener.accept()).await
+        else {
+            return false;
+        };
+        let mut buffer = [0u8; 8192];
+        let count = tokio::time::timeout(Duration::from_secs(2), stream.read(&mut buffer))
+            .await
+            .unwrap()
+            .unwrap();
+        stream
+            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}")
+            .await
+            .unwrap();
+        count > 0
+    });
+    let (endpoint, origin) = spawn_response(307, &[("Location", &destination)], "");
+    let driver = AwsSesDriver::try_new("us-east-1", "fixture-proxy-secret")
+        .unwrap()
+        .try_with_endpoint(endpoint)
+        .unwrap();
+    let outcome = tokio::time::timeout(Duration::from_secs(3), driver.send(&message()))
+        .await
+        .unwrap();
+    assert!(!origin.join().unwrap().is_empty());
+    let forwarded = capture.await.unwrap();
+    assert!(
+        !forwarded,
+        "private mail payload was redirected outside the configured proxy"
+    );
+    assert!(outcome.is_err());
 }
 
 #[tokio::test]

@@ -24,6 +24,12 @@ pub trait SubqueryBuilder {
     fn ordered_bindings(&self) -> Vec<crate::RullstValue> {
         self.bindings().clone()
     }
+
+    /// Carries validation failures into a containing query before SQL executes.
+    /// Custom builders are responsible for validating their own SQL contract.
+    fn validation_error(&self) -> Option<crate::Error> {
+        None
+    }
 }
 
 pub static QUERY_LOGGING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);

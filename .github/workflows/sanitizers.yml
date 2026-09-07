@@ -17,6 +17,7 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  SANITIZER_TOOLCHAIN: nightly-2026-08-21
 
 jobs:
   tsan:
@@ -34,7 +35,7 @@ jobs:
       - name: Install Rust Nightly
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # nightly
         with:
-          toolchain: nightly
+          toolchain: nightly-2026-08-21
           components: rust-src
 
       - name: Run ThreadSanitizer on ${{ matrix.package }}
@@ -44,9 +45,9 @@ jobs:
           TSAN_OPTIONS: "second_deadlock_stack=1"
         run: |
           if [ "${{ matrix.package }}" = "rullst-messaging" ]; then
-            cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu --tests -- --test-threads=4
+            cargo +"$SANITIZER_TOOLCHAIN" test -Zbuild-std --target x86_64-unknown-linux-gnu --tests -- --test-threads=4
           else
-            cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu --lib -- --test-threads=4
+            cargo +"$SANITIZER_TOOLCHAIN" test -Zbuild-std --target x86_64-unknown-linux-gnu --lib -- --test-threads=4
           fi
 
   asan:
@@ -64,7 +65,7 @@ jobs:
       - name: Install Rust Nightly
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # nightly
         with:
-          toolchain: nightly
+          toolchain: nightly-2026-08-21
           components: rust-src
 
       - name: Run AddressSanitizer on ${{ matrix.package }}
@@ -74,7 +75,7 @@ jobs:
           ASAN_OPTIONS: "detect_leaks=1:detect_stack_use_after_return=1"
         run: |
           if [ "${{ matrix.package }}" = "rullst-messaging" ]; then
-            cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu --tests -- --test-threads=2
+            cargo +"$SANITIZER_TOOLCHAIN" test -Zbuild-std --target x86_64-unknown-linux-gnu --tests -- --test-threads=2
           else
-            cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu --lib -- --test-threads=2
+            cargo +"$SANITIZER_TOOLCHAIN" test -Zbuild-std --target x86_64-unknown-linux-gnu --lib -- --test-threads=2
           fi

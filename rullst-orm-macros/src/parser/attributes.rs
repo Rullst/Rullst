@@ -1,7 +1,11 @@
+#[path = "attributes/common.rs"]
 mod common;
+#[path = "attributes/field.rs"]
 mod field;
+#[path = "attributes/model.rs"]
 mod model;
 
+pub(super) use common::validate_sql_identifier;
 #[cfg(test)]
 pub(super) use common::{split_top_level, strip_outer_call, validate_relation_attribute};
 pub(super) use field::FieldAttributes;

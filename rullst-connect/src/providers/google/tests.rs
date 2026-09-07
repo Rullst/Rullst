@@ -337,6 +337,7 @@ z1F4IZ42Gry2+4guKvvM+O8=\n\
         "iss": "https://accounts.google.com",
         "aud": "client_id",
         "exp": exp,
+        "iat": exp - 3600,
         "sub": "user_id_123",
         "name": "Test User",
         "email": "test@example.com",
@@ -537,6 +538,7 @@ async fn test_google_id_token_invalid_algorithm() {
         "iss": "https://accounts.google.com",
         "aud": "client_id",
         "exp": 9999999999u64,
+        "iat": 1,
         "sub": "user_123",
         "nonce": "test_nonce"
     });

@@ -44,6 +44,32 @@ fn state() -> WebhookMiddlewareState {
 }
 
 #[tokio::test]
+async fn middleware_rejects_duplicate_standard_webhook_headers() {
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(state()))
+            .wrap(actix_web::middleware::from_fn(
+                verify_webhook_actix_with_state,
+            ))
+            .route("/webhook", web::post().to(verified_handler)),
+    )
+    .await;
+    for name in ["webhook-id", "webhook-timestamp", "webhook-signature"] {
+        let request = test::TestRequest::post()
+            .uri("/webhook")
+            .insert_header(("stripe-signature", "mock_actix_signature"))
+            .append_header((name, "first"))
+            .append_header((name, "second"))
+            .set_payload(payload())
+            .to_request();
+        assert_eq!(
+            test::call_service(&app, request).await.status(),
+            StatusCode::BAD_REQUEST
+        );
+    }
+}
+
+#[tokio::test]
 async fn middleware_preserves_body_inserts_event_and_rejects_replay() {
     // TM-PAY-01: the Actix boundary verifies before dispatch and preserves exact signed bytes.
     let app = test::init_service(

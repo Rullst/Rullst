@@ -21,6 +21,17 @@ pub(crate) fn validate_revocation_token(token: &str) -> Result<(), crate::error:
     Ok(())
 }
 
+pub(crate) fn require_oauth_only(
+    expected_nonce: Option<&str>,
+) -> Result<(), crate::error::ConnectError> {
+    if expected_nonce.is_some() {
+        return Err(crate::error::ConnectError::Provider(
+            "this OAuth-only adapter cannot validate an OIDC nonce; use Google, Apple or OidcProvider for ID-token login".into(),
+        ));
+    }
+    Ok(())
+}
+
 pub(crate) fn unsupported_revocation_kind(
     provider: &'static str,
     kind: crate::provider::RevocationTokenKind,
@@ -147,9 +158,7 @@ pub async fn fetch_access_token(
         .to_owned();
 
     let refresh_token = token_res["refresh_token"].as_str().map(String::from);
-    let expires_in = token_res["expires_in"]
-        .as_u64()
-        .or_else(|| token_res["expires_in"].as_i64().map(|v| v as u64));
+    let expires_in = crate::provider::token_lifetime(&token_res)?;
 
     Ok(Oauth2TokenResponse {
         access_token,
@@ -198,9 +207,7 @@ pub async fn fetch_refresh_token(
         .to_owned();
 
     let refresh_token = token_res["refresh_token"].as_str().map(String::from);
-    let expires_in = token_res["expires_in"]
-        .as_u64()
-        .or_else(|| token_res["expires_in"].as_i64().map(|v| v as u64));
+    let expires_in = crate::provider::token_lifetime(&token_res)?;
 
     Ok(Oauth2TokenResponse {
         access_token,
@@ -216,11 +223,12 @@ pub async fn exchange_and_get_user<P>(
     client: &dyn crate::client::HttpClient,
     token_url: &str,
     form: &TokenExchangeForm<'_>,
-    _expected_nonce: Option<&str>,
+    expected_nonce: Option<&str>,
 ) -> Result<ConnectUser, crate::error::ConnectError>
 where
     P: Provider + ?Sized,
 {
+    require_oauth_only(expected_nonce)?;
     let token = fetch_access_token(client, token_url, form).await?;
 
     let mut user = provider.get_user_from_token(&token.access_token).await?;
@@ -254,4 +262,28 @@ where
     user.refresh_token = token.refresh_token.map(secrecy::SecretString::from);
     user.expires_in = token.expires_in;
     Ok(user)
+}
+pub(crate) fn validate_token_lifetime(
+    lifetime: Option<u64>,
+) -> Result<Option<u64>, crate::ConnectError> {
+    if lifetime
+        .is_some_and(|seconds| seconds == 0 || seconds > crate::refresh::MAX_TOKEN_LIFETIME_SECONDS)
+    {
+        return Err(crate::ConnectError::Token(
+            "expires_in must be between 1 second and 366 days".into(),
+        ));
+    }
+    Ok(lifetime)
+}
+
+pub(crate) fn token_lifetime(
+    response: &serde_json::Value,
+) -> Result<Option<u64>, crate::ConnectError> {
+    let Some(value) = response.get("expires_in").filter(|value| !value.is_null()) else {
+        return Ok(None);
+    };
+    let seconds = value.as_u64().ok_or_else(|| {
+        crate::ConnectError::Token("expires_in must be a positive integer".into())
+    })?;
+    validate_token_lifetime(Some(seconds))
 }

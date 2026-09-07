@@ -1,3 +1,4 @@
+mod browser_boundary;
 mod rate_limit;
 #[cfg(test)]
 mod tests;
@@ -134,7 +135,8 @@ impl NexusBasicAuth {
 /// verified by the application.
 ///
 /// Basic credentials are cleartext at the HTTP layer. Nexus therefore refuses Basic Auth unless
-/// the request URI is HTTPS or this marker is present. Applications behind a reverse proxy must
+/// this marker is present. A URI scheme or forwarded header is not transport evidence.
+/// Applications behind a reverse proxy must
 /// insert this extension only from middleware that trusts the socket peer and verifies the
 /// terminator's transport metadata; never derive it from an arbitrary forwarded header.
 #[non_exhaustive]
@@ -163,7 +165,9 @@ impl fmt::Debug for NexusBasicAuth {
 /// Explicit capability for running Nexus without credentials on loopback in development.
 ///
 /// This policy is accepted only in debug builds. Every request must also contain Axum
-/// `ConnectInfo<SocketAddr>` for a loopback peer; missing connection metadata is denied.
+/// `ConnectInfo<SocketAddr>` for a loopback peer and a local Host authority.
+/// Unsafe methods also require an exact same-origin Origin header. This
+/// browser boundary prevents DNS rebinding and blind cross-origin mutations.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy)]
 pub struct LocalNexusAccess {
@@ -325,7 +329,7 @@ pub(crate) async fn loopback_only_middleware(mut request: Request, next: Next) -
         .get::<ConnectInfo<SocketAddr>>()
         .is_some_and(|connection| connection.0.ip().is_loopback());
 
-    if is_loopback {
+    if is_loopback && browser_boundary::allows(&request) {
         request
             .extensions_mut()
             .insert(NexusPrincipal::authenticated("local-loopback"));
@@ -362,8 +366,7 @@ fn has_valid_basic_credentials(request: &Request, credentials: &NexusBasicAuth) 
 }
 
 fn has_verified_tls(request: &Request) -> bool {
-    request.uri().scheme_str() == Some("https")
-        || request.extensions().get::<NexusVerifiedTls>().is_some()
+    request.extensions().get::<NexusVerifiedTls>().is_some()
 }
 
 fn constant_time_equal(candidate: &[u8], expected: &[u8]) -> bool {

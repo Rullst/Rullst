@@ -2,7 +2,7 @@
 name = "rullst-orm-fuzz"
 version = "0.0.0"
 publish = false
-edition = "2021"
+edition = "2024"
 
 [package.metadata]
 cargo-fuzz = true
@@ -12,7 +12,7 @@ ignored = ["sqlx", "tracing", "libsqlite3-sys"]
 
 [dependencies]
 rullst-orm = { path = ".." }
-syn = { version = "2", features = ["full"] }
+syn = { version = "3", features = ["full"] }
 proc-macro2 = "1"
 libfuzzer-sys = "0.4"
 tokio = { version = "1.23.1", features = ["full"] }
@@ -56,4 +56,3 @@ name = "fuzz_parser"
 path = "fuzz_targets/fuzz_parser.rs"
 test = false
 doc = false
-

@@ -160,14 +160,11 @@ fn add_cors_feature_to_dependency(line: &str) -> Result<String, Box<dyn std::err
             )
         } else {
             let closing_brace = value.len() - 1;
-            let separator = if value[..closing_brace].trim_end().ends_with('{') {
-                ""
-            } else {
-                ", "
-            };
+            let prefix = value[..closing_brace].trim_end();
+            let separator = if prefix.ends_with('{') { "" } else { ", " };
             format!(
                 "{}{}features = [\"cors\"]{}",
-                &value[..closing_brace],
+                prefix,
                 separator,
                 &value[closing_brace..]
             )
@@ -470,3 +467,7 @@ rullst = "12.0.0"
         assert!(!updated.contains("jsonwebtoken = { version = \"10\""));
     }
 }
+
+#[cfg(test)]
+#[path = "cors_jwt_contract_tests.rs"]
+mod contract_tests;

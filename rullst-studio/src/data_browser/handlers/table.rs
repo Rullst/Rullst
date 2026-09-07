@@ -173,7 +173,7 @@ pub async fn handle_table(
     let rows_html = build_mutable_rows_html(&records, &columns, &clean_table);
 
     let content_html = format!(
-        r##"<div class="p-8 font-mono space-y-6 max-w-7xl mx-auto">
+        r##"<div class="w-full p-4 sm:p-6 lg:p-8 font-mono space-y-6 max-w-7xl mx-auto">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
                 <div>
                     <h1 class="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
@@ -182,7 +182,7 @@ pub async fn handle_table(
                     </h1>
                     <p class="text-slate-400 text-xs mt-1">Inspect rows; primitive values may be changed only through the verified local Studio boundary</p>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex w-full md:w-auto items-center gap-3">
                     <input type="text"
                            name="search"
                            value="{}"
@@ -191,7 +191,7 @@ pub async fn handle_table(
                            hx-target="#studio-content"
                            hx-trigger="keyup changed delay:300ms"
                            hx-push-url="true"
-                           class="bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 transition w-64" />
+                           class="bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 transition w-full md:w-64" />
                 </div>
             </div>
 
@@ -208,7 +208,7 @@ pub async fn handle_table(
                 </div>
             </div>
 
-            <div class="flex items-center justify-between pt-2 text-xs text-slate-400 font-mono">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 text-xs text-slate-400 font-mono">
                 <div>
                     Showing <strong>{}</strong> to <strong>{}</strong> of <strong>{}</strong> records
                 </div>
@@ -229,12 +229,7 @@ pub async fn handle_table(
     );
 
     if is_htmx {
-        Html(format!(
-            "{}{}",
-            content_html,
-            render_sidebar_oob(&tables, Some(&clean_table))
-        ))
-        .into_response()
+        Html(content_html).into_response()
     } else {
         Html(studio_layout(content_html, Some(&clean_table), &tables)).into_response()
     }
@@ -357,6 +352,6 @@ mod tests {
         let body = String::from_utf8(body.to_vec()).expect("UTF-8 full-page error body");
         assert!(body.contains("<!DOCTYPE html>"));
         assert!(body.contains("missing"));
-        assert!(body.contains("records"));
+        assert!(body.contains("id=\"studio-content\""));
     }
 }

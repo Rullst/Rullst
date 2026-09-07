@@ -688,3 +688,7 @@ fn render_content(projects: &[Project], experiences: &[Experience]) -> String {{
 
     manifest
 }
+
+#[cfg(test)]
+#[path = "portfolio_tests.rs"]
+mod tests;

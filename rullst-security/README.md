@@ -46,7 +46,11 @@
   generation through `build_mfa_qr_svg`.
 - **Applied tarpit:** `LoginGuard::record_login_failure_and_wait` records a
   failure and awaits its progressive delay; jail state is bounded and local to
-  the process.
+  the process. Concurrent admission shares the configured identity ceiling.
+- **Local rate limiter:** Fixed-window counters retain at most 16,384 identities
+  with keys up to 256 bytes, reclaim expired identities on subsequent requests,
+  and reject zero budgets or exhausted admission. Clones share state; this is
+  not a distributed limit across application instances.
 
 ### 🔎 7. Bounded Payload, Log & Asset Guards
 
@@ -57,8 +61,10 @@
   matching uses the linear-time regex engine, and schema construction performs
   no filesystem or network retrieval.
 - **Log redaction:** `redact_secrets` handles repeated Bearer/assignment, PEM,
-  AWS, and database patterns. The host must invoke it before emitting untrusted
-  log fields.
+  AWS, and database patterns, including escaped quoted values. Records over
+  64 KiB are replaced wholesale by an oversized-record marker. The host must
+  invoke it before emitting untrusted log fields; pattern matching is not a
+  guarantee that arbitrary sensitive content can be recognized.
 - **SRI:** Generate escaped SHA-384 tags from bytes or bounded local JS/CSS
   files with `sri_script_tag_from_file` and `sri_link_tag_from_file`.
 

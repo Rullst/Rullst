@@ -1,4 +1,5 @@
 use super::support::{DEFAULT_REQUEST_TIMEOUT, embedding_values, endpoint, success_response};
+use super::support::{http_client, read_json};
 use crate::ai::{
     AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
     StructuredOutputSchema,
@@ -15,7 +16,6 @@ pub struct OllamaProvider {
     model: String,
     embedding_model: String,
     mode: ProviderMode,
-    client: reqwest::Client,
     request_timeout: Duration,
 }
 
@@ -29,7 +29,6 @@ impl OllamaProvider {
             model: model.into(),
             embedding_model: "nomic-embed-text".to_string(),
             mode,
-            client: reqwest::Client::new(),
             request_timeout: DEFAULT_REQUEST_TIMEOUT,
         }
     }
@@ -47,15 +46,15 @@ impl OllamaProvider {
     }
 
     async fn send_chat_body(&self, body: serde_json::Value) -> Result<String, AiError> {
-        let response = self
-            .client
+        let response = http_client()?
             .post(endpoint(&self.host, "api/chat"))
             .timeout(self.request_timeout)
             .json(&body)
             .send()
-            .await?;
+            .await
+            .map_err(|error| AiError::RequestError(error.without_url()))?;
         let response = success_response(response, self.provider_name()).await?;
-        let json: serde_json::Value = response.json().await?;
+        let json = read_json(response, self.provider_name()).await?;
         json["message"]["content"]
             .as_str()
             .map(str::to_string)
@@ -130,8 +129,7 @@ impl AiProvider for OllamaProvider {
         if self.mode.is_mock() {
             return Ok(mock::embedding(&text));
         }
-        let response = self
-            .client
+        let response = http_client()?
             .post(endpoint(&self.host, "api/embed"))
             .timeout(self.request_timeout)
             .json(&serde_json::json!({
@@ -139,9 +137,10 @@ impl AiProvider for OllamaProvider {
                 "input": text,
             }))
             .send()
-            .await?;
+            .await
+            .map_err(|error| AiError::RequestError(error.without_url()))?;
         let response = success_response(response, self.provider_name()).await?;
-        let json: serde_json::Value = response.json().await?;
+        let json = read_json(response, self.provider_name()).await?;
         embedding_values(json["embeddings"][0].as_array(), self.provider_name())
     }
 

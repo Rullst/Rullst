@@ -323,6 +323,27 @@ pub fn run_security_audit(
     sbom_mode: bool,
     network_mode: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    run_security_audit_with_exceptions(
+        ai_mode,
+        compliance_mode,
+        idor_mode,
+        geiger_mode,
+        sbom_mode,
+        &[],
+        network_mode,
+    )
+}
+
+pub fn run_security_audit_with_exceptions(
+    ai_mode: bool,
+    compliance_mode: bool,
+    idor_mode: bool,
+    geiger_mode: bool,
+    sbom_mode: bool,
+    audit_ignores: &[String],
+    network_mode: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    validate_audit_ignores(audit_ignores)?;
     let title = if ai_mode {
         "🛡️ Running Rullst Security Audit with deterministic recommendations..."
     } else {
@@ -391,13 +412,24 @@ pub fn run_security_audit(
         .output();
     let dependency_audit = match audit_tool {
         Ok(tool) if tool.status.success() => {
-            match std::process::Command::new("cargo").arg("audit").output() {
+            let mut command = std::process::Command::new("cargo");
+            command.args(cargo_audit_arguments(audit_ignores));
+            match command.output() {
                 Ok(out) if out.status.success() => {
-                    println!(
-                        "  {} No advisories reported by cargo-audit.",
-                        "[OK]".green()
-                    );
-                    EvidenceStatus::NoFindings
+                    if audit_ignores.is_empty() {
+                        println!(
+                            "  {} No advisories reported by cargo-audit.",
+                            "[OK]".green()
+                        );
+                        EvidenceStatus::NoFindings
+                    } else {
+                        println!(
+                            "  {} No findings outside the governed exceptions; exceptions remain unresolved: {}.",
+                            "[OK]".green(),
+                            audit_ignores.join(", ")
+                        );
+                        EvidenceStatus::NoFindingsOutsideExceptions(audit_ignores.to_vec())
+                    }
                 }
                 Ok(out) => {
                     println!(
@@ -432,8 +464,14 @@ pub fn run_security_audit(
         "  {} Auditing memory safety & unsafe code blocks (Cargo Geiger)...",
         "[GEIGER]".bright_cyan()
     );
+    let unsafe_source_available = Path::new("src").is_dir();
     let (unsafe_count, unsafe_warnings) = scan_unsafe_code(Path::new("src"));
-    if unsafe_count == 0 {
+    if !unsafe_source_available {
+        println!(
+            "  {} No project src directory was available; the bounded unsafe scan was not executed.",
+            "[INFO]".blue()
+        );
+    } else if unsafe_count == 0 {
         println!(
             "  {} The bounded project-source heuristic found no unsafe syntax.",
             "[OK]".green()
@@ -608,7 +646,7 @@ pub fn run_security_audit(
                 EvidenceStatus::Findings(weak_secret_findings)
             },
             dependency_audit,
-            unsafe_scan: if !Path::new("src").is_dir() {
+            unsafe_scan: if !unsafe_source_available {
                 EvidenceStatus::NotChecked("no src directory was available to inspect")
             } else if unsafe_count == 0 {
                 EvidenceStatus::NoFindings
@@ -658,6 +696,34 @@ pub fn run_security_audit(
     Ok(())
 }
 
+fn validate_audit_ignores(audit_ignores: &[String]) -> Result<(), Box<dyn std::error::Error>> {
+    for advisory in audit_ignores {
+        let bytes = advisory.as_bytes();
+        let valid = bytes.len() == 17
+            && bytes.starts_with(b"RUSTSEC-")
+            && bytes[8..12].iter().all(u8::is_ascii_digit)
+            && bytes[12] == b'-'
+            && bytes[13..].iter().all(u8::is_ascii_digit);
+        if !valid {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("invalid --audit-ignore value '{advisory}'; expected RUSTSEC-YYYY-NNNN"),
+            )
+            .into());
+        }
+    }
+    Ok(())
+}
+
+fn cargo_audit_arguments(audit_ignores: &[String]) -> Vec<String> {
+    let mut arguments = vec!["audit".to_string()];
+    for advisory in audit_ignores {
+        arguments.push("--ignore".to_string());
+        arguments.push(advisory.clone());
+    }
+    arguments
+}
+
 #[cfg(test)]
 #[allow(clippy::expect_used, clippy::unwrap_used)]
 mod tests {
@@ -665,6 +731,36 @@ mod tests {
 
     fn findings(source: &str) -> Vec<String> {
         scan_idor_source(Path::new("src/routes.rs"), source)
+    }
+
+    #[test]
+    fn advisory_exception_ids_are_strictly_validated() {
+        assert!(validate_audit_ignores(&["RUSTSEC-2023-0071".to_string()]).is_ok());
+        for invalid in [
+            "rustsec-2023-0071",
+            "RUSTSEC-23-0071",
+            "RUSTSEC-2023-071",
+            "RUSTSEC-2023-0071 --quiet",
+        ] {
+            assert!(validate_audit_ignores(&[invalid.to_string()]).is_err());
+        }
+    }
+
+    #[test]
+    fn advisory_exceptions_are_forwarded_as_distinct_cargo_audit_arguments() {
+        assert_eq!(
+            cargo_audit_arguments(&[
+                "RUSTSEC-2023-0071".to_string(),
+                "RUSTSEC-2026-0001".to_string(),
+            ]),
+            [
+                "audit",
+                "--ignore",
+                "RUSTSEC-2023-0071",
+                "--ignore",
+                "RUSTSEC-2026-0001",
+            ]
+        );
     }
 
     #[test]

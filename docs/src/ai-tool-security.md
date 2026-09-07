@@ -79,7 +79,11 @@ High-risk approval is bound to the exact serialized payload. Changing an amount,
 destination, identifier, or any other field produces
 `ToolExecutionError::ApprovalPayloadMismatch`.
 
-```rust
+The fragment below continues with the registry, context, policy, audit sink and
+high-risk tool initialized by the application as described above, so it is
+contextual rather than a standalone program:
+
+```rust,ignore
 use rullst_ai::ai::HumanApproval;
 use serde_json::json;
 

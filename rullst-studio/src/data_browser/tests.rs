@@ -238,14 +238,6 @@ async fn test_studio_layout_and_telemetry_handlers() {
     use axum::http::HeaderMap;
 
     // Test layout rendering
-    let sidebar_empty = render_sidebar_oob(&[], None);
-    assert!(sidebar_empty.contains("hidden"));
-
-    let sidebar = render_sidebar_oob(&["users".to_string(), "orders".to_string()], Some("users"));
-    assert!(sidebar.contains("Database Schema"));
-    assert!(sidebar.contains("users"));
-    assert!(sidebar.contains("orders"));
-
     let full_page = studio_layout(
         "<div>Main Content</div>".to_string(),
         Some("users"),
@@ -253,6 +245,13 @@ async fn test_studio_layout_and_telemetry_handlers() {
     );
     assert!(full_page.contains("Main Content"));
     assert!(full_page.contains("Rullst Studio"));
+    assert!(!full_page.contains("studio-sidebar"));
+    assert!(!full_page.contains("Database Schema"));
+    assert!(full_page.contains("min-h-screen"));
+    assert!(full_page.contains("sticky top-0 z-50"));
+    assert!(full_page.contains("order-3 w-full min-w-0"));
+    assert!(!full_page.contains("flex-grow flex overflow-hidden"));
+    assert!(!full_page.contains("flex-col overflow-y-auto bg-slate-950"));
 
     // Test handlers with and without HTMX headers
     let mut htmx_headers = HeaderMap::new();

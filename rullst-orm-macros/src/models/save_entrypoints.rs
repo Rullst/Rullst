@@ -17,6 +17,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                 fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "save")
             )]
             pub async fn save(&mut self) -> Result<(), rullst_orm::Error> {
+                rullst_orm::__transaction_access::ensure_allowed()?;
                 let scoped_transaction = rullst_orm::CURRENT_TX
                     .try_with(|transaction| transaction.clone())
                     .ok();
@@ -86,6 +87,7 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
             fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "save")
         )]
         pub async fn save(&mut self) -> Result<(), rullst_orm::Error> {
+            rullst_orm::__transaction_access::ensure_allowed()?;
             let scoped_transaction = rullst_orm::CURRENT_TX
                 .try_with(|transaction| transaction.clone())
                 .ok();
@@ -178,6 +180,7 @@ fn revision_restore(table_name: &str, lookup: &TokenStream) -> TokenStream {
             audit_id: i32,
             reason: impl Into<String>,
         ) -> Result<Self, rullst_orm::Error> {
+            rullst_orm::__transaction_access::ensure_allowed()?;
             let reason = reason.into();
             let scoped_transaction = rullst_orm::CURRENT_TX
                 .try_with(|transaction| transaction.clone())
@@ -322,12 +325,12 @@ fn policy_checks(parsed: &ParsedModel) -> (TokenStream, TokenStream) {
     let policy = syn::Ident::new(&parsed.policy, parsed.name.span());
     (
         quote! {
-            if !<#policy as rullst_orm::Policy<Self>>::can_create(self).await? {
+            if !rullst_orm::__transaction_access::run(<#policy as rullst_orm::Policy<Self>>::can_create(self)).await? {
                 return Err(rullst_orm::Error::Validation("Policy prevents creation of this record".to_string()));
             }
         },
         quote! {
-            if !<#policy as rullst_orm::Policy<Self>>::can_update(self).await? {
+            if !rullst_orm::__transaction_access::run(<#policy as rullst_orm::Policy<Self>>::can_update(self)).await? {
                 return Err(rullst_orm::Error::Validation("Policy prevents updating this record".to_string()));
             }
         },

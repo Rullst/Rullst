@@ -779,6 +779,7 @@ z1F4IZ42Gry2+4guKvvM+O8=\n\
         "iss": "https://issuer.com",
         "aud": "client_id",
         "exp": exp,
+        "iat": exp - 3600,
         "sub": "oidc_user_123",
         "name": "OIDC User",
         "email": "oidc@example.com",

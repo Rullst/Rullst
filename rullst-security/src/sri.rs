@@ -70,7 +70,7 @@ fn read_bounded_asset(path: &Path) -> Result<Vec<u8>, SriError> {
         path: path.to_path_buf(),
         source,
     })?;
-    if metadata.len() > MAX_SRI_ASSET_BYTES {
+    if !is_sri_asset_size_allowed(metadata.len()) {
         return Err(SriError::TooLarge {
             path: path.to_path_buf(),
         });
@@ -79,6 +79,10 @@ fn read_bounded_asset(path: &Path) -> Result<Vec<u8>, SriError> {
         path: path.to_path_buf(),
         source,
     })
+}
+
+const fn is_sri_asset_size_allowed(size: u64) -> bool {
+    size <= MAX_SRI_ASSET_BYTES
 }
 
 #[cfg(test)]
@@ -103,6 +107,12 @@ mod tests {
     }
 
     #[test]
+    fn asset_size_policy_accepts_the_exact_ceiling_only() {
+        assert!(is_sri_asset_size_allowed(MAX_SRI_ASSET_BYTES));
+        assert!(!is_sri_asset_size_allowed(MAX_SRI_ASSET_BYTES + 1));
+    }
+
+    #[test]
     fn file_backed_helpers_hash_real_assets_and_escape_urls() {
         let path = std::env::temp_dir().join(format!("rullst-sri-{}.js", rand::random::<u64>()));
         std::fs::write(&path, b"console.log('safe');").expect("temporary asset");
@@ -120,8 +130,10 @@ mod kani_proofs {
     use super::*;
 
     #[kani::proof]
-    fn proof_sri_tag_prefix_format() {
-        let tag = sri_script_tag("/assets/app.js", b"console.log(1);");
-        assert!(tag.starts_with("<script src=\"/assets/app.js\" integrity=\"sha384-"));
+    fn proof_sri_asset_size_boundary() {
+        let size: u64 = kani::any();
+        let allowed = is_sri_asset_size_allowed(size);
+
+        assert_eq!(allowed, size <= MAX_SRI_ASSET_BYTES);
     }
 }

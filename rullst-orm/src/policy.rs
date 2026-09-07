@@ -2,7 +2,13 @@ use crate::Error;
 
 /// A trait for defining declarative authorization policies on Rullst Models.
 /// If a model defines a policy via `#[orm(policy = "MyPolicy")]`, the ORM
-/// will automatically invoke these methods before executing mutating operations.
+/// will automatically invoke these methods before generated instance mutations.
+/// Bulk `delete_all` is rejected for these models because it cannot authorize
+/// individual rows. Use instance deletions inside a managed transaction instead.
+/// Policies invoked by full `save`/`delete` run while the executor is borrowed.
+/// Reentrant ordinary ORM access from those callbacks fails validation. Perform
+/// database checks/locking explicitly before the mutation in the managed
+/// transaction, then validate trusted context and model values in the policy.
 /// By default, all operations are allowed.
 #[async_trait::async_trait]
 pub trait Policy<T: Send + Sync>: Send + Sync {

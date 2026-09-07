@@ -16,6 +16,7 @@ pub mod mercadopago;
 pub mod paddle;
 pub mod picpay;
 pub mod polar;
+mod polar_webhook;
 pub mod razorpay;
 pub mod stripe;
 mod stripe_charge;
@@ -40,6 +41,21 @@ pub use wise::WiseProvider;
 
 /// Maximum clock drift accepted by timestamped webhook protocols by default.
 pub const DEFAULT_WEBHOOK_TOLERANCE: Duration = Duration::from_secs(5 * 60);
+
+// Compatibility-only operations may retain deterministic offline fixtures,
+// but live credentials must never return a fabricated session or no-op success.
+pub(crate) fn require_mock_operation(
+    api_key: &str,
+    provider: &str,
+    operation: &str,
+) -> Result<(), crate::CapitalError> {
+    if api_key.is_empty() || api_key.starts_with("mock_") {
+        return Ok(());
+    }
+    Err(crate::CapitalError::UnsupportedOperation(format!(
+        "{provider} {operation} has no reviewed live provider contract"
+    )))
+}
 
 /// Whether a provider verifies live signatures or an explicitly named local mock secret.
 #[non_exhaustive]

@@ -22,6 +22,9 @@ class Document(HTMLParser):
         self.scripts: list[str] = []
         self.stylesheets: list[str] = []
         self.images_without_alt: list[str] = []
+        self.images: list[str] = []
+        self.embeds: list[str] = []
+        self.remote_scripts_without_integrity: list[str] = []
         self.inline_behavior: list[str] = []
         self.h1_count = 0
         self.has_title = False
@@ -50,10 +53,16 @@ class Document(HTMLParser):
             self.links.append(href)
         if tag == "script" and (src := values.get("src")):
             self.scripts.append(src)
+            if src.startswith("https://") and not values.get("integrity"):
+                self.remote_scripts_without_integrity.append(src)
         if tag == "link" and values.get("rel") == "stylesheet" and (href := values.get("href")):
             self.stylesheets.append(href)
         if tag == "img" and "alt" not in values:
             self.images_without_alt.append(values.get("src", "<unknown>"))
+        if tag == "img" and (src := values.get("src")):
+            self.images.append(src)
+        if tag in ("iframe", "embed", "object"):
+            self.embeds.append(tag)
         for name, _value in attrs:
             if name == "style" or name.startswith("on"):
                 self.inline_behavior.append(f"{tag}[{name}]")
@@ -107,8 +116,22 @@ def main() -> None:
     assert not home.inline_behavior, f"landing page has inline behavior/style: {home.inline_behavior}"
     assert home.stylesheets == ["./assets/site.css"], "landing stylesheet must be repository-local"
     assert home.scripts == ["./assets/site.js"], "landing script must be repository-local"
+    assert not home.embeds, "landing privacy contract forbids third-party embeds"
+    assert "privacy" in home.ids, "landing page must expose its privacy notice"
+    assert 'name="referrer" content="no-referrer"' in source, "landing must suppress outgoing referrers"
+    assert not any(urlparse(src).netloc for src in home.images), "landing images must be same-origin"
+    required_social_links = {
+        "https://rullst.github.io", "https://github.com/Rullst",
+        "https://rullst.blogspot.com", "https://www.bilibili.tv/en/space/1436672033",
+        "https://daily.dev/squads/rullst", "https://dev.to/venelouis",
+        "https://discord.com/invite/2ntKFtsSjw", "https://rullst.hashnode.dev/",
+        "https://www.instagram.com/rullst_official/", "https://t.me/rullst",
+        "https://www.tiktok.com/@venelouis", "https://www.youtube.com/@rullst_official",
+        "https://x.com/venelouis",
+    }
+    assert required_social_links <= set(home.links), "missing requested community links"
 
-    for reference in [*home.links, *home.stylesheets, *home.scripts, "/Rullst/Rullst.png", "/Rullst/images/cargo-rullst-dash.png"]:
+    for reference in [*home.links, *home.stylesheets, *home.scripts, *home.images]:
         if reference.startswith("#"):
             assert reference[1:] in home.ids, f"missing landing anchor: {reference}"
             continue
@@ -117,8 +140,11 @@ def main() -> None:
             assert target.is_file(), f"missing local landing target: {reference} -> {target}"
 
     for template in BENCH_TEMPLATES:
-        document, _source = parse(template)
+        document, benchmark_source = parse(template)
         validate_document(template, document)
+        assert not document.remote_scripts_without_integrity, f"{template}: unpinned external script"
+        assert "/Rullst/#privacy" in document.links, f"{template}: missing privacy link"
+        assert "fonts.googleapis.com" not in benchmark_source, f"{template}: undocumented remote fonts"
 
     workflow = (ROOT / ".github" / "workflows" / "pages.yml").read_text(encoding="utf-8")
     for required_copy in ("docs/site.css", "docs/site.js", "images"):

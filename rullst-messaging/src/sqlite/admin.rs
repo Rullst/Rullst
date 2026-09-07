@@ -115,6 +115,6 @@ impl<C: Clock> SqliteBroker<C> {
             Ok(PurgeReceipt::new(sequences.len()))
         }
         .await;
-        finish(&mut connection, result, "finish terminal purge").await
+        finish(connection, result, "finish terminal purge").await
     }
 }

@@ -37,6 +37,13 @@ fn test_rasp_sqli_detection() {
 }
 
 #[test]
+fn ascii_fold_matches_the_standard_library_for_every_byte() {
+    for byte in u8::MIN..=u8::MAX {
+        assert_eq!(fold_ascii_byte(byte), byte.to_ascii_lowercase());
+    }
+}
+
+#[test]
 fn test_rasp_path_traversal_detection() {
     assert!(RaspInspector::inspect_uri(
         "/download?file=../../etc/passwd"

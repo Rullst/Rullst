@@ -1,4 +1,4 @@
-//! Cargo-aware doctest aggregation for the public tutorials.
+//! Cargo-aware doctest aggregation for the public guides and tutorials.
 //!
 //! This module exists only while rustdoc collects tests. Keeping the Markdown
 //! files as the input prevents a separately copied example from drifting away
@@ -219,3 +219,43 @@ tutorial!(
     rest_api_quickstart,
     "../../docs/src/tutorials/rest-api-quickstart.md"
 );
+
+tutorial!(getting_started, "../../docs/src/1-getting-started.md");
+tutorial!(studio_guide, "../../docs/src/3-rullst-studio.md");
+tutorial!(nexus_guide, "../../docs/src/4-rullst-nexus.md");
+tutorial!(capital_guide, "../../docs/src/5-rullst-capital.md");
+tutorial!(
+    ai_integration_guide,
+    "../../docs/src/6-ai-integration-tutorial.md"
+);
+tutorial!(
+    ai_token_economy,
+    "../../docs/src/7-ai-token-economy-and-local-llms.md"
+);
+tutorial!(ai_tool_security, "../../docs/src/ai-tool-security.md");
+tutorial!(axum_sqlx_migration, "../../docs/src/axum-sqlx-migration.md");
+tutorial!(
+    cors_scaffold_security_advisory,
+    "../../docs/src/cors-scaffold-security-advisory.md"
+);
+tutorial!(migration_v5_to_v12, "../../docs/src/migration-v5-to-v12.md");
+tutorial!(packages_spec, "../../docs/src/packages-spec.md");
+tutorial!(payment_gateways, "../../docs/src/payment-gateways-guide.md");
+tutorial!(
+    polyglot_persistence,
+    "../../docs/src/polyglot-persistence.md"
+);
+tutorial!(redis_guide, "../../docs/src/redis-guide.md");
+tutorial!(framework_spec, "../../docs/src/spec.md");
+tutorial!(telemetry_guide, "../../docs/src/telemetry-guide.md");
+tutorial!(crate_ai, "../../docs/src/crates/ai.md");
+tutorial!(crate_auth, "../../docs/src/crates/auth.md");
+tutorial!(crate_capital, "../../docs/src/crates/capital.md");
+tutorial!(crate_connect, "../../docs/src/crates/connect.md");
+tutorial!(crate_core, "../../docs/src/crates/core.md");
+tutorial!(crate_iot, "../../docs/src/crates/iot.md");
+tutorial!(crate_mail, "../../docs/src/crates/mail.md");
+tutorial!(crate_nexus, "../../docs/src/crates/nexus.md");
+tutorial!(crate_orm, "../../docs/src/crates/orm.md");
+tutorial!(crate_security, "../../docs/src/crates/security.md");
+tutorial!(crate_studio, "../../docs/src/crates/studio.md");

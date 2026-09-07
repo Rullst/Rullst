@@ -208,13 +208,11 @@ impl GoogleProvider {
                         ));
                     }
                 };
-                let mut validation = jsonwebtoken::Validation::new(alg);
-                validation.set_audience(&[&self.client_id]);
-                validation.set_issuer(&["https://accounts.google.com", "accounts.google.com"]);
-                validation.validate_exp = true;
-                if expected_nonce.is_some() {
-                    validation.set_required_spec_claims(&["nonce"]);
-                }
+                let validation = crate::provider::id_token::validation(
+                    alg,
+                    &self.client_id,
+                    &["https://accounts.google.com", "accounts.google.com"],
+                );
 
                 let token_data =
                     jsonwebtoken::decode::<Value>(id_token, &decoding_key, &validation).map_err(
@@ -227,15 +225,7 @@ impl GoogleProvider {
                     )?;
 
                 let p = token_data.claims;
-
-                if let Some(nonce) = expected_nonce {
-                    let token_nonce = p["nonce"].as_str().unwrap_or("");
-                    if !crate::provider::verify_nonce(token_nonce, nonce) {
-                        return Err(crate::error::ConnectError::Provider(
-                            "Google id_token nonce mismatch".to_owned(),
-                        ));
-                    }
-                }
+                crate::provider::id_token::validate_claims(&p, &self.client_id, expected_nonce)?;
 
                 ConnectUser {
                     id: p["sub"].as_str().map(String::from).ok_or_else(|| {
@@ -260,12 +250,17 @@ impl GoogleProvider {
                 ));
             }
         } else {
+            if expected_nonce.is_some() && !self.credential_mode.is_mock() {
+                return Err(crate::error::ConnectError::Provider(
+                    "OIDC nonce-bound login requires an id_token".into(),
+                ));
+            }
             use crate::provider::Provider;
             self.get_user_from_token(&access_token).await?
         };
 
         user.refresh_token = token_res.refresh_token.map(secrecy::SecretString::from);
-        user.expires_in = token_res.expires_in;
+        user.expires_in = crate::provider::validate_token_lifetime(token_res.expires_in)?;
         Ok(user)
     }
 }

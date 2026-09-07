@@ -21,8 +21,12 @@ async fn load_profile(cache: &Cache) -> Result<Arc<String>, CacheError> {
         .await
 }
 
+# async fn read_profile() -> Result<(), CacheError> {
 let cache = Cache::memory();
 let profile = load_profile(&cache).await?;
+# let _ = profile;
+# Ok(())
+# }
 ```
 
 For a shared Redis cache, enable `cache-redis` (or the umbrella `redis`
@@ -33,12 +37,15 @@ feature) and construct the adapter explicitly:
 rullst-core = { version = "12.0.0-rc.1", features = ["cache-redis"] }
 ```
 
-```rust
+```rust,no_run
 use rullst_core::cache::Cache;
 
+async fn cache_featured_catalog() -> Result<(), Box<dyn std::error::Error>> {
 let redis_url = std::env::var("REDIS_URL")?;
 let cache = Cache::redis(redis_url)?;
 cache.put("catalog:featured", "[...]", Some(600)).await?;
+Ok(())
+}
 ```
 
 Constructing the driver validates the Redis URL but does not establish a
@@ -60,9 +67,17 @@ The ORM has a separate opt-in query-cache contract behind its `redis` feature:
 rullst-orm = { version = "12.0.0-rc.1", features = ["redis"] }
 ```
 
-```rust
-use rullst_orm::Orm;
+```rust,no_run
+use rullst_orm::{FromRow, Orm};
 
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "users")]
+struct User {
+    id: i32,
+    active: bool,
+}
+
+async fn load_recent_users() -> Result<(), Box<dyn std::error::Error>> {
 let redis_url = std::env::var("REDIS_URL")?;
 Orm::init_redis_with_namespace(&redis_url, "academy-production").await?;
 
@@ -71,6 +86,9 @@ let recent = User::query()
     .remember(30)
     .get()
     .await?;
+let _ = recent;
+Ok(())
+}
 ```
 
 Use a stable, unique namespace for every application that shares a Redis
@@ -106,15 +124,18 @@ rullst-core = { version = "12.0.0-rc.1", features = ["queue-sqlite"] }
 serde_json = "1"
 ```
 
-```rust
+```rust,no_run
 use rullst_core::queue::Queue;
 use serde_json::json;
 
+async fn enqueue_receipt() -> Result<(), Box<dyn std::error::Error>> {
 let queue = Queue::sqlite("sqlite://jobs.sqlite?mode=rwc").await?;
 let job_id = queue
     .dispatch("send_receipt", json!({ "invoice_id": 42 }))
     .await?;
 println!("queued {job_id}");
+Ok(())
+}
 ```
 
 With `queue-redis`, construct `Queue::redis(redis_url)` instead. The Redis

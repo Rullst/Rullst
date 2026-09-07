@@ -75,18 +75,28 @@ Before releasing, make sure:
 
 - [ ] All required release checks have been rerun and are ✅ **green** on the
   exact candidate commit:
-  - `ci.yml`: Multi-OS test matrix (Ubuntu, macOS ARM64, Windows MSVC).
+  - `ci.yml`: Multi-OS test matrix (Ubuntu, macOS, Windows MSVC), isolated
+    feature boundaries, MSRV and live provider matrices on Linux.
+  - `coverage.yml`: exact-SHA line and patch coverage with the configured 90%
+    repository/framework/component gates and a blocking Codecov upload.
+  - `proptest.yml`: release-mode invariant suites with 10,000 configured cases.
   - `kani.yml`: Model checking for the explicit harnesses and configured bounds;
     this is not a proof of every path in the workspace.
   - `sanitizers.yml`: ThreadSanitizer (`TSan`) and AddressSanitizer (`ASan`) for
     the targets declared by the workflow.
-  - `miri.yml`: Undefined Behavior and strict-provenance checks for its declared
-    package matrix.
-  - `fuzzing.yml`: Bounded libFuzzer runs and OSS-Fuzz packaging/readiness.
-  - `e2e-smoke.yml`: Live SSR HTML status 200 checks, CSRF, and SQLite/Postgres persistence.
-  - `omni-ios.yml`: Fresh deterministic Omni generation and iOS simulator
-    compilation on macOS; this is not device, signing, TestFlight, or App Store
-    acceptance evidence.
+  - `miri.yml`: Undefined-behavior checks with randomized layouts for its 15
+    declared pure-Rust scopes.
+  - `fuzzing.yml`: Bounded libFuzzer runs over the 40 validated targets. The
+    separate `oss-fuzz/projects/rullst` directory remains an unsubmitted local
+    integration draft and is not release evidence.
+  - `dast-zap.yml`: Blocking ZAP baselines for freshly generated REST API and
+    LMS applications plus the explicitly informational blog showcase.
+  - `e2e-smoke.yml`: Live SSR, security-header, CSRF and SQLite-persistence
+    checks against the release-built Blog application.
+  - `omni-android.yml`, `omni-desktop.yml`, and `omni-ios.yml`: fresh
+    deterministic shell generation and the declared hosted compile matrices.
+    These are not physical-device, signing, store-review or GUI acceptance
+    evidence.
 - [ ] You have manually verified the mandatory local trifecta:
   `cargo test --workspace --all-features`,
   `cargo clippy --workspace --all-features -- -D warnings`, and
@@ -224,9 +234,6 @@ a permanent repository-wide registry token.
 git switch main
 git pull --ff-only origin main
 git switch -c feat/<short-topic>
-
-# Sync README badges after bumping version
-cargo sync
 
 # Check status before releasing
 git status

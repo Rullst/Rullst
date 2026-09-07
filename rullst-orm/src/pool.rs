@@ -199,6 +199,11 @@ impl Orm {
         }
 
         if database_url.starts_with("sqlite") {
+            let uses_named_memory = database_url.split_once('?').is_some_and(|(_, query)| {
+                query
+                    .split('&')
+                    .any(|parameter| parameter.eq_ignore_ascii_case("mode=memory"))
+            });
             let mut path_part = database_url
                 .trim_start_matches("sqlite:")
                 .trim_start_matches("//")
@@ -206,10 +211,7 @@ impl Orm {
             if let Some(idx) = path_part.find('?') {
                 path_part = &path_part[..idx];
             }
-            if !path_part.is_empty()
-                && path_part != ":memory:"
-                && !path_part.contains("mode=memory")
-            {
+            if !path_part.is_empty() && path_part != ":memory:" && !uses_named_memory {
                 let path = std::path::Path::new(path_part);
                 // Ensure the parent directory exists
                 if let Some(parent) = path.parent()
@@ -284,6 +286,7 @@ impl Orm {
     /// Fallible variant of [`Orm::pool`]: returns `Err` instead of panicking
     /// when the ORM has not been initialized yet.
     pub fn try_pool() -> Result<&'static RullstPool, crate::Error> {
+        crate::__transaction_access::ensure_allowed()?;
         Ok(&Self::state()?.primary)
     }
 
@@ -297,6 +300,7 @@ impl Orm {
     /// Fallible variant of [`Orm::read_pool`].
     #[cfg_attr(test, mutants::skip)]
     pub fn try_read_pool() -> Result<&'static RullstPool, crate::Error> {
+        crate::__transaction_access::ensure_allowed()?;
         Ok(Self::state()?.read_pool())
     }
 
@@ -432,4 +436,41 @@ pub struct PaginationResult<T> {
     pub per_page: usize,
     pub current_page: usize,
     pub last_page: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Orm;
+
+    fn unique_database_path(label: &str) -> std::path::PathBuf {
+        std::env::temp_dir().join(format!(
+            "rullst-orm-{label}-{}-{}",
+            std::process::id(),
+            rand::random::<u64>()
+        ))
+    }
+
+    #[test]
+    fn named_memory_dsn_does_not_touch_a_backing_file() {
+        let database_path = unique_database_path("named-memory");
+        let dsn = format!(
+            "sqlite:file:{}?mode=memory&cache=shared",
+            database_path.display()
+        );
+
+        Orm::validate_dsn(&dsn);
+
+        assert!(!database_path.exists());
+    }
+
+    #[test]
+    fn disk_dsn_still_prepares_the_backing_file() {
+        let database_path = unique_database_path("disk");
+        let dsn = format!("sqlite:{}", database_path.display());
+
+        Orm::validate_dsn(&dsn);
+
+        assert!(database_path.is_file());
+        std::fs::remove_file(database_path).expect("temporary SQLite file should be removable");
+    }
 }

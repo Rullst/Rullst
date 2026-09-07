@@ -53,8 +53,10 @@ let broker = SqliteBroker::connect("sqlite://storage/messages.sqlite", config).a
 ```
 
 The adapter uses a fixed schema and `BEGIN IMMEDIATE` for mutations, so separate
-instances sharing a file serialize publication and claims. Reopening the same
-namespace requires the exact persisted limits. SQLite commits survive process
+instances sharing a file serialize publication and claims. Cancellation-safe
+SQLx transaction ownership rolls back unfinished writes before a pool
+connection is reused. Reopening the same namespace requires the exact
+persisted limits. SQLite commits survive process
 restart; expired leases are requeued or dead-lettered on the next operation.
 Malformed persisted envelopes fail closed. `connect` selects an immutable
 plaintext-v1 profile. For protected message contents, start a namespace with

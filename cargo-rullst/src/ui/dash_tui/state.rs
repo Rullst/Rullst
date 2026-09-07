@@ -68,6 +68,7 @@ impl FocusPane {
 pub(super) enum ServerStatus {
     Starting,
     Ready,
+    Unverified,
     Exited { success: bool, code: Option<i32> },
 }
 
@@ -76,6 +77,7 @@ impl ServerStatus {
         match self {
             Self::Starting => "STARTING".to_string(),
             Self::Ready => "READY".to_string(),
+            Self::Unverified => "UNVERIFIED".to_string(),
             Self::Exited {
                 success: true,
                 code,
@@ -102,6 +104,7 @@ pub(super) struct App {
     pub filter: LogFilter,
     pub search_query: String,
     pub search_editing: bool,
+    pub action_notice: Option<String>,
     pub server_status: ServerStatus,
     pub migration_running: bool,
     pub studio_probe_running: bool,
@@ -131,6 +134,7 @@ impl App {
             filter: LogFilter::All,
             search_query: String::new(),
             search_editing: false,
+            action_notice: None,
             server_status: ServerStatus::Starting,
             migration_running: false,
             studio_probe_running: false,

@@ -4,7 +4,7 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [12.0.0] - Unreleased 🚀
+## [12.0.0-rc.1] - Unreleased 🚀
 
 > **Unreleased status:** entries below are a development inventory, not release,
 > certification, benchmark, or test evidence. The current capability contract is
@@ -24,6 +24,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 #### Upgrade and compatibility
 
+- Synchronized all 16 publishable packages and their internal requirements at
+  `12.0.0-rc.1`. Release preflight now reads the locked graph; extracted
+  package builds cap native parallelism and omit bundled DuckDB debug symbols
+  so verification remains viable on bounded runners.
+- Package auditing now rejects runtime SQLite state. Named in-memory SQLite
+  DSNs no longer touch a backing file, the three historical zero-byte test
+  artifacts were removed, and `rullst-messaging` now ships the workspace MIT
+  license. The yanked transitive `wnaf 0.14.0` lock entry was replaced by
+  `0.14.1`.
 - The umbrella `rullst` facade now has a dedicated shared-local SQLite
   composition gate spanning Auth revocation, Capital quota, encrypted Connect
   tokens, Mail suppression, encrypted Messaging, Core queueing and aggregate
@@ -31,13 +40,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   absence and isolated fail-closed corruption. It does not claim a
   cross-subsystem transaction, online backup, key management or multi-host
   coordination.
-- `rullst-orm` temporarily constrains the transitive `tinyvec` resolver edge to
-  1.12.0 because 1.13.0 does not compile when `unicode-normalization` enables
-  its alloc-only profile. This protects fresh published-package resolutions as
-  well as current-package SemVer rustdoc generation. The SemVer gate applies
-  the same resolver-only constraint to its independently extracted official
-  crates.io baselines; both guards can be removed after an upstream fixed
-  release is verified.
+- `rullst-orm` advances its exact transitive `tinyvec` resolver guard from the
+  broken 1.13.0 edge to the verified 1.13.2 fix. The alloc-only profile and the
+  complete all-feature workspace suite now compile successfully while fresh
+  published-package and SemVer baseline resolutions remain deterministic.
+- The release dependency refresh adopts Argon2 0.6, JSON Schema 0.53,
+  `roxmltree` 0.21 and Brotli 9 plus the current reviewed GitHub Action pins.
+  Authentication uses Argon2 0.6's internally generated cryptographic salt;
+  a fixed Argon2id v19 PHC regression proves existing password hashes remain
+  verifiable without retaining the old crate or its API.
 - `rullst-connect/sqlite` adds a bounded shared-local lifecycle for encrypted
   OAuth token generations. The fixed schema stores only a pseudonymous binding
   digest, generation/key metadata and the existing account-bound AES-256-GCM
@@ -67,16 +78,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   startup failure, hot-swap admission, in-flight drain, timeout and poisoned
   component state. Dependency probes, authorization, replica/load-balancer
   coordination and deployment termination deadlines remain host concerns.
-- `cargo-rullst` now backs project generation with all 270 supported structural
+- `cargo-rullst` now backs project generation with all 18 public v12 structural
   profiles, an eight-case generated-test matrix crossing every blueprint plus
-  hot/non-hot and release boundaries, and five cases invoking the public CLI
-  across primary database, frontend, AI, Redis and polyglot axes. Hot profiles
+  hot/non-hot and release boundaries, and seven cases invoking the public CLI
+  across primary database, AI, Redis and polyglot axes. Version 12 fixes
+  database-backed scaffolds to Active Record and HTML applications to
+  server-rendered `html!`/HTMX; the prerelease ORM/frontend selectors were
+  removed because their implementations were not equivalent across blueprints.
+  The optional storage multi-select and deterministic add-on flags remain. Hot
+  profiles
   construct their generated routers with offline-safe defaults; the CLI-level
   polyglot case compiles while dedicated ORM matrices retain adapter runtime
   ownership. Upgrade process fixtures select v5/v6/v11 rules, prove atomic
   multi-member rollback and explicit keep/restore behavior, and reject
   symlinked Rust sources before a transaction. Provider accounts, production
   deployment and application acceptance remain external evidence.
+- Source-built pre-release CLIs now retain the exact matching framework
+  checkout when invoked outside the repository, instead of generating
+  unavailable registry requirements. The interactive wizard labels optional
+  persistence as a zero-or-more selection, removes capabilities already chosen
+  by the primary profile or flags, and no longer offers Turso-primary to
+  SQLx-specific blueprints. Failed initial migrations keep the generated files
+  and print an actionable retry command with their exit status; the progress
+  text now identifies the potentially multi-minute clean first build.
+- The manual fuzz campaign now compiles its ORM parser target against the
+  current edition, `syn` API and modular parser source, while the DLP target
+  exercises the public byte-oriented masking boundary. This repairs two stale
+  harnesses that failed during target construction before fuzz input ran.
+- A follow-up security fuzz run found and fixed a stale sanitizer harness plus
+  a real UTF-8 boundary panic in database-URL redaction. The DLP cursor now
+  follows the shortened `*****` replacement rather than the pre-redaction `@`
+  offset. A Unicode regression corpus seed and unit test preserve the failing
+  shape; the repaired ORM parser, log-redactor and HTML/text-sanitizer targets
+  each passed 100,000 local libFuzzer/AddressSanitizer executions.
+- The manual mutation campaign now divides the workspace into sixteen shards
+  after the previous eight-way layout exhausted one job's 5h30 runner bound;
+  survived and timed-out mutants remain explicit informational evidence.
 - `rullst-orm-macros` now parses model, relation, and SQLx attributes as
   structured nested metadata and fails closed on unknown, duplicate, orphaned,
   or conflicting options. Persisted `id`, tenant, soft-delete, and embedding
@@ -240,9 +277,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   database forwarding, real SQLite introspection and schema diff, Wasm/Omni,
   Academy evidence, mail/chat, and forced ejection recovery. Coverage CI now
   retains the exact JSON and text line summaries for 30 days alongside LCOV;
-  Codecov measured candidate `704b6d4d` at 90.03% whole-repository coverage
-  (74,032/82,227) and 91.30% for framework libraries. The same zero-tolerance
+  Codecov measured candidate `27e81152` at 90.06% whole-repository coverage
+  (74,219/82,408) and 91.33% for framework libraries (56,119/61,446). The same
+  zero-tolerance
   gates must still pass on the exact frozen RC SHA.
+- Aligned `cargo rullst audit` with governed RustSec release exceptions through
+  a repeatable, strictly validated `--audit-ignore RUSTSEC-YYYY-NNNN` option.
+  Successful excepted scans are reported as `NO FINDINGS OUTSIDE EXCEPTIONS` and retain
+  every unresolved advisory in the evidence report; the release workflow still
+  validates its exception IDs, owners and expiry before invoking the CLI.
 - Added category-aware OAuth token revocation. `Provider::revoke_token` and
   `revoke_refresh_token` reject malformed/oversized values before transport;
   bounded protocol fixtures cover Google, GitHub, Discord, Apple, Auth0 and

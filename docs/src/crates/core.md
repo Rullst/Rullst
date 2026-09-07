@@ -100,7 +100,7 @@ crate instead of depending on `rullst-core` directly.
 These optional surfaces are application-owned and must be mounted explicitly.
 Protect or isolate `/metrics` when its operational data should not be public.
 
-```rust
+```rust,no_run
 use rullst_core::{
     ApplicationLifecycle, Router, Server,
     health::health_router_with_lifecycle,

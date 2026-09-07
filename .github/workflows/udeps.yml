@@ -15,6 +15,7 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  UDEPS_TOOLCHAIN: nightly-2026-08-21
 
 jobs:
   udeps:
@@ -28,14 +29,15 @@ jobs:
       - name: Install Nightly Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
         with:
-          toolchain: nightly
+          toolchain: nightly-2026-08-21
 
       - name: Install cargo-udeps
-        uses: taiki-e/install-action@37f7c5781271959fb65b6b35224e28652ff2b63d # v2.87.0
+        uses: taiki-e/install-action@5bf6ce016fd2e72eefc647cbca1e4213f65955b8 # v2.87.5
         with:
           tool: cargo-udeps
 
       - name: Run cargo-udeps across workspace (non-blocking signal)
         # Nightly-only analysis is intentionally advisory; Clippy and the
         # compile/test matrix remain the blocking dependency checks.
-        run: cargo +nightly udeps --workspace --all-targets || true
+        continue-on-error: true
+        run: cargo +"$UDEPS_TOOLCHAIN" udeps --workspace --all-targets --all-features

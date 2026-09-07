@@ -191,7 +191,8 @@ fn successful_upgrade_changes_the_manifest_and_keeps_a_review_report() {
 
     assert!(output.status.success(), "{}", output_text(&output));
     let manifest = std::fs::read_to_string(fixture.app().join("Cargo.toml")).expect("manifest");
-    assert!(manifest.contains("version = \"12.0.0\""));
+    let expected_version = format!("version = \"{}\"", env!("CARGO_PKG_VERSION"));
+    assert!(manifest.contains(&expected_version));
     assert!(fixture.app().join("Cargo.lock").is_file());
     assert!(contains_report(
         &fixture.app().join("target/rullst-upgrades")
@@ -343,7 +344,8 @@ fn keep_on_failure_preserves_review_state_until_explicit_restore() {
     assert!(!output.status.success(), "upgrade unexpectedly succeeded");
     assert!(output_text(&output).contains("edited files were kept by request"));
     let edited = fs::read_to_string(fixture.app().join("Cargo.toml")).expect("edited manifest");
-    assert!(edited.contains("version = \"12.0.0\""));
+    let expected_version = format!("version = \"{}\"", env!("CARGO_PKG_VERSION"));
+    assert!(edited.contains(&expected_version));
 
     let backup = first_backup(&fixture.app().join("target/rullst-upgrades"));
     let restore = fixture.run(&[

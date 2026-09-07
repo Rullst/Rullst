@@ -20,7 +20,7 @@ impl<C: Clock> SqliteBroker<C> {
         let result = self
             .receive_in_transaction(&mut connection, request, now, expires_at_ms)
             .await;
-        finish(&mut connection, result, "finish receive").await
+        finish(connection, result, "finish receive").await
     }
 
     async fn receive_in_transaction(
@@ -174,7 +174,7 @@ impl<C: Clock> SqliteBroker<C> {
             Ok(true)
         }
         .await;
-        match finish(&mut connection, result, "finish acknowledgement").await? {
+        match finish(connection, result, "finish acknowledgement").await? {
             true => Ok(()),
             false => Err(MessagingError::LeaseExpired),
         }
@@ -233,7 +233,7 @@ impl<C: Clock> SqliteBroker<C> {
             Ok(Some(disposition))
         }
         .await;
-        finish(&mut connection, result, "finish retry")
+        finish(connection, result, "finish retry")
             .await?
             .ok_or(MessagingError::LeaseExpired)
     }
@@ -272,7 +272,7 @@ impl<C: Clock> SqliteBroker<C> {
             Ok(true)
         }
         .await;
-        match finish(&mut connection, result, "finish dead letter").await? {
+        match finish(connection, result, "finish dead letter").await? {
             true => Ok(()),
             false => Err(MessagingError::LeaseExpired),
         }

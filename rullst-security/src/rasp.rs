@@ -70,8 +70,16 @@ fn contains_ignore_ascii_case(haystack: &str, needle: &str) -> bool {
         window
             .iter()
             .zip(n_bytes.iter())
-            .all(|(&h, &n)| h.eq_ignore_ascii_case(&n))
+            .all(|(&h, &n)| fold_ascii_byte(h) == fold_ascii_byte(n))
     })
+}
+
+const fn fold_ascii_byte(byte: u8) -> u8 {
+    if byte >= b'A' && byte <= b'Z' {
+        byte + (b'a' - b'A')
+    } else {
+        byte
+    }
 }
 
 fn decode_percent_once(payload: &str) -> String {
@@ -281,7 +289,8 @@ where
             return Box::pin(async move { Ok(res) });
         }
 
-        let mut inner = self.inner.clone();
+        let clone = self.inner.clone();
+        let mut inner = std::mem::replace(&mut self.inner, clone);
         if !should_inspect_body(req.headers()) {
             return Box::pin(async move { inner.call(req).await });
         }
@@ -346,7 +355,16 @@ mod kani_proofs {
     use super::*;
 
     #[kani::proof]
-    fn proof_rasp_clean_uri() {
-        assert!(!RaspInspector::inspect_uri("/clean/path"));
+    fn proof_ascii_fold_policy() {
+        let byte: u8 = kani::any();
+        let folded = fold_ascii_byte(byte);
+
+        assert!(folded < b'A' || folded > b'Z');
+        assert_eq!(fold_ascii_byte(folded), folded);
+        if byte >= b'A' && byte <= b'Z' {
+            assert_eq!(folded, byte + (b'a' - b'A'));
+        } else {
+            assert_eq!(folded, byte);
+        }
     }
 }

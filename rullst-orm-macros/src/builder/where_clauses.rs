@@ -77,6 +77,9 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
         pub fn select(mut self, columns: &[&str]) -> Self {
             for col in columns {
                 self.reject_skipped_column(col);
+                if let Err(e) = rullst_orm::schema::validate_identifier(col) {
+                    self.errors.push(rullst_orm::Error::Validation(format!("select() — invalid column identifier: {}", e)));
+                }
             }
             self.selects = Some(columns.join(", "));
             self
@@ -126,7 +129,10 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
             if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                 self.errors.push(rullst_orm::Error::Validation(format!("where_in() — invalid column identifier: {}", e)));
             }
-            if values.is_empty() { return self; }
+            if values.is_empty() {
+                self.wheres.push(("AND".to_string(), "1 = 0".to_string()));
+                return self;
+            }
             let placeholders = vec!["?"; values.len()].join(", ");
             self.wheres.push(("AND".to_string(), format!("{} IN ({})", column, placeholders)));
             for v in values { self.bindings.push(v.into()); }
@@ -253,7 +259,10 @@ pub fn generate_where_clause_methods(column_enum_name: &syn::Ident) -> TokenStre
             if let Err(e) = rullst_orm::schema::validate_identifier(column) {
                 self.errors.push(rullst_orm::Error::Validation(format!("or_where_in() — invalid column identifier: {}", e)));
             }
-            if values.is_empty() { return self; }
+            if values.is_empty() {
+                self.wheres.push(("OR".to_string(), "1 = 0".to_string()));
+                return self;
+            }
             let placeholders = vec!["?"; values.len()].join(", ");
             self.wheres.push(("OR".to_string(), format!("{} IN ({})", column, placeholders)));
             for v in values { self.bindings.push(v.into()); }

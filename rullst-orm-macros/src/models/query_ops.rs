@@ -21,7 +21,10 @@ pub fn generate_search_method(parsed: &ParsedModel, builder_name: &syn::Ident) -
         .collect::<Vec<_>>();
     quote! {
         pub async fn search(query: &str) -> #builder_name {
-            let mut base_builder = #builder_name::new();
+            let mut base_builder = Self::query();
+            if !base_builder.errors.is_empty() {
+                return base_builder;
+            }
             if let Some(engine) = rullst_orm::scout::get_search_engine() {
                 let ids = match engine.search(#table_name, query).await {
                     Ok(ids) => ids,
@@ -30,13 +33,7 @@ pub fn generate_search_method(parsed: &ParsedModel, builder_name: &syn::Ident) -
                         return base_builder;
                     }
                 };
-                if ids.is_empty() {
-                    base_builder = base_builder.where_eq("id", 0); // impossible match
-                } else {
-                    let sql_ids = ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(",");
-                    base_builder = base_builder.where_raw(format!("id IN ({})", sql_ids).as_str(), vec![] as Vec<rullst_orm::RullstValue>);
-                }
-                return base_builder;
+                return base_builder.where_in("id", ids);
             }
 
             let driver = match rullst_orm::Orm::driver() {
@@ -94,7 +91,9 @@ pub fn generate_query_methods(parsed: &ParsedModel, builder_name: &syn::Ident) -
         pub fn query() -> #builder_name {
             let mut builder = #builder_name::new();
             #global_scope_logic
+            builder.freeze_scope();
             #tenant_scope_logic
+            builder.freeze_scope();
             builder
         }
 

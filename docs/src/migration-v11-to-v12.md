@@ -71,10 +71,13 @@ which layer the application imports instead of enabling both reflexively.
 ## 4. Review AI and tool assumptions
 
 V12 has a machine-readable [provider capability matrix](ai-provider-capabilities.md).
-Streaming, provider-native tools, built-in request deadlines, automatic retries,
-and explicit cancellation are not implemented by the current `rullst-ai`
-transports. `ToolRegistry` is local dispatch infrastructure, not an authorized
-autonomous-agent boundary.
+Built-in live transports have configurable request deadlines. The separate
+`StreamingAiClient` enforces bounded output and explicit cancellation, and an
+exact OpenAI-compatible configuration may opt into strict incremental SSE.
+Provider-native tool calling, automatic provider retries, ordinary
+non-streaming cancellation and streaming for other provider protocols are not
+uniform transport capabilities. `ToolRegistry` is guarded local dispatch
+infrastructure, not an authorized autonomous-agent boundary.
 
 ## Completion gate
 

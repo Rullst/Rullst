@@ -11,7 +11,7 @@ mod tests;
 
 pub use db::{TableQuery, ensure_pool_initialized, resolve_db_url};
 pub use handlers::*;
-pub use layout::{render_sidebar_oob, studio_layout};
+pub use layout::studio_layout;
 
 use axum::{Router, extract::DefaultBodyLimit};
 

@@ -43,10 +43,13 @@ pretending to charge.
 ```rust,no_run
 use rullst_capital::{Billable as _, CapitalError, StripeProvider};
 
-async fn collect_order(
-    account: &impl rullst_capital::Billable,
+async fn collect_order<Account>(
+    account: &Account,
     stripe: &StripeProvider,
-) -> Result<(), CapitalError> {
+) -> Result<(), CapitalError>
+where
+    Account: rullst_capital::Billable + Sync,
+{
     let receipt = account
         .charge_with(
             stripe,
@@ -169,7 +172,7 @@ async fn billing_webhook() {
     // Read the verified event inserted by the middleware in real handlers.
 }
 
-let router = Router::new()
+let router: Router = Router::new()
     .route("/webhooks/billing", post(billing_webhook))
     .layer(axum::middleware::from_fn(verify_webhook));
 ```

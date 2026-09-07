@@ -308,7 +308,7 @@ mod tests {
         assert!(res.is_err());
         assert_eq!(
             res.unwrap_err(),
-            CapitalError::InvalidSignature("Missing Polar-Signature header".to_string())
+            CapitalError::InvalidSignature("Invalid Polar Standard Webhooks envelope".to_string())
         );
 
         headers.insert("polar-signature".to_string(), "deadbeef".to_string());
@@ -316,7 +316,7 @@ mod tests {
         assert!(res2.is_err());
         assert_eq!(
             res2.unwrap_err(),
-            CapitalError::InvalidSignature("Polar.sh signature verification failed".to_string())
+            CapitalError::InvalidSignature("Invalid Polar Standard Webhooks envelope".to_string())
         );
     }
 

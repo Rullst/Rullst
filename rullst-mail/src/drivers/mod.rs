@@ -2,6 +2,7 @@
 
 pub mod aws_ses;
 pub mod failover;
+mod http;
 pub mod log;
 pub mod memory;
 pub mod mock;

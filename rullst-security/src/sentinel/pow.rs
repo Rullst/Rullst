@@ -304,12 +304,18 @@ impl ProofOfWorkGate {
     }
 
     fn release_slot(&self) {
-        let _ =
-            self.inner
-                .active_count
-                .fetch_update(Ordering::AcqRel, Ordering::Acquire, |current| {
-                    Some(current.saturating_sub(1))
-                });
+        let mut current = self.inner.active_count.load(Ordering::Acquire);
+        loop {
+            match self.inner.active_count.compare_exchange_weak(
+                current,
+                current.saturating_sub(1),
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            ) {
+                Ok(_) => return,
+                Err(observed) => current = observed,
+            }
+        }
     }
 
     fn remove_exact(&self, parsed: &ParsedToken) {

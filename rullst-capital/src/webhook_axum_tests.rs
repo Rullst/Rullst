@@ -70,6 +70,23 @@ fn request(body: impl Into<Body>, signature: Option<&str>) -> Request<Body> {
 }
 
 #[tokio::test]
+async fn duplicate_standard_webhook_headers_are_rejected_before_dispatch() {
+    for name in ["webhook-id", "webhook-timestamp", "webhook-signature"] {
+        let mut duplicated = request(payload(), Some("mock_axum_signature"));
+        duplicated
+            .headers_mut()
+            .append(name, HeaderValue::from_static("first"));
+        duplicated
+            .headers_mut()
+            .append(name, HeaderValue::from_static("second"));
+        assert_eq!(
+            app(state(true)).oneshot(duplicated).await.unwrap().status(),
+            StatusCode::BAD_REQUEST
+        );
+    }
+}
+
+#[tokio::test]
 async fn state_middleware_preserves_body_inserts_event_and_rejects_replay() {
     let app = app(state(true));
     let mut accepted = request(payload(), Some("mock_axum_signature"));

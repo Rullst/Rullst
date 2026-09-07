@@ -45,7 +45,7 @@ impl AuthCallback {
         use subtle::ConstantTimeEq;
 
         match &self.state {
-            Some(state) => {
+            Some(state) if !state.is_empty() && !session_state.is_empty() => {
                 let hash_state = Sha256::digest(state.as_bytes());
                 let hash_session = Sha256::digest(session_state.as_bytes());
 
@@ -57,6 +57,9 @@ impl AuthCallback {
                     ))
                 }
             }
+            Some(_) => Err(crate::error::ConnectError::InvalidState(
+                "CSRF state cannot be empty".into(),
+            )),
             None => Err(crate::error::ConnectError::InvalidState(
                 "State missing in callback".into(),
             )),
@@ -194,7 +197,7 @@ mod tests {
             error: None,
             error_description: None,
         };
-        assert!(callback_empty.verify_state("").is_ok());
+        assert!(callback_empty.verify_state("").is_err());
         assert!(callback_empty.verify_state("not_empty").is_err());
         assert!(callback_valid.verify_state("").is_err());
 

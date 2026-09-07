@@ -1,9 +1,22 @@
-// cargo-rullst/src/generators/project/cargo_toml.rs — Cargo.toml generator (< 300 lines).
-
-use std::path::Path;
+use std::{fs, path::Path};
 
 use crate::blueprints::{BLANK_BLUEPRINT_ID, LMS_BLUEPRINT_ID, SAAS_BLUEPRINT_ID};
 use crate::generators::project::PolyglotIntegration;
+
+fn is_matching_local_package(path: &Path, crate_name: &str, crate_version: &str) -> bool {
+    let Ok(contents) = fs::read_to_string(path.join("Cargo.toml")) else {
+        return false;
+    };
+    let Ok(manifest) = toml::from_str::<toml::Value>(&contents) else {
+        return false;
+    };
+
+    let Some(package) = manifest.get("package").and_then(toml::Value::as_table) else {
+        return false;
+    };
+    package.get("name").and_then(toml::Value::as_str) == Some(crate_name)
+        && package.get("version").and_then(toml::Value::as_str) == Some(crate_version)
+}
 
 fn dependency_source(
     current_dir: &Path,
@@ -11,14 +24,33 @@ fn dependency_source(
     crate_version: &str,
 ) -> Result<String, Box<dyn std::error::Error>> {
     let sibling = current_dir.join(crate_name);
-    if sibling.exists() {
-        let absolute_path = sibling
+    let source_checkout = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .map(|root| root.join(crate_name));
+    let invocation_is_matching_checkout = is_matching_local_package(
+        &current_dir.join("cargo-rullst"),
+        "cargo-rullst",
+        env!("CARGO_PKG_VERSION"),
+    );
+    let local_path = (invocation_is_matching_checkout
+        && is_matching_local_package(&sibling, crate_name, crate_version))
+    .then_some(sibling)
+    .or_else(|| {
+        (crate_version == env!("CARGO_PKG_VERSION") && crate_version.contains('-'))
+            .then_some(source_checkout)
+            .flatten()
+            .filter(|path| is_matching_local_package(path, crate_name, crate_version))
+    });
+
+    if let Some(local_path) = local_path {
+        let absolute_path = local_path
             .canonicalize()?
             .display()
             .to_string()
             .replace(r"\\?\", "")
             .replace('\\', "/");
-        Ok(format!("path = \"{absolute_path}\""))
+        let path_literal = toml_edit::value(absolute_path).to_string();
+        Ok(format!("path = {path_literal}"))
     } else {
         Ok(format!("version = \"{crate_version}\""))
     }
@@ -70,7 +102,7 @@ pub fn build_cargo_toml(
     }
 
     rullst_features.push("studio");
-    if blueprint_selection != BLANK_BLUEPRINT_ID || db_needed {
+    if blueprint_selection != BLANK_BLUEPRINT_ID {
         rullst_features.push("nexus");
     }
     if matches!(blueprint_selection, LMS_BLUEPRINT_ID | SAAS_BLUEPRINT_ID) {
@@ -96,7 +128,8 @@ pub fn build_cargo_toml(
             r#"[package]
 name = "{package_name}"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.96.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -109,7 +142,8 @@ crate-type = ["cdylib", "rlib"]
             r#"[package]
 name = "{package_name}"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.96.0"
 
 [dependencies]
 "#
@@ -290,6 +324,26 @@ mod tests {
     }
 
     #[test]
+    fn blank_database_project_does_not_compile_an_unmounted_nexus() {
+        let blank = build_cargo_toml(
+            "blank-db",
+            false,
+            true,
+            "Sqlite",
+            &[],
+            false,
+            false,
+            BLANK_BLUEPRINT_ID,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("Blank database manifest");
+
+        assert!(blank.contains("\"studio\""));
+        assert!(!blank.contains("\"nexus\""));
+    }
+
+    #[test]
     fn registry_dependencies_preserve_the_cli_prerelease_version() {
         let root = isolated_root();
         for crate_name in [
@@ -307,6 +361,52 @@ mod tests {
                 format!("{crate_name} = {{ version = \"12.0.0-rc.7\" }}\n")
             );
         }
+    }
+
+    #[test]
+    fn arbitrary_matching_sibling_is_not_trusted_as_a_framework_checkout() {
+        let root = tempfile::tempdir().expect("isolated invocation directory");
+        let sibling = root.path().join("rullst");
+        fs::create_dir(&sibling).expect("lookalike crate directory");
+        fs::write(
+            sibling.join("Cargo.toml"),
+            "[package]\nname = \"rullst\"\nversion = \"12.0.0-rc.7\"\n",
+        )
+        .expect("lookalike manifest");
+        assert_eq!(
+            dependency_source(root.path(), "rullst", "12.0.0-rc.7").expect("registry fallback"),
+            "version = \"12.0.0-rc.7\""
+        );
+    }
+
+    #[test]
+    fn malformed_or_package_less_local_manifests_are_not_trusted() {
+        let root = tempfile::tempdir().expect("isolated manifest directory");
+        let candidate = root.path().join("candidate");
+        fs::create_dir(&candidate).expect("candidate directory");
+
+        fs::write(candidate.join("Cargo.toml"), "[package\nname = broken")
+            .expect("malformed manifest");
+        assert!(!is_matching_local_package(
+            &candidate,
+            "candidate",
+            "12.0.0-rc.1"
+        ));
+
+        fs::write(candidate.join("Cargo.toml"), "[workspace]\nmembers = []\n")
+            .expect("package-less manifest");
+        assert!(!is_matching_local_package(
+            &candidate,
+            "candidate",
+            "12.0.0-rc.1"
+        ));
+    }
+
+    #[test]
+    fn source_checkout_is_available_to_the_current_prerelease() {
+        let source = dependency_source(Path::new("/tmp"), "rullst", env!("CARGO_PKG_VERSION"))
+            .expect("current dependency source");
+        assert!(source.starts_with("path = "), "unexpected source: {source}");
     }
 
     #[test]
@@ -340,7 +440,6 @@ mod tests {
             &isolated_root(),
         )
         .expect("polyglot manifest");
-
         for feature in [
             "orm-turso",
             "orm-mongodb",
@@ -378,6 +477,49 @@ mod tests {
         assert!(manifest.contains("features = [\"turso\"]"));
         assert!(manifest.contains("dotenvy = \"0.15\""));
         assert!(!manifest.lines().any(|line| line.starts_with("sqlx = ")));
+    }
+
+    #[test]
+    fn relational_hot_reload_does_not_add_a_duplicate_database_bootstrap_dependency() {
+        let manifest = build_cargo_toml(
+            "hot-sqlite-app",
+            true,
+            true,
+            "Sqlite",
+            &[],
+            false,
+            false,
+            BLANK_BLUEPRINT_ID,
+            "Zero-Bundle HTMX",
+            &isolated_root(),
+        )
+        .expect("hot SQLite manifest");
+
+        assert!(!manifest.contains("dotenvy = \"0.15\""));
+        assert!(manifest.contains("edition = \"2024\""));
+    }
+
+    #[test]
+    fn generated_projects_use_the_frameworks_rust_edition() {
+        for hot_reload in [false, true] {
+            let manifest = build_cargo_toml(
+                "edition-app",
+                hot_reload,
+                false,
+                "Sqlite",
+                &[],
+                false,
+                false,
+                BLANK_BLUEPRINT_ID,
+                "Zero-Bundle HTMX",
+                &isolated_root(),
+            )
+            .expect("generated manifest");
+
+            assert!(manifest.contains("edition = \"2024\""));
+            assert!(manifest.contains("rust-version = \"1.96.0\""));
+            assert!(!manifest.contains("edition = \"2021\""));
+        }
     }
 
     #[test]

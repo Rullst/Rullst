@@ -299,14 +299,15 @@ fn validate_key_id(key_id: &str) -> Result<(), VaultError> {
             actual: key_id.len(),
         });
     }
-    if !key_id
-        .bytes()
-        .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-'))
-    {
+    if !key_id.bytes().all(is_valid_key_id_byte) {
         return Err(VaultError::InvalidKeyId);
     }
 
     Ok(())
+}
+
+const fn is_valid_key_id_byte(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-')
 }
 
 fn build_authenticated_data(key_id: &str, caller_aad: &[u8]) -> Vec<u8> {
@@ -421,9 +422,13 @@ mod kani_proofs {
     use super::*;
 
     #[kani::proof]
-    fn proof_vault_secret_invariants() {
-        let val: [u8; 4] = kani::any();
-        let secret = VaultSecret::new(val);
-        assert_eq!(secret.expose_secret(), &val);
+    fn proof_key_id_byte_policy() {
+        let byte: u8 = kani::any();
+        let expected = byte.is_ascii_uppercase()
+            || byte.is_ascii_lowercase()
+            || byte.is_ascii_digit()
+            || matches!(byte, b'.' | b'_' | b'-');
+
+        assert_eq!(is_valid_key_id_byte(byte), expected);
     }
 }

@@ -1,10 +1,11 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use rullst_security::sanitizer::sanitize_identifier;
+use rullst_security::sanitizer::HtmlSanitizer;
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(s) = std::str::from_utf8(data) {
-        let _ = sanitize_identifier(s);
+        let _ = HtmlSanitizer::sanitize(s);
+        let _ = HtmlSanitizer::sanitize_text(s);
     }
 });

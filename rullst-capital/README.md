@@ -44,14 +44,65 @@ provider sandbox.
 | :--- | :--- | :--- |
 | **Stripe** | Billing | Checkout, bounded immediate Payment Intent charge, and documented webhook foundations; verify required live methods. |
 | **Lemon Squeezy** | Billing | Adapter with explicit mock path; verify required live methods. |
-| **InfinitePay** | Billing | Regional adapter foundation; pricing and settlement are external contracts. |
+| **InfinitePay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
 | **Polar** | Billing | Adapter foundation; verify provider API coverage. |
 | **Paddle** | Billing | Adapter and signed-webhook foundation. |
 | **Razorpay** | Billing | Adapter and signed-webhook foundation. |
-| **Mercado Pago** | Billing | Adapter and signed-webhook foundation. |
-| **Coinbase Commerce** | Billing | Adapter and signed-webhook foundation. |
-| **PicPay** | Billing | Adapter foundation; verify provider API coverage. |
+| **Mercado Pago** | Billing | Offline checkout fixture; live plan-only checkout and body-only webhook verification are unavailable. |
+| **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
+| **PicPay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
 | **Wise** | Payout | Payout adapter foundation rather than a subscription provider. |
+
+The shared `create_customer_portal(email, return_url)` methods do not have a
+reviewed live provider-session contract and return `UnsupportedOperation` for
+live credentials. Their deterministic empty/`mock_*` examples are offline
+fixtures, not authenticated portal sessions. Live usage reporting through the
+legacy uniform method is also unsupported for Paddle, Polar, Mercado Pago and
+Razorpay; use the separate reviewed Stripe/Lemon Squeezy metered contracts when
+applicable. InfinitePay, PicPay and Coinbase cancellation, plus Polar pause,
+likewise reject live calls until an actual provider operation is implemented.
+
+The legacy `create_checkout_session(email, plan_id, return_url)` accepts a
+provider-managed plan/price identity, not an amount or currency. Mercado Pago,
+Coinbase Commerce, InfinitePay and PicPay do not have an implemented reviewed
+mapping for that contract; their live methods return `UnsupportedOperation`
+before HTTP dispatch. They never invent a price, currency, buyer identity or
+subscription from a plan label. Empty/`mock_*` API credentials preserve their
+deterministic offline fixture, while `handle_*` and `picpay_token` are not mock
+credentials. An authoritative typed pricing/provider contract is required
+before enabling these live checkout paths.
+
+| Reviewed legacy method boundary | Stripe | Lemon Squeezy | Paddle | Polar | Razorpay | Mercado Pago | Coinbase | InfinitePay | PicPay |
+|---|---|---|---|---|---|---|---|---|---|
+| Plan/price-based checkout request | adapter | adapter | adapter | adapter | adapter | unsupported | unsupported | unsupported | unsupported |
+| Customer portal by email | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported |
+| Immediate evidence-bound charge | adapter | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported |
+
+`adapter` means a bounded request implementation exists, not that this audit
+validated acceptance or every response schema against a live provider account.
+Offline fixtures are deliberately excluded from the live-method matrix.
+
+Mercado Pago signs a manifest containing the original query data ID, request
+ID and timestamp. Its notification also requires an authoritative resource
+lookup before inferring payment/subscription state. The v12 body-only verifier
+cannot establish that contract and therefore rejects live verification;
+`with_webhook_tolerance` remains source-compatible but has no effect on that
+unavailable path. Explicit `mock_*` webhook fixtures remain supported. See the
+[official Mercado Pago webhook contract](https://www.mercadopago.com.br/developers/en/docs/subscriptions/additional-content/your-integrations/notifications/webhooks).
+
+Polar's live `handle_webhook` validates the full Standard Webhooks envelope:
+ID, timestamp and raw payload are signed together; versioned Base64 signatures
+are bounded and timestamps have a five-minute window. The documented Polar
+legacy literal-secret and standard `whsec_` decoded-secret schemes are both
+accepted, matching the provider's SDK transition. Its old body-only
+`verify_signature` method returns `UnsupportedOperation` for live secrets.
+See [Polar's signing contract](https://polar.sh/docs/integrate/webhooks/delivery)
+and the [Standard Webhooks specification](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md).
+
+Missing or malformed status no longer implies a paid/active subscription.
+Unsupported Razorpay and Coinbase event kinds fail closed; Coinbase event
+names are matched exactly, not by substring. This does not establish every
+provider payload schema or an application-specific entitlement/tenant policy.
 
 ---
 
@@ -330,7 +381,7 @@ async fn checkout_handler() -> Result<String, String> {
 
 ### Intercepting and Verifying Webhooks
 
-`rullst-capital` includes Axum and opt-in Actix Web middleware adapters over one canonical [`webhook` verifier](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs). Both bound the body, verify supported provider signatures, enforce timestamp freshness for Stripe, Mercado Pago and Paddle, restore the exact body, insert a normalized event, and reject replayed payloads through a bounded TTL store. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by the production-safe entry points. The in-memory store now fails closed when full instead of discarding an unexpired replay proof.
+`rullst-capital` includes Axum and opt-in Actix Web middleware adapters over one canonical [`webhook` verifier](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs). Both bound the body, verify supported provider signatures, enforce timestamp freshness for Stripe, Paddle and Polar, reject duplicate Standard Webhooks envelope headers, restore the exact body, insert a normalized event, and reject replayed payloads through a bounded TTL store. Live Mercado Pago verification is unavailable through this body-only API. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by the production-safe entry points. The in-memory store now fails closed when full instead of discarding an unexpired replay proof.
 
 The webhook route must receive a narrowly scoped CSRF exemption in the application router; never disable CSRF for browser routes. The exemption is safe only when this signature/freshness/replay middleware remains mandatory on that exact route. An outer blanket CSRF layer will reject legitimate provider callbacks before Capital can verify them.
 

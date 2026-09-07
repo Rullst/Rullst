@@ -14,6 +14,9 @@ pub mod openai_compatible;
 mod support;
 
 #[cfg(test)]
+mod transport_tests;
+
+#[cfg(test)]
 mod capability_tests {
     use super::{
         anthropic::AnthropicProvider,

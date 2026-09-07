@@ -7,8 +7,10 @@ pub mod chunking;
 pub mod clauses;
 pub mod execution;
 pub mod magic_methods;
+mod pluck;
 mod query_cache;
 pub mod sql_assembly;
+mod subqueries;
 pub mod where_clauses;
 
 pub use chunking::generate_chunk_methods;

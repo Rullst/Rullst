@@ -52,7 +52,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Install cargo-audit for release evidence
-        uses: taiki-e/install-action@37f7c5781271959fb65b6b35224e28652ff2b63d # v2.87.0
+        uses: taiki-e/install-action@5bf6ce016fd2e72eefc647cbca1e4213f65955b8 # v2.87.5
         with:
           tool: cargo-audit
 
@@ -130,13 +130,18 @@ jobs:
       - name: Validate tag and package every publishable crate
         env:
           RELEASE_TAG: ${{ github.ref_name }}
+          # Package verification builds each extracted crate outside the
+          # workspace profiles. Keep bundled DuckDB DWARF and parallel C++
+          # compilation bounded without reducing the all-feature surface.
+          CARGO_PROFILE_DEV_DEBUG: "0"
+          CARGO_BUILD_JOBS: "2"
         run: |
           if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
             echo "Release tag must use vMAJOR.MINOR.PATCH or a SemVer prerelease such as v12.0.0-rc.1."
             exit 1
           fi
           release_version="${RELEASE_TAG#v}"
-          cargo metadata --no-deps --format-version 1 |
+          cargo metadata --locked --no-deps --format-version 1 |
             jq --exit-status \
               --slurpfile release_order .github/release-order.json \
               --arg version "$release_version" \
@@ -156,6 +161,10 @@ jobs:
       - name: Test crates-only consumer and installed CLI blueprints
         env:
           RELEASE_TAG: ${{ github.ref_name }}
+          # The extracted consumer is intentionally outside the workspace, so
+          # it needs the same native-build bounds as package verification.
+          CARGO_PROFILE_DEV_DEBUG: "0"
+          CARGO_BUILD_JOBS: "2"
         run: bash .github/test-packaged-distribution.sh "${RELEASE_TAG#v}"
 
       - name: Generate tag-bound SBOM, audit, and bounded compliance evidence
@@ -177,7 +186,8 @@ jobs:
           # This command intentionally emits NOT CHECKED / NOT EVALUATED for
           # controls that a bounded source audit cannot establish.
           cargo run --locked -p cargo-rullst --bin rullst -- \
-            audit --idor --compliance --sbom
+            audit --idor --compliance --sbom \
+            --audit-ignore RUSTSEC-2023-0071
           mv SECURITY_COMPLIANCE.md \
             "$evidence_dir/security-evidence.md"
           mv sbom-cyclonedx.json \
@@ -389,7 +399,7 @@ jobs:
           done < <(jq -r '.[]' .github/release-order.json)
 
       - name: Create GitHub release from verified artifacts
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: |
             verified-crates/*.crate

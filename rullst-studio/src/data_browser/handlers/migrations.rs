@@ -35,7 +35,7 @@ pub async fn handle_studio_tools_migrations(headers: axum::http::HeaderMap) -> i
 
     let content = crate::migration_manager::render_migration_manager_html(&schema_section);
     if is_htmx {
-        Html(format!("{}{}", content, render_sidebar_oob(&tables, None))).into_response()
+        Html(content).into_response()
     } else {
         Html(studio_layout(content, None, &tables)).into_response()
     }

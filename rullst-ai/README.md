@@ -22,6 +22,15 @@ tenant-aware RAG pipeline.
 Unsupported capabilities return `AiError::UnsupportedCapability`; they do not silently switch to
 an unrelated endpoint or fabricate a live-provider result.
 
+The native OpenAI, Gemini, Anthropic, DeepSeek and Ollama adapters also disable
+HTTP redirects and ambient proxy settings. Their pooled HTTP transport has a
+five-second connection deadline, the existing configurable whole-request
+deadline (30 seconds by default), and a two-MiB JSON response ceiling enforced
+while reading even when Content-Length is absent. Configure the final trusted
+endpoint directly; redirected prompts, credentials and bodies are not replayed.
+These are local transport invariants, not proof of provider availability,
+prompt-injection immunity or upstream request cancellation.
+
 `OpenAiCompatibleProvider` covers servers implementing the named OpenAI
 `/chat/completions` and optional `/embeddings` shapes. It defaults to chat-only;
 vision, embeddings, JSON mode, and JSON Schema must be declared for the exact

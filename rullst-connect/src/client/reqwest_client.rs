@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use secrecy::{ExposeSecret, SecretString};
+#[cfg(not(miri))]
 use serde_json::Value;
 
 use super::traits::{HttpClient, HttpRequest, HttpResponse};
@@ -344,6 +345,7 @@ fn is_loopback_host(url: &url::Url) -> bool {
     }
 }
 
+#[cfg(not(miri))]
 fn proxy_build_error() -> crate::ConnectError {
     proxy_config_error("proxy client could not be constructed")
 }

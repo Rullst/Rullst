@@ -281,6 +281,8 @@ impl ApplicationJwtPolicy {
         })
     }
 
+    /// Tolerates bounded future `iat`/`nbf` clock skew. Expiry remains a hard
+    /// deadline so a token cannot become valid again after revocation expires.
     pub fn with_clock_skew(mut self, clock_skew: Duration) -> Result<Self, JwtError> {
         if clock_skew > MAX_CLOCK_SKEW {
             return Err(JwtError::InvalidConfiguration("clock_skew"));
@@ -435,6 +437,7 @@ impl ApplicationJwtPolicy {
             || !valid_identifier(&claims.jti, 64)
             || claims.session_version == 0
             || claims.iat > maximum_iat
+            || now >= claims.exp
             || claims.nbf != claims.iat
             || ttl == 0
             || ttl > self.max_ttl.as_secs()

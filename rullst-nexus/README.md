@@ -112,10 +112,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 Set unique values for `NEXUS_ADMIN_USERNAME` and `NEXUS_ADMIN_PASSWORD`; the password must contain
 at least 16 characters. Rullst's server supplies `ConnectInfo<SocketAddr>`, which the Basic Auth
 guard requires so a forged forwarding header cannot choose the rate-limit identity.
+The Basic Auth guard also requires `NexusVerifiedTls` from trusted transport
+integration; an `https` request URI or a forwarding header alone never proves TLS.
 
 For local development only, debug builds can explicitly select
 `NexusAuthPolicy::loopback_only(LocalNexusAccess::loopback_only())`. It still requires a verified
-loopback socket peer and is rejected in release builds.
+loopback socket peer, an unambiguous local `Host` authority, and a matching
+`Origin` for unsafe methods, and is rejected in release builds. Non-browser
+clients can read without `Origin`; local mutation requests must supply their
+matching origin explicitly (for example, `Origin: http://localhost:3000` with
+`Host: localhost:3000`). Present cross-origin headers are rejected on every method.
 
 Generated applications use
 `NexusAuthPolicy::local_development_or_basic_from_env()`: debug builds select

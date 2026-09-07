@@ -120,6 +120,7 @@ impl Outbox {
         event_kind: impl Into<String>,
         payload: &Value,
     ) -> Result<EnqueuedOutboxEvent, Error> {
+        crate::__transaction_access::ensure_allowed()?;
         let stream = stream.into();
         let event_key = event_key.into();
         let event_kind = event_kind.into();

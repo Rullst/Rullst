@@ -25,7 +25,7 @@ state of those checks for the referenced commit; they are not an absolute securi
 | **Release Provenance** | [![Release](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/release.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/release.yml) | Provenance attestations for release artifacts; no SLSA level is claimed here |
 | **On-demand fuzzing** | [![Fuzzing](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/fuzzing.yml?branch=main&style=flat-square&label=Fuzzing)](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) | Manual time-bounded targets; no continuous OSS-Fuzz claim |
 | **Property tests** | [![Proptest](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/proptest.yml?branch=main&style=flat-square&label=Proptest)](https://github.com/Rullst/Rullst/actions/workflows/proptest.yml) | Scheduled/manual bounded invariant evidence |
-| **Miri research matrix** | [![Miri](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/miri.yml?branch=main&style=flat-square&label=Miri)](https://github.com/Rullst/Rullst/actions/workflows/miri.yml) | Manual, partly non-blocking evidence for the targets actually exercised |
+| **Miri research matrix** | [![Miri](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/miri.yml?branch=main&style=flat-square&label=Miri)](https://github.com/Rullst/Rullst/actions/workflows/miri.yml) | Manual bounded evidence; the selected client scope is strict, while network and provider paths remain outside Miri |
 | **Kani research harnesses** | [![Kani](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/kani.yml?branch=main&style=flat-square&label=Kani)](https://github.com/Rullst/Rullst/actions/workflows/kani.yml) | Manual bounded formal evidence, not proof of the complete protocol surface |
 | **CodeQL SAST** | [![CodeQL](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/codeql.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/codeql.yml) | Advanced semantic code analysis |
 | **Cargo Deny** | [![Cargo Deny](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/cargo-deny.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/cargo-deny.yml) | Banning unmaintained/vulnerable crates |
@@ -89,6 +89,28 @@ Official support for 11 core providers:
 9. **Discord**
 10. **LinkedIn**
 11. **OIDC (OpenID Connect Custom Provider)**
+
+ID-token verification is implemented by Google, Apple and `OidcProvider`.
+Those paths require signed `iss`, `aud`, `sub`, `exp` and `iat` claims, bind the
+configured issuer/client, check a supplied `azp`, and reject an expected nonce
+when the ID token is missing. Additional audiences are rejected because these
+adapters have no independently configured trust list for other clients. The
+other adapters expose OAuth access-token/UserInfo flows and reject requests
+that require OIDC nonce validation; use `OidcProvider` with the appropriate
+issuer when that guarantee is needed for Auth0, Cognito or another OIDC host.
+Apple refresh verifies the returned ID token separately from its opaque access
+token. A refresh response without an ID token cannot establish a fresh Apple
+identity through this API.
+
+Token responses may omit `expires_in`, but a supplied value must be an integer
+from one second through 366 days, matching the managed refresh-state bound.
+Negative, zero, excessive and malformed lifetimes fail closed instead of
+wrapping to an unsigned lifetime or becoming an unknown expiry. The manual
+callback state comparator also rejects an empty expected or returned state.
+
+These are local signed-protocol contracts, not OpenID certification or proof
+of a provider account's configuration. Applications own callback state,
+account/tenant binding, account linking and durable session authorization.
 
 Remote token revocation is deliberately narrower than login support. Use
 `Provider::revoke_token` for an access token and

@@ -2,6 +2,10 @@
 
 Welcome to the **Rullst** Getting Started guide!
 
+**Your goal:** install the matching preview CLI, generate a small application,
+open it locally and make your first change. Prefer to write the first route
+yourself? Use [Zero to Hello Rullst](tutorials/01-hello-world.md).
+
 Rullst is a strictly typed full-stack web framework designed around explicit APIs,
 measurable performance, and defense-in-depth defaults.
 
@@ -32,12 +36,16 @@ install the CLI from that exact checkout instead:
 git clone --branch main https://github.com/Rullst/Rullst.git
 cd Rullst
 cargo install --locked --path cargo-rullst
+cd ..
 ```
 
-Run the following project-creation steps from the repository root during this
-source-only phase. The generator will then use the sibling framework crates as
-path dependencies. Once an immutable v12 RC exists on crates.io, install that
-exact CLI version and use its matching registry packages instead.
+During this source-only phase, the pre-release CLI reuses the exact checkout
+from which it was compiled, even when project creation is invoked from another
+directory, provided that checkout has not been moved or deleted. Generated
+manifests therefore contain absolute path dependencies and are not portable yet.
+Running from the repository root remains an explicit fallback. Once an immutable
+v12 RC exists on crates.io, install that exact CLI version and use its matching
+registry packages instead.
 
 ## 2. Creating Your First Project
 
@@ -48,25 +56,52 @@ cargo rullst
 ```
 
 The **Rullst App Creator** will launch an interactive wizard. The example below
-creates a Portfolio inside the source checkout while v12 remains unpublished:
+creates a Portfolio while v12 remains unpublished:
 1. Select **Create New App**.
 2. **App Name**: Provide a simple lowercase name (e.g., `my_portfolio`).
-3. **Starter Blueprint**: Choose **Portfolio 🔥 (showcase for Rullst/AI developers) - HOT**.
+3. **Starter Blueprint**: Choose **Portfolio**. Labels and decorative suffixes
+   can change; use the blueprint name as your reference.
+4. Choose your primary database. **SQLite** is the simplest local first run;
+   PostgreSQL, MySQL and MariaDB require their database service to be running.
+5. Leave **optional persistence capabilities** empty unless you need an add-on.
+   That selector accepts zero or more choices; it is not another required database.
 
 ```bash
 cd my_portfolio
 cargo rullst dev
 ```
 
+Open the local URL reported by the command. Find the generated page code,
+change a heading and save. Confirm that the changed page appears after the
+successful rebuild/restart. Stop development with `Ctrl+C` before moving or
+removing the project directory.
+
+Prefer a small deterministic starter without navigating the wizard?
+
+```bash
+cargo rullst new first_app --default --blueprint blank --database sqlite \
+  --skip-initial-migration
+cd first_app
+cargo rullst dev
+```
+
+The first source build can take several minutes. `--skip-initial-migration`
+defers the generator's bootstrap work; the development command runs the
+initial migration before starting a generated database-backed app. Never point
+this learning project at a production database.
+
 > [!TIP]
 > The `cargo rullst dev` command compiles the project and starts the local
-> server. When the project was generated with `--hot-reload`, a change triggers
-> a real library rebuild, an authenticated router swap, and a browser refresh;
-> a failed build leaves the previous router serving. The CLI reports observed
-> duration rather than promising a fixed reload time. See the bounded behavior
-> and limitations in the [CLI reference](cli_reference.md#cargo-rullst-dev).
+> server. Saving changes triggers a real rebuild and supervised process restart;
+> a failed build leaves the previous application serving. The same-origin
+> browser client refreshes after the new process responds with its generation
+> marker. In-memory state resets. No hot-reload scaffold option is required.
+> See the [CLI reference](cli_reference.md#cargo-rullst-dev).
 > 
-> For a detailed guide on choosing ORM patterns (Active Record vs Data Mapper vs Hybrid) and Frontend Engines (HTMX vs Leptos vs Dioxus), check out our [Architecture Choices Guide](architecture-decisions.md).
+> Rullst v12 deliberately generates one audited application profile: Active
+> Record with server-rendered `html!` views and HTMX enhancement. The framework
+> still exposes lower-level repository and client-runtime foundations for
+> application-owned integration. See the [Architecture Choices Guide](architecture-decisions.md).
 
 
 ## 3. Rullst Blueprints Showcase
@@ -79,10 +114,11 @@ allocation and latency depend on the generated page and runtime.
 
 ## 1. Blank Starter
 **Use Case:** Custom, from-scratch development.
-This is the minimal template powered by HTMX without a project-local JavaScript
-bundle. It includes a simple reactive counter to demonstrate server-driven
-communication. You can select one of five frontend scaffolds (HTMX, LiveView,
-Wasm Islands, Pico.css, or Tera) or one of the blueprints below.
+This is the minimal template powered by server-rendered `html!` views and HTMX
+without a project-local JavaScript bundle. It includes a simple reactive counter
+to demonstrate server-driven communication. Other frontend foundations remain
+available as application APIs, but v12 does not advertise them as equivalent
+generated blueprints.
 
 ## 2. Portfolio 🔥
 **Use Case:** Developer showcases and personal branding.
@@ -94,16 +130,22 @@ A visually stunning, glassmorphic portfolio template designed specifically for R
 - Project cards showcase with live external links.
 
 ## 3. LMS Platform Starter
-**Use Case:** Online course platforms and video streaming.
-An initial learning-management scaffold featuring:
-- Courses and Lessons database models.
-- Migrations pre-populated with seed data.
-- A glassmorphic video player layout integrated with HTMX.
+**Use Case:** Online learning products and course platforms.
+The complete profile is a bounded learning-domain foundation featuring:
+- School-scoped curriculum, enrollment, progress and versioned publication.
+- Quizzes, learning activities, assignments/rubrics, completion records and
+  database-verifiable certificates.
+- Roles, leaderboard updates, transactional outbox/workers, scheduling and
+  localized in-app notifications.
+- Accessible server-rendered catalog, course and media-player shells with
+  explicit source, caption and transcript admission rules.
 
-Enrollment/entitlements, student progress, assessments, certificates, protected
-video delivery, uploads/transcoding, notifications and native offline playback
-are not implemented by this starter. They are worthwhile application modules,
-but require domain authorization, durable jobs/storage and provider contracts.
+It remains a starter rather than a finished education product. Upload hosting,
+media transcoding and signed delivery, advanced/localized search, billing-linked
+entitlements, distributed failover, native offline playback, real-browser/WCAG
+evidence and PostgreSQL/MySQL isolation evidence remain application or roadmap
+work. Smaller `auth`, `auth,learning` and `auth,learning,assessment` profiles are
+available when the complete domain scaffold is unnecessary.
 
 ## 4. SaaS App Starter
 **Use Case:** Subscription-based products and billing.
@@ -114,7 +156,7 @@ An opinionated SaaS starting point, pre-wired with:
 
 ## 5. Blog / Press
 **Use Case:** Content creation and articles.
-A static site generator pre-wired with Nexus CMS. It features:
+A database-backed, server-rendered blog/CMS blueprint. It features:
 - A beautiful article reading view with typography optimized for readability.
 - Article CRUD and a server-rendered reading view. Markdown parsing is not part
   of the current generated starter.
@@ -164,6 +206,11 @@ The wizard deliberately makes two separate decisions:
    These use explicit capability APIs and do not silently replace the primary
    pool.
 
+After generation, the default flow compiles the new application once and runs
+its initial migration. A clean first build can take several minutes for larger
+blueprints. Use `--skip-initial-migration` when the network database is not yet
+configured, then run `cargo rullst db:migrate` from the generated project.
+
 The non-interactive flags mirror the second step:
 
 ```bash
@@ -171,17 +218,18 @@ cargo rullst new edge_app --default --database mariadb --turso --mongodb \
   --skip-initial-migration
 ```
 
-Automation can pin the ORM, frontend and optional runtime capabilities instead
-of accepting hidden interactive defaults:
+Automation can pin the supported blueprint, database and optional runtime
+capabilities. The v12 application architecture is intentionally fixed to Active
+Record plus server-rendered `html!`/HTMX:
 
 ```bash
 cargo rullst new learning_portal --default --blueprint lms \
-  --database postgres --orm repository --frontend htmx --ai \
+  --database postgres --ai \
   --skip-initial-migration
 ```
 
 For a blank application with no primary relational database, use the explicit
-`--no-database` flag. It cannot be combined with `--database` or `--orm`.
+`--no-database` flag. It cannot be combined with `--database`.
 Generated SQLx profiles disable Rullst's umbrella defaults and select exactly
 one strict relational backend, so a chosen PostgreSQL/MySQL/MariaDB profile is
 not accidentally compiled through an implicit SQLite default.

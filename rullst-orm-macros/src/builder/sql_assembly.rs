@@ -50,26 +50,44 @@ pub fn generate_sql_assembly_methods(
             }
         }
 
-        fn push_wheres(&self, sql: &mut String) -> bool {
-            let mut first_where = true;
-            if !self.wheres.is_empty() {
-                sql.push_str(" WHERE ");
-                for (op, cond) in &self.wheres {
-                    if first_where {
-                        sql.push('(');
-                        sql.push_str(cond);
-                        sql.push(')');
-                        first_where = false;
-                    } else {
-                        sql.push(' ');
-                        sql.push_str(op);
-                        sql.push_str(" (");
-                        sql.push_str(cond);
-                        sql.push(')');
-                    }
+        fn push_condition_group(sql: &mut String, conditions: &[(String, String)]) {
+            if conditions.len() > 1 { sql.push('('); }
+            for (index, (operator, condition)) in conditions.iter().enumerate() {
+                if index > 0 {
+                    sql.push(' ');
+                    sql.push_str(operator);
+                    sql.push(' ');
                 }
+                sql.push('(');
+                sql.push_str(condition);
+                sql.push(')');
             }
-            first_where
+            if conditions.len() > 1 { sql.push(')'); }
+        }
+
+        // Model-wide and tenant filters must remain independent AND groups;
+        // a later user OR filter must never broaden either mandatory scope.
+        fn freeze_scope(&mut self) {
+            if !self.wheres.is_empty() {
+                let mut scope = String::new();
+                Self::push_condition_group(&mut scope, &self.wheres);
+                self.scope_wheres.push(scope);
+                self.wheres.clear();
+                self.scope_bindings.append(&mut self.bindings);
+            }
+        }
+
+        fn push_wheres(&self, sql: &mut String) -> bool {
+            if self.scope_wheres.is_empty() && self.wheres.is_empty() {
+                return true;
+            }
+            sql.push_str(" WHERE ");
+            sql.push_str(&self.scope_wheres.join(" AND "));
+            if !self.wheres.is_empty() {
+                if !self.scope_wheres.is_empty() { sql.push_str(" AND "); }
+                Self::push_condition_group(sql, &self.wheres);
+            }
+            false
         }
 
         fn push_soft_deletes(&self, sql: &mut String, first_where: bool) {

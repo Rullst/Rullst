@@ -120,7 +120,7 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
     }
 
     let content = format!(
-        r#"<div class="p-6 md:p-8 font-mono space-y-8 max-w-7xl mx-auto overflow-y-auto">
+        r#"<div class="w-full p-4 sm:p-6 md:p-8 font-mono space-y-6 md:space-y-8 max-w-7xl mx-auto">
             <header class="pb-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 class="text-2xl md:text-3xl font-extrabold text-amber-400 flex items-center gap-3">
@@ -256,7 +256,7 @@ pub async fn handle_studio_tools_security(headers: axum::http::HeaderMap) -> imp
     );
 
     if is_htmx {
-        Html(format!("{}{}", content, render_sidebar_oob(&[], None))).into_response()
+        Html(content).into_response()
     } else {
         Html(studio_layout(content, None, &[])).into_response()
     }

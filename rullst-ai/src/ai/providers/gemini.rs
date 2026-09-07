@@ -1,6 +1,7 @@
 use super::support::{
     DEFAULT_REQUEST_TIMEOUT, embedding_values, endpoint, image_mime_type, success_response,
 };
+use super::support::{http_client, read_json};
 use crate::ai::{
     AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
     StructuredOutputSchema,
@@ -18,7 +19,6 @@ pub struct GeminiProvider {
     embedding_model: String,
     base_url: String,
     mode: ProviderMode,
-    client: reqwest::Client,
     request_timeout: Duration,
 }
 
@@ -33,7 +33,6 @@ impl GeminiProvider {
             embedding_model: "gemini-embedding-001".to_string(),
             base_url: "https://generativelanguage.googleapis.com/v1beta".to_string(),
             mode,
-            client: reqwest::Client::new(),
             request_timeout: DEFAULT_REQUEST_TIMEOUT,
         }
     }
@@ -95,8 +94,7 @@ impl GeminiProvider {
     }
 
     async fn generate(&self, body: serde_json::Value) -> Result<String, AiError> {
-        let response = self
-            .client
+        let response = http_client()?
             .post(endpoint(
                 &self.base_url,
                 &format!("models/{}:generateContent", self.model),
@@ -105,9 +103,10 @@ impl GeminiProvider {
             .header("x-goog-api-key", &self.api_key)
             .json(&body)
             .send()
-            .await?;
+            .await
+            .map_err(|error| AiError::RequestError(error.without_url()))?;
         let response = success_response(response, self.provider_name()).await?;
-        let json: serde_json::Value = response.json().await?;
+        let json = read_json(response, self.provider_name()).await?;
         json["candidates"][0]["content"]["parts"]
             .as_array()
             .and_then(|parts| parts.iter().find_map(|part| part["text"].as_str()))
@@ -182,8 +181,7 @@ impl AiProvider for GeminiProvider {
             return Ok(mock::embedding(&text));
         }
 
-        let response = self
-            .client
+        let response = http_client()?
             .post(endpoint(
                 &self.base_url,
                 &format!("models/{}:embedContent", self.embedding_model),
@@ -195,9 +193,10 @@ impl AiProvider for GeminiProvider {
                 "content": {"parts": [{"text": text}]}
             }))
             .send()
-            .await?;
+            .await
+            .map_err(|error| AiError::RequestError(error.without_url()))?;
         let response = success_response(response, self.provider_name()).await?;
-        let json: serde_json::Value = response.json().await?;
+        let json = read_json(response, self.provider_name()).await?;
         embedding_values(json["embedding"]["values"].as_array(), self.provider_name())
     }
 

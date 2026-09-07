@@ -74,8 +74,15 @@ struct Event {
 
 Initialize once before using the generated inherent methods:
 
-```rust
-let _ = dotenvy::dotenv();
+```rust,no_run
+# #[derive(Debug, Clone, rullst_orm::Orm)]
+# #[orm(table = "events", backend = "turso")]
+# struct Event {
+#     id: i64,
+#     label: String,
+#     active: bool,
+# }
+# async fn use_turso_model() -> Result<(), Box<dyn std::error::Error>> {
 rullst_orm::polyglot::TursoOrm::init_from_env().await?;
 
 let mut event = Event {
@@ -85,6 +92,9 @@ let mut event = Event {
 };
 event.save().await?;
 let current = Event::find(event.id).await?;
+# let _ = current;
+# Ok(())
+# }
 ```
 
 The typed contract includes CRUD, equality filters, ordering, bounded
@@ -99,12 +109,13 @@ ignoring their attributes.
 
 ## Turso / libSQL explicit edge SQL
 
-```rust
+```rust,no_run
 use rullst_orm::polyglot::{
     TursoConfig, TursoMigration, TursoQueryLimit, TursoStatement, TursoStore,
     TursoValue,
 };
 
+async fn use_edge_sql() -> Result<(), Box<dyn std::error::Error>> {
 let config = TursoConfig::new(
     std::env::var("TURSO_DATABASE_URL").unwrap_or_default(),
     std::env::var("TURSO_AUTH_TOKEN").unwrap_or_default(),
@@ -128,6 +139,9 @@ let rows = edge.query(
     )?,
     TursoQueryLimit::new(100)?,
 ).await?;
+let _ = rows;
+Ok(())
+}
 ```
 
 The live path speaks the official Hrana HTTP v3 protocol directly through the
@@ -158,9 +172,13 @@ use rullst_orm::polyglot::{
     CollectionName, DocumentId, DocumentPage, DocumentRepository,
 };
 
+# fn bounded_document_inputs() -> Result<(), Box<dyn std::error::Error>> {
 let collection = CollectionName::new("audit_events")?;
 let id = DocumentId::new("event-2026-0001")?;
 let page = DocumentPage::new(0, 50)?;
+# let _ = (collection, id, page);
+# Ok(())
+# }
 ```
 
 Collection names use a portable ASCII identifier grammar, IDs are bounded to
@@ -238,7 +256,7 @@ replication, point-in-time recovery, topology failover or vendor operations.
 
 ### MongoDB
 
-```rust
+```rust,no_run
 use rullst_orm::polyglot::{
     CollectionName, DocumentId, DocumentRepository, MongoDbStore,
 };
@@ -249,6 +267,7 @@ struct AuditEvent {
     action: String,
 }
 
+async fn store_audit_event() -> Result<(), Box<dyn std::error::Error>> {
 let store = MongoDbStore::<AuditEvent>::connect_or_mock(
     std::env::var("MONGODB_URL").unwrap_or_default(),
     "my_application",
@@ -259,6 +278,8 @@ store.create(
     &DocumentId::new("event-1")?,
     &AuditEvent { action: "login".into() },
 ).await?;
+Ok(())
+}
 ```
 
 An empty URL or one beginning with `mock_`/`mock://` selects an in-process,
@@ -269,11 +290,12 @@ responsibilities.
 
 ### SurrealDB documents and graph reads
 
-```rust
+```rust,no_run
 use rullst_orm::polyglot::{
     GraphQuery, GraphRepository, SurrealAuth, SurrealConfig, SurrealDbStore,
 };
 
+async fn read_graph() -> Result<(), Box<dyn std::error::Error>> {
 let config = SurrealConfig::new(
     std::env::var("SURREALDB_URL").unwrap_or_default(),
     "main",
@@ -288,6 +310,9 @@ let query = GraphQuery::read_only(
     100,
 )?;
 let rows = store.query_graph(&query).await?;
+let _ = rows;
+Ok(())
+}
 ```
 
 The adapter uses SurrealDB's documented HTTP `/key`, `/sql`, and `/gql`
@@ -305,11 +330,12 @@ requires SurrealDB 3.2 or newer and explicit experimental enablement on the
 
 ## DuckDB analytics
 
-```rust
+```rust,no_run
 use rullst_orm::polyglot::{
     AnalyticsRepository, AnalyticsValue, DuckDbStore, QueryLimit,
 };
 
+async fn analyze_events() -> Result<(), Box<dyn std::error::Error>> {
 let analytics = DuckDbStore::in_memory().await?;
 analytics.execute(
     "CREATE TABLE events (sequence BIGINT, label VARCHAR)",
@@ -327,6 +353,9 @@ let rows = analytics.query(
     vec![AnalyticsValue::Signed(1)],
     QueryLimit::new(500)?,
 ).await?;
+let _ = rows;
+Ok(())
+}
 ```
 
 DuckDB is bundled for a predictable optional build. Its connection is guarded

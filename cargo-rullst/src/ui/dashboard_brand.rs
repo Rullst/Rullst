@@ -19,6 +19,7 @@ const GREEN_GRADIENT: [u8; 6] = [118, 82, 46, 40, 34, 28];
 const ORANGE_GRADIENT: [u8; 6] = [215, 214, 208, 202, 166, 130];
 const FINAL_SIGNATURE: [u8; 6] = [33, 27, 46, 34, 215, 166];
 const PULSE_COLORS: [u8; 6] = FINAL_SIGNATURE;
+const LOGO_FRAME_DELAY_MILLIS: u64 = 26;
 const ANIMATION_FRAMES: [usize; 24] = [
     0, 0, 0, 1, 2, 3, 4, 5, 6, 6, 6, 7, 8, 9, 10, 11, 12, 12, 12, 13, 14, 15, 16, 16,
 ];
@@ -40,7 +41,7 @@ pub(super) fn print_neon_logo() -> std::io::Result<()> {
         }
         stdout.flush()?;
         if index + 1 < animation.len() {
-            std::thread::sleep(std::time::Duration::from_millis(110));
+            std::thread::sleep(std::time::Duration::from_millis(LOGO_FRAME_DELAY_MILLIS));
         }
     }
     writeln!(
@@ -64,7 +65,11 @@ pub(super) fn print_neon_logo() -> std::io::Result<()> {
 }
 
 fn color_wave(line: &str, frame: usize) -> String {
-    if !colors_enabled() {
+    color_wave_with_colors(line, frame, colors_enabled())
+}
+
+fn color_wave_with_colors(line: &str, frame: usize, colors: bool) -> String {
+    if !colors {
         return line.to_string();
     }
     line.chars()
@@ -81,7 +86,7 @@ fn color_wave(line: &str, frame: usize) -> String {
                     35..=42 => 4,
                     _ => 5,
                 };
-                paint_256(&character.to_string(), logo_color(frame, letter))
+                paint_256_with_colors(&character.to_string(), logo_color(frame, letter), colors)
             }
         })
         .collect()
@@ -144,15 +149,15 @@ pub(super) fn play_launch_pulse() -> std::io::Result<()> {
 }
 
 pub(super) fn menu_icon(symbol: &str, color: (u8, u8, u8)) -> String {
-    if colors_enabled() {
-        paint_256(symbol, nearest_ansi_256(color))
-    } else {
-        symbol.to_string()
-    }
+    paint_256_with_colors(symbol, nearest_ansi_256(color), colors_enabled())
 }
 
 fn paint_256(value: &str, color: u8) -> String {
-    if colors_enabled() {
+    paint_256_with_colors(value, color, colors_enabled())
+}
+
+fn paint_256_with_colors(value: &str, color: u8, colors: bool) -> String {
+    if colors {
         format!("\x1b[38;5;{color}m{value}\x1b[0m")
     } else {
         value.to_string()
@@ -182,16 +187,31 @@ fn colors_enabled() -> bool {
 }
 
 fn visual_effects_enabled() -> bool {
-    colors_enabled()
-        && !std::env::var("RULLST_REDUCED_MOTION")
-            .ok()
-            .is_some_and(|value| {
-                matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes")
-            })
+    visual_effects_for(
+        colors_enabled(),
+        std::env::var("RULLST_REDUCED_MOTION").ok().as_deref(),
+    )
+}
+
+fn visual_effects_for(colors: bool, reduced_motion: Option<&str>) -> bool {
+    colors
+        && !reduced_motion.is_some_and(|value| {
+            matches!(value.to_ascii_lowercase().as_str(), "1" | "true" | "yes")
+        })
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn opening_animation_keeps_all_frames_with_a_six_tenths_second_pacing() {
+        assert_eq!(super::ANIMATION_FRAMES.len(), 24);
+        assert_eq!(super::LOGO_FRAME_DELAY_MILLIS, 26);
+        assert_eq!(
+            (super::ANIMATION_FRAMES.len() as u64 - 1) * super::LOGO_FRAME_DELAY_MILLIS,
+            598
+        );
+    }
+
     #[test]
     fn logo_visits_each_full_gradient_then_settles_on_signature() {
         let blue = (0..6)
@@ -211,5 +231,42 @@ mod tests {
         assert_eq!(green, super::GREEN_GRADIENT);
         assert_eq!(orange, super::ORANGE_GRADIENT);
         assert_eq!(signature, super::FINAL_SIGNATURE);
+
+        assert_eq!(super::logo_color(13, 0), super::FINAL_SIGNATURE[0]);
+        assert_eq!(super::logo_color(13, 1), super::ORANGE_GRADIENT[1]);
+        assert_eq!(super::logo_color(15, 2), super::FINAL_SIGNATURE[2]);
+        assert_eq!(super::logo_color(15, 4), super::ORANGE_GRADIENT[4]);
+    }
+
+    #[test]
+    fn terminal_color_rendering_and_reduced_motion_are_deterministic() {
+        let colored = super::color_wave_with_colors("A B", 0, true);
+        assert!(colored.contains("\x1b[38;5;69mA\x1b[0m"));
+        assert!(colored.contains(' '));
+        assert_eq!(super::color_wave_with_colors("A B", 0, false), "A B");
+        assert_eq!(
+            super::paint_256_with_colors("◆", 51, true),
+            "\x1b[38;5;51m◆\x1b[0m"
+        );
+        assert_eq!(super::paint_256_with_colors("◆", 51, false), "◆");
+
+        for (rgb, expected) in [
+            ((10, 80, 20), 46),
+            ((250, 180, 10), 208),
+            ((200, 40, 180), 201),
+            ((10, 180, 200), 51),
+            ((10, 40, 100), 39),
+            ((230, 20, 20), 197),
+            ((100, 100, 100), 220),
+        ] {
+            assert_eq!(super::nearest_ansi_256(rgb), expected);
+        }
+
+        assert!(super::visual_effects_for(true, None));
+        assert!(!super::visual_effects_for(false, None));
+        for value in ["1", "TRUE", "Yes"] {
+            assert!(!super::visual_effects_for(true, Some(value)));
+        }
+        assert!(super::visual_effects_for(true, Some("0")));
     }
 }

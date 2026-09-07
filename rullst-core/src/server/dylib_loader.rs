@@ -3,6 +3,14 @@ use crate::server::server_middleware::{
     hmr_client_script, inject_hmr_script, zstd_static_middleware,
 };
 
+#[cfg(target_os = "windows")]
+fn is_expected_loaded_library_removal_error(error: &std::io::Error) -> bool {
+    // Windows may report either ERROR_ACCESS_DENIED or
+    // ERROR_SHARING_VIOLATION while the successfully loaded image remains
+    // mapped. Stale copies are retried by the cleanup at the next startup.
+    matches!(error.raw_os_error(), Some(5) | Some(32))
+}
+
 /// Dynamically loads an application router from a compiled dynamic library (`cdylib`).
 #[cfg_attr(mutants, mutants::skip)]
 #[allow(unsafe_code)]
@@ -95,8 +103,7 @@ pub fn load_dylib_router(
         );
         #[cfg(target_os = "windows")]
         {
-            // On Windows, sharing violation (error code 32) is normal, so we only log other errors.
-            if e.raw_os_error() != Some(32) {
+            if !is_expected_loaded_library_removal_error(&e) {
                 eprintln!(
                     "⚠️ Rullst: failed to remove temporary dylib file at {:?}: {}",
                     temp_path, e
