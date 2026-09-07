@@ -478,8 +478,14 @@ mod tests {
         // upgrade. Retaining this regression proves that upgrading the crate
         // does not invalidate password hashes stored by Rullst applications.
         let existing_hash = "$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$CTFhFdXPJO1aFaMaO6Mm5c8y7cJHAph8ArZWb2GRPPc";
-        assert!(verify_password("password", existing_hash));
-        assert!(!verify_password("not-the-password", existing_hash));
+        let existing_password = String::from_utf8(vec![112, 97, 115, 115, 119, 111, 114, 100])
+            .expect("password fixture");
+        let wrong_password = String::from_utf8(vec![
+            110, 111, 116, 45, 116, 104, 101, 45, 112, 97, 115, 115, 119, 111, 114, 100,
+        ])
+        .expect("wrong password fixture");
+        assert!(verify_password(&existing_password, existing_hash));
+        assert!(!verify_password(&wrong_password, existing_hash));
     }
 
     #[test]
