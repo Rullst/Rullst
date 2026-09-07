@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788814408811,
+  "lastUpdate": 1788824818101,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -6081,6 +6081,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 517,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "317168277ed8a031ae9251a489d8a2b512fcdd19",
+          "message": "fix(ci): install Clippy for release property shards (#178)",
+          "timestamp": "2026-09-07T20:28:49-03:00",
+          "tree_id": "4229da9f0d5a44e6526fd3e0910f06d5eca57db5",
+          "url": "https://github.com/Rullst/Rullst/commit/317168277ed8a031ae9251a489d8a2b512fcdd19"
+        },
+        "date": 1788824817690,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 576,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
