@@ -21,7 +21,7 @@ sqlite = ["jwt", "dep:sqlx"]
 
 [dependencies]
 rullst-core = { workspace = true }
-argon2 = "0.5.3"
+argon2 = "0.6.0"
 rand = { workspace = true }
 rand_core = { version = "0.6.4", features = ["getrandom"] }
 aes-gcm = "0.11.0"
