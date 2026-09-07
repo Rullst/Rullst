@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788795736444,
+  "lastUpdate": 1788814738547,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -6710,6 +6710,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ffe1733a6d07a6864b97726e8dae792e2b0c9b96",
+          "message": "chore(deps): refresh release dependencies\n\nUpdate release dependencies and pinned GitHub Actions, migrate rullst-auth to Argon2 0.6 while preserving valid Argon2id PHC hashes, and verify the consolidated refresh across the full CI matrix.",
+          "timestamp": "2026-09-07T17:34:50-03:00",
+          "tree_id": "e6780b80e16724b725a36e8dbfbf3431fbaa3156",
+          "url": "https://github.com/Rullst/Rullst/commit/ffe1733a6d07a6864b97726e8dae792e2b0c9b96"
+        },
+        "date": 1788814738110,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 23,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 25,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 7,
             "range": "± 0",
             "unit": "ns/iter"
           }
