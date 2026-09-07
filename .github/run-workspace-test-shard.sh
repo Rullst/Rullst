@@ -21,6 +21,13 @@ case "${2:-}" in
     ;;
 esac
 
+# Generated-project checks deliberately invoke Cargo offline. The monolithic
+# workspace command used to populate every locked package first; isolated CLI
+# shards must preserve that precondition without recompiling the workspace.
+if [[ "$shard" == cli-* ]]; then
+  cargo fetch --locked
+fi
+
 case "$shard" in
   workspace)
     cargo test --workspace --exclude cargo-rullst \

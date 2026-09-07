@@ -35,7 +35,9 @@ CodeQL analysis start for a pull request only when it is ready
 for review, and it can always be requested manually. Each operating system
 executes five parallel shards: the non-CLI workspace, ordinary CLI targets, and
 the three long generated-project contracts. No test is omitted; this changes
-wall-clock scheduling rather than the assertions being executed. After that
+wall-clock scheduling rather than the assertions being executed. Each CLI
+shard fetches the locked registry inventory before its generated applications
+prove that they compile without network access. After that
 reviewed commit is merged, the automatic `main` push repeats Linux rather than
 paying for the same macOS and Windows proof twice. A direct push to `main`
 therefore has Linux evidence only until a maintainer explicitly runs `ci.yml`;
