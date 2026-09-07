@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788783961910,
+  "lastUpdate": 1788795532953,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -8678,6 +8678,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 27,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4293ad2cd54553aaf3cafe725b56aa4d40f318a3",
+          "message": "perf(ci): shard and cache verification",
+          "timestamp": "2026-09-07T12:16:35-03:00",
+          "tree_id": "c5fd396c32674e2ece6809936d998fadd3f23d66",
+          "url": "https://github.com/Rullst/Rullst/commit/4293ad2cd54553aaf3cafe725b56aa4d40f318a3"
+        },
+        "date": 1788795532157,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5842,
+            "range": "± 47",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 710,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
             "range": "± 0",
             "unit": "ns/iter"
           },
