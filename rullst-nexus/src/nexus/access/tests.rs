@@ -196,9 +196,16 @@ async fn loopback_access_allows_local_peer_and_denies_every_other_source() {
 #[tokio::test]
 async fn protect_router_enforces_the_admin_boundary_on_application_routes() {
     let policy = NexusAuthPolicy::loopback_only(LocalNexusAccess::loopback_only());
-    let router = policy
-        .protect_router(Router::new().route("/products/{id}", get(|| async { StatusCode::OK })))
-        .expect("debug loopback policy should be valid");
+    let result = policy
+        .protect_router(Router::new().route("/products/{id}", get(|| async { StatusCode::OK })));
+    if !cfg!(debug_assertions) {
+        assert!(matches!(
+            result,
+            Err(NexusBuildError::LocalAccessRequiresDebugBuild)
+        ));
+        return;
+    }
+    let router = result.expect("debug loopback policy should be valid");
 
     let local_response = router
         .clone()

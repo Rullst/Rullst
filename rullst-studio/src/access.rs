@@ -217,6 +217,7 @@ mod tests {
         assert_eq!(missing.status(), StatusCode::FORBIDDEN);
     }
 
+    #[cfg(debug_assertions)]
     #[tokio::test]
     async fn protected_router_rejects_rebinding_and_cross_origin_mutations() {
         let router = LocalStudioAccess::loopback_only()
@@ -261,5 +262,18 @@ mod tests {
                 .expect("denied Studio response");
             assert_eq!(response.status(), StatusCode::FORBIDDEN);
         }
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    fn protected_router_fails_closed_in_release() {
+        let protected = LocalStudioAccess::loopback_only().protect_router(
+            Router::<()>::new().route("/mutate", axum::routing::post(|| async { StatusCode::OK })),
+        );
+
+        assert!(matches!(
+            protected,
+            Err(StudioBuildError::LocalAccessRequiresDebugBuild)
+        ));
     }
 }

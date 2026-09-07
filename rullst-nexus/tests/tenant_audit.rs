@@ -5,21 +5,18 @@
 )))]
 
 mod support;
-use support::local_request;
+use support::{TEST_ADMIN_USERNAME, authenticated_test_router, local_request};
 
 use axum::{
     Extension,
     body::Body,
-    extract::ConnectInfo,
     http::{Request, StatusCode},
 };
 use rullst_core::security::TenantContext;
 use rullst_nexus::{
-    FieldKind, FieldMeta, LocalNexusAccess, Nexus, NexusModel, create_nexus_audit_table,
-    recent_nexus_audits,
+    FieldKind, FieldMeta, Nexus, NexusModel, create_nexus_audit_table, recent_nexus_audits,
 };
 use rullst_orm::_sqlx::Row;
-use std::net::{Ipv4Addr, SocketAddr};
 use tower::ServiceExt;
 
 const CSRF: &str = "tenant_nexus_csrf_fixture";
@@ -52,21 +49,12 @@ impl NexusModel for TenantRecord {
 }
 
 fn tenant_router(tenant_id: &str, required_audit: bool) -> axum::Router {
-    let mut nexus = Nexus::new()
-        .register::<TenantRecord>()
-        .with_local_access(LocalNexusAccess::loopback_only());
+    let mut nexus = Nexus::new().register::<TenantRecord>();
     if required_audit {
         nexus = nexus.with_required_audit();
     }
     let tenant = TenantContext::try_new(tenant_id).expect("valid test tenant");
-    nexus
-        .try_build()
-        .expect("tenant-scoped Nexus should build")
-        .layer(Extension(tenant))
-        .layer(Extension(ConnectInfo(SocketAddr::from((
-            Ipv4Addr::LOCALHOST,
-            3000,
-        )))))
+    authenticated_test_router(nexus).layer(Extension(tenant))
 }
 
 fn mutation_request(method: &str, uri: &str, body: impl Into<Body>) -> Request<Body> {
@@ -217,7 +205,7 @@ async fn tenant_scope_and_required_audit_are_enforced_atomically() {
         .expect("load tenant audit records");
     assert!(audits.iter().any(|audit| {
         audit.action == "create"
-            && audit.actor_id == "local-loopback"
+            && audit.actor_id == TEST_ADMIN_USERNAME
             && audit.correlation_id.as_deref() == Some("nexus-test-request-1")
     }));
     assert!(
@@ -295,15 +283,7 @@ async fn tenant_scope_and_required_audit_are_enforced_atomically() {
 
 #[tokio::test]
 async fn scoped_model_denies_requests_without_trusted_tenant_context() {
-    let app = Nexus::new()
-        .register::<TenantRecord>()
-        .with_local_access(LocalNexusAccess::loopback_only())
-        .try_build()
-        .expect("valid scoped Nexus")
-        .layer(Extension(ConnectInfo(SocketAddr::from((
-            Ipv4Addr::LOCALHOST,
-            3000,
-        )))));
+    let app = authenticated_test_router(Nexus::new().register::<TenantRecord>());
     let response = app
         .oneshot(
             local_request()

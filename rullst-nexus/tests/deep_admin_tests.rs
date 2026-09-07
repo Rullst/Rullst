@@ -1,12 +1,11 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 mod support;
-use support::local_request;
+use support::{authenticated_test_router, local_request};
 
 use axum::body::Body;
 use axum::http::StatusCode;
 use rullst_nexus::*;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tower::ServiceExt;
 
 struct CategoryModel;
@@ -38,14 +37,9 @@ impl NexusModel for CategoryModel {
 async fn test_nexus_admin_builder_and_extended_routes() {
     let admin = Nexus::new()
         .with_brand("Acme Admin Suite")
-        .register::<CategoryModel>()
-        .with_local_access(LocalNexusAccess::loopback_only());
+        .register::<CategoryModel>();
 
-    let loopback = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 3000);
-    let app = admin
-        .try_build()
-        .expect("debug-only loopback policy should build in tests")
-        .layer(axum::Extension(axum::extract::ConnectInfo(loopback)));
+    let app = authenticated_test_router(admin);
 
     // 1. Root / dashboard
     let req = local_request().uri("/").body(Body::empty()).unwrap();
