@@ -5,7 +5,7 @@ is not evidence that a workflow has passed for a particular commit. A green
 claim must always point to the GitHub Actions run, commit SHA, logs, and produced
 artifacts.
 
-Last source-level review: **2026-09-06**.
+Last source-level review: **2026-09-07**.
 
 ## Status language
 
@@ -27,6 +27,28 @@ continuous workflows accept pushes to `main` and pull requests targeting it,
 and expose `workflow_dispatch` where a safe rerun is useful. Superseded runs of
 these workflows are cancelled per workflow and ref so rapid development does
 not spend runner capacity proving an obsolete commit.
+
+`ci.yml` deliberately treats the expensive operating-system matrix differently.
+Format and Clippy continue to give feedback on draft pull requests. The complete
+Linux/macOS/Windows test matrix, blocking line coverage, SemVer fan-out and
+CodeQL analysis start for a pull request only when it is ready
+for review, and it can always be requested manually. Each operating system
+executes five parallel shards: the non-CLI workspace, ordinary CLI targets, and
+the three long generated-project contracts. No test is omitted; this changes
+wall-clock scheduling rather than the assertions being executed. Each CLI
+shard fetches the locked registry inventory before its generated applications
+prove that they compile without network access. After that
+reviewed commit is merged, the automatic `main` push repeats Linux rather than
+paying for the same macOS and Windows proof twice. A direct push to `main`
+therefore has Linux evidence only until a maintainer explicitly runs `ci.yml`;
+release candidates must use the manual full matrix when no successful ready-PR
+run points to the exact candidate tree.
+
+The SHA-bound quality scorecard is generated only by a ready pull request or a
+manual full-matrix run. It is deliberately skipped on the Linux-only automatic
+`main` run, because that execution cannot honestly award cross-platform
+verification credit. Run `ci.yml` manually on a final `main` candidate to
+produce the exact-SHA release scorecard.
 
 GitHub executes `schedule` events from the repository's default branch, so
 scheduled and continuous v12 evidence now share the active `main` source line.
@@ -85,12 +107,51 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 ```
 
+Rust CI disables Cargo incremental compilation and uses the pinned `sccache`
+Action and binary to store content-addressed compiler outputs in GitHub Actions
+cache. The current `cc` build dependency also honors the same Rust compiler
+wrapper, so compatible bundled DuckDB C++ objects can be reused. Pull requests
+read the trusted default-branch cache without writing to it; pushes to `main`
+and explicit manual runs on `main` populate entries reusable by later pull
+requests. This follows GitHub's cache scope while avoiding pull-request cache
+churn and keeps untrusted changes out of the default-branch namespace.
+
+The setup action's job-scoped Cargo archive is disabled in these compiler-cache
+jobs, so neither the raw workspace `target` tree nor duplicate registry bundles
+compete with compiler objects. CLI integration tests create and remove nested
+Cargo targets, and archiving whole mutable trees previously produced false
+missing-directory annotations, duplicated roughly 9.56 GiB across twenty
+active main caches, and caused eviction churn at GitHub's default 10 GiB
+repository limit. Cargo may redownload registry sources on a fresh runner; this
+small network cost is preferable to storing the same registry/target archive
+under many job-specific keys. A first run on a new cache namespace is still a
+cold build; evaluate acceleration using the reported cache hit ratio and a
+later compatible run, never by weakening or omitting assertions.
+
+The same content-addressed approach accelerates LLVM coverage, benchmark
+compilation and the scheduled release-mode regression suite. Benchmarks remain
+sequential on one runner so comparisons do not mix host variance. Coverage
+deliberately remains one report job because splitting it without a reviewed
+profile-data merge could change the repository percentage. The release-mode
+workspace is safe to split because every shard
+returns an ordinary test result, while the two source locations that actually
+use `proptest!` still receive their configured 10,000-case runs. SemVer checks
+fan out from the machine-readable release order and validate one published API
+per job, so adding or removing a release package cannot silently drift from the
+matrix.
+
+CodeQL also remains one analysis job. Its Cargo target cache is disabled so the
+extractor observes compilation for the exact SHA instead of inheriting a fresh
+artifact from another run; the analysis database itself is not interchangeable
+with ordinary test shards.
+
 `ci.yml` also compiles and exercises each ORM strict database feature in
 isolation (PostgreSQL, MySQL, and SQLite), exercises the runtime-only Core and
 all 45 public umbrella features in isolated additive graphs with automatic
 manifest-drift detection, runs the portable database matrix on Linux, and
-tests the all-feature workspace on Linux, macOS, and Windows. The umbrella's
-`cfg(doctest)` aggregation reads all 50 public tutorial files directly, so that
+tests the complete all-feature workspace in five parallel shards on Linux,
+macOS, and Windows. The umbrella's
+`cfg(doctest)` aggregation reads all 52 public tutorial files directly, so that
 same command discovers the versioned Rust blocks, compiles or executes complete
 examples, and records explicitly contextual fragments as ignored instead of pretending
 they are standalone programs. Its pinned live Redis job also proves that
@@ -112,12 +173,12 @@ all-feature graph intentionally selects a strict database profile and excludes
 that materialized tenant/audit target. Coverage separately merges the default
 workspace pass, so those routes contribute real executed-line evidence.
 
-After those Rust CI jobs finish, an observational job always emits a
-SHA-bound per-crate quality scorecard into the workflow summary and a 90-day
-artifact. The score combines versioned expert-audit ceilings with the actual
-gate results; a failed/skipped/cancelled gate can remove the dimensions it was
-meant to prove, while a green gate cannot inflate a crate beyond its audited
-ceiling. This is engineering-evidence reporting, not capability completion or
+After a ready-PR or manual full-matrix Rust CI run finishes, an observational
+job emits a SHA-bound per-crate quality scorecard into the workflow summary and
+a 90-day artifact. The score combines versioned expert-audit ceilings with the
+actual gate results; a failed/skipped/cancelled gate can remove the dimensions
+it was meant to prove, while a green gate cannot inflate a crate beyond its
+audited ceiling. This is engineering-evidence reporting, not capability completion or
 certification. See the [scorecard methodology](docs/src/quality-scorecard.md).
 
 Rows with no feature selected compile every package target. Feature-selected
@@ -247,8 +308,11 @@ higher component result for the repository total.
   and reduce only evidenced token/state signals or escaped showcase reflections
   to INFO; they do not hide findings with `IGNORE`. These three targets are representative evidence, not
   coverage of every blueprint, authenticated role, browser, proxy or deployment.
-- Property tests and benchmarks are scheduled/manual evidence. The eight
-  published benchmark groups, backed by nine Criterion binaries, emit
+- Property tests and benchmarks are scheduled/manual evidence. The property
+  workflow preserves the complete all-feature release-mode regression suite in
+  five parallel shards and separately runs the ORM and Connect property
+  contracts with 10,000 generated cases. The eight published benchmark groups,
+  backed by nine Criterion binaries, emit
   non-blocking alerts at a 20% regression and feed the
   [public benchmark hub](https://rullst.github.io/Rullst/benches/); they are not
   a promise against every nanosecond-level regression.
@@ -320,7 +384,7 @@ dependency graph make static estimates unreliable.
 | [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | main push and PR, daily, manual | Blocking | Cargo Audit with the governed exception list. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
 | [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) | main push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main push and PR, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, multi-OS tests including Cargo-aware doctests sourced from all 52 tutorials, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and an always-generated SHA-bound per-crate quality scorecard artifact. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main push and PR, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, five-shard multi-OS tests including Cargo-aware doctests sourced from all 52 tutorials, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main push and PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check. |
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Validates the shared 40-target inventory, restores each real target corpus, performs a bounded warm-up, minimizes it and uploads the result; individual target failures are retained but tolerated. |
 | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation and blocking OIDC-authenticated Codecov upload; scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |
@@ -339,12 +403,12 @@ dependency graph make static estimates unreliable.
 | [`omni-ios.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-ios.yml) | relevant main changes, manual | Blocking | Generates a fresh deterministic Omni iOS shell on macOS and compiles it for the runner's simulator architecture. It does not test a physical device, signing, privacy declarations, TestFlight or App Store acceptance. |
 | [`pages.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pages.yml) | main push, manual | Deploy | Validates and deploys the unreleased v12 landing page, local visual assets, mdBook and benchmark hub/dashboards to GitHub Pages while preserving history data fetched from `gh-pages`. |
 | [`pqc-compliance.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pqc-compliance.yml) | relevant main changes, weekly, manual | Blocking | Signed OTA and Vault tests, RustSec audit, and simulator-boundary checks; explicitly no PQC/HSM certification. |
-| [`proptest.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/proptest.yml) | weekly, manual | Blocking run | Release-mode property and workspace tests with configured case counts. |
+| [`proptest.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/proptest.yml) | weekly, manual | Blocking run | Five parallel release-mode workspace shards plus dedicated ORM and Connect property contracts with configured case counts. |
 | [`release.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/release.yml) | exact-looking version tags | Release | Tag validation, full verification, package-all, evidence bundle, checksums, attestations, dependency-order publish, and release provenance. |
 | [`sanitizers.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/sanitizers.yml) | daily, manual | Blocking run | TSan and ASan library matrices on pinned `nightly-2026-08-21`; this verifier toolchain does not change Rullst's stable compiler or MSRV. |
 | [`scorecards.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/scorecards.yml) | main push, weekly, manual | Automated evidence | OpenSSF Scorecard analysis and SARIF/artifact upload; not SLSA certification. |
 | [`security-audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/security-audit.yml) | main push and PR, weekly, manual | Blocking | Cross-checks active advisory IDs and expiry metadata across the ledger, Cargo Deny, and scanner workflows, then independently reruns Cargo Audit. |
-| [`semver.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/semver.yml) | main push and PR, manual | Blocking | Compares each supported, already-published library API with its exact latest non-yanked crates.io baseline. Never-published packages and proc-macro/binary API surfaces unsupported by `cargo-semver-checks` are reported explicitly. |
+| [`semver.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/semver.yml) | main push and PR, manual | Blocking | Fans out one job per machine-readable release-order entry and compares each supported, already-published library API with its exact latest non-yanked crates.io baseline. Never-published packages and proc-macro/binary API surfaces unsupported by `cargo-semver-checks` are reported explicitly. |
 | [`spellcheck.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/spellcheck.yml) | main push and PR, manual | Blocking | Repository typo scan. |
 | [`trufflehog.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/trufflehog.yml) | main push and PR, weekly, manual | Blocking | Verified-secret scan over the configured Git history range. |
 | [`udeps.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/udeps.yml) | weekly, manual | Informational | `cargo-udeps` signal on pinned `nightly-2026-08-21`; command failures are tolerated. |
