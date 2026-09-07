@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788814333337,
+  "lastUpdate": 1788824742417,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -9831,6 +9831,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4619,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "317168277ed8a031ae9251a489d8a2b512fcdd19",
+          "message": "fix(ci): install Clippy for release property shards (#178)",
+          "timestamp": "2026-09-07T20:28:49-03:00",
+          "tree_id": "4229da9f0d5a44e6526fd3e0910f06d5eca57db5",
+          "url": "https://github.com/Rullst/Rullst/commit/317168277ed8a031ae9251a489d8a2b512fcdd19"
+        },
+        "date": 1788824742015,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1009,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 791,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1809,
+            "range": "± 85",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3997,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
