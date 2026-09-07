@@ -111,9 +111,23 @@ mod tests {
     #[tokio::test]
     async fn test_studio_builder_and_routes() {
         let studio = Studio::new();
-        let router = studio
-            .into_router(LocalStudioAccess::loopback_only())
-            .expect("debug Studio router");
+        let router = studio.into_router(LocalStudioAccess::loopback_only());
+
+        if !cfg!(debug_assertions) {
+            assert!(matches!(
+                router,
+                Err(StudioBuildError::LocalAccessRequiresDebugBuild)
+            ));
+            assert!(matches!(
+                Studio::default()
+                    .with_openapi(OpenApi::default())
+                    .into_router(LocalStudioAccess::loopback_only()),
+                Err(StudioBuildError::LocalAccessRequiresDebugBuild)
+            ));
+            return;
+        }
+
+        let router = router.expect("debug Studio router");
         let request = |uri: &'static str| {
             let mut request = Request::builder()
                 .uri(uri)

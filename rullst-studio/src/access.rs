@@ -219,11 +219,19 @@ mod tests {
 
     #[tokio::test]
     async fn protected_router_rejects_rebinding_and_cross_origin_mutations() {
-        let router = LocalStudioAccess::loopback_only()
-            .protect_router(
-                Router::new().route("/mutate", axum::routing::post(|| async { StatusCode::OK })),
-            )
-            .expect("debug Studio access");
+        let protected = LocalStudioAccess::loopback_only().protect_router(
+            Router::new().route("/mutate", axum::routing::post(|| async { StatusCode::OK })),
+        );
+
+        if !cfg!(debug_assertions) {
+            assert!(matches!(
+                protected,
+                Err(StudioBuildError::LocalAccessRequiresDebugBuild)
+            ));
+            return;
+        }
+
+        let router = protected.expect("debug Studio access");
 
         let request = |host: &'static str, origin: Option<&'static str>| {
             let mut builder = Request::builder()
