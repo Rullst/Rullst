@@ -10,6 +10,30 @@ trap 'rm -rf -- "${semver_tmp:?}"' EXIT
 metadata_path="$semver_tmp/metadata.json"
 cargo metadata --no-deps --format-version 1 > "$metadata_path"
 
+package_list="$semver_tmp/packages.txt"
+case $# in
+  0)
+    jq -r '.[]' .github/release-order.json > "$package_list"
+    ;;
+  1)
+    selected_package=$1
+    if [[ ! "$selected_package" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+      echo "Invalid selected package name: $selected_package" >&2
+      exit 2
+    fi
+    if ! jq -e --arg package "$selected_package" \
+      'any(.[]; . == $package)' .github/release-order.json >/dev/null; then
+      echo "Selected package is absent from .github/release-order.json: $selected_package" >&2
+      exit 2
+    fi
+    printf '%s\n' "$selected_package" > "$package_list"
+    ;;
+  *)
+    echo "usage: $0 [package-from-release-order]" >&2
+    exit 2
+    ;;
+esac
+
 while IFS= read -r package; do
   if [[ ! "$package" =~ ^[a-zA-Z0-9_-]+$ ]]; then
     echo "Invalid package name in .github/release-order.json: $package" >&2
@@ -121,4 +145,4 @@ while IFS= read -r package; do
       exit 1
       ;;
   esac
-done < <(jq -r '.[]' .github/release-order.json)
+done < "$package_list"

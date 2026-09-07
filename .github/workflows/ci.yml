@@ -22,7 +22,7 @@ env:
   CARGO_NET_RETRY: 10
   # Content-addressed compiler outputs replace duplicated target archives.
   # PRs can read the trusted main cache but cannot populate that namespace;
-  # trusted push/manual runs seed reusable objects for later PRs.
+  # main pushes and manual runs on main seed reusable objects for later PRs.
   CARGO_INCREMENTAL: "0"
   RUSTC_WRAPPER: sccache
   SCCACHE_GHA_ENABLED: "true"
@@ -48,11 +48,11 @@ jobs:
           version: v0.17.0
           disable_annotations: true
 
-      - name: Set up Rust toolchain (with registry cache)
+      - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
           components: rustfmt, clippy
-          cache-targets: false
+          cache: false
 
       - name: Check formatting (Workspace)
         run: cargo fmt --all -- --check
@@ -69,16 +69,15 @@ jobs:
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   test:
-    name: Run Tests (${{ matrix.os }})
+    name: Run Tests (${{ matrix.os }} / ${{ matrix.shard }})
     # Draft PRs still receive the faster format/Clippy feedback above. The
     # expensive cross-platform suite starts when the PR is ready for review.
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ${{ matrix.os }}
-    # A first, cold all-feature Windows build plus the full serial integration
-    # suite can legitimately approach two hours. Subsequent compatible builds
-    # reuse compiler outputs through sccache without caching the mutable target
-    # directory used by generated-project tests.
-    timeout-minutes: 180
+    # Generated CLI applications are real independent Cargo workspaces. Keep
+    # them in isolated shards so their compile contracts run concurrently
+    # instead of extending one Windows job towards two hours.
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -88,6 +87,12 @@ jobs:
         # main push still receives the Linux regression gate and can be followed
         # by workflow_dispatch for full cross-platform evidence.
         os: ${{ fromJSON(github.event_name == 'push' && '["ubuntu-latest"]' || '["ubuntu-latest","macos-latest","windows-latest"]') }}
+        shard:
+          - workspace
+          - cli-standard
+          - cli-profiles
+          - cli-lms
+          - cli-saas
     steps:
       - name: Checkout Monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -97,27 +102,32 @@ jobs:
         with:
           version: v0.17.0
 
-      - name: Set up Rust toolchain (with registry cache)
+      - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
           # CLI integration tests intentionally create and remove nested Cargo
           # targets. Caching the whole workspace target races the cache cleanup,
           # emits false ENOENT annotations and uploads multi-gigabyte archives.
-          cache-targets: false
+          cache: false
 
-      - name: Run all workspace tests (Unit & Integration, all-features)
+      - name: Run complete all-feature test shard
         # Note: --all-features activates strict-sqlite+strict-mysql+strict-postgres
         # simultaneously, which correctly cfg-excludes the DB matrix tests (those
         # run in the dedicated step below with the proper feature combination).
         shell: bash
+        env:
+          CI_SHARD: ${{ matrix.shard }}
         run: |
           set +e
-          cargo test --workspace --all-features --no-fail-fast 2>&1 | tee workspace-tests.log
+          (
+            set -e
+            bash .github/run-workspace-test-shard.sh "$CI_SHARD"
+          ) 2>&1 | tee "workspace-tests-$CI_SHARD.log"
           test_status="${PIPESTATUS[0]}"
           set -e
           if [ "$test_status" -ne 0 ]; then
             grep -E '^test .* \.\.\. FAILED$|^    [^[:space:]].* - should panic \.\.\. FAILED$' \
-              workspace-tests.log |
+              "workspace-tests-$CI_SHARD.log" |
               while IFS= read -r failure; do
                 echo "::error title=Workspace test failure::${failure}"
               done
@@ -128,12 +138,13 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: workspace-tests-${{ matrix.os }}
-          path: workspace-tests.log
+          name: workspace-tests-${{ matrix.os }}-${{ matrix.shard }}
+          path: workspace-tests-${{ matrix.shard }}.log
           if-no-files-found: error
           retention-days: 7
 
       - name: Run portable transactional outbox contract
+        if: matrix.shard == 'workspace'
         run: >-
           cargo test -p rullst-orm --no-default-features
           --test outbox_transaction_test -- --test-threads=1
@@ -143,7 +154,7 @@ jobs:
         # Run without strict-* features so the relational matrix cfg
         # gates are satisfied. --test-threads=1 prevents parallel tests from
         # overwriting the global Orm::init() connection pool.
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && matrix.shard == 'workspace'
         env:
           TESTCONTAINERS_RYUK_DISABLED: "true"
           RULLST_REQUIRE_TESTCONTAINERS: "true"
@@ -185,10 +196,10 @@ jobs:
           version: v0.17.0
           disable_annotations: true
 
-      - name: Set up Rust toolchain (with registry cache)
+      - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
-          cache-targets: false
+          cache: false
 
       - name: Compile ORM feature in isolation
         run: cargo check -p rullst-orm --all-targets --no-default-features --features ${{ matrix.feature }}
@@ -240,10 +251,10 @@ jobs:
           version: v0.17.0
           disable_annotations: true
 
-      - name: Set up Rust toolchain (with registry cache)
+      - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
-          cache-targets: false
+          cache: false
 
       - name: Prove independent clients share one atomic budget
         env:
@@ -283,10 +294,10 @@ jobs:
           version: v0.17.0
           disable_annotations: true
 
-      - name: Set up Rust toolchain (with registry cache)
+      - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
-          cache-targets: false
+          cache: false
 
       - name: Compile all public minimal and isolated feature boundaries
         run: bash .github/check-feature-boundaries.sh
@@ -305,10 +316,10 @@ jobs:
           version: v0.17.0
           disable_annotations: true
 
-      - name: Set up Rust toolchain (with registry cache)
+      - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
-          cache-targets: false
+          cache: false
 
       - name: Run the explicit threat-model release-negative minimum
         shell: bash
@@ -345,10 +356,10 @@ jobs:
           version: v0.17.0
           disable_annotations: true
 
-      - name: Set up Rust toolchain (with registry cache)
+      - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
-          cache-targets: false
+          cache: false
 
       - name: Validate and run the versioned offline eval suite
         run: bash .github/check-ai-evals.sh
@@ -367,10 +378,10 @@ jobs:
           version: v0.17.0
           disable_annotations: true
 
-      - name: Set up Rust toolchain (with registry cache)
+      - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
-          cache-targets: false
+          cache: false
 
       - name: Prove Nexus never selects credential-free release access
         run: cargo test --release -p rullst-nexus ergonomic_policy_never_selects_loopback_in_release_builds
@@ -392,10 +403,10 @@ jobs:
           version: v0.17.0
           disable_annotations: true
 
-      - name: Set up Rust toolchain (with registry cache)
+      - name: Set up Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
         with:
-          cache-targets: false
+          cache: false
 
       - name: Prove cross-domain restart and corruption isolation
         run: bash .github/check-facade-composition.sh
