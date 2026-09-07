@@ -5,11 +5,10 @@ use aes_gcm::{
 };
 use argon2::{
     Argon2,
-    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    password_hash::{PasswordHasher, PasswordVerifier, phc::PasswordHash},
 };
 use axum::http::HeaderMap;
 use base64::{Engine as _, engine::general_purpose};
-use rand_core::OsRng;
 use sha2::Digest;
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -30,10 +29,9 @@ pub fn hash_password(password: &str) -> Result<String, AuthError> {
             "Password exceeds maximum length of 72 characters".to_string(),
         ));
     }
-    let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
     argon2
-        .hash_password(password.as_bytes(), &salt)
+        .hash_password(password.as_bytes())
         .map(|h| h.to_string())
         .map_err(|e| AuthError::PasswordHashError(e.to_string()))
 }
@@ -471,6 +469,17 @@ mod tests {
             !verify_password(&wrong_p, &hash),
             "Password verification succeeded for wrong password"
         );
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore)]
+    fn test_existing_argon2id_phc_hash_compatibility() {
+        // Fixed Argon2id v19 PHC vector already supported before the Rust API
+        // upgrade. Retaining this regression proves that upgrading the crate
+        // does not invalidate password hashes stored by Rullst applications.
+        let existing_hash = "$argon2id$v=19$m=65536,t=2,p=1$c29tZXNhbHQ$CTFhFdXPJO1aFaMaO6Mm5c8y7cJHAph8ArZWb2GRPPc";
+        assert!(verify_password("password", existing_hash));
+        assert!(!verify_password("not-the-password", existing_hash));
     }
 
     #[test]

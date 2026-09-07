@@ -40,13 +40,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   absence and isolated fail-closed corruption. It does not claim a
   cross-subsystem transaction, online backup, key management or multi-host
   coordination.
-- `rullst-orm` temporarily constrains the transitive `tinyvec` resolver edge to
-  1.12.0 because 1.13.0 does not compile when `unicode-normalization` enables
-  its alloc-only profile. This protects fresh published-package resolutions as
-  well as current-package SemVer rustdoc generation. The SemVer gate applies
-  the same resolver-only constraint to its independently extracted official
-  crates.io baselines; both guards can be removed after an upstream fixed
-  release is verified.
+- `rullst-orm` advances its exact transitive `tinyvec` resolver guard from the
+  broken 1.13.0 edge to the verified 1.13.2 fix. The alloc-only profile and the
+  complete all-feature workspace suite now compile successfully while fresh
+  published-package and SemVer baseline resolutions remain deterministic.
+- The release dependency refresh adopts Argon2 0.6, JSON Schema 0.53,
+  `roxmltree` 0.21 and Brotli 9 plus the current reviewed GitHub Action pins.
+  Authentication uses Argon2 0.6's internally generated cryptographic salt;
+  a fixed Argon2id v19 PHC regression proves existing password hashes remain
+  verifiable without retaining the old crate or its API.
 - `rullst-connect/sqlite` adds a bounded shared-local lifecycle for encrypted
   OAuth token generations. The fixed schema stores only a pseudonymous binding
   digest, generation/key metadata and the existing account-bound AES-256-GCM

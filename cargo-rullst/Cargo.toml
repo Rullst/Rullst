@@ -53,7 +53,7 @@ axum = { workspace = true, features = ["ws"] }
 notify = { workspace = true }
 syn = { version = "3", features = ["full", "visit", "visit-mut"] }
 tokio = { workspace = true, features = ["full"] }
-brotli = "8.0.3"
+brotli = "9.0.0"
 zstd = "0.13.3"
 reqwest = { workspace = true, features = ["json", "rustls", "blocking"] }
 rand = { workspace = true }
