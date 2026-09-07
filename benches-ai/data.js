@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788784071322,
+  "lastUpdate": 1788795646628,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -7671,6 +7671,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 706,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4293ad2cd54553aaf3cafe725b56aa4d40f318a3",
+          "message": "perf(ci): shard and cache verification",
+          "timestamp": "2026-09-07T12:16:35-03:00",
+          "tree_id": "c5fd396c32674e2ece6809936d998fadd3f23d66",
+          "url": "https://github.com/Rullst/Rullst/commit/4293ad2cd54553aaf3cafe725b56aa4d40f318a3"
+        },
+        "date": 1788795645863,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1647,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 379,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 734,
+            "range": "± 23",
             "unit": "ns/iter"
           }
         ]
