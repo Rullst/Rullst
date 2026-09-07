@@ -105,29 +105,18 @@ impl Studio {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(debug_assertions)]
     use axum::{body::Body, http::Request};
+    #[cfg(debug_assertions)]
     use tower::ServiceExt;
 
+    #[cfg(debug_assertions)]
     #[tokio::test]
     async fn test_studio_builder_and_routes() {
         let studio = Studio::new();
-        let router = studio.into_router(LocalStudioAccess::loopback_only());
-
-        if !cfg!(debug_assertions) {
-            assert!(matches!(
-                router,
-                Err(StudioBuildError::LocalAccessRequiresDebugBuild)
-            ));
-            assert!(matches!(
-                Studio::default()
-                    .with_openapi(OpenApi::default())
-                    .into_router(LocalStudioAccess::loopback_only()),
-                Err(StudioBuildError::LocalAccessRequiresDebugBuild)
-            ));
-            return;
-        }
-
-        let router = router.expect("debug Studio router");
+        let router = studio
+            .into_router(LocalStudioAccess::loopback_only())
+            .expect("debug Studio router");
         let request = |uri: &'static str| {
             let mut request = Request::builder()
                 .uri(uri)
@@ -161,5 +150,20 @@ mod tests {
         let _ = full_studio
             .into_router(LocalStudioAccess::loopback_only())
             .expect("debug full Studio router");
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[test]
+    fn studio_builder_fails_closed_in_release() {
+        assert!(matches!(
+            Studio::new().into_router(LocalStudioAccess::loopback_only()),
+            Err(StudioBuildError::LocalAccessRequiresDebugBuild)
+        ));
+        assert!(matches!(
+            Studio::default()
+                .with_openapi(OpenApi::default())
+                .into_router(LocalStudioAccess::loopback_only()),
+            Err(StudioBuildError::LocalAccessRequiresDebugBuild)
+        ));
     }
 }
