@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788795532953,
+  "lastUpdate": 1788814533506,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -8738,6 +8738,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 27,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ffe1733a6d07a6864b97726e8dae792e2b0c9b96",
+          "message": "chore(deps): refresh release dependencies\n\nUpdate release dependencies and pinned GitHub Actions, migrate rullst-auth to Argon2 0.6 while preserving valid Argon2id PHC hashes, and verify the consolidated refresh across the full CI matrix.",
+          "timestamp": "2026-09-07T17:34:50-03:00",
+          "tree_id": "e6780b80e16724b725a36e8dbfbf3431fbaa3156",
+          "url": "https://github.com/Rullst/Rullst/commit/ffe1733a6d07a6864b97726e8dae792e2b0c9b96"
+        },
+        "date": 1788814533088,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5684,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 744,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 28,
             "range": "± 0",
             "unit": "ns/iter"
           }
