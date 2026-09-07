@@ -396,9 +396,16 @@ mod tests {
 
     #[test]
     fn nexus_rejects_invalid_registered_metadata_during_build() {
+        let test_password = format!(
+            "metadata_audit_test_{:016x}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        );
         let result = Nexus::new()
             .register::<InvalidMetadataModel>()
-            .with_auth("metadata-audit", "metadata-registry-test-secret-7a42")
+            .with_auth("metadata-audit", test_password)
             .try_build();
 
         assert!(matches!(
