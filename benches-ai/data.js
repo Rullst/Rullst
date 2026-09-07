@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788795646628,
+  "lastUpdate": 1788814648548,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -7719,6 +7719,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 734,
             "range": "± 23",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ffe1733a6d07a6864b97726e8dae792e2b0c9b96",
+          "message": "chore(deps): refresh release dependencies\n\nUpdate release dependencies and pinned GitHub Actions, migrate rullst-auth to Argon2 0.6 while preserving valid Argon2id PHC hashes, and verify the consolidated refresh across the full CI matrix.",
+          "timestamp": "2026-09-07T17:34:50-03:00",
+          "tree_id": "e6780b80e16724b725a36e8dbfbf3431fbaa3156",
+          "url": "https://github.com/Rullst/Rullst/commit/ffe1733a6d07a6864b97726e8dae792e2b0c9b96"
+        },
+        "date": 1788814648120,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1834,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 351,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 749,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
