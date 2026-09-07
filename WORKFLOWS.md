@@ -38,6 +38,12 @@ evidence only until a maintainer explicitly runs `ci.yml`; release candidates
 must use the manual full matrix when no successful ready-PR run points to the
 exact candidate tree.
 
+The SHA-bound quality scorecard is generated only by a ready pull request or a
+manual full-matrix run. It is deliberately skipped on the Linux-only automatic
+`main` run, because that execution cannot honestly award cross-platform
+verification credit. Run `ci.yml` manually on a final `main` candidate to
+produce the exact-SHA release scorecard.
+
 GitHub executes `schedule` events from the repository's default branch, so
 scheduled and continuous v12 evidence now share the active `main` source line.
 Tag publication remains deliberately unavailable through a manual button.
@@ -95,16 +101,23 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 ```
 
-The cross-platform test job disables Cargo incremental compilation and uses
-the pinned `sccache` Action and binary to store content-addressed compiler
-outputs in GitHub Actions cache. The current `cc` build dependency also honors
-the same Rust compiler wrapper, so compatible bundled DuckDB C++ objects can be
-reused. The raw workspace `target` directory remains deliberately uncached:
-CLI integration tests create and remove nested Cargo targets, and archiving the
-whole mutable tree previously produced false missing-directory annotations and
-multi-gigabyte uploads. A first run on a new cache namespace is still a cold
-build; evaluate acceleration using the reported cache hit ratio and a later
-compatible run, never by weakening or omitting assertions.
+Rust CI disables Cargo incremental compilation and uses the pinned `sccache`
+Action and binary to store content-addressed compiler outputs in GitHub Actions
+cache. The current `cc` build dependency also honors the same Rust compiler
+wrapper, so compatible bundled DuckDB C++ objects can be reused. Pull requests
+read the trusted default-branch cache without writing to it; pushes to `main`
+and explicit manual runs populate reusable entries. This follows GitHub's cache
+scope while avoiding pull-request cache churn and keeps untrusted changes out
+of the default-branch namespace.
+
+The raw workspace `target` directory remains deliberately uncached throughout
+Rust CI. CLI integration tests create and remove nested Cargo targets, and
+archiving whole mutable trees previously produced false missing-directory
+annotations, duplicated roughly 9.56 GiB across twenty active main caches, and
+caused eviction churn at GitHub's default 10 GiB repository limit. A first run
+on a new cache namespace is still a cold build; evaluate acceleration using the
+reported cache hit ratio and a later compatible run, never by weakening or
+omitting assertions.
 
 `ci.yml` also compiles and exercises each ORM strict database feature in
 isolation (PostgreSQL, MySQL, and SQLite), exercises the runtime-only Core and
@@ -133,12 +146,12 @@ all-feature graph intentionally selects a strict database profile and excludes
 that materialized tenant/audit target. Coverage separately merges the default
 workspace pass, so those routes contribute real executed-line evidence.
 
-After those Rust CI jobs finish, an observational job always emits a
-SHA-bound per-crate quality scorecard into the workflow summary and a 90-day
-artifact. The score combines versioned expert-audit ceilings with the actual
-gate results; a failed/skipped/cancelled gate can remove the dimensions it was
-meant to prove, while a green gate cannot inflate a crate beyond its audited
-ceiling. This is engineering-evidence reporting, not capability completion or
+After a ready-PR or manual full-matrix Rust CI run finishes, an observational
+job emits a SHA-bound per-crate quality scorecard into the workflow summary and
+a 90-day artifact. The score combines versioned expert-audit ceilings with the
+actual gate results; a failed/skipped/cancelled gate can remove the dimensions
+it was meant to prove, while a green gate cannot inflate a crate beyond its
+audited ceiling. This is engineering-evidence reporting, not capability completion or
 certification. See the [scorecard methodology](docs/src/quality-scorecard.md).
 
 Rows with no feature selected compile every package target. Feature-selected
