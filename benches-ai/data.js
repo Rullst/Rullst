@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788869876359,
+  "lastUpdate": 1788889101429,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -7911,6 +7911,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 574,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5332f0e43502bb3e53cbd0caf323769b988a1458",
+          "message": "fix(security): remove vulnerable rsa dependency (#181)\n\n* fix(security): remove vulnerable rsa dependency\n\n* fix(cli): scaffold jwt with aws-lc",
+          "timestamp": "2026-09-08T14:18:11-03:00",
+          "tree_id": "bb401ed0bd62281fd7e30624fb5d52e5fa27da69",
+          "url": "https://github.com/Rullst/Rullst/commit/5332f0e43502bb3e53cbd0caf323769b988a1458"
+        },
+        "date": 1788889101013,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1447,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 286,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 534,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
