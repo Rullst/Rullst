@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788869958205,
+  "lastUpdate": 1788889179874,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -6867,6 +6867,48 @@ window.BENCHMARK_DATA = {
             "name": "capital_subscription/parse_status_active",
             "value": 16,
             "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5332f0e43502bb3e53cbd0caf323769b988a1458",
+          "message": "fix(security): remove vulnerable rsa dependency (#181)\n\n* fix(security): remove vulnerable rsa dependency\n\n* fix(cli): scaffold jwt with aws-lc",
+          "timestamp": "2026-09-08T14:18:11-03:00",
+          "tree_id": "bb401ed0bd62281fd7e30624fb5d52e5fa27da69",
+          "url": "https://github.com/Rullst/Rullst/commit/5332f0e43502bb3e53cbd0caf323769b988a1458"
+        },
+        "date": 1788889179451,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 2",
             "unit": "ns/iter"
           },
           {
