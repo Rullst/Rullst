@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788824742417,
+  "lastUpdate": 1788839766587,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -9879,6 +9879,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3997,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5c72fb972f1b1f2b7edf0d47a02ce318733a6777",
+          "message": "docs(site): restore project story and add accessible motion (#179)",
+          "timestamp": "2026-09-08T00:38:32-03:00",
+          "tree_id": "38ab67b29c8fd4486d143ddc785d3a18ce641307",
+          "url": "https://github.com/Rullst/Rullst/commit/5c72fb972f1b1f2b7edf0d47a02ce318733a6777"
+        },
+        "date": 1788839765836,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1006,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 784,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1821,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4083,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
