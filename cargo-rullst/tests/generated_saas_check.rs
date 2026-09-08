@@ -16,9 +16,16 @@ use cargo_rullst::blueprints::{
 use cargo_rullst::generators::project::cargo_toml::build_cargo_toml;
 use std::{fs, path::Path, path::PathBuf, process::Command};
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum GeneratedGroup {
+    Foundation,
+    Product,
+}
+
 #[derive(Clone, Copy)]
 struct GeneratedCase {
     name: &'static str,
+    group: GeneratedGroup,
     blueprint: usize,
     api: bool,
     hot_reload: bool,
@@ -31,6 +38,7 @@ struct GeneratedCase {
 const GENERATED_CASES: [GeneratedCase; 8] = [
     GeneratedCase {
         name: "blank-minimal",
+        group: GeneratedGroup::Foundation,
         blueprint: BLANK_BLUEPRINT_ID,
         api: false,
         hot_reload: false,
@@ -41,6 +49,7 @@ const GENERATED_CASES: [GeneratedCase; 8] = [
     },
     GeneratedCase {
         name: "blank-api-hot",
+        group: GeneratedGroup::Foundation,
         blueprint: BLANK_BLUEPRINT_ID,
         api: true,
         hot_reload: true,
@@ -51,6 +60,7 @@ const GENERATED_CASES: [GeneratedCase; 8] = [
     },
     GeneratedCase {
         name: "lms-active-htmx-hot",
+        group: GeneratedGroup::Foundation,
         blueprint: LMS_BLUEPRINT_ID,
         api: false,
         hot_reload: true,
@@ -61,6 +71,7 @@ const GENERATED_CASES: [GeneratedCase; 8] = [
     },
     GeneratedCase {
         name: "saas-active-htmx-hot",
+        group: GeneratedGroup::Foundation,
         blueprint: SAAS_BLUEPRINT_ID,
         api: false,
         hot_reload: true,
@@ -71,6 +82,7 @@ const GENERATED_CASES: [GeneratedCase; 8] = [
     },
     GeneratedCase {
         name: "blog-active-htmx-hot",
+        group: GeneratedGroup::Product,
         blueprint: BLOG_BLUEPRINT_ID,
         api: false,
         hot_reload: true,
@@ -81,6 +93,7 @@ const GENERATED_CASES: [GeneratedCase; 8] = [
     },
     GeneratedCase {
         name: "portfolio-active-htmx-hot",
+        group: GeneratedGroup::Product,
         blueprint: PORTFOLIO_BLUEPRINT_ID,
         api: false,
         hot_reload: true,
@@ -91,6 +104,7 @@ const GENERATED_CASES: [GeneratedCase; 8] = [
     },
     GeneratedCase {
         name: "erp-active-htmx-release",
+        group: GeneratedGroup::Product,
         blueprint: ERP_BLUEPRINT_ID,
         api: false,
         hot_reload: false,
@@ -101,6 +115,7 @@ const GENERATED_CASES: [GeneratedCase; 8] = [
     },
     GeneratedCase {
         name: "erp-active-htmx-hot",
+        group: GeneratedGroup::Product,
         blueprint: ERP_BLUEPRINT_ID,
         api: false,
         hot_reload: true,
@@ -110,6 +125,20 @@ const GENERATED_CASES: [GeneratedCase; 8] = [
         release: false,
     },
 ];
+
+fn generated_build_jobs() -> String {
+    std::env::var("RULLST_GENERATED_BUILD_JOBS").unwrap_or_else(|_| "1".to_owned())
+}
+
+fn selected_generated_group() -> Option<GeneratedGroup> {
+    match std::env::var("RULLST_CI_GENERATED_GROUP").as_deref() {
+        Err(std::env::VarError::NotPresent) => None,
+        Ok("foundation") => Some(GeneratedGroup::Foundation),
+        Ok("product") => Some(GeneratedGroup::Product),
+        Ok(value) => panic!("unsupported RULLST_CI_GENERATED_GROUP: {value}"),
+        Err(error) => panic!("invalid RULLST_CI_GENERATED_GROUP: {error}"),
+    }
+}
 
 fn materialize(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
     fs::create_dir_all(project_dir).expect("temporary generated project");
@@ -249,7 +278,7 @@ fn cargo_verify(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
         .env("CARGO_PROFILE_DEV_DEBUG", "0")
         .env("CARGO_PROFILE_TEST_DEBUG", "0")
         .env("CARGO_PROFILE_TEST_INCREMENTAL", "false")
-        .env("CARGO_BUILD_JOBS", "1")
+        .env("CARGO_BUILD_JOBS", generated_build_jobs())
         .output()
         .unwrap_or_else(|error| panic!("{}: run cargo test: {error}", case.name));
 
@@ -276,7 +305,14 @@ fn every_blueprint_and_distinct_generated_boundary_passes_cargo_verification() {
     let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let workspace = crate_dir.parent().expect("workspace root");
 
-    for case in GENERATED_CASES {
+    let selected_group = selected_generated_group();
+    let selected_cases = GENERATED_CASES
+        .into_iter()
+        .filter(|case| selected_group.is_none_or(|group| case.group == group));
+    let mut selected_count = 0;
+
+    for case in selected_cases {
+        selected_count += 1;
         let project_dir = std::env::temp_dir().join(format!(
             "rullst-generated-{}-{}",
             case.name,
@@ -287,4 +323,9 @@ fn every_blueprint_and_distinct_generated_boundary_passes_cargo_verification() {
         fs::remove_dir_all(&project_dir)
             .unwrap_or_else(|error| panic!("{}: temporary cleanup: {error}", case.name));
     }
+
+    assert!(
+        selected_count > 0,
+        "generated-project shard must select at least one case"
+    );
 }

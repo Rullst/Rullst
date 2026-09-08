@@ -18,6 +18,7 @@ env:
   RUSTC_WRAPPER: sccache
   SCCACHE_GHA_ENABLED: "true"
   SCCACHE_GHA_VERSION: rullst-ci-v1
+  RULLST_GENERATED_BUILD_JOBS: "2"
 
 jobs:
   release-regression:
@@ -30,9 +31,12 @@ jobs:
         shard:
           - workspace
           - cli-standard
-          - cli-profiles
+          - cli-profiles-basic
+          - cli-profiles-relational
+          - cli-profiles-polyglot
           - cli-lms
-          - cli-saas
+          - cli-saas-foundation
+          - cli-saas-product
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

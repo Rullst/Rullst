@@ -112,7 +112,7 @@ if every milestone that is not yet `[x]` stays in scope?
 The snapshot below was recalculated on 4 September 2026 from M1–M39. It includes
 v12 hardening, continuous, next-SemVer, v13 and v13-research rows. M31 is excluded
 because the tracker explicitly assigns aerospace/autonomous/defence work to a
-separately governed future programme rather than the v12/v13 web framework.
+separately governed future programme rather than the general v12/v13 framework suite.
 Detailed crate-roadmap checkboxes are not added again: they overlap with and
 decompose these canonical milestones, so a raw sum would double-count work.
 
@@ -141,7 +141,7 @@ checklist because those lenses substantially overlap.
 
 ## AI-native vision, without absolutes
 
-The original goal of becoming the first **AI-Native Web Framework** is preserved
+The original goal of becoming an **AI-native Rust framework suite** is preserved
 as a design ambition, not a historically provable “first” claim.
 The dedicated
 [AI maintainability and project-building roadmap](docs/src/ai-maintainability-roadmap.md)

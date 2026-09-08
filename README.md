@@ -18,8 +18,8 @@
   <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" alt="Rullst Logo" width="300">
 </p>
 
-<h1 align="center">Rullst</h1>
-<h3 align="center">Your ambition. Rust's foundations.</h3>
+<h1 align="center">🌐🦀📜 Rullst 📜🦀🌐</h1>
+<h3 align="center"><i>Intelligent, Security-Conscious, and Designed for Effortless Productivity — Because With Rullst, We Rule!</i></h3>
 
 <p align="center">An open-source, Axum-based framework suite.<br>Build beyond the endpoint—with code you can inspect and boundaries you control.</p>
 

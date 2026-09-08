@@ -37,9 +37,17 @@ impl Drop for GeneratedProject {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ProfileGroup {
+    Basic,
+    Relational,
+    Polyglot,
+}
+
 #[derive(Clone, Copy)]
 struct ProfileCase {
     name: &'static str,
+    group: ProfileGroup,
     arguments: &'static [&'static str],
     required_rullst_features: &'static [&'static str],
     rejected_rullst_features: &'static [&'static str],
@@ -50,6 +58,7 @@ struct ProfileCase {
 const PROFILE_CASES: [ProfileCase; 7] = [
     ProfileCase {
         name: "blank-no-database-api",
+        group: ProfileGroup::Basic,
         arguments: &["--blueprint", "blank", "--api", "--no-database"],
         required_rullst_features: &["studio"],
         rejected_rullst_features: &["orm", "strict-sqlite", "strict-postgres", "strict-mysql"],
@@ -58,6 +67,7 @@ const PROFILE_CASES: [ProfileCase; 7] = [
     },
     ProfileCase {
         name: "lms-sqlite",
+        group: ProfileGroup::Basic,
         arguments: &["--blueprint", "lms", "--database", "sqlite"],
         required_rullst_features: &["orm", "strict-sqlite", "studio", "nexus", "auth"],
         rejected_rullst_features: &["strict-postgres", "strict-mysql", "capital"],
@@ -66,6 +76,7 @@ const PROFILE_CASES: [ProfileCase; 7] = [
     },
     ProfileCase {
         name: "saas-sqlite",
+        group: ProfileGroup::Basic,
         arguments: &["--blueprint", "saas", "--database", "sqlite"],
         required_rullst_features: &["orm", "strict-sqlite", "studio", "nexus", "auth", "capital"],
         rejected_rullst_features: &["strict-postgres", "strict-mysql"],
@@ -74,6 +85,7 @@ const PROFILE_CASES: [ProfileCase; 7] = [
     },
     ProfileCase {
         name: "blog-postgres",
+        group: ProfileGroup::Relational,
         arguments: &["--blueprint", "blog", "--database", "postgres"],
         required_rullst_features: &["orm", "strict-postgres", "studio", "nexus"],
         rejected_rullst_features: &["strict-sqlite", "strict-mysql"],
@@ -82,6 +94,7 @@ const PROFILE_CASES: [ProfileCase; 7] = [
     },
     ProfileCase {
         name: "portfolio-mysql",
+        group: ProfileGroup::Relational,
         arguments: &["--blueprint", "portfolio", "--database", "mysql"],
         required_rullst_features: &["orm", "strict-mysql", "studio", "nexus"],
         rejected_rullst_features: &["strict-sqlite", "strict-postgres"],
@@ -90,6 +103,7 @@ const PROFILE_CASES: [ProfileCase; 7] = [
     },
     ProfileCase {
         name: "erp-mariadb-ai-redis",
+        group: ProfileGroup::Relational,
         arguments: &[
             "--blueprint",
             "erp",
@@ -105,6 +119,7 @@ const PROFILE_CASES: [ProfileCase; 7] = [
     },
     ProfileCase {
         name: "blank-sqlite-polyglot",
+        group: ProfileGroup::Polyglot,
         arguments: &[
             "--blueprint",
             "blank",
@@ -134,12 +149,27 @@ const PROFILE_CASES: [ProfileCase; 7] = [
     },
 ];
 
+fn selected_profile_group() -> Option<ProfileGroup> {
+    match std::env::var("RULLST_CI_PROFILE_GROUP").as_deref() {
+        Err(std::env::VarError::NotPresent) => None,
+        Ok("basic") => Some(ProfileGroup::Basic),
+        Ok("relational") => Some(ProfileGroup::Relational),
+        Ok("polyglot") => Some(ProfileGroup::Polyglot),
+        Ok(value) => panic!("unsupported RULLST_CI_PROFILE_GROUP: {value}"),
+        Err(error) => panic!("invalid RULLST_CI_PROFILE_GROUP: {error}"),
+    }
+}
+
 fn output_text(output: &Output) -> String {
     format!(
         "{}{}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     )
+}
+
+fn generated_build_jobs() -> String {
+    std::env::var("RULLST_GENERATED_BUILD_JOBS").unwrap_or_else(|_| "1".to_owned())
 }
 
 fn rullst_features(project: &Path) -> Vec<String> {
@@ -210,7 +240,14 @@ fn public_cli_profiles_compile_across_every_distinct_generation_axis() {
         .map(PathBuf::from)
         .unwrap_or_else(|| workspace.join("target"));
 
-    for case in PROFILE_CASES {
+    let selected_group = selected_profile_group();
+    let selected_cases = PROFILE_CASES
+        .into_iter()
+        .filter(|case| selected_group.is_none_or(|group| case.group == group));
+    let mut selected_count = 0;
+
+    for case in selected_cases {
+        selected_count += 1;
         let project = GeneratedProject::new(case.name);
         let generated = Command::new(env!("CARGO_BIN_EXE_rullst"))
             .current_dir(project.path.parent().expect("external project parent"))
@@ -261,7 +298,7 @@ fn public_cli_profiles_compile_across_every_distinct_generation_axis() {
             .env("CARGO_TARGET_DIR", &target_root)
             // DuckDB's bundled C++ build can otherwise exhaust small developer
             // machines when this matrix is run outside the larger CI runners.
-            .env("CARGO_BUILD_JOBS", "1");
+            .env("CARGO_BUILD_JOBS", generated_build_jobs());
         if case.run_tests {
             cargo
                 .env("CARGO_PROFILE_DEV_DEBUG", "0")
@@ -282,4 +319,9 @@ fn public_cli_profiles_compile_across_every_distinct_generation_axis() {
         );
         clean_generated_package(&project.path, &target_root);
     }
+
+    assert!(
+        selected_count > 0,
+        "profile shard must select at least one case"
+    );
 }

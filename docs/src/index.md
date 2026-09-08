@@ -1,8 +1,10 @@
-# Your ambition. Rust's foundations.
+# Intelligent, Security-Conscious, and Designed for Effortless Productivity
 
-Rullst is a modular full-stack web framework for Rust built on Tokio, Axum, and
-SQLx. Version 12 is under active development; use the capability and release
-documents to distinguish implemented behavior from roadmap work.
+Because With Rullst, We Rule! Rullst is a modular Rust framework suite built on
+Tokio, Axum, Tower, and SQLx for full-stack applications and the product
+workflows around them. Version 12 is under active development; use the
+capability and release documents to distinguish implemented behavior from
+roadmap work.
 
 **Welcome to the Rullst documentation.** Build a small application, understand
 the code behind it, then explore the tools that fit your next idea.

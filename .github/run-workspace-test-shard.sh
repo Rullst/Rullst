@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
-  echo "usage: $0 <workspace|cli-standard|cli-profiles|cli-lms|cli-saas> [--release]" >&2
+  echo "usage: $0 <workspace|cli-standard|cli-profiles-basic|cli-profiles-relational|cli-profiles-polyglot|cli-lms|cli-saas-foundation|cli-saas-product> [--release]" >&2
   exit 2
 fi
 
@@ -53,7 +53,23 @@ case "$shard" in
     cargo test -p cargo-rullst -p rullst-core --all-features \
       "${profile_args[@]}" --doc
     ;;
+  cli-profiles-basic)
+    RULLST_CI_PROFILE_GROUP=basic \
+      cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
+        "${profile_args[@]}" --test generated_cli_profiles
+    ;;
+  cli-profiles-relational)
+    RULLST_CI_PROFILE_GROUP=relational \
+      cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
+        "${profile_args[@]}" --test generated_cli_profiles
+    ;;
+  cli-profiles-polyglot)
+    RULLST_CI_PROFILE_GROUP=polyglot \
+      cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
+        "${profile_args[@]}" --test generated_cli_profiles
+    ;;
   cli-profiles)
+    # Backwards-compatible local alias; CI uses the bounded groups above.
     cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
       "${profile_args[@]}" --test generated_cli_profiles
     ;;
@@ -61,7 +77,18 @@ case "$shard" in
     cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
       "${profile_args[@]}" --test generated_lms_modules_check
     ;;
+  cli-saas-foundation)
+    RULLST_CI_GENERATED_GROUP=foundation \
+      cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
+        "${profile_args[@]}" --test generated_saas_check
+    ;;
+  cli-saas-product)
+    RULLST_CI_GENERATED_GROUP=product \
+      cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
+        "${profile_args[@]}" --test generated_saas_check
+    ;;
   cli-saas)
+    # Backwards-compatible local alias; CI uses the bounded groups above.
     cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
       "${profile_args[@]}" --test generated_saas_check
     ;;

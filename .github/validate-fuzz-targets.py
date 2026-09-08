@@ -46,6 +46,10 @@ def discover_manifests() -> set[tuple[str, str]]:
         fail("no */fuzz/Cargo.toml manifests were found")
 
     for manifest in manifests:
+        lockfile = manifest.parent / "Cargo.lock"
+        if not lockfile.is_file():
+            fail(f"missing fuzz dependency lock {lockfile.relative_to(ROOT)}")
+
         try:
             cargo = tomllib.loads(manifest.read_text(encoding="utf-8-sig"))
         except (OSError, tomllib.TOMLDecodeError) as error:

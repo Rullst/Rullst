@@ -2,6 +2,19 @@ name: Mutation Testing (manual informational)
 
 on:
   workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
+    inputs:
+      mode:
+        description: Full workspace campaign or one changed production file
+        required: true
+        default: full
+        type: choice
+        options:
+          - full
+          - targeted
+      file:
+        description: Repository-relative .rs file (required only for targeted mode)
+        required: false
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -12,21 +25,86 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  CARGO_INCREMENTAL: "0"
+  RUSTC_WRAPPER: sccache
+  SCCACHE_GHA_ENABLED: "true"
+  SCCACHE_GHA_VERSION: rullst-mutants-v1
+  SCCACHE_GHA_RW_MODE: READ_WRITE
 
 jobs:
+  plan:
+    name: Validate mutation campaign scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      mode: ${{ steps.plan.outputs.mode }}
+      file: ${{ steps.plan.outputs.file }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Export strict mutation scope
+        id: plan
+        shell: bash
+        env:
+          MUTATION_MODE: ${{ inputs.mode }}
+          MUTATION_FILE: ${{ inputs.file }}
+        run: |
+          case "$MUTATION_MODE" in
+            full)
+              if [ -n "$MUTATION_FILE" ]; then
+                echo "Full mode covers the workspace; leave file empty." >&2
+                exit 2
+              fi
+              matrix='{"include":[{"index":0,"count":16},{"index":1,"count":16},{"index":2,"count":16},{"index":3,"count":16},{"index":4,"count":16},{"index":5,"count":16},{"index":6,"count":16},{"index":7,"count":16},{"index":8,"count":16},{"index":9,"count":16},{"index":10,"count":16},{"index":11,"count":16},{"index":12,"count":16},{"index":13,"count":16},{"index":14,"count":16},{"index":15,"count":16}]}'
+              ;;
+            targeted)
+              if [[ ! "$MUTATION_FILE" =~ ^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*\.rs$ \
+                || "$MUTATION_FILE" == *".."* \
+                || "$MUTATION_FILE" == tests/* \
+                || "$MUTATION_FILE" == */tests/* \
+                || ! -f "$MUTATION_FILE" ]]; then
+                echo "Targeted mode requires one existing production .rs path." >&2
+                exit 2
+              fi
+              if ! git ls-files --error-unmatch -- "$MUTATION_FILE" >/dev/null; then
+                echo "Targeted mutation path must be tracked by Git." >&2
+                exit 2
+              fi
+              matrix='{"include":[{"index":0,"count":1}]}'
+              ;;
+            *)
+              echo "Unsupported mutation campaign mode: $MUTATION_MODE" >&2
+              exit 2
+              ;;
+          esac
+
+          {
+            echo "matrix=$matrix"
+            echo "mode=$MUTATION_MODE"
+            echo "file=$MUTATION_FILE"
+          } >> "$GITHUB_OUTPUT"
+
   mutants:
     permissions:
       contents: read
-    name: cargo-mutants informational shard ${{ matrix.shard }}/16
+    name: cargo-mutants informational shard ${{ matrix.index }}/${{ matrix.count }}
+    needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 330
     strategy:
       fail-fast: false
-      matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
@@ -43,14 +121,68 @@ jobs:
         # eight-way matrix produced one 5h30 job-level timeout on the full v12
         # workspace, so the finer split keeps every result and artifact within
         # the existing bounded runner budget.
-        # Exit code 2 = missed mutants found; continue-on-error so CI doesn't
-        # hard-fail — results are captured in the uploaded artifact for review.
-        continue-on-error: true
-        run: cargo mutants --workspace --shard ${{ matrix.shard }}/16 --in-place
+        # Exit 2 (missed) and 3 (timed out) are valid informational findings.
+        # Baseline/usage/internal failures remain real workflow failures.
+        shell: bash
+        env:
+          MUTATION_MODE: ${{ needs.plan.outputs.mode }}
+          MUTATION_FILE: ${{ needs.plan.outputs.file }}
+          SHARD_INDEX: ${{ matrix.index }}
+          SHARD_COUNT: ${{ matrix.count }}
+        run: |
+          command=(cargo mutants --workspace --in-place)
+          if [ "$MUTATION_MODE" = "full" ]; then
+            command+=(--shard "$SHARD_INDEX/$SHARD_COUNT")
+          else
+            command+=(--file "$MUTATION_FILE")
+          fi
+
+          set +e
+          "${command[@]}"
+          mutation_status=$?
+          set -e
+          case "$mutation_status" in
+            0|2|3)
+              echo "cargo-mutants completed with informational status $mutation_status"
+              ;;
+            *)
+              echo "cargo-mutants failed before producing valid findings (status $mutation_status)" >&2
+              exit "$mutation_status"
+              ;;
+          esac
 
       - name: Upload shard results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
-          name: mutants-out-${{ matrix.shard }}
+          name: mutants-out-${{ matrix.index }}
           path: mutants.out/
+          if-no-files-found: error
+          retention-days: 30
+
+  evidence-boundary:
+    name: Mutation campaign evidence boundary
+    if: always()
+    needs: [plan, mutants]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record informational scope and infrastructure result
+        env:
+          MUTATION_MODE: ${{ needs.plan.outputs.mode }}
+          MATRIX_RESULT: ${{ needs.mutants.result }}
+          MUTATION_FILE: ${{ needs.plan.outputs.file }}
+        run: |
+          {
+            echo "## Mutation testing"
+            echo
+            echo "Mode: \`$MUTATION_MODE\`; matrix result: \`$MATRIX_RESULT\`."
+            if [ "$MUTATION_MODE" = "targeted" ]; then
+              echo "Targeted file: \`$MUTATION_FILE\`. This is correction feedback, not a full-workspace campaign."
+            else
+              echo "The complete workspace was partitioned into 16 shards. Missed and timed-out mutants remain informational findings in the artifacts."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$MATRIX_RESULT" != "success" ]; then
+            exit 1
+          fi

@@ -124,7 +124,7 @@ workflow was homologated.
 | M28 | Compile-time DI and `Inject<T>` | ✅ Implemented — foundation |
 | M29 | Scalar playground and complete OpenAPI generation | 🟡 Still to implement — partial |
 | M30 | Tonic/gRPC and Protobuf support | 🟡 Still to implement — partial |
-| M31 | Aerospace/autonomous/defence systems | ⏳ Separate safety-critical programme; outside the web framework |
+| M31 | Aerospace/autonomous/defence systems | ⏳ Separate safety-critical programme; outside the general framework suite |
 | M32 | Axum/Tower escape hatches and proc-macro diagnostics | ✅ Implemented — bounded |
 | M33 | Server-side declarative SaaS entitlements | ⏳ Still to implement — not started |
 | M34 | Schema-driven TypeScript/React/Dart/Swift SDKs | ⏳ Still to implement — not started |

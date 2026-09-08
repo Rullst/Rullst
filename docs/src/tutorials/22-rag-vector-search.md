@@ -27,7 +27,7 @@ let mut index = VectorIndex::new();
 index.add(
     "rullst",
     vec![1.0, 0.0, 0.0],
-    serde_json::json!({"text": "Rullst is a Rust web framework."}),
+    serde_json::json!({"text": "Rullst is a Rust framework suite."}),
 );
 index.add(
     "other",
