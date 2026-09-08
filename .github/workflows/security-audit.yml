@@ -48,7 +48,7 @@ jobs:
           )"
           deny_ids="$(
             sed -n '/^\[advisories\]/,/^\[/p' deny.toml |
-              grep -oE 'RUSTSEC-[0-9-]+' | sort -u
+              grep -oE 'RUSTSEC-[0-9-]+' | sort -u || true
           )"
           workflow_ids="$(
             grep -h -oE -- '--(audit-)?ignore RUSTSEC-[0-9-]+' \
@@ -56,7 +56,7 @@ jobs:
               .github/workflows/security-audit.yml \
               .github/workflows/pqc-compliance.yml \
               .github/workflows/release.yml |
-              awk '{print $2}' | sort -u
+              awk '{print $2}' | sort -u || true
           )"
 
           if [ "$ledger_ids" != "$deny_ids" ] || [ "$ledger_ids" != "$workflow_ids" ]; then
@@ -82,5 +82,4 @@ jobs:
           ' docs/src/security-advisory-exceptions.md
         
       - name: Run cargo-audit
-        # Every exception is time-bounded in docs/src/security-advisory-exceptions.md.
-        run: cargo audit --ignore RUSTSEC-2023-0071
+        run: cargo audit

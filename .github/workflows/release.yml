@@ -191,17 +191,14 @@ jobs:
           cargo metadata --locked --format-version 1 \
             > "$evidence_dir/cargo-metadata.json"
 
-          # Any advisory outside the governed, expiring exception list blocks
-          # the release. The JSON result is retained as tag-bound evidence.
-          cargo audit --json \
-            --ignore RUSTSEC-2023-0071 \
-            > "$evidence_dir/cargo-audit.json"
+          # Any advisory blocks the release. The JSON result is retained as
+          # tag-bound evidence; v12 has no configured advisory exceptions.
+          cargo audit --json > "$evidence_dir/cargo-audit.json"
 
           # This command intentionally emits NOT CHECKED / NOT EVALUATED for
           # controls that a bounded source audit cannot establish.
           cargo run --locked -p cargo-rullst --bin rullst -- \
-            audit --idor --compliance --sbom \
-            --audit-ignore RUSTSEC-2023-0071
+            audit --idor --compliance --sbom
           mv SECURITY_COMPLIANCE.md \
             "$evidence_dir/security-evidence.md"
           mv sbom-cyclonedx.json \
