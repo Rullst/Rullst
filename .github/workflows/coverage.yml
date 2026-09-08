@@ -23,7 +23,8 @@ env:
   RUSTC_WRAPPER: sccache
   SCCACHE_GHA_ENABLED: "true"
   SCCACHE_GHA_VERSION: rullst-coverage-v1
-  SCCACHE_GHA_RW_MODE: ${{ github.event_name == 'pull_request' && 'READ_ONLY' || 'READ_WRITE' }}
+  SCCACHE_GHA_RW_MODE: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'READ_WRITE' || 'READ_ONLY' }}
+  RULLST_GENERATED_BUILD_JOBS: "2"
 
 jobs:
   coverage:
@@ -60,17 +61,13 @@ jobs:
 
       - name: Run cargo-llvm-cov (default feature profiles)
         # The all-feature graph deliberately enables mutually exclusive
-        # strict-* compile profiles. A second real workspace pass exercises
-        # default SQLite integration tests that are cfg-excluded from that
-        # graph; cargo-llvm-cov merges both sets of profile data. The CLI and
-        # proc-macro crates have no database profile split and were already
-        # exercised above, so do not repeat their expensive generated-project
-        # verification here.
+        # strict-* compile profiles. Only ORM, Studio and the public facade own
+        # default-SQLite tests that are cfg-excluded from that graph. Exercise
+        # those packages without repeating every other workspace test;
+        # cargo-llvm-cov merges both sets of profile data.
         run: |
-          cargo llvm-cov --no-report --workspace \
-            --exclude cargo-rullst \
-            --exclude rullst-macros \
-            --exclude rullst-orm-macros
+          cargo llvm-cov --no-report \
+            -p rullst-orm -p rullst-studio -p rullst
 
       - name: Run cargo-llvm-cov (outbox and DB matrix contracts)
         # Must run without strict-* features so the cfg gates are satisfied.

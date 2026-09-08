@@ -111,9 +111,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   offset. A Unicode regression corpus seed and unit test preserve the failing
   shape; the repaired ORM parser, log-redactor and HTML/text-sanitizer targets
   each passed 100,000 local libFuzzer/AddressSanitizer executions.
+- Long-form verification now fails fast before consuming the release window:
+  fuzzing compiles all 40 targets in ten package preflights before starting the
+  5.5-hour campaigns, and offers a strict five-minute single-target diagnostic
+  that the summary explicitly rejects as RC evidence. Weekly corpus work and
+  the release campaign share content-addressed compiler outputs while retaining
+  separate per-target corpora and exact failure reproducers. Every fuzz package
+  now carries a validated lockfile, and preflight, campaign and corpus jobs
+  reject unresolved or silently changed dependency graphs before accepting
+  their evidence. The daily Cargo Audit gate scans the root plus all ten fuzz
+  locks from one advisory-database fetch.
+- Restored the project's `🌐🦀📜 Rullst 📜🦀🌐` README identity and its broader
+  “Intelligent, Security-Conscious, and Designed for Effortless Productivity —
+  Because With Rullst, We Rule!” design intent across repository and
+  landing-page metadata. General descriptions now call Rullst a framework
+  suite rather than reducing the complete ecosystem to a web framework. The
+  offline site validator now prevents the title, slogan and computed README
+  workflow count from silently drifting again.
 - The manual mutation campaign now divides the workspace into sixteen shards
   after the previous eight-way layout exhausted one job's 5h30 runner bound;
-  survived and timed-out mutants remain explicit informational evidence.
+  survived and timed-out mutants remain explicit informational evidence. A
+  validated tracked-production-file mode shortens correction feedback, while
+  baseline, invocation and internal tool failures can no longer be hidden by
+  the informational finding policy.
+- Multi-platform CI now partitions the long public CLI and generated-blueprint
+  contracts into eight total test shards, and deterministically fans feature
+  boundaries and release-negative threat tests into four strict jobs each.
+  Generated profile/blueprint commands retain a single compiler job locally but
+  use two on hosted CI, coverage, property and tag-verification runners.
+  Manual diagnostics can select one operating system and shard, but only the
+  complete matrix emits the SHA-bound quality scorecard. Same-repository pull
+  requests reuse only their isolated compiler-cache scope; forks remain
+  read-only and cannot populate the trusted main namespace. The tag verifier
+  consumes that trusted namespace read-only while still executing every release
+  assertion and package audit. Coverage remains one merge-safe report, but its second
+  default-feature pass now targets only ORM, Studio and the public facade—the
+  packages whose default-SQLite tests are excluded by the mutually exclusive
+  all-feature graph—instead of repeating unrelated workspace tests.
 - `rullst-orm-macros` now parses model, relation, and SQLx attributes as
   structured nested metadata and fails closed on unknown, duplicate, orphaned,
   or conflicting options. Persisted `id`, tenant, soft-delete, and embedding

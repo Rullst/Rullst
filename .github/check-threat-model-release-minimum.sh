@@ -1,6 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+shard_index=0
+shard_count=1
+if [[ $# -ne 0 ]]; then
+  if [[ $# -ne 2 || "$1" != "--shard" || ! "$2" =~ ^([0-9]+)/([1-9][0-9]*)$ ]]; then
+    echo "usage: $0 [--shard INDEX/COUNT]" >&2
+    exit 2
+  fi
+  shard_index="${BASH_REMATCH[1]}"
+  shard_count="${BASH_REMATCH[2]}"
+  if (( shard_index >= shard_count )); then
+    echo "threat-model shard index must be lower than its count" >&2
+    exit 2
+  fi
+fi
+
 manifest_path=".github/threat-model-release-minimum.json"
 model_path="docs/src/threat-models.md"
 
@@ -77,6 +92,7 @@ grep -Fq -- "**Model version:** ${model_version}" "$model_path" || {
 }
 
 executed_tests=()
+executed_count=0
 
 while IFS=$'\t' read -r case_id crate target_kind target test_filter source marker; do
   if [[ ! "$case_id" =~ ^[A-Z]+-[0-9]{2}$ \
@@ -105,6 +121,13 @@ while IFS=$'\t' read -r case_id crate target_kind target test_filter source mark
   }
 
   test_key="${crate}:${target_kind}:${target}:${test_filter}"
+  test_digest="$(printf '%s' "$test_key" | sha256sum)"
+  test_digest="${test_digest%% *}"
+  selected_shard=$((16#${test_digest:0:8} % shard_count))
+  if (( selected_shard != shard_index )); then
+    continue
+  fi
+
   already_executed=false
   for executed_test in "${executed_tests[@]}"; do
     if [ "$executed_test" = "$test_key" ]; then
@@ -117,6 +140,7 @@ while IFS=$'\t' read -r case_id crate target_kind target test_filter source mark
     continue
   fi
   executed_tests+=("$test_key")
+  executed_count=$((executed_count + 1))
 
   echo "Running ${case_id}: ${crate} ${test_filter}"
   case "$target_kind" in
@@ -142,3 +166,8 @@ while IFS=$'\t' read -r case_id crate target_kind target test_filter source mark
       ;;
   esac
 done < <(jq -r '.cases[] | [.id, .crate, .target_kind, .target, .test_filter, .source, .marker] | @tsv' "$manifest_path")
+
+if (( executed_count == 0 )); then
+  echo "threat-model shard ${shard_index}/${shard_count} selected no tests" >&2
+  exit 1
+fi

@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 HOME = DOCS / "home_template.html"
 BENCH_TEMPLATES = sorted(DOCS.glob("benches*_template.html"))
+README = ROOT / "README.md"
 
 
 class Document(HTMLParser):
@@ -130,6 +131,23 @@ def main() -> None:
         "https://x.com/venelouis",
     }
     assert required_social_links <= set(home.links), "missing requested community links"
+
+    slogan = "Intelligent, Security-Conscious, and Designed for Effortless Productivity"
+    assert slogan in source, "landing page must preserve the project slogan"
+    readme = README.read_text(encoding="utf-8")
+    assert "🌐🦀📜 Rullst 📜🦀🌐" in readme, "README must preserve the project title identity"
+    assert slogan in readme, "README must preserve the project slogan"
+    workflow_count = len(
+        [
+            path
+            for path in (ROOT / ".github" / "workflows").iterdir()
+            if path.suffix in {".yml", ".yaml"}
+        ]
+    )
+    assert f"({workflow_count} workflows)" in readme, "README workflow dashboard count is stale"
+    assert (
+        f"{workflow_count} workflow definitions" in readme
+    ), "README workflow-definition count is stale"
 
     for reference in [*home.links, *home.stylesheets, *home.scripts, *home.images]:
         if reference.startswith("#"):

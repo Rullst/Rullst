@@ -21,7 +21,7 @@ env:
   RUSTC_WRAPPER: sccache
   SCCACHE_GHA_ENABLED: "true"
   SCCACHE_GHA_VERSION: rullst-ci-v1
-  SCCACHE_GHA_RW_MODE: ${{ github.event_name == 'pull_request' && 'READ_ONLY' || 'READ_WRITE' }}
+  SCCACHE_GHA_RW_MODE: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && 'READ_WRITE' || 'READ_ONLY' }}
 
 jobs:
   plan:

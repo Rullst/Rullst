@@ -33,6 +33,14 @@ jobs:
         uses: taiki-e/install-action@5bf6ce016fd2e72eefc647cbca1e4213f65955b8 # v2.87.5
         with:
           tool: cargo-audit
-      - name: Run cargo audit
+      - name: Audit production and fuzz dependency locks
         # Every exception is time-bounded in docs/src/security-advisory-exceptions.md.
-        run: cargo audit --ignore RUSTSEC-2023-0071
+        shell: bash
+        run: |
+          cargo audit --ignore RUSTSEC-2023-0071
+          while IFS= read -r lockfile; do
+            echo "Auditing $lockfile"
+            cargo audit --no-fetch --file "$lockfile" \
+              --ignore RUSTSEC-2023-0071
+          done < <(find . -mindepth 3 -maxdepth 3 \
+            -path '*/fuzz/Cargo.lock' -print | sort)

@@ -2,6 +2,19 @@ name: Fuzzing (cargo-fuzz)
 
 on:
   workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
+    inputs:
+      mode:
+        description: Full v12 RC campaign or a short single-target diagnostic
+        required: true
+        default: release
+        type: choice
+        options:
+          - release
+          - diagnostic
+      target:
+        description: Exact target name (required only for diagnostic mode)
+        required: false
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -12,6 +25,11 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  CARGO_INCREMENTAL: "0"
+  RUSTC_WRAPPER: sccache
+  SCCACHE_GHA_ENABLED: "true"
+  SCCACHE_GHA_VERSION: rullst-fuzz-v1
+  SCCACHE_GHA_RW_MODE: READ_WRITE
 
 jobs:
   targets:
@@ -20,6 +38,10 @@ jobs:
     timeout-minutes: 5
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
+      directories: ${{ steps.matrix.outputs.directories }}
+      campaign_seconds: ${{ steps.matrix.outputs.campaign_seconds }}
+      mode: ${{ steps.matrix.outputs.mode }}
+      target_count: ${{ steps.matrix.outputs.target_count }}
     steps:
       - name: Checkout monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -27,14 +49,92 @@ jobs:
       - name: Validate and export matrix
         id: matrix
         shell: bash
+        env:
+          CAMPAIGN_MODE: ${{ inputs.mode }}
+          REQUESTED_TARGET: ${{ inputs.target }}
         run: |
           python3 .github/validate-fuzz-targets.py
-          matrix="$(jq -c '{include: .}' .github/fuzz-targets.json)"
-          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+          case "$CAMPAIGN_MODE" in
+            release)
+              if [ -n "$REQUESTED_TARGET" ]; then
+                echo "Release mode always covers the complete inventory; leave target empty." >&2
+                exit 2
+              fi
+              selected="$(jq -c '.' .github/fuzz-targets.json)"
+              campaign_seconds=19800
+              ;;
+            diagnostic)
+              if [ -z "$REQUESTED_TARGET" ]; then
+                echo "Diagnostic mode requires one exact target name." >&2
+                exit 2
+              fi
+              selected="$(jq -c --arg target "$REQUESTED_TARGET" \
+                '[.[] | select(.target == $target)]' .github/fuzz-targets.json)"
+              if [ "$(jq 'length' <<<"$selected")" -ne 1 ]; then
+                echo "Unknown or ambiguous fuzz target: $REQUESTED_TARGET" >&2
+                exit 2
+              fi
+              campaign_seconds=300
+              ;;
+            *)
+              echo "Unsupported fuzz campaign mode: $CAMPAIGN_MODE" >&2
+              exit 2
+              ;;
+          esac
+
+          matrix="$(jq -c '{include: .}' <<<"$selected")"
+          directories="$(jq -c '{include: (map({dir}) | unique_by(.dir))}' <<<"$selected")"
+          {
+            echo "matrix=$matrix"
+            echo "directories=$directories"
+            echo "campaign_seconds=$campaign_seconds"
+            echo "mode=$CAMPAIGN_MODE"
+            echo "target_count=$(jq 'length' <<<"$selected")"
+          } >> "$GITHUB_OUTPUT"
+
+  preflight:
+    name: Compile fuzz package ${{ matrix.dir }}
+    needs: targets
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.targets.outputs.directories) }}
+    steps:
+      - name: Checkout monorepo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Install Rust nightly
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # nightly
+        with:
+          toolchain: nightly-2026-08-21
+
+      - name: Install cargo-fuzz 0.13.2
+        uses: taiki-e/install-action@5bf6ce016fd2e72eefc647cbca1e4213f65955b8 # v2.87.5
+        with:
+          tool: cargo-fuzz@0.13.2
+
+      - name: Verify pinned fuzz dependency graph
+        working-directory: ${{ matrix.dir }}
+        run: cargo +nightly-2026-08-21 metadata --locked --format-version 1 --no-deps > /dev/null
+
+      - name: Compile every declared target in the selected package
+        working-directory: ${{ matrix.dir }}
+        shell: bash
+        run: |
+          cargo +nightly-2026-08-21 fuzz build
+          git diff --exit-code -- Cargo.lock
 
   fuzz:
     name: Fuzz ${{ matrix.target }}
-    needs: targets
+    needs: [targets, preflight]
     runs-on: ubuntu-latest
     timeout-minutes: 350
     strategy:
@@ -45,13 +145,21 @@ jobs:
       - name: Checkout monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
       - name: Install Rust nightly
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # nightly
         with:
           toolchain: nightly-2026-08-21
 
       - name: Install cargo-fuzz 0.13.2
-        run: cargo install cargo-fuzz --version 0.13.2 --locked
+        uses: taiki-e/install-action@5bf6ce016fd2e72eefc647cbca1e4213f65955b8 # v2.87.5
+        with:
+          tool: cargo-fuzz@0.13.2
 
       - name: Restore target corpus
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -62,11 +170,16 @@ jobs:
             fuzz-corpus-v1-${{ matrix.target }}-${{ github.sha }}-
             fuzz-corpus-v1-${{ matrix.target }}-
 
-      - name: Run target for approximately 5.5 hours
+      - name: Verify pinned fuzz dependency graph
+        working-directory: ${{ matrix.dir }}
+        run: cargo +nightly-2026-08-21 metadata --locked --format-version 1 --no-deps > /dev/null
+
+      - name: Run bounded target campaign
         working-directory: ${{ matrix.dir }}
         shell: bash
         env:
           FUZZ_TARGET: ${{ matrix.target }}
+          CAMPAIGN_SECONDS: ${{ needs.targets.outputs.campaign_seconds }}
         run: |
           if [ "$FUZZ_TARGET" = "fuzz_parser" ]; then
             # proc-macro2/syn parsing performs sustained allocation churn under
@@ -74,16 +187,30 @@ jobs:
             # does not accumulate for the full campaign. Every batch reuses the
             # same on-disk corpus, so this preserves the 5.5-hour budget and
             # coverage discoveries without tolerating crashes or OOMs.
-            for batch in $(seq 1 11); do
-              echo "Parser fuzz batch $batch/11"
+            remaining="$CAMPAIGN_SECONDS"
+            batch=1
+            while [ "$remaining" -gt 0 ]; do
+              batch_seconds=1800
+              if [ "$remaining" -lt "$batch_seconds" ]; then
+                batch_seconds="$remaining"
+              fi
+              echo "Parser fuzz batch $batch (${batch_seconds}s)"
               cargo +nightly-2026-08-21 fuzz run "$FUZZ_TARGET" -- \
-                -max_total_time=1800 \
+                -max_total_time="$batch_seconds" \
                 -max_len=2048 \
                 -rss_limit_mb=2048
+              remaining=$((remaining - batch_seconds))
+              batch=$((batch + 1))
             done
           else
-            cargo +nightly-2026-08-21 fuzz run "$FUZZ_TARGET" -- -max_total_time=19800
+            cargo +nightly-2026-08-21 fuzz run "$FUZZ_TARGET" -- \
+              -max_total_time="$CAMPAIGN_SECONDS"
           fi
+
+      - name: Reject fuzz dependency lock drift
+        if: always()
+        working-directory: ${{ matrix.dir }}
+        run: git diff --exit-code -- Cargo.lock
 
       - name: Upload reproducer on failure
         if: failure()
@@ -93,3 +220,37 @@ jobs:
           path: ${{ matrix.dir }}/artifacts/${{ matrix.target }}/
           if-no-files-found: warn
           retention-days: 30
+
+  evidence-boundary:
+    name: Fuzz campaign evidence boundary
+    if: always()
+    needs: [targets, preflight, fuzz]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record strict result and release eligibility
+        env:
+          CAMPAIGN_MODE: ${{ needs.targets.outputs.mode }}
+          TARGET_COUNT: ${{ needs.targets.outputs.target_count }}
+          PREFLIGHT_RESULT: ${{ needs.preflight.result }}
+          FUZZ_RESULT: ${{ needs.fuzz.result }}
+        run: |
+          {
+            echo "## Fuzz campaign"
+            echo
+            echo "Mode: \`$CAMPAIGN_MODE\`; targets: \`$TARGET_COUNT\`."
+            echo "Compile preflight: \`$PREFLIGHT_RESULT\`; campaign: \`$FUZZ_RESULT\`."
+            echo
+            if [ "$CAMPAIGN_MODE" = "release" ]; then
+              echo "This run is eligible for v12 RC evidence only when all 40 targets and both result fields succeed."
+            else
+              echo "This short single-target diagnostic is strict, but is not v12 RC release evidence."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$PREFLIGHT_RESULT" != "success" ] || [ "$FUZZ_RESULT" != "success" ]; then
+            exit 1
+          fi
+          if [ "$CAMPAIGN_MODE" = "release" ] && [ "$TARGET_COUNT" -ne 40 ]; then
+            echo "Release fuzz evidence must cover exactly 40 validated targets." >&2
+            exit 1
+          fi

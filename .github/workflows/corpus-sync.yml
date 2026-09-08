@@ -15,6 +15,11 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  CARGO_INCREMENTAL: "0"
+  RUSTC_WRAPPER: sccache
+  SCCACHE_GHA_ENABLED: "true"
+  SCCACHE_GHA_VERSION: rullst-fuzz-v1
+  SCCACHE_GHA_RW_MODE: READ_WRITE
 
 jobs:
   targets:
@@ -49,13 +54,21 @@ jobs:
       - name: Checkout monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
       - name: Install Rust nightly
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # nightly
         with:
           toolchain: nightly-2026-08-21
 
       - name: Install cargo-fuzz 0.13.2
-        run: cargo install cargo-fuzz --version 0.13.2 --locked
+        uses: taiki-e/install-action@5bf6ce016fd2e72eefc647cbca1e4213f65955b8 # v2.87.5
+        with:
+          tool: cargo-fuzz@0.13.2
 
       - name: Restore target corpus
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -65,6 +78,10 @@ jobs:
           restore-keys: |
             fuzz-corpus-v1-${{ matrix.target }}-${{ github.sha }}-
             fuzz-corpus-v1-${{ matrix.target }}-
+
+      - name: Verify pinned fuzz dependency graph
+        working-directory: ${{ matrix.dir }}
+        run: cargo +nightly-2026-08-21 metadata --locked --format-version 1 --no-deps > /dev/null
 
       - name: Warm and minimize target corpus
         id: corpus
@@ -81,6 +98,11 @@ jobs:
           fi
           cargo +nightly-2026-08-21 fuzz run "$FUZZ_TARGET" -- "${args[@]}"
           cargo +nightly-2026-08-21 fuzz cmin "$FUZZ_TARGET" "corpus/$FUZZ_TARGET"
+
+      - name: Reject fuzz dependency lock drift
+        if: always()
+        working-directory: ${{ matrix.dir }}
+        run: git diff --exit-code -- Cargo.lock
 
       - name: Upload warm-up reproducer
         if: steps.corpus.outcome == 'failure'

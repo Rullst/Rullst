@@ -5,7 +5,7 @@ is not evidence that a workflow has passed for a particular commit. A green
 claim must always point to the GitHub Actions run, commit SHA, logs, and produced
 artifacts.
 
-Last source-level review: **2026-09-07**.
+Last source-level review: **2026-09-08**.
 
 ## Status language
 
@@ -33,9 +33,14 @@ Format and Clippy continue to give feedback on draft pull requests. The complete
 Linux/macOS/Windows test matrix, blocking line coverage, SemVer fan-out and
 CodeQL analysis start for a pull request only when it is ready
 for review, and it can always be requested manually. Each operating system
-executes five parallel shards: the non-CLI workspace, ordinary CLI targets, and
-the three long generated-project contracts. No test is omitted; this changes
-wall-clock scheduling rather than the assertions being executed. Each CLI
+executes eight parallel shards: the non-CLI workspace, ordinary CLI targets,
+the LMS contract, three public-profile groups and two generated-blueprint groups.
+The basic/relational/polyglot and foundation/product partitions retain every original
+case while bounding the longest Windows and macOS jobs. No test is omitted;
+this changes wall-clock scheduling rather than the assertions being executed.
+Hosted CI permits two nested compiler jobs for the otherwise serial generated
+profile/blueprint builds; constrained local runs retain their one-job default.
+Each CLI
 shard fetches the locked registry inventory before its generated applications
 prove that they compile without network access. After that
 reviewed commit is merged, the automatic `main` push repeats Linux rather than
@@ -48,7 +53,9 @@ The SHA-bound quality scorecard is generated only by a ready pull request or a
 manual full-matrix run. It is deliberately skipped on the Linux-only automatic
 `main` run, because that execution cannot honestly award cross-platform
 verification credit. Run `ci.yml` manually on a final `main` candidate to
-produce the exact-SHA release scorecard.
+produce the exact-SHA release scorecard. Manual diagnostic runs may select one
+operating system and one test shard; those deliberately do not produce a
+full-matrix scorecard and do not replace final-candidate evidence.
 
 GitHub executes `schedule` events from the repository's default branch, so
 scheduled and continuous v12 evidence now share the active `main` source line.
@@ -68,10 +75,10 @@ The workflows below run **only when requested manually**:
 | Workflow | Evidence | RC interpretation |
 | :--- | :--- | :--- |
 | `dast-zap.yml` | OWASP ZAP baseline against a release blog showcase plus fresh generated REST API and complete LMS applications | REST/LMS warnings and failures block unless an exact rule ID is versioned as `INFO` with a local explanation in `.zap/`; those configs are passed explicitly to the pinned scanner and unlisted warnings remain live. The showcase is informational because it deliberately uses third-party presentation assets; reports and application logs are retained. This remains representative, not universal deployment coverage. |
-| `fuzzing.yml` | All 40 declared libFuzzer targets from the validated shared inventory | **Required v12 RC evidence:** every matrix job must finish without a crash for the configured time budget; target-specific corpora are restored and saved, while failure reproducers are retained. The proc-macro parser keeps the same 5.5-hour budget in eleven strict 30-minute processes sharing one corpus, which bounds sanitizer RSS without weakening crash detection. This is bounded evidence, not proof for every input. |
+| `fuzzing.yml` | All 40 declared libFuzzer targets from the validated shared inventory | **Required v12 RC evidence:** release mode first validates the ten package lockfiles and compiles every declared target in ten package-level preflight jobs, then every target must finish without a crash for the 5.5-hour budget; target-specific corpora are restored and saved, while failure reproducers are retained. Dependency-lock drift fails preflight, campaign and corpus jobs. The proc-macro parser uses strict processes of at most 30 minutes sharing one corpus, which bounds sanitizer RSS without weakening the total budget. A strict five-minute single-target diagnostic accelerates correction feedback but is explicitly ineligible as RC evidence. This is bounded evidence, not proof for every input. |
 | `kani.yml` | Twenty named bounded formal harnesses in ten supported runtime/library packages | **Required v12 RC evidence for the declared harnesses:** every proof has an isolated strict matrix job. Rullst itself stays on stable Rust 1.98.1 with a Rust 1.96 MSRV; only the separately built Kani verifier uses its pinned `nightly-2026-08-01` compiler (`rustc 1.99.0-nightly`) because the latest stable Kani bundle's Rust 1.93 compiler cannot compile the framework. The proc-macro-only `rullst-macros` target remains unsupported by Kani and is covered by compile-pass/fail and generated-project evidence instead. |
 | `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | **Required v12 RC evidence for the declared scopes:** every selected scope is strict. This nightly-only interpreter uses pinned `nightly-2026-08-21` (`rustc 1.100.0-nightly`); it does not change the project's stable toolchain or MSRV. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. |
-| `mutants.yml` | Sixteen mutation-testing shards and their artifacts | Informational: review survived/timed-out mutants and the measured score. The finer split replaced an eight-shard layout after a v12 campaign exhausted one job's 5h30 bound. “Pass” does not honestly mean every possible mutant was killed. |
+| `mutants.yml` | Sixteen mutation-testing shards and their artifacts | Informational: review survived/timed-out mutants and the measured score. A targeted mode retests one validated production Rust file after a correction; it does not replace the complete campaign. Missed/time-out exit codes remain findings, while a broken baseline, invalid invocation or cargo-mutants internal failure now fails the workflow. The finer full split replaced an eight-shard layout after a v12 campaign exhausted one job's 5h30 bound. “Pass” does not honestly mean every possible mutant was killed. |
 
 These workflows are **periodic and manually runnable**:
 
@@ -110,11 +117,15 @@ cargo test --workspace --all-features
 Rust CI disables Cargo incremental compilation and uses the pinned `sccache`
 Action and binary to store content-addressed compiler outputs in GitHub Actions
 cache. The current `cc` build dependency also honors the same Rust compiler
-wrapper, so compatible bundled DuckDB C++ objects can be reused. Pull requests
-read the trusted default-branch cache without writing to it; pushes to `main`
-and explicit manual runs on `main` populate entries reusable by later pull
-requests. This follows GitHub's cache scope while avoiding pull-request cache
-churn and keeps untrusted changes out of the default-branch namespace.
+wrapper, so compatible bundled DuckDB C++ objects can be reused. Same-repository
+pull requests can populate only their GitHub-isolated `refs/pull/.../merge`
+cache scope, making a failed-job rerun useful without modifying the trusted
+default-branch namespace. Fork pull requests remain read-only. Pushes and
+explicit manual runs on `main` populate entries reusable by later pull
+requests. Cache contents never substitute for a test result.
+The tag-only verifier uses the same namespace strictly read-only, so it can
+reuse an exact trusted compiler output but cannot alter the cache while
+creating release artifacts; every release command and assertion still runs.
 
 The setup action's job-scoped Cargo archive is disabled in these compiler-cache
 jobs, so neither the raw workspace `target` tree nor duplicate registry bundles
@@ -128,11 +139,16 @@ under many job-specific keys. A first run on a new cache namespace is still a
 cold build; evaluate acceleration using the reported cache hit ratio and a
 later compatible run, never by weakening or omitting assertions.
 
-The same content-addressed approach accelerates LLVM coverage, benchmark
-compilation and the scheduled release-mode regression suite. Benchmarks remain
+The same content-addressed approach accelerates LLVM coverage, benchmark,
+mutation/fuzz compilation and the scheduled release-mode regression suite. The
+weekly corpus workflow warms the same fuzz compiler namespace used by the
+manual campaign. Benchmarks remain
 sequential on one runner so comparisons do not mix host variance. Coverage
 deliberately remains one report job because splitting it without a reviewed
-profile-data merge could change the repository percentage. The release-mode
+profile-data merge could change the repository percentage. Its second
+default-feature pass is limited to ORM, Studio and the public facade: those are
+the packages with default-SQLite tests excluded by the mutually exclusive
+all-feature graph, so unrelated workspace tests are not repeated. The release-mode
 workspace is safe to split because every shard
 returns an ordinary test result, while the two source locations that actually
 use `proptest!` still receive their configured 10,000-case runs. SemVer checks
@@ -143,14 +159,18 @@ matrix.
 CodeQL also remains one analysis job. Its Cargo target cache is disabled so the
 extractor observes compilation for the exact SHA instead of inheriting a fresh
 artifact from another run; the analysis database itself is not interchangeable
-with ordinary test shards.
+with ordinary test shards. Rust CodeQL's faster buildless mode is intentionally
+not used because manual compilation gives the extractor the stronger generated
+code boundary needed by this release.
 
 `ci.yml` also compiles and exercises each ORM strict database feature in
 isolation (PostgreSQL, MySQL, and SQLite), exercises the runtime-only Core and
 all 45 public umbrella features in isolated additive graphs with automatic
 manifest-drift detection, runs the portable database matrix on Linux, and
-tests the complete all-feature workspace in five parallel shards on Linux,
-macOS, and Windows. The umbrella's
+tests the complete all-feature workspace in eight parallel shards on Linux,
+macOS, and Windows. Feature-boundary rows and threat-model negative tests also
+fan out into four deterministic strict shards each; their matrix job remains a
+single blocking dependency for the quality scorecard. The umbrella's
 `cfg(doctest)` aggregation reads all 52 public tutorial files directly, so that
 same command discovers the versioned Rust blocks, compiles or executes complete
 examples, and records explicitly contextual fragments as ignored instead of pretending
@@ -283,10 +303,23 @@ higher component result for the repository total.
   `zeroize`'s unsupported inline assembly, cryptographic implementations or the
   entire concurrent middleware implementations.
 - Mutation testing is manual, split into sixteen shards, and intentionally
-  non-blocking while results are uploaded.
+  informational while results are uploaded. Its targeted mode accepts exactly
+  one tracked production `.rs` path so a correction can be retested without
+  restarting the complete workspace campaign. Exit statuses for missed and
+  timed-out mutants remain findings; baseline, usage and internal failures do
+  not get normalized into green jobs.
 - Fuzzing and corpus maintenance pin `nightly-2026-08-21` instead of following
   a moving nightly alias. This verifier-only toolchain does not change the
-  framework's stable Rust 1.98.1 toolchain or its Rust 1.96 MSRV. The parser
+  framework's stable Rust 1.98.1 toolchain or its Rust 1.96 MSRV. Before a
+  release campaign starts, ten strict preflight jobs compile every target so a
+  stale import or broken fuzz manifest fails in minutes rather than alongside
+  hours of valid campaigns. A five-minute one-target diagnostic is correction
+  feedback only; the evidence-boundary job refuses to call it release evidence.
+  Each of the ten fuzz packages has a checked-in dependency lock; inventory
+  validation requires it, and locked metadata plus a post-command drift check
+  prevents preflight, campaign or corpus maintenance from silently resolving a
+  different dependency graph.
+  The parser
   campaign restarts its ASan process every 30 minutes while retaining one
   corpus and the full 5.5-hour target budget, preventing instrumentation RSS
   accumulation from masquerading as a parser crash.
@@ -310,7 +343,7 @@ higher component result for the repository total.
   coverage of every blueprint, authenticated role, browser, proxy or deployment.
 - Property tests and benchmarks are scheduled/manual evidence. The property
   workflow preserves the complete all-feature release-mode regression suite in
-  five parallel shards and separately runs the ORM and Connect property
+  eight parallel shards and separately runs the ORM and Connect property
   contracts with 10,000 generated cases. The eight published benchmark groups,
   backed by nine Criterion binaries, emit
   non-blocking alerts at a 20% regression and feed the
@@ -322,12 +355,15 @@ higher component result for the repository total.
 The manual `fuzzing.yml` matrix covers all **40** declared libFuzzer targets:
 Core 12, ORM 5, Security 7, Connect 3, Mail 4, AI 3, IoT 3, Capital 1, Nexus 1,
 and Studio 1. The checked-in `.github/fuzz-targets.json` is validated against
-every `*/fuzz/Cargo.toml` and source file before either the manual campaign or
-weekly corpus job can fan out. Both jobs use versioned per-target caches;
+every `*/fuzz/Cargo.toml`, corresponding lockfile and source file before either
+the manual campaign or weekly corpus job can fan out. Release mode then compiles all targets in ten
+package-level preflight jobs before starting any long campaign. Both jobs use
+versioned per-target corpora and one content-addressed compiler-cache namespace;
 campaign failures retain their exact reproducer, and the weekly job performs a
 bounded warm-up before minimizing and uploading each actual corpus. A clean
 run remains evidence only for its exact SHA, target, corpus, toolchain and time
-budget.
+budget. Diagnostic mode is limited to one exact inventory target for five
+minutes and is never counted as the forty-target RC gate.
 
 The `oss-fuzz/projects/rullst` directory is a local integration draft. It is not
 proof of upstream acceptance, continuous ClusterFuzz execution, or coverage of
@@ -381,29 +417,29 @@ dependency graph make static estimates unreliable.
 | :--- | :--- | :--- | :--- |
 | [`ai-sentinel-pr.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ai-sentinel-pr.yml) | pull requests | Automated evidence | Generates bounded CLI audit, compliance report, and CycloneDX SBOM artifacts; no certification claim. |
 | [`architecture.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/architecture.yml) | main push and PR, manual | Blocking | Compares Cargo's publishable non-dev internal dependency graph with the reviewed `crate-architecture-policy.json`; unreviewed normal/build edges, removals, or optionality changes fail, while test-only dev-dependencies do not masquerade as production coupling. |
-| [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | main push and PR, daily, manual | Blocking | Cargo Audit with the governed exception list. |
+| [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | main push and PR, daily, manual | Blocking | Cargo Audit over the production lock and all ten fuzz-package locks with the governed exception list and one advisory-database fetch. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
 | [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) | main push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main push and PR, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, five-shard multi-OS tests including Cargo-aware doctests sourced from all 52 tutorials, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main push and PR, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, eight-shard multi-OS tests including Cargo-aware doctests sourced from all 52 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main push and PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check. |
-| [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Validates the shared 40-target inventory, restores each real target corpus, performs a bounded warm-up, minimizes it and uploads the result; individual target failures are retained but tolerated. |
-| [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation and blocking OIDC-authenticated Codecov upload; scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |
+| [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Validates the shared 40-target inventory and ten package lockfiles, restores each real target corpus, performs a bounded warm-up, minimizes it, uploads the result and warms the campaign's content-addressed compiler cache; individual target failures are retained but tolerated, while dependency-lock drift remains a hard failure. |
+| [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation, a focused default-SQLite pass for ORM/Studio/the facade, and blocking OIDC-authenticated Codecov upload; scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |
 | [`dast-zap.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/dast-zap.yml) | manual | Blocking generated targets plus informational showcase | Pins the ZAP image by digest, scans fresh release/migrated REST API and complete LMS surfaces as blocking gates, scans the CDN-backed blog showcase informationally, and uploads separate reports plus application logs. |
-| [`documentation.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/documentation.yml) | main push and PR, weekly, manual | Blocking plus informational external scan | Builds the mdBook; validates landing/benchmark templates, local assets, pinned external chart scripts and all requested social links. Real Chromium checks desktop/390px/320px layout, keyboard/mobile navigation, clipboard success/denial, privacy disclosure, reduced motion, no-JS navigation, and absence of external landing requests/browser storage. This is a bounded browser contract, not WCAG certification. Also validates the 190-claim historical roadmap denominator and repository-local links. Scheduled/manual runs preserve an informational external-link report. |
+| [`documentation.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/documentation.yml) | main push and PR, weekly, manual | Blocking plus informational external scan | Builds the mdBook; validates landing/benchmark templates, project identity, the README workflow count, local assets, pinned external chart scripts and all requested social links. Real Chromium checks desktop/390px/320px layout, keyboard/mobile navigation, clipboard success/denial, privacy disclosure, reduced motion, no-JS navigation, and absence of external landing requests/browser storage. This is a bounded browser contract, not WCAG certification. Also validates the 190-claim historical roadmap denominator and repository-local links. Scheduled/manual runs preserve an informational external-link report. |
 | [`e2e-smoke.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/e2e-smoke.yml) | main push and PR, manual | Blocking | Boots the release Blog application and checks HTTP, headers, CSRF form flow, SQLite persistence, and the persisted page parsed by real headless Chromium. |
-| [`fuzzing.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/fuzzing.yml) | manual | Blocking v12 RC campaign | Forty validated libFuzzer matrix jobs, each capped below six hours, with per-target corpus caching and failure reproducers. The parser's single matrix job restarts its ASan-instrumented process every 30 minutes while sharing one corpus and preserving the full 5.5-hour campaign budget. |
+| [`fuzzing.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/fuzzing.yml) | manual | Blocking v12 RC campaign or diagnostic | Release mode validates ten package lockfiles and compiles all targets in ten package preflights before forty 5.5-hour libFuzzer jobs, with per-target corpus caching and failure reproducers. Lock drift is always rejected. The parser restarts its ASan process at most every 30 minutes while preserving the budget. Single-target diagnostic mode runs for five minutes and the evidence boundary marks it ineligible for release. |
 | [`iot-integration.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/iot-integration.yml) | main push and PR, manual | Blocking | Host IoT tests, signed OTA invariants, and one Cortex-M no-std build; no hardware claim. |
 | [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | manual | Blocking v12 RC scope; bounded evidence | Builds an immutable reviewed Kani snapshot with the verifier-only `nightly-2026-08-01` compiler, while Rullst stays on stable Rust 1.98.1 with a Rust 1.96 MSRV. It verifies twenty named bounded harnesses in isolated jobs across ten supported packages. Proof failures fail their matrix jobs; the proc-macro-only crate remains outside Kani's supported targets. |
 | [`machete.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/machete.yml) | main push and PR, manual | Blocking | Unused dependency scan with configured exceptions. |
 | [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | manual | Blocking v12 RC scope; bounded evidence | Pinned nightly-only Miri executes 15 named pure-Rust/default-feature scopes with randomized layouts without changing Rullst's stable toolchain or MSRV. Native FFI/syscall/network paths, the umbrella re-export facade, and the Blog example are explicit boundaries; selected-scope failures fail the workflow. |
-| [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | Sixteen pinned cargo-mutants 27.1.0 shards with uploaded results; this keeps the whole-workspace partition below the per-job bound more reliably than the superseded eight-shard matrix. |
+| [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | Sixteen pinned cargo-mutants 27.1.0 full-workspace shards or one validated production-file diagnostic, with uploaded results and compiler caching. Findings stay informational, but baseline/tool/invocation failures fail the run. |
 | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | main push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
 | [`omni-android.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-android.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh deterministic Omni shell, initializes Android and compiles an unsigned aarch64 debug APK. It does not test a physical device, Play testing, signing, privacy declarations or store acceptance. |
 | [`omni-desktop.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-desktop.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh deterministic HTTPS-backed shell and checks its Tauri crate on Linux, macOS and Windows. It does not build/sign every installer or exercise a GUI/WebView session. |
 | [`omni-ios.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-ios.yml) | relevant main changes, manual | Blocking | Generates a fresh deterministic Omni iOS shell on macOS and compiles it for the runner's simulator architecture. It does not test a physical device, signing, privacy declarations, TestFlight or App Store acceptance. |
 | [`pages.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pages.yml) | main push, manual | Deploy | Validates and deploys the unreleased v12 landing page, local visual assets, mdBook and benchmark hub/dashboards to GitHub Pages while preserving history data fetched from `gh-pages`. |
 | [`pqc-compliance.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pqc-compliance.yml) | relevant main changes, weekly, manual | Blocking | Signed OTA and Vault tests, RustSec audit, and simulator-boundary checks; explicitly no PQC/HSM certification. |
-| [`proptest.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/proptest.yml) | weekly, manual | Blocking run | Five parallel release-mode workspace shards plus dedicated ORM and Connect property contracts with configured case counts. |
+| [`proptest.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/proptest.yml) | weekly, manual | Blocking run | Eight parallel release-mode workspace shards plus dedicated ORM and Connect property contracts with configured case counts. |
 | [`release.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/release.yml) | exact-looking version tags | Release | Tag validation, full verification, package-all, evidence bundle, checksums, attestations, dependency-order publish, and release provenance. |
 | [`sanitizers.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/sanitizers.yml) | daily, manual | Blocking run | TSan and ASan library matrices on pinned `nightly-2026-08-21`; this verifier toolchain does not change Rullst's stable compiler or MSRV. |
 | [`scorecards.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/scorecards.yml) | main push, weekly, manual | Automated evidence | OpenSSF Scorecard analysis and SARIF/artifact upload; not SLSA certification. |
