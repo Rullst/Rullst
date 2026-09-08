@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788840079935,
+  "lastUpdate": 1788869876359,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -7863,6 +7863,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 752,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "51b621d864286281e2211bfeb18a14269cf247fb",
+          "message": "perf(ci): shorten strict release feedback loops (#180)\n\n* docs(brand): clarify Rullst project identity\n\n* perf(ci): shorten release feedback loops\n\n* fix(ci): prime offline threat-model shards",
+          "timestamp": "2026-09-08T08:57:09-03:00",
+          "tree_id": "5616ce6e2efc12f8cb7cb4ebd815e1011cac648c",
+          "url": "https://github.com/Rullst/Rullst/commit/51b621d864286281e2211bfeb18a14269cf247fb"
+        },
+        "date": 1788869875592,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1469,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 277,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 574,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
