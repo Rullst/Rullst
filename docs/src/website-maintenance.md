@@ -9,7 +9,7 @@ The public entry points have different deployment sources:
 | `gh-pages` branch in this repository | Benchmark workflow data | Criterion history consumed by the Pages build; not a development branch |
 
 The landing design and copy have one editable source: `docs/home_template.html`,
-`docs/site.css` and `docs/site.js`. Preserve both dedication lines and the v12
+`docs/site.css` and `docs/site.js`. Preserve the footer dedication and the v12
 preview/v5 end-of-life notice. Use actual source and release evidence for claims;
 do not hardcode aspirational coverage, scorecard, speed or certification values.
 
@@ -33,9 +33,11 @@ certification. Optional `--screenshots /absolute/output/directory` records
 viewport previews without adding binary artifacts to the repository.
 
 The source landing has no analytics, social embeds, remote fonts, cookies or
-local/session storage. CSS and JavaScript are local; motion is finite and
-respects reduced-motion preferences. Clipboard access follows an explicit
-button click and copies only the displayed command.
+local/session storage. CSS and JavaScript are local; ambient, hero, workflow and
+scroll-reveal motion is finite, progressively enhanced and disabled by the
+reduced-motion preference. Content stays visible when JavaScript is unavailable.
+Clipboard access follows an explicit button click and copies only the displayed
+command.
 
 Hosting still processes requests. The privacy notice links GitHub's statement
 and does not promise control of its logs or retention. Benchmark dashboards

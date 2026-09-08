@@ -131,10 +131,11 @@ profile and the exact scope of all
 
 ## 💡 The Rullst Philosophy
 
-Rullst coordinates routing, auth, ORM, bounded background jobs, and developer
-tooling behind explicit APIs. Compile-time generation reduces setup while
-keeping deployed security and operational decisions visible for review by
-humans and coding agents. Read the complete [design philosophy](docs/src/philosophy.md).
+Rullst grew from Venelouis's experience building education platforms with
+Moodle, then Laravel and AI, and from the desire to bring that feeling of
+product possibility to Rust without hiding Rust's explicitness. Its APIs and
+generated code keep security and operational decisions reviewable by humans
+and coding agents. Read the complete [history and design philosophy](docs/src/philosophy.md).
 
 ---
 
