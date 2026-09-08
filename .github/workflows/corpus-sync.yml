@@ -20,6 +20,9 @@ env:
   SCCACHE_GHA_ENABLED: "true"
   SCCACHE_GHA_VERSION: rullst-fuzz-v1
   SCCACHE_GHA_RW_MODE: READ_WRITE
+  # Keep sanitizer builds on glibc even when install-action supplies a
+  # statically linked cargo-fuzz binary whose compiled host is musl.
+  FUZZ_BUILD_TARGET: x86_64-unknown-linux-gnu
 
 jobs:
   targets:
@@ -96,8 +99,10 @@ jobs:
           if [ "$FUZZ_TARGET" = "fuzz_parser" ]; then
             args+=(-max_len=2048 -rss_limit_mb=4096)
           fi
-          cargo +nightly-2026-08-21 fuzz run "$FUZZ_TARGET" -- "${args[@]}"
-          cargo +nightly-2026-08-21 fuzz cmin "$FUZZ_TARGET" "corpus/$FUZZ_TARGET"
+          cargo +nightly-2026-08-21 fuzz run \
+            --target "$FUZZ_BUILD_TARGET" "$FUZZ_TARGET" -- "${args[@]}"
+          cargo +nightly-2026-08-21 fuzz cmin \
+            --target "$FUZZ_BUILD_TARGET" "$FUZZ_TARGET" "corpus/$FUZZ_TARGET"
 
       - name: Reject fuzz dependency lock drift
         if: always()

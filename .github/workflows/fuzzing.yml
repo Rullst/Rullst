@@ -30,6 +30,10 @@ env:
   SCCACHE_GHA_ENABLED: "true"
   SCCACHE_GHA_VERSION: rullst-fuzz-v1
   SCCACHE_GHA_RW_MODE: READ_WRITE
+  # taiki-e/install-action distributes a statically linked cargo-fuzz binary.
+  # cargo-fuzz derives its implicit target from the binary that built it, so
+  # leaving this implicit can select musl and make ASan reject crt-static.
+  FUZZ_BUILD_TARGET: x86_64-unknown-linux-gnu
 
 jobs:
   targets:
@@ -129,8 +133,12 @@ jobs:
         working-directory: ${{ matrix.dir }}
         shell: bash
         run: |
-          cargo +nightly-2026-08-21 fuzz build
-          git diff --exit-code -- Cargo.lock
+          cargo +nightly-2026-08-21 fuzz build \
+            --target "$FUZZ_BUILD_TARGET"
+
+      - name: Reject fuzz dependency lock drift after preflight
+        working-directory: ${{ matrix.dir }}
+        run: git diff --exit-code -- Cargo.lock
 
   fuzz:
     name: Fuzz ${{ matrix.target }}
@@ -195,7 +203,8 @@ jobs:
                 batch_seconds="$remaining"
               fi
               echo "Parser fuzz batch $batch (${batch_seconds}s)"
-              cargo +nightly-2026-08-21 fuzz run "$FUZZ_TARGET" -- \
+              cargo +nightly-2026-08-21 fuzz run \
+                --target "$FUZZ_BUILD_TARGET" "$FUZZ_TARGET" -- \
                 -max_total_time="$batch_seconds" \
                 -max_len=2048 \
                 -rss_limit_mb=2048
@@ -203,7 +212,8 @@ jobs:
               batch=$((batch + 1))
             done
           else
-            cargo +nightly-2026-08-21 fuzz run "$FUZZ_TARGET" -- \
+            cargo +nightly-2026-08-21 fuzz run \
+              --target "$FUZZ_BUILD_TARGET" "$FUZZ_TARGET" -- \
               -max_total_time="$CAMPAIGN_SECONDS"
           fi
 

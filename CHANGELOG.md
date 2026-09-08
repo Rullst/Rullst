@@ -117,6 +117,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   offset. A Unicode regression corpus seed and unit test preserve the failing
   shape; the repaired ORM parser, log-redactor and HTML/text-sanitizer targets
   each passed 100,000 local libFuzzer/AddressSanitizer executions.
+- Fuzz and corpus workflows now pass an explicit
+  `x86_64-unknown-linux-gnu` build target to every `cargo-fuzz` invocation.
+  This prevents a statically linked install-action binary from implicitly
+  selecting musl, whose static libc is incompatible with the AddressSanitizer
+  preflight. The shared inventory validator rejects future commands that omit
+  the target; a local GNU/ASan build exercised a real three-target fuzz package.
 - Long-form verification now fails fast before consuming the release window:
   fuzzing compiles all 40 targets in ten package preflights before starting the
   5.5-hour campaigns, and offers a strict five-minute single-target diagnostic
@@ -153,10 +159,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   requests reuse only their isolated compiler-cache scope; forks remain
   read-only and cannot populate the trusted main namespace. The tag verifier
   consumes that trusted namespace read-only while still executing every release
-  assertion and package audit. Coverage remains one merge-safe report, but its second
-  default-feature pass now targets only ORM, Studio and the public facade—the
-  packages whose default-SQLite tests are excluded by the mutually exclusive
-  all-feature graph—instead of repeating unrelated workspace tests.
+  assertion and package audit. Coverage remains one merge-safe report. Its
+  second default-feature pass targets ORM, Studio, Nexus and the public facade,
+  whose real SQLite tests are excluded by mutually exclusive all-feature
+  profiles. An exact local gate independently rejects either the complete
+  repository or framework-library path set below 90% before Codecov upload.
 - `rullst-orm-macros` now parses model, relation, and SQLx attributes as
   structured nested metadata and fails closed on unknown, duplicate, orphaned,
   or conflicting options. Persisted `id`, tenant, soft-delete, and embedding
