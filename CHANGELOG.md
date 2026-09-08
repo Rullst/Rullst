@@ -1059,6 +1059,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The packaged-distribution gate now installs `cargo-rullst` offline from the
   extracted release train, including crates not yet present in the registry,
   before generating and checking all six supported blueprints.
+- The philosophy chapter restores the reported Rust elevator inspiration and
+  records founder Venelouis's path from a Moodle VPS through a Laravel-and-AI
+  education platform to Rullst. It keeps the anecdote qualified, distinguishes
+  inspiration from technical guarantees, and preserves the framework's
+  evidence-before-claims boundary.
+- The two static landing entry points gain finite local-only ambient, hero,
+  terminal-workflow and scroll-reveal motion with explicit reduced-motion and
+  no-JavaScript fallbacks. The dedication now appears once in the footer, and
+  the browser smoke gate verifies both progressive animation paths without
+  adding analytics, remote resources, cookies or browser storage.
+- The release audit now points to the authoritative scorecard and records the
+  conditional 94/A repository assessment without presenting it as release
+  approval, feature completeness, certification or independent review.
 
 ### Detailed technical inventory (preserved)
 

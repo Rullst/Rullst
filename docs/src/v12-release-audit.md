@@ -24,6 +24,24 @@ configuration has been exhaustively analyzed. Tests are serialized on the
 memory-limited local machine. The final local workspace gate completed after
 the correction batch.
 
+## Evidence-bound repository grade
+
+The authoritative scoring method remains the
+[quality scorecard](quality-scorecard.md); this audit does not create a second,
+more flattering grading system. Under that policy, the reviewed implementation
+supports a maximum local aggregate of **94/A** when all conditioning gates are
+green. Each of the 15 active non-IoT crates has an A ceiling, while
+`rullst-iot` retains the owner-approved **83/B** exception because physical
+device and boot-chain evidence is outside the v12 campaign.
+
+That is an evidence-bounded engineering grade, not a security certification,
+feature-completeness percentage, independent audit result, or release
+authorization. A candidate earns the recorded grade only when its exact SHA
+passes the applicable scorecard constraints. Until the final candidate's
+automatic and manual gates, packaging checks, documentation review, and
+explicit GO decision are complete, the repository remains **NO-GO** regardless
+of its provisional grade.
+
 ## Coverage ledger
 
 | Crate / surface | Review scope | Current status |

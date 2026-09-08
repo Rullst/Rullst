@@ -153,9 +153,12 @@ try {
     }
   };
   await layout(1440, 1100);
+  assert(await evaluate("document.querySelector('.hero').classList.contains('is-visible')"), "Hero reveal must initialize");
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
   await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
   assert(await evaluate("document.activeElement.classList.contains('skip-link')"), "First keyboard target must skip navigation");
+  await evaluate("new Promise(resolve => { document.querySelector('#ecosystem').scrollIntoView({ behavior: 'instant', block: 'center' }); setTimeout(resolve, 120); })");
+  assert(await evaluate("document.querySelector('#ecosystem').classList.contains('is-visible')"), "Scroll reveal must initialize");
   await send("Browser.grantPermissions", { origin, permissions: ["clipboardReadWrite", "clipboardSanitizedWrite"] });
   await evaluate("document.querySelector('[data-copy-command]').click()");
   assert.equal(await evaluate("navigator.clipboard.readText()"), "cargo rullst new my_app");
@@ -175,6 +178,7 @@ try {
   await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
   await navigate();
   assert.equal(await evaluate("document.getAnimations().length"), 0, "Reduced motion must remove entrance animation");
+  assert(await evaluate("[...document.querySelectorAll('[data-reveal]')].every(element => element.classList.contains('is-visible'))"), "Reduced motion must reveal content immediately");
   await send("Emulation.setScriptExecutionDisabled", { value: true });
   await navigate(false);
   const snapshot = await send("DOMSnapshot.captureSnapshot", { computedStyles: ["display"] });
