@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788824818101,
+  "lastUpdate": 1788839845090,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -6111,6 +6111,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 576,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5c72fb972f1b1f2b7edf0d47a02ce318733a6777",
+          "message": "docs(site): restore project story and add accessible motion (#179)",
+          "timestamp": "2026-09-08T00:38:32-03:00",
+          "tree_id": "38ab67b29c8fd4486d143ddc785d3a18ce641307",
+          "url": "https://github.com/Rullst/Rullst/commit/5c72fb972f1b1f2b7edf0d47a02ce318733a6777"
+        },
+        "date": 1788839844366,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 566,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
