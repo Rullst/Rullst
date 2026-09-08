@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788839766587,
+  "lastUpdate": 1788869633904,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -9927,6 +9927,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4083,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "51b621d864286281e2211bfeb18a14269cf247fb",
+          "message": "perf(ci): shorten strict release feedback loops (#180)\n\n* docs(brand): clarify Rullst project identity\n\n* perf(ci): shorten release feedback loops\n\n* fix(ci): prime offline threat-model shards",
+          "timestamp": "2026-09-08T08:57:09-03:00",
+          "tree_id": "5616ce6e2efc12f8cb7cb4ebd815e1011cac648c",
+          "url": "https://github.com/Rullst/Rullst/commit/51b621d864286281e2211bfeb18a14269cf247fb"
+        },
+        "date": 1788869633133,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 976,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 807,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1780,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3709,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
