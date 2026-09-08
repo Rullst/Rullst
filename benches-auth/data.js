@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788869633904,
+  "lastUpdate": 1788888839654,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -9975,6 +9975,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3709,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5332f0e43502bb3e53cbd0caf323769b988a1458",
+          "message": "fix(security): remove vulnerable rsa dependency (#181)\n\n* fix(security): remove vulnerable rsa dependency\n\n* fix(cli): scaffold jwt with aws-lc",
+          "timestamp": "2026-09-08T14:18:11-03:00",
+          "tree_id": "bb401ed0bd62281fd7e30624fb5d52e5fa27da69",
+          "url": "https://github.com/Rullst/Rullst/commit/5332f0e43502bb3e53cbd0caf323769b988a1458"
+        },
+        "date": 1788888839249,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 972,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 804,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1775,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3732,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
