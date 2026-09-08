@@ -170,7 +170,10 @@ manifest-drift detection, runs the portable database matrix on Linux, and
 tests the complete all-feature workspace in eight parallel shards on Linux,
 macOS, and Windows. Feature-boundary rows and threat-model negative tests also
 fan out into four deterministic strict shards each; their matrix job remains a
-single blocking dependency for the quality scorecard. The umbrella's
+single blocking dependency for the quality scorecard. Each threat-model shard
+primes the reviewed lockfile before its deliberately offline generated-project
+checks, so it does not inherit a hidden source-cache dependency from another
+job. The umbrella's
 `cfg(doctest)` aggregation reads all 52 public tutorial files directly, so that
 same command discovers the versioned Rust blocks, compiles or executes complete
 examples, and records explicitly contextual fragments as ignored instead of pretending

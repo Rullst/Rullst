@@ -16,6 +16,12 @@ if [[ $# -ne 0 ]]; then
   fi
 fi
 
+# Several negative cases materialize a generated application and deliberately
+# compile it with CARGO_NET_OFFLINE=true. Prime every source referenced by the
+# reviewed lockfile so an isolated shard does not depend on another job having
+# downloaded a transitive crate first.
+cargo fetch --locked
+
 manifest_path=".github/threat-model-release-minimum.json"
 model_path="docs/src/threat-models.md"
 

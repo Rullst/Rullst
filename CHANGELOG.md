@@ -137,6 +137,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Multi-platform CI now partitions the long public CLI and generated-blueprint
   contracts into eight total test shards, and deterministically fans feature
   boundaries and release-negative threat tests into four strict jobs each.
+  Each threat-model shard primes the reviewed Cargo lock before deliberately
+  offline generated-project checks, removing their former accidental reliance
+  on another case having downloaded a transitive crate first.
   Generated profile/blueprint commands retain a single compiler job locally but
   use two on hosted CI, coverage, property and tag-verification runners.
   Manual diagnostics can select one operating system and shard, but only the
