@@ -7,7 +7,7 @@ publish = false
 autobins = false
 default-run = "rullst-blog-example"
 license = "MIT"
-description = "Example blog application built with the Rullst full-stack web framework."
+description = "Example blog application built with the Rullst framework suite."
 [dependencies]
 async-trait = { workspace = true }
 rullst = { workspace = true, features = ["orm", "auth", "capital", "ai", "studio", "nexus", "mailer"] }

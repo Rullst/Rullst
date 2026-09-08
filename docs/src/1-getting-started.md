@@ -6,8 +6,9 @@ Welcome to the **Rullst** Getting Started guide!
 open it locally and make your first change. Prefer to write the first route
 yourself? Use [Zero to Hello Rullst](tutorials/01-hello-world.md).
 
-Rullst is a strictly typed full-stack web framework designed around explicit APIs,
-measurable performance, and defense-in-depth defaults.
+Rullst is a strictly typed Rust framework suite for full-stack applications,
+designed around explicit APIs, measurable performance, and defense-in-depth
+defaults.
 
 ## 1. Installation
 
