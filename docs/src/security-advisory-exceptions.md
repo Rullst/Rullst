@@ -13,8 +13,9 @@ dependency graph.
 
 - On 2026-09-08, `RUSTSEC-2023-0071` was removed from the production and fuzz
   dependency graphs by moving `jsonwebtoken` from its `rust_crypto` backend
-  to `aws_lc_rs`. Auth and Connect's RS256/OIDC tests remain enabled, and
-  Cargo Audit runs without an exception.
+  to `aws_lc_rs`. The CLI scaffolds the same backend for newly generated JWT
+  middleware. Auth and Connect's RS256/OIDC tests remain enabled, and Cargo
+  Audit runs without an exception.
 - On 2026-08-26, `RUSTSEC-2026-0173` (`proc-macro-error2`) and
   `RUSTSEC-2024-0436` (`paste` through Leptos) were removed from the resolved
   dependency graph. Their workflow ignores were removed in the same change.

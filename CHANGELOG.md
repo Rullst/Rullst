@@ -49,11 +49,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Authentication uses Argon2 0.6's internally generated cryptographic salt;
   a fixed Argon2id v19 PHC regression proves existing password hashes remain
   verifiable without retaining the old crate or its API.
-- JWT verification now uses `jsonwebtoken`'s AWS-LC backend. This preserves
-  the tested RS256 Google, Apple and generic OIDC paths while removing the
-  vulnerable `rsa` crate and `RUSTSEC-2023-0071` from the production and all
-  ten fuzz dependency graphs. Cargo Audit and the release workflow therefore
-  run with no configured advisory exceptions.
+- JWT verification and newly scaffolded JWT middleware now use
+  `jsonwebtoken`'s AWS-LC backend. This preserves the tested RS256 Google,
+  Apple and generic OIDC paths while removing the vulnerable `rsa` crate and
+  `RUSTSEC-2023-0071` from the production and all ten fuzz dependency graphs.
+  Cargo Audit and the release workflow therefore run with no configured
+  advisory exceptions.
 - `rullst-connect/sqlite` adds a bounded shared-local lifecycle for encrypted
   OAuth token generations. The fixed schema stores only a pseudonymous binding
   digest, generation/key metadata and the existing account-bound AES-256-GCM
