@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788839069893,
+  "lastUpdate": 1788868980623,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -18081,6 +18081,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2292,
             "range": "± 55",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "51b621d864286281e2211bfeb18a14269cf247fb",
+          "message": "perf(ci): shorten strict release feedback loops (#180)\n\n* docs(brand): clarify Rullst project identity\n\n* perf(ci): shorten release feedback loops\n\n* fix(ci): prime offline threat-model shards",
+          "timestamp": "2026-09-08T08:57:09-03:00",
+          "tree_id": "5616ce6e2efc12f8cb7cb4ebd815e1011cac648c",
+          "url": "https://github.com/Rullst/Rullst/commit/51b621d864286281e2211bfeb18a14269cf247fb"
+        },
+        "date": 1788868978347,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 619,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 815,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 477,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1762,
+            "range": "± 44",
             "unit": "ns/iter"
           }
         ]
