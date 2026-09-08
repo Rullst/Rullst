@@ -34,13 +34,11 @@ jobs:
         with:
           tool: cargo-audit
       - name: Audit production and fuzz dependency locks
-        # Every exception is time-bounded in docs/src/security-advisory-exceptions.md.
         shell: bash
         run: |
-          cargo audit --ignore RUSTSEC-2023-0071
+          cargo audit
           while IFS= read -r lockfile; do
             echo "Auditing $lockfile"
-            cargo audit --no-fetch --file "$lockfile" \
-              --ignore RUSTSEC-2023-0071
+            cargo audit --no-fetch --file "$lockfile"
           done < <(find . -mindepth 3 -maxdepth 3 \
             -path '*/fuzz/Cargo.lock' -print | sort)

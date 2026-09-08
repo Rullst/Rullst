@@ -56,9 +56,7 @@ jobs:
           tool: cargo-audit
 
       - name: Run cargo-audit (CVE scan on crypto deps)
-        # Keep this list synchronized with deny.toml and the governed exception
-        # ledger. Patched or absent advisories must become blocking again.
-        run: cargo audit --ignore RUSTSEC-2023-0071
+        run: cargo audit
 
       - name: Verify no unsafe blocks in OTA and fixture modules
         run: |

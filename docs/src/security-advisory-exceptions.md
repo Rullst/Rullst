@@ -1,19 +1,25 @@
 # Security advisory exceptions
 
-Rullst does not treat an ignored scanner finding as remediated. Every temporary
-exception below has a narrow scope, a compensating control, an owner, and an
-expiry date. CI must fail for any advisory not listed here.
+Rullst does not treat an ignored scanner finding as remediated. Any temporary
+exception must have a narrow scope, a compensating control, an owner, and an
+expiry date. CI must fail for every advisory that is not actively governed here.
 
-Last reviewed: **2026-08-26**.
+Last reviewed: **2026-09-08**.
 
-| Advisory | Dependency path and scope | Compensating control | Owner | Expiry |
-|---|---|---|---|---|
-| `RUSTSEC-2023-0071` | `jsonwebtoken -> rsa`; production code verifies provider JWTs with public keys. RSA private-key operations occur only in test fixtures. Upstream has no fixed release. | Do not add RSA private-key signing or decryption to production paths; prefer EC/EdDSA for locally signed tokens; keep negative JWT verification tests. | Connect maintainers | 2026-11-30 |
+There are **no active advisory exceptions** in the v12 release-candidate
+dependency graph.
 
-`RUSTSEC-2026-0173` (`proc-macro-error2`) and `RUSTSEC-2024-0436`
-(`paste` through Leptos) were removed from the resolved dependency graph on
-2026-08-26. Their workflow ignores were removed in the same change; they are
-historical remediations, not active exceptions.
+## Remediation history
+
+- On 2026-09-08, `RUSTSEC-2023-0071` was removed from the production and fuzz
+  dependency graphs by moving `jsonwebtoken` from its `rust_crypto` backend
+  to `aws_lc_rs`. Auth and Connect's RS256/OIDC tests remain enabled, and
+  Cargo Audit runs without an exception.
+- On 2026-08-26, `RUSTSEC-2026-0173` (`proc-macro-error2`) and
+  `RUSTSEC-2024-0436` (`paste` through Leptos) were removed from the resolved
+  dependency graph. Their workflow ignores were removed in the same change.
+
+These are historical remediations, not active exceptions.
 
 ## Advisory response SLA
 
