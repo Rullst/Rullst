@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788868980623,
+  "lastUpdate": 1788888195646,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -18135,6 +18135,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1762,
             "range": "± 44",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "5332f0e43502bb3e53cbd0caf323769b988a1458",
+          "message": "fix(security): remove vulnerable rsa dependency (#181)\n\n* fix(security): remove vulnerable rsa dependency\n\n* fix(cli): scaffold jwt with aws-lc",
+          "timestamp": "2026-09-08T14:18:11-03:00",
+          "tree_id": "bb401ed0bd62281fd7e30624fb5d52e5fa27da69",
+          "url": "https://github.com/Rullst/Rullst/commit/5332f0e43502bb3e53cbd0caf323769b988a1458"
+        },
+        "date": 1788888194381,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 619,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 786,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 510,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1770,
+            "range": "± 17",
             "unit": "ns/iter"
           }
         ]
