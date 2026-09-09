@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788921517589,
+  "lastUpdate": 1788982466727,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -8103,6 +8103,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 719,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8bc6d03cd6a032b11b05304d474043d6d89ef0d2",
+          "message": "fix(orm): bound adversarial derive diagnostics\n\nMerge PR #185 after complete local preflight, hosted coverage, cross-platform CI, and focused ASan fuzz validation.",
+          "timestamp": "2026-09-09T16:10:00-03:00",
+          "tree_id": "4ec89632ce086ad1eb10ddaf28774a8a03534161",
+          "url": "https://github.com/Rullst/Rullst/commit/8bc6d03cd6a032b11b05304d474043d6d89ef0d2"
+        },
+        "date": 1788982465907,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1799,
+            "range": "± 47",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 384,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 813,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
