@@ -50,14 +50,25 @@ jobs:
           components: llvm-tools-preview
           cache: false
 
-      - name: Install cargo-llvm-cov
+      - name: Install pinned coverage tools
         uses: taiki-e/install-action@5bf6ce016fd2e72eefc647cbca1e4213f65955b8 # v2.87.5
         with:
-          tool: cargo-llvm-cov
+          tool: cargo-llvm-cov,cargo-nextest@0.9.137
 
-      - name: Run cargo-llvm-cov (all features — unit + integration)
+      - name: Run cargo-llvm-cov (all features — parallel unit + integration)
+        env:
+          NEXTEST_PROFILE: coverage
         run: |
-          cargo llvm-cov --no-report --all-features --workspace
+          cargo llvm-cov nextest --no-report --all-features --workspace --no-fail-fast
+
+      - name: Preserve exact all-feature test execution evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-tests-${{ github.sha }}
+          path: target/nextest/coverage/junit.xml
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Run cargo-llvm-cov (default feature profiles)
         # The all-feature graph deliberately enables mutually exclusive
@@ -156,14 +167,16 @@ jobs:
           components: llvm-tools-preview
           cache: false
 
-      - name: Install cargo-llvm-cov
+      - name: Install pinned coverage tools
         uses: taiki-e/install-action@5bf6ce016fd2e72eefc647cbca1e4213f65955b8 # v2.87.5
         with:
-          tool: cargo-llvm-cov
+          tool: cargo-llvm-cov,cargo-nextest@0.9.137
 
       - name: Run branch-instrumented workspace tests
+        env:
+          NEXTEST_PROFILE: coverage
         run: |
-          cargo llvm-cov --branch --no-report --all-features --workspace
+          cargo llvm-cov nextest --branch --no-report --all-features --workspace --no-fail-fast
 
       - name: Generate branch coverage evidence
         run: |

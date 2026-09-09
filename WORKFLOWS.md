@@ -156,6 +156,17 @@ fan out from the machine-readable release order and validate one published API
 per job, so adding or removing a release package cannot silently drift from the
 matrix.
 
+The all-feature coverage pass uses pinned cargo-nextest to schedule the same
+discovered unit and integration tests concurrently. It performs no retry and a
+flaky retry could not be normalized into success. A repository profile fixes
+four global slots and permits at most two integration tests that launch nested
+generated-application Cargo builds, preventing compiler fan-out from trading
+latency for memory or disk exhaustion. The exact per-test JUnit result and
+duration record is retained for 30 days. This runner is a coverage scheduler,
+not a replacement for Rust CI: the required multi-platform shards continue to
+execute the complete inventory with ordinary `cargo test`, preserving both
+traditional libtest process semantics and the materialized-project gates.
+
 CodeQL also remains one analysis job. Its Cargo target cache is disabled so the
 extractor observes compilation for the exact SHA instead of inheriting a fresh
 artifact from another run; the analysis database itself is not interchangeable
@@ -268,7 +279,10 @@ unsafe Rust.
 profiles plus the live database matrix, then uploads LCOV to Codecov using
 GitHub OIDC rather than a long-lived upload secret. It also retains exact JSON
 and text line summaries for 30 days so a passing upload cannot be confused
-with the coverage percentage. The default-profile pass explicitly includes
+with the coverage percentage. The all-feature pass uses pinned cargo-nextest
+only to run the same discovered tests concurrently, with zero retries, bounded
+nested-Cargo concurrency and a retained JUnit execution record. Rust CI still
+runs ordinary `cargo test` across Linux, macOS and Windows. The default-profile pass explicitly includes
 ORM, Studio, Nexus and the umbrella facade so their real SQLite contracts are
 not hidden by mutually exclusive all-feature database profiles. Before upload,
 the workflow independently rejects an LLVM summary below 90% for either the
@@ -430,7 +444,7 @@ dependency graph make static estimates unreliable.
 | [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main push and PR, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, eight-shard multi-OS tests including Cargo-aware doctests sourced from all 52 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main push and PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check. |
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Validates the shared 40-target inventory and ten package lockfiles, restores each real target corpus, performs a bounded warm-up, minimizes it, uploads the result and warms the campaign's content-addressed compiler cache; individual target failures are retained but tolerated, while dependency-lock drift remains a hard failure. |
-| [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation, a focused default-SQLite pass for ORM/Studio/Nexus/the facade, exact local 90% floors, and blocking OIDC-authenticated Codecov upload; scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |
+| [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation with a pinned, zero-retry, bounded-concurrency nextest scheduler and retained JUnit inventory; a focused default-SQLite pass for ORM/Studio/Nexus/the facade; exact local 90% floors; and blocking OIDC-authenticated Codecov upload. Scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |
 | [`dast-zap.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/dast-zap.yml) | manual | Blocking generated targets plus informational showcase | Pins the ZAP image by digest, scans fresh release/migrated REST API and complete LMS surfaces as blocking gates, scans the CDN-backed blog showcase informationally, and uploads separate reports plus application logs. |
 | [`documentation.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/documentation.yml) | main push and PR, weekly, manual | Blocking plus informational external scan | Builds the mdBook; validates landing/benchmark templates, project identity, the README workflow count, local assets, pinned external chart scripts and all requested social links. Real Chromium checks desktop/390px/320px layout, keyboard/mobile navigation, clipboard success/denial, privacy disclosure, reduced motion, no-JS navigation, and absence of external landing requests/browser storage. This is a bounded browser contract, not WCAG certification. Also validates the 190-claim historical roadmap denominator and repository-local links. Scheduled/manual runs preserve an informational external-link report. |
 | [`e2e-smoke.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/e2e-smoke.yml) | main push and PR, manual | Blocking | Boots the release Blog application and checks HTTP, headers, CSRF form flow, SQLite persistence, and the persisted page parsed by real headless Chromium. |
