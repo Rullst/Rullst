@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788917164156,
+  "lastUpdate": 1788921279194,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -6261,6 +6261,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 548,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "da7411a0393966af68e08221a0efe6164e1ece42",
+          "message": "docs(release): record hosted coverage evidence",
+          "timestamp": "2026-09-08T23:15:31-03:00",
+          "tree_id": "0ed87b2973b29b1f76cd7b19ac77285c9ad7d989",
+          "url": "https://github.com/Rullst/Rullst/commit/da7411a0393966af68e08221a0efe6164e1ece42"
+        },
+        "date": 1788921278619,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 479,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
