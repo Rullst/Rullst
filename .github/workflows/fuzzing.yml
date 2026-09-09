@@ -207,6 +207,7 @@ jobs:
                 --target "$FUZZ_BUILD_TARGET" "$FUZZ_TARGET" -- \
                 -max_total_time="$batch_seconds" \
                 -max_len=2048 \
+                -timeout=10 \
                 -rss_limit_mb=2048
               remaining=$((remaining - batch_seconds))
               batch=$((batch + 1))

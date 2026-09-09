@@ -120,15 +120,20 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         Data::Struct(data_struct) => match &data_struct.fields {
             Fields::Named(fields_named) => &fields_named.named,
             _ => {
-                return Err(syn::Error::new_spanned(
-                    input,
+                return Err(syn::Error::new(
+                    name.span(),
                     "Orm macro only supports structs with named fields",
                 ));
             }
         },
         _ => {
-            return Err(syn::Error::new_spanned(
-                input,
+            // Do not render the complete derive tree just to locate this
+            // diagnostic. In particular, syn's expression printer can take
+            // superlinear time on adversarial attributes attached to an enum
+            // or union. The model identifier is the precise, bounded location
+            // that the user needs to fix.
+            return Err(syn::Error::new(
+                name.span(),
                 "Orm macro can only be used on structs",
             ));
         }
