@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788888839654,
+  "lastUpdate": 1788912783728,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -10023,6 +10023,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3732,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6dca05c160ec19406b055f4df5e900d78a473b92",
+          "message": "fix(ci): enforce final release gates (#182)",
+          "timestamp": "2026-09-08T20:58:44-03:00",
+          "tree_id": "a8e3b40f2ce8f61b46449479632a17aca9b6bc6f",
+          "url": "https://github.com/Rullst/Rullst/commit/6dca05c160ec19406b055f4df5e900d78a473b92"
+        },
+        "date": 1788912783177,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 649,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 545,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1237,
+            "range": "± 63",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2855,
+            "range": "± 28",
             "unit": "ns/iter"
           }
         ]
