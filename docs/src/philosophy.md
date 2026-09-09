@@ -41,6 +41,34 @@ Rullst is not a Laravel clone, and Rust should not be forced to behave like
 PHP. The inspiration is the feeling that a complete product is within reach;
 the implementation follows Rust's strengths rather than concealing them.
 
+## Why Rullst jumps from version 5 to version 12
+
+The version jump records the history of the ecosystem rather than six hidden
+major releases of the unified framework. When Venelouis began recreating
+`creio.eu` in Rust with AI assistance, the Gemini model he was using at the
+time told him that there was no direct Rust counterpart to Laravel Socialite
+for the workflow he needed. Instead of abandoning that part of the product,
+he created the first independent Rullst crate. That project became
+`rullst-connect`, which still carries the identity and social-login mission of
+that original work.
+
+The crates initially evolved in separate repositories and at different
+speeds. By the time the umbrella Rullst framework was at version 5,
+`rullst-connect` had already reached version 11. Bringing the projects into one
+monorepo made their dependency changes, cross-crate compatibility tests, and
+coordinated releases easier to maintain. Aligning every publishable package on
+one version line was the natural next step.
+
+A clean reset to 1.0 might have described the beginning of this unified era,
+but a registry history cannot be reset that way: crates.io does not permit a
+published version to be overwritten or removed, and lower new versions would
+not erase the already published higher ones. Rullst therefore advances the
+whole ecosystem directly to version 12, monotonically beyond Connect's version
+11. From the version 12 line onward, coordinated releases can follow the usual
+Semantic Versioning sequence. The jump is thus an act of package alignment and
+honest continuity, not a claim that standalone Rullst versions 6 through 11
+were released as complete framework generations.
+
 ## Core tenets
 
 1. **Productive, not magical.** Rullst coordinates routing, data, identity,
