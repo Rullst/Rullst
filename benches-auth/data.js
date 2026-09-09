@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788917088703,
+  "lastUpdate": 1788921207810,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -10119,6 +10119,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4082,
             "range": "± 92",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "da7411a0393966af68e08221a0efe6164e1ece42",
+          "message": "docs(release): record hosted coverage evidence",
+          "timestamp": "2026-09-08T23:15:31-03:00",
+          "tree_id": "0ed87b2973b29b1f76cd7b19ac77285c9ad7d989",
+          "url": "https://github.com/Rullst/Rullst/commit/da7411a0393966af68e08221a0efe6164e1ece42"
+        },
+        "date": 1788921207260,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1054,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 856,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1933,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4625,
+            "range": "± 29",
             "unit": "ns/iter"
           }
         ]
