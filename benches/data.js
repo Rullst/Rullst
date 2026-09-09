@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788920487956,
+  "lastUpdate": 1788981416389,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -18351,6 +18351,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2319,
             "range": "± 40",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8bc6d03cd6a032b11b05304d474043d6d89ef0d2",
+          "message": "fix(orm): bound adversarial derive diagnostics\n\nMerge PR #185 after complete local preflight, hosted coverage, cross-platform CI, and focused ASan fuzz validation.",
+          "timestamp": "2026-09-09T16:10:00-03:00",
+          "tree_id": "4ec89632ce086ad1eb10ddaf28774a8a03534161",
+          "url": "https://github.com/Rullst/Rullst/commit/8bc6d03cd6a032b11b05304d474043d6d89ef0d2"
+        },
+        "date": 1788981414505,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 744,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1018,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 665,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2324,
+            "range": "± 26",
             "unit": "ns/iter"
           }
         ]
