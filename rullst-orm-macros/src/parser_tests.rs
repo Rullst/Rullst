@@ -222,6 +222,18 @@ mod tests {
         };
         assert_eq!(error.to_string(), "Orm macro can only be used on structs");
 
+        let pathological_struct = pathological_union.replacen("union n", "struct n", 1);
+        let input: DeriveInput = syn::parse_str(&pathological_struct)
+            .expect("the release-campaign struct must remain a valid derive input");
+        let error = match parse(&input) {
+            Ok(_) => panic!("models without a persisted id must not be accepted"),
+            Err(error) => error,
+        };
+        assert_eq!(
+            error.to_string(),
+            "Orm models require a persisted named `id` field"
+        );
+
         let tuple: DeriveInput = syn::parse_str("struct Tuple(i64);")
             .expect("the tuple-struct regression input must parse");
         let error = match parse(&tuple) {
