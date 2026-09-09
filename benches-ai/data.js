@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788913017075,
+  "lastUpdate": 1788917408288,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -8007,6 +8007,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 403,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "adb83c8b69703b295fd60969fdd92748edcaccdb",
+          "message": "fix(ci): tolerate bounded browser startup delay",
+          "timestamp": "2026-09-08T22:06:10-03:00",
+          "tree_id": "ef7e39ad31806945daad0484caf25a72e370e995",
+          "url": "https://github.com/Rullst/Rullst/commit/adb83c8b69703b295fd60969fdd92748edcaccdb"
+        },
+        "date": 1788917407565,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1645,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 379,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 717,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
