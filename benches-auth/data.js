@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788921207810,
+  "lastUpdate": 1788982140313,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -10167,6 +10167,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4625,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8bc6d03cd6a032b11b05304d474043d6d89ef0d2",
+          "message": "fix(orm): bound adversarial derive diagnostics\n\nMerge PR #185 after complete local preflight, hosted coverage, cross-platform CI, and focused ASan fuzz validation.",
+          "timestamp": "2026-09-09T16:10:00-03:00",
+          "tree_id": "4ec89632ce086ad1eb10ddaf28774a8a03534161",
+          "url": "https://github.com/Rullst/Rullst/commit/8bc6d03cd6a032b11b05304d474043d6d89ef0d2"
+        },
+        "date": 1788982139540,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 998,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 792,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1794,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3984,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
