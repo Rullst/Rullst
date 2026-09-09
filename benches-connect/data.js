@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788912834289,
+  "lastUpdate": 1788917164156,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -6231,6 +6231,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 276,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "adb83c8b69703b295fd60969fdd92748edcaccdb",
+          "message": "fix(ci): tolerate bounded browser startup delay",
+          "timestamp": "2026-09-08T22:06:10-03:00",
+          "tree_id": "ef7e39ad31806945daad0484caf25a72e370e995",
+          "url": "https://github.com/Rullst/Rullst/commit/adb83c8b69703b295fd60969fdd92748edcaccdb"
+        },
+        "date": 1788917163428,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 548,
+            "range": "± 9",
             "unit": "ns/iter"
           }
         ]
