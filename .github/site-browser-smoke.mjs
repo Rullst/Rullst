@@ -52,11 +52,18 @@ const chrome = spawn(process.env.CHROME_BIN || "google-chrome", [
   "--disable-dev-shm-usage", "--remote-debugging-port=0",
   `--user-data-dir=${profile}`, "about:blank",
 ], { stdio: ["ignore", "ignore", "pipe"] });
+// Hosted runners can spend more than 15 seconds starting Chromium while other
+// release jobs contend for CPU and I/O. Keep navigation/CDP assertions strict,
+// but give the one-time browser bootstrap a bounded, runner-safe window.
+const chromeStartupTimeoutMs = 45_000;
 let socket;
 try {
   const endpoint = await new Promise((accept, reject) => {
     let stderr = "";
-    const timeout = setTimeout(() => reject(new Error(`Chrome startup timed out: ${stderr}`)), 15000);
+    const timeout = setTimeout(
+      () => reject(new Error(`Chrome startup timed out after ${chromeStartupTimeoutMs}ms: ${stderr}`)),
+      chromeStartupTimeoutMs,
+    );
     chrome.once("error", (error) => { clearTimeout(timeout); reject(error); });
     chrome.once("exit", (code) => { clearTimeout(timeout); reject(new Error(`Chrome exited ${code}: ${stderr}`)); });
     chrome.stderr.on("data", (chunk) => {
