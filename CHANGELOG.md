@@ -133,6 +133,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   reject unresolved or silently changed dependency graphs before accepting
   their evidence. The daily Cargo Audit gate scans the root plus all ten fuzz
   locks from one advisory-database fetch.
+- The first complete 40-target RC fuzz campaign and its focused follow-up
+  exposed compile-time denial-of-service paths in ORM derive rejection: model-
+  wide diagnostics made `syn::Error::new_spanned` render a pathological but
+  parseable syntax tree. Those diagnostics now point at bounded model or
+  relation identifiers, regression corpus seeds retain both discovered shapes,
+  and the parser campaign enforces a ten-second per-input ceiling in addition
+  to its existing 2 KiB input and 2 GiB RSS limits.
 - Restored the project's `🌐🦀📜 Rullst 📜🦀🌐` README identity and its broader
   “Intelligent, Security-Conscious, and Designed for Effortless Productivity —
   Because With Rullst, We Rule!” design intent across repository and

@@ -1,7 +1,5 @@
 error: Orm macro can only be used on structs
- --> tests/ui/orm_on_enum.rs:4:1
+ --> tests/ui/orm_on_enum.rs:4:6
   |
-4 | / enum Account {
-5 | |     Free,
-6 | | }
-  | |_^
+4 | enum Account {
+  |      ^^^^^^^

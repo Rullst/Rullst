@@ -47,7 +47,7 @@ of its provisional grade.
 | Crate / surface | Review scope | Current status |
 | --- | --- | --- |
 | `rullst-orm` | Projection identifiers, empty-set predicates, tenant/global scopes, transactions, policy mutations, nested queries and search | Reproduced isolation/transaction defects corrected; focused default/strict-SQLite/Redis regressions and the final all-feature workspace gate are green; live external-backend matrices remain release evidence |
-| `rullst-orm-macros` | Generated SQL bindings, parser diagnostics, portable identifiers and scope generation | Corrected generated contracts; 41 unit tests, one smoke test and 24 compile-fail cases green |
+| `rullst-orm-macros` | Generated SQL bindings, parser diagnostics, portable identifiers and scope generation | Corrected generated contracts; 42 unit tests, one smoke test and 24 compile-fail cases green |
 | `rullst-core` | HTTP security composition, CSRF, lifecycle and development state ownership | CSRF/security composition 21 tests green; four reload tests and actual Node client behavior tests green |
 | `cargo-rullst` | Remote CLI handoff, public profile accuracy, supervised restart, generated contracts | Supervisor, dashboard, command-behavior, public-profile and materialized blueprint gates are green; snapshot launch now retries bounded transient Linux executable-busy races |
 | `rullst-auth` | JWT expiry/revocation, encrypted sessions, role guards, passkey/SQLite cancellation | Corrections green: 60 library tests and five durable JWT integrations |
@@ -89,7 +89,7 @@ and `-D warnings`.
 | AI/Mail transports | Redirects forwarded private request content; AI JSON unbounded; suppression cancellation leaked state | Pooled redirect-disabled clients, connection/request budgets, bounded native AI responses and SQLx rollback ownership; native custom endpoints remain trusted operator configuration |
 | Public DLL reload | Windows LMS loaded an independent ORM/runtime state and unsafe cross-runtime workarounds were proposed | Remove public DLL generation and use directly linked supervised restart; retained legacy loader is experimental and not a stable Rust ABI |
 | Release coverage | The earlier final-main LLVM artifact reported 78,962/87,941 lines (89.7897%) while the upload job itself stayed green; default Nexus SQLite/audit paths were omitted | Nexus is now included in the merged default-profile pass and exact 90% whole-repository and framework-library floors run before upload. PR #183's hosted artifact reported 79,349/87,941 lines (90.2298%) overall and 59,767/66,004 (90.5506%) across 435 governed framework-library files; the frozen release SHA must repeat this gate |
-| Fuzz preflight | All ten packages inherited a musl target from the statically linked `cargo-fuzz` installer and ASan rejected static libc before any harness ran | Pin GNU explicitly for build/run/corpus minimization and validate every workflow invocation; the complete 40-target hosted campaign remains required on the replacement SHA |
+| Fuzz campaign | After the GNU-target preflight correction, 39 of 40 hosted targets passed; `fuzz_parser` timed out while formatting the complete adversarial derive tree for an unsupported union diagnostic. A focused hosted follow-up then found the same unbounded rendering in the missing-ID path for a named struct | Anchor every model-wide parser diagnostic to a bounded model or relation identifier, retain both discovered shapes in the parser corpus and enforce a per-input parser timeout. Both original inputs now complete in milliseconds under ASan, and a fresh local five-minute ASan campaign completed 2,585,281 executions without a finding. A replacement focused hosted run and the complete 40-target hosted campaign remain required on the corrected SHA |
 
 The adversarial regressions use local databases, mock keys, signed synthetic
 tokens and loopback HTTP servers—not real credentials or real payment requests.
@@ -152,6 +152,9 @@ operating systems before considering a different architecture.
   every generated blueprint are already green.
 - Review CI/dependency/security alerts and run the applicable manual release
   matrices on the actual candidate commit.
+- Repeat the complete 40-target hosted fuzz campaign after the bounded parser
+  diagnostic correction; the first campaign is evidence for 39 targets, not a
+  pass that can be carried onto the replacement commit.
 - Repeat package/preflight, site/browser and documentation checks on that
   candidate.
 - Reassess quality/readiness using these results; do not carry forward 91.8%

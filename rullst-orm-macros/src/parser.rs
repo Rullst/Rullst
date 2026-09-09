@@ -120,15 +120,20 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         Data::Struct(data_struct) => match &data_struct.fields {
             Fields::Named(fields_named) => &fields_named.named,
             _ => {
-                return Err(syn::Error::new_spanned(
-                    input,
+                return Err(syn::Error::new(
+                    name.span(),
                     "Orm macro only supports structs with named fields",
                 ));
             }
         },
         _ => {
-            return Err(syn::Error::new_spanned(
-                input,
+            // Do not render the complete derive tree just to locate this
+            // diagnostic. In particular, syn's expression printer can take
+            // superlinear time on adversarial attributes attached to an enum
+            // or union. The model identifier is the precise, bounded location
+            // that the user needs to fix.
+            return Err(syn::Error::new(
+                name.span(),
                 "Orm macro can only be used on structs",
             ));
         }
@@ -254,8 +259,8 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
             .zip(normal_fields_types.iter())
             .find(|(field, _)| *field == model_attributes.tenant_column.as_str())
         else {
-            return Err(syn::Error::new_spanned(
-                input,
+            return Err(syn::Error::new(
+                name.span(),
                 format!(
                     "tenant_column `{}` must name a persisted field on the model",
                     model_attributes.tenant_column
@@ -282,8 +287,8 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     }
 
     if !normal_fields.iter().any(|field| field == "id") {
-        return Err(syn::Error::new_spanned(
-            input,
+        return Err(syn::Error::new(
+            name.span(),
             "Orm models require a persisted named `id` field",
         ));
     }
@@ -291,8 +296,8 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     if let Some(config) = model_attributes.soft_delete.as_ref()
         && !normal_fields.iter().any(|field| field == &config.column)
     {
-        return Err(syn::Error::new_spanned(
-            input,
+        return Err(syn::Error::new(
+            name.span(),
             format!(
                 "soft_delete column `{}` must name a persisted field on the model",
                 config.column
@@ -303,8 +308,8 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     if let Some((_, target)) = embedding_for.as_ref()
         && !normal_fields.iter().any(|field| field == target)
     {
-        return Err(syn::Error::new_spanned(
-            input,
+        return Err(syn::Error::new(
+            name.span(),
             format!("embedding_for target `{target}` must name a persisted field on the model"),
         ));
     }
@@ -315,8 +320,8 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
             "morph_many" | "morph_one" | "morph_to"
         ) && relation.morph_name.is_empty()
         {
-            return Err(syn::Error::new_spanned(
-                input,
+            return Err(syn::Error::new(
+                relation.field_name.span(),
                 format!(
                     "polymorphic relation `{}` requires `morph_name = \"...\"` (the legacy alias `name` is also accepted)",
                     relation.field_name
@@ -343,8 +348,8 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         };
 
         let Some(morph_id_type) = persisted_type(&morph_id_column) else {
-            return Err(syn::Error::new_spanned(
-                input,
+            return Err(syn::Error::new(
+                relation.field_name.span(),
                 format!(
                     "morph_to relation `{}` requires persisted id field `{}`",
                     relation.field_name, morph_id_column
@@ -370,8 +375,8 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         }
 
         let Some(morph_type_type) = persisted_type(&morph_type_column) else {
-            return Err(syn::Error::new_spanned(
-                input,
+            return Err(syn::Error::new(
+                relation.field_name.span(),
                 format!(
                     "morph_to relation `{}` requires persisted discriminator field `{}`",
                     relation.field_name, morph_type_column
