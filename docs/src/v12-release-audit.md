@@ -88,7 +88,7 @@ and `-D warnings`.
 | Capital receipts/webhooks | Incomplete authenticated payloads inferred active/paid; charge identity insufficiently bound; Polar/MP body-only signatures did not represent their protocols | Validate required event/status/charge bindings; bounded Polar header-based Standard Webhooks verification; incompatible legacy live signature paths fail closed, including MP until its full provider verification is implemented |
 | AI/Mail transports | Redirects forwarded private request content; AI JSON unbounded; suppression cancellation leaked state | Pooled redirect-disabled clients, connection/request budgets, bounded native AI responses and SQLx rollback ownership; native custom endpoints remain trusted operator configuration |
 | Public DLL reload | Windows LMS loaded an independent ORM/runtime state and unsafe cross-runtime workarounds were proposed | Remove public DLL generation and use directly linked supervised restart; retained legacy loader is experimental and not a stable Rust ABI |
-| Release coverage | The final-main LLVM artifact reported 78,962/87,941 lines (89.7897%) while the upload job itself stayed green; default Nexus SQLite/audit paths were omitted | Include Nexus in the merged default-profile pass and independently enforce exact 90% whole-repository and framework-library floors before upload; the replacement SHA still needs hosted measurement |
+| Release coverage | The earlier final-main LLVM artifact reported 78,962/87,941 lines (89.7897%) while the upload job itself stayed green; default Nexus SQLite/audit paths were omitted | Nexus is now included in the merged default-profile pass and exact 90% whole-repository and framework-library floors run before upload. PR #183's hosted artifact reported 79,349/87,941 lines (90.2298%) overall and 59,767/66,004 (90.5506%) across 435 governed framework-library files; the frozen release SHA must repeat this gate |
 | Fuzz preflight | All ten packages inherited a musl target from the statically linked `cargo-fuzz` installer and ASan rejected static libc before any harness ran | Pin GNU explicitly for build/run/corpus minimization and validate every workflow invocation; the complete 40-target hosted campaign remains required on the replacement SHA |
 
 The adversarial regressions use local databases, mock keys, signed synthetic
@@ -188,7 +188,9 @@ and be documented as unsupported; mock success is not live-provider evidence.
 ## Repeatable focused verification receipts
 
 These focused commands and the final local preflight succeeded during the
-September 5–6 correction batch:
+September 5–6 correction batch. The September 8 PR #183 tree, merged as
+`adb83c8b`, independently repeated `cargo test --workspace --all-features`,
+strict all-feature workspace Clippy, formatting and diff checks successfully:
 
 ```bash
 CARGO_BUILD_JOBS=1 cargo test -p cargo-rullst --lib -- --test-threads=1
