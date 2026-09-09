@@ -1119,6 +1119,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   no-JavaScript fallbacks. The dedication now appears once in the footer, and
   the browser smoke gate verifies both progressive animation paths without
   adding analytics, remote resources, cookies or browser storage.
+- The real-Chromium documentation gate keeps its navigation and CDP assertions
+  strict while allowing a bounded 45-second one-time startup window. This
+  prevents a loaded hosted runner from being mislabeled as a site regression
+  merely because DevTools initialization exceeded the former 15-second limit.
 - The release audit now points to the authoritative scorecard and records the
   conditional 94/A repository assessment without presenting it as release
   approval, feature completeness, certification or independent review.
