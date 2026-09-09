@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788982215198,
+  "lastUpdate": 1788992548205,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -6321,6 +6321,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 530,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "36411ea135d4d3e96c03b14ed4421761adac6787",
+          "message": "perf(ci): parallelize coverage test execution",
+          "timestamp": "2026-09-09T19:06:02-03:00",
+          "tree_id": "6e05e9fe27ed5dc6ab4e7dd2593b80659111d8b5",
+          "url": "https://github.com/Rullst/Rullst/commit/36411ea135d4d3e96c03b14ed4421761adac6787"
+        },
+        "date": 1788992547810,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 370,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
