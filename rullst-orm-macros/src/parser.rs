@@ -4,7 +4,7 @@ mod attributes;
 use attributes::{FieldAttributes, ModelAttributes};
 #[cfg(test)]
 use attributes::{split_top_level, strip_outer_call, validate_relation_attribute};
-use syn::{Data, DeriveInput, Fields, spanned::Spanned};
+use syn::{Data, DeriveInput, Fields};
 
 pub struct ParsedModel {
     pub name: syn::Ident,
@@ -164,23 +164,24 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
             Some(ident) => ident.clone(),
             None => continue, // Skip fields without identifiers
         };
+        let field_span = field_name.span();
         let field_name_str = field_name.to_string();
         if field_name_str == "deleted_at" {
             has_soft_deletes = true;
             detected_soft_delete_column = Some(field_name_str.clone());
         }
 
-        let field_attributes = FieldAttributes::parse(field)?;
+        let field_attributes = FieldAttributes::parse(field, field_span)?;
         if field_attributes.is_encrypted {
             if field_attributes.is_relation() || field_attributes.is_skipped {
                 return Err(syn::Error::new(
-                    field.span(),
+                    field_span,
                     "#[orm(encrypted)] cannot be combined with relation or skipped fields",
                 ));
             }
             let kind = encrypted_field_kind(&field.ty).ok_or_else(|| {
                 syn::Error::new(
-                    field.ty.span(),
+                    field_span,
                     "#[orm(encrypted)] supports only String and Option<String> fields",
                 )
             })?;
@@ -195,7 +196,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         if let Some(target) = field_attributes.embedding_for.clone() {
             if embedding_for.is_some() {
                 return Err(syn::Error::new(
-                    field.span(),
+                    field_span,
                     "only one persisted field may declare #[orm(embedding_for = \"...\")]",
                 ));
             }
@@ -214,7 +215,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
                 || lower_name.contains("api_key")
             {
                 return Err(syn::Error::new(
-                    field.span(),
+                    field_span,
                     format!(
                         "Sensitive field `{}` must be explicitly marked with `#[orm(masked)]` when `#[orm(auditable)]` is enabled.",
                         field_name_str
@@ -244,7 +245,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
                 hidden_fields.push(field_name);
             }
         } else {
-            attributes::validate_sql_identifier(&field_name_str, "column name", field.span())?;
+            attributes::validate_sql_identifier(&field_name_str, "column name", field_span)?;
             normal_fields.push(field_name.clone());
             normal_fields_types.push(field.ty.clone());
             if field_attributes.is_hidden {
@@ -254,7 +255,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     }
 
     if !model_attributes.tenant_column.is_empty() {
-        let Some((_, tenant_type)) = normal_fields
+        let Some((tenant_field, tenant_type)) = normal_fields
             .iter()
             .zip(normal_fields_types.iter())
             .find(|(field, _)| *field == model_attributes.tenant_column.as_str())
@@ -279,8 +280,8 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
             _ => false,
         };
         if !supported {
-            return Err(syn::Error::new_spanned(
-                tenant_type,
+            return Err(syn::Error::new(
+                tenant_field.span(),
                 "tenant_column supports String, i32, f64, or bool so it can be bound without lossy conversion",
             ));
         }
@@ -339,15 +340,14 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
             relation.foreign_key.clone()
         };
         let morph_type_column = format!("{}_type", relation.morph_name);
-        let persisted_type = |column: &str| {
+        let persisted_field = |column: &str| {
             normal_fields
                 .iter()
                 .zip(normal_fields_types.iter())
                 .find(|(field, _)| *field == column)
-                .map(|(_, field_type)| field_type)
         };
 
-        let Some(morph_id_type) = persisted_type(&morph_id_column) else {
+        let Some((morph_id_field, morph_id_type)) = persisted_field(&morph_id_column) else {
             return Err(syn::Error::new(
                 relation.field_name.span(),
                 format!(
@@ -368,13 +368,13 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
             _ => false,
         };
         if !id_is_bindable {
-            return Err(syn::Error::new_spanned(
-                morph_id_type,
+            return Err(syn::Error::new(
+                morph_id_field.span(),
                 "morph_to id fields support String, i32, f64, or bool so they can be bound without lossy conversion",
             ));
         }
 
-        let Some(morph_type_type) = persisted_type(&morph_type_column) else {
+        let Some((morph_type_field, morph_type_type)) = persisted_field(&morph_type_column) else {
             return Err(syn::Error::new(
                 relation.field_name.span(),
                 format!(
@@ -392,8 +392,8 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
             _ => false,
         };
         if !discriminator_is_string {
-            return Err(syn::Error::new_spanned(
-                morph_type_type,
+            return Err(syn::Error::new(
+                morph_type_field.span(),
                 "morph_to discriminator fields must use String",
             ));
         }
