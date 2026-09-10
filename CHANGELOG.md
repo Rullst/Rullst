@@ -141,9 +141,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   seeds retain all three discovered shapes, and the parser campaign enforces a
   ten-second per-input ceiling in addition to its existing 2 KiB input and 2
   GiB RSS limits. The latest exact ASan reproducer fell from a repeatable
-  timeout (about 12.1 seconds) to about 30 milliseconds locally; final evidence
-  still requires the hosted campaign on the frozen candidate SHA. A fresh
-  five-minute ASan campaign then completed 1,740,804 executions with no finding.
+  timeout (about 12.1 seconds) to about 30 milliseconds locally. A fresh
+  five-minute local ASan campaign completed 1,740,804 executions with no
+  finding, and hosted diagnostic run 34495340300 completed another 1,541,970
+  executions in 301 seconds on `40c1b083`. The complete 40-target hosted
+  campaign still remains required on the frozen candidate SHA.
 - Restored the project's `🌐🦀📜 Rullst 📜🦀🌐` README identity and its broader
   “Intelligent, Security-Conscious, and Designed for Effortless Productivity —
   Because With Rullst, We Rule!” design intent across repository and
