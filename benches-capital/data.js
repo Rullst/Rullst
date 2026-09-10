@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788992824748,
+  "lastUpdate": 1789063126569,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -7130,6 +7130,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "8f0b4c58e99269c6a4aaba49d55762602e60ee8d",
+          "message": "test(orm): cover invalid polymorphic id type",
+          "timestamp": "2026-09-10T14:36:57-03:00",
+          "tree_id": "1aa13bdcc8bdeb42d88f96398ef0c01aa987b536",
+          "url": "https://github.com/Rullst/Rullst/commit/8f0b4c58e99269c6a4aaba49d55762602e60ee8d"
+        },
+        "date": 1789063125876,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 15,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 4,
             "range": "± 0",
             "unit": "ns/iter"
           }
