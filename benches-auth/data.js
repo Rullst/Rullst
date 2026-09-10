@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788992495600,
+  "lastUpdate": 1789062783447,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -10263,6 +10263,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3704,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "8f0b4c58e99269c6a4aaba49d55762602e60ee8d",
+          "message": "test(orm): cover invalid polymorphic id type",
+          "timestamp": "2026-09-10T14:36:57-03:00",
+          "tree_id": "1aa13bdcc8bdeb42d88f96398ef0c01aa987b536",
+          "url": "https://github.com/Rullst/Rullst/commit/8f0b4c58e99269c6a4aaba49d55762602e60ee8d"
+        },
+        "date": 1789062782788,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 719,
+            "range": "± 51",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 593,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1334,
+            "range": "± 95",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1727,
+            "range": "± 124",
             "unit": "ns/iter"
           }
         ]
