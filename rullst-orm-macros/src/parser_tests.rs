@@ -247,6 +247,27 @@ mod tests {
     }
 
     #[test]
+    fn rejects_missing_id_without_rendering_a_pathological_field() {
+        // The v12 release fuzz campaign found a valid derive input whose field
+        // type took more than ten seconds to render through `Field::span()`.
+        // The same checked-in corpus seed must reach the bounded model-name
+        // diagnostic without converting the complete field back into tokens.
+        let source = include_str!(
+            "../../rullst-orm/fuzz/corpus/fuzz_parser/pathological_field_span"
+        );
+        let input: DeriveInput = syn::parse_str(source)
+            .expect("the release-campaign field input must remain a valid derive input");
+        let error = match parse(&input) {
+            Ok(_) => panic!("models without a persisted id must not be accepted"),
+            Err(error) => error,
+        };
+        assert_eq!(
+            error.to_string(),
+            "Orm models require a persisted named `id` field"
+        );
+    }
+
+    #[test]
     fn tenant_column_must_reference_a_supported_persisted_field() {
         use syn::parse_quote;
 

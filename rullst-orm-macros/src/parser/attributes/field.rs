@@ -1,5 +1,6 @@
 use super::common::*;
 use crate::parser::ParsedRelation;
+use proc_macro2::Span;
 use std::collections::HashSet;
 use syn::meta::ParseNestedMeta;
 use syn::{Field, spanned::Spanned};
@@ -22,7 +23,7 @@ pub(in crate::parser) struct FieldAttributes {
 }
 
 impl FieldAttributes {
-    pub fn parse(field: &Field) -> Result<Self, syn::Error> {
+    pub fn parse(field: &Field, diagnostic_span: Span) -> Result<Self, syn::Error> {
         let mut parsed = Self::default();
         let mut seen = HashSet::new();
         for attribute in field.attrs.iter().filter(|attribute| {
@@ -34,7 +35,11 @@ impl FieldAttributes {
                 attribute.parse_nested_meta(|meta| parsed.apply_sqlx(meta, &mut seen))?;
             }
         }
-        parsed.validate(&seen, field.span())?;
+        // `syn::spanned::Spanned::span` renders a complete `Field` through
+        // `ToTokens`. Expression-like associated type bindings can make that
+        // rendering superlinear, so diagnostics stay anchored to the bounded
+        // field identifier supplied by the model parser.
+        parsed.validate(&seen, diagnostic_span)?;
         Ok(parsed)
     }
 

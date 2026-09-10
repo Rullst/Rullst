@@ -133,13 +133,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   reject unresolved or silently changed dependency graphs before accepting
   their evidence. The daily Cargo Audit gate scans the root plus all ten fuzz
   locks from one advisory-database fetch.
-- The first complete 40-target RC fuzz campaign and its focused follow-up
-  exposed compile-time denial-of-service paths in ORM derive rejection: model-
-  wide diagnostics made `syn::Error::new_spanned` render a pathological but
-  parseable syntax tree. Those diagnostics now point at bounded model or
-  relation identifiers, regression corpus seeds retain both discovered shapes,
-  and the parser campaign enforces a ten-second per-input ceiling in addition
-  to its existing 2 KiB input and 2 GiB RSS limits.
+- The complete 40-target RC fuzz campaigns and focused follow-ups exposed
+  compile-time denial-of-service paths in ORM derive rejection: model-wide
+  `syn::Error::new_spanned` diagnostics and an unconditional `Field::span()`
+  validation rendered pathological but parseable syntax trees. Diagnostics now
+  point at bounded model, relation or field identifiers, regression corpus
+  seeds retain all three discovered shapes, and the parser campaign enforces a
+  ten-second per-input ceiling in addition to its existing 2 KiB input and 2
+  GiB RSS limits. The latest exact ASan reproducer fell from a repeatable
+  timeout (about 12.1 seconds) to about 30 milliseconds locally; final evidence
+  still requires the hosted campaign on the frozen candidate SHA. A fresh
+  five-minute ASan campaign then completed 1,740,804 executions with no finding.
 - Restored the project's `🌐🦀📜 Rullst 📜🦀🌐` README identity and its broader
   “Intelligent, Security-Conscious, and Designed for Effortless Productivity —
   Because With Rullst, We Rule!” design intent across repository and
