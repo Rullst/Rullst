@@ -137,6 +137,21 @@ mod tests {
     fn morph_to_requires_persisted_id_and_string_discriminator() {
         use syn::parse_quote;
 
+        let invalid_id: DeriveInput = parse_quote! {
+            struct Comment {
+                id: i32,
+                commentable_id: Vec<i32>,
+                commentable_type: String,
+                #[orm(morph_to = "Post", morph_name = "commentable")]
+                post: Option<Post>,
+            }
+        };
+        let error = match parse(&invalid_id) {
+            Ok(_) => panic!("an unsupported polymorphic id type must fail"),
+            Err(error) => error,
+        };
+        assert!(error.to_string().contains("id fields support"));
+
         let missing_discriminator: DeriveInput = parse_quote! {
             struct Comment {
                 id: i32,
