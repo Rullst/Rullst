@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788992746944,
+  "lastUpdate": 1789063050062,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -8199,6 +8199,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 561,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "8f0b4c58e99269c6a4aaba49d55762602e60ee8d",
+          "message": "test(orm): cover invalid polymorphic id type",
+          "timestamp": "2026-09-10T14:36:57-03:00",
+          "tree_id": "1aa13bdcc8bdeb42d88f96398ef0c01aa987b536",
+          "url": "https://github.com/Rullst/Rullst/commit/8f0b4c58e99269c6a4aaba49d55762602e60ee8d"
+        },
+        "date": 1789063049428,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1090,
+            "range": "± 58",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 229,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 502,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
