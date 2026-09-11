@@ -40,6 +40,7 @@ jobs:
       matrix: ${{ steps.plan.outputs.matrix }}
       mode: ${{ steps.plan.outputs.mode }}
       file: ${{ steps.plan.outputs.file }}
+      shard_count: ${{ steps.plan.outputs.shard_count }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -57,7 +58,14 @@ jobs:
                 echo "Full mode covers the workspace; leave file empty." >&2
                 exit 2
               fi
-              matrix='{"include":[{"index":0,"count":16},{"index":1,"count":16},{"index":2,"count":16},{"index":3,"count":16},{"index":4,"count":16},{"index":5,"count":16},{"index":6,"count":16},{"index":7,"count":16},{"index":8,"count":16},{"index":9,"count":16},{"index":10,"count":16},{"index":11,"count":16},{"index":12,"count":16},{"index":13,"count":16},{"index":14,"count":16},{"index":15,"count":16}]}'
+              # The measured v12 inventory contains 14,380 mutants. A 16-way
+              # split left the slowest CLI/ORM jobs with projected runtimes of
+              # 11-17 hours, beyond the existing 5h30 infrastructure bound.
+              # Eighty shards retain the exact inventory while bounding each
+              # job to at most about 180 candidates.
+              shard_count=80
+              matrix=$(jq -cn --argjson count "$shard_count" \
+                '{include: [range(0; $count) | {index: ., count: $count}]}')
               ;;
             targeted)
               if [[ ! "$MUTATION_FILE" =~ ^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*\.rs$ \
@@ -72,6 +80,7 @@ jobs:
                 echo "Targeted mutation path must be tracked by Git." >&2
                 exit 2
               fi
+              shard_count=1
               matrix='{"include":[{"index":0,"count":1}]}'
               ;;
             *)
@@ -84,6 +93,7 @@ jobs:
             echo "matrix=$matrix"
             echo "mode=$MUTATION_MODE"
             echo "file=$MUTATION_FILE"
+            echo "shard_count=$shard_count"
           } >> "$GITHUB_OUTPUT"
 
   mutants:
@@ -125,10 +135,8 @@ jobs:
         run: cargo fetch --locked
 
       - name: Run mutants shard on whole workspace
-        # We test the entire workspace, divided in 16 shards. The former
-        # eight-way matrix produced one 5h30 job-level timeout on the full v12
-        # workspace, so the finer split keeps every result and artifact within
-        # the existing bounded runner budget.
+        # We test the same entire workspace inventory in smaller shards so each
+        # result and artifact stays within the bounded runner budget.
         # Exit 2 (missed) and 3 (timed out) are valid informational findings.
         # Baseline/usage/internal failures remain real workflow failures.
         shell: bash
@@ -179,6 +187,7 @@ jobs:
           MUTATION_MODE: ${{ needs.plan.outputs.mode }}
           MATRIX_RESULT: ${{ needs.mutants.result }}
           MUTATION_FILE: ${{ needs.plan.outputs.file }}
+          SHARD_COUNT: ${{ needs.plan.outputs.shard_count }}
         run: |
           {
             echo "## Mutation testing"
@@ -187,7 +196,7 @@ jobs:
             if [ "$MUTATION_MODE" = "targeted" ]; then
               echo "Targeted file: \`$MUTATION_FILE\`. This is correction feedback, not a full-workspace campaign."
             else
-              echo "The complete workspace was partitioned into 16 shards. Missed and timed-out mutants remain informational findings in the artifacts."
+              echo "The complete workspace was partitioned into $SHARD_COUNT shards. Missed and timed-out mutants remain informational findings in the artifacts."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
