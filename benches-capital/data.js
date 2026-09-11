@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789149072979,
+  "lastUpdate": 1789156071116,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -7250,6 +7250,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_past_due",
             "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7697fb8a7cfd692799fba5dad59d5c7b167d4015",
+          "message": "Merge pull request #191 from Rullst/fix/dev-migration-spawn-retry\n\nfix(cli): retry transiently busy migrations",
+          "timestamp": "2026-09-11T16:22:42-03:00",
+          "tree_id": "87de49b6db2fafe3611de1a30e32469b1540fedc",
+          "url": "https://github.com/Rullst/Rullst/commit/7697fb8a7cfd692799fba5dad59d5c7b167d4015"
+        },
+        "date": 1789156070508,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 15,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 17,
             "range": "± 0",
             "unit": "ns/iter"
           },
