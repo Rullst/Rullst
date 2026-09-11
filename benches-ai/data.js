@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789063050062,
+  "lastUpdate": 1789130818825,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -8247,6 +8247,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 502,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "99b407b83bd69898c95cc77c3d073de20b303964",
+          "message": "fix(ci): prefetch locked mutation dependencies",
+          "timestamp": "2026-09-11T09:22:45-03:00",
+          "tree_id": "4a90a351b2fb32f5e32a29487dcda77e0367358b",
+          "url": "https://github.com/Rullst/Rullst/commit/99b407b83bd69898c95cc77c3d073de20b303964"
+        },
+        "date": 1789130818383,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1668,
+            "range": "± 53",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 387,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 749,
+            "range": "± 36",
             "unit": "ns/iter"
           }
         ]
