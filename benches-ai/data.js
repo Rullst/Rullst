@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789148986684,
+  "lastUpdate": 1789155986450,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -8343,6 +8343,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 615,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7697fb8a7cfd692799fba5dad59d5c7b167d4015",
+          "message": "Merge pull request #191 from Rullst/fix/dev-migration-spawn-retry\n\nfix(cli): retry transiently busy migrations",
+          "timestamp": "2026-09-11T16:22:42-03:00",
+          "tree_id": "87de49b6db2fafe3611de1a30e32469b1540fedc",
+          "url": "https://github.com/Rullst/Rullst/commit/7697fb8a7cfd692799fba5dad59d5c7b167d4015"
+        },
+        "date": 1789155985784,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1284,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 258,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 633,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
