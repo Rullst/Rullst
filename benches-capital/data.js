@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789130907858,
+  "lastUpdate": 1789149072979,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -7214,6 +7214,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7daafcd6e3145aa2ad1219f792ed21c7151cc08e",
+          "message": "Merge pull request #190 from Rullst/fix/db-command-failure-evidence\n\ntest(cli): cover failed database command forwarding",
+          "timestamp": "2026-09-11T14:27:24-03:00",
+          "tree_id": "5a39074374624955e96c47712bb1c3d8cfe73402",
+          "url": "https://github.com/Rullst/Rullst/commit/7daafcd6e3145aa2ad1219f792ed21c7151cc08e"
+        },
+        "date": 1789149072190,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
