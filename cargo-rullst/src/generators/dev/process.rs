@@ -100,7 +100,7 @@ impl Application {
         }
         let mut command = tokio::process::Command::from(command);
         command.kill_on_drop(true);
-        let mut migration = BuildChild::new(command.spawn()?)?;
+        let mut migration = BuildChild::new(spawn_snapshot_async(&mut command).await?)?;
         if dashboard {
             // Forward using bounded asynchronous reads; no unbounded output() capture.
             let stdout = migration
@@ -230,6 +230,26 @@ fn spawn_snapshot(command: &mut Command) -> io::Result<Child> {
             {
                 let delay_ms = 10_u64 << retries;
                 std::thread::sleep(Duration::from_millis(delay_ms));
+                retries += 1;
+            }
+            Err(error) => return Err(error),
+        }
+    }
+}
+
+async fn spawn_snapshot_async(
+    command: &mut tokio::process::Command,
+) -> io::Result<tokio::process::Child> {
+    let mut retries = 0_u32;
+    loop {
+        match command.spawn() {
+            Ok(child) => return Ok(child),
+            Err(error)
+                if error.kind() == io::ErrorKind::ExecutableFileBusy
+                    && retries < SNAPSHOT_SPAWN_RETRIES =>
+            {
+                let delay_ms = 10_u64 << retries;
+                tokio::time::sleep(Duration::from_millis(delay_ms)).await;
                 retries += 1;
             }
             Err(error) => return Err(error),
