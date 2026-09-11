@@ -441,6 +441,29 @@ fn database_forwarding_and_complete_project_packaging_use_controlled_cargo() {
 
 #[cfg(unix)]
 #[test]
+fn database_forwarding_preserves_a_failed_cargo_status() {
+    let project = Project::new();
+    let tools = project.install_failing_cargo();
+    let output = project.run_with_path(&["db:migrate"], Some(&tools));
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    assert_eq!(
+        output.status.code(),
+        Some(17),
+        "the database wrapper must preserve the controlled child failure: {text}"
+    );
+    assert!(
+        text.contains("Failed to execute db command: db:migrate"),
+        "the failed operation must remain actionable: {text}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
 fn wasm_client_pipeline_uses_reviewable_tool_outputs() {
     let project = Project::new();
     let tools = project.install_wasm_tools();
