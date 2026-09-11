@@ -40,11 +40,17 @@ make_shard "$valid_root/shard-0" \
 make_shard "$valid_root/shard-1" \
   '["crate/src/b.rs: third"]' \
   '["Timeout"]'
+jq -n '[
+  {name: "crate/src/a.rs: first"},
+  {name: "crate/src/a.rs: second"},
+  {name: "crate/src/b.rs: third"}
+]' >"$fixture_root/reviewed-inventory.json"
 
 MUTATION_SUMMARY_JSON="$fixture_root/valid.json" \
 MUTATION_SUMMARY_MARKDOWN="$fixture_root/valid.md" \
   bash .github/summarize-mutation-artifacts.sh \
-    "$valid_root" full 2 3 27.1.0 >/dev/null
+    "$valid_root" full 2 3 27.1.0 \
+    "$fixture_root/reviewed-inventory.json" >/dev/null
 jq -e '
   .mode == "full" and
   .shards == 2 and
@@ -56,6 +62,20 @@ jq -e '
   .unviable == 0 and
   .conservative_caught_percent == 33.33
 ' "$fixture_root/valid.json" >/dev/null
+
+jq -n '[
+  {name: "crate/src/a.rs: first"},
+  {name: "crate/src/a.rs: second"},
+  {name: "crate/src/b.rs: unexpected"}
+]' >"$fixture_root/mismatched-inventory.json"
+if MUTATION_SUMMARY_JSON="$fixture_root/mismatch.json" \
+  MUTATION_SUMMARY_MARKDOWN="$fixture_root/mismatch.md" \
+  bash .github/summarize-mutation-artifacts.sh \
+    "$valid_root" full 2 3 27.1.0 \
+    "$fixture_root/mismatched-inventory.json" >/dev/null 2>&1; then
+  echo "Mismatched reviewed inventory was accepted." >&2
+  exit 1
+fi
 
 if MUTATION_SUMMARY_JSON="$fixture_root/drift.json" \
   MUTATION_SUMMARY_MARKDOWN="$fixture_root/drift.md" \

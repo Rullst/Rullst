@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "$#" -lt 3 || "$#" -gt 5 ]]; then
-  echo "usage: $0 <artifact-root> <full|targeted> <expected-shards> [expected-inventory] [expected-version]" >&2
+if [[ "$#" -lt 3 || "$#" -gt 6 ]]; then
+  echo "usage: $0 <artifact-root> <full|targeted> <expected-shards> [expected-inventory] [expected-version] [reviewed-inventory-json]" >&2
   exit 2
 fi
 
@@ -11,6 +11,7 @@ mode="$2"
 expected_shards="$3"
 expected_inventory="${4:-}"
 expected_version="${5:-27.1.0}"
+reviewed_inventory_json="${6:-}"
 summary_json="${MUTATION_SUMMARY_JSON:-mutation-summary.json}"
 summary_markdown="${MUTATION_SUMMARY_MARKDOWN:-mutation-summary.md}"
 
@@ -30,6 +31,18 @@ if [[ "$mode" == "full" && ! "$expected_inventory" =~ ^[1-9][0-9]*$ ]]; then
   echo "Full campaigns require a positive expected inventory." >&2
   exit 2
 fi
+if [[ -n "$reviewed_inventory_json" ]]; then
+  if [[ ! -f "$reviewed_inventory_json" ]]; then
+    echo "Reviewed mutation inventory does not exist: $reviewed_inventory_json" >&2
+    exit 2
+  fi
+  jq -e '
+    type == "array" and
+    length > 0 and
+    all(.[]; .name | type == "string" and length > 0) and
+    ([.[].name] | unique | length) == length
+  ' "$reviewed_inventory_json" >/dev/null
+fi
 
 mapfile -d '' outcome_files < <(
   find "$artifact_root" -type f -name outcomes.json -print0 | sort -z
@@ -46,8 +59,9 @@ caught_total=0
 missed_total=0
 timeout_total=0
 unviable_total=0
-mutant_names_file="$(mktemp)"
-trap 'rm -f "$mutant_names_file"' EXIT
+scratch_dir="$(mktemp -d)"
+trap 'rm -rf -- "$scratch_dir"' EXIT
+mutant_names_file="$scratch_dir/classified-names.txt"
 
 for outcomes_file in "${outcome_files[@]}"; do
   artifact_dir="$(dirname "$outcomes_file")"
@@ -121,6 +135,21 @@ fi
 if [[ "$mode" == "full" && "$planned_total" -ne "$expected_inventory" ]]; then
   echo "Full mutation inventory drifted: observed=$planned_total expected=$expected_inventory." >&2
   exit 1
+fi
+
+if [[ -n "$reviewed_inventory_json" ]]; then
+  reviewed_names_file="$scratch_dir/reviewed-names.txt"
+  classified_names_file="$scratch_dir/classified-names-sorted.txt"
+  jq -r '.[].name' "$reviewed_inventory_json" | sort >"$reviewed_names_file"
+  sort "$mutant_names_file" >"$classified_names_file"
+  if ! cmp -s "$reviewed_names_file" "$classified_names_file"; then
+    echo "Classified candidates differ from the reviewed preflight inventory." >&2
+    echo "Only in preflight inventory (first 20):" >&2
+    comm -23 "$reviewed_names_file" "$classified_names_file" | sed -n '1,20p' >&2
+    echo "Only in classified shards (first 20):" >&2
+    comm -13 "$reviewed_names_file" "$classified_names_file" | sed -n '1,20p' >&2
+    exit 1
+  fi
 fi
 
 jq -n \

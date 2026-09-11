@@ -158,8 +158,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   candidates. The earlier 16-way attempt both exceeded the slowest jobs'
   5h30 runner bound and used an invalid default-feature baseline. The hosted
   command and `.cargo/mutants.toml` now agree on `all-features`; survived and
-  timed-out mutants remain explicit informational evidence. A strict aggregate
-  rejects absent, incomplete, overlapping, version-drifted or
+  timed-out mutants remain explicit informational evidence. A cheap exact-list
+  preflight rejects inventory drift before the expensive matrix starts, and a
+  strict aggregate binds the classified candidates to that reviewed list while
+  rejecting absent, incomplete, overlapping, version-drifted or
   inventory-drifted artifacts and reports a conservative percentage without
   counting timeouts as caught. A validated tracked-production-file mode
   shortens correction feedback, while baseline, invocation and internal tool
