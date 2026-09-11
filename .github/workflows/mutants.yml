@@ -146,7 +146,9 @@ jobs:
           SHARD_INDEX: ${{ matrix.index }}
           SHARD_COUNT: ${{ matrix.count }}
         run: |
-          command=(cargo mutants --workspace --in-place)
+          # Keep the release feature surface explicit in hosted logs as well as
+          # in .cargo/mutants.toml, which applies the same policy locally.
+          command=(cargo mutants --workspace --in-place --all-features)
           if [ "$MUTATION_MODE" = "full" ]; then
             command+=(--shard "$SHARD_INDEX/$SHARD_COUNT")
           else
