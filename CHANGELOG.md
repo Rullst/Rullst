@@ -153,12 +153,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   suite rather than reducing the complete ecosystem to a web framework. The
   offline site validator now prevents the title, slogan and computed README
   workflow count from silently drifting again.
-- The manual mutation campaign now divides the workspace into sixteen shards
-  after the previous eight-way layout exhausted one job's 5h30 runner bound;
-  survived and timed-out mutants remain explicit informational evidence. A
-  validated tracked-production-file mode shortens correction feedback, while
-  baseline, invocation and internal tool failures can no longer be hidden by
-  the informational finding policy.
+- The manual mutation campaign now divides its measured 14,380-mutant
+  all-feature workspace inventory into 80 lossless shards of at most about 180
+  candidates. The earlier 16-way attempt both exceeded the slowest jobs'
+  5h30 runner bound and used an invalid default-feature baseline. The hosted
+  command and `.cargo/mutants.toml` now agree on `all-features`; survived and
+  timed-out mutants remain explicit informational evidence. A strict aggregate
+  rejects absent, incomplete, overlapping, version-drifted or
+  inventory-drifted artifacts and reports a conservative percentage without
+  counting timeouts as caught. A validated tracked-production-file mode
+  shortens correction feedback, while baseline, invocation and internal tool
+  failures can no longer be hidden by the informational finding policy.
 - Multi-platform CI now partitions the long public CLI and generated-blueprint
   contracts into eight total test shards, and deterministically fans feature
   boundaries and release-negative threat tests into four strict jobs each.
