@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789062843779,
+  "lastUpdate": 1789130578755,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -6381,6 +6381,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 312,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "99b407b83bd69898c95cc77c3d073de20b303964",
+          "message": "fix(ci): prefetch locked mutation dependencies",
+          "timestamp": "2026-09-11T09:22:45-03:00",
+          "tree_id": "4a90a351b2fb32f5e32a29487dcda77e0367358b",
+          "url": "https://github.com/Rullst/Rullst/commit/99b407b83bd69898c95cc77c3d073de20b303964"
+        },
+        "date": 1789130578293,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 548,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
