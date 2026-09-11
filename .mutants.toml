@@ -1,3 +1,8 @@
+## Match the release preflight feature surface. The umbrella crate's book
+## doctests intentionally exercise optional ecosystem crates, so testing a
+## shard's package subset with default features produces an invalid baseline.
+all_features = true
+
 [examine]
 exclude = [
     # Core façade — integration-only, covered by higher-level tests
