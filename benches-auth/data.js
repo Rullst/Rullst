@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789148695583,
+  "lastUpdate": 1789155697876,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -10407,6 +10407,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2201,
             "range": "± 32",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7697fb8a7cfd692799fba5dad59d5c7b167d4015",
+          "message": "Merge pull request #191 from Rullst/fix/dev-migration-spawn-retry\n\nfix(cli): retry transiently busy migrations",
+          "timestamp": "2026-09-11T16:22:42-03:00",
+          "tree_id": "87de49b6db2fafe3611de1a30e32469b1540fedc",
+          "url": "https://github.com/Rullst/Rullst/commit/7697fb8a7cfd692799fba5dad59d5c7b167d4015"
+        },
+        "date": 1789155697215,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 852,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 682,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1548,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2132,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
