@@ -116,6 +116,14 @@ jobs:
         with:
           tool: cargo-mutants@27.1.0
 
+      - name: Prefetch the frozen workspace dependency graph
+        # Materialized CLI tests copy the workspace lockfile and deliberately
+        # validate generated projects offline. A fresh mutation runner must
+        # therefore fetch every locked package before cargo-mutants performs
+        # its unmutated baseline; sccache contains compiler outputs, not Cargo
+        # registry sources.
+        run: cargo fetch --locked
+
       - name: Run mutants shard on whole workspace
         # We test the entire workspace, divided in 16 shards. The former
         # eight-way matrix produced one 5h30 job-level timeout on the full v12
