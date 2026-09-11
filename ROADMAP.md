@@ -102,6 +102,7 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M37** | One-click AI error-console autofix | `[~] Partial` *(worth retaining as a local, reviewable patch workflow — an autofix endpoint exists, but autonomous edits need diff preview, workspace confinement, audit, tests, and rollback)* | v13 |
 | **M38** | In-memory/local-NVMe SQLite read replicas with background synchronization | `[ ] Not implemented` *(worth vendor-specific adapters when demanded; generic “transparent replication” is not worth claiming because consistency and failover semantics belong to the selected database)* | v13 research |
 | **M39** | Optional self-hosted Rullst Gateway and load balancer | `[ ] Not implemented` *(worth a phased v13 design as a separate opt-in `rullst-gateway` crate/binary, preferably on a maintained proxy foundation such as Pingora. It should consume explicit readiness/drain signals and begin with bounded upstream selection, health checks, WebSocket forwarding and telemetry. It must not live inside `rullst-core` or claim parity with a managed global cloud service, whose network, DDoS controls, multi-zone operations and SLA are external infrastructure.)* | v13 research/foundation |
+| **M40** | Isolated programming labs and learning-game execution | `[ ] Not implemented` *(worth a phased v13 design as opt-in `rullst-labs` contracts plus a separately deployed `rullst-labs-runner`. The web process must never execute learner code or receive a container control socket. Full offensive CTF arenas require independently operated, isolated infrastructure; see the dedicated roadmap.)* | v13 research/foundation |
 
 ## Quantified planning horizon through v13
 
@@ -109,34 +110,34 @@ This second progress lens answers a different question from release readiness:
 how much of the **canonical long-term milestone programme through v13** remains
 if every milestone that is not yet `[x]` stays in scope?
 
-The snapshot below was recalculated on 4 September 2026 from M1–M39. It includes
+The snapshot below was recalculated on 11 September 2026 from M1–M40. It includes
 v12 hardening, continuous, next-SemVer, v13 and v13-research rows. M31 is excluded
 because the tracker explicitly assigns aerospace/autonomous/defence work to a
 separately governed future programme rather than the v12/v13 web framework.
 Detailed crate-roadmap checkboxes are not added again: they overlap with and
 decompose these canonical milestones, so a raw sum would double-count work.
 
-| State | Milestones | Share of the 38-milestone horizon |
+| State | Milestones | Share of the 39-milestone horizon |
 | :--- | ---: | ---: |
-| `[x]` bounded completion | **5** | **13.2%** |
-| `[~]` useful but incomplete foundation | **24** | **63.2%** |
-| `[ ]` not implemented | **9** | **23.7%** |
-| **Total in scope through v13** | **38** | **100%** |
+| `[x]` bounded completion | **5** | **12.8%** |
+| `[~]` useful but incomplete foundation | **24** | **61.5%** |
+| `[ ]` not implemented | **10** | **25.6%** |
+| **Total in scope through v13** | **39** | **100%** |
 
 Two calculations are intentionally retained:
 
-- **Strict closure:** 5/38 are closed, so **86.8% remains open** (33
+- **Strict closure:** 5/39 are closed, so **87.2% remains open** (34
   milestones). This is the correct answer when a partial milestone counts as
   unfinished.
-- **Weighted engineering maturity:** `(5 + 24 × 0.5) / 38` is **44.7% complete**,
-  leaving **55.3% equivalent work**. That remainder is the nine untouched
-  milestones (23.7 percentage points) plus the unfinished half of the 24
-  partial milestones (31.6 points).
+- **Weighted engineering maturity:** `(5 + 24 × 0.5) / 39` is **43.6% complete**,
+  leaving **56.4% equivalent work**. That remainder is the ten untouched
+  milestones (25.6 percentage points) plus the unfinished half of the 24
+  partial milestones (30.8 points).
 
 This is a scope/maturity indicator, not a duration estimate. Provider accounts,
 physical hardware, store acceptance, fiscal homologation, independent audits
 and research-grade cryptography cannot be completed by repository code alone.
-The 55.3% must not be added to the historical-claim campaign or the v12 release
+The 56.4% must not be added to the historical-claim campaign or the v12 release
 checklist because those lenses substantially overlap.
 
 ## AI-native vision, without absolutes

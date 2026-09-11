@@ -1,6 +1,6 @@
 # Simple capability status
 
-This is the compact view of Rullst's canonical M1–M39 programme. It is derived
+This is the compact view of Rullst's canonical M1–M40 programme. It is derived
 from the root [ROADMAP](../../ROADMAP.md); that roadmap and the
 [capability ledger](capability-ledger.md) retain the evidence and limitations.
 The labels here deliberately do not turn partial foundations into completed
@@ -133,12 +133,13 @@ workflow was homologated.
 | M37 | Reviewable one-click error-console patch workflow | 🟡 Still to implement — partial |
 | M38 | Vendor-specific SQLite replica/synchronization profile | ⏳ Still to implement — not started |
 | M39 | Optional self-hosted `rullst-gateway` load balancer | ⏳ Still to implement — separate v13 research/foundation; no managed-cloud parity claim |
+| M40 | `rullst-labs` contracts and an isolated `rullst-labs-runner` | ⏳ Still to implement — separate v13 research/foundation; full offensive CTF arenas require external isolated infrastructure |
 
-Current planning snapshot: **5 implemented, 24 partial, and 9 not started**
-inside the 38-milestone web-framework horizon. M31 is excluded because it is a
+Current planning snapshot: **5 implemented, 24 partial, and 10 not started**
+inside the 39-milestone web-framework horizon. M31 is excluded because it is a
 separately governed safety-critical programme. The weighted planning estimate
-is 44.7% complete and 55.3% remaining; this is not v12 release readiness and
-the 33 milestones without strict closure are not 33 blockers for v12.0. The
+is 43.6% complete and 56.4% remaining; this is not v12 release readiness and
+the 34 milestones without strict closure are not 34 blockers for v12.0. The
 [v12 programme](v12.md) owns release gates, while the root roadmap assigns
 confirmed v12 defects to `12.0.x` maintenance and all additive capability work,
 research or major contracts to v13.
