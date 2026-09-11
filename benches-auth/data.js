@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789062783447,
+  "lastUpdate": 1789130503139,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -10311,6 +10311,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1727,
             "range": "± 124",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "99b407b83bd69898c95cc77c3d073de20b303964",
+          "message": "fix(ci): prefetch locked mutation dependencies",
+          "timestamp": "2026-09-11T09:22:45-03:00",
+          "tree_id": "4a90a351b2fb32f5e32a29487dcda77e0367358b",
+          "url": "https://github.com/Rullst/Rullst/commit/99b407b83bd69898c95cc77c3d073de20b303964"
+        },
+        "date": 1789130502705,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1001,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 788,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1814,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4042,
+            "range": "± 15",
             "unit": "ns/iter"
           }
         ]
