@@ -5,7 +5,7 @@ is not evidence that a workflow has passed for a particular commit. A green
 claim must always point to the GitHub Actions run, commit SHA, logs, and produced
 artifacts.
 
-Last source-level review: **2026-09-08**.
+Last source-level review: **2026-09-11**.
 
 ## Status language
 
@@ -78,7 +78,7 @@ The workflows below run **only when requested manually**:
 | `fuzzing.yml` | All 40 declared libFuzzer targets from the validated shared inventory | **Required v12 RC evidence:** release mode first validates the ten package lockfiles and compiles every declared target in ten package-level preflight jobs, then every target must finish without a crash for the 5.5-hour budget; target-specific corpora are restored and saved, while failure reproducers are retained. Dependency-lock drift fails preflight, campaign and corpus jobs. The proc-macro parser uses strict processes of at most 30 minutes sharing one corpus, which bounds sanitizer RSS without weakening the total budget. A strict five-minute single-target diagnostic accelerates correction feedback but is explicitly ineligible as RC evidence. This is bounded evidence, not proof for every input. |
 | `kani.yml` | Twenty named bounded formal harnesses in ten supported runtime/library packages | **Required v12 RC evidence for the declared harnesses:** every proof has an isolated strict matrix job. Rullst itself stays on stable Rust 1.98.1 with a Rust 1.96 MSRV; only the separately built Kani verifier uses its pinned `nightly-2026-08-01` compiler (`rustc 1.99.0-nightly`) because the latest stable Kani bundle's Rust 1.93 compiler cannot compile the framework. The proc-macro-only `rullst-macros` target remains unsupported by Kani and is covered by compile-pass/fail and generated-project evidence instead. |
 | `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | **Required v12 RC evidence for the declared scopes:** every selected scope is strict. This nightly-only interpreter uses pinned `nightly-2026-08-21` (`rustc 1.100.0-nightly`); it does not change the project's stable toolchain or MSRV. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. |
-| `mutants.yml` | Sixteen mutation-testing shards and their artifacts | Informational: review survived/timed-out mutants and the measured score. A targeted mode retests one validated production Rust file after a correction; it does not replace the complete campaign. Missed/time-out exit codes remain findings, while a broken baseline, invalid invocation or cargo-mutants internal failure now fails the workflow. The finer full split replaced an eight-shard layout after a v12 campaign exhausted one job's 5h30 bound. “Pass” does not honestly mean every possible mutant was killed. |
+| `mutants.yml` | Eighty lossless shards over the measured 14,380-mutant workspace inventory, their artifacts and a strict aggregate | Informational: every shard uses the all-feature release surface; aggregation requires every planned candidate to receive exactly one classification before reporting the conservative caught percentage. A targeted mode retests one validated production Rust file after a correction; it does not replace the complete campaign. Missed/time-out exit codes remain findings, while a broken baseline, incomplete artifact set, inventory drift, invalid invocation or cargo-mutants internal failure fails the workflow. The 80-way split replaces an invalid 16-way attempt whose default-feature baseline omitted optional tests and whose slowest CLI/ORM jobs could not fit the 5h30 bound. “Pass” does not honestly mean every possible mutant was killed. |
 
 These workflows are **periodic and manually runnable**:
 
@@ -323,12 +323,18 @@ higher component result for the repository total.
   CoAP option-component classification. They do not claim that Kani verifies
   `zeroize`'s unsupported inline assembly, cryptographic implementations or the
   entire concurrent middleware implementations.
-- Mutation testing is manual, split into sixteen shards, and intentionally
-  informational while results are uploaded. Its targeted mode accepts exactly
-  one tracked production `.rs` path so a correction can be retested without
-  restarting the complete workspace campaign. Exit statuses for missed and
-  timed-out mutants remain findings; baseline, usage and internal failures do
-  not get normalized into green jobs.
+- Mutation testing is manual, split into 80 lossless shards over the measured
+  14,380-mutant inventory, and intentionally informational while results are
+  uploaded. The hosted command makes `--all-features` explicit and
+  `.cargo/mutants.toml` applies the same feature policy locally; the ignored
+  legacy root configuration and its exclusions were not silently activated.
+  Targeted mode accepts exactly one tracked production `.rs` path so a
+  correction can be retested without restarting the complete workspace
+  campaign. Exit statuses for missed and timed-out mutants remain findings;
+  baseline, usage and internal failures do not get normalized into green jobs.
+  The aggregate also fails closed when an artifact is absent, a shard is
+  incomplete or the reviewed full inventory drifts; its conservative
+  percentage never treats a timeout as caught.
 - Fuzzing and corpus maintenance pin `nightly-2026-08-21` instead of following
   a moving nightly alias. This verifier-only toolchain does not change the
   framework's stable Rust 1.98.1 toolchain or its Rust 1.96 MSRV. Before a
@@ -453,7 +459,7 @@ dependency graph make static estimates unreliable.
 | [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | manual | Blocking v12 RC scope; bounded evidence | Builds an immutable reviewed Kani snapshot with the verifier-only `nightly-2026-08-01` compiler, while Rullst stays on stable Rust 1.98.1 with a Rust 1.96 MSRV. It verifies twenty named bounded harnesses in isolated jobs across ten supported packages. Proof failures fail their matrix jobs; the proc-macro-only crate remains outside Kani's supported targets. |
 | [`machete.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/machete.yml) | main push and PR, manual | Blocking | Unused dependency scan with configured exceptions. |
 | [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | manual | Blocking v12 RC scope; bounded evidence | Pinned nightly-only Miri executes 15 named pure-Rust/default-feature scopes with randomized layouts without changing Rullst's stable toolchain or MSRV. Native FFI/syscall/network paths, the umbrella re-export facade, and the Blog example are explicit boundaries; selected-scope failures fail the workflow. |
-| [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | Sixteen pinned cargo-mutants 27.1.0 full-workspace shards or one validated production-file diagnostic, with uploaded results and compiler caching. Findings stay informational, but baseline/tool/invocation failures fail the run. |
+| [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | Eighty lossless pinned cargo-mutants 27.1.0 shards over the measured 14,380-mutant all-feature workspace inventory, or one validated production-file diagnostic, with uploaded results, compiler caching and a strict completeness aggregate. Findings stay informational, but baseline/tool/invocation failures, missing artifacts, incomplete classification and reviewed-inventory drift fail the run. |
 | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | main push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
 | [`omni-android.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-android.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh deterministic Omni shell, initializes Android and compiles an unsigned aarch64 debug APK. It does not test a physical device, Play testing, signing, privacy declarations or store acceptance. |
 | [`omni-desktop.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-desktop.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh deterministic HTTPS-backed shell and checks its Tauri crate on Linux, macOS and Windows. It does not build/sign every installer or exercise a GUI/WebView session. |
