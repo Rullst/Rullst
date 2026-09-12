@@ -1,16 +1,18 @@
 # v12 release audit follow-up
 
-Status: **in progress; RC is NO-GO while the findings and final gates below are
-open**. This report supersedes blanket readiness interpretations of the earlier
-local-ceiling campaign. That campaign and hosted coverage measurements remain
-historical evidence for their recorded commits, not proof of the current tree.
+Status: **pre-tag validation; there is no known Critical or High blocker, but
+RC remains NO-GO until the corrected candidate passes the hosted and packaging
+gates below and receives an explicit release decision**. This report supersedes
+blanket readiness interpretations of the earlier local-ceiling campaign. Each
+hosted result remains evidence for its recorded commit, not every future tree.
 
 ## Baseline and method
 
-The integration baseline is `7743bab3` on
-`fix/cli-logo-animation-speed`, including the second-computer report in
-[CLIFIX.md](../../CLIFIX.md). Its earlier “uncommitted” wording describes the
-remote review session; that delivery is now committed and fetched here.
+The latest hosted integration baseline is `7697fb8a` on `main`, including the
+second-computer report in [CLIFIX.md](../../CLIFIX.md). The final local correction
+adds fail-closed SQLite schema validation to automatic migration generation and
+repairs the mutation inventory expectation; it must receive a new immutable SHA
+and hosted receipts before tagging.
 
 Review covers every published crate. IoT receives only a light triage under the
 owner's explicit v12 exception. Each deep review traces public inputs through
@@ -49,7 +51,7 @@ of its provisional grade.
 | `rullst-orm` | Projection identifiers, empty-set predicates, tenant/global scopes, transactions, policy mutations, nested queries and search | Reproduced isolation/transaction defects corrected; focused default/strict-SQLite/Redis regressions and the final all-feature workspace gate are green; live external-backend matrices remain release evidence |
 | `rullst-orm-macros` | Generated SQL bindings, parser diagnostics, portable identifiers and scope generation | Corrected generated contracts; 43 unit tests, one smoke test and 24 compile-fail cases green |
 | `rullst-core` | HTTP security composition, CSRF, lifecycle and development state ownership | CSRF/security composition 21 tests green; four reload tests and actual Node client behavior tests green |
-| `cargo-rullst` | Remote CLI handoff, public profile accuracy, supervised restart, generated contracts | Supervisor, dashboard, command-behavior, public-profile and materialized blueprint gates are green; snapshot launch now retries bounded transient Linux executable-busy races |
+| `cargo-rullst` | Remote CLI handoff, public profile accuracy, supervised restart, generated contracts | Supervisor, dashboard, command-behavior, public-profile and materialized blueprint gates are green; snapshot launch retries bounded transient Linux executable-busy races; automatic SQLite migration generation now rejects unsafe database-owned identifiers before writing Rust source |
 | `rullst-auth` | JWT expiry/revocation, encrypted sessions, role guards, passkey/SQLite cancellation | Corrections green: 60 library tests and five durable JWT integrations |
 | `rullst-security` | WebSocket origin enforcement, middleware readiness, bounded redaction, crypto/input policies | 159 library tests and two Tower tests green; final rate-limit run passed 11 tests including two added afterward (161 library cases now) |
 | `rullst-connect` | OIDC claims/nonce, refresh semantics, callback state and token lifetimes | Corrections green: 204 library tests with Axum-session and SQLite features |
@@ -88,8 +90,9 @@ and `-D warnings`.
 | Capital receipts/webhooks | Incomplete authenticated payloads inferred active/paid; charge identity insufficiently bound; Polar/MP body-only signatures did not represent their protocols | Validate required event/status/charge bindings; bounded Polar header-based Standard Webhooks verification; incompatible legacy live signature paths fail closed, including MP until its full provider verification is implemented |
 | AI/Mail transports | Redirects forwarded private request content; AI JSON unbounded; suppression cancellation leaked state | Pooled redirect-disabled clients, connection/request budgets, bounded native AI responses and SQLx rollback ownership; native custom endpoints remain trusted operator configuration |
 | Public DLL reload | Windows LMS loaded an independent ORM/runtime state and unsafe cross-runtime workarounds were proposed | Remove public DLL generation and use directly linked supervised restart; retained legacy loader is experimental and not a stable Rust ABI |
+| Automatic migration generation | SQLite table and column names reached a metadata query and generated Rust comments/strings without validation | Reuse the strict bounded database-identifier policy, bind the SQLite metadata lookup and reject the complete schema before generating any file; regressions cover newline-bearing table and column identifiers |
 | Release coverage | The earlier final-main LLVM artifact reported 78,962/87,941 lines (89.7897%) while the upload job itself stayed green; default Nexus SQLite/audit paths were omitted | Nexus is now included in the merged default-profile pass and exact 90% whole-repository and framework-library floors run before upload. PR #183's hosted artifact reported 79,349/87,941 lines (90.2298%) overall and 59,767/66,004 (90.5506%) across 435 governed framework-library files; the frozen release SHA must repeat this gate |
-| Fuzz campaign | Earlier hosted runs found complete-tree rendering in unsupported-union and missing-ID model diagnostics. On `36411ea1`, 39 of 40 targets completed their full 5.5-hour campaigns; `fuzz_parser` alone found a third valid derive tree where unconditional `Field::span()` validation exceeded the ten-second per-input limit | Anchor model, relation, field and unsupported-type diagnostics to bounded identifiers instead of rendering complete syntax trees; retain all three discovered shapes in the parser corpus. The latest exact ASan reproducer improved from a repeatable 12.1-second timeout to about 30 milliseconds locally; a fresh five-minute local campaign completed 1,740,804 executions without a finding, and all 43 macro unit tests plus 24 compile-fail cases are green. Hosted diagnostic run 34495340300 then completed 1,541,970 executions in 301 seconds on corrected code commit `40c1b083`, with no finding. The complete 40-target campaign remains required on the frozen candidate SHA |
+| Fuzz campaign | Earlier hosted runs found complete-tree rendering in unsupported-union and missing-ID model diagnostics. On `36411ea1`, 39 of 40 targets completed their full 5.5-hour campaigns; `fuzz_parser` alone found a third valid derive tree where unconditional `Field::span()` validation exceeded the ten-second per-input limit | Anchor model, relation, field and unsupported-type diagnostics to bounded identifiers instead of rendering complete syntax trees; retain all three discovered shapes in the parser corpus. The latest exact ASan reproducer improved from a repeatable 12.1-second timeout to about 30 milliseconds locally; a fresh five-minute local campaign completed 1,740,804 executions without a finding, and all 43 macro unit tests plus 24 compile-fail cases are green. Hosted diagnostic run 34495340300 then completed 1,541,970 executions in 301 seconds on corrected code commit `40c1b083`, with no finding. The subsequent complete 40-target campaign passed on `7697fb8a` in run `34642351302`; its evidence is carried only across the bounded final delta described below |
 
 The parser correction also passed the exact local workspace gates:
 `cargo test --workspace --all-features` and
@@ -100,6 +103,25 @@ The adversarial regressions use local databases, mock keys, signed synthetic
 tokens and loopback HTTP servers—not real credentials or real payment requests.
 Provider capability corrections are observable behavior changes: callers must
 handle explicit errors where previous code returned misleading success.
+
+## AI-assisted security review evidence
+
+A read-only Codex Security deep scan inspected representative repository
+surfaces and preserved a **partial**, not exhaustive, report after reaching its
+configured budget. It reported no Critical or High finding and independently
+validated one Low-severity, Medium-confidence generated-source injection path
+in `make:migration:auto`. The finding required control of a selected SQLite
+schema, explicit generator invocation and a later insufficiently reviewed build,
+but its possible impact justified correction before the RC.
+
+The follow-up working-tree scan reviewed both changed production files but
+reached its smaller budget during threat-model construction, before final
+validation. It produced no report and is deliberately not counted as a pass.
+The release evidence for the correction is therefore the source trace, the two
+crafted-SQLite regressions, the complete all-feature workspace tests, strict
+workspace Clippy and the forthcoming hosted candidate gates. This AI-assisted
+review is neither an independent audit nor a claim of complete repository
+coverage.
 
 ## Website, README and first-run documentation
 
@@ -150,20 +172,25 @@ operating systems before considering a different architecture.
 
 ## Evidence still required
 
-- Review all changed paths together and freeze the candidate; the broad review
-  above is bounded repository-owned evidence, not an independent audit.
-- Repeat the real HTTP/Chromium acceptance pass for the representative Blog
-  application on the final candidate; materialized compile/test contracts for
-  every generated blueprint are already green.
-- Review CI/dependency/security alerts and run the applicable manual release
-  matrices on the actual candidate commit.
-- Repeat the complete 40-target hosted fuzz campaign after the bounded parser
-  diagnostic correction; the first campaign is evidence for 39 targets, not a
-  pass that can be carried onto the replacement commit.
-- Repeat package/preflight, site/browser and documentation checks on that
-  candidate.
-- Reassess quality/readiness using these results; do not carry forward 91.8%
-  readiness or 100% local-ceiling completion as current audited facts.
+- Freeze the corrected candidate and repeat the required hosted CI, coverage,
+  dependency, security, documentation, site/browser and package preflight gates
+  on that immutable SHA.
+- Confirm GitHub dependency, code-scanning and secret-scanning alert state after
+  the hosted candidate completes.
+- The complete 40-target hosted fuzz campaign passed on parent `7697fb8a` in
+  run `34642351302`. The final local delta is confined to CLI automatic-migration
+  validation, its regression and mutation-workflow inventory; it does not alter
+  a fuzz target or runtime parser. Carry that evidence forward only for this
+  bounded delta, and repeat the campaign if the candidate expands beyond it.
+- The full mutation attempt classified 14,059 of 14,391 candidates (97.69%):
+  74 shards completed, five preserved partial timeout evidence and one runner
+  interruption produced no artifact. Its conservative classified score was
+  approximately 70.7%. Mutation remains informational; the incomplete campaign
+  is test-sensitivity evidence, not a passing release gate. The workflow now
+  pins the observed 14,391-candidate inventory so future drift fails early.
+- Obtain an explicit owner GO only after the package graph, crates.io credentials
+  and topological publication plan have been reviewed. Do not treat this audit
+  or the provisional 94/A score as release authorization.
 
 ## Residual limitations for the next reviewer
 

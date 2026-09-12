@@ -144,8 +144,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   timeout (about 12.1 seconds) to about 30 milliseconds locally. A fresh
   five-minute local ASan campaign completed 1,740,804 executions with no
   finding, and hosted diagnostic run 34495340300 completed another 1,541,970
-  executions in 301 seconds on `40c1b083`. The complete 40-target hosted
-  campaign still remains required on the frozen candidate SHA.
+  executions in 301 seconds on `40c1b083`. The subsequent complete 40-target
+  hosted campaign passed on `7697fb8a` in run `34642351302`; that evidence may
+  be carried only across the final bounded CLI migration/workflow delta, which
+  does not change a fuzz target or runtime parser.
 - Restored the project's `🌐🦀📜 Rullst 📜🦀🌐` README identity and its broader
   “Intelligent, Security-Conscious, and Designed for Effortless Productivity —
   Because With Rullst, We Rule!” design intent across repository and
@@ -153,7 +155,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   suite rather than reducing the complete ecosystem to a web framework. The
   offline site validator now prevents the title, slogan and computed README
   workflow count from silently drifting again.
-- The manual mutation campaign now divides its measured 14,380-mutant
+- The manual mutation campaign now divides its measured 14,391-mutant
   all-feature workspace inventory into 80 lossless shards of at most about 180
   candidates. The earlier 16-way attempt both exceeded the slowest jobs'
   5h30 runner bound and used an invalid default-feature baseline. The hosted
@@ -166,6 +168,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   counting timeouts as caught. A validated tracked-production-file mode
   shortens correction feedback, while baseline, invocation and internal tool
   failures can no longer be hidden by the informational finding policy.
+- `cargo rullst make:migration:auto` now treats SQLite schema metadata as
+  untrusted input. It rejects non-portable bounded table and column identifiers
+  before writing source, binds the table name in its metadata lookup, and has
+  regressions proving newline-bearing identifiers cannot enter a generated Rust
+  migration.
 - Multi-platform CI now partitions the long public CLI and generated-blueprint
   contracts into eight total test shards, and deterministically fans feature
   boundaries and release-negative threat tests into four strict jobs each.

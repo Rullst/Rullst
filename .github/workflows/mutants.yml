@@ -120,7 +120,7 @@ jobs:
         env:
           MUTATION_MODE: ${{ needs.plan.outputs.mode }}
           MUTATION_FILE: ${{ needs.plan.outputs.file }}
-          EXPECTED_FULL_INVENTORY: "14380"
+          EXPECTED_FULL_INVENTORY: "14391"
         run: |
           command=(cargo mutants --workspace --all-features --list --json)
           if [ "$MUTATION_MODE" = "targeted" ]; then
@@ -258,7 +258,7 @@ jobs:
         env:
           MUTATION_MODE: ${{ needs.plan.outputs.mode }}
           SHARD_COUNT: ${{ needs.plan.outputs.shard_count }}
-          EXPECTED_FULL_INVENTORY: "14380"
+          EXPECTED_FULL_INVENTORY: "14391"
         run: |
           expected_inventory=""
           if [ "$MUTATION_MODE" = "full" ]; then
