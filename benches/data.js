@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789155025871,
+  "lastUpdate": 1789246306271,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -18675,6 +18675,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1603,
             "range": "± 30",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "a6b3bc8a66a30f18c1a02409751f551e67504c5f",
+          "message": "fix(cli): reject unsafe migration identifiers",
+          "timestamp": "2026-09-12T17:45:03-03:00",
+          "tree_id": "346c2818d27358341a1db9fe620a53666ab5191d",
+          "url": "https://github.com/Rullst/Rullst/commit/a6b3bc8a66a30f18c1a02409751f551e67504c5f"
+        },
+        "date": 1789246304970,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 745,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1020,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 614,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2355,
+            "range": "± 69",
             "unit": "ns/iter"
           }
         ]
