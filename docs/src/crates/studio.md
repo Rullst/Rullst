@@ -1,8 +1,9 @@
 # Rullst Studio 📊
 
 > [!IMPORTANT]
-> This page documents the unreleased v12 source. Use a path dependency from
-> this checkout until the planned `12.0.0-rc.1` is published.
+> This page documents the `12.0.0-rc.1` evaluation release. Use that exact
+> registry version after indexing, or a path dependency only when reviewing
+> this checkout's source.
 
 `rullst-studio` is the built-in, local-first administration and monitoring
 dashboard for Rullst. It exposes bounded database, queue, cache and telemetry
@@ -37,7 +38,7 @@ views from the sources explicitly supplied by the application.
 
 ## 🚀 Quickstart
 
-After the RC is published, add its exact train with
+After crates.io indexes the RC, add its exact train with
 `cargo add rullst-studio@12.0.0-rc.1`.
 
 ### Launching the Studio

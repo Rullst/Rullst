@@ -8,10 +8,10 @@ you will be able to point to the handler that produced the page in your browser.
 [Next: CLI generators](02-cli-generators.md)
 
 This tutorial takes a new developer from installing Rust to a running Rullst
-web application. It uses the unreleased v12 development snapshot documented by
-this site. It is not a production recommendation. A future production adoption
-needs a supported release and reviewed immutable artifacts; neither moving
-`main` nor merely pinning end-of-life v5 satisfies that requirement.
+web application. It uses the `12.0.0-rc.1` evaluation release documented by
+this site. It is not a stable-production recommendation. Production adoption
+needs application review and immutable artifacts; neither moving `main` nor
+merely pinning end-of-life v5 satisfies that requirement.
 
 ## 1. Install Rust and Cargo
 
@@ -48,10 +48,10 @@ Every command below must run in this directory, where `Cargo.toml` lives.
 
 ## 3. Add the v12 preview
 
-Until v12 is published, select the development source explicitly:
+After crates.io indexes the release candidate, select its exact version:
 
 ```bash
-cargo add rullst --git https://github.com/Rullst/Rullst.git --branch main
+cargo add rullst@12.0.0-rc.1
 cargo add tokio --features full
 ```
 

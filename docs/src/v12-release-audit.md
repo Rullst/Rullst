@@ -1,18 +1,20 @@
 # v12 release audit follow-up
 
-Status: **pre-tag validation; there is no known Critical or High blocker, but
-RC remains NO-GO until the corrected candidate passes the hosted and packaging
-gates below and receives an explicit release decision**. This report supersedes
-blanket readiness interpretations of the earlier local-ceiling campaign. Each
-hosted result remains evidence for its recorded commit, not every future tree.
+Status: **owner GO recorded for `12.0.0-rc.1` on September 12, 2026; the approved
+code candidate passed its local, hosted, coverage, security and package gates,
+and only the documentation closeout plus tag-bound publication remain**. This
+authorizes an evaluation prerelease, not stable `12.0.0`. Each hosted result
+remains evidence for its recorded commit, not every future tree.
 
 ## Baseline and method
 
-The latest hosted integration baseline is `7697fb8a` on `main`, including the
-second-computer report in [CLIFIX.md](../../CLIFIX.md). The final local correction
-adds fail-closed SQLite schema validation to automatic migration generation and
-repairs the mutation inventory expectation; it must receive a new immutable SHA
-and hosted receipts before tagging.
+The approved code candidate is `a6b3bc8a` on `main`, including the
+second-computer report in [CLIFIX.md](../../CLIFIX.md), fail-closed SQLite schema
+validation for automatic migration generation, and the corrected mutation
+inventory. All 22 applicable push workflows passed on that SHA. This final
+closeout changes public documentation, site copy and their matching assertions;
+its immutable tag commit must keep the code unchanged and pass the applicable
+hosted checks.
 
 Review covers every published crate. IoT receives only a light triage under the
 owner's explicit v12 exception. Each deep review traces public inputs through
@@ -41,8 +43,9 @@ feature-completeness percentage, independent audit result, or release
 authorization. A candidate earns the recorded grade only when its exact SHA
 passes the applicable scorecard constraints. Until the final candidate's
 automatic and manual gates, packaging checks, documentation review, and
-explicit GO decision are complete, the repository remains **NO-GO** regardless
-of its provisional grade.
+explicit GO decision are complete. Those conditions were met for the approved
+code candidate; the grade remains evidence-bounded and does not authorize the
+future stable release.
 
 ## Coverage ledger
 
@@ -129,7 +132,8 @@ The organization root website and the framework Pages site were different
 deployments. The old organization site still described `main` as v5 and `dev`
 as v12, and its privacy page asserted unverified worldwide legal compliance.
 Both entry points now have prepared matching source, with separate deployment
-receipts still required. The new copy keeps v12 unreleased and v5 end-of-life.
+receipts still required. The new copy presents v12.0.0-rc.1 as an explicit
+evaluation candidate, keeps stable v12 distinct, and marks v5 end-of-life.
 
 The landing uses local CSS/JavaScript/images, finite reduced-motion-aware
 animation, thirteen owner-supplied social links and a concrete privacy notice.
@@ -170,13 +174,17 @@ The v13 decision is evidence-driven: compare measured reload time, failure
 recovery, process cleanup, memory and state ownership across databases and
 operating systems before considering a different architecture.
 
-## Evidence still required
+## Final RC decision and remaining publication work
 
-- Freeze the corrected candidate and repeat the required hosted CI, coverage,
-  dependency, security, documentation, site/browser and package preflight gates
-  on that immutable SHA.
-- Confirm GitHub dependency, code-scanning and secret-scanning alert state after
-  the hosted candidate completes.
+- Approved code candidate `a6b3bc8a` passed all 22 applicable automatic push
+  workflows. Codecov reported 91.49% repository coverage and 100% patch coverage;
+  the separately enforced framework-library component also passed 90%.
+- The dependency, code-scanning and secret-scanning APIs each reported zero open
+  alerts after the hosted candidate completed.
+- Sixteen exact `12.0.0-rc.1` archives passed metadata/topological preflight,
+  content audit and Cargo package verification. An extracted consumer compiled,
+  the packaged CLI installed and reported the correct version, and all six
+  installed-CLI blueprints generated and compiled without monorepo paths.
 - The complete 40-target hosted fuzz campaign passed on parent `7697fb8a` in
   run `34642351302`. The final local delta is confined to CLI automatic-migration
   validation, its regression and mutation-workflow inventory; it does not alter
@@ -188,9 +196,12 @@ operating systems before considering a different architecture.
   approximately 70.7%. Mutation remains informational; the incomplete campaign
   is test-sensitivity evidence, not a passing release gate. The workflow now
   pins the observed 14,391-candidate inventory so future drift fails early.
-- Obtain an explicit owner GO only after the package graph, crates.io credentials
-  and topological publication plan have been reviewed. Do not treat this audit
-  or the provisional 94/A score as release authorization.
+- The owner supplied explicit GO for `v12.0.0-rc.1` on September 12, 2026 after
+  reviewing the package graph and topological plan. The final documentation-only
+  commit must pass its relevant hosted checks; then the protected tag workflow
+  must recheck name ownership, reproduce the archives, publish in order, verify
+  registry checksums/indexing and emit provenance. The 94/A score is supporting
+  evidence, not a security certification or authorization for stable `12.0.0`.
 
 ## Residual limitations for the next reviewer
 

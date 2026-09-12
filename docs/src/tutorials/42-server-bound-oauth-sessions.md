@@ -11,16 +11,16 @@ authorization policy.
 
 ## Enable the session feature
 
-For the unreleased workspace:
+For the `12.0.0-rc.1` evaluation release:
 
 ```toml
 [dependencies]
-rullst-connect = { path = "../Rullst/rullst-connect", features = ["axum-session"] }
+rullst-connect = { version = "12.0.0-rc.1", features = ["axum-session"] }
 tower-sessions = "0.15"
 ```
 
-Published applications should replace the path with one immutable compatible
-version. Add a `SessionManagerLayer` to the Axum router. `MemoryStore` is useful
+Applications should use one immutable compatible version. Add a
+`SessionManagerLayer` to the Axum router. `MemoryStore` is useful
 for local examples and tests, but it is process-local and is not a production
 durability or horizontal-scaling strategy.
 

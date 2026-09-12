@@ -5,16 +5,16 @@ Start here when your frontend is a separate app, mobile client or integration.
 [Explore all beginner paths](../start-here.md).
 
 This quickstart creates one runnable JSON endpoint without a database or an AI
-provider. It targets the unreleased v12 snapshot on `main`, for local evaluation
-only. Production adoption needs a supported release and reviewed immutable
-artifacts; pinning end-of-life v5 does not make it supported again.
+provider. It targets the `12.0.0-rc.1` evaluation release. Production adoption
+needs application review and immutable artifacts; pinning end-of-life v5 does
+not make it supported again.
 
 ## 1. Create the application
 
 ```bash
 cargo new first_rullst_api
 cd first_rullst_api
-cargo add rullst --git https://github.com/Rullst/Rullst.git --branch main
+cargo add rullst@12.0.0-rc.1
 cargo add tokio --features macros,rt-multi-thread
 cargo add serde --features derive
 ```

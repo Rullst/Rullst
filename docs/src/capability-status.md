@@ -6,7 +6,7 @@ from the root [ROADMAP](../../ROADMAP.md); that roadmap and the
 The labels here deliberately do not turn partial foundations into completed
 features.
 
-## v12 RC engineering snapshot — 5 September 2026
+## v12 RC engineering snapshot — 12 September 2026
 
 This functionality inventory is deliberately separate from release quality.
 All 15 non-IoT crates currently meet the approved A floor and `rullst-iot`
@@ -14,22 +14,21 @@ meets its approved B exception. All 15 active crates have also reached their
 higher audited local ceiling: **1,509/1,509 local campaign points are backed by
 repository evidence (100%), with zero planning points remaining**. The exact
 SHA still earns those dimensions only when its conditioning gates pass. The
-older 91.8% readiness estimate in the [v12 release programme](v12.md) is a
-superseded planning snapshot, not the current percentage. The
-[post-audit release report](v12-release-audit.md) is authoritative and keeps the
-RC at **NO-GO** until its candidate gates and explicit approval are complete.
+older 91.8% readiness estimate was superseded after the final correction batch.
+The [post-audit release report](v12-release-audit.md) is authoritative: the
+project owner approved `12.0.0-rc.1` for prerelease publication after its local,
+hosted and package gates passed. This does not approve stable `12.0.0`.
 
-Coverage is a separate RC gate. Codecov measured candidate `27e81152` at
-90.06% across the whole repository and 91.33% for the `framework_libraries`
-component, so both candidate views exceed their zero-tolerance 90% targets.
-This is valid candidate evidence, not evidence for a future commit or tag; the
-same gates must pass again on the exact frozen RC SHA.
+Coverage is a separate RC gate. Codecov measured the approved code candidate
+`a6b3bc8a` at **91.49%** across the whole repository (76,685/83,811) and 100%
+patch coverage (14/14); the separately enforced `framework_libraries` component
+also passed its zero-tolerance 90% target. This is SHA-bound evidence, not a
+security certification.
 
-Historical candidate `27e81152` completed all **22/22 applicable automatic push
-workflows** successfully, including the full all-feature workspace suite on
-Linux, macOS and Windows. It predates the reopened audit and is therefore
-background evidence only. The post-audit candidate must independently pass its
-applicable hosted and manually dispatched release matrices.
+Approved code candidate `a6b3bc8a` completed all **22/22 applicable automatic
+push workflows** successfully, including the full all-feature workspace suite
+on Linux, macOS and Windows. The final documentation closeout must preserve
+that code and pass its documentation/site checks before the immutable tag.
 
 The later manual campaign on `45fbdbe7` produced passing bounded Miri, Kani and
 sanitizer evidence, while fuzzing usefully exposed three stale harnesses and a

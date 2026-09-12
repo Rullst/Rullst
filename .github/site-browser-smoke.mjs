@@ -151,7 +151,7 @@ try {
     assert.equal(await evaluate("document.querySelectorAll('h1').length"), 1);
     assert.equal(await evaluate("document.querySelectorAll('.social-links a').length"), 13);
     assert(await evaluate("[...document.images].filter(i => i.loading !== 'lazy').every(i => i.complete && i.naturalWidth > 0)"), "Hero image failed");
-    assert(await evaluate("document.body.innerText.includes('NO-GO for production')"));
+    assert(await evaluate("document.body.innerText.includes('v12.0.0-rc.1 release candidate')"));
     if (output) {
       // Wait for the finite entrance animation before recording the visual.
       await evaluate("Promise.all(document.getAnimations().map(animation => animation.finished))");

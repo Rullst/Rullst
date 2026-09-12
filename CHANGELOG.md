@@ -4,12 +4,13 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [12.0.0-rc.1] - Unreleased 🚀
+## [12.0.0-rc.1] - 2026-09-12 🚀
 
-> **Unreleased status:** entries below are a development inventory, not release,
-> certification, benchmark, or test evidence. The current capability contract is
-> `docs/src/spec.md`; CI artifacts tied to the eventual tag are authoritative for
-> tests and provenance. Absolute wording in older development notes must not be
+> **Release-candidate scope:** entries below describe an evaluation prerelease,
+> not a stable-production guarantee, certification, benchmark, or exhaustive test
+> claim. The current capability contract is `docs/src/spec.md`; CI artifacts tied
+> to the immutable tag are authoritative for tests and provenance. Absolute
+> wording in older development notes must not be
 > interpreted as a guarantee. In particular, live NFS-e, MQTT transport/HSM/PQC, Alipay
 > RSA2, Connect message-broker adapters, S3/R2 storage, and database replication
 > remain fail-closed or roadmap capabilities as documented by the SST.

@@ -4,11 +4,11 @@ You do not need to understand every Rullst crate before writing your first
 application. Start small, make one thing work, and learn what each layer does
 as your product needs it.
 
-> **You are exploring the v12 development preview.** It is not yet a supported
-> production release. Use the instructions for this source revision—not the
-> older CLI installed by an unversioned crates.io command. The
-> [release program](v12.md) and [current audit](v12-release-audit.md) show the
-> remaining gates.
+> **You are exploring the v12.0.0-rc.1 release candidate.** It is an explicit
+> evaluation release, not the stable v12 release. Install the exact CLI and
+> framework version instead of relying on an unversioned command. The
+> [release program](v12.md) and [current audit](v12-release-audit.md) describe
+> its evidence and remaining production boundaries.
 
 ## Pick your starting line
 

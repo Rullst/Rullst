@@ -6,11 +6,12 @@ operation, secrets, billing and recovery remain deployment responsibilities.
 
 ## 1. Materialize and verify the SaaS starter
 
-While v12 is unreleased, use a reviewed `main` checkout pinned by `Cargo.lock`.
-After a prerelease ships,
-install the matching versioned CLI and generate deterministically:
+Install the matching `12.0.0-rc.1` CLI after crates.io indexes it, then generate
+deterministically. Do not substitute the moving `main` branch for an immutable
+release artifact:
 
 ```bash
+cargo install cargo-rullst --version 12.0.0-rc.1 --locked
 cargo rullst new my_cloud_saas --default --blueprint saas --docker
 cd my_cloud_saas
 cargo fmt --all -- --check

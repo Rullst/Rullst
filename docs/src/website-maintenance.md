@@ -10,7 +10,7 @@ The public entry points have different deployment sources:
 
 The landing design and copy have one editable source: `docs/home_template.html`,
 `docs/site.css` and `docs/site.js`. Preserve the footer dedication and the v12
-preview/v5 end-of-life notice. Use actual source and release evidence for claims;
+release-candidate/v5 end-of-life notice. Use actual source and release evidence for claims;
 do not hardcode aspirational coverage, scorecard, speed or certification values.
 
 ## Validate before deployment

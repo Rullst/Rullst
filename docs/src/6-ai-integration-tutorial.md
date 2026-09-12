@@ -23,8 +23,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ```
 
-Use the exact published v12 version being evaluated. The RC value above is a
-planned prerelease and must not be used before it exists on crates.io.
+Use the exact v12 release candidate being evaluated. Prereleases require
+explicit opt-in; run the command only after crates.io has indexed that version.
 
 ## 2. Create a guarded client
 

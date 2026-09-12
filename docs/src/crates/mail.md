@@ -1,8 +1,9 @@
 # Rullst Mail 📬
 
 > [!IMPORTANT]
-> This page documents the unreleased v12 source. Use a path dependency from
-> this checkout until the planned `12.0.0-rc.1` is published.
+> This page documents the `12.0.0-rc.1` evaluation release. Use that exact
+> registry version after indexing, or a path dependency only when reviewing
+> this checkout's source.
 
 > **Vision preserved:** additional providers and air-gapped/zero-leak ambitions
 > were not silently removed; see their status and recommendation in the

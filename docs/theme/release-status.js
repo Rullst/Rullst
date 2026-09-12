@@ -11,7 +11,7 @@
 
     const title = document.createElement("strong");
     title.className = "rullst-release-status__title";
-    title.textContent = "⚠️ Release status: v5 legacy / v12 development preview";
+    title.textContent = "⚠️ Release status: v12.0.0-rc.1 candidate / v5 legacy";
 
     const mainLink = document.createElement("a");
     mainLink.href = "https://github.com/Rullst/Rullst/tree/main";
@@ -25,10 +25,12 @@
     message.append(
       "The ",
       mainLink,
-      " branch contains active v12 work, is unreleased, and remains NO-GO for " +
-        "production until its documented release gates pass. The frozen ",
+      " branch contains active v12 work. The v12.0.0-rc.1 candidate passed its " +
+        "documented release gates and is approved for explicit prerelease evaluation; " +
+        "it is not the stable v12 release. The frozen ",
       v5Link,
-      " branch preserves legacy source without ongoing maintenance."
+      " branch preserves legacy source without ongoing maintenance. Use exact " +
+        "release artifacts rather than the moving main branch."
     );
 
     banner.append(title, message);

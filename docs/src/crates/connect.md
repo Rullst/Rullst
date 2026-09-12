@@ -1,8 +1,9 @@
 # Rullst Connect 🦀
 
 > [!IMPORTANT]
-> This page documents the unreleased v12 source. Use a path dependency from
-> this checkout until the planned `12.0.0-rc.1` is published.
+> This page documents the `12.0.0-rc.1` evaluation release. Use that exact
+> registry version after indexing, or a path dependency only when reviewing
+> this checkout's source.
 
 > **Vision preserved:** message brokers, additional queue transports, remote
 > storage, and media work are retained with explicit status and recommendations in
@@ -102,8 +103,8 @@ token was valid immediately before the call.
 
 ## 🛠️ Installation
 
-Inside a checkout of the unreleased v12 workspace, use its path dependency.
-After the RC is published, install that exact release train instead.
+Inside a source checkout, a path dependency intentionally follows that tree.
+For the release candidate, install the exact registry train instead.
 
 Published RC command:
 ```bash
@@ -115,14 +116,14 @@ For the recommended Axum session transaction, enable `axum-session` and add a
 `tower-sessions` store:
 
 ```toml
-rullst-connect = { path = "../Rullst/rullst-connect", features = ["axum-session"] }
+rullst-connect = { version = "12.0.0-rc.1", features = ["axum-session"] }
 tower-sessions = "0.15"
 ```
 
 Or manually add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-rullst-connect = { path = "../Rullst/rullst-connect" }
+rullst-connect = "12.0.0-rc.1"
 secrecy = "0.10"
 tokio = { version = "1.52", features = ["full"] }
 ```

@@ -4,9 +4,9 @@ Rullst v12 introduces a bounded upgrade transaction for existing applications.
 The goal is to make the safe, repeatable part a single command while refusing
 to guess about application data or security policy.
 
-> v12 is currently unreleased and **NO-GO for production**. The examples use
-> `12.0.0-rc.1` as a placeholder for the planned first RC. Install or request
-> that version only after it exists on crates.io.
+> `12.0.0-rc.1` is an explicit evaluation release, not stable v12. Install or
+> request the exact prerelease only after crates.io has indexed it, and complete
+> the application-specific validation below before any production rollout.
 
 ## What the command can guarantee
 
