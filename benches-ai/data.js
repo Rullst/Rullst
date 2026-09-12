@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789155986450,
+  "lastUpdate": 1789247329719,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -8391,6 +8391,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 633,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "a6b3bc8a66a30f18c1a02409751f551e67504c5f",
+          "message": "fix(cli): reject unsafe migration identifiers",
+          "timestamp": "2026-09-12T17:45:03-03:00",
+          "tree_id": "346c2818d27358341a1db9fe620a53666ab5191d",
+          "url": "https://github.com/Rullst/Rullst/commit/a6b3bc8a66a30f18c1a02409751f551e67504c5f"
+        },
+        "date": 1789247329299,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1654,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 391,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 773,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
