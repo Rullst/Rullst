@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789155697876,
+  "lastUpdate": 1789247017430,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -10455,6 +10455,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2132,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "a6b3bc8a66a30f18c1a02409751f551e67504c5f",
+          "message": "fix(cli): reject unsafe migration identifiers",
+          "timestamp": "2026-09-12T17:45:03-03:00",
+          "tree_id": "346c2818d27358341a1db9fe620a53666ab5191d",
+          "url": "https://github.com/Rullst/Rullst/commit/a6b3bc8a66a30f18c1a02409751f551e67504c5f"
+        },
+        "date": 1789247016999,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 997,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 784,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1798,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4037,
+            "range": "± 36",
             "unit": "ns/iter"
           }
         ]
