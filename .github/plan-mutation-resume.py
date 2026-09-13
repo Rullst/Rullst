@@ -115,6 +115,73 @@ def validate_run(run: dict[str, Any], policy: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def validate_finalization_run(
+    run: dict[str, Any], policy: dict[str, Any]
+) -> dict[str, Any]:
+    validate_policy(policy)
+    finalization = policy.get("finalization")
+    if not isinstance(finalization, dict):
+        raise ValueError("recovery policy does not authorize finalization")
+
+    observed_repository = run.get("repository", {}).get("full_name")
+    if observed_repository != finalization.get("repository"):
+        raise ValueError("finalization run belongs to a different repository")
+    expected_fields = {
+        "id": finalization.get("run_id"),
+        "path": finalization.get("workflow_path"),
+        "workflow_id": finalization.get("workflow_id"),
+        "run_attempt": finalization.get("run_attempt"),
+        "head_branch": finalization.get("head_branch"),
+        "head_sha": finalization.get("head_sha"),
+        "conclusion": finalization.get("conclusion"),
+        "event": "workflow_dispatch",
+        "status": "completed",
+    }
+    for field, expected in expected_fields.items():
+        if run.get(field) != expected:
+            raise ValueError(
+                f"finalization run {field} does not match the reviewed recovery policy"
+            )
+
+    if finalization.get("measured_source_sha") != policy["source_sha"]:
+        raise ValueError("finalization source does not match the original campaign")
+    fragment = finalization.get("incomplete_fragment")
+    if not isinstance(fragment, dict):
+        raise ValueError("finalization policy does not identify an incomplete fragment")
+    fragment_index = fragment.get("index")
+    fragment_count = fragment.get("count")
+    artifact = fragment.get("artifact")
+    if (
+        not isinstance(fragment_index, int)
+        or not isinstance(fragment_count, int)
+        or fragment_index < 0
+        or fragment_count <= 0
+        or fragment_index >= fragment_count
+        or not isinstance(artifact, str)
+        or not re.fullmatch(r"resume-[0-9]+-[0-9]+", artifact)
+    ):
+        raise ValueError("finalization policy contains an invalid fragment")
+
+    positive_fields = (
+        "completed_fragment_count",
+        "split_factor",
+        "test_timeout_seconds",
+        "build_timeout_seconds",
+    )
+    if any(
+        not isinstance(finalization.get(field), int) or finalization[field] <= 0
+        for field in positive_fields
+    ):
+        raise ValueError("finalization limits must be positive integers")
+    if finalization["split_factor"] < 2:
+        raise ValueError("finalization split factor must be at least two")
+    if not 30 <= finalization["test_timeout_seconds"] <= 600:
+        raise ValueError("finalization test timeout is outside the safe policy range")
+    if not 60 <= finalization["build_timeout_seconds"] <= 1800:
+        raise ValueError("finalization build timeout is outside the safe policy range")
+    return finalization
+
+
 def build_plan(
     run: dict[str, Any],
     policy: dict[str, Any],
@@ -147,23 +214,80 @@ def build_plan(
     }
 
 
+def build_finalization_plan(
+    original_run: dict[str, Any],
+    recovery_run: dict[str, Any],
+    policy: dict[str, Any],
+) -> dict[str, Any]:
+    provenance = validate_run(original_run, policy)
+    finalization = validate_finalization_run(recovery_run, policy)
+    fragment = finalization["incomplete_fragment"]
+    split_factor = finalization["split_factor"]
+    final_count = fragment["count"] * split_factor
+    fragments = [
+        {
+            "index": fragment["index"] * split_factor + offset,
+            "count": final_count,
+            "artifact": f"{fragment['artifact']}-{offset}",
+        }
+        for offset in range(split_factor)
+    ]
+    provenance["recovery_run"] = {
+        "run_id": finalization["run_id"],
+        "run_attempt": finalization["run_attempt"],
+        "head_branch": finalization["head_branch"],
+        "head_sha": finalization["head_sha"],
+        "measured_source_sha": finalization["measured_source_sha"],
+    }
+    completed_originals = policy["shard_count"] - len(policy["resumable_shards"])
+    artifact_count = (
+        completed_originals
+        + finalization["completed_fragment_count"]
+        + len(fragments)
+    )
+    return {
+        "source_sha": provenance["source_sha"],
+        "resume_shards": ",".join(
+            str(index) for index in policy["resumable_shards"]
+        ),
+        "artifact_count": artifact_count,
+        "matrix": {"include": fragments},
+        "provenance": provenance,
+        "secondary_run_id": finalization["run_id"],
+        "incomplete_fragment_artifact": fragment["artifact"],
+        "test_timeout_seconds": finalization["test_timeout_seconds"],
+        "build_timeout_seconds": finalization["build_timeout_seconds"],
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-json", required=True, type=Path)
     parser.add_argument("--policy-json", required=True, type=Path)
-    parser.add_argument("--shards", required=True)
+    parser.add_argument("--shards")
+    parser.add_argument("--recovery-run-json", type=Path)
     parser.add_argument("--split-factor", type=int, default=2)
     args = parser.parse_args()
 
     try:
         run = json.loads(args.run_json.read_text(encoding="utf-8"))
         policy = json.loads(args.policy_json.read_text(encoding="utf-8"))
-        plan = build_plan(
-            run,
-            policy,
-            args.shards,
-            args.split_factor,
-        )
+        if args.recovery_run_json is not None:
+            recovery_run = json.loads(
+                args.recovery_run_json.read_text(encoding="utf-8")
+            )
+            if args.shards is not None:
+                raise ValueError("finalization does not accept a shard input")
+            plan = build_finalization_plan(run, recovery_run, policy)
+        else:
+            if args.shards is None:
+                raise ValueError("resume mode requires --shards")
+            plan = build_plan(
+                run,
+                policy,
+                args.shards,
+                args.split_factor,
+            )
     except (OSError, json.JSONDecodeError, ValueError) as error:
         parser.error(str(error))
 

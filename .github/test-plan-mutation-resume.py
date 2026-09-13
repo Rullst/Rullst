@@ -49,6 +49,41 @@ def valid_policy() -> dict[str, object]:
         "inventory_count": 14391,
         "inventory_sha256": "2" * 64,
         "cargo_mutants_version": "27.1.0",
+        "finalization": {
+            "repository": "Rullst/Rullst",
+            "workflow_path": ".github/workflows/mutants.yml",
+            "workflow_id": 5678,
+            "run_id": 4321,
+            "run_attempt": 2,
+            "head_branch": "main",
+            "head_sha": "3" * 40,
+            "conclusion": "failure",
+            "measured_source_sha": "1" * 40,
+            "completed_fragment_count": 5,
+            "incomplete_fragment": {
+                "index": 130,
+                "count": 160,
+                "artifact": "resume-65-0",
+            },
+            "split_factor": 2,
+            "test_timeout_seconds": 120,
+            "build_timeout_seconds": 900,
+        },
+    }
+
+
+def valid_recovery_run() -> dict[str, object]:
+    return {
+        "repository": {"full_name": "Rullst/Rullst"},
+        "id": 4321,
+        "path": ".github/workflows/mutants.yml",
+        "workflow_id": 5678,
+        "event": "workflow_dispatch",
+        "status": "completed",
+        "conclusion": "failure",
+        "head_branch": "main",
+        "head_sha": "3" * 40,
+        "run_attempt": 2,
     }
 
 
@@ -138,6 +173,39 @@ class MutationResumePlanTests(unittest.TestCase):
             policy["inventory_sha256"],
             "986d5cc1de71f7c8afbae7823a8fca53304b84f8e81b8f9e2d1fd3949c15ef80",
         )
+
+    def test_finalization_bisects_only_the_remaining_fragment(self) -> None:
+        plan = MODULE.build_finalization_plan(
+            valid_run(), valid_recovery_run(), valid_policy()
+        )
+        self.assertEqual(plan["artifact_count"], 84)
+        self.assertEqual(plan["secondary_run_id"], 4321)
+        self.assertEqual(plan["incomplete_fragment_artifact"], "resume-65-0")
+        self.assertEqual(plan["test_timeout_seconds"], 120)
+        self.assertEqual(
+            plan["matrix"]["include"],
+            [
+                {"index": 260, "count": 320, "artifact": "resume-65-0-0"},
+                {"index": 261, "count": 320, "artifact": "resume-65-0-1"},
+            ],
+        )
+        self.assertEqual(plan["provenance"]["recovery_run"]["run_id"], 4321)
+
+    def test_finalization_rejects_an_unreviewed_run(self) -> None:
+        run = valid_recovery_run()
+        run["head_sha"] = "4" * 40
+        with self.assertRaisesRegex(ValueError, "head_sha does not match"):
+            MODULE.build_finalization_plan(valid_run(), run, valid_policy())
+
+    def test_finalization_rejects_unsafe_timeout(self) -> None:
+        policy = valid_policy()
+        finalization = policy["finalization"]
+        assert isinstance(finalization, dict)
+        finalization["test_timeout_seconds"] = 10
+        with self.assertRaisesRegex(ValueError, "safe policy range"):
+            MODULE.build_finalization_plan(
+                valid_run(), valid_recovery_run(), policy
+            )
 
 
 if __name__ == "__main__":
