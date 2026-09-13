@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789251193252,
+  "lastUpdate": 1789275305877,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -18783,6 +18783,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2338,
             "range": "± 60",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "3823766f109ea511650a20f350a182c151dcb280",
+          "message": "fix(ci): resume interrupted mutation shards",
+          "timestamp": "2026-09-13T01:50:19-03:00",
+          "tree_id": "ebb9744318468bc1a8dd06657f58bf88ac3d0b7a",
+          "url": "https://github.com/Rullst/Rullst/commit/3823766f109ea511650a20f350a182c151dcb280"
+        },
+        "date": 1789275304040,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 457,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 663,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 428,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1249,
+            "range": "± 69",
             "unit": "ns/iter"
           }
         ]
