@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789275984380,
+  "lastUpdate": 1789308881140,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -6561,6 +6561,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 310,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "4107c51c66c28b4cab65514a34527a3ce63ec986",
+          "message": "fix(ci): isolate unstable mutation fragment",
+          "timestamp": "2026-09-13T10:51:24-03:00",
+          "tree_id": "eee2ecf679f0ba140fececebaed090068da5c863",
+          "url": "https://github.com/Rullst/Rullst/commit/4107c51c66c28b4cab65514a34527a3ce63ec986"
+        },
+        "date": 1789308880397,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 489,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
