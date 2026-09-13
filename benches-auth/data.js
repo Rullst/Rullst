@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789251794447,
+  "lastUpdate": 1789275925210,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -10551,6 +10551,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4056,
             "range": "± 29",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "3823766f109ea511650a20f350a182c151dcb280",
+          "message": "fix(ci): resume interrupted mutation shards",
+          "timestamp": "2026-09-13T01:50:19-03:00",
+          "tree_id": "ebb9744318468bc1a8dd06657f58bf88ac3d0b7a",
+          "url": "https://github.com/Rullst/Rullst/commit/3823766f109ea511650a20f350a182c151dcb280"
+        },
+        "date": 1789275924652,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 714,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 595,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1324,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1736,
+            "range": "± 66",
             "unit": "ns/iter"
           }
         ]
