@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789381943965,
+  "lastUpdate": 1789418976440,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -10741,6 +10741,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4605,
             "range": "± 43",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "307f72e15137ef9556aab82580dd9af1ee5d13f8",
+          "message": "fix(deps): update rustls for RUSTSEC-2026-0285",
+          "timestamp": "2026-09-14T17:17:31-03:00",
+          "tree_id": "54a56b358e18b40738cd6f51ad9ea241b4687e47",
+          "url": "https://github.com/Rullst/Rullst/commit/307f72e15137ef9556aab82580dd9af1ee5d13f8"
+        },
+        "date": 1789418975674,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1019,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 799,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1827,
+            "range": "± 159",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4032,
+            "range": "± 16",
             "unit": "ns/iter"
           }
         ]
