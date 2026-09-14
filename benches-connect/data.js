@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789419055565,
+  "lastUpdate": 1789420144488,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -6679,6 +6679,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 540,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "eb11f892ae28f076e7a83c38a635316c6ed89028",
+          "message": "fix(deps): update rustls in fuzz locks",
+          "timestamp": "2026-09-14T17:52:29-03:00",
+          "tree_id": "c11a8365c202248cf16081b3fe82a8caa718f010",
+          "url": "https://github.com/Rullst/Rullst/commit/eb11f892ae28f076e7a83c38a635316c6ed89028"
+        },
+        "date": 1789420143660,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 545,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
