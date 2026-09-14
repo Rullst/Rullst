@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789359768033,
+  "lastUpdate": 1789381968353,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -6621,6 +6621,34 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 539,
             "range": "± 10",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "Venelouis",
+            "username": "venelouis",
+            "email": "venelouistyago@gmail.com"
+          },
+          "committer": {
+            "name": "Venelouis",
+            "username": "venelouis",
+            "email": "venelouistyago@gmail.com"
+          },
+          "id": "de74db6533ebc7d16a2f26bec6994d7db09ec0b0",
+          "message": "fix(release): harden stable v12 candidate",
+          "timestamp": "2026-09-14T04:05:32Z",
+          "url": "https://github.com/Rullst/Rullst/commit/de74db6533ebc7d16a2f26bec6994d7db09ec0b0"
+        },
+        "date": 1789381967727,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 478,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
