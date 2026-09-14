@@ -1,15 +1,4 @@
 {
   "expected_owner": "venelouis",
-  "bootstrap_unregistered": [
-    "rullst-core",
-    "rullst-iot",
-    "rullst-security",
-    "rullst-ai",
-    "rullst-capital",
-    "rullst-mail",
-    "rullst-messaging",
-    "rullst-auth",
-    "rullst-nexus",
-    "rullst-studio"
-  ]
+  "bootstrap_unregistered": []
 }

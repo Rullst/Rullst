@@ -37,14 +37,14 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
         post("/login" => controllers::auth_controller::login_submit),
         get("/register" => controllers::auth_controller::register_view),
         post("/register" => controllers::auth_controller::register_submit),
-        get("/logout" => controllers::auth_controller::logout),
+        post("/logout" => controllers::auth_controller::logout),
     ];
 
     Ok(router.route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
-    .route("/billing/checkout", rullst::routing::get(controllers::billing_controller::checkout_redirect)
+    .route("/billing/checkout", rullst::routing::post(controllers::billing_controller::checkout_redirect)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
-    .route("/billing/portal", rullst::routing::get(controllers::billing_controller::portal_redirect)
+    .route("/billing/portal", rullst::routing::post(controllers::billing_controller::portal_redirect)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
     .route("/billing/webhook", rullst::routing::post(controllers::billing_controller::webhook_handler)
@@ -143,14 +143,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         post("/login" => controllers::auth_controller::login_submit),
         get("/register" => controllers::auth_controller::register_view),
         post("/register" => controllers::auth_controller::register_submit),
-        get("/logout" => controllers::auth_controller::logout),
+        post("/logout" => controllers::auth_controller::logout),
     ];
 
     let router = router.route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
-    .route("/billing/checkout", rullst::routing::get(controllers::billing_controller::checkout_redirect)
+    .route("/billing/checkout", rullst::routing::post(controllers::billing_controller::checkout_redirect)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
-    .route("/billing/portal", rullst::routing::get(controllers::billing_controller::portal_redirect)
+    .route("/billing/portal", rullst::routing::post(controllers::billing_controller::portal_redirect)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
     .route("/billing/webhook", rullst::routing::post(controllers::billing_controller::webhook_handler)

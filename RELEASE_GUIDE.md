@@ -17,7 +17,7 @@ only when it is useful:
 
 | Reference | What it is | Published to crates.io? |
 |--------|------------|------------------------|
-| `main` | Active v12 integration and source for future releases | Only after an approved release tag |
+| `main` | Active integration and source for v12 maintenance and future releases | Only after an approved release tag |
 | `v5` | Frozen source snapshot of the legacy v5 line | No; use the existing `v5.0.0` tag/crate |
 | `feat/*`, `fix/*`, etc. | Short-lived reviewed work | Never directly |
 | `vX.Y.Z[-pre]` | Immutable source snapshot approved for release | Triggers the release workflow |
@@ -140,13 +140,13 @@ Once everything is stable and verified:
 ```powershell
 git switch main
 git pull --ff-only origin main
-git tag v12.0.0-rc.1
-git push origin v12.0.0-rc.1
+git tag v12.0.0
+git push origin v12.0.0
 ```
 
-The RC is a real public crates.io release. It can be yanked but never
-overwritten; inspect and test every `.crate` before pushing the tag. Users must
-opt in to it explicitly with a requirement such as `12.0.0-rc.1`.
+An RC or stable version is a real public crates.io release. It can be yanked but
+never overwritten; inspect and test every `.crate` before pushing the tag.
+Prereleases require explicit opt-in with a requirement such as `12.0.0-rc.1`.
 
 GitHub Actions will automatically execute the topological crate publish pipeline:
 1. ✅ `rullst-macros` & `rullst-orm-macros`
@@ -154,6 +154,14 @@ GitHub Actions will automatically execute the topological crate publish pipeline
 3. 📦 Domain crates: `rullst-connect`, `rullst-iot`, `rullst-security`, `rullst-ai`, `rullst-capital`, `rullst-mail`, `rullst-auth`
 4. 📦 Dashboards: `rullst-nexus`, `rullst-studio`
 5. 📦 Main bundle & CLI: `rullst`, `cargo-rullst`
+
+Before publication, the workflow extracts the exact version section from
+`CHANGELOG.md`, packages and reproduces every archive, writes checksums and the
+tag-bound evidence bundle, and creates a SHA-pinned GitHub build-provenance
+attestation. The GitHub release uses those extracted notes and is marked as a
+prerelease automatically when the semantic version contains a prerelease
+suffix. This evidence does not establish a project-wide SLSA level or an
+independent certification.
 
 ---
 
@@ -217,13 +225,13 @@ short-lived branches ── reviewed pull requests ──▶ main
 
 ## 🔑 One-time GitHub Setup Required
 
-Registered crates use crates.io Trusted Publishing through GitHub OIDC. The
-protected `crates-io` environment must require review and be configured for
-`release.yml`. Names that have never been registered require the narrowly
-scoped, short-lived `CRATES_IO_BOOTSTRAP_TOKEN` described in
-[`docs/src/release-recovery.md`](docs/src/release-recovery.md). Revoke and remove
-that bootstrap credential immediately after first publication; do not maintain
-a permanent repository-wide registry token.
+All sixteen registered v12 crates use crates.io Trusted Publishing through
+GitHub OIDC. The protected `crates-io` environment must require review and be
+configured for `release.yml`. The first-publication bootstrap token has been
+revoked and its GitHub secret removed; the bootstrap allowlist is empty. A
+future new package name requires the narrowly scoped, short-lived procedure in
+[`docs/src/release-recovery.md`](docs/src/release-recovery.md). Do not maintain a
+permanent repository-wide registry token.
 
 ---
 
@@ -254,6 +262,7 @@ git push origin vX.Y.Z
 | `rullst` | Check `rullst/Cargo.toml` |
 | `rullst-macros` | Check `rullst-macros/Cargo.toml` |
 | `cargo-rullst` | Check `cargo-rullst/Cargo.toml` |
-| Current `main` line | Active, unreleased v12 integration |
+| Current `main` line | v12 stable maintenance and future integration after the approved tag |
 | Legacy source | Frozen `v5` branch and immutable `v5.0.0` tag |
-| v12 stable decision | `NO-GO` until the documented gates pass |
+| Published prerelease | `12.0.0-rc.1` / `v12.0.0-rc.1` |
+| v12 stable publication | Requires exact-SHA gates, owner GO, immutable tag and registry receipts |

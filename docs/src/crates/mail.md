@@ -1,9 +1,8 @@
 # Rullst Mail 📬
 
 > [!IMPORTANT]
-> This page documents the `12.0.0-rc.1` evaluation release. Use that exact
-> registry version after indexing, or a path dependency only when reviewing
-> this checkout's source.
+> This page documents stable `12.0.0`. Use that exact registry version, or a
+> path dependency only when intentionally reviewing checkout-local changes.
 
 > **Vision preserved:** additional providers and air-gapped/zero-leak ambitions
 > were not silently removed; see their status and recommendation in the
@@ -376,7 +375,7 @@ Enable the opt-in official SDK transport:
 
 ```toml
 [dependencies]
-rullst-mail = { version = "12.0.0-rc.1", features = ["aws-ses"] }
+rullst-mail = { version = "12.0.0", features = ["aws-ses"] }
 aws-config = "1.11"
 ```
 

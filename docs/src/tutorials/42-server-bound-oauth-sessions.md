@@ -11,11 +11,11 @@ authorization policy.
 
 ## Enable the session feature
 
-For the `12.0.0-rc.1` evaluation release:
+For stable `12.0.0`:
 
 ```toml
 [dependencies]
-rullst-connect = { version = "12.0.0-rc.1", features = ["axum-session"] }
+rullst-connect = { version = "12.0.0", features = ["axum-session"] }
 tower-sessions = "0.15"
 ```
 

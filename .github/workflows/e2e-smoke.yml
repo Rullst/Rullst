@@ -40,6 +40,7 @@ jobs:
             echo "DATABASE_URL=sqlite://blog.db"
             echo "NEXUS_ADMIN_USERNAME=e2e-admin"
             echo "NEXUS_ADMIN_PASSWORD=e2e-only-strong-password"
+            echo "RULLST_PUBLIC_ORIGIN=https://showcase.example.invalid"
           } >> .env
           touch blog.db
 
@@ -79,11 +80,42 @@ jobs:
           echo "Testing GET /sitemap.xml..."
           SITEMAP=$(curl -s -i -A "Mozilla/5.0" http://localhost:3000/sitemap.xml)
           echo "$SITEMAP" | grep -i "xml"
+          echo "$SITEMAP" | grep -F "https://showcase.example.invalid/"
+          if echo "$SITEMAP" | grep -F "localhost:3000"; then
+            echo "❌ Public sitemap leaked a local development origin"
+            exit 1
+          fi
           if echo "$SITEMAP" | grep -i "Set-Cookie: rullst_csrf"; then
             echo "❌ Unexpected CSRF cookie found on /sitemap.xml"
             exit 1
           fi
           echo "✅ /sitemap.xml verified."
+
+      - name: Verify nested CSRF layers and offline checkout form
+        run: |
+          curl -sS -D pricing-headers.txt -c pricing-cookies.txt \
+            -A "Mozilla/5.0" http://localhost:3000/pricing \
+            -o pricing.html
+
+          cookie_headers=$(grep -ci '^set-cookie: rullst_csrf=' pricing-headers.txt)
+          test "$cookie_headers" -eq 1
+
+          form_token=$(grep -o 'name="_token" value="[^"]*"' pricing.html \
+            | head -1 | cut -d '"' -f 4)
+          cookie_token=$(awk '$6 == "rullst_csrf" { print $7 }' pricing-cookies.txt)
+          test -n "$form_token"
+          test "$form_token" = "$cookie_token"
+
+          curl -sS -b pricing-cookies.txt -A "Mozilla/5.0" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            --data-urlencode "_token=$form_token" \
+            --data-urlencode "provider=stripe" \
+            --data-urlencode "plan=pro_plan" \
+            --data-urlencode "email=fixture@example.invalid" \
+            http://localhost:3000/checkout \
+            | grep -F "OFFLINE FIXTURE"
+
+          echo "✅ Nested CSRF composition emits one matching token and accepts the offline form."
 
       - name: Verify POST /posts & Database Persistence
         run: |

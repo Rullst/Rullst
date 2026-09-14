@@ -44,7 +44,7 @@ ignored and do not count as compiled examples.
 Grades use the following fixed bands: A+ 97–100, A 90–96, B 80–89, C 70–79,
 D 60–69, and F below 60.
 
-The v12 RC quality objective is **A (90) or better for every crate except
+The stable v12 quality objective is **A (90) or better for every crate except
 `rullst-iot`, whose approved floor is B (80)**. A+ is an evidence threshold,
 not a value to assign by intent. This owner-approved gate is deliberately
 stricter than the earlier all-B floor and reopens bounded implementation work

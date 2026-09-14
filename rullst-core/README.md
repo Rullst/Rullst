@@ -1,9 +1,5 @@
 # Rullst Core ⚙️
 
-> **v12 development notice:** This README documents the unreleased v12 source.
-> Use a path dependency from this checkout until an immutable v12 RC exists on
-> crates.io. `12.0.0-rc.1` below is the planned first RC.
-
 `rullst-core` encapsulates the foundational primitives, routing engines, state management, and configuration layers of the Rullst Framework. It acts as the beating heart that orchestrates HTTP handlers, middleware, and backend worker systems.
 
 ## ✨ Features
@@ -45,15 +41,15 @@ Most developers will not depend on `rullst-core` directly, as it is re-exported 
 
 If you are developing a plugin or advanced middleware for the Rullst ecosystem, you can add it explicitly:
 
-After that RC is published, install the exact train with
-`cargo add rullst-core@12.0.0-rc.1`.
+Install the exact stable train with
+`cargo add rullst-core@12.0.0`.
 
 Core is runtime-only by default. Add just the database capabilities the
 application needs:
 
 ```toml
 [dependencies]
-rullst-core = { version = "12.0.0-rc.1", features = ["orm", "queue-sqlite", "offline-sync"] }
+rullst-core = { version = "12.0.0", features = ["orm", "queue-sqlite", "offline-sync"] }
 ```
 
 Enable `orm`, `queue-sqlite`, `queue-redis`, `offline-sync`, or `telemetry` only

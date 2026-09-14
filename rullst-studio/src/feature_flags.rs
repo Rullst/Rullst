@@ -62,9 +62,9 @@ async fn render_feature_flags() -> Html<String> {
                 let encoded_name = urlencoding::encode(&name);
 
                 let toggle_btn = if enabled {
-                    format!("<button hx-post=\"/studio/features/toggle/{encoded_name}\" hx-target=\"body\" class=\"bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold transition-colors\">ENABLED</button>")
+                    format!("<form method=\"post\" action=\"/studio/features/toggle/{encoded_name}\"><button type=\"submit\" class=\"bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold transition-colors\">ENABLED</button></form>")
                 } else {
-                    format!("<button hx-post=\"/studio/features/toggle/{encoded_name}\" hx-target=\"body\" class=\"bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded-full text-xs font-bold transition-colors\">DISABLED</button>")
+                    format!("<form method=\"post\" action=\"/studio/features/toggle/{encoded_name}\"><button type=\"submit\" class=\"bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded-full text-xs font-bold transition-colors\">DISABLED</button></form>")
                 };
 
                 rows_html.push_str(&format!(
@@ -94,8 +94,7 @@ async fn render_feature_flags() -> Html<String> {
     <meta charset="UTF-8">
     <title>Feature Flags - Rullst Studio</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+    <link href="/studio/assets/studio.css" rel="stylesheet">
 </head>
 <body class="h-full flex flex-col font-mono p-8">
     <div class="max-w-6xl mx-auto w-full">

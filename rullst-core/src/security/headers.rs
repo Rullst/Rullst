@@ -75,6 +75,11 @@ pub async fn headers_middleware(mut req: Request, next: Next) -> Response {
         .get::<crate::config::SecurityConfig>()
         .map(|config| config.csp.clone())
         .unwrap_or_else(|| crate::config::RullstConfig::global().security.csp.clone());
+    let configured_coep = req
+        .extensions()
+        .get::<crate::config::SecurityConfig>()
+        .map(|config| config.coep.clone())
+        .unwrap_or_else(|| crate::config::RullstConfig::global().security.coep.clone());
     // Reuse a nonce installed by an outer security layer. Generated applications and
     // integrations may compose more than one header layer; replacing the request nonce here
     // would make the renderer use a different value from the final CSP response header.
@@ -117,7 +122,8 @@ pub async fn headers_middleware(mut req: Request, next: Next) -> Response {
     );
     headers.insert(
         "cross-origin-embedder-policy",
-        HeaderValue::from_static("require-corp"),
+        HeaderValue::from_str(&configured_coep)
+            .unwrap_or_else(|_| HeaderValue::from_static("require-corp")),
     );
 
     let csp = render_csp_policy(Some(&configured_csp), Some(&nonce));

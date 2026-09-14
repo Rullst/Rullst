@@ -12,9 +12,8 @@
 </div>
 
 > [!IMPORTANT]
-> This page documents the `12.0.0-rc.1` evaluation release. Use that exact
-> registry version after indexing, or a path dependency only when reviewing
-> this checkout's source.
+> This page documents stable `12.0.0`. Use that exact registry version, or a
+> path dependency only when intentionally reviewing checkout-local changes.
 
 🚀 **[Visit the Official Website & Documentation Hub](https://rullst.github.io/Rullst/book/)** 🚀
 
@@ -148,7 +147,7 @@ generated API.
 After crates.io indexes the RC, install its exact train with:
 
 ```bash
-cargo add rullst-orm@12.0.0-rc.1
+cargo add rullst-orm@12.0.0
 cargo add tokio -F full
 ```
 
@@ -203,7 +202,7 @@ native enums specifically require `strict-postgres`, because SQLx's dynamic
 `Any` driver cannot decode custom PostgreSQL types:
 
 ```toml
-rullst-orm = { version = "12.0.0-rc.1", features = ["strict-postgres"] }
+rullst-orm = { version = "12.0.0", features = ["strict-postgres"] }
 ```
 
 Derive one label contract and use it in schema code:

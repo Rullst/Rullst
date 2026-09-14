@@ -30,6 +30,11 @@ pub async fn auth_middleware(mut req: Request, next: Next) -> Response {
 "##;
 
 const AUTH_CONTROLLER_TEMPLATE: &str = include_str!("auth_controller.rs.template");
+const REGISTRATION_HOOK_MARKER: &str = "// __RULLST_REGISTRATION_HOOK__";
+
+pub(crate) fn render_auth_controller(registration_hook: Option<&str>) -> String {
+    AUTH_CONTROLLER_TEMPLATE.replace(REGISTRATION_HOOK_MARKER, registration_hook.unwrap_or(""))
+}
 
 pub fn generate_auth_controllers() -> Result<(), Box<dyn std::error::Error>> {
     let middlewares_dir = Path::new("src/middlewares");
@@ -54,7 +59,7 @@ pub fn generate_auth_controllers() -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all(controllers_dir)?;
     fs::write(
         controllers_dir.join("auth_controller.rs"),
-        AUTH_CONTROLLER_TEMPLATE,
+        render_auth_controller(None),
     )?;
     println!("{}", "  ✨ Created 'auth_controller' controller.".green());
 
@@ -78,16 +83,20 @@ mod tests {
     #[test]
     // TM-DEPLOY-06: generated auth keeps blocking password work off the executor.
     fn generated_auth_is_async_query_bound_and_panic_free() {
-        syn::parse_file(AUTH_CONTROLLER_TEMPLATE).expect("auth controller must parse");
-        assert!(AUTH_CONTROLLER_TEMPLATE.contains("find_by_email"));
-        assert!(AUTH_CONTROLLER_TEMPLATE.contains("verify_password_async"));
-        assert!(AUTH_CONTROLLER_TEMPLATE.contains("hash_password_async"));
-        assert!(AUTH_CONTROLLER_TEMPLATE.contains("DUMMY_PASSWORD_HASH"));
-        assert!(!AUTH_CONTROLLER_TEMPLATE.contains("User::all()"));
-        assert!(!AUTH_CONTROLLER_TEMPLATE.contains("verify_password("));
-        assert!(!AUTH_CONTROLLER_TEMPLATE.contains("hash_password("));
-        assert!(!AUTH_CONTROLLER_TEMPLATE.contains(".unwrap("));
-        assert!(!AUTH_CONTROLLER_TEMPLATE.contains(".expect("));
-        assert!(!AUTH_CONTROLLER_TEMPLATE.contains("panic!("));
+        let source = render_auth_controller(None);
+        syn::parse_file(&source).expect("auth controller must parse");
+        assert!(source.contains("find_by_email"));
+        assert!(source.contains("verify_password_async"));
+        assert!(source.contains("hash_password_async"));
+        assert!(source.contains("DUMMY_PASSWORD_HASH"));
+        assert!(source.contains("save_with_tx"));
+        assert!(source.contains("transaction.rollback()"));
+        assert!(!source.contains(REGISTRATION_HOOK_MARKER));
+        assert!(!source.contains("User::all()"));
+        assert!(!source.contains("verify_password("));
+        assert!(!source.contains("hash_password("));
+        assert!(!source.contains(".unwrap("));
+        assert!(!source.contains(".expect("));
+        assert!(!source.contains("panic!("));
     }
 }

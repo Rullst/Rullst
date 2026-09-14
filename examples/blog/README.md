@@ -10,7 +10,8 @@ or proof that every crate and feature is exercised.
 - `/`: server-rendered posts using the `html!` macro and ORM.
 - `/live-feed` and `/_live`: server-driven WebSocket example.
 - `/editor`: Wasm island mounting example.
-- `/pico-demo` and `/templates-demo`: Pico CSS and Tera presentations.
+- `/pico-demo` and `/templates-demo`: Pico CSS integration and a deliberately
+  small embedded file-template fixture; the latter is not a Tera/Jinja engine.
 - `/posts/repository`: parameterized repository queries.
 - `/pricing`: `Billable` quotas, payment-adapter mock fixtures, and an unsigned,
   offline DPS XML preview. It never issues or signs an NFS-e.
@@ -32,6 +33,25 @@ as unsigned until an application connects a durable audit-chain verifier.
 The provider catalogue is descriptive. Adapter capabilities differ, fees and
 provider terms can change, and this example makes no live provider request.
 
+## Standalone showcase synchronization
+
+The canonical example source lives in this directory. A separately deployed
+`Rullst/examples` repository is not updated by publishing the framework crates.
+When synchronizing that deployment:
+
+1. copy or merge the example from the exact v12 release commit;
+2. pin the published `rullst`/component crates to the matching exact version and
+   preserve its lockfile;
+3. set `RULLST_PUBLIC_ORIGIN` to the external HTTPS origin;
+4. supply unique Nexus credentials through deployment secrets—never source-code
+   defaults—and keep Studio loopback-only; and
+5. retain the offline-fixture labels unless live provider-account conformance is
+   tested separately and documented provider by provider.
+
+The v12 CSRF middleware is request-idempotent, so composing this example's
+explicit layer with `Server`'s production baseline emits one matching token. Do
+not work around CSRF by disabling either validation or secure cookie attributes.
+
 ## Local setup
 
 From the workspace root, create `examples/blog/.env` with an application key
@@ -41,6 +61,7 @@ and database URL:
 RULLST_ENV=development
 APP_KEY=replace-with-at-least-32-random-bytes
 DATABASE_URL=sqlite://blog.db
+RULLST_PUBLIC_ORIGIN=https://showcase.example.com
 ```
 
 Then run:
@@ -53,6 +74,12 @@ cargo run -p rullst-blog-example
 Open `http://127.0.0.1:3000`, then use the Studio and Nexus buttons. Studio is
 served on `http://127.0.0.1:5555`; Nexus accepts only a verified loopback peer in
 this debug build.
+
+`RULLST_PUBLIC_ORIGIN` is optional for local development and must be an HTTPS
+origin with no path, query, or credentials. Set it to the deployment's external
+origin when publishing the showcase; it supplies the sitemap and mock checkout
+return URLs. If it is absent from a release build, the sitemap advertises no
+origin and offline fixtures use the reserved `example.invalid` domain.
 
 A release build does not start Studio. It also replaces the local Nexus policy
 with `NexusAuthPolicy::basic_from_env()`, so production startup requires unique

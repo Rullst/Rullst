@@ -15,7 +15,7 @@ unsupported streaming, tool, timeout, retry, and cancellation boundaries.
 ```toml
 [dependencies]
 rullst = {
-    version = "12.0.0-rc.1",
+    version = "12.0.0",
     default-features = false,
     features = ["ai"]
 }
@@ -23,8 +23,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ```
 
-Use the exact v12 release candidate being evaluated. Prereleases require
-explicit opt-in; run the command only after crates.io has indexed that version.
+Use the exact stable v12 release. Keep the application's `Cargo.lock` under
+version control and review future dependency updates before deployment.
 
 ## 2. Create a guarded client
 
@@ -236,7 +236,7 @@ framework-owned fixed schema rather than generated models:
 
 ```toml
 rullst = {
-    version = "12.0.0-rc.1",
+    version = "12.0.0",
     default-features = false,
     features = ["ai-sql-memory"]
 }

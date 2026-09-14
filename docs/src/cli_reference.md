@@ -31,7 +31,15 @@ the generated application:
   * `<name>`: The folder and package name (e.g., `my_startup`).
 * **Optional Flags:**
   * `--api`: Scaffolds a headless JSON API from the Blank starter (no HTML view rendering); SQLx-specific product blueprints reject it instead of ignoring it.
-  * `--docker`: Adds the current multi-stage `Dockerfile` packaging scaffold; Compose services and deployment hardening remain explicit project work.
+  * `--docker`: Adds a multi-stage `Dockerfile` and `.dockerignore`. The runtime
+    image installs CA certificates, runs as UID/GID 10001, sets the production
+    bind address and copies local static/config assets when present. An explicit
+    SQLite selection uses the writable `/app/data` directory. Secrets are never
+    embedded and no anonymous volume is declared. Run schema migrations as one
+    deployment job before starting or rolling multiple replicas; the generated
+    image deliberately does not race migrations from every application process.
+    Compose services, persistent-volume ownership, backup/restore, health
+    probes and platform deployment hardening remain explicit project work.
   * `--turso`: Adds the direct Hrana HTTP v3 Turso/libSQL adapter, checked migrations, and its real-SQL offline development fallback to the selected primary backend. It does not imply transparent replication.
   * `--mongodb`: Enables typed MongoDB document CRUD and its deterministic offline store.
   * `--duckdb`: Enables in-process DuckDB analytics; the optional native dependency increases the first build time.

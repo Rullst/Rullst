@@ -290,6 +290,32 @@ async fn test_headers_middleware_injects_security_headers() {
 }
 
 #[tokio::test]
+async fn headers_middleware_honors_validated_application_coep_policy() {
+    use crate::config::SecurityConfig;
+    use axum::{Extension, body::Body, http::Request, routing::get};
+    use tower::ServiceExt;
+
+    let security = SecurityConfig {
+        coep: "credentialless".to_string(),
+        ..Default::default()
+    };
+    security.validate().expect("valid COEP policy");
+    let app = axum::Router::new()
+        .route("/", get(|| async { "ok" }))
+        .layer(axum::middleware::from_fn(headers_middleware))
+        .layer(Extension(security));
+
+    let response = app
+        .oneshot(Request::new(Body::empty()))
+        .await
+        .expect("header response");
+    assert_eq!(
+        response.headers().get("Cross-Origin-Embedder-Policy"),
+        Some(&axum::http::HeaderValue::from_static("credentialless")),
+    );
+}
+
+#[tokio::test]
 async fn headers_middleware_preserves_an_explicit_cache_policy() {
     use axum::{
         body::Body,

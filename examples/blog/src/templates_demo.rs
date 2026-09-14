@@ -1,6 +1,5 @@
-//! Classic File-Based Template Demonstration (Jinja2 / Tera Engine).
-//! Demonstrates how developers coming from Django, Rails, and Loco.rs can render
-//! external HTML templates located in `templates/` with full separation of concerns.
+//! Minimal embedded file-template demonstration.
+//! This fixture is intentionally not represented as a Tera/Jinja implementation.
 
 use crate::showcase_nav::{render_shared_styles, render_showcase_nav};
 use axum::response::Html;
@@ -13,14 +12,14 @@ pub async fn render_templates_demo_page() -> Html<String> {
     // Template source loaded from templates/article.html
     let template_source = include_str!("../templates/article.html");
 
-    // Simple template string replacement (emulating compile-time / runtime Tera engine)
+    // Deliberately small replacement fixture, not a general-purpose template parser.
     let page_html = template_source
         .replace("{{ title }}", "Decoupled MVC Architectures in Rust")
         .replace("{{ author }}", "Chief Architect (Sovereign Systems)")
         .replace("{{ published_at }}", "2026-08-15 14:00 UTC")
         .replace(
             "{{ content }}",
-            "This page is rendered directly from an external HTML file located at 'templates/article.html'. Unlike inline macros, file-based templating enables UI designers and frontend developers to edit layout files without touching Rust source code or triggering Rust compiler recompilations.",
+            "This page starts from templates/article.html and uses a deliberately small string-replacement fixture. Because include_str! embeds the file at compile time, editing it requires recompilation. Use a reviewed template engine when an application needs escaping rules, inheritance, runtime reloads, or a general template language.",
         )
         .replace("{{ shared_styles | safe }}", &shared_styles)
         .replace("{{ nav_html | safe }}", &nav_html);

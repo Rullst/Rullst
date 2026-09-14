@@ -2,19 +2,22 @@
 
 ## Supported Versions
 
-Rullst adopts Semantic Versioning for each published crate. The repository is
-currently preparing the v12 release candidate; a version present in the
-workspace is not a published stable release by itself.
+Rullst adopts Semantic Versioning for each published crate. This policy is
+written for the v12 stable release line; crates.io remains authoritative for
+whether an exact package version has been published. Source in a branch or an
+unpublished tag is not a distributed release by itself.
 
 | Version | Supported | Status |
 | :--- | :---: | :--- |
-| **5.0.0** | :white_check_mark: | Latest published `rullst` umbrella release on crates.io as checked on 2026-08-26; receives security triage while v12 is prepared. |
-| **12.0.0 source** | :construction: | Unreleased RC candidate; receives fixes but is not yet a production release. |
+| **12.x** | :white_check_mark: | Current supported stable line. Confirm the exact package/version exists on crates.io. |
+| **12.0.0-rc.1** | :x: | Immutable evaluation prerelease; migrate to the corresponding supported stable v12 line. |
+| **5.0.0** | :x: | Frozen legacy release; no routine maintenance. |
 | < 5.0.0 | :x: | End of life. |
 
 Individual crates have historically used different version numbers. Before
 reporting an issue, confirm the exact package and version from `Cargo.lock`.
-This table must be updated as part of the v12 RC publication.
+Security fixes are issued on the current supported line rather than by
+replacing an already published archive.
 
 ---
 

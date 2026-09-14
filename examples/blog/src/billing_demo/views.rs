@@ -63,14 +63,16 @@ pub fn render_pricing_page(
             <head>
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                <title>"Rullst Capital — Connected Payment Gateways & Configuration Guide"</title>
-                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+                <title>"Rullst Capital — Offline Adapter Capability Showcase"</title>
+                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" />
                 <style>{ rullst::html::RawHtml(styles) }</style>
                 <style>{ rullst::html::RawHtml(extra_styles.to_string()) }</style>
             </head>
             <body>
                 { rullst::html::RawHtml(nav) }
                 <div class="container">
+
+                    { rullst::html::RawHtml(checkout_result_html) }
 
                     <div class="card pricing-hero">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
@@ -90,7 +92,7 @@ pub fn render_pricing_page(
                                 "🔐 " <strong>{format!("{} / {} Credential Sets Detected", configured_count, total_count)}</strong>
                             </span>
                             <span class="stat-badge">
-                                "⚡ Pix adapter (verify current provider terms)"
+                                "🧪 Every action on this page stays offline"
                             </span>
                             <span class="stat-badge">
                                 "🇨🇳 Alipay offline mock; live RSA2 is disabled"
@@ -107,7 +109,7 @@ pub fn render_pricing_page(
                                     <div style="font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 1rem;">"$0" <span style="font-size: 1rem; color: #64748b;">"/mo"</span></div>
                                     <ul style="color: var(--text-muted); font-size: 0.9rem; padding-left: 1.25rem; line-height: 1.7;">
                                         <li>"Up to 3 Published Stories"</li>
-                                        <li>"Zero-bundle HTMX SSR UI"</li>
+                                        <li>"Typed SSR UI with optional HTMX behavior"</li>
                                         <li>"Community Support & Forum"</li>
                                     </ul>
                                 </div>
@@ -127,7 +129,7 @@ pub fn render_pricing_page(
                                         <li>"AI Assistant & Semantic RAG"</li>
                                     </ul>
                                 </div>
-                                <a href="#checkout-simulator" class="btn" style="width: 100%; text-align: center; margin-top: 1rem;">"Simulate Checkout (11 Gateways)"</a>
+                                <a href="#checkout-simulator" class="btn" style="width: 100%; text-align: center; margin-top: 1rem;">"Run an Offline Fixture (11 Adapters)"</a>
                             </div>
 
                             <div style="background: #05070c; border: 1px solid #1e293b; border-radius: 0.5rem; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between;">
@@ -140,7 +142,7 @@ pub fn render_pricing_page(
                                         <li>"Offline DPS XML preview (not an issued NFS-e)"</li>
                                     </ul>
                                 </div>
-                                <a href="#checkout-simulator" class="btn btn-emerald" style="width: 100%; text-align: center; margin-top: 1rem;">"Enterprise Contract"</a>
+                                <a href="#checkout-simulator" class="btn btn-emerald" style="width: 100%; text-align: center; margin-top: 1rem;">"Inspect Adapter Boundaries"</a>
                             </div>
                         </div>
                     </div>
@@ -156,19 +158,19 @@ pub fn render_pricing_page(
                         <form method="POST" action="/checkout" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 1rem; align-items: flex-end;">
                             <input type="hidden" name="_token" value={csrf_token} />
                             <div>
-                                <label style="display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.35rem;">"Payment Gateway:"</label>
+                                <label style="display: block; font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.35rem;">"Payment or Payout Adapter Fixture:"</label>
                                 <select name="provider" style="width: 100%; padding: 0.6rem; background: #070a12; border: 1px solid #334155; border-radius: 0.375rem; color: #fff; font-size: 0.9rem;">
-                                    <option value="infinitepay">"🇧🇷 InfinitePay (Pix 0% & Brazil Domestic Cards)"</option>
-                                    <option value="alipay">"🇨🇳 Alipay (支付宝 / Alipay+ China & Asia)"</option>
-                                    <option value="stripe">"🌐 Stripe (Global Cards, Apple/Google Pay)"</option>
+                                    <option value="infinitepay">"🇧🇷 InfinitePay (offline billing fixture)"</option>
+                                    <option value="alipay">"🇨🇳 Alipay (offline fixture; live RSA2 disabled)"</option>
+                                    <option value="stripe">"🌐 Stripe (offline billing fixture)"</option>
                                     <option value="lemonsqueezy">"🍋 Lemon Squeezy (MoR adapter)"</option>
-                                    <option value="polar">"⚡ Polar.sh (Open Source & Developer MoR)"</option>
-                                    <option value="paddle">"🛡️ Paddle (Enterprise Global B2B MoR)"</option>
-                                    <option value="mercadopago">"🌎 Mercado Pago (Latin America Regional)"</option>
-                                    <option value="razorpay">"🇮🇳 Razorpay (India UPI & Subscriptions)"</option>
-                                    <option value="coinbase">"₿ Coinbase Commerce (Web3 Crypto BTC/SOL)"</option>
-                                    <option value="picpay">"📱 PicPay (Mobile Digital Wallet & QR)"</option>
-                                    <option value="wise">"💸 Wise (International Payouts & Transfers)"</option>
+                                    <option value="polar">"⚡ Polar.sh (MoR adapter)"</option>
+                                    <option value="paddle">"🛡️ Paddle (MoR adapter)"</option>
+                                    <option value="mercadopago">"🌎 Mercado Pago (offline billing fixture)"</option>
+                                    <option value="razorpay">"🇮🇳 Razorpay (offline billing fixture)"</option>
+                                    <option value="coinbase">"₿ Coinbase Commerce (offline commerce fixture)"</option>
+                                    <option value="picpay">"📱 PicPay (offline billing fixture)"</option>
+                                    <option value="wise">"💸 Wise (offline payout fixture—not checkout)"</option>
                                 </select>
                             </div>
 
@@ -187,12 +189,11 @@ pub fn render_pricing_page(
 
                             <div>
                                 <button type="submit" class="btn btn-primary" style="padding: 0.65rem 1.25rem; font-weight: 700; width: 100%;">
-                                    "Generate Checkout Session ➔"
+                                    "Generate Offline Fixture ➔"
                                 </button>
                             </div>
                         </form>
 
-                        { rullst::html::RawHtml(checkout_result_html) }
                     </div>
 
                     <div class="card" style="margin-top: 2rem;">
@@ -202,11 +203,11 @@ pub fn render_pricing_page(
                                     "💳 Payment Adapter Catalogue in Rullst Capital"
                                 </h2>
                                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.35rem;">
-                                    "Strongly typed adapters with explicit offline credentials. Live capability and webhook requirements are documented and tested per provider."
+                                    "Strongly typed adapters with deterministic offline credentials. Each card states the reviewed v12 boundary; a fixture is not evidence of live provider acceptance."
                                 </p>
                             </div>
                             <div>
-                                <a href="https://github.com/venelouis/Rullst/blob/main/docs/src/payment-gateways-guide.md" target="_blank" class="btn" style="font-size: 0.85rem; padding: 0.4rem 0.85rem;">
+                                <a href="https://github.com/Rullst/Rullst/blob/main/docs/src/payment-gateways-guide.md" target="_blank" class="btn" style="font-size: 0.85rem; padding: 0.4rem 0.85rem;">
                                     "📖 Open Full Architecture Guide"
                                 </a>
                             </div>
@@ -219,10 +220,10 @@ pub fn render_pricing_page(
 
                     <div class="card" style="margin-top: 2rem;">
                         <h2 class="card-title" style="margin-bottom: 0.5rem; color: #a78bfa;">
-                            "⚙️ Step-by-Step Guide: How to Configure Each Gateway"
+                            "⚙️ Adapter Initialization Reference"
                         </h2>
                         <p style="color: var(--text-muted); font-size: 0.9rem;">
-                            "Click any provider below to view required environment variables (" <code>".env"</code> "), Rust initialization code (" <code>"init_provider"</code> "), and webhook endpoints:"
+                            "Open a provider to inspect illustrative environment names, Rust initialization, and the reviewed v12 capability boundary. Consult the provider and Rullst documentation before enabling a live account:"
                         </p>
 
                         <div class="config-accordion">
@@ -273,32 +274,20 @@ fn render_gateway_cards(gateways: &[GatewayInfo]) -> String {
                         </div>
 
                         <p style="color: #cbd5e1; font-size: 0.82rem; margin: 0.5rem 0 0.75rem 0; line-height: 1.4;">
-                            {g.best_for}
+                            {g.current_boundary}
                         </p>
 
                         <div class="gateway-specs">
                             <div class="spec-item">
-                                <span class="spec-label">"Region:"</span>
-                                <span class="spec-val">{g.region}</span>
-                            </div>
-                            <div class="spec-item">
-                                <span class="spec-label">"Fees:"</span>
-                                <span class="spec-val">{g.fees}</span>
-                            </div>
-                            <div class="spec-item">
-                                <span class="spec-label">"Payout Speed:"</span>
-                                <span class="spec-val">{g.payout_speed}</span>
-                            </div>
-                            <div class="spec-item">
-                                <span class="spec-label">"Tax / Fiscal:"</span>
-                                <span class="spec-val">{g.tax_handling}</span>
+                                <span class="spec-label">"External terms:"</span>
+                                <span class="spec-val">"Consult the provider's current pricing, availability, settlement, tax, and account documentation."</span>
                             </div>
                         </div>
                     </div>
 
                     <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
                         <a href={format!("/checkout?provider={}&plan=pro_plan", g.id)} class="btn btn-primary" style="flex: 1; text-align: center; font-size: 0.8rem; padding: 0.4rem;">
-                            "Test Checkout"
+                            "Run Offline Fixture"
                         </a>
                         <a href={format!("#{}", config_id)} class="btn" style="flex: 1; text-align: center; font-size: 0.8rem; padding: 0.4rem;">
                             "View Setup Guide"
@@ -351,10 +340,10 @@ fn render_config_guide(gateways: &[GatewayInfo]) -> String {
 
                         <div style="margin-top: 1rem;">
                             <h4 style="color: #c084fc; margin: 0 0 0.5rem 0; font-size: 0.9rem;">
-                                "3. Cryptographic HMAC Webhook (" <code>"/webhooks/capital"</code> "):"
+                                "3. Current v12 capability boundary:"
                             </h4>
                             <div class="code-box">
-                                {g.webhook_code}
+                                {g.current_boundary}
                             </div>
                         </div>
                     </div>
@@ -367,20 +356,10 @@ fn render_config_guide(gateways: &[GatewayInfo]) -> String {
 /// Renders the result of a simulated checkout creation if triggered.
 fn render_checkout_result(simulated: Option<(String, String)>) -> String {
     if let Some((provider, url)) = simulated {
-        let is_valid_url = url.starts_with("http://") || url.starts_with("https://");
         let safe_url = rullst::html::escape_str(&url);
-        let action_btn = if is_valid_url {
-            html! {
-                <a href={&url} target="_blank" rel="noopener noreferrer" class="btn btn-emerald" style="font-size: 0.85rem; padding: 0.4rem 1rem;">
-                    "Inspect Mock URL ↗"
-                </a>
-            }
-        } else {
-            String::new()
-        };
 
         html! {
-            <div style="margin-top: 1.5rem; padding: 1.25rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 0.5rem;">
+            <div id="offline-fixture-result" style="margin-bottom: 1.5rem; padding: 1.25rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 0.5rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <span style="font-weight: 700; color: #34d399; font-size: 0.95rem;">
                         "🧪 Offline Adapter Result for: " <strong>{provider.to_uppercase()}</strong>
@@ -392,7 +371,6 @@ fn render_checkout_result(simulated: Option<(String, String)>) -> String {
                     {safe_url}
                 </div>
                 <div style="margin-top: 0.75rem; display: flex; gap: 0.75rem; align-items: center;">
-                    { rullst::html::RawHtml(action_btn) }
                     <a href="/pricing" class="btn" style="font-size: 0.85rem; padding: 0.4rem 1rem;">
                         "Clear Simulation"
                     </a>

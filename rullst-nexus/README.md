@@ -1,9 +1,5 @@
 # Rullst Nexus
 
-> **v12 development notice:** This README documents the unreleased v12 source.
-> Use a path dependency from this checkout until an immutable v12 RC exists on
-> crates.io.
-
 `rullst-nexus` is Rullst's authenticated administrative CMS for registered `rullst-orm`
 models. It provides server-rendered CRUD views, server-side field policies, RBAC enforcement,
 telemetry, and the optional AI assistant.

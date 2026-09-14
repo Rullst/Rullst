@@ -5,7 +5,7 @@ is not evidence that a workflow has passed for a particular commit. A green
 claim must always point to the GitHub Actions run, commit SHA, logs, and produced
 artifacts.
 
-Last source-level review: **2026-09-11**.
+Last source-level review: **2026-09-13**.
 
 ## Status language
 
@@ -78,7 +78,7 @@ The workflows below run **only when requested manually**:
 | `fuzzing.yml` | All 40 declared libFuzzer targets from the validated shared inventory | **Required v12 RC evidence:** release mode first validates the ten package lockfiles and compiles every declared target in ten package-level preflight jobs, then every target must finish without a crash for the 5.5-hour budget; target-specific corpora are restored and saved, while failure reproducers are retained. Dependency-lock drift fails preflight, campaign and corpus jobs. The proc-macro parser uses strict processes of at most 30 minutes sharing one corpus, which bounds sanitizer RSS without weakening the total budget. A strict five-minute single-target diagnostic accelerates correction feedback but is explicitly ineligible as RC evidence. This is bounded evidence, not proof for every input. |
 | `kani.yml` | Twenty named bounded formal harnesses in ten supported runtime/library packages | **Required v12 RC evidence for the declared harnesses:** every proof has an isolated strict matrix job. Rullst itself stays on stable Rust 1.98.1 with a Rust 1.96 MSRV; only the separately built Kani verifier uses its pinned `nightly-2026-08-01` compiler (`rustc 1.99.0-nightly`) because the latest stable Kani bundle's Rust 1.93 compiler cannot compile the framework. The proc-macro-only `rullst-macros` target remains unsupported by Kani and is covered by compile-pass/fail and generated-project evidence instead. |
 | `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | **Required v12 RC evidence for the declared scopes:** every selected scope is strict. This nightly-only interpreter uses pinned `nightly-2026-08-21` (`rustc 1.100.0-nightly`); it does not change the project's stable toolchain or MSRV. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. |
-| `mutants.yml` | A fail-fast reviewed inventory, eighty lossless shards over the measured 14,380-mutant workspace scope, their artifacts and a strict aggregate | Informational: a cheap all-feature `--list --json` preflight rejects inventory drift before runners start; every shard then uses that release surface, and aggregation requires every reviewed candidate to receive exactly one classification before reporting the conservative caught percentage. A targeted mode retests one validated production Rust file after a correction; it does not replace the complete campaign. Missed/time-out exit codes remain findings, while a broken baseline, incomplete artifact set, preflight/classification mismatch, invalid invocation or cargo-mutants internal failure fails the workflow. The 80-way split replaces an invalid 16-way attempt whose default-feature baseline omitted optional tests and whose slowest CLI/ORM jobs could not fit the 5h30 bound. “Pass” does not honestly mean every possible mutant was killed. |
+| `mutants.yml` | A fail-fast reviewed inventory, eighty lossless shards over the measured 14,391-mutant workspace scope, their artifacts and a strict aggregate | Informational: a cheap all-feature `--list --json` preflight rejects inventory drift before runners start; every shard then uses that release surface, and aggregation requires every reviewed candidate to receive exactly one classification before reporting the conservative caught percentage. A targeted mode retests one validated production Rust file after a correction; it does not replace the complete campaign. Recovery modes accept only the repository-reviewed campaign policy, bind the source/run/branch/tool/inventory digest, bisect explicitly authorized failed fragments, reuse immutable successful artifacts and emit a content-addressed aggregate. Missed/time-out exit codes remain findings, while a broken baseline, incomplete artifact set, preflight/classification mismatch, invalid invocation or cargo-mutants internal failure fails the workflow. The v12 campaign completed 14,391/14,391 classifications in run `34761010296`; “pass” does not mean every mutant was killed. |
 
 These workflows are **periodic and manually runnable**:
 
@@ -88,12 +88,15 @@ These workflows are **periodic and manually runnable**:
 | Weekly | `bench.yml`, `cargo-deny.yml`, `codeql.yml`, `corpus-sync.yml`, `coverage.yml`, `documentation.yml`, `pqc-compliance.yml`, `proptest.yml`, `scorecards.yml`, `security-audit.yml`, `trufflehog.yml`, `udeps.yml` | The inventory below identifies which results are blocking, automated evidence, or informational. Corpus sync warms and minimizes the same 40 validated target corpora with bounded parallelism. |
 
 All remaining test/build workflows run on the documented push, pull-request or
-path filters and also expose a manual rerun. For an RC checkpoint, first use the
-automatic mainline suite, then manually run the five manual-only workflows and
-any periodic/platform matrix whose latest successful run does not point to the
-same candidate SHA. Physical devices, store approval, live provider accounts,
-external security review and human release approval remain outside GitHub
-Actions.
+path filters and also expose a manual rerun. For an RC or stable checkpoint,
+first use the automatic mainline suite, then run the exact-SHA manual admission
+set: full-platform `ci.yml`, release-mode `fuzzing.yml`, `dast-zap.yml`,
+`kani.yml`, `miri.yml`, `sanitizers.yml`, `proptest.yml`, and all three Omni
+compile workflows. The tag workflow checks those receipts through
+`.github/release-required-workflows.json`; the fuzz receipt is accepted only
+when all 40 named target jobs and its evidence boundary succeeded. Physical
+devices, store approval, live provider accounts, external security review and
+human release approval remain outside GitHub Actions.
 
 ## Required local and release baseline
 
@@ -256,7 +259,7 @@ not claim that the hosted setting is already enabled.
 | Cover every fuzz target | **Implemented in workflow** | `.github/fuzz-targets.json` is the shared inventory for the manual campaign and corpus maintenance. A blocking validator compares it with all ten fuzz manifests and their 40 source files. This records configuration, not a successful six-hour run. |
 | Package all crates before publishing | **Implemented in workflow** | The tag-only release validates versions, packages all publishable workspace crates, hashes and attests the archives, then publishes in dependency order. |
 | Unified evidence bundle per tag | **Implemented in workflow** | The tag-scoped bundle contains `Cargo.lock`, Cargo metadata, CycloneDX 1.5 SBOM, Cargo Audit JSON, `deny.toml`, bounded compliance evidence, governed advisory exceptions, commit/tag context, and checksums. The bundle and `.crate` archives are included in build-provenance attestation. |
-| Align manifest, changelog, tag, registry, and notes | **Partial** | The release validates `vMAJOR.MINOR.PATCH` against publishable manifest versions. Changelog state and registry/release-note consistency are not automatically verified. **Worth implementing before calling 12.0.0 released.** |
+| Align manifest, changelog, tag, registry, and notes | **Implemented in workflow** | Preflight validates manifests and tag, extracts the exact dated changelog section into the GitHub release, and verifies registry checksums after publication. |
 
 ## Important evidence boundaries
 
@@ -324,7 +327,7 @@ higher component result for the repository total.
   `zeroize`'s unsupported inline assembly, cryptographic implementations or the
   entire concurrent middleware implementations.
 - Mutation testing is manual, split into 80 lossless shards over the measured
-  14,380-mutant inventory, and intentionally informational while results are
+  14,391-mutant inventory, and intentionally informational while results are
   uploaded. Before the expensive matrix starts, a fail-fast `--list --json`
   preflight verifies the exact unique candidate set; the final aggregate must
   match that reviewed list, not merely its count. The hosted command makes
@@ -333,7 +336,12 @@ higher component result for the repository total.
   legacy root configuration and its exclusions were not silently activated.
   Targeted mode accepts exactly one tracked production `.rs` path so a
   correction can be retested without restarting the complete workspace
-  campaign. Exit statuses for missed and timed-out mutants remain findings;
+  campaign. Recovery is governed by a committed, versioned policy binding the
+  originating and continuation runs, attempts, branches, workflow identity,
+  measured source SHA, cargo-mutants version, exact shard set and inventory
+  digest. It bisects only authorized incomplete fragments and combines them
+  with successful immutable artifacts. The content-addressed mixed aggregate
+  still has to match the complete reviewed inventory exactly once. Exit statuses for missed and timed-out mutants remain findings;
   baseline, usage and internal failures do not get normalized into green jobs.
   The aggregate also fails closed when an artifact is absent, a shard is
   incomplete or the reviewed full inventory drifts; its conservative
@@ -421,10 +429,11 @@ certification.
 against every publishable crate, packages before the first publish, and creates
 a tag-bound evidence bundle containing the lockfile, Cargo metadata, CycloneDX
 1.5, Cargo Audit JSON, dependency policy, bounded compliance evidence, advisory
-exceptions, commit context, and checksums. The `.crate` archives and evidence
-receive a GitHub build-provenance attestation, while the official generic SLSA generator produces
-release provenance. This does **not** by itself establish project-wide SLSA
-Level 3 certification, Sigstore Cosign binary signing, or regulatory compliance.
+exceptions, commit context, checksums, and release notes extracted from the
+exact matching changelog section. The `.crate` archives and evidence receive
+GitHub's SHA-pinned build-provenance attestation. This does **not** by itself
+establish a project-wide SLSA level, Sigstore Cosign binary signing, independent
+review, or regulatory compliance.
 
 `workflow-lint.yml` validates all workflow syntax, GitHub expressions, and
 embedded shell with Actionlint 1.7.7. Its container is pinned to an immutable
@@ -462,15 +471,15 @@ dependency graph make static estimates unreliable.
 | [`kani.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/kani.yml) | manual | Blocking v12 RC scope; bounded evidence | Builds an immutable reviewed Kani snapshot with the verifier-only `nightly-2026-08-01` compiler, while Rullst stays on stable Rust 1.98.1 with a Rust 1.96 MSRV. It verifies twenty named bounded harnesses in isolated jobs across ten supported packages. Proof failures fail their matrix jobs; the proc-macro-only crate remains outside Kani's supported targets. |
 | [`machete.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/machete.yml) | main push and PR, manual | Blocking | Unused dependency scan with configured exceptions. |
 | [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | manual | Blocking v12 RC scope; bounded evidence | Pinned nightly-only Miri executes 15 named pure-Rust/default-feature scopes with randomized layouts without changing Rullst's stable toolchain or MSRV. Native FFI/syscall/network paths, the umbrella re-export facade, and the Blog example are explicit boundaries; selected-scope failures fail the workflow. |
-| [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | A fail-fast exact-inventory preflight followed by eighty lossless pinned cargo-mutants 27.1.0 shards over the measured 14,380-mutant all-feature workspace scope, or one validated production-file diagnostic, with uploaded results, compiler caching and a strict completeness aggregate bound to the preflight list. Findings stay informational, but baseline/tool/invocation failures, missing artifacts, incomplete classification and reviewed-inventory drift fail the run. |
+| [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | A fail-fast exact-inventory preflight followed by eighty lossless pinned cargo-mutants 27.1.0 shards over the measured 14,391-mutant all-feature workspace scope, one validated production-file diagnostic, or policy-bound exact-SHA recovery of reviewed failed fragments. Successful immutable artifacts may be reused, but the content-addressed aggregate still requires every reviewed candidate exactly once and carries source/run/branch/tool/inventory provenance. Findings stay informational, while baseline/tool/invocation failures, missing artifacts, incomplete classification and reviewed-inventory drift fail the run. The completed v12 receipt is run `34761010296`: 14,391/14,391 classified and a conservative 70.57% caught. |
 | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | main push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
 | [`omni-android.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-android.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh deterministic Omni shell, initializes Android and compiles an unsigned aarch64 debug APK. It does not test a physical device, Play testing, signing, privacy declarations or store acceptance. |
 | [`omni-desktop.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-desktop.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh deterministic HTTPS-backed shell and checks its Tauri crate on Linux, macOS and Windows. It does not build/sign every installer or exercise a GUI/WebView session. |
 | [`omni-ios.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-ios.yml) | relevant main changes, manual | Blocking | Generates a fresh deterministic Omni iOS shell on macOS and compiles it for the runner's simulator architecture. It does not test a physical device, signing, privacy declarations, TestFlight or App Store acceptance. |
-| [`pages.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pages.yml) | main push, manual | Deploy | Validates and deploys the unreleased v12 landing page, local visual assets, mdBook and benchmark hub/dashboards to GitHub Pages while preserving history data fetched from `gh-pages`. |
+| [`pages.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pages.yml) | main push, manual | Deploy | Validates and deploys the v12 landing page, local visual assets, mdBook and benchmark hub/dashboards to GitHub Pages while preserving history data fetched from `gh-pages`. |
 | [`pqc-compliance.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pqc-compliance.yml) | relevant main changes, weekly, manual | Blocking | Signed OTA and Vault tests, RustSec audit, and simulator-boundary checks; explicitly no PQC/HSM certification. |
 | [`proptest.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/proptest.yml) | weekly, manual | Blocking run | Eight parallel release-mode workspace shards plus dedicated ORM and Connect property contracts with configured case counts. |
-| [`release.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/release.yml) | exact-looking version tags | Release | Tag validation, full verification, package-all, evidence bundle, checksums, attestations, dependency-order publish, and release provenance. |
+| [`release.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/release.yml) | exact-looking version tags | Release | Tag/changelog validation, full verification, package-all, evidence bundle, checksums, GitHub build-provenance attestation, changelog-derived release notes, and dependency-order publication. |
 | [`sanitizers.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/sanitizers.yml) | daily, manual | Blocking run | TSan and ASan library matrices on pinned `nightly-2026-08-21`; this verifier toolchain does not change Rullst's stable compiler or MSRV. |
 | [`scorecards.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/scorecards.yml) | main push, weekly, manual | Automated evidence | OpenSSF Scorecard analysis and SARIF/artifact upload; not SLSA certification. |
 | [`security-audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/security-audit.yml) | main push and PR, weekly, manual | Blocking | Cross-checks active advisory IDs and expiry metadata across the ledger, Cargo Deny, and scanner workflows, then independently reruns Cargo Audit. |

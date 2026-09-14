@@ -26,9 +26,9 @@ fn pricing_setup_banner() -> String {
         <div class="setup-banner">
             <div class="setup-banner-icon">"🚀"</div>
             <div class="setup-banner-content">
-                <h4>"Stripe Setup Required"</h4>
-                <p>"To enable real checkouts, create a " <code>".env"</code> " file in your project root with your API keys:"</p>
-                <pre><code>"BILLING_PROVIDER=stripe\nBILLING_API_KEY=sk_test_...\nBILLING_WEBHOOK_SECRET=whsec_..."</code></pre>
+                <h4>"Provider sandbox setup required"</h4>
+                <p>"Configure a Stripe or Lemon Squeezy test environment before exercising checkout and signed webhook flows:"</p>
+                <pre><code>"BILLING_PROVIDER=stripe\nBILLING_API_KEY=sk_test_...\nBILLING_WEBHOOK_SECRET=whsec_...\nBILLING_ALLOWED_PLAN_IDS=price_starter,price_pro"</code></pre>
             </div>
         </div>
     }
@@ -38,51 +38,59 @@ fn pricing_header() -> String {
     html! {
         <div class="header">
             <span class="badge">"Rullst Capital"</span>
-            <h1>"Simple, Transparent Pricing"</h1>
-            <p class="subtitle">"Choose the perfect plan to boost your application with next-gen fullstack performance."</p>
+            <h1>"Example Billing Plans"</h1>
+            <p class="subtitle">"Replace these sample products, prices, plan IDs and entitlements with values owned by your application and provider account."</p>
         </div>
     }
 }
 
-fn pricing_plans() -> String {
+fn pricing_plans(csrf_token: &str) -> String {
     html! {
         <div class="pricing-grid">
             <div class="pricing-card">
-                <h2 class="plan-name">"Starter"</h2>
-                <p class="plan-desc">"For hobbyists and early-stage startup prototypes."</p>
+                <h2 class="plan-name">"Example Starter"</h2>
+                <p class="plan-desc">"Demonstrates a server-owned plan allowlist and provider checkout redirect."</p>
                 <div class="price-container">
                     <span class="currency">"$"</span>
                     <span class="price">"9"</span>
                     <span class="period">"/mo"</span>
                 </div>
                 <ul class="features-list">
-                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Up to 5 Projects"</li>
-                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Standard SQLite Database"</li>
-                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Email Support"</li>
+                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Authenticated customer binding"</li>
+                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"CSRF-protected checkout command"</li>
+                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Deterministic offline provider fallback"</li>
                 </ul>
-                <a href="/billing/checkout?plan=price_starter" class="btn-checkout secondary">"Get Started"</a>
+                <form method="post" action="/billing/checkout">
+                    <input type="hidden" name="_token" value={csrf_token} />
+                    <input type="hidden" name="plan" value="price_starter" />
+                    <button type="submit" class="btn-checkout secondary">"Test Starter Checkout"</button>
+                </form>
             </div>
             
             <div class="pricing-card premium">
-                <h2 class="plan-name">"Pro"</h2>
-                <p class="plan-desc">"For growing apps needing production scaling and support."</p>
+                <h2 class="plan-name">"Example Pro"</h2>
+                <p class="plan-desc">"Demonstrates a second allowlisted provider product without promising application features."</p>
                 <div class="price-container">
                     <span class="currency">"$"</span>
                     <span class="price">"29"</span>
                     <span class="period">"/mo"</span>
                 </div>
                 <ul class="features-list">
-                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Unlimited Projects"</li>
-                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"PostgreSQL / Turso Sync"</li>
-                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Priority 24/7 Support"</li>
+                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Exact signed-webhook middleware"</li>
+                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Replay-aware subscription persistence"</li>
+                    <li><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>"Application-owned entitlement boundary"</li>
                 </ul>
-                <a href="/billing/checkout?plan=price_pro" class="btn-checkout primary">"Upgrade to Pro"</a>
+                <form method="post" action="/billing/checkout">
+                    <input type="hidden" name="_token" value={csrf_token} />
+                    <input type="hidden" name="plan" value="price_pro" />
+                    <button type="submit" class="btn-checkout primary">"Test Pro Checkout"</button>
+                </form>
             </div>
         </div>
     }
 }
 
-pub fn pricing_page() -> Html<String> {
+pub fn pricing_page(csrf_token: &str, _csp_nonce: &str) -> Html<String> {
     let has_keys = std::env::var("BILLING_API_KEY").map(|k| !k.is_empty() && k != "mock_key").unwrap_or(false);
     let banner_code = if !has_keys { pricing_setup_banner() } else { String::new() };
 
@@ -102,7 +110,7 @@ pub fn pricing_page() -> Html<String> {
                     { rullst::html::RawHtml(pricing_navbar()) }
                     { rullst::html::RawHtml(banner_code) }
                     { rullst::html::RawHtml(pricing_header()) }
-                    { rullst::html::RawHtml(pricing_plans()) }
+                    { rullst::html::RawHtml(pricing_plans(csrf_token)) }
                 </div>
             </body>
         </html>

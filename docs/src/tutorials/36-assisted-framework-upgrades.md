@@ -4,8 +4,7 @@ Rullst v12 introduces a bounded upgrade transaction for existing applications.
 The goal is to make the safe, repeatable part a single command while refusing
 to guess about application data or security policy.
 
-> `12.0.0-rc.1` is an explicit evaluation release, not stable v12. Install or
-> request the exact prerelease only after crates.io has indexed it, and complete
+> This guide targets stable `12.0.0`. Install the exact release and complete
 > the application-specific validation below before any production rollout.
 
 ## What the command can guarantee
@@ -36,7 +35,7 @@ changing the framework.
 Install the exact CLI from the same release train as the target framework:
 
 ```bash
-cargo install cargo-rullst --version 12.0.0-rc.1 --locked --force
+cargo install cargo-rullst --version 12.0.0 --locked --force
 ```
 
 The framework command does not update its own executable. This matters for v5:

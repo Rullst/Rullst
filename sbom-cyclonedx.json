@@ -1523,11 +1523,11 @@
       "version": "1.5.1"
     },
     {
-      "bom-ref": "pkg:cargo/cargo-rullst@12.0.0-rc.1?rullst-index=117",
+      "bom-ref": "pkg:cargo/cargo-rullst@12.0.0?rullst-index=117",
       "name": "cargo-rullst",
-      "purl": "pkg:cargo/cargo-rullst@12.0.0-rc.1",
+      "purl": "pkg:cargo/cargo-rullst@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
       "bom-ref": "pkg:cargo/cast@0.3.0?rullst-index=118",
@@ -7835,116 +7835,116 @@
       "version": "0.1.1"
     },
     {
-      "bom-ref": "pkg:cargo/rullst@12.0.0-rc.1?rullst-index=603",
+      "bom-ref": "pkg:cargo/rullst@12.0.0?rullst-index=603",
       "name": "rullst",
-      "purl": "pkg:cargo/rullst@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
-      "bom-ref": "pkg:cargo/rullst-ai@12.0.0-rc.1?rullst-index=604",
+      "bom-ref": "pkg:cargo/rullst-ai@12.0.0?rullst-index=604",
       "name": "rullst-ai",
-      "purl": "pkg:cargo/rullst-ai@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst-ai@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
-      "bom-ref": "pkg:cargo/rullst-auth@12.0.0-rc.1?rullst-index=605",
+      "bom-ref": "pkg:cargo/rullst-auth@12.0.0?rullst-index=605",
       "name": "rullst-auth",
-      "purl": "pkg:cargo/rullst-auth@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst-auth@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
-      "bom-ref": "pkg:cargo/rullst-blog-example@12.0.0-rc.1?rullst-index=606",
+      "bom-ref": "pkg:cargo/rullst-blog-example@12.0.0?rullst-index=606",
       "name": "rullst-blog-example",
-      "purl": "pkg:cargo/rullst-blog-example@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst-blog-example@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
-      "bom-ref": "pkg:cargo/rullst-capital@12.0.0-rc.1?rullst-index=607",
+      "bom-ref": "pkg:cargo/rullst-capital@12.0.0?rullst-index=607",
       "name": "rullst-capital",
-      "purl": "pkg:cargo/rullst-capital@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst-capital@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
-      "bom-ref": "pkg:cargo/rullst-connect@12.0.0-rc.1?rullst-index=608",
+      "bom-ref": "pkg:cargo/rullst-connect@12.0.0?rullst-index=608",
       "name": "rullst-connect",
-      "purl": "pkg:cargo/rullst-connect@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst-connect@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
-      "bom-ref": "pkg:cargo/rullst-core@12.0.0-rc.1?rullst-index=609",
+      "bom-ref": "pkg:cargo/rullst-core@12.0.0?rullst-index=609",
       "name": "rullst-core",
-      "purl": "pkg:cargo/rullst-core@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst-core@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
-      "bom-ref": "pkg:cargo/rullst-iot@12.0.0-rc.1?rullst-index=610",
+      "bom-ref": "pkg:cargo/rullst-iot@12.0.0?rullst-index=610",
       "name": "rullst-iot",
-      "purl": "pkg:cargo/rullst-iot@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst-iot@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
-      "bom-ref": "pkg:cargo/rullst-macros@12.0.0-rc.1?rullst-index=611",
+      "bom-ref": "pkg:cargo/rullst-macros@12.0.0?rullst-index=611",
       "name": "rullst-macros",
-      "purl": "pkg:cargo/rullst-macros@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst-macros@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
-      "bom-ref": "pkg:cargo/rullst-mail@12.0.0-rc.1?rullst-index=612",
+      "bom-ref": "pkg:cargo/rullst-mail@12.0.0?rullst-index=612",
       "name": "rullst-mail",
-      "purl": "pkg:cargo/rullst-mail@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst-mail@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
-      "bom-ref": "pkg:cargo/rullst-messaging@12.0.0-rc.1?rullst-index=613",
+      "bom-ref": "pkg:cargo/rullst-messaging@12.0.0?rullst-index=613",
       "name": "rullst-messaging",
-      "purl": "pkg:cargo/rullst-messaging@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst-messaging@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
-      "bom-ref": "pkg:cargo/rullst-nexus@12.0.0-rc.1?rullst-index=614",
+      "bom-ref": "pkg:cargo/rullst-nexus@12.0.0?rullst-index=614",
       "name": "rullst-nexus",
-      "purl": "pkg:cargo/rullst-nexus@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst-nexus@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
-      "bom-ref": "pkg:cargo/rullst-orm@12.0.0-rc.1?rullst-index=615",
+      "bom-ref": "pkg:cargo/rullst-orm@12.0.0?rullst-index=615",
       "name": "rullst-orm",
-      "purl": "pkg:cargo/rullst-orm@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst-orm@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
-      "bom-ref": "pkg:cargo/rullst-orm-macros@12.0.0-rc.1?rullst-index=616",
+      "bom-ref": "pkg:cargo/rullst-orm-macros@12.0.0?rullst-index=616",
       "name": "rullst-orm-macros",
-      "purl": "pkg:cargo/rullst-orm-macros@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst-orm-macros@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
-      "bom-ref": "pkg:cargo/rullst-security@12.0.0-rc.1?rullst-index=617",
+      "bom-ref": "pkg:cargo/rullst-security@12.0.0?rullst-index=617",
       "name": "rullst-security",
-      "purl": "pkg:cargo/rullst-security@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst-security@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
-      "bom-ref": "pkg:cargo/rullst-studio@12.0.0-rc.1?rullst-index=618",
+      "bom-ref": "pkg:cargo/rullst-studio@12.0.0?rullst-index=618",
       "name": "rullst-studio",
-      "purl": "pkg:cargo/rullst-studio@12.0.0-rc.1",
+      "purl": "pkg:cargo/rullst-studio@12.0.0",
       "type": "library",
-      "version": "12.0.0-rc.1"
+      "version": "12.0.0"
     },
     {
       "bom-ref": "pkg:cargo/rust-embed@8.12.0?rullst-index=619",
@@ -11970,16 +11970,16 @@
       "type": "application",
       "version": "0.1.0"
     },
-    "timestamp": "2026-09-08T12:19:57.488989086+00:00",
+    "timestamp": "2026-09-13T02:10:03.275009979+00:00",
     "tools": [
       {
         "name": "cargo-rullst",
         "vendor": "Rullst Core Team",
-        "version": "12.0.0-rc.1"
+        "version": "12.0.0"
       }
     ]
   },
-  "serialNumber": "urn:uuid:c8a9ddac-c619-41eb-9c8f-827b9def68b5",
+  "serialNumber": "urn:uuid:3262f7d3-dacc-488d-ab7b-169f7de29b3c",
   "specVersion": "1.5",
   "version": 1
 }

@@ -2,7 +2,7 @@ use crate::models::{billing_customer::BillingCustomer, subscription::Subscriptio
 use crate::pages::billing;
 use rullst::capital::{BillingProvider, LemonSqueezyProvider, StripeProvider, WebhookEvent};
 use rullst::server::{
-    Extension, IntoResponse, Next, Query, Redirect, Request, Response, StatusCode,
+    Extension, Form, IntoResponse, Next, Redirect, Request, Response, StatusCode,
 };
 use serde::Deserialize;
 use std::collections::HashSet;
@@ -17,7 +17,7 @@ pub struct BillingIdentity {
 }
 
 #[derive(Deserialize)]
-pub struct CheckoutQuery {
+pub struct CheckoutForm {
     pub plan: String,
 }
 
@@ -195,15 +195,26 @@ async fn billing_customer(
     }
 }
 
-pub async fn pricing_view() -> impl IntoResponse {
-    billing::pricing_page()
+pub async fn pricing_view(
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    csp_nonce: Option<Extension<rullst::security::CspNonce>>,
+) -> impl IntoResponse {
+    let csrf_token = csrf
+        .as_ref()
+        .map(|Extension(token)| token.as_str())
+        .unwrap_or_default();
+    let nonce = csp_nonce
+        .as_ref()
+        .map(|Extension(nonce)| nonce.as_str())
+        .unwrap_or_default();
+    billing::pricing_page(csrf_token, nonce)
 }
 
 pub async fn checkout_redirect(
     Extension(identity): Extension<BillingIdentity>,
-    Query(query): Query<CheckoutQuery>,
+    Form(form): Form<CheckoutForm>,
 ) -> Response {
-    if !valid_plan_id(&query.plan) {
+    if !valid_plan_id(&form.plan) {
         return (StatusCode::BAD_REQUEST, "Invalid plan").into_response();
     }
     let config = match billing_config() {
@@ -212,7 +223,7 @@ pub async fn checkout_redirect(
             return (StatusCode::SERVICE_UNAVAILABLE, error.to_string()).into_response();
         }
     };
-    if !config.allowed_plan_ids.contains(&query.plan) {
+    if !config.allowed_plan_ids.contains(&form.plan) {
         return (StatusCode::BAD_REQUEST, "Plan is not enabled").into_response();
     }
     let customer = match billing_customer(&identity).await {
@@ -223,12 +234,12 @@ pub async fn checkout_redirect(
     let result = match config.provider.as_str() {
         "lemonsqueezy" => {
             LemonSqueezyProvider::new(config.api_key, config.webhook_secret)
-                .create_checkout_session(&customer.email, &query.plan, &config.redirect_url)
+                .create_checkout_session(&customer.email, &form.plan, &config.redirect_url)
                 .await
         }
         _ => {
             StripeProvider::new(config.api_key, config.webhook_secret)
-                .create_checkout_session(&customer.email, &query.plan, &config.redirect_url)
+                .create_checkout_session(&customer.email, &form.plan, &config.redirect_url)
                 .await
         }
     };

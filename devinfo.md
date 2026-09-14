@@ -5,7 +5,7 @@ official branch, verification, packaging, and tag process is
 [`RELEASE_GUIDE.md`](RELEASE_GUIDE.md); do not maintain a second release recipe
 in this file.
 
-## Work on the unreleased v12 source
+## Work on the v12 source
 
 From the repository root, install the CLI from the exact checkout:
 
@@ -14,11 +14,11 @@ cargo install --locked --path cargo-rullst
 cargo rullst --help
 ```
 
-Run `cargo rullst new` from this root during the source-only phase so the
-generator can select the sibling framework crates as path dependencies. A plain
-`cargo install cargo-rullst` installs the latest published release, which does
-not expose unreleased v12 APIs. After an immutable RC exists, install its exact
-version with `--version 12.0.0-rc.1 --locked`.
+Run `cargo rullst new` from this root when validating checkout-local changes so
+the generator can select sibling framework crates as path dependencies. A plain
+`cargo install cargo-rullst` installs the latest published release. To reproduce
+the stable v12 toolchain, install its exact version with
+`--version 12.0.0 --locked`.
 
 ## Required local verification
 

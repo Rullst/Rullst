@@ -6,7 +6,7 @@ from the root [ROADMAP](../../ROADMAP.md); that roadmap and the
 The labels here deliberately do not turn partial foundations into completed
 features.
 
-## v12 RC engineering snapshot — 12 September 2026
+## v12 engineering snapshot — 13 September 2026
 
 This functionality inventory is deliberately separate from release quality.
 All 15 non-IoT crates currently meet the approved A floor and `rullst-iot`
@@ -15,20 +15,27 @@ higher audited local ceiling: **1,509/1,509 local campaign points are backed by
 repository evidence (100%), with zero planning points remaining**. The exact
 SHA still earns those dimensions only when its conditioning gates pass. The
 older 91.8% readiness estimate was superseded after the final correction batch.
-The [post-audit release report](v12-release-audit.md) is authoritative: the
-project owner approved `12.0.0-rc.1` for prerelease publication after its local,
-hosted and package gates passed. This does not approve stable `12.0.0`.
+The [post-audit release report](v12-release-audit.md) is authoritative:
+`12.0.0-rc.1` was published after its local, hosted and package gates passed.
+Stable `12.0.0` is in exact-SHA closeout: its source, manifests and public copy
+are synchronized, but crates.io publication is established only after the
+fully verified tag commit receives owner approval and the registry workflow
+returns its receipts.
 
-Coverage is a separate RC gate. Codecov measured the approved code candidate
+Coverage is a separate release gate. Codecov measured the approved code candidate
 `a6b3bc8a` at **91.49%** across the whole repository (76,685/83,811) and 100%
 patch coverage (14/14); the separately enforced `framework_libraries` component
 also passed its zero-tolerance 90% target. This is SHA-bound evidence, not a
 security certification.
 
-Approved code candidate `a6b3bc8a` completed all **22/22 applicable automatic
+Approved RC code candidate `a6b3bc8a` completed all **22/22 applicable automatic
 push workflows** successfully, including the full all-feature workspace suite
 on Linux, macOS and Windows. The final documentation closeout must preserve
-that code and pass its documentation/site checks before the immutable tag.
+that code and passed its documentation/site checks before the immutable RC tag.
+The RC tag workflow then passed verification and publication at `2b19567e`; its
+separate redundant SLSA job failed policy setup and is neither counted nor used
+for stable v12. The stable tag must repeat the retained GitHub attestation and
+complete release workflow.
 
 The later manual campaign on `45fbdbe7` produced passing bounded Miri, Kani and
 sanitizer evidence, while fuzzing usefully exposed three stale harnesses and a
@@ -38,11 +45,11 @@ affected security targets passed 100,000 local libFuzzer/AddressSanitizer
 executions. This is remediation evidence, not a substitute for rerunning the
 complete heavy matrix on the frozen RC SHA.
 
-| Coverage view | Audited checkpoint | RC meaning |
+| Coverage view | Audited checkpoint | Release meaning |
 | :--- | :---: | :--- |
 | Whole repository | **90.06%** (74,219/82,408) on `27e81152` | Historical passing checkpoint. This primary public number includes CLI and proc-macro production sources, but does not approve the post-audit candidate. |
 | Framework libraries | **91.33%** (56,119/61,446) on `27e81152` | Historical component pass; it does not replace either the repository aggregate or a fresh post-audit result. |
-| v12 RC requirement | **at least 90% in both views** | Must be reproduced by Codecov on the exact frozen RC commit, together with at least 90% patch coverage. |
+| v12 release requirement | **at least 90% in both views** | Must be reproduced by Codecov on the exact frozen release candidate, together with at least 90% patch coverage. |
 
 The two percentages are neither conflicting measurements nor values to
 average: they answer questions about different path sets. Rullst must keep the
@@ -74,20 +81,13 @@ work rather than being mislabeled as v12 guarantees.
 
 ## Documentation release gate
 
-Before the v12 RC is tagged, the complete repository documentation remains an
+Before stable v12 is tagged, the complete repository documentation remains an
 explicit review gate: build the mdBook, compile the Rust snippets sourced from
 all public tutorials, validate local links and anchors, reconcile commands,
 features and version examples with the frozen manifests, and manually review
 the upgrade guides and external-provider boundaries. A green documentation
 build proves structural consistency, not that every external service or store
 workflow was homologated.
-
-| Label | Meaning |
-| :--- | :--- |
-| ✅ **Implemented** | The stated bounded scope exists and has automated evidence. |
-| 🟡 **Still to implement — partial** | A useful foundation exists, but the complete milestone does not. |
-| ⏳ **Still to implement — not started** | No implementation sufficient for the milestone exists. |
-| 🚫 **Impossible as promised** | An absolute outcome cannot be established by framework code alone or is not a responsible technical guarantee. |
 
 ## Canonical milestones
 

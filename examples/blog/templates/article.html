@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }} — Rullst Template Engine</title>
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png">
+    <title>{{ title }} — Rullst Embedded Template Fixture</title>
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -19,10 +19,10 @@
     <div class="max-w-4xl mx-auto px-6 py-12">
         <div class="text-center mb-10">
             <span class="px-3.5 py-1.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-full text-xs font-bold tracking-wider uppercase inline-block">
-                📄 File-Based Classic Templates (Jinja2 / Tera Engine)
+                📄 Embedded File Template Fixture
             </span>
             <h1 class="text-4xl sm:text-5xl font-extrabold mt-4 text-white tracking-tight leading-tight">{{ title }}</h1>
-            <p class="text-slate-400 mt-3 text-lg max-w-2xl mx-auto">Separating presentation HTML files from Rust domain logic (Loco / Django / Rails pattern).</p>
+            <p class="text-slate-400 mt-3 text-lg max-w-2xl mx-auto">A small example of keeping presentation markup in a separate source file.</p>
         </div>
 
         <div class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-8 backdrop-blur-xl shadow-2xl space-y-6">
@@ -46,10 +46,10 @@
             </div>
 
             <div class="bg-slate-950/90 rounded-xl p-5 border border-slate-800 font-mono text-xs text-slate-400 space-y-2">
-                <div class="text-emerald-400 font-semibold">// How Tera/Jinja2 template rendering works in Rullst:</div>
-                <div class="text-slate-300">let mut context = tera::Context::new();</div>
-                <div class="text-slate-300">context.insert("title", &"Decoupled MVC Architectures in Rust");</div>
-                <div class="text-slate-300">let html = tera.render("article.html", &context)?;</div>
+                <div class="text-emerald-400 font-semibold">// What this bounded fixture actually does:</div>
+                <div class="text-slate-300">let source = include_str!("../templates/article.html");</div>
+                <div class="text-slate-300">let html = source.replace("&#123;&#123; title &#125;&#125;", escaped_title);</div>
+                <div class="text-slate-300">// Use a reviewed engine for a general template language.</div>
             </div>
         </div>
 
@@ -58,7 +58,7 @@
                 <span>💡</span> Why File-Based Templates are Powerful
             </h3>
             <p class="leading-relaxed">
-                Developers coming from Django, Ruby on Rails, or Loco.rs often prefer keeping raw <code class="text-emerald-400">.html</code> files in a dedicated <code class="text-amber-400">templates/</code> directory. Rullst natively supports this workflow with zero ceremony, allowing full layout inheritance (<code class="text-slate-300">{% extends "base.html" %}</code>) and loop iterations.
+                This example embeds <code class="text-emerald-400">templates/article.html</code> with <code class="text-amber-400">include_str!</code> and performs fixed placeholder replacement. It does not implement escaping, layout inheritance, loops, runtime reloads, or the Tera/Jinja language. Choose and configure a dedicated template engine when those capabilities are required.
             </p>
         </div>
     </div>

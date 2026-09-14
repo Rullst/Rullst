@@ -30,6 +30,11 @@ impl CsrfToken {
     }
 }
 
+/// Private request marker preventing nested framework/application composition
+/// from applying the double-submit protocol twice.
+#[derive(Clone, Copy, Debug)]
+struct CsrfMiddlewareApplied;
+
 #[derive(serde::Deserialize)]
 struct CsrfForm {
     _token: Option<String>,
@@ -46,10 +51,20 @@ pub(crate) fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
 /// GET requests generate a CSRF cookie if missing. HTTP safe methods pass through, while
 /// state-changing requests must match the `rullst_csrf` cookie token with either the
 /// `X-CSRF-Token` header or form `_token` field.
-pub async fn csrf_middleware(req: Request, next: Next) -> Response {
+///
+/// Applying this middleware more than once to the same request is idempotent. This
+/// matters when an application router adds the explicit development layer and
+/// [`crate::Server`] later composes the production security baseline around it.
+pub async fn csrf_middleware(mut req: Request, next: Next) -> Response {
+    if req.extensions().get::<CsrfMiddlewareApplied>().is_some() {
+        return next.run(req).await;
+    }
+
     if is_signed_webhook_exemption(&req) {
         return next.run(req).await;
     }
+
+    req.extensions_mut().insert(CsrfMiddlewareApplied);
 
     let method = req.method();
 
@@ -359,6 +374,55 @@ mod tests {
             .to_str()
             .unwrap();
         assert!(cookie.contains("; Secure"));
+    }
+
+    #[tokio::test]
+    async fn nested_csrf_layers_emit_one_matching_cookie_and_accept_the_post() {
+        use axum::{Extension, routing::get};
+
+        let app =
+            Router::new()
+                .route(
+                    "/form",
+                    get(|Extension(token): Extension<CsrfToken>| async move {
+                        token.as_str().to_owned()
+                    })
+                    .post(
+                        |Extension(token): Extension<CsrfToken>| async move {
+                            token.as_str().to_owned()
+                        },
+                    ),
+                )
+                .layer(axum::middleware::from_fn(csrf_middleware))
+                .layer(axum::middleware::from_fn(csrf_middleware));
+
+        let response = app
+            .clone()
+            .oneshot(Request::get("/form").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let cookies = response.headers().get_all(header::SET_COOKIE);
+        assert_eq!(cookies.iter().count(), 1);
+        let cookie = cookies.iter().next().unwrap().to_str().unwrap().to_owned();
+        let body = axum::body::to_bytes(response.into_body(), 128)
+            .await
+            .unwrap();
+        let token = std::str::from_utf8(&body).unwrap();
+        assert!(cookie.starts_with(&format!("rullst_csrf={token};")));
+
+        let posted = app
+            .oneshot(
+                Request::post("/form")
+                    .header(header::COOKIE, format!("rullst_csrf={token}"))
+                    .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                    .body(Body::from(format!("_token={token}")))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(posted.status(), StatusCode::OK);
+        let posted_body = axum::body::to_bytes(posted.into_body(), 128).await.unwrap();
+        assert_eq!(posted_body.as_ref(), token.as_bytes());
     }
 
     #[tokio::test]

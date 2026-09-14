@@ -41,6 +41,31 @@
 
 ---
 
+## Provider conformance ladder
+
+Validate every provider operation independently. A successful checkout does
+not validate a portal, refund, usage report, cancellation or webhook contract,
+and evidence from one provider cannot be transferred to another.
+
+| Level | Required evidence |
+| :--- | :--- |
+| **1. Deterministic offline** | Bounds, redaction, failure classification, idempotency material and explicit mock behavior without network access. |
+| **2. Protocol fixtures** | Exact signed payloads, negative signature/freshness/replay cases and bounded provider response parsing. |
+| **3. Official test environment** | Provider sandbox/test-mode checkout, webhook, lifecycle and reconciliation exercises. |
+| **4. Controlled live acceptance** | The smallest provider-permitted real transaction only after account, legal, secret, refund, observability and reconciliation controls are ready; retain redacted evidence. |
+
+The generated SaaS blueprint exercises an application boundary for Stripe and
+Lemon Squeezy. It is not a conformance app for all eleven adapters. Record the
+exact provider, operation, environment and observed result; never summarize
+partial evidence as “all payments work.” Refer to the official
+[Stripe testing](https://docs.stripe.com/testing),
+[Stripe sandbox](https://docs.stripe.com/sandboxes),
+[Lemon Squeezy test-mode](https://docs.lemonsqueezy.com/help/getting-started/test-mode),
+and [Lemon Squeezy webhook simulation](https://docs.lemonsqueezy.com/help/webhooks/simulate-webhook-events)
+guides when constructing acceptance cases.
+
+---
+
 ## 🚀 Usage Examples
 
 ### Shared outbound failure contract

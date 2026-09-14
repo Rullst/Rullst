@@ -10,6 +10,7 @@ pub struct ResolvedSchool {
 pub enum SchoolError {
     Forbidden,
     AmbiguousMembership,
+    SelfRegistrationUnavailable,
     InvalidField(&'static str),
     Database(rullst_orm::Error),
 }
@@ -19,6 +20,7 @@ impl std::fmt::Display for SchoolError {
         match self {
             Self::Forbidden => formatter.write_str("school-scoped access denied"),
             Self::AmbiguousMembership => formatter.write_str("an explicit active school selection is required"),
+            Self::SelfRegistrationUnavailable => formatter.write_str("the self-registration school is unavailable"),
             Self::InvalidField(field) => write!(formatter, "invalid school field: {field}"),
             Self::Database(error) => write!(formatter, "school database error: {error}"),
         }
@@ -41,6 +43,71 @@ fn valid_tenant_key(value: &str) -> bool {
 
 fn actor_id(context: &UserContext) -> Result<i32, SchoolError> {
     context.user_id.parse::<i32>().map_err(|_| SchoolError::Forbidden)
+}
+
+const SELF_REGISTRATION_TENANT_KEY: &str = "academy-demo";
+
+/// Attaches a newly registered learner to the starter's explicit default school.
+/// The caller owns the transaction so user and membership creation commit atomically.
+pub async fn provision_self_registration_with_tx(
+    user_id: i32,
+    transaction: &mut rullst_orm::db::Transaction<'_>,
+) -> Result<i32, SchoolError> {
+    let observed_at_epoch = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .and_then(|elapsed| i64::try_from(elapsed.as_secs()).ok())
+        .filter(|value| *value > 0)
+        .ok_or(SchoolError::InvalidField("self-registration clock"))?;
+    provision_self_registration_with_tx_at(user_id, transaction, observed_at_epoch).await
+}
+
+/// Deterministic form of self-registration used by generated contract tests.
+/// Production request handlers should call [`provision_self_registration_with_tx`].
+pub(crate) async fn provision_self_registration_with_tx_at(
+    user_id: i32,
+    transaction: &mut rullst_orm::db::Transaction<'_>,
+    observed_at_epoch: i64,
+) -> Result<i32, SchoolError> {
+    if user_id <= 0
+        || observed_at_epoch <= 0
+        || !valid_tenant_key(SELF_REGISTRATION_TENANT_KEY)
+    {
+        return Err(SchoolError::InvalidField("self-registration identity"));
+    }
+    let driver = rullst::db::Orm::driver()?;
+    let school_sql = match driver {
+        "postgres" => "SELECT id FROM schools WHERE tenant_key = $1 AND status = $2",
+        _ => "SELECT id FROM schools WHERE tenant_key = ? AND status = ?",
+    };
+    let school_id = rullst::db::sqlx::query_scalar::<_, i32>(school_sql)
+        .bind(SELF_REGISTRATION_TENANT_KEY)
+        .bind("active")
+        .fetch_optional(&mut **transaction)
+        .await
+        .map_err(|error| SchoolError::Database(error.into()))?
+        .filter(|school_id| *school_id > 0)
+        .ok_or(SchoolError::SelfRegistrationUnavailable)?;
+    let membership_key = format!("{SELF_REGISTRATION_TENANT_KEY}:learner:{user_id}");
+    if !valid_tenant_key(&membership_key) {
+        return Err(SchoolError::InvalidField("self-registration membership key"));
+    }
+    let insert_sql = match driver {
+        "postgres" => "INSERT INTO school_memberships (membership_key, school_id, user_id, status, is_default, valid_from_epoch, expires_at_epoch, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+        _ => "INSERT INTO school_memberships (membership_key, school_id, user_id, status, is_default, valid_from_epoch, expires_at_epoch, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+    };
+    rullst::db::sqlx::query(insert_sql)
+        .bind(&membership_key)
+        .bind(school_id)
+        .bind(user_id)
+        .bind("active")
+        .bind(1_i32)
+        .bind(observed_at_epoch)
+        .bind(0_i64)
+        .execute(&mut **transaction)
+        .await
+        .map_err(|error| SchoolError::Database(error.into()))?;
+    Ok(school_id)
 }
 
 pub async fn resolve_membership_at(

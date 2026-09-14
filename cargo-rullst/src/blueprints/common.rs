@@ -139,6 +139,8 @@ pub fn render_page_layout(_frontend_engine: &str) -> String {
         <html lang="en" class="dark">
             <head>
                 <meta charset="UTF-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <link rel="icon" type="image/png" href="/static/rullst.png" />
                 <title>{title}</title>
             </head>
             <body>

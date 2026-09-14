@@ -1,9 +1,5 @@
 # Rullst Connect 🦀
 
-> **v12 development notice:** This README documents the unreleased v12 source.
-> Use a path dependency from this checkout until an immutable v12 RC exists on
-> crates.io. The version below is the planned first RC, not a published claim.
-
 [![Crates.io](https://img.shields.io/crates/v/rullst-connect.svg?style=for-the-badge&logo=rust)](https://crates.io/crates/rullst-connect)
 [![Downloads](https://img.shields.io/crates/d/rullst-connect.svg?style=for-the-badge)](https://crates.io/crates/rullst-connect)
 [![Documentation](https://img.shields.io/docsrs/rullst-connect?style=for-the-badge&logo=docs.rs)](https://docs.rs/rullst-connect)
@@ -129,22 +125,22 @@ for Axum and Actix. Other hosts can deserialize the framework-neutral
 `AuthCallback`; the compatibility `leptos` feature adds no Leptos runtime or
 extractor.
 
-After the RC is published, install its exact version with:
+Install the exact stable version with:
 ```bash
-cargo add rullst-connect@12.0.0-rc.1
+cargo add rullst-connect@12.0.0
 ```
 
 For the recommended Axum flow:
 
 ```toml
-rullst-connect = { version = "12.0.0-rc.1", features = ["axum-session"] }
+rullst-connect = { version = "12.0.0", features = ["axum-session"] }
 tower-sessions = "0.15"
 ```
 
 Or manually add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-rullst-connect = "12.0.0-rc.1"
+rullst-connect = "12.0.0"
 tokio = { version = "1.52", features = ["full"] }
 ```
 
@@ -179,7 +175,7 @@ a working authentication bypass.
 
 ```toml
 [dev-dependencies]
-rullst-connect = { version = "12.0.0-rc.1", features = ["mock"] }
+rullst-connect = { version = "12.0.0", features = ["mock"] }
 ```
 
 Mock-mode redirects use the reserved `example.invalid` domain and mock profiles use the
@@ -366,7 +362,7 @@ does not provide a database transaction or distributed refresh lock. Enable
 `sqlite` for the bounded shared-local store:
 
 ```toml
-rullst-connect = { version = "12.0.0-rc.1", features = ["sqlite"] }
+rullst-connect = { version = "12.0.0", features = ["sqlite"] }
 ```
 
 ```rust,no_run

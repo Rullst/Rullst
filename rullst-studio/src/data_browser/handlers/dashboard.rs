@@ -55,7 +55,7 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
         let enc = urlencoding::encode(t.as_str());
         let _ = write!(
             table_badges_html,
-            r##"<a href="#" hx-get="/studio/tables/{}" hx-target="#studio-content" hx-push-url="true" class="p-3 bg-slate-900/90 border border-slate-800 rounded-lg hover:border-sky-500/60 hover:bg-slate-900 transition group flex items-center justify-between">
+            r##"<a href="/studio/tables/{}" class="p-3 bg-slate-900/90 border border-slate-800 rounded-lg hover:border-sky-500/60 hover:bg-slate-900 transition group flex items-center justify-between">
                 <span class="text-sm font-semibold text-slate-200 group-hover:text-sky-400">{}</span>
                 <span class="text-xs font-mono text-slate-500 group-hover:text-slate-400">tbl →</span>
             </a>"##,
@@ -136,49 +136,49 @@ pub async fn handle_dashboard(headers: axum::http::HeaderMap) -> impl IntoRespon
                 <span>⚡ Studio Tools Hub</span>
             </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-                <a href="#" hx-get="/studio/migrations" hx-target="#studio-content" hx-push-url="true" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-purple-500/80 hover:bg-slate-900 transition-all group block">
+                <a href="/studio/migrations" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-purple-500/80 hover:bg-slate-900 transition-all group block">
                     <div class="text-purple-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
                         <span>🛠️ Database Tools & Migrations</span>
                         <span class="text-slate-600 group-hover:text-purple-400">→</span>
                     </div>
                     <p class="text-slate-400 text-sm">Inspect the configured schema and view explicit CLI guidance. Application migrations are not inferred by Studio.</p>
                 </a>
-                <a href="#" hx-get="/studio/ai" hx-target="#studio-content" hx-push-url="true" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-cyan-500/80 hover:bg-slate-900 transition-all group block">
+                <a href="/studio/ai" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-cyan-500/80 hover:bg-slate-900 transition-all group block">
                     <div class="text-cyan-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
                         <span>🤖 rullst-ai Integration</span>
                         <span class="text-slate-600 group-hover:text-cyan-400">→</span>
                     </div>
                     <p class="text-slate-400 text-sm">Review the explicit AI integration boundary. No client or provider call is inferred from environment variables.</p>
                 </a>
-                <a href="#" hx-get="/studio/radar" hx-target="#studio-content" hx-push-url="true" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-sky-500/80 hover:bg-slate-900 transition-all group block">
+                <a href="/studio/radar" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-sky-500/80 hover:bg-slate-900 transition-all group block">
                     <div class="text-sky-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
                         <span>📡 Telemetry & Rullst Radar</span>
                         <span class="text-slate-600 group-hover:text-sky-400">→</span>
                     </div>
                     <p class="text-slate-400 text-sm">Process and Tokio telemetry displaying supported task, CPU, RSS, uptime, scheduler-yield and local span observations.</p>
                 </a>
-                <a href="#" hx-get="/studio/capital" hx-target="#studio-content" hx-push-url="true" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-emerald-500/80 hover:bg-slate-900 transition-all group block">
+                <a href="/studio/capital" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-emerald-500/80 hover:bg-slate-900 transition-all group block">
                     <div class="text-emerald-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
                         <span>💳 Revenue Dashboard</span>
                         <span class="text-slate-600 group-hover:text-emerald-400">→</span>
                     </div>
                     <p class="text-slate-400 text-sm">Inspect application-supplied revenue metrics and webhook records held by the local dashboard manager.</p>
                 </a>
-                <a href="#" hx-get="/studio/security" hx-target="#studio-content" hx-push-url="true" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-amber-500/80 hover:bg-slate-900 transition-all group block">
+                <a href="/studio/security" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-amber-500/80 hover:bg-slate-900 transition-all group block">
                     <div class="text-amber-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
                         <span>🛡️ Visual Threat Radar</span>
                         <span class="text-slate-600 group-hover:text-amber-400">→</span>
                     </div>
                     <p class="text-slate-400 text-sm">Local security telemetry for RASP observations, honeypot events, and HMAC-linked audit records. Operational response remains application-owned.</p>
                 </a>
-                <a href="#" hx-get="/studio/traces" hx-target="#studio-content" hx-push-url="true" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-indigo-500/80 hover:bg-slate-900 transition-all group block">
+                <a href="/studio/traces" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-indigo-500/80 hover:bg-slate-900 transition-all group block">
                     <div class="text-indigo-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
                         <span>📊 Distributed Tracing</span>
                         <span class="text-slate-600 group-hover:text-indigo-400">→</span>
                     </div>
                     <p class="text-slate-400 text-sm">Inspect local spans and explicitly supplied, authenticated distributed records; profile redacted SQL operation labels heuristically.</p>
                 </a>
-                <a href="#" hx-get="/studio/cache" hx-target="#studio-content" hx-push-url="true" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-cyan-500/80 hover:bg-slate-900 transition-all group block">
+                <a href="/studio/cache" class="p-6 bg-slate-900/80 border border-slate-800 rounded-xl hover:border-cyan-500/80 hover:bg-slate-900 transition-all group block">
                     <div class="text-cyan-400 text-xl font-bold mb-2 group-hover:translate-x-1 transition-transform flex items-center justify-between">
                         <span>🧊 Cache Inspector</span>
                         <span class="text-slate-600 group-hover:text-cyan-400">→</span>

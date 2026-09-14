@@ -28,24 +28,25 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Enforce immutable third-party Action references
-        shell: bash
+      - name: Enforce canonical Action reference syntax
         run: |
-          unpinned="$(
-            grep -REn '^[[:space:]]*uses:' .github/workflows |
-              grep -Ev 'uses:[[:space:]]+\./|@[0-9a-f]{40}([[:space:]]|$)' || true
-          )"
-          if [ -n "$unpinned" ]; then
-            echo "Remote GitHub Actions must use a full 40-character commit SHA:"
-            printf '%s\n' "$unpinned"
-            exit 1
-          fi
+          python3 .github/test-validate-action-pins.py
+          python3 .github/validate-action-pins.py
+
+      - name: Parse workflows and enforce immutable Action references
+        uses: zgosalvez/github-actions-ensure-sha-pinned-actions@60e3a74c7b74a319e8e53e46bc455205f7173e1a # v5.0.8
 
       - name: Validate shared fuzz target inventory
         run: python3 .github/validate-fuzz-targets.py
 
+      - name: Validate stable release-note extraction
+        run: python3 .github/render-release-notes.py 12.0.0 "$RUNNER_TEMP/release-notes.md"
+
       - name: Validate mutation artifact aggregation
         run: bash .github/test-summarize-mutation-artifacts.sh
+
+      - name: Validate exact-run mutation recovery planning
+        run: python3 .github/test-plan-mutation-resume.py
 
       - name: Run actionlint 1.7.7
         run: |

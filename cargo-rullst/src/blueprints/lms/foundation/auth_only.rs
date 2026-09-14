@@ -10,6 +10,12 @@ pub(super) fn select(
     mut full_manifest: Vec<(&'static str, String)>,
 ) -> Vec<(&'static str, String)> {
     full_manifest.retain(|(path, _)| RETAINED_FILES.contains(path));
+    if let Some((_, source)) = full_manifest
+        .iter_mut()
+        .find(|(path, _)| *path == "src/controllers/auth_controller.rs")
+    {
+        *source = super::super::auth::identity_controller();
+    }
     full_manifest.extend([
         ("src/main.rs", MAIN_SOURCE.to_string()),
         (

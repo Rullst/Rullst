@@ -22,7 +22,9 @@ fn generated_billing_binds_signed_events_to_authenticated_owners() {
         assert!(source.contains("initialize_billing_provider"));
         assert!(source.contains("strong_webhook_secret"));
         assert!(source.contains("BILLING_ALLOWED_PLAN_IDS"));
-        assert!(source.contains("config.allowed_plan_ids.contains(&query.plan)"));
+        assert!(source.contains("config.allowed_plan_ids.contains(&form.plan)"));
+        assert!(source.contains("Form(form): Form<CheckoutForm>"));
+        assert!(source.contains("CsrfToken"));
         assert!(source.contains("find_by_subscription_id"));
         assert!(!source.contains("#[derive(Debug)]\nstruct BillingConfig"));
         assert!(!source.contains(".bind(1)"));

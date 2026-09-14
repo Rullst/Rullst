@@ -250,7 +250,12 @@ fn public_cli_profiles_compile_across_every_distinct_generation_axis() {
         selected_count += 1;
         let project = GeneratedProject::new(case.name);
         let generated = Command::new(env!("CARGO_BIN_EXE_rullst"))
-            .current_dir(project.path.parent().expect("external project parent"))
+            // Invoke the development binary from the matching monorepo so the
+            // generated manifest exercises this checkout before its stable
+            // packages exist in the registry. Installed stable binaries still
+            // emit exact crates.io requirements, as covered by the dependency
+            // source unit tests.
+            .current_dir(workspace)
             .arg("new")
             .arg(&project.path)
             .arg("--default")

@@ -1,5 +1,5 @@
 #![cfg_attr(mutants, mutants::skip)]
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream, TokenTree};
 use quote::quote;
 use syn::ext::IdentExt;
 use syn::parse::{Parse, ParseStream};
@@ -9,6 +9,50 @@ pub enum HtmlNode {
     Element(HtmlElement),
     Text(LitStr),
     Block(Expr),
+}
+
+pub struct HtmlDocument {
+    nodes: Vec<HtmlNode>,
+}
+
+fn starts_comment(input: ParseStream) -> bool {
+    input.peek(Token![<]) && input.peek2(Token![!])
+}
+
+fn parse_comment(input: ParseStream) -> Result<()> {
+    input.parse::<Token![<]>()?;
+    input.parse::<Token![!]>()?;
+    input.parse::<Token![-]>()?;
+    input.parse::<Token![-]>()?;
+
+    while !input.is_empty() {
+        if input.peek(Token![-]) && input.peek2(Token![-]) && input.peek3(Token![>]) {
+            input.parse::<Token![-]>()?;
+            input.parse::<Token![-]>()?;
+            input.parse::<Token![>]>()?;
+            return Ok(());
+        }
+        input.parse::<TokenTree>()?;
+    }
+
+    Err(syn::Error::new(
+        Span::call_site(),
+        "unterminated HTML comment; expected -->",
+    ))
+}
+
+impl Parse for HtmlDocument {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let mut nodes = Vec::new();
+        while !input.is_empty() {
+            if starts_comment(input) {
+                parse_comment(input)?;
+            } else {
+                nodes.push(input.parse::<HtmlNode>()?);
+            }
+        }
+        Ok(Self { nodes })
+    }
 }
 
 pub struct HtmlElement {
@@ -71,7 +115,11 @@ impl Parse for HtmlElement {
             if input.peek(Token![<]) && input.peek2(Token![/]) {
                 break;
             }
-            children.push(input.parse::<HtmlNode>()?);
+            if starts_comment(input) {
+                parse_comment(input)?;
+            } else {
+                children.push(input.parse::<HtmlNode>()?);
+            }
         }
 
         input.parse::<Token![<]>()?;
@@ -93,6 +141,24 @@ impl Parse for HtmlElement {
             attributes,
             children,
         })
+    }
+}
+
+impl HtmlDocument {
+    pub fn to_tokens(&self) -> TokenStream {
+        if self.nodes.len() == 1 {
+            return self.nodes[0].to_tokens();
+        }
+
+        let capacity = self.nodes.iter().map(HtmlNode::static_size).sum::<usize>();
+        let nodes = self.nodes.iter().map(HtmlNode::to_tokens);
+        quote! {
+            {
+                let mut s = String::with_capacity(#capacity);
+                #(s.push_str(&#nodes);)*
+                s
+            }
+        }
     }
 }
 

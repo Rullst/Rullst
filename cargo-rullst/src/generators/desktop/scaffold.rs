@@ -332,6 +332,10 @@ mod tests {
         write_omni_files(&root, &src, "https://api.example.com", &identity)
             .expect("Omni scaffold files");
         let generated = fs::read_to_string(src.join("lib.rs")).expect("generated Omni runtime");
+        let entrypoint =
+            fs::read_to_string(src.join("main.rs")).expect("generated Omni entrypoint");
+        let cargo_manifest =
+            fs::read_to_string(root.join("Cargo.toml")).expect("generated Cargo manifest");
         let redirect = fs::read_to_string(src.join("redirect.js")).expect("generated redirect");
         let config = fs::read_to_string(root.join("tauri.conf.json")).expect("Tauri config");
         let package = fs::read_to_string(root.join("package.json")).expect("npm manifest");
@@ -354,6 +358,9 @@ mod tests {
         assert!(generated.contains("rullst-navigation-policy"));
         assert!(generated.contains("eq_ignore_ascii_case(BACKEND_HOST)"));
         assert!(generated.contains("const BACKEND_PORT: u16 = 443;"));
+        assert!(cargo_manifest.contains("name = \"rullst_omni_lib\""));
+        assert!(!cargo_manifest.contains("name = \"rullst_omni\"\ncrate-type"));
+        assert!(entrypoint.contains("rullst_omni_lib::run()"));
 
         let _ = fs::remove_dir_all(root);
     }

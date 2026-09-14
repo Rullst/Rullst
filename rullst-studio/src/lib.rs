@@ -9,6 +9,7 @@ pub mod access;
 pub mod ai_playground;
 pub mod api_playground;
 pub use access::{LocalStudioAccess, StudioBuildError};
+mod assets;
 pub mod cache_inspector;
 pub mod data_browser;
 pub use data_browser::run_studio;
@@ -83,6 +84,7 @@ impl Studio {
             .nest("/studio/env", env_viewer::router())
             .nest("/studio/features", feature_flags::router())
             .nest("/studio/cache", cache_router)
+            .nest("/studio/assets", assets::router())
             .nest("/studio/er", er_diagram::router())
             .merge(security_radar::stats_router());
 
@@ -150,6 +152,81 @@ mod tests {
         let _ = full_studio
             .into_router(LocalStudioAccess::loopback_only())
             .expect("debug full Studio router");
+    }
+
+    #[cfg(debug_assertions)]
+    #[tokio::test]
+    async fn configured_cache_and_trace_routes_render_real_bounded_state() {
+        let cache = rullst_core::Cache::memory();
+        cache
+            .put("private:learner:7", "sensitive-value", Some(60))
+            .await
+            .expect("cache fixture");
+        let trace_store =
+            distributed_traces::DistributedTraceStore::new(8).expect("bounded trace store");
+        trace_store
+            .insert_batch(
+                "lms-api",
+                1_800_000_000,
+                vec![distributed_traces::DistributedTraceSpanV1 {
+                    trace_id: "0123456789abcdef0123456789abcdef".to_string(),
+                    span_id: "0123456789abcdef".to_string(),
+                    parent_span_id: None,
+                    operation: "lessons.list".to_string(),
+                    kind: distributed_traces::DistributedTraceKind::Sql,
+                    started_at_unix_us: 1_800_000_000_000_000,
+                    duration_us: 700,
+                    status: distributed_traces::DistributedTraceStatus::Ok,
+                }],
+            )
+            .expect("trace fixture");
+        let router = Studio::new()
+            .with_cache(cache)
+            .with_distributed_traces(trace_store)
+            .into_router(LocalStudioAccess::loopback_only())
+            .expect("debug Studio router");
+        let request = |uri: &'static str| {
+            let mut request = Request::builder()
+                .uri(uri)
+                .header(axum::http::header::HOST, "127.0.0.1:5555")
+                .body(Body::empty())
+                .expect("valid request");
+            request.extensions_mut().insert(axum::extract::ConnectInfo(
+                "127.0.0.1:42000"
+                    .parse::<std::net::SocketAddr>()
+                    .expect("loopback peer"),
+            ));
+            request
+        };
+
+        let cache_response = router
+            .clone()
+            .oneshot(request("/studio/cache"))
+            .await
+            .expect("cache response");
+        assert_eq!(cache_response.status(), axum::http::StatusCode::OK);
+        let cache_body = axum::body::to_bytes(cache_response.into_body(), 512 * 1024)
+            .await
+            .expect("cache body");
+        let cache_body = String::from_utf8(cache_body.to_vec()).expect("UTF-8 cache body");
+        assert!(cache_body.contains("Cache Inspector"));
+        assert!(cache_body.contains("15 bytes"));
+        assert!(!cache_body.contains("private:learner:7"));
+        assert!(!cache_body.contains("sensitive-value"));
+
+        let trace_response = router
+            .oneshot(request("/studio/traces"))
+            .await
+            .expect("trace response");
+        assert_eq!(trace_response.status(), axum::http::StatusCode::OK);
+        let trace_body = axum::body::to_bytes(trace_response.into_body(), 512 * 1024)
+            .await
+            .expect("trace body");
+        let trace_body = String::from_utf8(trace_body.to_vec()).expect("UTF-8 trace body");
+        assert!(trace_body.contains("Trace Inspector"));
+        assert!(trace_body.contains("lms-api"));
+        assert!(trace_body.contains("lessons.list"));
+        assert!(trace_body.contains("1 retained"));
     }
 
     #[cfg(not(debug_assertions))]

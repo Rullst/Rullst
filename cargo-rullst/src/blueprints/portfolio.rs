@@ -481,7 +481,7 @@ pub async fn index() -> impl IntoResponse {
                 <meta charset="UTF-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst Developer — AI & Rust Portfolio"</title>
-                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+                <link rel="icon" type="image/png" href="/static/rullst.png" />
                 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
                 <style>{ rullst::html::RawHtml(cv_styles()) }</style>
             </head>

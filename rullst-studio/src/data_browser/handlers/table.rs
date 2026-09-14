@@ -182,17 +182,14 @@ pub async fn handle_table(
                     </h1>
                     <p class="text-slate-400 text-xs mt-1">Inspect rows; primitive values may be changed only through the verified local Studio boundary</p>
                 </div>
-                <div class="flex w-full md:w-auto items-center gap-3">
+                <form method="get" action="/studio/tables/{}" class="flex w-full md:w-auto items-center gap-3">
                     <input type="text"
                            name="search"
                            value="{}"
                            placeholder="Search records..."
-                           hx-get="/studio/tables/{}"
-                           hx-target="#studio-content"
-                           hx-trigger="keyup changed delay:300ms"
-                           hx-push-url="true"
                            class="bg-slate-900 border border-slate-800 rounded-lg px-3.5 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 transition w-full md:w-64" />
-                </div>
+                    <button type="submit" class="px-3.5 py-1.5 rounded-lg border border-sky-700 text-sky-300 text-xs">Search</button>
+                </form>
             </div>
 
             <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
@@ -218,8 +215,8 @@ pub async fn handle_table(
             </div>
         </div>"##,
         escape_html_attr(&clean_table),
-        escape_html_attr(search_str),
         urlencoding::encode(&clean_table),
+        escape_html_attr(search_str),
         headers_html,
         rows_html,
         if total_records == 0 { 0 } else { offset + 1 },
@@ -270,7 +267,7 @@ fn build_pagination_html(
     if page > 1 {
         let _ = write!(
             html,
-            r##"<a href="#" hx-get="/studio/tables/{}?page={}&search={}" hx-target="#studio-content" hx-push-url="true" class="px-3 py-1 bg-slate-900 border border-slate-800 rounded hover:bg-slate-800 text-slate-300">Previous</a>"##,
+            r##"<a href="/studio/tables/{}?page={}&search={}" class="px-3 py-1 bg-slate-900 border border-slate-800 rounded hover:bg-slate-800 text-slate-300">Previous</a>"##,
             encoded_tbl,
             page - 1,
             urlencoding::encode(search_str)
@@ -286,7 +283,7 @@ fn build_pagination_html(
     if page < total_pages {
         let _ = write!(
             html,
-            r##"<a href="#" hx-get="/studio/tables/{}?page={}&search={}" hx-target="#studio-content" hx-push-url="true" class="px-3 py-1 bg-slate-900 border border-slate-800 rounded hover:bg-slate-800 text-slate-300">Next</a>"##,
+            r##"<a href="/studio/tables/{}?page={}&search={}" class="px-3 py-1 bg-slate-900 border border-slate-800 rounded hover:bg-slate-800 text-slate-300">Next</a>"##,
             encoded_tbl,
             page + 1,
             urlencoding::encode(search_str)

@@ -59,9 +59,9 @@ for the v5 workflow, recovery examples, JSON contract and future-major policy.
 
 ## Version placeholder
 
-The snippets in these guides use `12.0.0-rc.1`, the planned first public RC.
-Use it only after publication and replace it with the exact v12 version being
-evaluated. A prerelease must be requested explicitly by Cargo.
+The snippets in these guides use stable `12.0.0`. Keep that exact version while
+reproducing this migration, then review any later v12 maintenance update before
+changing the application's lockfile.
 
 ## Mandatory v12 review
 

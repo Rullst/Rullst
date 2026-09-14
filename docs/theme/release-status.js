@@ -11,7 +11,7 @@
 
     const title = document.createElement("strong");
     title.className = "rullst-release-status__title";
-    title.textContent = "⚠️ Release status: v12.0.0-rc.1 candidate / v5 legacy";
+    title.textContent = "Rullst v12.0.0 stable / v5 legacy";
 
     const mainLink = document.createElement("a");
     mainLink.href = "https://github.com/Rullst/Rullst/tree/main";
@@ -25,9 +25,9 @@
     message.append(
       "The ",
       mainLink,
-      " branch contains active v12 work. The v12.0.0-rc.1 candidate passed its " +
-        "documented release gates and is approved for explicit prerelease evaluation; " +
-        "it is not the stable v12 release. The frozen ",
+      " branch contains post-release v12 maintenance and future integration work. " +
+        "Use the exact v12.0.0 crates.io packages or immutable tag when reproducing " +
+        "the stable release. The frozen ",
       v5Link,
       " branch preserves legacy source without ongoing maintenance. Use exact " +
         "release artifacts rather than the moving main branch."

@@ -56,7 +56,7 @@ cargo tree -p rullst-connect -e normal
 Dependency scanners are separate tools and may require installation and advisory-database
 network access. Do not state that they passed unless their output for the same commit is
 available. Temporary advisory exceptions, their scope, owner, compensating controls, and expiry
-are tracked in [`../docs/src/security-advisory-exceptions.md`](../docs/src/security-advisory-exceptions.md).
+are tracked in the public [security advisory exception ledger](https://rullst.github.io/Rullst/book/security-advisory-exceptions.html).
 
 Relevant regression tests currently live alongside configuration/JWKS modules and in
 `tests/integration_tests.rs`, `tests/revocation_contract.rs` and

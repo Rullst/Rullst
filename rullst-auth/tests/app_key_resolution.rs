@@ -1,5 +1,7 @@
 use base64::{Engine as _, engine::general_purpose};
-use rullst_auth::{AuthError, get_app_key, make_login_cookie, validate_app_key};
+use rullst_auth::{
+    AuthError, get_app_key, make_login_cookie, make_logout_cookie, validate_app_key,
+};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -175,6 +177,7 @@ fn app_key_resolution_child() {
         "secure_cookie_in_production" => {
             let cookie = make_login_cookie(42).expect("production cookie should be created");
             assert!(cookie.contains("; Secure"));
+            assert!(make_logout_cookie().contains("; Secure"));
         }
         "persisted_development_key_is_reused" => {
             assert_eq!(

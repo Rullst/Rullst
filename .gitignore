@@ -45,6 +45,8 @@ test.db-wal
 *.zst  
  
 node_modules/
+__pycache__/
+*.py[cod]
 docs/book/
 .vitepress/dist/
 .vitepress/cache/

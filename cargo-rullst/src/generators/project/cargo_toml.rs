@@ -403,10 +403,15 @@ mod tests {
     }
 
     #[test]
-    fn source_checkout_is_available_to_the_current_prerelease() {
-        let source = dependency_source(Path::new("/tmp"), "rullst", env!("CARGO_PKG_VERSION"))
+    fn source_checkout_fallback_matches_the_current_release_channel() {
+        let version = env!("CARGO_PKG_VERSION");
+        let source = dependency_source(Path::new("/tmp"), "rullst", version)
             .expect("current dependency source");
-        assert!(source.starts_with("path = "), "unexpected source: {source}");
+        if version.contains('-') {
+            assert!(source.starts_with("path = "), "unexpected source: {source}");
+        } else {
+            assert_eq!(source, format!("version = \"{version}\""));
+        }
     }
 
     #[test]

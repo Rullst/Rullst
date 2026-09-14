@@ -174,7 +174,7 @@ pub async fn security_page(Query(query): Query<SecurityTestQuery>) -> impl IntoR
             <head>
                 <meta charset="utf-8" />
                 <title>"Rullst Security - RASP & Zero-Trust Threat Protection"</title>
-                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" />
                 <style>{ rullst::html::RawHtml(styles) }</style>
             </head>
             <body>

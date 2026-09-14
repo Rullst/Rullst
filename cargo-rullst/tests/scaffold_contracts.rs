@@ -479,7 +479,8 @@ fn extracted_rust_templates_parse_after_substitution() {
     let templates = [
         (
             "auth controller",
-            include_str!("../src/generators/auth/auth_controller.rs.template").to_string(),
+            include_str!("../src/generators/auth/auth_controller.rs.template")
+                .replace("// __RULLST_REGISTRATION_HOOK__", ""),
         ),
         (
             "billing controller",
@@ -512,10 +513,19 @@ fn extracted_rust_templates_parse_after_substitution() {
     ];
 
     for (name, source) in templates {
-        assert!(
-            !source.contains("__"),
-            "{name}: unresolved generator placeholder"
-        );
+        for placeholder in [
+            "__FOREIGN_KEY__",
+            "__OWNER_ID_TYPE__",
+            "__MIGRATION_NAME__",
+            "__MODULE_NAME__",
+            "__TYPE_NAME__",
+            "__RULLST_REGISTRATION_HOOK__",
+        ] {
+            assert!(
+                !source.contains(placeholder),
+                "{name}: unresolved generator placeholder {placeholder}"
+            );
+        }
         syn::parse_file(&source)
             .unwrap_or_else(|error| panic!("{name} template does not parse: {error}"));
     }

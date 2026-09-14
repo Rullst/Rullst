@@ -6,12 +6,12 @@ operation, secrets, billing and recovery remain deployment responsibilities.
 
 ## 1. Materialize and verify the SaaS starter
 
-Install the matching `12.0.0-rc.1` CLI after crates.io indexes it, then generate
+Install the matching `12.0.0` CLI after crates.io indexes it, then generate
 deterministically. Do not substitute the moving `main` branch for an immutable
 release artifact:
 
 ```bash
-cargo install cargo-rullst --version 12.0.0-rc.1 --locked
+cargo install cargo-rullst --version 12.0.0 --locked
 cargo rullst new my_cloud_saas --default --blueprint saas --docker
 cd my_cloud_saas
 cargo fmt --all -- --check

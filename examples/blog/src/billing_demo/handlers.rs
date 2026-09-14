@@ -104,13 +104,11 @@ async fn handle_checkout_submission(params: CheckoutParams, csrf_token: String) 
 
     let (free_can_post, xml_snippet) = compute_demo_data();
 
-    let simulation_result = simulate_provider_checkout(
-        &provider,
-        &email,
-        &plan,
-        "http://localhost:3000/pricing?status=success",
-    )
-    .await;
+    let return_url = format!(
+        "{}/pricing?status=success",
+        crate::public_origin::fixture_origin()
+    );
+    let simulation_result = simulate_provider_checkout(&provider, &email, &plan, &return_url).await;
 
     let simulated = match simulation_result {
         Ok(url) => Some((provider, url)),

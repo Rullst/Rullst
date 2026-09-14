@@ -11,10 +11,6 @@
   </p>
 </div>
 
-> **v12 development notice:** This README documents the unreleased v12 source.
-> Use a path dependency from this checkout until an immutable v12 RC exists on
-> crates.io. `12.0.0-rc.1` below is the planned first RC.
-
 🚀 **[Visit the Official Website & Documentation Hub](https://rullst.github.io/Rullst/book/)** 🚀
 
 Built on top of `sqlx` and procedural macros, **Rullst ORM** brings the delightful, fluent syntax of Active Record frameworks directly to the high-performance Rust ecosystem.
@@ -74,7 +70,7 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   identity, and sensitive-field guards; the compensating update records its
   actor, reason, and source revision. Bulk per-row history and durable external
   export remain explicit application/outbox work. See the
-  [audit revision guide](../docs/src/tutorials/50-auditable-revisions.md).
+  [audit revision guide](https://rullst.github.io/Rullst/book/tutorials/50-auditable-revisions.html).
 - **Bounded Post-Commit Effects**: `after_commit` and the generated observer
   `committed` callback run only after `Orm::transaction` or a direct generated
   save/delete commits. Rollback discards them, and post-commit failures use a
@@ -151,7 +147,7 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   DuckDB OLAP queries, Turso/libSQL edge SQL, and SurrealDB document/read-only
   graph operations live behind explicit capability APIs instead of pretending
   to be one universal Active Record interface. See the
-  [Polyglot guide](../docs/src/polyglot-persistence.md).
+  [Polyglot guide](https://rullst.github.io/Rullst/book/polyglot-persistence.html).
 - **Authenticated Portable Document Recovery**: MongoDB, SurrealDB and the
   deterministic store expose stable identifier-preserving inventory. A bounded
   AES-256-GCM snapshot performs two equal source scans, binds application and
@@ -226,10 +222,10 @@ do not authenticate users or decide who may invoke `unscoped()`.
 
 Add the library to your `Cargo.toml`:
 
-After that RC is published, install its exact train with:
+Install the exact stable train with:
 
 ```bash
-cargo add rullst-orm@12.0.0-rc.1
+cargo add rullst-orm@12.0.0
 cargo add tokio -F full
 ```
 
@@ -284,7 +280,7 @@ enums specifically require `strict-postgres`, because SQLx's dynamic `Any`
 driver cannot decode custom PostgreSQL types:
 
 ```toml
-rullst-orm = { version = "12.0.0-rc.1", features = ["strict-postgres"] }
+rullst-orm = { version = "12.0.0", features = ["strict-postgres"] }
 ```
 
 Then derive one label contract and use it in schema code:

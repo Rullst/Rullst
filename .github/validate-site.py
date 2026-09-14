@@ -112,7 +112,8 @@ def main() -> None:
     validate_document(HOME, home)
     assert home.has_main and home.has_nav and home.has_footer, "landing page needs nav, main and footer"
     assert source.count("All glory and honor to God") == 1, "landing page needs the footer dedication"
-    assert "v12.0.0-rc.1 release candidate" in source, "landing page must preserve the RC warning"
+    assert "Rullst v12.0.0 stable" in source, "landing page must identify stable v12"
+    assert "evaluate before stable v12" not in source, "landing page retains obsolete RC copy"
     assert "Content-Security-Policy" in source, "landing page must declare a CSP"
     assert not home.inline_behavior, f"landing page has inline behavior/style: {home.inline_behavior}"
     assert home.stylesheets == ["./assets/site.css"], "landing stylesheet must be repository-local"

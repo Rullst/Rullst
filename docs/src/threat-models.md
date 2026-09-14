@@ -1,7 +1,7 @@
 # Rullst v12 threat models
 
 > **Model version:** TM-12.10
-> **Applies to:** the v12 release candidate source and generated applications
+> **Applies to:** the stable v12 source and generated applications
 > **Last source review:** 2026-09-03
 > **Status:** maintainer baseline; application owners must extend it for their
 > data, topology and providers. It is not a pentest or certification.
@@ -99,7 +99,7 @@ tools, audit evidence and security telemetry.
 | `NEXUS-02` IDOR/BOLA on CRUD/batch routes | Resolve subject/tenant, then authorize object ownership or role for every ID and bulk member. | Models that explicitly register a text tenant column now scope every built-in read/mutation/batch predicate to a trusted `TenantContext`, inject it on create and fail closed without context. A real SQLite HTTP regression proves cross-tenant list/update/delete/batch denial and protected create input; pure SQL tests keep the all-feature release minimum portable. Global models, custom routes, identity/membership resolution, within-tenant object ownership and independent review remain host work. |
 | `NEXUS-03` stored/reflected XSS | Escape dynamic HTML; make raw HTML explicit; enforce nonce CSP. | Core proves renderer/header nonce identity. Generated LMS auth/catalog/course/player style elements consume the request nonce, remove remote shell dependencies/inline style attributes and the materialized catalog escapes script-shaped search text; browser validation and a route-by-route Nexus audit remain open. |
 | `NEXUS-04` AI assistant privilege escalation | Treat model output as untrusted; allowlist typed tools and authorize each invocation as the human subject. | Prompt filtering exists; tool approval/audit policy remains open. |
-| `NEXUS-05` destructive CSRF | Require CSRF on cookie-authenticated mutations and exact signed-webhook exemptions only. | The exact Core baseline regression proves a production cookie write is denied without the matching double-submit value, accepted with it and retains the outer header/CORS policy on denial. Exact signed-webhook exemptions have separate unit negatives; a full Nexus browser/proxy flow remains open. |
+| `NEXUS-05` destructive CSRF | Require CSRF on cookie-authenticated mutations and exact signed-webhook exemptions only. | The exact Core baseline regression proves a production cookie write is denied without the matching double-submit value, accepted with it and retains the outer header/CORS policy on denial. A nested-layer regression proves an explicitly protected application router wrapped by the `Server` baseline emits one matching token/cookie pair and accepts the valid POST instead of applying the protocol twice. Exact signed-webhook exemptions have separate unit negatives; a full Nexus browser/proxy flow remains open. |
 | `NEXUS-06` audit repudiation | Record actor, tenant, object, operation, outcome and correlation ID in durable separate storage. | The opt-in required policy records the built-in authenticated actor, optional tenant, table/action, optional known key, count, committed outcome, bounded correlation ID, timestamp and format version in the same transaction; unavailable storage rolls the mutation back. A real SQLite regression covers commit and rollback, while schema tests cover all SQL dialects. It is same-database mutable evidence, not separate append-only or tamper-evident storage; denied attempts and automatically assigned create keys are not uniformly persisted. Host retention, backup, replication, immutable export and review remain open. |
 
 Trust boundaries are browser ↔ Nexus, Nexus ↔ application policy/database and
@@ -351,6 +351,7 @@ registry and CLI ↔ filesystem/process/cloud.
 - New boundaries receive new IDs; IDs are never silently reused.
 - Closing residual risk requires code/configuration, a negative test and
   commit-bound evidence. Documentation alone cannot claim a control is deployed.
-- Before stable v12, maintainers must review TM-12.10 against the exact RC,
+- For every stable v12 maintenance release, maintainers must review TM-12.10
+  against the exact candidate,
   applications must add topology/provider threats and an independent reviewer
   must cover the highest-impact paths.

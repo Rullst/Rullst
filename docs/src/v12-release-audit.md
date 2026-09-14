@@ -1,20 +1,29 @@
 # v12 release audit follow-up
 
-Status: **owner GO recorded for `12.0.0-rc.1` on September 12, 2026; the approved
-code candidate passed its local, hosted, coverage, security and package gates,
-and only the documentation closeout plus tag-bound publication remain**. This
-authorizes an evaluation prerelease, not stable `12.0.0`. Each hosted result
-remains evidence for its recorded commit, not every future tree.
+Status: **`12.0.0-rc.1` is published and independently installable; the stable
+`12.0.0` candidate follows that release lineage with bounded post-RC fixes and
+is in exact-SHA closeout**. This document neither publishes nor authorizes
+stable by itself. Its exact candidate must repeat the mandatory local, hosted,
+packaging, consumer, ownership and attestation gates before the owner approves
+the tag.
+Each hosted result remains evidence for its recorded commit, not every future
+tree; crates.io availability requires the registry receipt.
 
 ## Baseline and method
 
-The approved code candidate is `a6b3bc8a` on `main`, including the
+The audited code candidate is `a6b3bc8a` on `main`, including the
 second-computer report in [CLIFIX.md](../../CLIFIX.md), fail-closed SQLite schema
 validation for automatic migration generation, and the corrected mutation
-inventory. All 22 applicable push workflows passed on that SHA. This final
-closeout changes public documentation, site copy and their matching assertions;
-its immutable tag commit must keep the code unchanged and pass the applicable
-hosted checks.
+inventory. All 22 applicable push workflows passed on that SHA. The immutable
+RC tag is `v12.0.0-rc.1` at
+`2b19567e8d184ad3ceeebae812de71b06d32e484`. Stable preparation synchronizes
+package versions, public documentation, site copy and release evidence. It also
+contains bounded post-RC correctness/hardening changes to CSRF composition,
+session-cookie handling, generated registration/billing/container contracts and
+Studio's browser assets. These are not a new product feature, but they do change
+runtime behavior and therefore require fresh evidence. The immutable tag commit
+must pass the complete stable release workflow rather than inheriting a pass by
+description.
 
 Review covers every published crate. IoT receives only a light triage under the
 owner's explicit v12 exception. Each deep review traces public inputs through
@@ -41,11 +50,11 @@ device and boot-chain evidence is outside the v12 campaign.
 That is an evidence-bounded engineering grade, not a security certification,
 feature-completeness percentage, independent audit result, or release
 authorization. A candidate earns the recorded grade only when its exact SHA
-passes the applicable scorecard constraints. Until the final candidate's
-automatic and manual gates, packaging checks, documentation review, and
-explicit GO decision are complete. Those conditions were met for the approved
-code candidate; the grade remains evidence-bounded and does not authorize the
-future stable release.
+passes the applicable scorecard constraints. The RC met those conditions only
+after its automatic and manual gates, packaging checks, documentation review,
+and explicit GO decision completed. That evidence remains bounded to the RC and
+does not authorize the future stable release. The exact stable candidate earns
+the grade only after its conditioning gates pass.
 
 ## Coverage ledger
 
@@ -88,6 +97,8 @@ and `-D warnings`.
 | Security middleware | HTTP/2 CONNECT bypassed WebSocket origin policy; cloned Tower services lost acquired readiness | Apply the origin guard to the extended method and call the ready service instance |
 | Abuse controls/logs | Reset zero-limit admission, counter overflow, concurrent capacity escape and redaction suffix leakage | Checked bounded admission, atomic capacity/reclamation and bounded fail-closed redaction; controls remain process-local |
 | Core CSRF | Empty proofs accepted; valid split Cookie fields rejected; duplicate proofs ambiguous | Nonempty bounded unique tokens, multi-field cookie parsing and exact supported form media type; unsigned double-submit is not a session-signed CSRF scheme |
+| Production CSRF composition | An application router with an explicit CSRF layer was wrapped by the `Server` production baseline, so a first GET emitted two different cookies and the rendered form echoed only one; browsers retained the other and valid submissions failed with 403 | A private request marker makes nested framework/application CSRF composition idempotent while preserving validation at the outer boundary; the exact two-layer regression requires one matching cookie and a successful matching POST. Applications still own HTTPS, session authentication and exact exemptions |
+| Examples Omni/HTML/COEP report | A generated Tauri package used colliding Windows MSVC PDB target names; `html!` rejected source comments; the deployed LMS needed reviewed cross-origin media behavior | Give the Omni library a distinct `rullst_omni_lib` target and compile-test the emitted entrypoint; strip bounded source comments in the macro parser; retain `require-corp` by default while exposing a closed, validated Core COEP application setting. Cross-origin media still requires matching CSP, server headers and deployed-browser evidence |
 | Nexus operator access | An absolute HTTPS URI impersonated verified TLS; local Host/Origin boundary incomplete | Require the private verified-transport capability and validate local browser Host/Origin; deployment proxies must supply the correct trusted adapter |
 | Capital live operations | Fabricated portals/no-op mutations, four hardcoded prices and undocumented mock aliases | Explicit unsupported errors for unimplemented live behavior; deterministic mocks only through documented mock credentials; consult the crate's provider-method matrix |
 | Capital receipts/webhooks | Incomplete authenticated payloads inferred active/paid; charge identity insufficiently bound; Polar/MP body-only signatures did not represent their protocols | Validate required event/status/charge bindings; bounded Polar header-based Standard Webhooks verification; incompatible legacy live signature paths fail closed, including MP until its full provider verification is implemented |
@@ -132,8 +143,10 @@ The organization root website and the framework Pages site were different
 deployments. The old organization site still described `main` as v5 and `dev`
 as v12, and its privacy page asserted unverified worldwide legal compliance.
 Both entry points now have prepared matching source, with separate deployment
-receipts still required. The new copy presents v12.0.0-rc.1 as an explicit
-evaluation candidate, keeps stable v12 distinct, and marks v5 end-of-life.
+receipts still required. The RC copy presented v12.0.0-rc.1 as an explicit
+evaluation candidate and marked v5 end-of-life. Stable preparation presents
+`12.0.0` as the supported v12 line while retaining application-specific
+security and deployment limits.
 
 The landing uses local CSS/JavaScript/images, finite reduced-motion-aware
 animation, thirteen owner-supplied social links and a concrete privacy notice.
@@ -148,13 +161,15 @@ tutorials instead of creating another competing API reference. Initial guides
 clarify matching CLI installation, optional persistence, first-build time,
 actual generator paths and how to verify a visible result.
 
-Verified locally: `mdbook build docs`,
+Verified locally for the stable-promotion worktree: `mdbook build docs`,
 `python3 .github/validate-site.py`, `node --check docs/site.js`, and
 `node .github/site-browser-smoke.mjs`. The Chromium test passed desktop,
 390/320-pixel layouts, keyboard/mobile menu behavior, clipboard success/denial,
 privacy disclosure, reduced motion, no-JavaScript navigation and no external
-landing requests or browser storage. The exported organization site also passed
-with `--organization-site`; this is not a WCAG or cross-browser certification.
+landing requests or browser storage. The RC organization-site export previously
+passed the same smoke suite with `--organization-site`; the stable copy still
+requires its separate deployment receipt. This is not a WCAG or cross-browser
+certification.
 
 ## Development reload decision
 
@@ -174,7 +189,7 @@ The v13 decision is evidence-driven: compare measured reload time, failure
 recovery, process cleanup, memory and state ownership across databases and
 operating systems before considering a different architecture.
 
-## Final RC decision and remaining publication work
+## RC receipt and remaining stable publication work
 
 - Approved code candidate `a6b3bc8a` passed all 22 applicable automatic push
   workflows. Codecov reported 91.49% repository coverage and 100% patch coverage;
@@ -186,22 +201,66 @@ operating systems before considering a different architecture.
   the packaged CLI installed and reported the correct version, and all six
   installed-CLI blueprints generated and compiled without monorepo paths.
 - The complete 40-target hosted fuzz campaign passed on parent `7697fb8a` in
-  run `34642351302`. The final local delta is confined to CLI automatic-migration
-  validation, its regression and mutation-workflow inventory; it does not alter
-  a fuzz target or runtime parser. Carry that evidence forward only for this
-  bounded delta, and repeat the campaign if the candidate expands beyond it.
-- The full mutation attempt classified 14,059 of 14,391 candidates (97.69%):
-  74 shards completed, five preserved partial timeout evidence and one runner
-  interruption produced no artifact. Its conservative classified score was
-  approximately 70.7%. Mutation remains informational; the incomplete campaign
-  is test-sensitivity evidence, not a passing release gate. The workflow now
-  pins the observed 14,391-candidate inventory so future drift fails early.
+  run `34642351302`. It remains historical RC evidence. The stable delta now
+  includes Core/Auth and generated-application runtime changes, so the stable
+  candidate must repeat the applicable fuzz campaign instead of carrying that
+  result forward as exact-SHA evidence.
+- The full mutation campaign is complete. The originating run `34688592153`
+  left six of eighty shards incomplete; exact-SHA recovery run `34738841341`
+  completed eleven of twelve halves before GitHub twice shut down the runner at
+  the same resource-intensive ORM mutant. Finalization run `34761010296`
+  split only that remaining half again, bounded its internal test timeout and
+  passed both fragments, the aggregate and the evidence boundary. The verified
+  content-addressed artifact reports **14,391/14,391 candidates classified**
+  across 87 complete artifacts: 8,705 caught, 3,553 missed, 76 timed out and
+  2,057 unviable, for a conservative caught percentage of 70.57%. Its source is
+  `1ffdf0a72577d1a974b4e87e2bf207f4a3580243`; inventory SHA-256 is
+  `986d5cc1de71f7c8afbae7823a8fca53304b84f8e81b8f9e2d1fd3949c15ef80`.
+  Mutation remains informational: full classification is valid sensitivity
+  evidence, while surviving and timed-out mutants remain explicit follow-up
+  findings rather than being mislabeled as caught.
 - The owner supplied explicit GO for `v12.0.0-rc.1` on September 12, 2026 after
-  reviewing the package graph and topological plan. The final documentation-only
-  commit must pass its relevant hosted checks; then the protected tag workflow
+  reviewing the package graph and topological plan. The stable closeout commit
+  synchronizes versions/documentation, hardens release/assurance workflows and
+  contains the explicitly listed post-RC fixes. Its exact SHA must pass the
+  applicable hosted checks; then the protected tag workflow
   must recheck name ownership, reproduce the archives, publish in order, verify
   registry checksums/indexing and emit provenance. The 94/A score is supporting
   evidence, not a security certification or authorization for stable `12.0.0`.
+
+## RC publication receipt and stable promotion
+
+- Tag `v12.0.0-rc.1` resolves to
+  `2b19567e8d184ad3ceeebae812de71b06d32e484`. The release workflow's verify and
+  publish jobs succeeded on that SHA. All sixteen packages were published in
+  topological order, indexed with the verified archive checksums and exposed
+  through docs.rs; the owner also completed a separate-machine CLI smoke test.
+- The GitHub release is marked as a prerelease and contains all sixteen crate
+  archives, checksum files, Cargo metadata/lockfile, Cargo Audit JSON,
+  CycloneDX 1.5 SBOM, bounded security evidence, advisory policy, ownership
+  evidence and tag context. GitHub's SHA-pinned build-provenance attestation
+  verified for the archives and evidence bundle.
+- The overall historical run is red only because the additional reusable SLSA
+  generator failed during environment detection: its transitive
+  `detect-workflow-js@v2.1.0` reference violated this repository's full-SHA
+  Action policy. It never generated or uploaded provenance. It is not counted
+  as release evidence, and no SLSA level is claimed. Stable preparation removes
+  that redundant external job while retaining the successful SHA-pinned GitHub
+  attestation already produced inside the verified job.
+- All package names are now registered. Trusted Publishing is configured by the
+  owner for the sixteen packages, the temporary bootstrap secret was removed,
+  and the exposed bootstrap token was revoked. Stable publication must use the
+  short-lived OIDC credential; the bootstrap path should remain inactive.
+- Stable `12.0.0` promotes the audited RC lineage plus the declared post-RC
+  corrections: idempotent nested CSRF composition, stricter session-cookie
+  parsing/logout, transactional generated LMS registration, POST/CSRF billing
+  mutations, hardened generated containers, self-contained Studio assets,
+  collision-free Omni targets, source-comment parsing and explicit validated
+  COEP application policy.
+  The remaining delta is version/documentation/SBOM reconciliation,
+  changelog-derived release notes and removal of the incompatible redundant
+  SLSA job. Every runtime correction requires renewed evidence and must remain
+  visible before GO.
 
 ## Residual limitations for the next reviewer
 

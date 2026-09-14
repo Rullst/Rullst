@@ -6,19 +6,12 @@
 pub struct GatewayInfo {
     pub id: &'static str,
     pub name: &'static str,
-    pub symbol: &'static str,
     pub archetype: &'static str,
     pub archetype_badge_class: &'static str,
-    pub category: &'static str,
-    pub region: &'static str,
     pub flag: &'static str,
-    pub fees: &'static str,
-    pub payout_speed: &'static str,
-    pub tax_handling: &'static str,
-    pub best_for: &'static str,
+    pub current_boundary: &'static str,
     pub env_example: &'static str,
     pub rust_init_code: &'static str,
-    pub webhook_code: &'static str,
 }
 
 impl GatewayInfo {
@@ -52,200 +45,123 @@ impl GatewayInfo {
     }
 }
 
-/// Returns the comprehensive list of all 11 supported gateways in Rullst Capital.
+/// Returns the 11 payment/payout adapters represented by offline fixtures.
 pub fn all_gateways() -> Vec<GatewayInfo> {
     vec![
         GatewayInfo {
             id: "infinitepay",
             name: "InfinitePay",
-            symbol: "⚡",
-            archetype: "Domestic Fee Leader (CloudWalk)",
+            archetype: "Billing adapter",
             archetype_badge_class: "badge-emerald",
-            category: "brazil",
-            region: "Brazil (Domestic)",
             flag: "🇧🇷",
-            fees: "Pix: 0.00% (Zero) | Card: 0.75% to 1.44%",
-            payout_speed: "Instant (D+0 / D+1)",
-            tax_handling: "Separate fiscal integration required; NFS-e live issuance is disabled",
-            best_for: "Brazilian SaaS, optimized margins, zero-fee Pix, and credit card installments up to 12x.",
+            current_boundary: "Deterministic offline checkout fixture. Live plan-only checkout is unsupported until an authoritative pricing contract is implemented.",
             env_example: "INFINITEPAY_API_KEY=\"inf_live_sec_...\"\nINFINITEPAY_WEBHOOK_SECRET=\"whsec_inf_...\"",
             rust_init_code: "use rullst_capital::{init_provider, InfinitePayProvider};\n\ninit_provider(Box::new(InfinitePayProvider::new(\n    std::env::var(\"INFINITEPAY_API_KEY\")?,\n    std::env::var(\"INFINITEPAY_WEBHOOK_SECRET\")?,\n)));",
-            webhook_code: "POST /webhooks/capital\nHeader: x-infinitepay-signature\nVerification: HMAC-SHA256 (Constant-time comparison)",
         },
         GatewayInfo {
             id: "stripe",
             name: "Stripe",
-            symbol: "🌐",
-            archetype: "Global Direct Merchant",
+            archetype: "Billing adapter",
             archetype_badge_class: "badge-blue",
-            category: "direct",
-            region: "Global (45+ countries)",
             flag: "🌐",
-            fees: "~2.9% + $0.30 per transaction",
-            payout_speed: "2 business days (D+2)",
-            tax_handling: "Automatic Calculation (Stripe Tax)",
-            best_for: "High-volume global SaaS, international cards, Apple Pay, Google Pay, and customer portals.",
+            current_boundary: "Reviewed plan-based checkout adapter plus bounded immediate Payment Intent charge and documented webhook foundations; validate your live account and products.",
             env_example: "STRIPE_SECRET_KEY=\"sk_live_51...\"\nSTRIPE_WEBHOOK_SECRET=\"whsec_...\"",
             rust_init_code: "use rullst_capital::{init_provider, StripeProvider};\n\ninit_provider(Box::new(StripeProvider::new(\n    std::env::var(\"STRIPE_SECRET_KEY\")?,\n    std::env::var(\"STRIPE_WEBHOOK_SECRET\")?,\n)));",
-            webhook_code: "POST /webhooks/capital\nHeader: Stripe-Signature (t=...,v1=...)\nVerification: HMAC-SHA256 with timestamp replay protection",
         },
         GatewayInfo {
             id: "lemonsqueezy",
             name: "Lemon Squeezy",
-            symbol: "🍋",
-            archetype: "Merchant of Record (MoR)",
+            archetype: "Merchant-of-record adapter",
             archetype_badge_class: "badge-amber",
-            category: "mor",
-            region: "Global (100+ countries)",
             flag: "🍋",
-            fees: "~5.0% + $0.50 per transaction",
-            payout_speed: "Weekly / Bi-weekly",
-            tax_handling: "Merchant-of-record tax handling (verify the provider contract)",
-            best_for: "Solo developers and startups selling globally without forming foreign legal entities.",
+            current_boundary: "Plan-based checkout adapter and provider-specific usage-record contract with an explicit offline mock path; validate live account behavior and terms.",
             env_example: "LEMONSQUEEZY_API_KEY=\"lmsq_live_...\"\nLEMONSQUEEZY_STORE_ID=\"12345\"\nLEMONSQUEEZY_WEBHOOK_SECRET=\"whsec_...\"",
             rust_init_code: "use rullst_capital::{init_provider, LemonSqueezyProvider};\n\ninit_provider(Box::new(LemonSqueezyProvider::new(\n    std::env::var(\"LEMONSQUEEZY_API_KEY\")?,\n    std::env::var(\"LEMONSQUEEZY_WEBHOOK_SECRET\")?,\n)));",
-            webhook_code: "POST /webhooks/capital\nHeader: X-Signature\nVerification: HMAC-SHA256 hex digest validation",
         },
         GatewayInfo {
             id: "polar",
             name: "Polar.sh",
-            symbol: "⚡",
-            archetype: "Developer-First MoR & Open Source",
+            archetype: "Merchant-of-record adapter",
             archetype_badge_class: "badge-cyan",
-            category: "mor",
-            region: "Global (Engineers & GitHub)",
             flag: "⚡",
-            fees: "~4.0% + $0.40 per transaction",
-            payout_speed: "Monthly / On-demand",
-            tax_handling: "Merchant-of-record tax handling (verify jurisdiction coverage)",
-            best_for: "Monetizing open-source repositories, software licenses, GitHub backers, and micro-SaaS.",
+            current_boundary: "Plan-based checkout adapter and Standard Webhooks envelope verification foundation; validate live account behavior and provider coverage.",
             env_example: "POLAR_ACCESS_TOKEN=\"polar_at_...\"\nPOLAR_WEBHOOK_SECRET=\"polar_wh_...\"",
             rust_init_code: "use rullst_capital::{init_provider, PolarProvider};\n\ninit_provider(Box::new(PolarProvider::new(\n    std::env::var(\"POLAR_ACCESS_TOKEN\")?,\n    std::env::var(\"POLAR_WEBHOOK_SECRET\")?,\n)));",
-            webhook_code: "POST /webhooks/capital\nHeader: webhook-signature\nVerification: Standard Webhook signature verification",
         },
         GatewayInfo {
             id: "paddle",
             name: "Paddle",
-            symbol: "🛡️",
-            archetype: "Enterprise Global MoR",
+            archetype: "Merchant-of-record adapter",
             archetype_badge_class: "badge-purple",
-            category: "mor",
-            region: "Global B2B & Enterprise",
             flag: "🛡️",
-            fees: "~5.0% + $0.50 per transaction",
-            payout_speed: "Monthly",
-            tax_handling: "Merchant-of-record tax handling (verify the enterprise contract)",
-            best_for: "Enterprise B2B SaaS in the US and Europe with quote-to-cash invoicing workflows.",
+            current_boundary: "Plan-based checkout adapter and signed-webhook foundation; validate the required live operations and provider contract.",
             env_example: "PADDLE_API_KEY=\"pdl_live_...\"\nPADDLE_WEBHOOK_SECRET=\"pdl_wh_...\"",
             rust_init_code: "use rullst_capital::{init_provider, PaddleProvider};\n\ninit_provider(Box::new(PaddleProvider::new(\n    std::env::var(\"PADDLE_API_KEY\")?,\n    std::env::var(\"PADDLE_WEBHOOK_SECRET\")?,\n)));",
-            webhook_code: "POST /webhooks/capital\nHeader: Paddle-Signature (ts=...,h1=...)\nVerification: HMAC-SHA256 signature verification",
         },
         GatewayInfo {
             id: "alipay",
             name: "Alipay (支付宝 / Alipay+)",
-            symbol: "🇨🇳",
-            archetype: "China & APAC Cross-Border Leader",
+            archetype: "Cross-border adapter",
             archetype_badge_class: "badge-blue",
-            category: "apac",
-            region: "China, HK & Asia-Pacific (> 1.3B users)",
             flag: "🇨🇳",
-            fees: "~1.5% to 2.8% (domestic / cross-border)",
-            payout_speed: "Instant / T+1",
-            tax_handling: "Cross-Border Customs & VAT Compliance",
-            best_for: "Selling to the Chinese consumer market, cross-border e-commerce, and Alipay+ Global wallets (GCash, Kakao Pay, DANA).",
+            current_boundary: "Offline fixture only. Live RSA2 checkout and webhook verification fail closed until the asymmetric protocol is implemented and independently verified.",
             env_example: "ALIPAY_APP_ID=\"2021000123456789\"\nALIPAY_PRIVATE_KEY=\"MIIEvgIBADANBgkqhki...\"\nALIPAY_PUBLIC_KEY=\"MIIBIjANBgkqhki...\"",
             rust_init_code: "use rullst_capital::{init_provider, AlipayProvider};\n\ninit_provider(Box::new(AlipayProvider::new(\n    std::env::var(\"ALIPAY_APP_ID\")?,\n    std::env::var(\"ALIPAY_PRIVATE_KEY\")?,\n    std::env::var(\"ALIPAY_PUBLIC_KEY\")?,\n)));",
-            webhook_code: "POST /webhooks/capital\nHeader: sign / alipay-signature\nVerification: RSA2 (SHA256withRSA) / HMAC constant-time tag matching",
         },
         GatewayInfo {
             id: "mercadopago",
             name: "Mercado Pago",
-            symbol: "🌎",
-            archetype: "Latin America Regional Leader",
+            archetype: "Billing adapter",
             archetype_badge_class: "badge-indigo",
-            category: "latam",
-            region: "Latin America (BR, AR, MX, CL, CO, UY)",
             flag: "🌎",
-            fees: "~3.99% to 4.98% per transaction",
-            payout_speed: "Instant",
-            tax_handling: "Local Fiscal Compliance (NFS-e / SAT / AFIP)",
-            best_for: "Complete regional coverage across Latin America (Pix, Boleto, local credit/debit cards).",
+            current_boundary: "Deterministic offline checkout fixture. Live plan-only checkout and body-only webhook verification are unavailable and fail closed.",
             env_example: "MERCADOPAGO_ACCESS_TOKEN=\"APP_USR-...\"\nMERCADOPAGO_WEBHOOK_SECRET=\"sec_mp_...\"",
             rust_init_code: "use rullst_capital::{init_provider, MercadoPagoProvider};\n\ninit_provider(Box::new(MercadoPagoProvider::new(\n    std::env::var(\"MERCADOPAGO_ACCESS_TOKEN\")?,\n    std::env::var(\"MERCADOPAGO_WEBHOOK_SECRET\")?,\n)));",
-            webhook_code: "POST /webhooks/capital\nHeader: x-signature (ts=...,v1=...)\nVerification: HMAC-SHA256 signature matching",
         },
         GatewayInfo {
             id: "razorpay",
             name: "Razorpay",
-            symbol: "🇮🇳",
-            archetype: "India & Southeast Asia Regional Leader",
+            archetype: "Billing adapter",
             archetype_badge_class: "badge-blue",
-            category: "apac",
-            region: "India & Southeast Asia",
             flag: "🇮🇳",
-            fees: "~2.0% + GST per transaction",
-            payout_speed: "2 to 3 business days (D+2)",
-            tax_handling: "GST Compliance & Tax Invoicing",
-            best_for: "Recurring UPI Autopay, Indian cards (RuPay/Visa/Mastercard), and NetBanking mandates.",
+            current_boundary: "Plan-based checkout adapter and signed-webhook foundation; unsupported event kinds fail closed. Validate required live account behavior.",
             env_example: "RAZORPAY_KEY_ID=\"rzp_live_...\"\nRAZORPAY_KEY_SECRET=\"sec_rzp_...\"\nRAZORPAY_WEBHOOK_SECRET=\"whsec_...\"",
             rust_init_code: "use rullst_capital::{init_provider, RazorpayProvider};\n\ninit_provider(Box::new(RazorpayProvider::new(\n    std::env::var(\"RAZORPAY_KEY_ID\")?,\n    std::env::var(\"RAZORPAY_KEY_SECRET\")?,\n    std::env::var(\"RAZORPAY_WEBHOOK_SECRET\")?,\n)));",
-            webhook_code: "POST /webhooks/capital\nHeader: X-Razorpay-Signature\nVerification: HMAC-SHA256 signature verification",
         },
         GatewayInfo {
             id: "coinbase",
             name: "Coinbase Commerce",
-            symbol: "₿",
-            archetype: "Global Web3 & Crypto",
+            archetype: "Commerce adapter",
             archetype_badge_class: "badge-amber",
-            category: "crypto",
-            region: "Global Decentralized (On-Chain)",
             flag: "₿",
-            fees: "~1.0% per transaction",
-            payout_speed: "Instant On-Chain",
-            tax_handling: "Crypto Self-Custody / N/A",
-            best_for: "Borderless global subscriptions in Bitcoin, Ethereum, Solana, USDC, and USDT with zero chargebacks.",
+            current_boundary: "Deterministic offline checkout fixture plus a signed-webhook foundation. Live plan-only checkout and unsupported events fail closed.",
             env_example: "COINBASE_COMMERCE_API_KEY=\"cb_live_...\"\nCOINBASE_COMMERCE_WEBHOOK_SECRET=\"whsec_...\"",
             rust_init_code: "use rullst_capital::{init_provider, CoinbaseCommerceProvider};\n\ninit_provider(Box::new(CoinbaseCommerceProvider::new(\n    std::env::var(\"COINBASE_COMMERCE_API_KEY\")?,\n    std::env::var(\"COINBASE_COMMERCE_WEBHOOK_SECRET\")?,\n)));",
-            webhook_code: "POST /webhooks/capital\nHeader: X-CC-Webhook-Signature\nVerification: HMAC-SHA256 signature verification",
         },
         GatewayInfo {
             id: "picpay",
             name: "PicPay",
-            symbol: "📱",
-            archetype: "Brazil Digital Wallet & QR Code",
+            archetype: "Billing adapter",
             archetype_badge_class: "badge-emerald",
-            category: "brazil",
-            region: "Brazil (30M+ Users)",
             flag: "📱",
-            fees: "~2.99% to 3.99% per transaction",
-            payout_speed: "Instant",
-            tax_handling: "Brazilian Domestic Fiscal Compliance",
-            best_for: "Consumer mobile apps, direct PicPay digital wallet balance, and native QR Code checkout.",
+            current_boundary: "Deterministic offline checkout fixture. Live plan-only checkout is unsupported until an authoritative pricing contract is implemented.",
             env_example: "PICPAY_TOKEN=\"picpay_token_...\"\nPICPAY_SELLER_TOKEN=\"seller_token_...\"",
             rust_init_code: "use rullst_capital::{init_provider, PicPayProvider};\n\ninit_provider(Box::new(PicPayProvider::new(\n    std::env::var(\"PICPAY_TOKEN\")?,\n    std::env::var(\"PICPAY_SELLER_TOKEN\")?,\n)));",
-            webhook_code: "POST /webhooks/capital\nHeader: x-seller-token\nVerification: Constant-time token matching",
         },
         GatewayInfo {
             id: "wise",
             name: "Wise (Transfers)",
-            symbol: "💸",
-            archetype: "Global Multi-Currency Payouts",
+            archetype: "Payout adapter",
             archetype_badge_class: "badge-cyan",
-            category: "payouts",
-            region: "Global (40+ currencies in 160+ countries)",
             flag: "💸",
-            fees: "Mid-market exchange rate + low fee (~0.4%)",
-            payout_speed: "Instant / Same-day",
-            tax_handling: "B2B Payouts & Disbursements",
-            best_for: "Automated payouts and disbursements to international creators, affiliates, and remote contractors.",
+            current_boundary: "Payout-adapter foundation, not a subscription checkout provider. Identity, compliance, currency, availability, and reconciliation remain external responsibilities.",
             env_example: "WISE_API_TOKEN=\"wise_api_tok_...\"\nWISE_PROFILE_ID=\"12345678\"",
             rust_init_code: "use rullst_capital::{init_payout_provider, WiseProvider};\n\ninit_payout_provider(Box::new(WiseProvider::new(\n    std::env::var(\"WISE_API_TOKEN\")?,\n    std::env::var(\"WISE_PROFILE_ID\")?,\n)));",
-            webhook_code: "POST /webhooks/payouts\nHeader: X-Signature-SHA256\nVerification: Payout event dispatch and ledger tracking",
         },
     ]
 }
 
-/// Generates a test checkout URL for any of the 11 supported providers.
+/// Generates deterministic offline adapter output for the showcase.
 pub async fn simulate_provider_checkout(
     provider_id: &str,
     customer_email: &str,
@@ -284,7 +200,7 @@ pub async fn simulate_provider_checkout(
             let p = AlipayProvider::new(
                 "mock_alipay".to_string(),
                 "mock_priv".to_string(),
-                String::new(),
+                "mock_public".to_string(),
             );
             p.create_checkout_session(customer_email, plan_id, redirect_url)
                 .await
@@ -314,7 +230,7 @@ pub async fn simulate_provider_checkout(
                 .await
         }
         "wise" => Ok(format!(
-            "https://wise.com/pay/mock_transfer?recipient={}&plan={}&amount=2900&currency=USD",
+            "offline-fixture:wise?recipient={}&plan={}&amount=2900&currency=USD",
             rullst_capital::url_encode(customer_email),
             rullst_capital::url_encode(plan_id)
         )),
@@ -322,5 +238,58 @@ pub async fn simulate_provider_checkout(
             "Unknown provider: {}",
             provider_id
         ))),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{all_gateways, simulate_provider_checkout};
+    use std::collections::HashSet;
+
+    #[tokio::test]
+    async fn every_catalogue_action_returns_bounded_offline_output() {
+        let gateways = all_gateways();
+        assert_eq!(gateways.len(), 11);
+
+        let unique_ids = gateways
+            .iter()
+            .map(|gateway| gateway.id)
+            .collect::<HashSet<_>>();
+        assert_eq!(unique_ids.len(), gateways.len());
+
+        for gateway in gateways {
+            assert!(!gateway.current_boundary.trim().is_empty());
+            let output = simulate_provider_checkout(
+                gateway.id,
+                "fixture@example.invalid",
+                "pro_plan",
+                "https://showcase.example.invalid/pricing?status=success",
+            )
+            .await
+            .unwrap_or_else(|error| panic!("{} offline fixture failed: {error}", gateway.id));
+            assert!(
+                !output.trim().is_empty(),
+                "{} fixture was empty",
+                gateway.id
+            );
+            assert!(
+                output.len() <= 2_048,
+                "{} fixture was unbounded",
+                gateway.id
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn unknown_catalogue_action_fails_explicitly() {
+        let error = simulate_provider_checkout(
+            "unknown",
+            "fixture@example.invalid",
+            "pro_plan",
+            "https://showcase.example.invalid/pricing",
+        )
+        .await
+        .expect_err("unknown provider must fail");
+        assert!(error.to_string().contains("Unknown provider"));
     }
 }

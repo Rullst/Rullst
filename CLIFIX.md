@@ -1,5 +1,11 @@
 # Rullst CLI Final UX Review
 
+> **Archived handoff:** this file preserves the September 2026 second-computer
+> CLI review and its historical instructions. The branch named below has been
+> integrated. Current release state, gates and limitations live in
+> [`docs/src/v12-release-audit.md`](docs/src/v12-release-audit.md); do not use
+> this handoff as current branch or publication guidance.
+
 ## Model-switch checkpoint — September 6, 2026
 
 The owner requested a pause after the difficult audit/correction batch so they

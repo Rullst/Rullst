@@ -74,6 +74,12 @@ The current [release audit](v12-release-audit.md) reopens earlier readiness
 claims. A historical score, checked roadmap item or green mainline run is not
 evidence that the current revision satisfies these contracts.
 
+- Core's production COEP remains `require-corp` by default. Application
+  configuration accepts only `require-corp`, `credentialless`, or
+  `unsafe-none`; choosing a less isolated policy and the matching CSP/media
+  allowlist is an explicit application threat-model decision. The `html!`
+  parser accepts and strips source-only `<!-- ... -->` comments; comments do
+  not create a raw-HTML trust boundary or client-visible output.
 - Generated safe ORM projections validate column identifiers. Empty membership
   predicates match nothing. Mandatory tenant, global and soft-delete scopes
   remain grouped outside application `OR` expressions; nested queries preserve
@@ -252,8 +258,11 @@ PostgreSQL/MySQL contention evidence also remains open.
   request-scoped `CsrfToken` used by the CSRF cookie on eligible safe requests
   and preserves it after a valid state-changing request. Server-rendered forms
   must echo that value in `_token`; HTMX/JavaScript may instead send it through
-  `X-CSRF-Token`. The cookie intentionally remains script-readable and must not
-  be confused with an authentication or session cookie.
+  `X-CSRF-Token`. Nested application and `Server` baseline composition is
+  request-idempotent: exactly one CSRF layer owns token validation/cookie
+  emission, so an explicitly protected router remains valid when the production
+  server wraps it. The cookie intentionally remains script-readable and must
+  not be confused with an authentication or session cookie.
 
 ### 4.2. Server-Side Rendering (`rullst::macros`)
 * **Macro:** `html!` expands supported HTML trees into ordinary Rust `String`

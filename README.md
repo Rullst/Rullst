@@ -3,11 +3,10 @@
 </div>
 
 > [!IMPORTANT]
-> **Rullst v12.0.0-rc.1 release candidate:** the candidate passed its documented
-> local, hosted, security, coverage, package, CLI, and blueprint gates, and the
-> project owner approved prerelease publication on September 12, 2026. This RC
-> is an evaluation release, not the stable `12.0.0` release. Do not deploy from
-> the moving `main` branch; use an exact version or immutable tag. The frozen
+> **Rullst v12.0.0 stable release:** version 12 preserves the bounded contracts
+> evaluated through `12.0.0-rc.1` and its documented local, hosted, security,
+> coverage, package, CLI, and blueprint gates. Use an exact crates.io version or
+> immutable tag rather than deploying the moving `main` branch. The frozen
 > `v5` branch preserves legacy source without ongoing maintenance. A versioned
 > [crates.io](https://crates.io/crates/rullst) package or immutable tag identifies
 > an artifact; pinning alone does not make end-of-life v5 a supported production
@@ -47,6 +46,8 @@
   ·
   <a href="https://rullst.github.io/Rullst/"><strong>Explore Rullst</strong></a>
   ·
+  <a href="https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/"><strong>Open the live showcase</strong></a>
+  ·
   <a href="https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md"><strong>Contribute</strong></a>
   ·
   <a href="https://rullst.github.io/Rullst/book/why-Rullst.html"><strong>Why Rullst?</strong></a>
@@ -58,8 +59,36 @@
 
 **Choose your first path:** [Create an application with the CLI](https://rullst.github.io/Rullst/book/1-getting-started.html)
 · [Build a JSON API](https://rullst.github.io/Rullst/book/tutorials/rest-api-quickstart.html)
+· [Explore the deployed showcase](https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/)
 · [Explore the ecosystem](#the-rullst-ecosystem)
 · [Review the current audit](https://rullst.github.io/Rullst/book/v12-release-audit.html)
+
+> [!NOTE]
+> The public showcase demonstrates Rullst application surfaces and deterministic
+> offline provider fixtures. Its payment URLs are inspectable mock output—not
+> live checkout, provider-account conformance, fiscal authorization, or a
+> production certification. Studio remains a local developer tool, and protected
+> Nexus administration is intentionally unavailable without deployment-specific
+> credentials and policy.
+
+## 🧪 See Rullst running
+
+The companion [`Rullst/examples`](https://github.com/Rullst/examples) repository
+keeps independently deployable applications and their deployment source. These
+public Azure Container Apps were reachable during the v12 closeout review:
+
+| Example | Open it | What the deployment demonstrates |
+| :--- | :--- | :--- |
+| **Rullst Showcase** | [Open the web showcase](https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/) | A deployed Rullst blog/showcase binary with representative SSR, security-header and explicitly labelled offline-provider surfaces. |
+| **Rullst LMS Academy** | [Open the LMS](https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/) | A separately deployed LMS-blueprint snapshot with a public course catalog and account entry points. |
+| **Source and deployment recipes** | [Review `Rullst/examples`](https://github.com/Rullst/examples) | Application code, containers, workflows and the deployment audit can be inspected independently from the framework source. |
+
+These are evolving demonstration deployments maintained outside this framework
+repository. They prove that the named snapshots can run on Azure Container Apps;
+they do not certify every Rullst capability, provider, blueprint, native package
+or deployment configuration. A hosted example may temporarily lag the current
+CLI output. Native downloads are intentionally not promoted here until their
+platform signing and physical-device gates are independently verified.
 
 <details>
 <summary><strong>🛡️ Open the full v12 verification dashboard (37 workflows)</strong></summary>
@@ -112,8 +141,8 @@ green main gates:
 | [Fuzzing](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) / [corpus minimization](https://github.com/Rullst/Rullst/actions/workflows/corpus-sync.yml) | Forty manual libFuzzer jobs; weekly/manual corpus maintenance is informational. |
 | [OWASP ZAP](https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml) | Manual baseline over three release surfaces: generated REST API and complete LMS are blocking with no ignored alerts; the deliberately CDN-backed blog showcase remains an explicitly informational boundary. |
 | [Kani](https://github.com/Rullst/Rullst/actions/workflows/kani.yml), [Miri](https://github.com/Rullst/Rullst/actions/workflows/miri.yml), [mutation testing](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml), [cargo-udeps](https://github.com/Rullst/Rullst/actions/workflows/udeps.yml) | Manual or scheduled research signals: selected Kani/Miri scopes are strict, while mutation and unused-dependency findings remain explicitly informational. |
-| [GitHub Pages](https://github.com/Rullst/Rullst/actions/workflows/pages.yml) | Deploys the v12 release-candidate documentation from `main`; it is not a code-quality gate. |
-| [Release and provenance](https://github.com/Rullst/Rullst/actions/workflows/release.yml) | Exact version tags only: full verification, package-all, evidence bundle, checksums, attestations, ordered crates.io publish, and the official generic SLSA3 provenance generator. This does **not** yet claim project-wide SLSA Level 3 certification; add a level badge only after a successful RC-tag run and an independent requirements review. |
+| [GitHub Pages](https://github.com/Rullst/Rullst/actions/workflows/pages.yml) | Deploys the v12 documentation from `main`; it is not a code-quality gate. |
+| [Release and provenance](https://github.com/Rullst/Rullst/actions/workflows/release.yml) | Exact version tags only: full verification, package-all, evidence bundle, checksums, GitHub build-provenance attestation, changelog-derived release notes, and ordered crates.io publication. This does **not** claim a project-wide SLSA level or independent certification. |
 
 Scheduled events use the repository's default branch, so scheduled and
 continuous v12 evidence now refer to `main`. The recommended required-check
@@ -143,7 +172,7 @@ and coding agents. Read the complete [history and design philosophy](https://rul
 ### ⚡ Quick Start: From Zero to Hero
 
 New to Rust or Rullst? The complete walkthrough covers Rust installation, the
-v12 release-candidate dependency, the first typed route, error handling, and
+stable v12 dependency, the first typed route, error handling, and
 running the server on Linux, macOS, and Windows:
 
 > 📖 **[Build your first Rullst application with the Zero-to-Hero tutorial](https://rullst.github.io/Rullst/book/tutorials/01-hello-world.html)**
@@ -154,27 +183,27 @@ running the server on Linux, macOS, and Windows:
 
 Prefer scaffolding? Follow the [v12 CLI installation guide](https://rullst.github.io/Rullst/book/1-getting-started.html)
 first, then use `cargo rullst new my_app` and `cargo rullst dev` from the generated
-project. Install the exact CLI release candidate so it matches the generated
+project. Install the exact stable CLI so it matches the generated
 framework dependency:
 
 ```bash
-cargo install cargo-rullst --version 12.0.0-rc.1 --locked
+cargo install cargo-rullst --version 12.0.0 --locked
 ```
 
-Prefer a minimal, hand-written application? Add the release candidate and
+Prefer a minimal, hand-written application? Add the stable release and
 continue with the tutorial's complete `src/main.rs`:
 
 ```bash
 cargo new my_app
 cd my_app
-cargo add rullst@12.0.0-rc.1
+cargo add rullst@12.0.0
 cargo add tokio --features full
 ```
 
-Release candidates require explicit opt-in. Keep the generated `Cargo.lock`,
-review the documented capability boundaries, and validate your own deployment.
-Production adoption should wait for a reviewed stable release unless your team
-has explicitly accepted prerelease risk; pinning legacy v5 does not restore its
+Keep the generated `Cargo.lock`, review the documented capability boundaries,
+and validate your own deployment. A stable framework package is not approval of
+an application's authentication, authorization, provider configuration,
+operations, or production environment; pinning legacy v5 does not restore its
 maintenance or resolve known risks.
 
 <details>
@@ -235,7 +264,7 @@ remain application work, so the shell itself is not advertised as offline-first.
 [Omni tutorial](https://rullst.github.io/Rullst/book/tutorials/43-omni-web-first.html) and
 [offline-sync tutorial](https://rullst.github.io/Rullst/book/tutorials/44-omni-offline-sync.html).
 
-### 🔄 Assisted framework upgrades (v12 preview)
+### 🔄 Assisted framework upgrades
 
 The v12 CLI can plan and apply a backed-up framework upgrade from the
 application root:
@@ -254,7 +283,7 @@ and the [v5 → v12 guide](https://rullst.github.io/Rullst/book/migration-v5-to-
 
 ### 📚 Documentation & Community
 
-The documentation separates released behavior, v12 preview capabilities,
+The documentation separates stable behavior, bounded or experimental capabilities,
 migration guidance, and roadmap boundaries. Explore the guides and evaluate the
 features your application intends to enable:
 
@@ -428,7 +457,7 @@ different problems and can sometimes be used together.
 
 | Center of gravity | Consider | Why |
 | :--- | :--- | :--- |
-| A coordinated, backend-oriented application stack | **Rullst v12 RC** | Axum-based routing plus versioned ORM, auth, security helpers, workers, provider adapters, Studio/Nexus, and CLI workflows. The release candidate is for explicit evaluation before the stable v12 release. |
+| A coordinated, backend-oriented application stack | **Rullst v12** | Axum-based routing plus versioned ORM, auth, security helpers, workers, provider adapters, Studio/Nexus, and CLI workflows. The stable release still requires application-specific review and deployment hardening. |
 | A modular HTTP service assembled from selected libraries | [**Axum**](https://docs.rs/axum/latest/axum/) or [**Actix Web**](https://actix.rs/docs/) | Focused HTTP foundations with their own middleware ecosystems and freedom to choose the rest of the stack. |
 | A Rails-inspired, batteries-included Axum application | [**Loco**](https://loco.rs/docs/) | A mature adjacent choice with models, controllers, jobs, mailers, auth, generators, and documented upgrades. |
 | A reactive, isomorphic web UI | [**Leptos**](https://book.leptos.dev/) | Fine-grained reactive components spanning browser rendering, SSR, hydration, and server functions. |

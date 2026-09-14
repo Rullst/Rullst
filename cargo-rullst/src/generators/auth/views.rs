@@ -95,12 +95,15 @@ pub fn register_page(csrf_token: &str, error: Option<&str>, _csp_nonce: &str) ->
     })
 }
 
-pub fn dashboard_page(user_name: &str, _csp_nonce: &str) -> Html<String> {
+pub fn dashboard_page(user_name: &str, csrf_token: &str, _csp_nonce: &str) -> Html<String> {
     Html(html! {
         <html>
             <body>
                 <h1>"Hello, " {user_name} "!"</h1>
-                <a href="/logout">"Sign Out"</a>
+                <form method="post" action="/logout">
+                    <input type="hidden" name="_token" value={csrf_token} />
+                    <button type="submit">"Sign Out"</button>
+                </form>
             </body>
         </html>
     })

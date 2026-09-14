@@ -4,6 +4,61 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [12.0.0] - 2026-09-13 🚀
+
+> **Stable scope:** version 12 stabilizes the bounded public contracts described
+> in `docs/src/spec.md`. It does not turn roadmap foundations, offline fixtures,
+> provider protocol tests, physical-device builds, or fiscal preparation into
+> production certification. Applications remain responsible for their own
+> authorization, deployment, provider acceptance, operations, and recovery.
+
+### Release closeout
+
+- Promoted the `12.0.0-rc.1` release lineage without adding a new product
+  feature. The stable candidate includes the bounded post-RC correctness and
+  hardening changes listed below; its exact SHA must earn fresh local and
+  hosted evidence rather than inheriting the RC result.
+- Made Core's CSRF middleware request-idempotent when an explicitly protected
+  application router is wrapped by the production `Server` security baseline.
+  Nested layers now emit one token/cookie pair and accept the matching form
+  submission instead of generating two divergent cookies; a two-layer GET/POST
+  regression preserves the fail-closed double-submit contract.
+- Hardened encrypted-session cookie extraction against empty, oversized,
+  malformed and duplicate values across multiple Cookie fields, and made the
+  logout cookie fail secure when the environment cannot be resolved.
+- Made generated registration transactional. The complete LMS starter now
+  creates the user and its explicit default demo-school membership atomically;
+  detached identity-only profiles retain no school dependency. Generated
+  logout, checkout and customer-portal mutations use CSRF-protected POST forms,
+  and billing plan identifiers remain server-allowlisted.
+- Hardened generated containers with the exact Rust toolchain, a non-root
+  runtime user, CA certificates, explicit production/bind settings, secret-free
+  build context defaults, copied static/config assets and a documented
+  one-writer migration-job boundary.
+- Removed third-party browser runtime dependencies from Studio's operator
+  surfaces. Its compiled stylesheet and bounded request-stream client are now
+  same-origin assets, while navigation and mutations work as ordinary links
+  and forms without HTMX, Mermaid, remote fonts or a browser-side CSS compiler.
+- Corrected the Omni Tauri scaffold's Windows MSVC PDB collision by giving its
+  library and binary distinct target names. The `html!` parser now accepts and
+  strips source-only HTML comments, and Core keeps strict `require-corp` COEP
+  by default while validating explicit `credentialless` or `unsafe-none`
+  application choices for reviewed cross-origin media boundaries.
+- Reconciled package READMEs, installation examples, migration tutorials, the
+  website, and the mdBook with the stable `12.0.0` release train. Crate-package
+  links now use absolute public documentation or repository URLs so they remain
+  useful when rendered by crates.io.
+- Kept all sixteen crates on one atomic version and topological publication
+  order. Their owner-configured GitHub Actions Trusted Publishers use the
+  protected `crates-io` environment and short-lived OIDC credentials.
+- The tag workflow derives these GitHub release notes from this exact changelog
+  section, marks semantic prereleases explicitly, publishes verified package
+  checksums, and uses GitHub's SHA-pinned build-provenance attestation. No named
+  project-wide SLSA level or independent security certification is claimed.
+- Historical RC evidence and limitations remain visible in the release audit.
+  Stable publication requires the exact `v12.0.0` tag to repeat the complete
+  package, consumer, CLI, security, coverage, and release verification gates.
+
 ## [12.0.0-rc.1] - 2026-09-12 🚀
 
 > **Release-candidate scope:** entries below describe an evaluation prerelease,

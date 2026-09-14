@@ -1,9 +1,5 @@
 # Rullst Messaging
 
-> **v12 development notice:** This README documents the unreleased v12 source.
-> Use a path dependency from this checkout until an immutable v12 RC exists on
-> crates.io.
-
 `rullst-messaging` defines bounded, broker-neutral messaging contracts for
 Rullst applications. It provides a deterministic in-memory broker and an
 opt-in durable SQLite adapter. Remote broker interoperability is roadmap work.
@@ -178,5 +174,5 @@ topic/idempotency key with different content fails closed. Explicit terminal
 purge removes both the retained message and its idempotency
 record, so retention policy must be chosen deliberately.
 
-See the [crate roadmap](ROADMAP.md) and the
+See the [crate roadmap](https://github.com/Rullst/Rullst/blob/v12.0.0/rullst-messaging/ROADMAP.md) and the
 [brokered messaging tutorial](https://github.com/Rullst/Rullst/blob/main/docs/src/tutorials/49-brokered-messaging.md).

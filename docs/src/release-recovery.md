@@ -28,7 +28,10 @@ immediately before publication. Every registered package must include
 bootstrap allowlist. A name registered by another owner, an unexpected missing
 name, an API error, or a malformed policy stops the release.
 
-Before the first v12 RC:
+The following one-time bootstrap procedure was completed before the first v12
+RC. All sixteen v12 package names are now registered, so future releases must
+use Trusted Publishing and must not recreate a bootstrap secret unless a new,
+reviewed package name is introduced:
 
 1. Protect the GitHub `crates-io` environment with required review and tag
    deployment rules.

@@ -360,6 +360,6 @@ the more responsible decision.
 5. Pin an immutable release or commit for evaluation; do not deploy from a
    moving development branch.
 
-This page will be reviewed again against the immutable v12 RC source and CI
-evidence. Until then, it is a concise map of the strongest implemented ideas,
-not a substitute for the detailed contracts.
+This page was reviewed against the immutable v12 RC evidence and stable v12
+source. It remains a concise map of the strongest implemented ideas, not a
+substitute for the detailed contracts or application-specific validation.

@@ -6,7 +6,7 @@ expiry date. CI must fail for every advisory that is not actively governed here.
 
 Last reviewed: **2026-09-08**.
 
-There are **no active advisory exceptions** in the v12 release-candidate
+There are **no active advisory exceptions** in the current audited v12
 dependency graph.
 
 ## Remediation history

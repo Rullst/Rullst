@@ -2,8 +2,8 @@
 
 > **Status policy (2026-08-26):** the roadmap remains ambitious. A checked
 > foundation does not imply every provider method or live fiscal contract. See
-> the audited [`rullst-capital` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps)
-> and the [capability ledger](../docs/src/capability-ledger.md).
+> the audited [`rullst-capital` row](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#audit-of-the-detailed-crate-roadmaps)
+> and the [capability ledger](https://rullst.github.io/Rullst/book/capability-ledger.html).
 
 Rullst Capital simplifies the billing and subscription complexities of building a SaaS application in Rust.
 

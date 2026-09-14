@@ -47,6 +47,20 @@ cargo rullst deploy --platform=render
 cargo rullst deploy --platform=vps
 ```
 
+### Container lifecycle boundary
+
+Projects created with `cargo rullst new --docker` receive a non-root runtime
+image with production host/port defaults and local assets, but never an
+application secret. For an explicit SQLite project the generated database URL
+uses `/app/data`; configure the target platform so that directory remains owned
+by UID/GID 10001 when attaching persistent storage.
+
+Apply migrations in one bounded pre-deployment job and start application
+replicas only after it succeeds. Automatically running migrations inside every
+replica creates an avoidable concurrent-startup race and is therefore not the
+v12 default. Also add the application's explicit `/health` and `/ready` routes
+before configuring platform probes; a redirect to login is not a health signal.
+
 ---
 
 ## 🏭 Strategy 2: Rullst Foundry SSH Pipeline (`cargo rullst foundry:*`)
