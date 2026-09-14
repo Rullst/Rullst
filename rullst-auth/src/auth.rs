@@ -19,6 +19,8 @@ const MIN_APP_KEY_ENTROPY_BITS: f64 = 128.0;
 const SESSION_TOKEN_PREFIX: &str = "v1.";
 const SESSION_AAD: &[u8] = b"rullst.session.v1";
 const MAX_SESSION_COOKIE_BYTES: usize = 4096;
+const LOGOUT_COOKIE: &str = "rullst_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT";
+const SECURE_LOGOUT_COOKIE: &str = "rullst_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure";
 
 /// WebAuthn and Passkey authentication submodule.
 pub mod passkey;
@@ -449,17 +451,18 @@ pub fn make_login_cookie(user_id: i32) -> Result<String, AuthError> {
 
 /// Generates the standard HTTP header string to delete/clear the session cookie on the client.
 pub fn make_logout_cookie() -> String {
-    let secure_attr = if detect_environment()
+    let requires_secure_defaults = detect_environment()
         .map(rullst_core::config::Environment::requires_secure_defaults)
-        .unwrap_or(true)
-    {
-        "; Secure"
+        .unwrap_or(true);
+    logout_cookie_value(requires_secure_defaults).to_owned()
+}
+
+fn logout_cookie_value(requires_secure_defaults: bool) -> &'static str {
+    if requires_secure_defaults {
+        SECURE_LOGOUT_COOKIE
     } else {
-        ""
-    };
-    format!(
-        "rullst_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT{secure_attr}"
-    )
+        LOGOUT_COOKIE
+    }
 }
 
 #[cfg(test)]
@@ -692,6 +695,14 @@ mod tests {
     }
 
     #[test]
+    fn logout_cookie_value_has_exact_security_variants() {
+        assert_eq!(logout_cookie_value(false), LOGOUT_COOKIE);
+        assert_eq!(logout_cookie_value(true), SECURE_LOGOUT_COOKIE);
+        assert!(!logout_cookie_value(false).ends_with("; Secure"));
+        assert!(logout_cookie_value(true).ends_with("; Secure"));
+    }
+
+    #[test]
     #[cfg_attr(miri, ignore)]
     fn test_needs_rehash() {
         let p = String::from_utf8(vec![116, 101, 115, 116, 95, 112, 97, 115, 115]).unwrap();
@@ -818,8 +829,16 @@ mod kani_proofs {
 
     #[kani::proof]
     fn proof_make_logout_cookie_invariants() {
-        let cookie = make_logout_cookie();
+        let requires_secure_defaults: bool = kani::any();
+        let cookie = logout_cookie_value(requires_secure_defaults);
         assert!(!cookie.is_empty());
         assert_eq!(cookie.as_bytes()[0], b'r');
+        if requires_secure_defaults {
+            assert_eq!(cookie.len(), SECURE_LOGOUT_COOKIE.len());
+            assert_eq!(cookie.as_bytes()[cookie.len() - 1], b'e');
+        } else {
+            assert_eq!(cookie.len(), LOGOUT_COOKIE.len());
+            assert_eq!(cookie.as_bytes()[cookie.len() - 1], b'T');
+        }
     }
 }
