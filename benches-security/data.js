@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789382061098,
+  "lastUpdate": 1789420224804,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -9816,6 +9816,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 28,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "eb11f892ae28f076e7a83c38a635316c6ed89028",
+          "message": "fix(deps): update rustls in fuzz locks",
+          "timestamp": "2026-09-14T17:52:29-03:00",
+          "tree_id": "c11a8365c202248cf16081b3fe82a8caa718f010",
+          "url": "https://github.com/Rullst/Rullst/commit/eb11f892ae28f076e7a83c38a635316c6ed89028"
+        },
+        "date": 1789420223980,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5866,
+            "range": "± 191",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 678,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 26,
             "range": "± 0",
             "unit": "ns/iter"
           }
