@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789308815949,
+  "lastUpdate": 1789359695359,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -10647,6 +10647,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2734,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "de74db6533ebc7d16a2f26bec6994d7db09ec0b0",
+          "message": "fix(release): harden stable v12 candidate",
+          "timestamp": "2026-09-14T01:05:32-03:00",
+          "tree_id": "da83c350fda4a000f9c0318cc77d7e844ee35aa7",
+          "url": "https://github.com/Rullst/Rullst/commit/de74db6533ebc7d16a2f26bec6994d7db09ec0b0"
+        },
+        "date": 1789359694790,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1021,
+            "range": "± 17",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 805,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1840,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4052,
+            "range": "± 24",
             "unit": "ns/iter"
           }
         ]
