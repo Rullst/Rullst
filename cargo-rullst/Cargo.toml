@@ -54,7 +54,7 @@ notify = { workspace = true }
 syn = { version = "3", features = ["full", "visit", "visit-mut"] }
 tokio = { workspace = true, features = ["full"] }
 brotli = "9.0.0"
-zstd = "0.13.3"
+zstd = "0.14.0"
 reqwest = { workspace = true, features = ["json", "rustls", "blocking"] }
 rand = { workspace = true }
 quote = "1.0.47"
