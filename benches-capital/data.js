@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789382214917,
+  "lastUpdate": 1789420425427,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -7548,6 +7548,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "venelouistyago@gmail.com",
+            "name": "Venelouis",
+            "username": "venelouis"
+          },
+          "distinct": true,
+          "id": "eb11f892ae28f076e7a83c38a635316c6ed89028",
+          "message": "fix(deps): update rustls in fuzz locks",
+          "timestamp": "2026-09-14T17:52:29-03:00",
+          "tree_id": "c11a8365c202248cf16081b3fe82a8caa718f010",
+          "url": "https://github.com/Rullst/Rullst/commit/eb11f892ae28f076e7a83c38a635316c6ed89028"
+        },
+        "date": 1789420424627,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
             "range": "± 0",
             "unit": "ns/iter"
           }
