@@ -41,6 +41,10 @@ Do not use production databases or credentials for this exercise.
 
 ## Build your understanding, one layer at a time
 
+Looking for a type, a feature or a connected REST learning path? Use the
+[API reference index](api-reference.md) to move between the guides and the
+versioned Rust documentation.
+
 | Next question | Guide |
 | --- | --- |
 | Where do generated files go? | [CLI generators](tutorials/02-cli-generators.md) |
