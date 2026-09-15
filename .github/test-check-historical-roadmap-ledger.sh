@@ -38,7 +38,13 @@ assert_rejected "an unknown status"
 sed $'s/^AI-01\tintegral$/AI-01\tintegral\textra/' "$ledger" > "$fixtures/case.tsv"
 assert_rejected "an extra column"
 
+sed $'s/^AI-01\tintegral$/AI-01\tpartial/; s/^AI-02\tpartial$/AI-02\tintegral/' "$ledger" > "$fixtures/case.tsv"
+assert_rejected "swapped classifications with unchanged totals"
+
 awk 'BEGIN { ORS="" } { if (NR > 1) printf "\n"; print }' "$ledger" > "$fixtures/case.tsv"
 bash "$validator" "$fixtures/case.tsv" >/dev/null
 
-printf 'Historical ledger: baseline, seven invalid fixtures, and final-line handling passed.\n'
+LC_ALL=C sort -r "$ledger" > "$fixtures/case.tsv"
+bash "$validator" "$fixtures/case.tsv" >/dev/null
+
+printf 'Historical ledger: baseline, eight invalid fixtures, final-line handling, and row reordering passed.\n'

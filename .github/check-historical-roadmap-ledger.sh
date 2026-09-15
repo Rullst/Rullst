@@ -123,4 +123,13 @@ if [[ "$integral_total" -ne 106 || "$partial_total" -ne 82 || "$absent_total" -n
   exit 1
 fi
 
+# Pin every ID/state pair to the reviewed v12.0.0 snapshot, not just its totals.
+# Sorting permits harmless row reordering; comments and blank lines are ignored.
+expected_digest="d7f4434c1ee4bbe040728239055d9e0bf7d14ac2f27ad3977465e886cded5902"
+actual_digest="$(awk 'NF && $0 !~ /^#/' "$ledger_path" | LC_ALL=C sort | sha256sum)"
+if [[ "${actual_digest%% *}" != "$expected_digest" ]]; then
+  echo "Historical claim classifications differ from the frozen v12.0.0 snapshot."
+  exit 1
+fi
+
 echo "Historical roadmap ledger verified: 190 claims (106 integral, 82 partial, 2 absent)."
