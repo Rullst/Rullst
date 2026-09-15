@@ -41,7 +41,7 @@ views from the sources explicitly supplied by the application.
 
 ## 🚀 Quickstart
 
-After crates.io indexes the RC, add its exact train with
+Install the exact stable train with
 `cargo add rullst-studio@12.0.0`.
 
 ### Launching the Studio
@@ -56,6 +56,11 @@ cross-origin requests, and unsafe requests without an `Origin` header.
 The earlier `StudioLayer` embedded-production idea was never implemented.
 Keeping an authenticated shared Studio is worthwhile, but it needs its own
 explicit identity/RBAC/TLS policy before it can become a supported mode.
+
+The published `12.0.0` raw `data_browser::router()` omits the assets and Cache
+routes used by its layout. The full local builder is not affected. See the
+[unreleased 12.1.0 composition fix and migration checklist](../3-rullst-studio.md#v1210-browser-composition-fix-unreleased)
+before upgrading an embedded showcase with application-level workaround routes.
 
 **CLI Launch:**
 
