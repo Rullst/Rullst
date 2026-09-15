@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Native SES dependency compatibility
+
+- Constrain optional `aws-ses` resolution to Smithy types 1.6.3: types 1.7
+  changed `Document` while the current SDK still uses incompatible JSON 0.63.
+  The root lockfile previously masked this fresh-consumer compilation failure.
+  Apply the same resolver-only bound to the published 12.0.0 mail API baseline;
+  retain AWS feature coverage and normal SemVer comparisons. Remove the bound
+  only after upgrading the SDK/JSON train together and validating its public
+  re-exports. Already published crate archives are unchanged.
+
 ### Documentation
 
 - Replace the completed v12 development program with a concise English release
