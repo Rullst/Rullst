@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789512561582,
+  "lastUpdate": 1789516407425,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -10981,6 +10981,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4038,
             "range": "± 35",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8aab35db63cbac5789a50656f431762f39da1bbf",
+          "message": "Merge pull request #203 from Rullst/fix/studio-browser-assets\n\nfix(studio): serve browser assets and disconnected cache routes",
+          "timestamp": "2026-09-15T20:31:43-03:00",
+          "tree_id": "d28565ef4fece842b9fb94a14e6942cbf6a5e947",
+          "url": "https://github.com/Rullst/Rullst/commit/8aab35db63cbac5789a50656f431762f39da1bbf"
+        },
+        "date": 1789516406672,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1022,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 801,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1845,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3971,
+            "range": "± 22",
             "unit": "ns/iter"
           }
         ]
