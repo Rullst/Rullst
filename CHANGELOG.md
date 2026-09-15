@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   replace the framework comparison with focused Rullst capability links. Add
   Showcase, LMS and Portfolio links to the landing page, with responsive
   illustrated cards, finite animations and reduced-motion support.
+- Make safe verification-efficiency improvements a shared v12 maintenance and
+  v13 priority, with explicit inventory, cache-trust and release-evidence gates.
 
 ## [12.0.0] - 2026-09-15 🚀
 

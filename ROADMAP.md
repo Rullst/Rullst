@@ -348,6 +348,13 @@ contains the more detailed evidence and acceptance boundaries.
 
 ### v13 execution priorities
 
+**Verification efficiency is also a v12 maintenance priority.** Compatible
+workflow, cache and local-feedback improvements should land on the maintained
+v12 line and be carried forward to v13; they must not wait for a major version
+just because they are listed here. The phased acceptance plan is in
+[WORKFLOWS.md](WORKFLOWS.md#verification-efficiency--v12-maintenance-and-v13).
+Application API changes still belong to the appropriate release line.
+
 Begin by integrating the released v12 corrections into the existing v13 line
 through a reviewed merge. Preserve v13's separate Labs proposal and other
 planning commits. A development branch name alone does not mean its base

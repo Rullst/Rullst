@@ -492,6 +492,34 @@ dependency graph make static estimates unreliable.
 | [`workflow-lint.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/workflow-lint.yml) | main push and PR, manual | Blocking | Validates the shared fuzz inventory, then Actionlint checks workflow syntax, GitHub expressions and embedded shell using an immutable container digest. |
 | [`zero-panics.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/zero-panics.yml) | main push and PR, manual | Blocking | Panic-family Clippy lints plus generated-code regression checks for published runtime targets. |
 
+## Verification efficiency — v12 maintenance and v13
+
+**Priority: immediate maintenance work on v12, carried forward to v13.** Faster
+feedback is not a reason to wait for a major release. The draft/ready split,
+eight OS shards, Linux-only post-merge repetition, mutation recovery and
+targeted diagnostic modes described above already exist. The additional work
+below is **planned**, not a claim that impact selection or cross-commit release
+evidence reuse has been implemented.
+
+| Order | Improvement | Acceptance evidence |
+| :--- | :--- | :--- |
+| 1 | Measure the existing bottlenecks before changing scheduling | Record queue, restore, native compilation, Rust compilation and test durations separately, by OS and cold/warm cache. Compare equivalent inventories and runner conditions. Do not promise a fixed speedup. |
+| 2 | Classify documentation, site, runtime, generator, dependency and verification-policy changes | Run the relevant book/link/browser/ledger tests for presentation changes. Markdown containing executable examples still needs its doctests. Unknown paths, renames, deletions and classifier failures fall back to broad verification; `.github/**` is never automatically a documentation-only exemption. |
+| 3 | Select affected crates and reverse dependencies for development feedback | Unit-test the selection policy against runtime, macros, manifests, lockfiles, build scripts, generated templates, shared fixtures and security controls. Prove no required test or feature combination disappears before enabling skips. Keep full/manual and broad scheduled/release modes. |
+| 4 | Reduce duplicate compilation and balance shards using measurements | Isolate trusted and untrusted caches; key compatible artifacts by toolchain, target, profile, features and dependency inputs. Preserve every case and assertion, report cache misses honestly and measure total runner time as well as elapsed time. |
+| 5 | Reuse expensive verification only under an explicit admission policy | Bind receipts to source inputs, dependency locks, tool versions, flags, inventory, artifacts and policy. Failed, partial, diagnostic, expired or mismatched evidence cannot become a release pass. Keep conservative reruns for security-relevant or uncertain impact. |
+
+The invariants remain unchanged: repository and library coverage floors stay at
+90%; negative authorization and tenant-isolation tests remain enforced; no
+timeout/crash becomes a tolerated success merely to shorten a run. A reduction
+in redundant work must not be presented as stronger security proof.
+
+Until a reviewed implementation changes the relevant contract, the current
+`AGENTS.md` local baseline and exact-source release admission rules still apply.
+Update automation, policy tests and this document together; a roadmap paragraph
+alone must never authorize skipping a required check. Carry compatible fixes
+from v12 to v13, without importing unrelated next-major features into v12.
+
 ## Preserved next-generation roadmap
 
 These ideas remain valuable, but are not current guarantees:
