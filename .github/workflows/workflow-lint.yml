@@ -37,6 +37,10 @@ jobs:
           python3 .github/test-ci-scope.py
           python3 .github/test-check-fuzz-locks.py
           python3 .github/test-upgrade-package-inventory.py
+          python3 .github/test-exact-rust-test.py
+          python3 .github/test-threat-model-runner.py
+          python3 .github/test-generated-evidence.py
+          python3 .github/test-fuzz-preflight.py
 
       - name: Observe change impact without skipping checks
         env:

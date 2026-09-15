@@ -78,19 +78,25 @@ case "$shard" in
       "${profile_args[@]}" --test generated_lms_modules_check
     ;;
   cli-saas-foundation)
+    # The full matrix already materializes LMS with the same helper and case.
+    # Exclude only its duplicate threat-evidence wrapper, never an application
+    # assertion. --exact prevents a future similarly named test being skipped.
     RULLST_CI_GENERATED_GROUP=foundation \
       cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
-        "${profile_args[@]}" --test generated_saas_check
+        "${profile_args[@]}" --test generated_saas_check \
+        -- --exact --skip materialized_lms_executes_security_contracts
     ;;
   cli-saas-product)
     RULLST_CI_GENERATED_GROUP=product \
       cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
-        "${profile_args[@]}" --test generated_saas_check
+        "${profile_args[@]}" --test generated_saas_check \
+        -- --exact --skip materialized_lms_executes_security_contracts
     ;;
   cli-saas)
     # Backwards-compatible local alias; CI uses the bounded groups above.
     cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
-      "${profile_args[@]}" --test generated_saas_check
+      "${profile_args[@]}" --test generated_saas_check \
+      -- --exact --skip materialized_lms_executes_security_contracts
     ;;
   *)
     echo "unknown workspace test shard: $shard" >&2

@@ -582,6 +582,54 @@ path-dependency locks. Five tests cover that failure, the complete inventory,
 early failure, argument rejection and CI wiring. Neither the forty-target
 inventory nor campaign duration or release admission is reduced.
 
+The threat-model runner now validates all evidence rows before downloads or
+compilation and runs each unique exact test once, instead of first invoking
+Cargo again to list that target. The 67 evidence mappings, 55 threat IDs and
+59 unique tests remain; this removes 59 listing invocations (118 Cargo test
+invocations become 59, excluding each shard's retained locked fetch). Every
+selected test still runs in a separate all-feature process on its deterministic
+hash shard. Both a successful process exit and a bounded libtest log showing
+exactly one named, passed, non-ignored test are required. An ignored or missing
+test can no longer produce a false pass from libtest's zero exit status.
+
+The eight LMS threat mappings now select
+`materialized_lms_executes_security_contracts`. It materializes the same LMS
+case and runs all its application tests with the original verification helper,
+regardless of the normal generated-group environment. The normal foundation
+and product shards still exercise all eight reviewed project configurations,
+including all six blueprints, API/hot-reload/database boundaries and ERP's
+release build. Those normal shards exclude only the duplicate LMS wrapper by
+its exact name: the full matrix already executes its case and assertions.
+No generated application assertion, feature flag or release-build case is
+removed. Direct unfiltered workspace tests also discover the focused wrapper.
+
+This narrowing addresses an observed bottleneck: in [Rust CI 35007899011](https://github.com/Rullst/Rullst/actions/runs/35007899011),
+the old all-blueprint wrapper consumed 958.22 seconds inside threat shard 0,
+whose complete job took 26m12s. That gate needed LMS evidence, not another
+execution of the seven other project configurations. Hosted threat jobs now
+use the same bounded two-job nested compiler setting as the normal generated
+matrix. New hosted timings are still required; removing warm listing calls
+alone saves overhead, not half the compilation time.
+
+Six parser tests include a real compiled Rust harness; five runner tests check
+the full exact inventory, shard partition and failure paths. Five generated
+scheduling tests compile the actual selectors and wrappers with a recorded
+verifier, proving the eight-case partition and unconditional focused LMS
+selection without building applications locally. That recorder is policy
+evidence only: real generated application tests and full CI remain required.
+These changes do not enable general fuzz-result reuse or relax release gates.
+
+Single-target fuzz diagnostics now compile only the requested target in their
+package preflight, rather than every other target in that package. The exact
+target/package pair is checked again before Cargo; unknown, ambiguous or
+option-like targets fail before compilation. Release mode still compiles every
+target in all ten packages before its forty 5.5-hour campaigns. Five scheduling
+tests cover all forty diagnostic selections, the complete package inventory,
+invalid inputs and compiler failure propagation. No sanitizer, instrumentation,
+corpus or campaign duration is weakened, and diagnostics remain ineligible as
+release evidence. Fuzzing, Miri, Kani and mutation campaigns remain manual;
+an ordinary push does not automatically dispatch them.
+
 Read-only local commands (the planner inspects commits, not uncommitted files):
 
 ```bash
@@ -590,6 +638,10 @@ python3 .github/test-plan-verification.py
 python3 .github/test-report-ci-timings.py
 python3 .github/test-admit-site-only.py
 python3 .github/test-ci-scope.py
+python3 .github/test-exact-rust-test.py
+python3 .github/test-threat-model-runner.py
+python3 .github/test-generated-evidence.py
+python3 .github/test-fuzz-preflight.py
 gh api --paginate --slurp \
   'repos/Rullst/Rullst/actions/runs/34980693742/attempts/1/jobs?per_page=100' \
   | python3 .github/report-ci-timings.py --top 10

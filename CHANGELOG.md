@@ -38,6 +38,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### CI tooling
 
+- Limit single-target fuzz diagnostic preparation to the exact requested target
+  with fail-closed package selection. Retain every release preflight target,
+  sanitizer setting and campaign duration; add scheduling/failure regressions.
+- Validate the entire threat evidence manifest before builds, remove repeated
+  Cargo target-listing calls, and require exact non-ignored execution instead
+  of accepting a zero-test success. Preserve all 59 unique negative tests.
+- Run only the fully materialized LMS for its eight threat mappings, using the
+  same case and application-test helper. Keep every configuration and assertion
+  in the normal eight-project matrix, including ERP release builds; exclude only
+  its redundant exact-name LMS wrapper there. Add real Rust harness and
+  scheduling regressions, and bound nested compilation to two jobs in hosted
+  threat checks. Hosted speedup measurement remains pending.
 - Add a bounded read-only job-timing reporter and negative fixtures; distinguish
   job waits, combined execution steps and summed runner time from release evidence.
 - Add an observation-only Git impact planner with transitive normal, optional,

@@ -293,6 +293,16 @@ fn cargo_verify(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
 }
 
 #[test]
+fn every_blueprint_and_distinct_generated_boundary_passes_cargo_verification() {
+    let selected_group = selected_generated_group();
+    verify_generated_cases(
+        GENERATED_CASES
+            .into_iter()
+            .filter(|case| selected_group.is_none_or(|group| case.group == group)),
+    );
+}
+
+#[test]
 // TM-ACADEMY-02: the materialized LMS executes its owner/cross-user denial test.
 // TM-ACADEMY-03: it fails closed on prerequisite, release, expiry and policy conflicts.
 // TM-ACADEMY-04: authenticated school membership scopes database and HTTP mutations.
@@ -301,17 +311,28 @@ fn cargo_verify(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
 // TM-ACADEMY-07: its outbox payload drives a strict, side-effect-free automation plan.
 // TM-ACADEMY-08: independent review and enrollment pins prevent silent content promotion.
 // TM-ACADEMY-10: the materialized LMS exercises minimized school-scoped privacy lifecycle state.
-fn every_blueprint_and_distinct_generated_boundary_passes_cargo_verification() {
+fn materialized_lms_executes_security_contracts() {
+    // This security evidence must not depend on RULLST_CI_GENERATED_GROUP:
+    // a product-only environment must never hide the LMS assertions. The full
+    // eight-case matrix above remains the normal generated-project gate.
+    let cases: Vec<_> = GENERATED_CASES
+        .into_iter()
+        .filter(|case| case.blueprint == LMS_BLUEPRINT_ID)
+        .collect();
+    assert_eq!(
+        cases.len(),
+        1,
+        "the LMS evidence needs exactly one reviewed case"
+    );
+    verify_generated_cases(cases);
+}
+
+fn verify_generated_cases(cases: impl IntoIterator<Item = GeneratedCase>) {
     let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let workspace = crate_dir.parent().expect("workspace root");
-
-    let selected_group = selected_generated_group();
-    let selected_cases = GENERATED_CASES
-        .into_iter()
-        .filter(|case| selected_group.is_none_or(|group| case.group == group));
     let mut selected_count = 0;
 
-    for case in selected_cases {
+    for case in cases {
         selected_count += 1;
         let project_dir = std::env::temp_dir().join(format!(
             "rullst-generated-{}-{}",
