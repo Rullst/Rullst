@@ -2,6 +2,7 @@
 
 - [Welcome to Rullst](index.md)
 - [Start Here: Your First Idea in Rust](start-here.md)
+- [API Reference & REST Learning Path](api-reference.md)
 - [Why Rullst?](why-Rullst.md)
 - [Simple Capability Status](capability-status.md)
 - [Per-Commit Quality Scorecard](quality-scorecard.md)
