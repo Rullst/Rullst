@@ -116,6 +116,23 @@ Restore accepts only a path-validated snapshot inside the current project's
 normal version-control commit or copy a needed diagnostic report before
 cleaning.
 
+### Recovery boundaries and unreleased hardening
+
+Stop editors, watchers and other writers before restoring. File recovery does
+not undo build-script/test side effects or database/external-service changes.
+Keep an independent version-control backup; the directory under `target` is not
+a substitute for one. A filesystem error during application can leave some
+files restored and others unchanged, so always review the result.
+
+The working 12.1.0 implementation now preflights the entire backup, stages every
+replacement before writing originals, and rejects linked or malformed paths.
+It limits indexes to 8 MiB/100,000 entries, each snapshot to 64 MiB and the total
+to 512 MiB. Disk failure while staging leaves originals intact; failure during
+the later per-file apply reports progress and retains the backup. This is not
+an all-files atomic commit and does not defend against hostile concurrent
+filesystem changes. These improvements are **not in published 12.0.0** and still
+require the 12.1.0 cross-platform release checks.
+
 ## 4. Finish a v5 to v12 migration
 
 The v5 README used attribute-style routing and a server builder with no router
