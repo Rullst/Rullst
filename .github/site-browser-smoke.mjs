@@ -16,13 +16,29 @@ const output = outputIndex < 0 ? null : process.argv[outputIndex + 1];
 const organizationIndex = process.argv.indexOf("--organization-site");
 const organization = organizationIndex < 0 ? null : resolve(process.argv[organizationIndex + 1]);
 const landingPath = organization ? "/" : "/Rullst/";
+const assetPaths = organization ? ["/src/style.css", "/src/main.js"] : ["/Rullst/assets/site.css", "/Rullst/assets/site.js"];
+const oldAssetReads = new Map(assetPaths.map(path => [path, 0]));
 if (outputIndex >= 0) assert(output, "--screenshots requires a directory");
 if (output) await mkdir(output, { recursive: true });
 const types = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".png": "image/png", ".svg": "image/svg+xml", ".woff2": "font/woff2" };
 const server = createServer(async (request, response) => {
   try {
     if (request.method !== "GET") { response.writeHead(405).end(); return; }
-    const path = decodeURIComponent(new URL(request.url, "http://localhost").pathname);
+    const url = new URL(request.url, "http://localhost");
+    const path = decodeURIComponent(url.pathname);
+    if (path === "/_cache-probe.html") {
+      response.writeHead(200, { "Content-Type": "text/html", "Cache-Control": "no-store" });
+      response.end(`<!doctype html><html lang="en"><head><link rel="icon" href="data:,"><link rel="stylesheet" href="${assetPaths[0]}"><script src="${assetPaths[1]}"></script></head><body><div class="engine-module">Old presentation</div></body></html>`);
+      return;
+    }
+    if (oldAssetReads.has(path) && !url.search) {
+      // Seed a real four-hour browser cache with the pre-deployment URLs.
+      // Only the content-versioned URLs may load the current presentation.
+      oldAssetReads.set(path, oldAssetReads.get(path) + 1);
+      response.writeHead(200, { "Content-Type": types[extname(path)], "Cache-Control": "public, max-age=14400" });
+      response.end(path.endsWith(".css") ? ".engine-module { position: static; border: 0; }" : "window.__oldSiteScript = true;");
+      return;
+    }
     let base = root;
     let relative;
     if (organization && ["/", "/privacy.html", "/src/style.css", "/src/main.js"].includes(path)) {
@@ -157,6 +173,12 @@ try {
     ], "Demo buttons must retain the independently hosted application URLs");
     assert(await evaluate("[...document.images].filter(i => i.loading !== 'lazy').every(i => i.complete && i.naturalWidth > 0)"), "Hero image failed");
     assert(await evaluate("document.body.innerText.includes('Rullst v12.0.0 stable')"));
+    assert.equal(await evaluate("window.__oldSiteScript === true"), false, "A cached old script must not run with new HTML");
+    assert.deepEqual(await evaluate(`Array.from(document.querySelectorAll('.engine-module'), element => {
+      const style = getComputedStyle(element);
+      return { position: style.position, border: style.borderTopWidth, background: style.backgroundImage !== 'none' };
+    })`), Array.from({length: 3}, () => ({position: "absolute", border: "1px", background: true})), "All three engine cards must load their actual layout and box styling");
+    assert(await evaluate("document.querySelector('#examples h2').textContent.includes('Not just a framework.')"));
     if (output) {
       // Capture the settled identity, not an arbitrary color mid-intro.
       await evaluate("new Promise(resolve => setTimeout(resolve, 5100))");
@@ -173,6 +195,10 @@ try {
       await navigate();
     }
   };
+  await navigate(true, "/_cache-probe.html");
+  assert(await evaluate("window.__oldSiteScript === true && getComputedStyle(document.querySelector('.engine-module')).borderTopWidth === '0px'"));
+  await navigate(true, "/_cache-probe.html");
+  assert.deepEqual([...oldAssetReads.values()], [1, 1], "The old CSS and script must actually be reused from browser cache");
   await layout(1440, 1100);
   assert(await evaluate("document.querySelector('.hero').classList.contains('is-visible')"), "Hero reveal must initialize");
   assert.equal(await evaluate("document.querySelector('link[rel=canonical]').href"), `https://rullst.win${landingPath}`, "Each entry point needs its own canonical URL");
@@ -226,10 +252,12 @@ try {
     await navigate(true, "/privacy.html");
     assert(await evaluate("document.title === 'Website privacy notice — Rullst' && document.querySelector('#privacy details').open"), "Standalone privacy page must render with expanded notice");
     assert.equal(await evaluate("document.querySelector('link[rel=canonical]').href"), "https://rullst.win/privacy.html");
+    assert.equal(await evaluate("getComputedStyle(document.body).margin"), "0px", "Privacy must also load the current stylesheet despite stale cached CSS");
   }
+  assert.deepEqual([...oldAssetReads.values()], [1, 1], "Current pages must not request the old unversioned assets again");
   assert([...requests].every(url => url.startsWith(origin + "/")), `External resource requests: ${[...requests].filter(url => !url.startsWith(origin + "/"))}`);
   assert.deepEqual(failures, [], "Browser errors, CSP failures or broken resources");
-  console.log("PASS: desktop/390px/320px, keyboard/mobile menu, animated intro/replay/stop, canonical URLs, clipboard success/denial, privacy, reduced motion, no-JS navigation, no storage or external landing requests.");
+  console.log("PASS: stale-cache upgrade, engine card styling, desktop/390px/320px, keyboard/mobile menu, animated intro/replay/stop, canonical URLs, clipboard success/denial, privacy, reduced motion, no-JS navigation, no storage or external landing requests.");
   await call("Browser.close");
 } finally {
   socket?.close();

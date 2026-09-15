@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from html.parser import HTMLParser
+from hashlib import sha256
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -116,8 +117,10 @@ def main() -> None:
     assert "evaluate before stable v12" not in source, "landing page retains obsolete RC copy"
     assert "Content-Security-Policy" in source, "landing page must declare a CSP"
     assert not home.inline_behavior, f"landing page has inline behavior/style: {home.inline_behavior}"
-    assert home.stylesheets == ["./assets/site.css"], "landing stylesheet must be repository-local"
-    assert home.scripts == ["./assets/site.js"], "landing script must be repository-local"
+    for references, filename in ((home.stylesheets, "site.css"), (home.scripts, "site.js")):
+        digest = sha256((DOCS / filename).read_bytes()).hexdigest()[:16]
+        expected = f"./assets/{filename}?v={digest}"
+        assert references == [expected], f"Use the current content-versioned local asset: {expected}"
     assert not home.embeds, "landing privacy contract forbids third-party embeds"
     assert "privacy" in home.ids, "landing page must expose its privacy notice"
     assert 'name="referrer" content="no-referrer"' in source, "landing must suppress outgoing referrers"
