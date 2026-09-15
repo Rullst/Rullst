@@ -22,13 +22,13 @@ strict-mysql = []
 strict-sqlite = []
 
 [dependencies]
-syn = { version = "3", features = ["full"] }
+syn = { version = "3.0.5", features = ["full"] }
 quote = "1"
 proc-macro2 = "1"
 
 [dev-dependencies]
 mutants = "0.0.4"
-trybuild = "1.0"
+trybuild = "1.0.121"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)'] }
