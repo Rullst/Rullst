@@ -126,3 +126,45 @@ paths reject credential-free use in release builds, but consumers should still
 exclude it from production features unless they are implementing and testing a
 separate authenticated administrator boundary. Built-in shared production
 access remains roadmap work, not a password environment-variable promise.
+
+## v12.1.0 browser composition fix (unreleased)
+
+The [Portfolio issue report](https://github.com/Rullst/examples/blob/deb147f1b3cc75a84a804ceef64d69716916970f/docs/portfolio-errors-found.md)
+identified two omissions in the published `12.0.0` raw data-browser router:
+its layout requested `/studio/assets/studio.css`, but only the full local
+`Studio` builder mounted the assets, and its Cache link had no handler.
+Applications nesting `data_browser::router()` under `/studio` therefore saw
+an unstyled page and a Cache 404. The stock Portfolio generator starts a
+separate debug-only Studio; the Azure showcase added its own embedded router.
+
+The 12.1.0 fix serves the embedded CSS/client and an honest, unconnected Cache
+page through both the raw and nested browser compositions. It does not enable
+public Studio administration, connect an application cache automatically, or
+weaken the local access checks. The full builder still requires
+`LocalStudioAccess` and an explicitly supplied `Studio::with_cache` for real
+cache inspection. The browser's unconnected page displays **Unavailable**, not
+zero entries or a fabricated hit rate, and exposes no cache mutation endpoint.
+
+### Migrating an existing showcase
+
+1. Wait for the 12.1.0 release, then update the application's Rullst dependencies
+   and lockfile together. Installing a newer CLI does not rewrite previously
+   generated application files or redeploy containers.
+2. Remove the temporary `.route(...)` registrations for `/assets/studio.css`,
+   `/studio/assets/studio.css`, `/assets/logger.js`, `/studio/assets/logger.js`,
+   `/cache`, and `/studio/cache` added directly to `data_browser::router()`.
+   They would conflict with the framework's new routes. Remove the now-unused
+   copied assets and temporary handlers only after checking their other uses.
+3. Preserve the application's authentication/administrator-authorization layer,
+   trusted TLS boundary, and network restrictions around the entire router.
+   The routing correction does not validate that custom production policy.
+4. Rebuild and verify that an authorized `/studio` page loads its same-origin
+   stylesheet with HTTP 200 and `text/css`, and that `/studio/cache` returns a
+   styled **Unavailable** page unless a supported cache is explicitly wired.
+   Unauthorized requests must still be denied. Check full visits and any
+   application-managed HTMX partial requests, then redeploy deliberately.
+
+The showcase's temporary Cache page contains hard-coded counters (including
+`100.0%` hit rate); those are not framework telemetry. Remove that workaround
+instead of treating its numbers as production measurements. Existing projects
+do not gain this source correction solely from a dependency update.

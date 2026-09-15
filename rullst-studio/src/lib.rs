@@ -76,15 +76,14 @@ impl Studio {
     }
 
     /// Builds Studio behind an explicit debug-only loopback access capability.
+    /// Routes already include `/studio`; mount this router at the listener root.
     pub fn into_router(self, access: LocalStudioAccess) -> Result<Router, StudioBuildError> {
         let logger_state = Arc::new(logger::LoggerState::new());
         let cache_router = cache_inspector::router(self.cache)?;
-        let mut router = data_browser::router_with_trace_store(self.distributed_traces)
+        let mut router = data_browser::router_with_cache(self.distributed_traces, cache_router)
             .nest("/studio/requests", logger::router(logger_state.clone()))
             .nest("/studio/env", env_viewer::router())
             .nest("/studio/features", feature_flags::router())
-            .nest("/studio/cache", cache_router)
-            .nest("/studio/assets", assets::router())
             .nest("/studio/er", er_diagram::router())
             .merge(security_radar::stats_router());
 

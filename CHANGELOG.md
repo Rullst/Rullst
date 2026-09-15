@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Studio browser composition — planned 12.1.0
+
+- Serve the embedded CSS and request-stream client from raw and `/studio`-nested
+  data-browser routers, fixing the unstyled embedded Portfolio/LMS shell.
+- Resolve the browser's Cache navigation with an explicit unconnected state,
+  without invented telemetry or cache mutation routes. Preserve the full local
+  builder's explicitly supplied cache and verified-loopback access checks.
+- Add HTTP regression contracts for root/nested assets, full/partial cache
+  visits, caller-owned access layers and the complete local builder. Document
+  removal of application-level workaround routes before upgrading existing
+  showcases; dependency updates do not rewrite generated source or redeploy it.
+
 ### CI tooling
 
 - Resolve all ten locked fuzz dependency graphs before Clippy and campaign

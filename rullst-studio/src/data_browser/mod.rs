@@ -15,7 +15,12 @@ pub use layout::studio_layout;
 
 use axum::{Router, extract::DefaultBodyLimit};
 
-/// Central router for Rullst Studio
+/// Raw Studio browser routes, without an authentication boundary.
+///
+/// Supports root composition and nesting under `/studio`. Assets follow the
+/// same access layers as the browser; cache inspection is explicitly unavailable.
+/// Prefer [`crate::Studio::into_router`] for the supported local development
+/// boundary. Do not expose this raw router publicly without your own policy.
 pub fn router() -> Router {
     router_with_trace_store(crate::distributed_traces::DistributedTraceStore::default())
 }
@@ -23,6 +28,15 @@ pub fn router() -> Router {
 /// Builds the Studio router against an explicitly supplied distributed trace store.
 pub fn router_with_trace_store(
     trace_store: crate::distributed_traces::DistributedTraceStore,
+) -> Router {
+    router_with_cache(trace_store, crate::cache_inspector::unavailable_router())
+}
+
+/// Internal composition point: install cache routes once, whether disconnected
+/// or supplied by the full, subsequently access-protected Studio builder.
+pub(crate) fn router_with_cache(
+    trace_store: crate::distributed_traces::DistributedTraceStore,
+    cache_router: Router,
 ) -> Router {
     Router::new()
         // Dashboard
@@ -92,6 +106,12 @@ pub fn router_with_trace_store(
             axum::routing::get(handle_studio_traces_with_store),
         )
         .with_state(trace_store)
+        // Axum strips /studio when callers nest the raw browser. Keep both
+        // path forms, matching the existing browser page aliases.
+        .nest("/assets", crate::assets::router())
+        .nest("/studio/assets", crate::assets::router())
+        .nest("/cache", cache_router.clone())
+        .nest("/studio/cache", cache_router)
 }
 
 pub trait IntoStudioPort {

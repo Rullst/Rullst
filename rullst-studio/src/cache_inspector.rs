@@ -27,6 +27,21 @@ struct CacheInspectorState {
     token_key: Arc<[u8; TOKEN_KEY_BYTES]>,
 }
 
+/// The raw browser has no cache capability. Keep its navigation usable without
+/// generating tokens, discovering global state, or exposing mutation routes.
+pub(crate) fn unavailable_router() -> Router {
+    Router::new().route("/", get(unavailable_cache_page))
+}
+
+async fn unavailable_cache_page(headers: axum::http::HeaderMap) -> Response {
+    cache_page_response(
+        render_unavailable(
+            "This data browser has no connected cache. Use Studio::with_cache with the verified local Studio builder for metadata-only inspection.",
+        ),
+        &headers,
+    )
+}
+
 /// Builds the local cache inspector. Values and bulk flush are not exposed.
 pub(crate) fn router(cache: Option<Cache>) -> Result<Router, crate::StudioBuildError> {
     let mut token_key = [0_u8; TOKEN_KEY_BYTES];
@@ -57,6 +72,10 @@ async fn render_cache_page(
         },
         None => render_unavailable("No Cache was explicitly supplied to Studio::with_cache"),
     };
+    cache_page_response(content, &headers)
+}
+
+fn cache_page_response(content: String, headers: &axum::http::HeaderMap) -> Response {
     if headers.contains_key("hx-request") {
         Html(content).into_response()
     } else {
