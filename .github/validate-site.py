@@ -132,10 +132,19 @@ def main() -> None:
         "https://x.com/venelouis",
     }
     assert required_social_links <= set(home.links), "missing requested community links"
+    demo_links = {
+        "https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/",
+        "https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/",
+        "https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/",
+        "https://github.com/Rullst/examples",
+    }
+    assert "examples" in home.ids, "landing must expose the demo directory"
+    assert demo_links <= set(home.links), "landing is missing a published example link"
 
     slogan = "Intelligent, Security-Conscious, and Designed for Effortless Productivity"
     assert slogan in source, "landing page must preserve the project slogan"
     readme = README.read_text(encoding="utf-8")
+    assert all(link in readme for link in demo_links), "README is missing a published example link"
     assert "🌐🦀📜 Rullst 📜🦀🌐" in readme, "README must preserve the project title identity"
     assert slogan in readme, "README must preserve the project slogan"
     workflow_count = len(

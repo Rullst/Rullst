@@ -1,29 +1,54 @@
-# v12 release audit follow-up
+# v12 stable release audit
 
-Status: **`12.0.0-rc.1` is published and independently installable; the stable
-`12.0.0` candidate follows that release lineage with bounded post-RC fixes and
-is in exact-SHA closeout**. This document neither publishes nor authorizes
-stable by itself. Its exact candidate must repeat the mandatory local, hosted,
-packaging, consumer, ownership and attestation gates before the owner approves
-the tag.
-Each hosted result remains evidence for its recorded commit, not every future
-tree; crates.io availability requires the registry receipt.
+Status: **Rullst `12.0.0` was published on September 15, 2026** from immutable
+tag [`v12.0.0`](https://github.com/Rullst/Rullst/releases/tag/v12.0.0) at
+commit
+[`eb11f892ae28f076e7a83c38a635316c6ed89028`](https://github.com/Rullst/Rullst/commit/eb11f892ae28f076e7a83c38a635316c6ed89028).
+The protected [release workflow](https://github.com/Rullst/Rullst/actions/runs/34955468167)
+completed its admission, artifact verification, attestation, publication
+preflight, sixteen-package Trusted Publishing, registry verification, and
+GitHub release jobs successfully.
+
+### Stable-source verification receipts
+
+These successful runs all identify `eb11f892` as their source:
+
+| Evidence | Workflow run |
+| :--- | :--- |
+| Multi-platform CI and 94/A repository scorecard | [34895536764](https://github.com/Rullst/Rullst/actions/runs/34895536764) |
+| LLVM line coverage: 90.3220% repository, 90.6186% framework libraries | [34895523751](https://github.com/Rullst/Rullst/actions/runs/34895523751) |
+| Documentation | [34895523669](https://github.com/Rullst/Rullst/actions/runs/34895523669) |
+| Full 40-target fuzz campaign | [34895536740](https://github.com/Rullst/Rullst/actions/runs/34895536740) |
+| Bounded Kani harnesses | [34895536646](https://github.com/Rullst/Rullst/actions/runs/34895536646) |
+| Scoped Miri checks | [34895536650](https://github.com/Rullst/Rullst/actions/runs/34895536650) |
+| Property tests | [34895536923](https://github.com/Rullst/Rullst/actions/runs/34895536923) |
+| Sanitizers | [34951576777](https://github.com/Rullst/Rullst/actions/runs/34951576777) |
+
+The release admission policy lists the complete required workflow inventory.
+The informational mutation campaign below belongs to its separately recorded
+earlier SHA; it is not a fresh mutation result for the stable commit.
+
+Each hosted result remains evidence for its recorded commit, inventory, and
+environment rather than every future tree. This repository-owned audit is not
+an independent certification.
 
 ## Baseline and method
 
-The audited code candidate is `a6b3bc8a` on `main`, including the
-second-computer report in [CLIFIX.md](../../CLIFIX.md), fail-closed SQLite schema
-validation for automatic migration generation, and the corrected mutation
-inventory. All 22 applicable push workflows passed on that SHA. The immutable
-RC tag is `v12.0.0-rc.1` at
-`2b19567e8d184ad3ceeebae812de71b06d32e484`. Stable preparation synchronizes
-package versions, public documentation, site copy and release evidence. It also
-contains bounded post-RC correctness/hardening changes to CSRF composition,
-session-cookie handling, generated registration/billing/container contracts and
-Studio's browser assets. These are not a new product feature, but they do change
-runtime behavior and therefore require fresh evidence. The immutable tag commit
-must pass the complete stable release workflow rather than inheriting a pass by
-description.
+The audit began on candidate `a6b3bc8a`, which included the now-integrated
+second-computer CLI findings, fail-closed SQLite schema validation for automatic
+migration generation, and the corrected mutation inventory. All 22 applicable
+push workflows passed on that SHA. The immutable RC tag is
+`v12.0.0-rc.1` at
+`2b19567e8d184ad3ceeebae812de71b06d32e484`.
+
+Stable preparation then synchronized package versions, public documentation,
+site copy and release evidence and added bounded correctness/hardening changes
+to CSRF composition, session-cookie handling, generated
+registration/billing/container contracts and Studio's browser assets. Those
+runtime changes earned fresh evidence before the final tag; the stable
+publication did not inherit an RC pass merely by description. The obsolete
+temporary CLI handoff file was retired after integration and remains available
+in Git history.
 
 Review covers every published crate. IoT receives only a light triage under the
 owner's explicit v12 exception. Each deep review traces public inputs through
@@ -52,9 +77,25 @@ feature-completeness percentage, independent audit result, or release
 authorization. A candidate earns the recorded grade only when its exact SHA
 passes the applicable scorecard constraints. The RC met those conditions only
 after its automatic and manual gates, packaging checks, documentation review,
-and explicit GO decision completed. That evidence remains bounded to the RC and
-does not authorize the future stable release. The exact stable candidate earns
-the grade only after its conditioning gates pass.
+and explicit GO decision completed. Stable v12 subsequently passed its own
+conditioning gates at `eb11f892`, as recorded above; neither result authorizes
+unverified future changes.
+
+## Post-publication documentation closeout
+
+The maintenance cleanup separates the published v12 record from the v13
+backlog, replaces oversized historical planning pages with English archive
+pointers, and preserves the original claims and evidence under the immutable
+`v12.0.0` tag. The temporary `CLIFIX.md` handoff is retired; the frozen
+190-claim historical classification remains machine-checked independently of
+the shortened release page.
+
+README and landing-page examples are sourced from the independently maintained
+[examples repository](https://github.com/Rullst/examples), not advertised as
+fresh stable-version or platform certification. Local documentation builds,
+source-link/anchor checks, spelling checks, and real-browser layout/accessibility
+checks validate the edited presentation. They do not establish that every
+tutorial or external provider was newly tested end to end in production.
 
 ## Coverage ledger
 
@@ -133,7 +174,7 @@ reached its smaller budget during threat-model construction, before final
 validation. It produced no report and is deliberately not counted as a pass.
 The release evidence for the correction is therefore the source trace, the two
 crafted-SQLite regressions, the complete all-feature workspace tests, strict
-workspace Clippy and the forthcoming hosted candidate gates. This AI-assisted
+workspace Clippy and the subsequent hosted candidate gates. This AI-assisted
 review is neither an independent audit nor a claim of complete repository
 coverage.
 
@@ -142,9 +183,11 @@ coverage.
 The organization root website and the framework Pages site were different
 deployments. The old organization site still described `main` as v5 and `dev`
 as v12, and its privacy page asserted unverified worldwide legal compliance.
-Both entry points now have prepared matching source, with separate deployment
-receipts still required. The RC copy presented v12.0.0-rc.1 as an explicit
-evaluation candidate and marked v5 end-of-life. Stable preparation presents
+The source correction prepared matching copy for both entry points. This
+repository's [stable Pages deployment](https://github.com/Rullst/Rullst/actions/runs/34895523735)
+passed; the organization-root deployment remains a separately operated site.
+The RC copy presented v12.0.0-rc.1 as an explicit evaluation candidate and
+marked v5 end-of-life. The stable documentation presents
 `12.0.0` as the supported v12 line while retaining application-specific
 security and deployment limits.
 
@@ -189,7 +232,7 @@ The v13 decision is evidence-driven: compare measured reload time, failure
 recovery, process cleanup, memory and state ownership across databases and
 operating systems before considering a different architecture.
 
-## RC receipt and remaining stable publication work
+## Pre-stable evidence retained
 
 - Approved code candidate `a6b3bc8a` passed all 22 applicable automatic push
   workflows. Codecov reported 91.49% repository coverage and 100% patch coverage;
@@ -201,10 +244,9 @@ operating systems before considering a different architecture.
   the packaged CLI installed and reported the correct version, and all six
   installed-CLI blueprints generated and compiled without monorepo paths.
 - The complete 40-target hosted fuzz campaign passed on parent `7697fb8a` in
-  run `34642351302`. It remains historical RC evidence. The stable delta now
-  includes Core/Auth and generated-application runtime changes, so the stable
-  candidate must repeat the applicable fuzz campaign instead of carrying that
-  result forward as exact-SHA evidence.
+  run `34642351302`. It remains historical RC evidence. Core/Auth and
+  generated-application runtime changes subsequently required a fresh
+  campaign; stable-source run `34895536740` passed all forty targets.
 - The full mutation campaign is complete. The originating run `34688592153`
   left six of eighty shards incomplete; exact-SHA recovery run `34738841341`
   completed eleven of twelve halves before GitHub twice shut down the runner at
@@ -220,15 +262,12 @@ operating systems before considering a different architecture.
   evidence, while surviving and timed-out mutants remain explicit follow-up
   findings rather than being mislabeled as caught.
 - The owner supplied explicit GO for `v12.0.0-rc.1` on September 12, 2026 after
-  reviewing the package graph and topological plan. The stable closeout commit
-  synchronizes versions/documentation, hardens release/assurance workflows and
-  contains the explicitly listed post-RC fixes. Its exact SHA must pass the
-  applicable hosted checks; then the protected tag workflow
-  must recheck name ownership, reproduce the archives, publish in order, verify
-  registry checksums/indexing and emit provenance. The 94/A score is supporting
-  evidence, not a security certification or authorization for stable `12.0.0`.
+  reviewing the package graph and topological plan. The later stable closeout
+  repeated the applicable exact-SHA gates and completed the protected
+  publication pipeline. The 94/A repository score remains supporting evidence,
+  not a security certification.
 
-## RC publication receipt and stable promotion
+## RC lineage and stable publication receipt
 
 - Tag `v12.0.0-rc.1` resolves to
   `2b19567e8d184ad3ceeebae812de71b06d32e484`. The release workflow's verify and
@@ -244,23 +283,26 @@ operating systems before considering a different architecture.
   generator failed during environment detection: its transitive
   `detect-workflow-js@v2.1.0` reference violated this repository's full-SHA
   Action policy. It never generated or uploaded provenance. It is not counted
-  as release evidence, and no SLSA level is claimed. Stable preparation removes
+  as release evidence, and no SLSA level is claimed. Stable preparation removed
   that redundant external job while retaining the successful SHA-pinned GitHub
   attestation already produced inside the verified job.
-- All package names are now registered. Trusted Publishing is configured by the
-  owner for the sixteen packages, the temporary bootstrap secret was removed,
-  and the exposed bootstrap token was revoked. Stable publication must use the
-  short-lived OIDC credential; the bootstrap path should remain inactive.
+- All package names are registered. Trusted Publishing is configured by the
+  owner for all sixteen packages, the temporary bootstrap secret was removed,
+  and the exposed bootstrap token was revoked. Stable publication used the
+  protected `crates-io` environment and short-lived OIDC credentials; the
+  bootstrap path remains inactive.
 - Stable `12.0.0` promotes the audited RC lineage plus the declared post-RC
   corrections: idempotent nested CSRF composition, stricter session-cookie
   parsing/logout, transactional generated LMS registration, POST/CSRF billing
   mutations, hardened generated containers, self-contained Studio assets,
   collision-free Omni targets, source-comment parsing and explicit validated
   COEP application policy.
-  The remaining delta is version/documentation/SBOM reconciliation,
-  changelog-derived release notes and removal of the incompatible redundant
-  SLSA job. Every runtime correction requires renewed evidence and must remain
-  visible before GO.
+- Tag `v12.0.0` resolves to
+  `eb11f892ae28f076e7a83c38a635316c6ed89028`. Release run
+  `34955468167` reproduced and verified the archives, created SHA-pinned
+  build-provenance attestations, published all sixteen packages in topological
+  order, verified registry availability and checksums, and created the
+  non-prerelease GitHub release.
 
 ## Residual limitations for the next reviewer
 

@@ -25,7 +25,7 @@
     message.append(
       "The ",
       mainLink,
-      " branch contains post-release v12 maintenance and future integration work. " +
+      " branch contains post-release v12 maintenance; next-major work is on v13. " +
         "Use the exact v12.0.0 crates.io packages or immutable tag when reproducing " +
         "the stable release. The frozen ",
       v5Link,

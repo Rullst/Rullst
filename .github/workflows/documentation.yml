@@ -65,7 +65,7 @@ jobs:
         run: node .github/site-browser-smoke.mjs
 
       - name: Validate the historical roadmap ledger
-        run: bash .github/check-historical-roadmap-ledger.sh
+        run: bash .github/test-check-historical-roadmap-ledger.sh
 
       - name: Validate repository-local links
         run: >-

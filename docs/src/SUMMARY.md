@@ -5,7 +5,7 @@
 - [Why Rullst?](why-Rullst.md)
 - [Simple Capability Status](capability-status.md)
 - [Per-Commit Quality Scorecard](quality-scorecard.md)
-- [v12 Release Audit Follow-up](v12-release-audit.md)
+- [v12 Stable Release Audit](v12-release-audit.md)
 - [Website Maintenance & Privacy Boundaries](website-maintenance.md)
 - [Rullst Academy Product Programme](rullst-academy.md)
 - [💡 The Rullst Philosophy](philosophy.md)
@@ -88,7 +88,7 @@
 # Reference
 - [📜 Framework Spec](spec.md)
 - [🧭 Capability Status & Vision Decisions](capability-ledger.md)
-- [🚦 Rullst v12 Release Program](v12.md)
+- [🚦 Rullst v12 Stable Release Record](v12.md)
 - [🔁 Compatibility, MSRV & Support Policy](compatibility-policy.md)
 - [Cargo Feature Matrix](feature-matrix.md)
 - [Migrating Applications to v12](migration-v12.md)
@@ -99,10 +99,7 @@
 - [Guarded Local AI Tools](ai-tool-security.md)
 - [v12 Security Claims & Evidence](v12-security-claims.md)
 - [Security Event Schema v1](security-event-schema.md)
-- [⚖️ Framework Comparatives & Competitive Priorities](comparatives.md)
-- [🗃️ Pre-gpt.md Documentation Preservation](original-documentation-audit.md)
 - [🧪 Maybe SaaS: Product Incubation Strategy](maybesaas.md)
-- [🔒 Hardening Status](hardening-status.md)
 - [🛡️ Security Architecture](security-architecture.md)
 - [🎯 Rullst v12 Threat Models](threat-models.md)
 - [⚠️ CORS Scaffold Security Advisory](cors-scaffold-security-advisory.md)
@@ -133,3 +130,9 @@
 - [rullst-ai](crates/ai.md)
 - [rullst-security](crates/security.md)
 - [rullst-iot](crates/iot.md)
+
+# Historical Records
+
+- [Historical Documentation Sources](original-documentation-audit.md)
+- [Archived v12 Hardening Tracker](hardening-status.md)
+- [Archived Framework Comparison](comparatives.md)

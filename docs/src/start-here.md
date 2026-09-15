@@ -6,7 +6,7 @@ as your product needs it.
 
 > **This guide targets Rullst v12.0.0 stable.** Install the exact CLI and
 > framework version instead of relying on an unversioned command. The
-> [release program](v12.md) and [release audit](v12-release-audit.md) describe
+> [stable release record](v12.md) and [release audit](v12-release-audit.md) describe
 > its evidence and remaining application-specific production boundaries.
 
 ## Pick your starting line

@@ -1,4 +1,4 @@
-<!-- “Antes de gerar qualquer coisa, leia e siga estritamente o arquivo da verdade abaixo. spec.md”  -->
+<!-- Read this specification before generating framework code or documentation. -->
 
 # Rullst Specification 📄
 ### *"The Single Source of Truth (SST) for Framework Architecture & Conventions"*
@@ -11,8 +11,8 @@ This document is the **Single Source of Truth (SST)** for the **Rullst Framework
 > Every capability in the framework is strictly tagged with its implementation lifecycle status:
 > - 🟢 **`[Implemented / Bounded]`**: A defined implementation exists with automated tests for the stated scope. This is not a deployment, provider-homologation, or certification claim.
 > - 🟠 **`[Partial]`**: Useful foundations exist, but a named interoperability, architecture, or conformance boundary is still incomplete.
-> - 🟡 **`[Offline Test Mock / Simulador Dev]`**: Deterministic offline sandbox fixtures for local development and offline CI without external API dependencies.
-> - 🔵 **`[Roadmap / Em Construção]`**: Architectural design, public traits, and domain models specified in full, with production drivers in active engineering.
+> - 🟡 **`[Offline Test Mock]`**: Deterministic offline sandbox fixtures for local development and offline CI without external API dependencies.
+> - 🔵 **`[Roadmap / Under Development]`**: Planned architecture, traits or domain models; consult each entry for what exists and what remains unimplemented.
 
 ---
 

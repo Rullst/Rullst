@@ -10,7 +10,7 @@ These models turn security ambitions into named abuse cases. A control is not
 effective merely because its type exists: it must be mounted in the deployed
 application and its negative case must pass. The
 [security architecture](security-architecture.md) defines the canonical HTTP
-boundary and the [hardening status](hardening-status.md) records repository
+boundary and the [v12 release audit](v12-release-audit.md) records repository
 evidence.
 
 ## Method and common boundaries

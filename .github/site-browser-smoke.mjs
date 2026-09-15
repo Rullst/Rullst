@@ -150,6 +150,11 @@ try {
     );
     assert.equal(await evaluate("document.querySelectorAll('h1').length"), 1);
     assert.equal(await evaluate("document.querySelectorAll('.social-links a').length"), 13);
+    assert.deepEqual(await evaluate("[...document.querySelectorAll('[data-demo-link]')].map(link => link.href)"), [
+      "https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/",
+      "https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/",
+      "https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/",
+    ], "Demo buttons must retain the independently hosted application URLs");
     assert(await evaluate("[...document.images].filter(i => i.loading !== 'lazy').every(i => i.complete && i.naturalWidth > 0)"), "Hero image failed");
     assert(await evaluate("document.body.innerText.includes('Rullst v12.0.0 stable')"));
     if (output) {
@@ -157,6 +162,12 @@ try {
       await evaluate("Promise.all(document.getAnimations().map(animation => animation.finished))");
       const { data } = await send("Page.captureScreenshot", { format: "png" });
       await writeFile(join(output, `rullst-site-${width}.png`), Buffer.from(data, "base64"));
+      await evaluate("document.querySelector('#examples').scrollIntoView({behavior:'instant'}); new Promise(resolve => setTimeout(resolve, 1200))");
+      const demoScreenshot = await send("Page.captureScreenshot", { format: "png" });
+      await writeFile(join(output, `rullst-examples-${width}.png`), Buffer.from(demoScreenshot.data, "base64"));
+      // Scrolling an element into view changes Chromium's sequential focus
+      // navigation starting point. Reload so the keyboard test starts fresh.
+      await navigate();
     }
   };
   await layout(1440, 1100);
