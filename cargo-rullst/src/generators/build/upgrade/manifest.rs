@@ -5,6 +5,7 @@ use std::process::Command;
 use toml_edit::{DocumentMut, Formatted, Item, Table, Value};
 
 const RULLST_PACKAGES: &[&str] = &[
+    "cargo-rullst",
     "rullst",
     "rullst-ai",
     "rullst-auth",
@@ -14,6 +15,7 @@ const RULLST_PACKAGES: &[&str] = &[
     "rullst-iot",
     "rullst-macros",
     "rullst-mail",
+    "rullst-messaging",
     "rullst-nexus",
     "rullst-orm",
     "rullst-orm-macros",
@@ -358,5 +360,46 @@ rullst-security = "5.0.0"
         assert!(result.updated.contains("# framework"));
         assert!(result.updated.contains("# keep this comment"));
         assert!(result.updated.contains("axum = \"0.8\""));
+    }
+
+    #[test]
+    fn every_managed_package_is_upgraded_without_matching_unrelated_prefixes() {
+        let mut input = String::from("[dependencies]\n");
+        for package in RULLST_PACKAGES {
+            input.push_str(&format!("{package} = \"12.0.0\"\n"));
+        }
+        input.push_str("rullst-unrelated = \"12.0.0\"\n");
+        let result = plan(&input);
+        let changed = result
+            .changes
+            .iter()
+            .map(|change| change.package.as_str())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(changed, RULLST_PACKAGES.iter().copied().collect());
+        assert_eq!(result.matched, RULLST_PACKAGES.len());
+        assert!(result.updated.contains("rullst-unrelated = \"12.0.0\""));
+    }
+
+    #[test]
+    fn messaging_aliases_and_inherited_workspace_dependencies_are_coordinated() {
+        let result = plan(
+            r#"[dependencies]
+events = { package = "rullst-messaging", version = "12.0.0", features = ["sqlite"] }
+[workspace.dependencies]
+cli = { package = "cargo-rullst", version = "12.0.0" }
+[dev-dependencies]
+cli = { workspace = true }
+"#,
+        );
+        assert_eq!(result.changes.len(), 2);
+        assert!(result.warnings.is_empty());
+        assert!(result.updated.contains("features = [\"sqlite\"]"));
+        assert!(result.updated.contains("cli = { workspace = true }"));
+        assert!(
+            result
+                .changes
+                .iter()
+                .any(|change| change.key == "events" && change.package == "rullst-messaging")
+        );
     }
 }

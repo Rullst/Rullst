@@ -36,6 +36,7 @@ jobs:
           python3 .github/test-generated-evidence.py
           python3 .github/test-fuzz-preflight.py
           python3 .github/test-check-fuzz-locks.py
+          python3 .github/test-upgrade-package-inventory.py
 
       - name: Enforce canonical Action reference syntax
         run: |

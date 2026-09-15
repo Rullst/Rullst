@@ -33,6 +33,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### CLI update discovery
 
+- Include `rullst-messaging` and an application's optional `cargo-rullst`
+  dependency in workspace upgrades. Check the managed package allowlist against
+  the publication inventory and test alias/workspace inheritance without
+  rewriting similarly named third-party packages.
+
 - Restrict advisory update discovery to interactive dashboard startup; ordinary
   commands, help and noninteractive use do not start the check. Respect offline,
   CI and notification opt-out flags. Retire the shared temporary version file
