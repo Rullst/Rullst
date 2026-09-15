@@ -191,6 +191,19 @@ fn materialize(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
     if case.blueprint == SAAS_BLUEPRINT_ID {
         add_saas_generator_smoke(project_dir);
     }
+    if case.blueprint == PORTFOLIO_BLUEPRINT_ID {
+        let path = project_dir.join("src/pages/home.rs");
+        let source = fs::read_to_string(&path).expect("generated portfolio view");
+        fs::write(
+            &path,
+            format!(
+                "{source}\n#[cfg(test)] mod mobile_contract {{\nuse super::*;\n{}\n{}\n}}\n",
+                include_str!("fixtures/mobile_browser.rs"),
+                include_str!("fixtures/portfolio_mobile.rs"),
+            ),
+        )
+        .expect("append real generated-view browser contract");
+    }
 }
 
 fn add_router_runtime_contract(case: GeneratedCase, project_dir: &Path, module_name: &str) {
@@ -288,6 +301,15 @@ fn cargo_verify(case: GeneratedCase, project_dir: &Path, workspace: &Path) {
             case.name,
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    if case.blueprint == PORTFOLIO_BLUEPRINT_ID
+        && std::env::var("RULLST_UI_BROWSER_TESTS").as_deref() == Ok("1")
+    {
+        assert!(
+            String::from_utf8_lossy(&output.stdout)
+                .contains("PASS: portfolio real-browser mobile contract"),
+            "the generated Portfolio must execute Chromium when requested"
         );
     }
 }

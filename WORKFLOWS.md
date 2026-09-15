@@ -57,6 +57,18 @@ produce the exact-SHA release scorecard. Manual diagnostic runs may select one
 operating system and one test shard; those deliberately do not produce a
 full-matrix scorecard and do not replace final-candidate evidence.
 
+The existing Linux `workspace` and `cli-saas-product` shards also require
+`RULLST_UI_BROWSER_TESTS=1` with Node 24 and Chromium. They feed HTML from the
+real Nexus renderer and the compiled generated Portfolio view into the bounded
+`.github/mobile-ui-browser-smoke.mjs` contract: drawer dismissal/focus/no-JS
+behavior, responsive layout at 320–1440px, long content and reduced motion.
+Missing browser prerequisites or a missing Portfolio execution receipt fail
+those shards. Other platforms still run the render assertions and the complete
+existing project matrix; they do not claim Chromium evidence. Local runs opt in
+with the same flag and an absolute `RULLST_UI_BROWSER_SCRIPT` path. CDN resources
+are blocked in this UI fixture; this is not live-provider, WebKit/Firefox,
+hardware-device, or WCAG certification. No extra Rust compilation matrix is added.
+
 GitHub executes `schedule` events from the repository's default branch, so
 scheduled and continuous v12 evidence now share the active `main` source line.
 Tag publication remains deliberately unavailable through a manual button.

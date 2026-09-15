@@ -124,6 +124,15 @@ and retains its verified-loopback/same-origin protection. Assets and navigation
 fixes do not constitute a shared-production authentication mode; existing
 application-level workaround routes must be removed before upgrading.
 
+### Mobile presentation invariant (12.1.0 and v13, unreleased)
+
+The unreleased 12.1.0/v13 mobile maintenance contract keeps Nexus navigation
+dismissible by close control, backdrop, Escape and links, with keyboard focus
+containment/return and visible no-JavaScript navigation. Portfolio scaffolds
+must reflow at phone widths and wrap long content instead of hiding overflow.
+These are presentation fixes, not changes to server authorization; pre-existing
+generated source and showcase HTML-rewriting workarounds need explicit migration.
+
 ### Pre-release scaffold source invariant
 
 An unpublished pre-release `cargo-rullst` may reuse only local framework crates

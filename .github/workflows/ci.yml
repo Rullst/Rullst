@@ -170,6 +170,9 @@ jobs:
       # compiler process for constrained developer machines. Two jobs stay
       # within hosted-runner CPU limits while shortening those serial builds.
       RULLST_GENERATED_BUILD_JOBS: "2"
+      # Reuse real renderer/generated-project tests; do not add another build.
+      RULLST_UI_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && (matrix.shard == 'workspace' || matrix.shard == 'cli-saas-product') && '1' || '0' }}
+      RULLST_UI_BROWSER_SCRIPT: ${{ github.workspace }}/.github/mobile-ui-browser-smoke.mjs
     strategy:
       fail-fast: false
       matrix:
@@ -198,6 +201,12 @@ jobs:
           # targets. Caching the whole workspace target races the cache cleanup,
           # emits false ENOENT annotations and uploads multi-gigabyte archives.
           cache: false
+
+      - name: Set up Node for mobile UI browser regressions
+        if: env.RULLST_UI_BROWSER_TESTS == '1'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
 
       - name: Run complete all-feature test shard
         # Note: --all-features activates strict-sqlite+strict-mysql+strict-postgres

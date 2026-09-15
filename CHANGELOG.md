@@ -36,6 +36,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   response. This does not install a CLI, run project acceptance tests or complete
   the planned guided 12.1.0 update workflow.
 
+### Mobile Nexus and Portfolio — planned 12.1.0 and v13
+
+- Fix the Nexus mobile drawer trapping navigation: provide a close button,
+  backdrop dismissal, Escape/link dismissal, focus containment/return and
+  synchronized expanded state. Preserve visible navigation without JavaScript
+  and reset inert state across the desktop breakpoint.
+- Make generated Portfolio views fluid below 900/640px, wrap long text and URLs,
+  bound the project grid and respect reduced motion without hiding overflowing
+  content. Previously generated applications need a reviewed CSS update.
+- Exercise both real renderers in Chromium in the existing Linux workspace and
+  generated-product shards; retain the full existing generated-project matrix.
+  Document removal of the showcase's temporary Nexus HTML-rewriting middleware.
+
 ### Studio browser composition — planned 12.1.0
 
 - Serve the embedded CSS and request-stream client from raw and `/studio`-nested
