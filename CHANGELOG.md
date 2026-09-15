@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   illustrated cards, finite animations and reduced-motion support.
 - Make safe verification-efficiency improvements a shared v12 maintenance and
   v13 priority, with explicit inventory, cache-trust and release-evidence gates.
+- Focus new implementation work on v13 and record guided updates as a top
+  priority, with artifact verification, project acceptance and bounded recovery
+  requirements. No v12 minor backport is currently planned.
+- Define v13 API documentation acceptance criteria for connected Rust reference
+  pages and tested REST journeys, using Qt's organization as inspiration.
+  These documentation and expanded-updater programmes remain planned.
 
 ## [12.0.0] - 2026-09-15 🚀
 

@@ -1158,6 +1158,15 @@ assistant, not a claim that compilation proves production compatibility.
   application production-ready. Database restore/migration/rollback, the full
   test suite, authorization negatives and deployment smoke tests remain
   mandatory human-owned gates.
+* ⚪ **`[Planned / Priority]` Guided Update Experience:** a future opt-in
+  orchestrator may coordinate CLI installation and project preparation while
+  preserving the implemented contract above. CLI artifact trust, project
+  execution consent and deployment authorization remain separate boundaries;
+  starting an application must not silently update code or migrate data.
+  The [roadmap acceptance plan](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience)
+  defines v13 priority work; no v12 minor backport is currently planned. Neither
+  self-installation nor this expanded orchestration is implemented by the
+  current `upgrade` command.
 
 ---
 

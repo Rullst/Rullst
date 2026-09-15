@@ -179,6 +179,16 @@ machine-readable output, successful application and rollback. A v13 CLI can
 therefore reuse the transaction while owning v13-specific rules; a v12 CLI is
 not allowed to guess them.
 
+## Planned simpler update experience
+
+The [safe-update priority](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience) proposes
+one guided flow for CLI installation, project preparation, validation and
+approved application. This is planned for **v13**, not a v12 minor release,
+and is not available yet. Until it ships, follow the explicit installation
+and upgrade steps in this tutorial. File recovery
+does not replace database backups or application acceptance tests, and updating
+the CLI alone never updates a deployed application.
+
 ## Is this unique?
 
 No. Assisted upgrades are an established framework practice: Rails documents
