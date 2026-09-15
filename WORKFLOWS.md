@@ -532,7 +532,7 @@ These ideas remain valuable, but are not current guarantees:
 | PGO and BOLT | **Not implemented — defer until production profiles exist.** Fixed throughput-gain percentages must not be promised in advance. |
 | Chaos testing with `fail-rs` | **Not implemented — worth implementing** around queues, database retries, and provider timeouts after deterministic failure contracts exist. |
 | AFL.rs/honggfuzz differential fuzzing | **Not implemented — valuable after the 40 libFuzzer targets have healthy corpora and triage ownership.** |
-| Cross-platform CI acceleration | **Not implemented — immediate v13 priority, with a bounded v12 experiment permitted.** Preserve the exact Linux/macOS/Windows workspace, feature, doctest, generated-project, outbox and live-provider contracts while isolating disposable CLI build trees and evaluating compiled-artifact caching, `sccache`, test scheduling and `cargo-nextest`. Speed alone must never reduce the assertions or supported-platform evidence. |
+| Cross-platform CI acceleration | **Partial — first v13 engineering priority, also applicable to compatible v12 maintenance.** The inherited v12 baseline already has eight shards per OS, isolated fixture targets and nextest with separate doctests. Preserve its exact workspace, feature, generated-project, outbox and live-provider contracts while measuring further scheduling/cache improvements. Speed alone must never reduce assertions or supported-platform evidence. |
 | Differential database testing | **Not implemented — high-value v13 work.** Run equivalent generated ORM operations against the supported relational backends and compare normalized results, errors and transaction behavior; keep provider-specific semantics explicit instead of forcing false equivalence. |
 | Cross-browser and accessibility testing | **Not implemented — high-value v13 work.** Exercise generated applications with Playwright across Chromium, Firefox and WebKit, add keyboard and automated accessibility checks, and retain traces/screenshots for failures. This would complement, not replace, ZAP and server-level integration tests. |
 | Mobile physical-device farms | **Not implemented — requires external infrastructure.** Add Android and iOS device-farm execution, lifecycle/network interruption scenarios and signed-package evidence when accounts and secrets are governed. Simulator and compile checks must not be presented as physical-device or store-acceptance proof. |
@@ -545,14 +545,19 @@ These ideas remain valuable, but are not current guarantees:
 
 ### Cross-platform CI acceleration acceptance plan
 
-The September 6 v12 candidate measurements establish the clean-run baseline:
+The September 6 v12 candidate measurements record the pre-optimization baseline:
 the all-feature workspace and follow-up contracts took approximately 70 minutes
 on Linux, 59 minutes on macOS, and 107 minutes on Windows. Most time was spent
-in the clean `cargo test --workspace --all-features` build. Only Cargo registry
-data is currently cached. Workspace `target/` caching was disabled after CLI
-integration tests reused and cleaned nested target paths while the post-job
+in the clean `cargo test --workspace --all-features` build. At that checkpoint,
+only Cargo registry data was cached. Workspace `target/` caching was disabled
+after CLI integration tests reused and cleaned nested target paths while the post-job
 cache collector traversed them, producing false missing-file annotations and
 multi-gigabyte uploads.
+
+This is historical context, not the current configuration or expected duration.
+The stable v12 baseline now uses the sharded nextest/doctest system documented
+above. New experiments must measure that inherited configuration, not claim a
+speedup against obsolete commands or omit checks that moved into other jobs.
 
 An acceleration change is acceptable only when all of these conditions hold:
 
@@ -562,7 +567,7 @@ An acceleration change is acceptable only when all of these conditions hold:
 2. Record cold and warm wall time, cache size/hit data, discovered test counts,
    failures and doctest results on Linux, macOS and Windows. Compare equivalent
    commit content; queue time is reported separately from execution time.
-3. Preserve the exact all-feature workspace command, portable transactional
+3. Preserve the all-feature workspace test inventory, portable transactional
    outbox contract and Linux live-provider matrices until an alternative proves
    identical coverage. Package sharding must not weaken Cargo feature unification.
 4. Evaluate a pinned compiled-artifact cache and `sccache` independently before
@@ -570,8 +575,9 @@ An acceleration change is acceptable only when all of these conditions hold:
    inputs; caches are performance hints, never release artifacts or evidence that
    tests ran. Bound storage and prevent untrusted pull requests from replacing a
    protected default-branch cache.
-5. Trial `cargo-nextest` only if ordinary tests, ignored-test policy, retries,
-   process cleanup and failure reporting remain equivalent. Run Cargo doctests
+5. Change the inherited `cargo-nextest` configuration only if ordinary tests,
+   ignored-test policy, retries, process cleanup and failure reporting remain
+   equivalent. Run Cargo doctests
    separately because nextest does not replace them. Keep plain `cargo test` as
    a documented recovery path.
 6. Promote the experiment to blocking CI only after repeated green cold and warm
@@ -579,9 +585,10 @@ An acceleration change is acceptable only when all of these conditions hold:
    flakes, lost tests, hidden failures or multi-gigabyte cache churn. Retain the
    previous workflow as a quick rollback during the observation window.
 
-This work optimizes feedback latency, not the evidence boundary. Any v12 trial
-must be isolated from the frozen release candidate and merged only with its own
-cross-platform A/B receipts; otherwise this plan remains the first v13 CI task.
+This work optimizes feedback latency, not the evidence boundary. Any v12
+maintenance change must preserve the immutable v12.0.0 artifacts and carry its
+own applicable verification. Further scheduling/cache changes need comparable
+cross-platform A/B receipts before their claimed benefit is accepted.
 
 The goal of this roadmap is stronger, reproducible evidence—not a larger number
 of badges or absolute claims that no finite test suite can establish.

@@ -32,9 +32,12 @@
   <a href="https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md"><strong>Contribute</strong></a>
 </p>
 
-> **v12.0.0 is published.** Install the stable package below. `main` receives
-> v12 maintenance; next-major work lives on `v13`. The legacy `v5` line is
-> no longer maintained. [Release record](https://rullst.github.io/Rullst/book/v12.html)
+> **This is the unreleased v13 development branch.** Its starting point is the
+> published v12 source plus the documentation closeout; a branch name is not a
+> v13 release. The badges and installation commands below describe stable v12,
+> not verified v13 readiness. `main` remains the v12 maintenance line; `v5` is
+> no longer maintained. [v13 priorities](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#v13-execution-priorities)
+> · [v12 release record](https://rullst.github.io/Rullst/book/v12.html)
 > · [Compatibility policy](https://rullst.github.io/Rullst/book/compatibility-policy.html).
 
 ## 🚀 Start building
