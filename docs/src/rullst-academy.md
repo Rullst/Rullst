@@ -28,8 +28,9 @@ The Academy repository must:
   application;
 - contribute only proven, reusable abstractions back to optional framework
   crates;
-- act as the first real upgrade, backup/restore and recovery consumer before a
-  Rullst stable release is declared ready.
+- provide application-level upgrade, backup/restore and recovery feedback for
+  future releases; this proposed product is not a prerequisite for the already
+  published v12 release.
 
 ## Focused first release
 

@@ -19,7 +19,7 @@ For the old no-default behavior:
 ```toml
 [dependencies]
 rullst = {
-    version = "12.0.0-rc.1",
+    version = "12.0.0",
     default-features = false,
     features = ["orm", "queue-sqlite"]
 }
@@ -27,7 +27,7 @@ rullst = {
 
 The explicit features above opt into v12's local database behavior. Omit them
 for a database-free HTTP service. If the application relies on v12 defaults,
-`rullst = "12.0.0-rc.1"` enables both automatically.
+`rullst = "12.0.0"` enables both automatically.
 
 Remove obsolete direct `lettre` wiring from the facade migration and use
 `mail-smtp`. Review the new `security`, `iot`, `redis`, and `strict-*` boundaries

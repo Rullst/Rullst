@@ -1,5 +1,5 @@
 error: only one persisted field may declare #[orm(embedding_for = "...")]
-  --> tests/ui/multiple_embedding_fields.rs:10:5
+  --> tests/ui/multiple_embedding_fields.rs:11:5
    |
-10 |     #[orm(embedding_for = "body")]
-   |     ^
+11 |     secondary_embedding: Option<Vec<f32>>,
+   |     ^^^^^^^^^^^^^^^^^^^

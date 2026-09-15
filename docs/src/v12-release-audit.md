@@ -1,16 +1,54 @@
-# v12 release audit follow-up
+# v12 stable release audit
 
-Status: **in progress; RC is NO-GO while the findings and final gates below are
-open**. This report supersedes blanket readiness interpretations of the earlier
-local-ceiling campaign. That campaign and hosted coverage measurements remain
-historical evidence for their recorded commits, not proof of the current tree.
+Status: **Rullst `12.0.0` was published on September 15, 2026** from immutable
+tag [`v12.0.0`](https://github.com/Rullst/Rullst/releases/tag/v12.0.0) at
+commit
+[`eb11f892ae28f076e7a83c38a635316c6ed89028`](https://github.com/Rullst/Rullst/commit/eb11f892ae28f076e7a83c38a635316c6ed89028).
+The protected [release workflow](https://github.com/Rullst/Rullst/actions/runs/34955468167)
+completed its admission, artifact verification, attestation, publication
+preflight, sixteen-package Trusted Publishing, registry verification, and
+GitHub release jobs successfully.
+
+### Stable-source verification receipts
+
+These successful runs all identify `eb11f892` as their source:
+
+| Evidence | Workflow run |
+| :--- | :--- |
+| Multi-platform CI and 94/A repository scorecard | [34895536764](https://github.com/Rullst/Rullst/actions/runs/34895536764) |
+| LLVM line coverage: 90.3220% repository, 90.6186% framework libraries | [34895523751](https://github.com/Rullst/Rullst/actions/runs/34895523751) |
+| Documentation | [34895523669](https://github.com/Rullst/Rullst/actions/runs/34895523669) |
+| Full 40-target fuzz campaign | [34895536740](https://github.com/Rullst/Rullst/actions/runs/34895536740) |
+| Bounded Kani harnesses | [34895536646](https://github.com/Rullst/Rullst/actions/runs/34895536646) |
+| Scoped Miri checks | [34895536650](https://github.com/Rullst/Rullst/actions/runs/34895536650) |
+| Property tests | [34895536923](https://github.com/Rullst/Rullst/actions/runs/34895536923) |
+| Sanitizers | [34951576777](https://github.com/Rullst/Rullst/actions/runs/34951576777) |
+
+The release admission policy lists the complete required workflow inventory.
+The informational mutation campaign below belongs to its separately recorded
+earlier SHA; it is not a fresh mutation result for the stable commit.
+
+Each hosted result remains evidence for its recorded commit, inventory, and
+environment rather than every future tree. This repository-owned audit is not
+an independent certification.
 
 ## Baseline and method
 
-The integration baseline is `7743bab3` on
-`fix/cli-logo-animation-speed`, including the second-computer report in
-[CLIFIX.md](../../CLIFIX.md). Its earlier “uncommitted” wording describes the
-remote review session; that delivery is now committed and fetched here.
+The audit began on candidate `a6b3bc8a`, which included the now-integrated
+second-computer CLI findings, fail-closed SQLite schema validation for automatic
+migration generation, and the corrected mutation inventory. All 22 applicable
+push workflows passed on that SHA. The immutable RC tag is
+`v12.0.0-rc.1` at
+`2b19567e8d184ad3ceeebae812de71b06d32e484`.
+
+Stable preparation then synchronized package versions, public documentation,
+site copy and release evidence and added bounded correctness/hardening changes
+to CSRF composition, session-cookie handling, generated
+registration/billing/container contracts and Studio's browser assets. Those
+runtime changes earned fresh evidence before the final tag; the stable
+publication did not inherit an RC pass merely by description. The obsolete
+temporary CLI handoff file was retired after integration and remains available
+in Git history.
 
 Review covers every published crate. IoT receives only a light triage under the
 owner's explicit v12 exception. Each deep review traces public inputs through
@@ -24,19 +62,54 @@ configuration has been exhaustively analyzed. Tests are serialized on the
 memory-limited local machine. The final local workspace gate completed after
 the correction batch.
 
+## Evidence-bound repository grade
+
+The authoritative scoring method remains the
+[quality scorecard](quality-scorecard.md); this audit does not create a second,
+more flattering grading system. Under that policy, the reviewed implementation
+supports a maximum local aggregate of **94/A** when all conditioning gates are
+green. Each of the 15 active non-IoT crates has an A ceiling, while
+`rullst-iot` retains the owner-approved **83/B** exception because physical
+device and boot-chain evidence is outside the v12 campaign.
+
+That is an evidence-bounded engineering grade, not a security certification,
+feature-completeness percentage, independent audit result, or release
+authorization. A candidate earns the recorded grade only when its exact SHA
+passes the applicable scorecard constraints. The RC met those conditions only
+after its automatic and manual gates, packaging checks, documentation review,
+and explicit GO decision completed. Stable v12 subsequently passed its own
+conditioning gates at `eb11f892`, as recorded above; neither result authorizes
+unverified future changes.
+
+## Post-publication documentation closeout
+
+The maintenance cleanup separates the published v12 record from the v13
+backlog, replaces oversized historical planning pages with English archive
+pointers, and preserves the original claims and evidence under the immutable
+`v12.0.0` tag. The temporary `CLIFIX.md` handoff is retired; the frozen
+190-claim historical classification remains machine-checked independently of
+the shortened release page.
+
+README and landing-page examples are sourced from the independently maintained
+[examples repository](https://github.com/Rullst/examples), not advertised as
+fresh stable-version or platform certification. Local documentation builds,
+source-link/anchor checks, spelling checks, and real-browser layout/accessibility
+checks validate the edited presentation. They do not establish that every
+tutorial or external provider was newly tested end to end in production.
+
 ## Coverage ledger
 
 | Crate / surface | Review scope | Current status |
 | --- | --- | --- |
 | `rullst-orm` | Projection identifiers, empty-set predicates, tenant/global scopes, transactions, policy mutations, nested queries and search | Reproduced isolation/transaction defects corrected; focused default/strict-SQLite/Redis regressions and the final all-feature workspace gate are green; live external-backend matrices remain release evidence |
-| `rullst-orm-macros` | Generated SQL bindings, parser diagnostics, portable identifiers and scope generation | Corrected generated contracts; 41 unit tests, one smoke test and 24 compile-fail cases green |
+| `rullst-orm-macros` | Generated SQL bindings, parser diagnostics, portable identifiers and scope generation | Corrected generated contracts; 43 unit tests, one smoke test and 24 compile-fail cases green |
 | `rullst-core` | HTTP security composition, CSRF, lifecycle and development state ownership | CSRF/security composition 21 tests green; four reload tests and actual Node client behavior tests green |
-| `cargo-rullst` | Remote CLI handoff, public profile accuracy, supervised restart, generated contracts | Supervisor, dashboard, command-behavior, public-profile and materialized blueprint gates are green; snapshot launch now retries bounded transient Linux executable-busy races |
+| `cargo-rullst` | Remote CLI handoff, public profile accuracy, supervised restart, generated contracts | Supervisor, dashboard, command-behavior, public-profile and materialized blueprint gates are green; snapshot launch retries bounded transient Linux executable-busy races; automatic SQLite migration generation now rejects unsafe database-owned identifiers before writing Rust source |
 | `rullst-auth` | JWT expiry/revocation, encrypted sessions, role guards, passkey/SQLite cancellation | Corrections green: 60 library tests and five durable JWT integrations |
 | `rullst-security` | WebSocket origin enforcement, middleware readiness, bounded redaction, crypto/input policies | 159 library tests and two Tower tests green; final rate-limit run passed 11 tests including two added afterward (161 library cases now) |
 | `rullst-connect` | OIDC claims/nonce, refresh semantics, callback state and token lifetimes | Corrections green: 204 library tests with Axum-session and SQLite features |
 | `rullst-capital` | Provider side effects, pricing, charge binding, authenticated payload schema and signature protocols | 99 library plus 22 integration tests green with Actix; one later Actix duplicate-header regression also green |
-| `rullst-nexus` | Admin transport/origin/authorization and tenant/audit boundaries | Corrections green: 50 library plus 11 integration tests, including real SQLite tenant/audit cases |
+| `rullst-nexus` | Admin transport/origin/authorization and tenant/audit boundaries | Corrections green: 50 library plus 11 integration tests, including real SQLite tenant/audit cases; the default coverage pass now includes those cases and its shared-pool race was removed, with 10 consecutive parallel integration runs green |
 | `rullst-studio` | Local operator boundary, handoff layout/telemetry changes, dynamic HTML | Static boundary review found no additional reproduced defect; 48 library tests, integrations and the final workspace gate are green |
 | `rullst-macros` | Escaping/raw HTML, generated handler/runtime contracts | Static trust-context review completed; no new reproduced defect; final all-feature workspace tests and doctests are green |
 | `rullst-ai` | Provider/mock separation, redirect handling, response limits and tool-policy boundaries | 102 library tests green, including real local HTTP regressions for all five native transports |
@@ -65,24 +138,58 @@ and `-D warnings`.
 | Security middleware | HTTP/2 CONNECT bypassed WebSocket origin policy; cloned Tower services lost acquired readiness | Apply the origin guard to the extended method and call the ready service instance |
 | Abuse controls/logs | Reset zero-limit admission, counter overflow, concurrent capacity escape and redaction suffix leakage | Checked bounded admission, atomic capacity/reclamation and bounded fail-closed redaction; controls remain process-local |
 | Core CSRF | Empty proofs accepted; valid split Cookie fields rejected; duplicate proofs ambiguous | Nonempty bounded unique tokens, multi-field cookie parsing and exact supported form media type; unsigned double-submit is not a session-signed CSRF scheme |
+| Production CSRF composition | An application router with an explicit CSRF layer was wrapped by the `Server` production baseline, so a first GET emitted two different cookies and the rendered form echoed only one; browsers retained the other and valid submissions failed with 403 | A private request marker makes nested framework/application CSRF composition idempotent while preserving validation at the outer boundary; the exact two-layer regression requires one matching cookie and a successful matching POST. Applications still own HTTPS, session authentication and exact exemptions |
+| Examples Omni/HTML/COEP report | A generated Tauri package used colliding Windows MSVC PDB target names; `html!` rejected source comments; the deployed LMS needed reviewed cross-origin media behavior | Give the Omni library a distinct `rullst_omni_lib` target and compile-test the emitted entrypoint; strip bounded source comments in the macro parser; retain `require-corp` by default while exposing a closed, validated Core COEP application setting. Cross-origin media still requires matching CSP, server headers and deployed-browser evidence |
 | Nexus operator access | An absolute HTTPS URI impersonated verified TLS; local Host/Origin boundary incomplete | Require the private verified-transport capability and validate local browser Host/Origin; deployment proxies must supply the correct trusted adapter |
 | Capital live operations | Fabricated portals/no-op mutations, four hardcoded prices and undocumented mock aliases | Explicit unsupported errors for unimplemented live behavior; deterministic mocks only through documented mock credentials; consult the crate's provider-method matrix |
 | Capital receipts/webhooks | Incomplete authenticated payloads inferred active/paid; charge identity insufficiently bound; Polar/MP body-only signatures did not represent their protocols | Validate required event/status/charge bindings; bounded Polar header-based Standard Webhooks verification; incompatible legacy live signature paths fail closed, including MP until its full provider verification is implemented |
 | AI/Mail transports | Redirects forwarded private request content; AI JSON unbounded; suppression cancellation leaked state | Pooled redirect-disabled clients, connection/request budgets, bounded native AI responses and SQLx rollback ownership; native custom endpoints remain trusted operator configuration |
 | Public DLL reload | Windows LMS loaded an independent ORM/runtime state and unsafe cross-runtime workarounds were proposed | Remove public DLL generation and use directly linked supervised restart; retained legacy loader is experimental and not a stable Rust ABI |
+| Automatic migration generation | SQLite table and column names reached a metadata query and generated Rust comments/strings without validation | Reuse the strict bounded database-identifier policy, bind the SQLite metadata lookup and reject the complete schema before generating any file; regressions cover newline-bearing table and column identifiers |
+| Release coverage | The earlier final-main LLVM artifact reported 78,962/87,941 lines (89.7897%) while the upload job itself stayed green; default Nexus SQLite/audit paths were omitted | Nexus is now included in the merged default-profile pass and exact 90% whole-repository and framework-library floors run before upload. PR #183's hosted artifact reported 79,349/87,941 lines (90.2298%) overall and 59,767/66,004 (90.5506%) across 435 governed framework-library files; the frozen release SHA must repeat this gate |
+| Fuzz campaign | Earlier hosted runs found complete-tree rendering in unsupported-union and missing-ID model diagnostics. On `36411ea1`, 39 of 40 targets completed their full 5.5-hour campaigns; `fuzz_parser` alone found a third valid derive tree where unconditional `Field::span()` validation exceeded the ten-second per-input limit | Anchor model, relation, field and unsupported-type diagnostics to bounded identifiers instead of rendering complete syntax trees; retain all three discovered shapes in the parser corpus. The latest exact ASan reproducer improved from a repeatable 12.1-second timeout to about 30 milliseconds locally; a fresh five-minute local campaign completed 1,740,804 executions without a finding, and all 43 macro unit tests plus 24 compile-fail cases are green. Hosted diagnostic run 34495340300 then completed 1,541,970 executions in 301 seconds on corrected code commit `40c1b083`, with no finding. The subsequent complete 40-target campaign passed on `7697fb8a` in run `34642351302`; its evidence is carried only across the bounded final delta described below |
+
+The parser correction also passed the exact local workspace gates:
+`cargo test --workspace --all-features` and
+`cargo clippy --workspace --all-features -- -D warnings`. This is local
+evidence only and does not replace the hosted final-candidate matrix.
 
 The adversarial regressions use local databases, mock keys, signed synthetic
 tokens and loopback HTTP servers—not real credentials or real payment requests.
 Provider capability corrections are observable behavior changes: callers must
 handle explicit errors where previous code returned misleading success.
 
+## AI-assisted security review evidence
+
+A read-only Codex Security deep scan inspected representative repository
+surfaces and preserved a **partial**, not exhaustive, report after reaching its
+configured budget. It reported no Critical or High finding and independently
+validated one Low-severity, Medium-confidence generated-source injection path
+in `make:migration:auto`. The finding required control of a selected SQLite
+schema, explicit generator invocation and a later insufficiently reviewed build,
+but its possible impact justified correction before the RC.
+
+The follow-up working-tree scan reviewed both changed production files but
+reached its smaller budget during threat-model construction, before final
+validation. It produced no report and is deliberately not counted as a pass.
+The release evidence for the correction is therefore the source trace, the two
+crafted-SQLite regressions, the complete all-feature workspace tests, strict
+workspace Clippy and the subsequent hosted candidate gates. This AI-assisted
+review is neither an independent audit nor a claim of complete repository
+coverage.
+
 ## Website, README and first-run documentation
 
 The organization root website and the framework Pages site were different
 deployments. The old organization site still described `main` as v5 and `dev`
 as v12, and its privacy page asserted unverified worldwide legal compliance.
-Both entry points now have prepared matching source, with separate deployment
-receipts still required. The new copy keeps v12 unreleased and v5 end-of-life.
+The source correction prepared matching copy for both entry points. This
+repository's [stable Pages deployment](https://github.com/Rullst/Rullst/actions/runs/34895523735)
+passed; the organization-root deployment remains a separately operated site.
+The RC copy presented v12.0.0-rc.1 as an explicit evaluation candidate and
+marked v5 end-of-life. The stable documentation presents
+`12.0.0` as the supported v12 line while retaining application-specific
+security and deployment limits.
 
 The landing uses local CSS/JavaScript/images, finite reduced-motion-aware
 animation, thirteen owner-supplied social links and a concrete privacy notice.
@@ -97,13 +204,15 @@ tutorials instead of creating another competing API reference. Initial guides
 clarify matching CLI installation, optional persistence, first-build time,
 actual generator paths and how to verify a visible result.
 
-Verified locally: `mdbook build docs`,
+Verified locally for the stable-promotion worktree: `mdbook build docs`,
 `python3 .github/validate-site.py`, `node --check docs/site.js`, and
 `node .github/site-browser-smoke.mjs`. The Chromium test passed desktop,
 390/320-pixel layouts, keyboard/mobile menu behavior, clipboard success/denial,
 privacy disclosure, reduced motion, no-JavaScript navigation and no external
-landing requests or browser storage. The exported organization site also passed
-with `--organization-site`; this is not a WCAG or cross-browser certification.
+landing requests or browser storage. The RC organization-site export previously
+passed the same smoke suite with `--organization-site`; the stable copy still
+requires its separate deployment receipt. This is not a WCAG or cross-browser
+certification.
 
 ## Development reload decision
 
@@ -123,19 +232,77 @@ The v13 decision is evidence-driven: compare measured reload time, failure
 recovery, process cleanup, memory and state ownership across databases and
 operating systems before considering a different architecture.
 
-## Evidence still required
+## Pre-stable evidence retained
 
-- Review all changed paths together and freeze the candidate; the broad review
-  above is bounded repository-owned evidence, not an independent audit.
-- Repeat the real HTTP/Chromium acceptance pass for the representative Blog
-  application on the final candidate; materialized compile/test contracts for
-  every generated blueprint are already green.
-- Review CI/dependency/security alerts and run the applicable manual release
-  matrices on the actual candidate commit.
-- Repeat package/preflight, site/browser and documentation checks on that
-  candidate.
-- Reassess quality/readiness using these results; do not carry forward 91.8%
-  readiness or 100% local-ceiling completion as current audited facts.
+- Approved code candidate `a6b3bc8a` passed all 22 applicable automatic push
+  workflows. Codecov reported 91.49% repository coverage and 100% patch coverage;
+  the separately enforced framework-library component also passed 90%.
+- The dependency, code-scanning and secret-scanning APIs each reported zero open
+  alerts after the hosted candidate completed.
+- Sixteen exact `12.0.0-rc.1` archives passed metadata/topological preflight,
+  content audit and Cargo package verification. An extracted consumer compiled,
+  the packaged CLI installed and reported the correct version, and all six
+  installed-CLI blueprints generated and compiled without monorepo paths.
+- The complete 40-target hosted fuzz campaign passed on parent `7697fb8a` in
+  run `34642351302`. It remains historical RC evidence. Core/Auth and
+  generated-application runtime changes subsequently required a fresh
+  campaign; stable-source run `34895536740` passed all forty targets.
+- The full mutation campaign is complete. The originating run `34688592153`
+  left six of eighty shards incomplete; exact-SHA recovery run `34738841341`
+  completed eleven of twelve halves before GitHub twice shut down the runner at
+  the same resource-intensive ORM mutant. Finalization run `34761010296`
+  split only that remaining half again, bounded its internal test timeout and
+  passed both fragments, the aggregate and the evidence boundary. The verified
+  content-addressed artifact reports **14,391/14,391 candidates classified**
+  across 87 complete artifacts: 8,705 caught, 3,553 missed, 76 timed out and
+  2,057 unviable, for a conservative caught percentage of 70.57%. Its source is
+  `1ffdf0a72577d1a974b4e87e2bf207f4a3580243`; inventory SHA-256 is
+  `986d5cc1de71f7c8afbae7823a8fca53304b84f8e81b8f9e2d1fd3949c15ef80`.
+  Mutation remains informational: full classification is valid sensitivity
+  evidence, while surviving and timed-out mutants remain explicit follow-up
+  findings rather than being mislabeled as caught.
+- The owner supplied explicit GO for `v12.0.0-rc.1` on September 12, 2026 after
+  reviewing the package graph and topological plan. The later stable closeout
+  repeated the applicable exact-SHA gates and completed the protected
+  publication pipeline. The 94/A repository score remains supporting evidence,
+  not a security certification.
+
+## RC lineage and stable publication receipt
+
+- Tag `v12.0.0-rc.1` resolves to
+  `2b19567e8d184ad3ceeebae812de71b06d32e484`. The release workflow's verify and
+  publish jobs succeeded on that SHA. All sixteen packages were published in
+  topological order, indexed with the verified archive checksums and exposed
+  through docs.rs; the owner also completed a separate-machine CLI smoke test.
+- The GitHub release is marked as a prerelease and contains all sixteen crate
+  archives, checksum files, Cargo metadata/lockfile, Cargo Audit JSON,
+  CycloneDX 1.5 SBOM, bounded security evidence, advisory policy, ownership
+  evidence and tag context. GitHub's SHA-pinned build-provenance attestation
+  verified for the archives and evidence bundle.
+- The overall historical run is red only because the additional reusable SLSA
+  generator failed during environment detection: its transitive
+  `detect-workflow-js@v2.1.0` reference violated this repository's full-SHA
+  Action policy. It never generated or uploaded provenance. It is not counted
+  as release evidence, and no SLSA level is claimed. Stable preparation removed
+  that redundant external job while retaining the successful SHA-pinned GitHub
+  attestation already produced inside the verified job.
+- All package names are registered. Trusted Publishing is configured by the
+  owner for all sixteen packages, the temporary bootstrap secret was removed,
+  and the exposed bootstrap token was revoked. Stable publication used the
+  protected `crates-io` environment and short-lived OIDC credentials; the
+  bootstrap path remains inactive.
+- Stable `12.0.0` promotes the audited RC lineage plus the declared post-RC
+  corrections: idempotent nested CSRF composition, stricter session-cookie
+  parsing/logout, transactional generated LMS registration, POST/CSRF billing
+  mutations, hardened generated containers, self-contained Studio assets,
+  collision-free Omni targets, source-comment parsing and explicit validated
+  COEP application policy.
+- Tag `v12.0.0` resolves to
+  `eb11f892ae28f076e7a83c38a635316c6ed89028`. Release run
+  `34955468167` reproduced and verified the archives, created SHA-pinned
+  build-provenance attestations, published all sixteen packages in topological
+  order, verified registry availability and checksums, and created the
+  non-prerelease GitHub release.
 
 ## Residual limitations for the next reviewer
 
@@ -168,7 +335,9 @@ and be documented as unsupported; mock success is not live-provider evidence.
 ## Repeatable focused verification receipts
 
 These focused commands and the final local preflight succeeded during the
-September 5–6 correction batch:
+September 5–6 correction batch. The September 8 PR #183 tree, merged as
+`adb83c8b`, independently repeated `cargo test --workspace --all-features`,
+strict all-feature workspace Clippy, formatting and diff checks successfully:
 
 ```bash
 CARGO_BUILD_JOBS=1 cargo test -p cargo-rullst --lib -- --test-threads=1

@@ -373,6 +373,54 @@ fn automatic_migration_reports_missing_and_unsupported_configuration() {
     assert!(!unsupported.root.join("src/migrations").exists());
 }
 
+#[test]
+fn automatic_migration_rejects_database_identifiers_that_could_inject_source() {
+    for schema in [
+        "CREATE TABLE \"unsafe\nname\" (value TEXT)",
+        "CREATE TABLE safe_table (\"unsafe\ncolumn\" TEXT)",
+    ] {
+        let project = Project::new();
+        let database = project.root.join("untrusted-schema.sqlite");
+        let database_url = sqlite_database_url(&database);
+        tokio::runtime::Runtime::new()
+            .expect("SQLite fixture runtime")
+            .block_on(async {
+                let pool = sqlx::SqlitePool::connect(&database_url)
+                    .await
+                    .expect("SQLite fixture connection");
+                sqlx::query(schema)
+                    .execute(&pool)
+                    .await
+                    .expect("crafted SQLite schema");
+                pool.close().await;
+            });
+        fs::write(
+            project.root.join(".env"),
+            format!("DATABASE_URL={database_url}\n"),
+        )
+        .expect("database environment");
+
+        let output = project.run(&["make:migration:auto"]);
+        let text = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            !output.status.success(),
+            "crafted schema was accepted: {text}"
+        );
+        assert!(
+            text.contains("InvalidIdentifier"),
+            "unexpected rejection: {text}"
+        );
+        assert!(
+            !project.root.join("src/migrations").exists(),
+            "rejected schema must not generate Rust source"
+        );
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn project_creation_keeps_files_and_explains_a_failed_initial_migration() {
@@ -436,6 +484,29 @@ fn database_forwarding_and_complete_project_packaging_use_controlled_cargo() {
             .run_with_path(&["new", "packaged-app", "--default"], Some(&tools))
             .status
             .success()
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn database_forwarding_preserves_a_failed_cargo_status() {
+    let project = Project::new();
+    let tools = project.install_failing_cargo();
+    let output = project.run_with_path(&["db:migrate"], Some(&tools));
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    assert_eq!(
+        output.status.code(),
+        Some(17),
+        "the database wrapper must preserve the controlled child failure: {text}"
+    );
+    assert!(
+        text.contains("Failed to execute db command: db:migrate"),
+        "the failed operation must remain actionable: {text}"
     );
 }
 

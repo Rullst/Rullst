@@ -2,7 +2,8 @@ name: Deploy Sites to GitHub Pages
 
 on:
   push:
-    # While v12 is unreleased, the public site is an explicit mainline preview.
+    # Deploy the current documentation/site source; stable users should pin an
+    # immutable release rather than relying on this moving mainline deployment.
     branches: ["main"]
   workflow_dispatch:
 

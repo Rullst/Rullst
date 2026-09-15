@@ -16,7 +16,7 @@ pub async fn omni_page() -> impl IntoResponse {
             <head>
                 <meta charset="utf-8" />
                 <title>"Rullst Omni - Mobile Simulator & Desktop App Exporter"</title>
-                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" />
                 <style>{ rullst::html::RawHtml(styles) }</style>
                 <style>
                     r#"

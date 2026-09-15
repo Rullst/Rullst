@@ -169,6 +169,13 @@ mod tests {
             assert!(lms.iter().any(|(path, _)| *path == academy_path));
         }
         assert!(lms.iter().all(|(_, source)| !source.contains("datetime(")));
+        let auth_controller = lms
+            .iter()
+            .find(|(path, _)| *path == "src/controllers/auth_controller.rs")
+            .map(|(_, source)| source)
+            .expect("LMS auth controller");
+        assert!(auth_controller.contains("provision_self_registration_with_tx"));
+        assert!(auth_controller.contains("save_with_tx"));
         assert!(
             saas.iter()
                 .any(|(path, _)| *path == "src/models/subscription.rs")

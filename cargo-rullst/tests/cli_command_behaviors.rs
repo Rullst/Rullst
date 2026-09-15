@@ -426,18 +426,18 @@ fn diagnostics_audit_and_build_are_exercised_with_controlled_tool_processes() {
         &[
             "audit",
             "--audit-ignore",
-            "RUSTSEC-2023-0071",
+            "RUSTSEC-2099-0001",
             "--audit-ignore",
-            "RUSTSEC-2026-0001",
+            "RUSTSEC-2099-0002",
         ],
         &tools,
     );
     assert!(
-        governed.contains("exceptions remain unresolved: RUSTSEC-2023-0071, RUSTSEC-2026-0001")
+        governed.contains("exceptions remain unresolved: RUSTSEC-2099-0001, RUSTSEC-2099-0002")
     );
     assert!(
         fixture
-            .fails(&["audit", "--audit-ignore", "RUSTSEC-2023-0071 --quiet"])
+            .fails(&["audit", "--audit-ignore", "RUSTSEC-2099-0001 --quiet"])
             .contains("expected RUSTSEC-YYYY-NNNN")
     );
     fixture.succeeds_with_path(&["build", "--debug"], &tools);

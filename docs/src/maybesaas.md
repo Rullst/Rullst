@@ -78,7 +78,7 @@ responsible for substantially more:
 `rullst-capital` should retain the typed fiscal contract, request/response
 models, offline preview, and an explicit remote adapter. The live fiscal engine
 should have its own lifecycle because protocol and legal maintenance must not
-be coupled to releases of the web framework. It must not advertise legal or tax
+be coupled to releases of the framework suite. It must not advertise legal or tax
 compliance without qualified review and current official evidence.
 
 **Why it is attractive:** it solves a difficult Brazilian SaaS problem and

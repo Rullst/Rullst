@@ -1,9 +1,9 @@
 # Polyglot Persistence
 
 > [!IMPORTANT]
-> Dependency examples use `12.0.0-rc.1`, the planned first v12 RC. Do not
-> request it from crates.io before it is published; use path dependencies from
-> this source checkout during development.
+> Dependency examples use stable `12.0.0`. Pin that exact version for
+> reproducible v12 builds; use path dependencies only when intentionally
+> testing checkout-local changes.
 
 Rullst v12 keeps explicit relational and specialized persistence contracts.
 SQLx Active Record supports SQLite, PostgreSQL, MySQL, and MariaDB. The bounded
@@ -19,7 +19,7 @@ Using the umbrella crate:
 
 ```toml
 [dependencies]
-rullst = { version = "12.0.0-rc.1", features = ["orm-mongodb"] }
+rullst = { version = "12.0.0", features = ["orm-mongodb"] }
 ```
 
 Available umbrella features are `orm-turso`, `orm-mongodb`, `orm-duckdb`,

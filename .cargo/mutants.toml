@@ -1,0 +1,8 @@
+## Match the release preflight feature surface. The umbrella crate's book
+## doctests intentionally exercise optional ecosystem crates, so testing a
+## shard's package subset with default features produces an invalid baseline.
+##
+## Keep this file at Cargo's documented configuration path. The legacy root
+## `.mutants.toml` was not read by cargo-mutants 27.1.0, so its exclusions were
+## never part of the measured campaign and are deliberately not activated here.
+all_features = true

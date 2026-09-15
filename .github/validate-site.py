@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 HOME = DOCS / "home_template.html"
 BENCH_TEMPLATES = sorted(DOCS.glob("benches*_template.html"))
+README = ROOT / "README.md"
 
 
 class Document(HTMLParser):
@@ -110,8 +111,9 @@ def main() -> None:
     home, source = parse(HOME)
     validate_document(HOME, home)
     assert home.has_main and home.has_nav and home.has_footer, "landing page needs nav, main and footer"
-    assert source.count("All glory and honor to God") == 2, "landing page needs the top and bottom dedication"
-    assert "NO-GO for production" in source, "landing page must preserve the release warning"
+    assert source.count("All glory and honor to God") == 1, "landing page needs the footer dedication"
+    assert "Rullst v12.0.0 stable" in source, "landing page must identify stable v12"
+    assert "evaluate before stable v12" not in source, "landing page retains obsolete RC copy"
     assert "Content-Security-Policy" in source, "landing page must declare a CSP"
     assert not home.inline_behavior, f"landing page has inline behavior/style: {home.inline_behavior}"
     assert home.stylesheets == ["./assets/site.css"], "landing stylesheet must be repository-local"
@@ -130,6 +132,32 @@ def main() -> None:
         "https://x.com/venelouis",
     }
     assert required_social_links <= set(home.links), "missing requested community links"
+    demo_links = {
+        "https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/",
+        "https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/",
+        "https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/",
+        "https://github.com/Rullst/examples",
+    }
+    assert "examples" in home.ids, "landing must expose the demo directory"
+    assert demo_links <= set(home.links), "landing is missing a published example link"
+
+    slogan = "Intelligent, Security-Conscious, and Designed for Effortless Productivity"
+    assert slogan in source, "landing page must preserve the project slogan"
+    readme = README.read_text(encoding="utf-8")
+    assert all(link in readme for link in demo_links), "README is missing a published example link"
+    assert "🌐🦀📜 Rullst 📜🦀🌐" in readme, "README must preserve the project title identity"
+    assert slogan in readme, "README must preserve the project slogan"
+    workflow_count = len(
+        [
+            path
+            for path in (ROOT / ".github" / "workflows").iterdir()
+            if path.suffix in {".yml", ".yaml"}
+        ]
+    )
+    assert f"({workflow_count} workflows)" in readme, "README workflow dashboard count is stale"
+    assert (
+        f"{workflow_count} workflow definitions" in readme
+    ), "README workflow-definition count is stale"
 
     for reference in [*home.links, *home.stylesheets, *home.scripts, *home.images]:
         if reference.startswith("#"):

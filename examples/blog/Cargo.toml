@@ -1,13 +1,13 @@
 [package]
 name = "rullst-blog-example"
-version = "12.0.0-rc.1"
+version = "12.0.0"
 authors = ["Rullst Core Team"]
 edition = "2024"
 publish = false
 autobins = false
 default-run = "rullst-blog-example"
 license = "MIT"
-description = "Example blog application built with the Rullst full-stack web framework."
+description = "Example blog application built with the Rullst framework suite."
 [dependencies]
 async-trait = { workspace = true }
 rullst = { workspace = true, features = ["orm", "auth", "capital", "ai", "studio", "nexus", "mailer"] }

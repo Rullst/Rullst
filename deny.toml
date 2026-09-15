@@ -3,9 +3,7 @@
 [advisories]
 # Temporary exceptions must have an owner, compensating control, and expiry in
 # docs/src/security-advisory-exceptions.md. Patched or absent advisories are not ignored.
-ignore = [
-    "RUSTSEC-2023-0071",
-]
+ignore = []
 
 [licenses]
 # We allow typical open-source licenses compatible with MIT framework

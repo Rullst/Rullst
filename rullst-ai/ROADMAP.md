@@ -1,8 +1,8 @@
 # Rullst AI roadmap
 
 > **Status policy (2026-08-26):** this detailed backlog is preserved. Its
-> verified interpretation is the [`rullst-ai` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps)
-> in the canonical roadmap and the [capability ledger](../docs/src/capability-ledger.md).
+> verified interpretation is the [`rullst-ai` row](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#audit-of-the-detailed-crate-roadmaps)
+> in the canonical roadmap and the [capability ledger](https://rullst.github.io/Rullst/book/capability-ledger.html).
 
 ## Implemented
 

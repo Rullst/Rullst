@@ -14,7 +14,9 @@ assert.equal(git("rev-parse", "--show-toplevel"), target, "Destination must be i
 assert(/(?:github\.com[:/])Rullst\/Rullst\.github\.io(?:\.git)?$/i.test(git("remote", "get-url", "origin")), "Destination must be the official website checkout");
 assert.equal(git("status", "--porcelain"), "", "Commit or preserve destination edits before exporting");
 const source = await readFile(join(root, "docs/home_template.html"), "utf8");
-const home = source.replace('./assets/site.css', './src/style.css').replace('./assets/site.js', './src/main.js');
+const home = source.replace('./assets/site.css', './src/style.css').replace('./assets/site.js', './src/main.js')
+  .replace('property="og:url" content="https://rullst.win/Rullst/"', 'property="og:url" content="https://rullst.win/"')
+  .replace('rel="canonical" href="https://rullst.win/Rullst/"', 'rel="canonical" href="https://rullst.win/"');
 const privacy = source.match(/      <section id="privacy"[\s\S]+?      <\/section>/)?.[0];
 assert(privacy, "Landing source must contain a complete privacy notice");
 const privacyPage = `<!doctype html>
@@ -26,7 +28,7 @@ const privacyPage = `<!doctype html>
   <meta name="description" content="How the Rullst website handles hosting, local resources, linked services and contact messages.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'none'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Website privacy notice — Rullst</title>
-  <link rel="canonical" href="https://rullst.github.io/privacy.html">
+  <link rel="canonical" href="https://rullst.win/privacy.html">
   <link rel="icon" type="image/png" href="/Rullst/Rullst.png">
   <link rel="stylesheet" href="./src/style.css">
 </head>
@@ -46,7 +48,7 @@ const updates = new Map([
   ["privacy.html", privacyPage],
   ["src/style.css", await readFile(join(root, "docs/site.css"), "utf8")],
   ["src/main.js", await readFile(join(root, "docs/site.js"), "utf8")],
-  ["README.md", `# Rullst website\n\nSource for [rullst.github.io](https://rullst.github.io/).\n\nThis static website describes the unreleased v12 preview honestly: main is active v12 work; v5 is frozen and end-of-life. It makes no universal performance, security or legal-compliance guarantee.\n\n## Source of truth\n\nThe design and copy are maintained in the [framework repository](https://github.com/Rullst/Rullst): docs/home_template.html, docs/site.css and docs/site.js. The website privacy page is generated from that same landing notice.\n\nAfter preserving all local changes, run from the framework checkout:\n\n\`\`\`bash\nnode .github/export-organization-site.mjs /path/to/clean/Rullst.github.io\n\`\`\`\n\nReview the resulting diff, test it, then commit and deploy separately. The exporter never pushes. Publish matching framework documentation first: /Rullst/book/, /Rullst/images/ and /Rullst/Rullst.png are served by the framework Pages deployment.\n\n## Verification\n\nThe framework's static validator and real Chromium smoke checks exercise the source landing page at desktop and mobile widths, keyboard navigation, clipboard success/denial, privacy details, reduced motion and no-JavaScript navigation. The landing page has no analytics, social embeds or browser storage; linked documentation/benchmarks and GitHub hosting have separate boundaries described in the notice.\n\n## Contributing\n\nPrefer a focused change to the framework source followed by this export, so the two entry points stay aligned. Use conventional commits, for example: feat(site): improve navigation. No npm bundle is required.\n`],
+  ["README.md", `# Rullst website\n\nSource for [rullst.github.io](https://rullst.github.io/).\n\nThis static website describes stable Rullst v12 honestly: use exact release artifacts; main remains a moving integration line and v5 is frozen and end-of-life. It makes no universal performance, security or legal-compliance guarantee.\n\n## Source of truth\n\nThe design and copy are maintained in the [framework repository](https://github.com/Rullst/Rullst): docs/home_template.html, docs/site.css and docs/site.js. The website privacy page is generated from that same landing notice.\n\nAfter preserving all local changes, run from the framework checkout:\n\n\`\`\`bash\nnode .github/export-organization-site.mjs /path/to/clean/Rullst.github.io\n\`\`\`\n\nReview the resulting diff, test it, then commit and deploy separately. The exporter never pushes. Publish matching framework documentation first: /Rullst/book/, /Rullst/images/ and /Rullst/Rullst.png are served by the framework Pages deployment.\n\n## Verification\n\nThe framework's static validator and real Chromium smoke checks exercise the source landing page at desktop and mobile widths, keyboard navigation, clipboard success/denial, privacy details, reduced motion and no-JavaScript navigation. The landing page has no analytics, social embeds or browser storage; linked documentation/benchmarks and GitHub hosting have separate boundaries described in the notice.\n\n## Contributing\n\nPrefer a focused change to the framework source followed by this export, so the two entry points stay aligned. Use conventional commits, for example: feat(site): improve navigation. No npm bundle is required.\n`],
 ]);
 for (const name of updates.keys()) {
   git("ls-files", "--error-unmatch", "--", name);

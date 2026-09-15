@@ -1,10 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+shard_index=0
+shard_count=1
+if [[ $# -ne 0 ]]; then
+  if [[ $# -ne 2 || "$1" != "--shard" || ! "$2" =~ ^([0-9]+)/([1-9][0-9]*)$ ]]; then
+    echo "usage: $0 [--shard INDEX/COUNT]" >&2
+    exit 2
+  fi
+  shard_index="${BASH_REMATCH[1]}"
+  shard_count="${BASH_REMATCH[2]}"
+  if (( shard_index >= shard_count )); then
+    echo "feature-boundary shard index must be lower than its count" >&2
+    exit 2
+  fi
+fi
+
 # Keep every public package usable without implicit default features. Feature
 # rows below exercise every public umbrella feature and the package boundaries
 # most likely to regress when optional adapters change dependency wiring.
 declare -A checked_umbrella_features=()
+matrix_row=0
+executed_rows=0
 
 while IFS='|' read -r package features; do
   [[ -z "$package" || "$package" == \#* ]] && continue
@@ -12,6 +29,13 @@ while IFS='|' read -r package features; do
   if [[ "$package" == "rullst" && -n "$features" ]]; then
     checked_umbrella_features["$features"]=1
   fi
+
+  selected_row=$((matrix_row % shard_count))
+  matrix_row=$((matrix_row + 1))
+  if (( selected_row != shard_index )); then
+    continue
+  fi
+  executed_rows=$((executed_rows + 1))
 
   targets=(--all-targets)
   if [[ -n "$features" ]]; then
@@ -141,6 +165,11 @@ rullst|strict-mysql
 rullst|strict-sqlite
 MATRIX
 
+if (( executed_rows == 0 )); then
+  echo "feature-boundary shard ${shard_index}/${shard_count} selected no rows" >&2
+  exit 1
+fi
+
 # Fail when a new public umbrella feature is added without an isolated row.
 # This keeps the human-readable matrix synchronized with Cargo's actual
 # additive feature graph instead of relying only on the all-feature build.
@@ -163,5 +192,7 @@ for feature in "${public_umbrella_features[@]}"; do
   fi
 done
 
-printf 'Testing  %-20s features=%s\n' "rullst-core" "<none>"
-cargo test --locked --package rullst-core --no-default-features
+if (( shard_index == 0 )); then
+  printf 'Testing  %-20s features=%s\n' "rullst-core" "<none>"
+  cargo test --locked --package rullst-core --no-default-features
+fi

@@ -46,7 +46,13 @@ The blueprint intentionally does not copy a media binary. Add your reviewed
 audio/video asset or application-specific object-storage delivery, then use a
 same-origin path such as `/static/media/lesson.webm`. If you choose a remote
 host, add only that reviewed origin to the application's `media-src` CSP; do
-not weaken the policy to arbitrary HTTPS.
+not weaken the policy to arbitrary HTTPS. Core also defaults COEP to
+`require-corp`, so the remote media server must emit a compatible
+`Cross-Origin-Resource-Policy` response. When a reviewed server cannot do so,
+an application can explicitly set `coep = "credentialless"` under `[security]`
+in `Rullst.toml`; browsers then omit credentials for eligible cross-origin
+no-CORS requests. Prefer same-origin delivery, and test the exact CSP/COEP/media
+combination in the deployed browser rather than disabling isolation globally.
 
 ## What the generated player enforces
 

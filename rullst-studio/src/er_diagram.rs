@@ -251,23 +251,19 @@ async fn render_er_diagram() -> Html<String> {
     <meta charset="UTF-8">
     <title>ER Diagram - Rullst Studio</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script type="module">
-        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-        mermaid.initialize({{ startOnLoad: true, theme: 'dark', securityLevel: 'strict' }});
-    </script>
+    <link href="/studio/assets/studio.css" rel="stylesheet">
 </head>
 <body class="h-full flex flex-col font-mono p-8">
     <div class="max-w-7xl mx-auto w-full h-full flex flex-col">
         <div class="flex items-center justify-between mb-8 flex-shrink-0">
             <h1 class="text-3xl font-bold text-emerald-400 flex items-center gap-3">
                 <a href="/studio" class="text-slate-500 hover:text-emerald-400 transition-colors">←</a>
-                Visual ER Diagram
+                ER Schema
             </h1>
         </div>
         {notice}
         <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex-1 p-8 flex items-center justify-center">
-            <pre class="mermaid">{}</pre>
+            <pre class="w-full overflow-auto text-xs text-slate-200">{}</pre>
         </div>
     </div>
 </body>
@@ -292,10 +288,10 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         let html = render_er_diagram().await.0;
-        assert!(html.contains("Visual ER Diagram"));
-        assert!(html.contains("class=\"mermaid\""));
+        assert!(html.contains("ER Schema"));
+        assert!(html.contains("<pre class="));
         assert!(html.contains("erDiagram"));
-        assert!(html.contains("securityLevel: 'strict'"));
+        assert!(!html.contains("mermaid.min.js"));
     }
 
     #[test]

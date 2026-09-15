@@ -18,7 +18,7 @@ To preserve the old opt-in behavior, start explicitly:
 ```toml
 [dependencies]
 rullst = {
-    version = "12.0.0-rc.1",
+    version = "12.0.0",
     default-features = false,
     features = ["orm", "queue-sqlite"]
 }

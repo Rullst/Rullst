@@ -171,6 +171,12 @@ pub struct SecurityConfig {
     /// Content-Security-Policy (CSP) header value.
     #[serde(default = "default_csp")]
     pub csp: String,
+    /// Cross-Origin-Embedder-Policy value. The strict default is `require-corp`;
+    /// applications that deliberately embed reviewed credentialless cross-origin
+    /// media can opt into `credentialless`, while `unsafe-none` must be an
+    /// explicit application-level decision.
+    #[serde(default = "default_coep")]
+    pub coep: String,
     /// User-Agent strings or substrings to block in the WAF middleware.
     #[serde(default = "default_user_agent_blocklist")]
     pub user_agent_blocklist: Vec<String>,
@@ -189,6 +195,10 @@ pub const DEFAULT_CSP_TEMPLATE: &str = "default-src 'self'; base-uri 'self'; obj
 
 fn default_csp() -> String {
     DEFAULT_CSP_TEMPLATE.to_string()
+}
+
+fn default_coep() -> String {
+    "require-corp".to_string()
 }
 
 fn default_user_agent_blocklist() -> Vec<String> {
@@ -223,6 +233,7 @@ impl Default for SecurityConfig {
             cors_allow_origins: vec![],
             cors_allow_credentials: false,
             csp: default_csp(),
+            coep: default_coep(),
             user_agent_blocklist: default_user_agent_blocklist(),
             enable_pii_masking: false,
             csrf_signed_webhook_paths: Vec::new(),
@@ -244,6 +255,15 @@ impl SecurityConfig {
             return Err(ConfigError::InvalidSecurityConfiguration(
                 "CSP must be a non-empty valid HTTP header value".to_string(),
             ));
+        }
+        if !matches!(
+            self.coep.as_str(),
+            "require-corp" | "credentialless" | "unsafe-none"
+        ) {
+            return Err(ConfigError::InvalidSecurityConfiguration(format!(
+                "COEP policy `{}` must be require-corp, credentialless, or unsafe-none",
+                self.coep
+            )));
         }
         let mut unique_origins = std::collections::HashSet::new();
         for origin in &self.cors_allow_origins {
@@ -397,6 +417,7 @@ cors_allow_origins = ["https://example.com"]
     fn test_default_security_config() {
         let config = SecurityConfig::default();
         assert_eq!(config.csrf_same_site, "Lax");
+        assert_eq!(config.coep, "require-corp");
         assert!(config.csp.contains("default-src"));
         assert!(!config.csp.contains("unsafe-inline"));
         assert!(!config.csp.contains("unsafe-eval"));
@@ -419,6 +440,7 @@ cors_allow_origins = ["https://example.com"]
     fn test_deserialize_security_config_defaults() {
         let config: SecurityConfig = toml::from_str("").unwrap();
         assert!(!config.enable_pii_masking);
+        assert_eq!(config.coep, "require-corp");
     }
 
     #[test]
@@ -505,5 +527,18 @@ cors_allow_origins = ["https://example.com"]
         config.csrf_same_site = "Lax".to_string();
         config.csp = "default-src 'self'\r\nx-injected: yes".to_string();
         assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn coep_policy_is_explicit_and_closed() {
+        let mut config = SecurityConfig::default();
+        for policy in ["require-corp", "credentialless", "unsafe-none"] {
+            config.coep = policy.to_string();
+            assert!(config.validate().is_ok(), "{policy} must be accepted");
+        }
+        for invalid in ["", "off", "cross-origin", "require-corp\nunsafe-none"] {
+            config.coep = invalid.to_string();
+            assert!(config.validate().is_err(), "{invalid:?} must be rejected");
+        }
     }
 }

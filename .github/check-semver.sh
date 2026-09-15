@@ -118,15 +118,15 @@ while IFS= read -r package; do
       tar --extract --file "$archive_path" --directory "$semver_tmp" \
         --no-same-owner --no-same-permissions
 
-      # tinyvec 1.13.0 has an upstream alloc-only compilation regression. The
-      # current package constrains fresh consumer resolution, but registry
-      # baselines are built in a separate graph by cargo-semver-checks. Add the
-      # same temporary resolver-only constraint without changing baseline Rust
-      # source or its public API. Remove this after a fixed release is verified.
+      # tinyvec 1.13.0 had an upstream alloc-only compilation regression. The
+      # workspace and published rullst-orm baseline constrain resolution to the
+      # verified fixed release. Registry baselines are built in a separate graph
+      # by cargo-semver-checks, so add that same resolver-only constraint without
+      # changing baseline Rust source or its public API.
       if ! grep -Eq '^\[dependencies\.tinyvec\][[:space:]]*$' "$baseline_root/Cargo.toml"; then
         {
           printf '\n[dependencies.tinyvec]\n'
-          printf 'version = "=1.12.0"\n'
+          printf 'version = "=1.13.2"\n'
           printf 'default-features = false\n'
         } >> "$baseline_root/Cargo.toml"
       fi

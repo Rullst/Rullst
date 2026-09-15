@@ -142,7 +142,7 @@ pub async fn repository_page() -> impl IntoResponse {
             <head>
                 <meta charset="utf-8" />
                 <title>"Rullst ORM - Repository & Data Mapper Pattern"</title>
-                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" />
                 <style>{ rullst::html::RawHtml(styles) }</style>
             </head>
             <body>

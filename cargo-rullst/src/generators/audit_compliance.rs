@@ -148,7 +148,7 @@ mod tests {
         let evidence = ComplianceEvidence {
             secret_scan: EvidenceStatus::NoFindings,
             dependency_audit: EvidenceStatus::NoFindingsOutsideExceptions(vec![
-                "RUSTSEC-2023-0071".to_string(),
+                "RUSTSEC-2099-0001".to_string(),
             ]),
             unsafe_scan: EvidenceStatus::NoFindings,
             idor_scan: EvidenceStatus::NoFindings,
@@ -158,7 +158,7 @@ mod tests {
         write_compliance_report(&output, &evidence).expect("evidence report");
         let report = fs::read_to_string(&output).expect("evidence contents");
         assert!(report.contains("NO FINDINGS OUTSIDE EXCEPTIONS"));
-        assert!(report.contains("RUSTSEC-2023-0071"));
+        assert!(report.contains("RUSTSEC-2099-0001"));
         assert!(report.contains("remain unresolved"));
         fs::remove_file(output).expect("temporary report cleanup");
     }

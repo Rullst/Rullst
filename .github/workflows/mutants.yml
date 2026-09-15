@@ -2,31 +2,250 @@ name: Mutation Testing (manual informational)
 
 on:
   workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
+    inputs:
+      mode:
+        description: Full campaign, one changed file, or exact-run recovery
+        required: true
+        default: full
+        type: choice
+        options:
+          - full
+          - targeted
+          - resume
+          - finalize
+      file:
+        description: Repository-relative .rs file (required only for targeted mode)
+        required: false
+        type: string
+      resume_run_id:
+        description: Failed full-campaign run ID (required only for resume mode)
+        required: false
+        type: string
+      resume_shards:
+        description: Comma-separated failed shard indexes, for example 2,4,65
+        required: false
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  CARGO_INCREMENTAL: "0"
+  RUSTC_WRAPPER: sccache
+  SCCACHE_GHA_ENABLED: "true"
+  SCCACHE_GHA_VERSION: rullst-mutants-v1
+  SCCACHE_GHA_RW_MODE: READ_WRITE
 
 jobs:
-  mutants:
-    permissions:
-      contents: read
-    name: cargo-mutants informational shard ${{ matrix.shard }}/16
+  plan:
+    name: Validate mutation campaign scope
     runs-on: ubuntu-latest
-    timeout-minutes: 330
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      mode: ${{ steps.plan.outputs.mode }}
+      file: ${{ steps.plan.outputs.file }}
+      shard_count: ${{ steps.plan.outputs.shard_count }}
+      artifact_count: ${{ steps.plan.outputs.artifact_count }}
+      resume_run_id: ${{ steps.plan.outputs.resume_run_id }}
+      resume_shards: ${{ steps.plan.outputs.resume_shards }}
+      source_sha: ${{ steps.plan.outputs.source_sha }}
+      provenance: ${{ steps.plan.outputs.provenance }}
+      expected_inventory_sha256: ${{ steps.plan.outputs.expected_inventory_sha256 }}
+      secondary_resume_run_id: ${{ steps.plan.outputs.secondary_resume_run_id }}
+      incomplete_fragment_artifact: ${{ steps.plan.outputs.incomplete_fragment_artifact }}
+      test_timeout_seconds: ${{ steps.plan.outputs.test_timeout_seconds }}
+      build_timeout_seconds: ${{ steps.plan.outputs.build_timeout_seconds }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Test exact-run recovery policy
+        run: python3 .github/test-plan-mutation-resume.py
+
+      - name: Export strict mutation scope
+        id: plan
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MUTATION_MODE: ${{ inputs.mode }}
+          MUTATION_FILE: ${{ inputs.file }}
+          RESUME_RUN_ID: ${{ inputs.resume_run_id }}
+          RESUME_SHARDS: ${{ inputs.resume_shards }}
+        run: |
+          resume_run_id=""
+          resume_shards=""
+          source_sha="$GITHUB_SHA"
+          artifact_count=1
+          expected_inventory_sha256=""
+          secondary_resume_run_id=""
+          incomplete_fragment_artifact=""
+          test_timeout_seconds=""
+          build_timeout_seconds=""
+          provenance=$(jq -cn \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg workflow_path ".github/workflows/mutants.yml" \
+            --argjson run_id "$GITHUB_RUN_ID" \
+            --argjson run_attempt "$GITHUB_RUN_ATTEMPT" \
+            --arg head_branch "$GITHUB_REF_NAME" \
+            --arg source_sha "$GITHUB_SHA" \
+            --arg mode "$MUTATION_MODE" \
+            --arg cargo_mutants_version "27.1.0" \
+            '{schema: 1, repository: $repository, workflow_path: $workflow_path,
+              run_id: $run_id, run_attempt: $run_attempt,
+              head_branch: $head_branch, source_sha: $source_sha, mode: $mode,
+              cargo_mutants_version: $cargo_mutants_version}')
+          case "$MUTATION_MODE" in
+            full)
+              if [ -n "$MUTATION_FILE" ] || [ -n "$RESUME_RUN_ID" ] || [ -n "$RESUME_SHARDS" ]; then
+                echo "Full mode covers the workspace; leave file and resume inputs empty." >&2
+                exit 2
+              fi
+              # The measured v12 inventory contains 14,391 mutants. A 16-way
+              # split left the slowest CLI/ORM jobs with projected runtimes of
+              # 11-17 hours, beyond the existing 5h30 infrastructure bound.
+              # Eighty shards retain the exact inventory while bounding each
+              # job to at most about 180 candidates.
+              shard_count=80
+              matrix=$(jq -cn --argjson count "$shard_count" \
+                '{include: [range(0; $count) | {index: ., count: $count, artifact: tostring}]}')
+              artifact_count="$shard_count"
+              ;;
+            targeted)
+              if [ -n "$RESUME_RUN_ID" ] || [ -n "$RESUME_SHARDS" ]; then
+                echo "Targeted mode does not accept resume inputs." >&2
+                exit 2
+              fi
+              if [[ ! "$MUTATION_FILE" =~ ^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*\.rs$ \
+                || "$MUTATION_FILE" == *".."* \
+                || "$MUTATION_FILE" == tests/* \
+                || "$MUTATION_FILE" == */tests/* \
+                || ! -f "$MUTATION_FILE" ]]; then
+                echo "Targeted mode requires one existing production .rs path." >&2
+                exit 2
+              fi
+              if ! git ls-files --error-unmatch -- "$MUTATION_FILE" >/dev/null; then
+                echo "Targeted mutation path must be tracked by Git." >&2
+                exit 2
+              fi
+              shard_count=1
+              matrix='{"include":[{"index":0,"count":1,"artifact":"0"}]}'
+              ;;
+            resume)
+              if [ -n "$MUTATION_FILE" ]; then
+                echo "Resume mode restores a full campaign; leave file empty." >&2
+                exit 2
+              fi
+              if [[ ! "$RESUME_RUN_ID" =~ ^[1-9][0-9]*$ ]]; then
+                echo "Resume mode requires a numeric failed workflow run ID." >&2
+                exit 2
+              fi
+              shard_count=80
+              gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RESUME_RUN_ID}" \
+                > "$RUNNER_TEMP/mutation-resume-run.json"
+              python3 .github/plan-mutation-resume.py \
+                --run-json "$RUNNER_TEMP/mutation-resume-run.json" \
+                --policy-json .github/mutation-recovery-policy.json \
+                --shards "$RESUME_SHARDS" \
+                > "$RUNNER_TEMP/mutation-resume-plan.json"
+              source_sha=$(jq -er '.source_sha' \
+                "$RUNNER_TEMP/mutation-resume-plan.json")
+              matrix=$(jq -c '.matrix' "$RUNNER_TEMP/mutation-resume-plan.json")
+              artifact_count=$(jq -er '.artifact_count' \
+                "$RUNNER_TEMP/mutation-resume-plan.json")
+              MUTATION_MODE=full
+              resume_run_id="$RESUME_RUN_ID"
+              resume_shards=$(jq -er '.resume_shards' \
+                "$RUNNER_TEMP/mutation-resume-plan.json")
+              expected_inventory_sha256=$(jq -er '.provenance.inventory_sha256' \
+                "$RUNNER_TEMP/mutation-resume-plan.json")
+              provenance=$(jq -c '.provenance' \
+                "$RUNNER_TEMP/mutation-resume-plan.json")
+              ;;
+            finalize)
+              if [ -n "$MUTATION_FILE" ] || [ -n "$RESUME_RUN_ID" ] || [ -n "$RESUME_SHARDS" ]; then
+                echo "Finalization is fully bound by the reviewed recovery policy; leave all optional inputs empty." >&2
+                exit 2
+              fi
+              shard_count=80
+              resume_run_id=$(jq -er '.run_id' .github/mutation-recovery-policy.json)
+              secondary_resume_run_id=$(jq -er '.finalization.run_id' \
+                .github/mutation-recovery-policy.json)
+              gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${resume_run_id}" \
+                > "$RUNNER_TEMP/mutation-original-run.json"
+              gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${secondary_resume_run_id}" \
+                > "$RUNNER_TEMP/mutation-recovery-run.json"
+              python3 .github/plan-mutation-resume.py \
+                --run-json "$RUNNER_TEMP/mutation-original-run.json" \
+                --recovery-run-json "$RUNNER_TEMP/mutation-recovery-run.json" \
+                --policy-json .github/mutation-recovery-policy.json \
+                > "$RUNNER_TEMP/mutation-finalization-plan.json"
+              source_sha=$(jq -er '.source_sha' \
+                "$RUNNER_TEMP/mutation-finalization-plan.json")
+              matrix=$(jq -c '.matrix' \
+                "$RUNNER_TEMP/mutation-finalization-plan.json")
+              artifact_count=$(jq -er '.artifact_count' \
+                "$RUNNER_TEMP/mutation-finalization-plan.json")
+              resume_shards=$(jq -er '.resume_shards' \
+                "$RUNNER_TEMP/mutation-finalization-plan.json")
+              incomplete_fragment_artifact=$(jq -er '.incomplete_fragment_artifact' \
+                "$RUNNER_TEMP/mutation-finalization-plan.json")
+              test_timeout_seconds=$(jq -er '.test_timeout_seconds' \
+                "$RUNNER_TEMP/mutation-finalization-plan.json")
+              build_timeout_seconds=$(jq -er '.build_timeout_seconds' \
+                "$RUNNER_TEMP/mutation-finalization-plan.json")
+              expected_inventory_sha256=$(jq -er '.provenance.inventory_sha256' \
+                "$RUNNER_TEMP/mutation-finalization-plan.json")
+              provenance=$(jq -c '.provenance' \
+                "$RUNNER_TEMP/mutation-finalization-plan.json")
+              MUTATION_MODE=full
+              ;;
+            *)
+              echo "Unsupported mutation campaign mode: $MUTATION_MODE" >&2
+              exit 2
+              ;;
+          esac
+
+          {
+            echo "matrix=$matrix"
+            echo "mode=$MUTATION_MODE"
+            echo "file=$MUTATION_FILE"
+            echo "shard_count=$shard_count"
+            echo "artifact_count=$artifact_count"
+            echo "resume_run_id=$resume_run_id"
+            echo "resume_shards=$resume_shards"
+            echo "source_sha=$source_sha"
+            echo "provenance=$provenance"
+            echo "expected_inventory_sha256=$expected_inventory_sha256"
+            echo "secondary_resume_run_id=$secondary_resume_run_id"
+            echo "incomplete_fragment_artifact=$incomplete_fragment_artifact"
+            echo "test_timeout_seconds=$test_timeout_seconds"
+            echo "build_timeout_seconds=$build_timeout_seconds"
+          } >> "$GITHUB_OUTPUT"
+
+  inventory:
+    name: Verify mutation inventory before execution
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      inventory_sha256: ${{ steps.inventory.outputs.inventory_sha256 }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.source_sha }}
+          persist-credentials: false
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
@@ -38,19 +257,312 @@ jobs:
         with:
           tool: cargo-mutants@27.1.0
 
+      - name: Discover and validate the exact candidate inventory
+        id: inventory
+        shell: bash
+        env:
+          MUTATION_MODE: ${{ needs.plan.outputs.mode }}
+          MUTATION_FILE: ${{ needs.plan.outputs.file }}
+          EXPECTED_FULL_INVENTORY: "14391"
+          EXPECTED_INVENTORY_SHA256: ${{ needs.plan.outputs.expected_inventory_sha256 }}
+        run: |
+          command=(cargo mutants --workspace --all-features --list --json)
+          if [ "$MUTATION_MODE" = "targeted" ]; then
+            command+=(--file "$MUTATION_FILE")
+          fi
+          "${command[@]}" > mutation-inventory.json
+
+          jq -e '
+            type == "array" and
+            length > 0 and
+            all(.[]; .name | type == "string" and length > 0) and
+            ([.[].name] | unique | length) == length
+          ' mutation-inventory.json >/dev/null
+          inventory_count=$(jq 'length' mutation-inventory.json)
+          if [ "$MUTATION_MODE" = "full" ] \
+            && [ "$inventory_count" -ne "$EXPECTED_FULL_INVENTORY" ]; then
+            echo "Full mutation inventory drifted before execution: observed=$inventory_count expected=$EXPECTED_FULL_INVENTORY." >&2
+            exit 1
+          fi
+          inventory_sha256=$(sha256sum mutation-inventory.json | awk '{print $1}')
+          if [ -n "$EXPECTED_INVENTORY_SHA256" ] \
+            && [ "$inventory_sha256" != "$EXPECTED_INVENTORY_SHA256" ]; then
+            echo "Mutation inventory digest differs from the reviewed recovery policy." >&2
+            exit 1
+          fi
+          echo "inventory_sha256=$inventory_sha256" >> "$GITHUB_OUTPUT"
+          echo "Validated $inventory_count unique mutation candidates before execution."
+
+      - name: Upload reviewed mutation inventory
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutation-inventory
+          path: mutation-inventory.json
+          if-no-files-found: error
+          retention-days: 30
+
+  mutants:
+    permissions:
+      contents: read
+    name: cargo-mutants informational shard ${{ matrix.index }}/${{ matrix.count }}
+    needs: [plan, inventory]
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.source_sha }}
+          persist-credentials: false
+
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+        with:
+          toolchain: 1.98.1
+
+      - name: Install cargo-mutants
+        uses: taiki-e/install-action@5bf6ce016fd2e72eefc647cbca1e4213f65955b8 # v2.87.5
+        with:
+          tool: cargo-mutants@27.1.0
+
+      - name: Prefetch the frozen workspace dependency graph
+        # Materialized CLI tests copy the workspace lockfile and deliberately
+        # validate generated projects offline. A fresh mutation runner must
+        # therefore fetch every locked package before cargo-mutants performs
+        # its unmutated baseline; sccache contains compiler outputs, not Cargo
+        # registry sources.
+        run: cargo fetch --locked
+
       - name: Run mutants shard on whole workspace
-        # We test the entire workspace, divided in 16 shards. The former
-        # eight-way matrix produced one 5h30 job-level timeout on the full v12
-        # workspace, so the finer split keeps every result and artifact within
-        # the existing bounded runner budget.
-        # Exit code 2 = missed mutants found; continue-on-error so CI doesn't
-        # hard-fail — results are captured in the uploaded artifact for review.
-        continue-on-error: true
-        run: cargo mutants --workspace --shard ${{ matrix.shard }}/16 --in-place
+        # We test the same entire workspace inventory in smaller shards so each
+        # result and artifact stays within the bounded runner budget.
+        # Exit 2 (missed) and 3 (timed out) are valid informational findings.
+        # Baseline/usage/internal failures remain real workflow failures.
+        shell: bash
+        env:
+          MUTATION_MODE: ${{ needs.plan.outputs.mode }}
+          MUTATION_FILE: ${{ needs.plan.outputs.file }}
+          SHARD_INDEX: ${{ matrix.index }}
+          SHARD_COUNT: ${{ matrix.count }}
+          TEST_TIMEOUT_SECONDS: ${{ needs.plan.outputs.test_timeout_seconds }}
+          BUILD_TIMEOUT_SECONDS: ${{ needs.plan.outputs.build_timeout_seconds }}
+        run: |
+          # Keep the release feature surface explicit in hosted logs as well as
+          # in .cargo/mutants.toml, which applies the same policy locally.
+          command=(cargo mutants --workspace --in-place --all-features)
+          if [ "$MUTATION_MODE" = "full" ]; then
+            command+=(--shard "$SHARD_INDEX/$SHARD_COUNT")
+          else
+            command+=(--file "$MUTATION_FILE")
+          fi
+          if [ -n "$TEST_TIMEOUT_SECONDS" ]; then
+            command+=(--timeout "$TEST_TIMEOUT_SECONDS")
+          fi
+          if [ -n "$BUILD_TIMEOUT_SECONDS" ]; then
+            command+=(--build-timeout "$BUILD_TIMEOUT_SECONDS")
+          fi
+
+          set +e
+          "${command[@]}"
+          mutation_status=$?
+          set -e
+          case "$mutation_status" in
+            0|2|3)
+              echo "cargo-mutants completed with informational status $mutation_status"
+              ;;
+            *)
+              echo "cargo-mutants failed before producing valid findings (status $mutation_status)" >&2
+              exit "$mutation_status"
+              ;;
+          esac
 
       - name: Upload shard results
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
-          name: mutants-out-${{ matrix.shard }}
+          name: mutants-out-${{ matrix.artifact }}
           path: mutants.out/
+          if-no-files-found: error
+          retention-days: 30
+
+  aggregate-results:
+    name: Verify and aggregate mutation artifacts
+    if: needs.inventory.result == 'success' && needs.mutants.result == 'success'
+    needs: [plan, inventory, mutants]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.source_sha }}
+          persist-credentials: false
+
+      - name: Download reusable artifacts from the interrupted campaign
+        if: needs.plan.outputs.resume_run_id != ''
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: mutants-out-*
+          path: mutation-artifacts
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.plan.outputs.resume_run_id }}
+
+      - name: Remove incomplete artifacts replaced by resumed shards
+        if: needs.plan.outputs.resume_run_id != ''
+        env:
+          RESUME_SHARDS: ${{ needs.plan.outputs.resume_shards }}
+        run: |
+          IFS=',' read -ra shard_indexes <<< "$RESUME_SHARDS"
+          for shard_index in "${shard_indexes[@]}"; do
+            rm -rf -- "mutation-artifacts/mutants-out-${shard_index}"
+          done
+
+      - name: Download completed fragments from the first recovery
+        if: needs.plan.outputs.secondary_resume_run_id != ''
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: mutants-out-*
+          path: mutation-artifacts
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.plan.outputs.secondary_resume_run_id }}
+
+      - name: Remove the interrupted recovery fragment
+        if: needs.plan.outputs.incomplete_fragment_artifact != ''
+        env:
+          INCOMPLETE_FRAGMENT_ARTIFACT: ${{ needs.plan.outputs.incomplete_fragment_artifact }}
+        run: |
+          if [[ ! "$INCOMPLETE_FRAGMENT_ARTIFACT" =~ ^resume-[0-9]+-[0-9]+$ ]]; then
+            echo "Invalid incomplete fragment artifact identity." >&2
+            exit 2
+          fi
+          rm -rf -- "mutation-artifacts/mutants-out-${INCOMPLETE_FRAGMENT_ARTIFACT}"
+
+      - name: Download newly completed mutation shards
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: mutants-out-*
+          path: mutation-artifacts
+
+      - name: Download the reviewed mutation inventory
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: mutation-inventory
+          path: expected-mutation-inventory
+
+      - name: Reject incomplete evidence and write aggregate
+        env:
+          MUTATION_MODE: ${{ needs.plan.outputs.mode }}
+          ARTIFACT_COUNT: ${{ needs.plan.outputs.artifact_count }}
+          EXPECTED_FULL_INVENTORY: "14391"
+          CAMPAIGN_PROVENANCE: ${{ needs.plan.outputs.provenance }}
+          INVENTORY_SHA256: ${{ needs.inventory.outputs.inventory_sha256 }}
+        run: |
+          expected_inventory=""
+          if [ "$MUTATION_MODE" = "full" ]; then
+            expected_inventory="$EXPECTED_FULL_INVENTORY"
+          fi
+          bash .github/summarize-mutation-artifacts.sh \
+            mutation-artifacts "$MUTATION_MODE" "$ARTIFACT_COUNT" \
+            "$expected_inventory" 27.1.0 \
+            expected-mutation-inventory/mutation-inventory.json
+
+          # shellcheck disable=SC2016 # jq programs intentionally own `$` names.
+          jq -e 'type == "object"' <<< "$CAMPAIGN_PROVENANCE" >/dev/null
+          # shellcheck disable=SC2016
+          jq --arg inventory_sha256 "$INVENTORY_SHA256" \
+            --argjson inventory_count "$(jq length expected-mutation-inventory/mutation-inventory.json)" \
+            '. + {inventory_sha256: $inventory_sha256,
+                  inventory_count: $inventory_count}' \
+            <<< "$CAMPAIGN_PROVENANCE" > mutation-campaign-provenance.json
+          # shellcheck disable=SC2016
+          jq --slurpfile provenance mutation-campaign-provenance.json \
+            '. + {campaign_provenance: $provenance[0]}' \
+            mutation-summary.json > mutation-summary.with-provenance.json
+          mv mutation-summary.with-provenance.json mutation-summary.json
+          {
+            echo
+            echo "### Campaign provenance"
+            echo
+            printf -- "- Source: \`%s\` (\`%s\`)\n" \
+              "$(jq -r .source_sha mutation-campaign-provenance.json)" \
+              "$(jq -r .head_branch mutation-campaign-provenance.json)"
+            printf -- "- Originating run: \`%s\`, attempt \`%s\`, workflow \`%s\`\n" \
+              "$(jq -r .run_id mutation-campaign-provenance.json)" \
+              "$(jq -r .run_attempt mutation-campaign-provenance.json)" \
+              "$(jq -r .workflow_path mutation-campaign-provenance.json)"
+            printf -- "- Inventory SHA-256: \`%s\`\n" "$INVENTORY_SHA256"
+          } >> mutation-summary.md
+          cat mutation-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload verified aggregate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutation-summary-${{ needs.plan.outputs.source_sha }}-${{ needs.inventory.outputs.inventory_sha256 }}
+          path: |
+            mutation-summary.json
+            mutation-summary.md
+            mutation-campaign-provenance.json
+          if-no-files-found: error
+          retention-days: 30
+
+  evidence-boundary:
+    name: Mutation campaign evidence boundary
+    if: always()
+    needs: [plan, inventory, mutants, aggregate-results]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record informational scope and infrastructure result
+        env:
+          MUTATION_MODE: ${{ needs.plan.outputs.mode }}
+          INVENTORY_RESULT: ${{ needs.inventory.result }}
+          MATRIX_RESULT: ${{ needs.mutants.result }}
+          AGGREGATE_RESULT: ${{ needs.aggregate-results.result }}
+          MUTATION_FILE: ${{ needs.plan.outputs.file }}
+          SHARD_COUNT: ${{ needs.plan.outputs.shard_count }}
+          ARTIFACT_COUNT: ${{ needs.plan.outputs.artifact_count }}
+          RESUME_RUN_ID: ${{ needs.plan.outputs.resume_run_id }}
+          RESUME_SHARDS: ${{ needs.plan.outputs.resume_shards }}
+          SECONDARY_RESUME_RUN_ID: ${{ needs.plan.outputs.secondary_resume_run_id }}
+          SOURCE_SHA: ${{ needs.plan.outputs.source_sha }}
+          INVENTORY_SHA256: ${{ needs.inventory.outputs.inventory_sha256 }}
+        run: |
+          {
+            echo "## Mutation testing"
+            echo
+            echo "Mode: \`$MUTATION_MODE\`; inventory result: \`$INVENTORY_RESULT\`; matrix result: \`$MATRIX_RESULT\`; aggregate result: \`$AGGREGATE_RESULT\`."
+            if [ "$MUTATION_MODE" = "targeted" ]; then
+              echo "Targeted file: \`$MUTATION_FILE\`. This is correction feedback, not a full-workspace campaign."
+            else
+              echo "The complete workspace was partitioned into $SHARD_COUNT shards. Missed and timed-out mutants remain informational findings in the artifacts."
+              if [ -n "$RESUME_RUN_ID" ]; then
+                printf "Resumed shards: %s; reused immutable artifacts from run %s; final aggregate requires %s complete artifacts.\n" \
+                  "$RESUME_SHARDS" "$RESUME_RUN_ID" "$ARTIFACT_COUNT"
+              fi
+              if [ -n "$SECONDARY_RESUME_RUN_ID" ]; then
+                printf "Completed recovery fragments reused from run %s.\n" \
+                  "$SECONDARY_RESUME_RUN_ID"
+              fi
+              printf "Measured source: \`%s\`; inventory SHA-256: \`%s\`.\n" \
+                "$SOURCE_SHA" "$INVENTORY_SHA256"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$INVENTORY_RESULT" != "success" ] \
+            || [ "$MATRIX_RESULT" != "success" ] \
+            || [ "$AGGREGATE_RESULT" != "success" ]; then
+            exit 1
+          fi

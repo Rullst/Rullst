@@ -72,8 +72,10 @@ verification gates to every contribution, regardless of authorship. See
 
 ## Development Setup
 
-1. Fork the repo and create a short-lived branch from the latest green `main`.
-2. Configure git hooks: `git config core.hooksPath .githooks`.
+1. Fork the repo and create a short-lived branch from `main` for v12
+   maintenance, or from `v13` for next-major development. Target the same
+   base branch with your pull request.
+2. Use the repository-pinned toolchain in `rust-toolchain.toml`.
 3. Run `cargo build --workspace --all-features` to build the framework.
 4. Run `cargo test --workspace --all-features` to exercise implemented behavior.
 5. Run `cargo fmt --all` to format your code.
@@ -82,12 +84,28 @@ verification gates to every contribution, regardless of authorship. See
 8. Ensure the full test suite passes.
 
 ## Branching Model
-- `main`: Protected active integration and release source line. Normal pull
-  requests target this branch; required checks should remain green. It is not
-  itself a crates.io publication or security certification.
+- `main`: Protected v12 maintenance and release source. Compatible fixes,
+  documentation and dependency updates target this branch.
+- `v13`: Next-major development. Additive product work and breaking changes
+  target this branch; its contents are not published v12 APIs.
 - `v5`: Frozen historical source for the legacy v5 line. Do not target it with
   routine fixes or dependency updates; released v5 consumers should pin the
   immutable `v5.0.0` tag or crates.io artifact.
-- Feature and fix branches are short-lived and branch from `main`.
+- Feature and fix branches are short-lived and return to their selected base.
+- `gh-pages`: Generated site/benchmark data used by the Pages workflow; it is
+  not a framework development branch.
+
+## Documentation lifecycle
+
+Write maintained guidance in English. Keep APIs and boundaries in
+`docs/src/spec.md`, feature status in the capability ledger, upcoming work in
+the roadmap, and release identity/results in the release record and audit.
+Link those sources instead of copying their tables into temporary checklists.
+
+Retire completed handoff notes. Preserve useful historical audits at immutable
+tags and keep a short archive pointer when a public page URL already exists.
+Do not interpret an archived score, checklist or example as current evidence.
+Documentation fixes update the repository/site; already-published crates.io
+archives remain immutable and receive changes only in a later package version.
 
 Thank you for your interest in making Rullst better!

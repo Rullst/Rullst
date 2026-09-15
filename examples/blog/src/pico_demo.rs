@@ -1,6 +1,5 @@
-//! Pico.css Zero-Build Semantic CSS Demonstration.
-//! Demonstrates classless, semantic HTML styling with Pico.css v2 with 0 KB JavaScript,
-//! zero NPM/Node.js dependencies, automatic OS Dark/Light theme detection, and pure Rust server-side rendering.
+//! Pico.css semantic CSS demonstration without a Node.js build pipeline.
+//! Small inline browser handlers remain for the showcase controls.
 
 use crate::showcase_nav::{render_shared_styles, render_showcase_nav};
 use axum::response::Html;
@@ -17,7 +16,7 @@ pub async fn render_pico_demo_page() -> Html<String> {
                 <meta charset="UTF-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Pico.css &mdash; Zero-Build Semantic CSS Engine"</title>
-                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+                <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" />
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.slate.min.css" />
                 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
                 <style>
@@ -66,16 +65,16 @@ pub async fn render_pico_demo_page() -> Html<String> {
                             "Pico.css: Zero-Build Semantic CSS in Rust"
                         </h1>
                         <p style="color: #94a3b8; max-width: 760px; margin: 0 auto; font-size: 1.1rem; line-height: 1.6;">
-                            "Write plain, semantic HTML5 tags in your <code style=\"color:#34d399;\">html!</code> macros with <strong style=\"color:#fff;\">0 custom CSS classes</strong>. Pico.css automatically applies modern typography, form controls, and dark/light themes directly to standard HTML tags."
+                            "Write semantic HTML5 tags in your <code style=\"color:#34d399;\">html!</code> macros and let Pico.css style standard controls. This page adds a few layout classes and inline handlers, so it is a practical integration example rather than a classless or JavaScript-free claim."
                         </p>
                     </div>
 
                     <article>
                         <header>
-                            <h3 style="margin: 0; font-weight: 700;">"🧪 Interactive Semantic Console (100% Classless HTML)"</h3>
+                            <h3 style="margin: 0; font-weight: 700;">"🧪 Interactive Semantic Controls"</h3>
                         </header>
                         <p style="color: #94a3b8; font-size: 0.95rem;">
-                            "Every element below is styled strictly by its HTML tag name (<code style=\"color:#38bdf8;\">&lt;input&gt;</code>, <code style=\"color:#38bdf8;\">&lt;select&gt;</code>, <code style=\"color:#38bdf8;\">&lt;button&gt;</code>, <code style=\"color:#38bdf8;\">&lt;progress&gt;</code>, <code style=\"color:#38bdf8;\">&lt;dialog&gt;</code>) without writing any CSS classes."
+                            "Pico.css supplies the baseline styling for standard <code style=\"color:#38bdf8;\">&lt;input&gt;</code>, <code style=\"color:#38bdf8;\">&lt;select&gt;</code>, <code style=\"color:#38bdf8;\">&lt;button&gt;</code>, <code style=\"color:#38bdf8;\">&lt;progress&gt;</code>, and <code style=\"color:#38bdf8;\">&lt;dialog&gt;</code> elements."
                         </p>
 
                         <div class="grid">
@@ -124,25 +123,25 @@ pub async fn render_pico_demo_page() -> Html<String> {
                     <div class="comparison-grid">
                         <article style="border-top: 4px solid #10b981;">
                             <header>
-                                <h4 style="margin: 0; font-weight: 700; color: #10b981;">"⚡ Zero-Bundle HTMX + Tailwind SSR"</h4>
-                                <span style="font-size: 0.8rem; color: #94a3b8;">"Rullst Flagship (Best for Full Apps)"</span>
+                                <h4 style="margin: 0; font-weight: 700; color: #10b981;">"⚡ HTMX + Tailwind SSR"</h4>
+                                <span style="font-size: 0.8rem; color: #94a3b8;">"One option for application interfaces"</span>
                             </header>
                             <ul style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.6; padding-left: 1.25rem;">
-                                <li><strong>"Full Interactivity"</strong>": Partial DOM swaps via AJAX without page reloads."</li>
+                                <li><strong>"Partial Updates"</strong>": HTMX can request and swap server-rendered fragments without a full navigation."</li>
                                 <li><strong>"Tailwind CSS Utility"</strong>": Pixel-perfect custom designs with utility classes."</li>
-                                <li><strong>"Best For"</strong>": SaaS platforms, complete web apps, e-commerce, complex dashboards."</li>
+                                <li><strong>"Consider For"</strong>": Server-oriented forms, CRUD surfaces, and progressively enhanced dashboards."</li>
                             </ul>
                         </article>
 
                         <article style="border-top: 4px solid #38bdf8;">
                             <header>
                                 <h4 style="margin: 0; font-weight: 700; color: #38bdf8;">"🎨 Zero-Build Semantic CSS (Pico.css)"</h4>
-                                <span style="font-size: 0.8rem; color: #94a3b8;">"Minimalist (Best for Internal Tools)"</span>
+                                <span style="font-size: 0.8rem; color: #94a3b8;">"A lightweight semantic-CSS option"</span>
                             </header>
                             <ul style="color: #cbd5e1; font-size: 0.9rem; line-height: 1.6; padding-left: 1.25rem;">
-                                <li><strong>"Classless HTML"</strong>": Zero CSS classes to learn or configure."</li>
-                                <li><strong>"0 Node.js / NPM"</strong>": Pure Cargo development with 0 build steps."</li>
-                                <li><strong>"Best For"</strong>": Backend developers, CLI dashboards, sensor monitors, internal tools."</li>
+                                <li><strong>"Semantic Defaults"</strong>": Standard controls receive useful baseline styling."</li>
+                                <li><strong>"No Node.js Pipeline"</strong>": The CDN-backed example needs no local NPM build step."</li>
+                                <li><strong>"Consider For"</strong>": Prototypes, documentation, and restrained internal interfaces."</li>
                             </ul>
                         </article>
                     </div>

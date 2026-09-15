@@ -8,10 +8,10 @@ you will be able to point to the handler that produced the page in your browser.
 [Next: CLI generators](02-cli-generators.md)
 
 This tutorial takes a new developer from installing Rust to a running Rullst
-web application. It uses the unreleased v12 development snapshot documented by
-this site. It is not a production recommendation. A future production adoption
-needs a supported release and reviewed immutable artifacts; neither moving
-`main` nor merely pinning end-of-life v5 satisfies that requirement.
+web application. It uses the stable `12.0.0` release documented by this site.
+Production adoption still needs application review and immutable artifacts;
+neither moving `main` nor merely pinning end-of-life v5 satisfies that
+requirement.
 
 ## 1. Install Rust and Cargo
 
@@ -46,18 +46,18 @@ cd my_first_app
 
 Every command below must run in this directory, where `Cargo.toml` lives.
 
-## 3. Add the v12 preview
+## 3. Add stable v12
 
-Until v12 is published, select the development source explicitly:
+Select its exact crates.io version:
 
 ```bash
-cargo add rullst --git https://github.com/Rullst/Rullst.git --branch main
+cargo add rullst@12.0.0
 cargo add tokio --features full
 ```
 
-Cargo records the resolved Git commit in `Cargo.lock`. This makes one checkout
-repeatable, but a future dependency update can select a newer `main` commit. Do
-not use this mutable preview source in production.
+Cargo records the resolved dependency graph in `Cargo.lock`. Commit that file
+for an application so its checkout remains reproducible, and review future
+dependency updates before deployment.
 
 Applications that must remain on end-of-life v5 should use its
 [versioned API documentation](https://docs.rs/rullst/5.0.0/rullst/) instead;
@@ -140,4 +140,6 @@ See the [CLI reference](../cli_reference.md) for every command and boundary.
 - Fallible handlers can return `Result<Response, YourAppError>` using an
   application-defined error that converts the relevant typed framework/domain
   errors; server startup propagates `ServerError` with `?`.
-- The v12 `main` branch is an evaluation source, not a stable release channel.
+- The moving `main` branch is an integration source, not an immutable release
+  artifact. For reproducible v12 applications, use the exact crates.io version
+  and its matching `v12.0.0` tag after the registry publication receipt exists.

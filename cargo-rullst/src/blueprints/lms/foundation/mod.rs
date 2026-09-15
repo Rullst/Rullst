@@ -45,6 +45,12 @@ pub(super) fn select(
         return Ok(auth_only::select(full_manifest));
     }
     full_manifest.retain(|(path, _)| RETAINED_FILES.contains(path));
+    if let Some((_, source)) = full_manifest
+        .iter_mut()
+        .find(|(path, _)| *path == "src/controllers/auth_controller.rs")
+    {
+        *source = super::auth::identity_controller();
+    }
     full_manifest.extend([
         ("src/main.rs", routes::main_source()),
         (
@@ -142,6 +148,12 @@ mod tests {
             "foundation emitted {} files",
             manifest.len()
         );
+        let auth = manifest
+            .iter()
+            .find(|(path, _)| *path == "src/controllers/auth_controller.rs")
+            .map(|(_, source)| source)
+            .expect("foundation auth controller");
+        assert!(!auth.contains("provision_self_registration_with_tx"));
     }
 
     #[test]
@@ -175,6 +187,12 @@ mod tests {
             "auth profile emitted {} files",
             manifest.len()
         );
+        let auth = manifest
+            .iter()
+            .find(|(path, _)| *path == "src/controllers/auth_controller.rs")
+            .map(|(_, source)| source)
+            .expect("identity auth controller");
+        assert!(!auth.contains("provision_self_registration_with_tx"));
     }
 
     #[test]

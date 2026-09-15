@@ -86,6 +86,7 @@ fn map_school_error(error: SchoolError) -> LearningError {
         SchoolError::Database(error) => LearningError::Database(error),
         SchoolError::Forbidden
         | SchoolError::AmbiguousMembership
+        | SchoolError::SelfRegistrationUnavailable
         | SchoolError::InvalidField(_) => LearningError::Forbidden,
     }
 }

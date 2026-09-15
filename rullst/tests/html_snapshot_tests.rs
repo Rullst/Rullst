@@ -45,3 +45,18 @@ fn test_html_macro_snapshot_dynamic() {
 
     insta::assert_snapshot!(result, @"<div class=\"dashboard\"><header><h2>Welcome, Alice</h2>&lt;span class=&quot;badge&quot;&gt;Admin&lt;/span&gt;</header><ul class=\"features\">&lt;li&gt;Rust&lt;/li&gt;&lt;li&gt;Security&lt;/li&gt;&lt;li&gt;Performance&lt;/li&gt;</ul></div>");
 }
+
+#[test]
+#[cfg_attr(miri, ignore)]
+fn html_macro_accepts_and_strips_source_comments() {
+    let result = html! {
+        <!-- Page-level implementation note -->
+        <main>
+            <!-- Comments do not become client-visible output -->
+            <p>"Audited content"</p>
+        </main>
+        <!-- Trailing implementation note -->
+    };
+
+    assert_eq!(result, "<main><p>Audited content</p></main>");
+}

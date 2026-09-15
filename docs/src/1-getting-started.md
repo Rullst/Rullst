@@ -2,12 +2,13 @@
 
 Welcome to the **Rullst** Getting Started guide!
 
-**Your goal:** install the matching preview CLI, generate a small application,
+**Your goal:** install the matching stable CLI, generate a small application,
 open it locally and make your first change. Prefer to write the first route
 yourself? Use [Zero to Hello Rullst](tutorials/01-hello-world.md).
 
-Rullst is a strictly typed full-stack web framework designed around explicit APIs,
-measurable performance, and defense-in-depth defaults.
+Rullst is a strictly typed Rust framework suite for full-stack applications,
+designed around explicit APIs, measurable performance, and defense-in-depth
+defaults.
 
 ## 1. Installation
 
@@ -22,15 +23,14 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 Download and run `rustup-init.exe` from the website.
 
 Next, install the **Rullst CLI** from the same release train as the framework.
-The registry command installs the latest published release; it does not install
-the unreleased v12 source documented by this branch:
+The exact version selector avoids accidentally installing a different release:
 
 ```bash
-cargo install cargo-rullst
+cargo install cargo-rullst --version 12.0.0 --locked
 ```
 
-To evaluate v12 before its first RC is published, clone this repository and
-install the CLI from that exact checkout instead:
+Source reviewers who intentionally need checkout-local changes can instead
+clone this repository and install the CLI from that exact checkout:
 
 ```bash
 git clone --branch main https://github.com/Rullst/Rullst.git
@@ -39,13 +39,12 @@ cargo install --locked --path cargo-rullst
 cd ..
 ```
 
-During this source-only phase, the pre-release CLI reuses the exact checkout
+When installed from source, the CLI reuses the exact checkout
 from which it was compiled, even when project creation is invoked from another
 directory, provided that checkout has not been moved or deleted. Generated
-manifests therefore contain absolute path dependencies and are not portable yet.
-Running from the repository root remains an explicit fallback. Once an immutable
-v12 RC exists on crates.io, install that exact CLI version and use its matching
-registry packages instead.
+manifests therefore contain absolute path dependencies and are not portable.
+Running from the repository root remains an explicit fallback. Prefer stable
+`12.0.0` and its matching registry packages for ordinary applications.
 
 ## 2. Creating Your First Project
 
@@ -56,7 +55,7 @@ cargo rullst
 ```
 
 The **Rullst App Creator** will launch an interactive wizard. The example below
-creates a Portfolio while v12 remains unpublished:
+creates a Portfolio with the stable v12 CLI:
 1. Select **Create New App**.
 2. **App Name**: Provide a simple lowercase name (e.g., `my_portfolio`).
 3. **Starter Blueprint**: Choose **Portfolio**. Labels and decorative suffixes

@@ -4,12 +4,86 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [12.0.0-rc.1] - Unreleased 🚀
+## [Unreleased]
 
-> **Unreleased status:** entries below are a development inventory, not release,
-> certification, benchmark, or test evidence. The current capability contract is
-> `docs/src/spec.md`; CI artifacts tied to the eventual tag are authoritative for
-> tests and provenance. Absolute wording in older development notes must not be
+### Documentation
+
+- Replace the completed v12 development program with a concise English release
+  record and immutable publication receipts. Retire the CLI handoff and preserve
+  older audits through archive links.
+- Reconcile coverage, quality, migration commands, branch guidance and v13
+  priorities with the published v12 source. Preserve the 190 historical claim
+  classifications in a compact, validated dataset.
+- Shorten and reorder the README without removing its verification dashboard;
+  replace the framework comparison with focused Rullst capability links. Add
+  Showcase, LMS and Portfolio links to the landing page, with responsive
+  illustrated cards, finite animations and reduced-motion support.
+- Make safe verification-efficiency improvements a shared v12 maintenance and
+  v13 priority, with explicit inventory, cache-trust and release-evidence gates.
+
+## [12.0.0] - 2026-09-15 🚀
+
+> **Stable scope:** version 12 stabilizes the bounded public contracts described
+> in `docs/src/spec.md`. It does not turn roadmap foundations, offline fixtures,
+> provider protocol tests, physical-device builds, or fiscal preparation into
+> production certification. Applications remain responsible for their own
+> authorization, deployment, provider acceptance, operations, and recovery.
+
+### Release closeout
+
+- Promoted the `12.0.0-rc.1` release lineage without adding a new product
+  feature. The stable candidate includes the bounded post-RC correctness and
+  hardening changes listed below; its exact SHA must earn fresh local and
+  hosted evidence rather than inheriting the RC result.
+- Made Core's CSRF middleware request-idempotent when an explicitly protected
+  application router is wrapped by the production `Server` security baseline.
+  Nested layers now emit one token/cookie pair and accept the matching form
+  submission instead of generating two divergent cookies; a two-layer GET/POST
+  regression preserves the fail-closed double-submit contract.
+- Hardened encrypted-session cookie extraction against empty, oversized,
+  malformed and duplicate values across multiple Cookie fields, and made the
+  logout cookie fail secure when the environment cannot be resolved.
+- Made generated registration transactional. The complete LMS starter now
+  creates the user and its explicit default demo-school membership atomically;
+  detached identity-only profiles retain no school dependency. Generated
+  logout, checkout and customer-portal mutations use CSRF-protected POST forms,
+  and billing plan identifiers remain server-allowlisted.
+- Hardened generated containers with the exact Rust toolchain, a non-root
+  runtime user, CA certificates, explicit production/bind settings, secret-free
+  build context defaults, copied static/config assets and a documented
+  one-writer migration-job boundary.
+- Removed third-party browser runtime dependencies from Studio's operator
+  surfaces. Its compiled stylesheet and bounded request-stream client are now
+  same-origin assets, while navigation and mutations work as ordinary links
+  and forms without HTMX, Mermaid, remote fonts or a browser-side CSS compiler.
+- Corrected the Omni Tauri scaffold's Windows MSVC PDB collision by giving its
+  library and binary distinct target names. The `html!` parser now accepts and
+  strips source-only HTML comments, and Core keeps strict `require-corp` COEP
+  by default while validating explicit `credentialless` or `unsafe-none`
+  application choices for reviewed cross-origin media boundaries.
+- Reconciled package READMEs, installation examples, migration tutorials, the
+  website, and the mdBook with the stable `12.0.0` release train. Crate-package
+  links now use absolute public documentation or repository URLs so they remain
+  useful when rendered by crates.io.
+- Kept all sixteen crates on one atomic version and topological publication
+  order. Their owner-configured GitHub Actions Trusted Publishers use the
+  protected `crates-io` environment and short-lived OIDC credentials.
+- The tag workflow derives these GitHub release notes from this exact changelog
+  section, marks semantic prereleases explicitly, publishes verified package
+  checksums, and uses GitHub's SHA-pinned build-provenance attestation. No named
+  project-wide SLSA level or independent security certification is claimed.
+- Historical RC evidence and limitations remain visible in the release audit.
+  The exact `v12.0.0` tag repeated the required package, consumer, CLI,
+  security, coverage, and release verification gates before all sixteen
+  packages were published.
+
+## [12.0.0-rc.1] - 2026-09-12 🚀
+
+> **Release-candidate scope:** entries below describe an evaluation prerelease,
+> not a stable-production guarantee, certification, benchmark, or exhaustive test
+> claim. The current capability contract is `docs/src/spec.md`; CI artifacts tied
+> to the immutable tag are authoritative for tests and provenance. Absolute
+> wording in older development notes must not be
 > interpreted as a guarantee. In particular, live NFS-e, MQTT transport/HSM/PQC, Alipay
 > RSA2, Connect message-broker adapters, S3/R2 storage, and database replication
 > remain fail-closed or roadmap capabilities as documented by the SST.
@@ -49,6 +123,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Authentication uses Argon2 0.6's internally generated cryptographic salt;
   a fixed Argon2id v19 PHC regression proves existing password hashes remain
   verifiable without retaining the old crate or its API.
+- JWT verification and newly scaffolded JWT middleware now use
+  `jsonwebtoken`'s AWS-LC backend. This preserves the tested RS256 Google,
+  Apple and generic OIDC paths while removing the vulnerable `rsa` crate and
+  `RUSTSEC-2023-0071` from the production and all ten fuzz dependency graphs.
+  Cargo Audit and the release workflow therefore run with no configured
+  advisory exceptions.
 - `rullst-connect/sqlite` adds a bounded shared-local lifecycle for encrypted
   OAuth token generations. The fixed schema stores only a pseudonymous binding
   digest, generation/key metadata and the existing account-bound AES-256-GCM
@@ -111,9 +191,80 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   offset. A Unicode regression corpus seed and unit test preserve the failing
   shape; the repaired ORM parser, log-redactor and HTML/text-sanitizer targets
   each passed 100,000 local libFuzzer/AddressSanitizer executions.
-- The manual mutation campaign now divides the workspace into sixteen shards
-  after the previous eight-way layout exhausted one job's 5h30 runner bound;
-  survived and timed-out mutants remain explicit informational evidence.
+- Fuzz and corpus workflows now pass an explicit
+  `x86_64-unknown-linux-gnu` build target to every `cargo-fuzz` invocation.
+  This prevents a statically linked install-action binary from implicitly
+  selecting musl, whose static libc is incompatible with the AddressSanitizer
+  preflight. The shared inventory validator rejects future commands that omit
+  the target; a local GNU/ASan build exercised a real three-target fuzz package.
+- Long-form verification now fails fast before consuming the release window:
+  fuzzing compiles all 40 targets in ten package preflights before starting the
+  5.5-hour campaigns, and offers a strict five-minute single-target diagnostic
+  that the summary explicitly rejects as RC evidence. Weekly corpus work and
+  the release campaign share content-addressed compiler outputs while retaining
+  separate per-target corpora and exact failure reproducers. Every fuzz package
+  now carries a validated lockfile, and preflight, campaign and corpus jobs
+  reject unresolved or silently changed dependency graphs before accepting
+  their evidence. The daily Cargo Audit gate scans the root plus all ten fuzz
+  locks from one advisory-database fetch.
+- The complete 40-target RC fuzz campaigns and focused follow-ups exposed
+  compile-time denial-of-service paths in ORM derive rejection: model-wide
+  `syn::Error::new_spanned` diagnostics and an unconditional `Field::span()`
+  validation rendered pathological but parseable syntax trees. Diagnostics now
+  point at bounded model, relation or field identifiers, regression corpus
+  seeds retain all three discovered shapes, and the parser campaign enforces a
+  ten-second per-input ceiling in addition to its existing 2 KiB input and 2
+  GiB RSS limits. The latest exact ASan reproducer fell from a repeatable
+  timeout (about 12.1 seconds) to about 30 milliseconds locally. A fresh
+  five-minute local ASan campaign completed 1,740,804 executions with no
+  finding, and hosted diagnostic run 34495340300 completed another 1,541,970
+  executions in 301 seconds on `40c1b083`. The subsequent complete 40-target
+  hosted campaign passed on `7697fb8a` in run `34642351302`; that evidence may
+  be carried only across the final bounded CLI migration/workflow delta, which
+  does not change a fuzz target or runtime parser.
+- Restored the project's `🌐🦀📜 Rullst 📜🦀🌐` README identity and its broader
+  “Intelligent, Security-Conscious, and Designed for Effortless Productivity —
+  Because With Rullst, We Rule!” design intent across repository and
+  landing-page metadata. General descriptions now call Rullst a framework
+  suite rather than reducing the complete ecosystem to a web framework. The
+  offline site validator now prevents the title, slogan and computed README
+  workflow count from silently drifting again.
+- The manual mutation campaign now divides its measured 14,391-mutant
+  all-feature workspace inventory into 80 lossless shards of at most about 180
+  candidates. The earlier 16-way attempt both exceeded the slowest jobs'
+  5h30 runner bound and used an invalid default-feature baseline. The hosted
+  command and `.cargo/mutants.toml` now agree on `all-features`; survived and
+  timed-out mutants remain explicit informational evidence. A cheap exact-list
+  preflight rejects inventory drift before the expensive matrix starts, and a
+  strict aggregate binds the classified candidates to that reviewed list while
+  rejecting absent, incomplete, overlapping, version-drifted or
+  inventory-drifted artifacts and reports a conservative percentage without
+  counting timeouts as caught. A validated tracked-production-file mode
+  shortens correction feedback, while baseline, invocation and internal tool
+  failures can no longer be hidden by the informational finding policy.
+- `cargo rullst make:migration:auto` now treats SQLite schema metadata as
+  untrusted input. It rejects non-portable bounded table and column identifiers
+  before writing source, binds the table name in its metadata lookup, and has
+  regressions proving newline-bearing identifiers cannot enter a generated Rust
+  migration.
+- Multi-platform CI now partitions the long public CLI and generated-blueprint
+  contracts into eight total test shards, and deterministically fans feature
+  boundaries and release-negative threat tests into four strict jobs each.
+  Each threat-model shard primes the reviewed Cargo lock before deliberately
+  offline generated-project checks, removing their former accidental reliance
+  on another case having downloaded a transitive crate first.
+  Generated profile/blueprint commands retain a single compiler job locally but
+  use two on hosted CI, coverage, property and tag-verification runners.
+  Manual diagnostics can select one operating system and shard, but only the
+  complete matrix emits the SHA-bound quality scorecard. Same-repository pull
+  requests reuse only their isolated compiler-cache scope; forks remain
+  read-only and cannot populate the trusted main namespace. The tag verifier
+  consumes that trusted namespace read-only while still executing every release
+  assertion and package audit. Coverage remains one merge-safe report. Its
+  second default-feature pass targets ORM, Studio, Nexus and the public facade,
+  whose real SQLite tests are excluded by mutually exclusive all-feature
+  profiles. An exact local gate independently rejects either the complete
+  repository or framework-library path set below 90% before Codecov upload.
 - `rullst-orm-macros` now parses model, relation, and SQLx attributes as
   structured nested metadata and fails closed on unknown, duplicate, orphaned,
   or conflicting options. Persisted `id`, tenant, soft-delete, and embedding
@@ -1059,6 +1210,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The packaged-distribution gate now installs `cargo-rullst` offline from the
   extracted release train, including crates not yet present in the registry,
   before generating and checking all six supported blueprints.
+- The philosophy chapter restores the reported Rust elevator inspiration and
+  records founder Venelouis's path from a Moodle VPS through a Laravel-and-AI
+  education platform to Rullst. It keeps the anecdote qualified, distinguishes
+  inspiration from technical guarantees, and preserves the framework's
+  evidence-before-claims boundary.
+- The two static landing entry points gain finite local-only ambient, hero,
+  terminal-workflow and scroll-reveal motion with explicit reduced-motion and
+  no-JavaScript fallbacks. The dedication now appears once in the footer, and
+  the browser smoke gate verifies both progressive animation paths without
+  adding analytics, remote resources, cookies or browser storage.
+- The real-Chromium documentation gate keeps its navigation and CDP assertions
+  strict while allowing a bounded 45-second one-time startup window. This
+  prevents a loaded hosted runner from being mislabeled as a site regression
+  merely because DevTools initialization exceeded the former 15-second limit.
+- The release audit now points to the authoritative scorecard and records the
+  conditional 94/A repository assessment without presenting it as release
+  approval, feature completeness, certification or independent review.
 
 ### Detailed technical inventory (preserved)
 

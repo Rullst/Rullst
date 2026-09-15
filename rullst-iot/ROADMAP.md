@@ -1,8 +1,8 @@
 # rullst-iot roadmap
 
 > **Status policy (2026-08-26):** this roadmap already uses scoped checkboxes;
-> the audited [`rullst-iot` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps)
-> and [capability ledger](../docs/src/capability-ledger.md) are the canonical
+> the audited [`rullst-iot` row](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#audit-of-the-detailed-crate-roadmaps)
+> and [capability ledger](https://rullst.github.io/Rullst/book/capability-ledger.html) are the canonical
 > cross-framework interpretation.
 
 This roadmap distinguishes data/frame helpers from network, hardware, and

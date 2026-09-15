@@ -78,7 +78,7 @@ async fn render_env_viewer() -> Html<String> {
     <meta charset="UTF-8">
     <title>Environment Viewer - Rullst Studio</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="/studio/assets/studio.css" rel="stylesheet">
 </head>
 <body class="h-full flex flex-col font-mono p-8">
     <div class="max-w-6xl mx-auto w-full">

@@ -9,12 +9,12 @@ is the combination of compile-time-oriented APIs, explicit security
 boundaries, first-party backend capabilities, offline development contracts,
 and one coordinated CLI and release train.
 
-> **Version status:** Rullst v12 is under active development. This page lists
-> implemented or explicitly bounded capabilities in the current source tree;
+> **Version status:** Rullst `12.0.0` is published and receives compatible
+> maintenance. This page lists implemented or explicitly bounded capabilities;
 > it is not a production-readiness certificate. The
 > [framework specification](spec.md),
 > [capability ledger](capability-ledger.md), and
-> [v12 release program](v12.md) are authoritative when a shorter description
+> [v12 stable release record](v12.md) are authoritative when a shorter description
 > and the code disagree.
 
 ## The short answer
@@ -312,9 +312,9 @@ performance slogans. Hardware, provider, regulatory, and certification claims
 remain incomplete until the corresponding external evidence exists.
 
 This distinction is essential for a broad framework. The
-[capability ledger](capability-ledger.md) records the boundary; the
-[technical comparison](comparatives.md) records both competitive strengths and
-areas where other frameworks are more mature.
+[capability ledger](capability-ledger.md) records the boundary. Dated
+comparative claims belong in reproducible, sourced research rather than in the
+active product documentation.
 
 ## Where Rullst is a particularly good fit
 
@@ -360,6 +360,7 @@ the more responsible decision.
 5. Pin an immutable release or commit for evaluation; do not deploy from a
    moving development branch.
 
-This page will be reviewed again against the immutable v12 RC source and CI
-evidence. Until then, it is a concise map of the strongest implemented ideas,
-not a substitute for the detailed contracts.
+This page was reviewed against the immutable v12 stable release and its
+repository-owned evidence. It remains a concise map of the strongest
+implemented ideas, not a substitute for the detailed contracts or
+application-specific validation.

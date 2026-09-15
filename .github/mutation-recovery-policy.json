@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "repository": "Rullst/Rullst",
+  "workflow_path": ".github/workflows/mutants.yml",
+  "workflow_id": 299416906,
+  "run_id": 34688592153,
+  "run_attempt": 1,
+  "head_branch": "ci/v12-mutation-evidence",
+  "source_sha": "1ffdf0a72577d1a974b4e87e2bf207f4a3580243",
+  "conclusion": "failure",
+  "mode": "full",
+  "shard_count": 80,
+  "resumable_shards": [
+    2,
+    4,
+    6,
+    8,
+    10,
+    65
+  ],
+  "inventory_count": 14391,
+  "inventory_sha256": "986d5cc1de71f7c8afbae7823a8fca53304b84f8e81b8f9e2d1fd3949c15ef80",
+  "cargo_mutants_version": "27.1.0",
+  "finalization": {
+    "repository": "Rullst/Rullst",
+    "workflow_path": ".github/workflows/mutants.yml",
+    "workflow_id": 299416906,
+    "run_id": 34738841341,
+    "run_attempt": 2,
+    "head_branch": "main",
+    "head_sha": "3823766f109ea511650a20f350a182c151dcb280",
+    "conclusion": "failure",
+    "measured_source_sha": "1ffdf0a72577d1a974b4e87e2bf207f4a3580243",
+    "completed_fragment_count": 11,
+    "incomplete_fragment": {
+      "index": 130,
+      "count": 160,
+      "artifact": "resume-65-0"
+    },
+    "split_factor": 2,
+    "test_timeout_seconds": 120,
+    "build_timeout_seconds": 900
+  }
+}

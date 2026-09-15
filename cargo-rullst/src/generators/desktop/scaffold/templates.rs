@@ -71,7 +71,7 @@ authors = ["Rullst Developer"]
 edition = "2021"
 
 [lib]
-name = "rullst_omni"
+name = "rullst_omni_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -128,7 +128,7 @@ tauri = {{ version = "=2.11.5", features = [] }}
     fs::write(src_dir.join("lib.rs"), render_runtime(&parsed_backend)?)?;
     fs::write(
         src_dir.join("main.rs"),
-        "#![cfg_attr(not(debug_assertions), windows_subsystem = \"windows\")]\n\nfn main() {\n    rullst_omni::run();\n}\n",
+        "#![cfg_attr(not(debug_assertions), windows_subsystem = \"windows\")]\n\nfn main() {\n    rullst_omni_lib::run();\n}\n",
     )?;
     fs::write(
         omni_dir.join("README.md"),

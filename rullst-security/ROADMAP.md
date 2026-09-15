@@ -3,8 +3,8 @@
 > **Status policy (2026-08-26):** the defensive ideas below are preserved, but
 > legacy `[x]` markers do not establish absolute claims such as zero leakage,
 > universal OWASP coverage, certification, or live external intelligence. See
-> the audited [`rullst-security` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps)
-> and the [capability ledger](../docs/src/capability-ledger.md).
+> the audited [`rullst-security` row](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#audit-of-the-detailed-crate-roadmaps)
+> and the [capability ledger](https://rullst.github.io/Rullst/book/capability-ledger.html).
 
 `rullst-security` is the dedicated defense-in-depth suite of the Rullst Framework. It currently provides bounded deception, sanitization, access guards, audit primitives and runtime middleware; autonomous threat response and post-quantum protection remain future research.
 

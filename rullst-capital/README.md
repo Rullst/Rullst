@@ -1,9 +1,5 @@
 # Rullst Capital 💳
 
-> **v12 development notice:** This README documents the unreleased v12 source.
-> Use a path dependency from this checkout until an immutable v12 RC exists on
-> crates.io. The version below is the planned first RC, not a published claim.
-
 `rullst-capital` provides payment/payout adapter foundations, normalized billing
 types, bounded webhook verification helpers, application-supplied revenue
 snapshots, and a bounded National NFS-e preparation pipeline. Provider method
@@ -82,6 +78,32 @@ before enabling these live checkout paths.
 validated acceptance or every response schema against a live provider account.
 Offline fixtures are deliberately excluded from the live-method matrix.
 
+### Provider verification levels
+
+Treat every provider and operation as a separate conformance target. Evidence
+for one Stripe checkout, for example, does not validate its portal, refund,
+metering or webhook paths and says nothing about another provider.
+
+1. **Deterministic offline:** Validate input bounds, redaction, failure classes,
+   idempotency material and mock behavior without network access.
+2. **Protocol fixtures:** Exercise exact signed payloads, replay/freshness
+   rejection and bounded response parsing against retained provider examples.
+3. **Provider test environment:** Run checkout, webhook, cancellation and
+   reconciliation cases in the provider's official sandbox or test mode.
+4. **Controlled live acceptance:** Only after account, legal, secret, refund,
+   observability and reconciliation controls are ready, perform the smallest
+   provider-permitted real transaction and retain redacted evidence.
+
+The generated SaaS blueprint currently provides an application boundary for
+the Stripe and Lemon Squeezy subset. It is not a conformance application for
+all eleven Capital adapters. A release claim should name the exact provider,
+operation, environment and observed result rather than saying that “payments
+work.” See the official [Stripe testing](https://docs.stripe.com/testing) and
+[sandbox](https://docs.stripe.com/sandboxes) guidance and Lemon Squeezy's
+[test-mode](https://docs.lemonsqueezy.com/help/getting-started/test-mode) and
+[webhook simulation](https://docs.lemonsqueezy.com/help/webhooks/simulate-webhook-events)
+guidance.
+
 Mercado Pago signs a manifest containing the original query data ID, request
 ID and timestamp. Its notification also requires an authoritative resource
 lookup before inferring payment/subscription state. The v12 body-only verifier
@@ -150,13 +172,13 @@ Add `rullst-capital` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rullst-capital = "12.0.0-rc.1"
+rullst-capital = "12.0.0"
 ```
 
 The heavier NFS-e schema/signature boundary is opt-in:
 
 ```toml
-rullst-capital = { version = "12.0.0-rc.1", features = ["nfse"] }
+rullst-capital = { version = "12.0.0", features = ["nfse"] }
 ```
 
 Native invoice PDF is independently opt-in. One-call Mail delivery uses the
@@ -164,21 +186,21 @@ downstream `rullst-mail/capital-invoice` feature, or `rullst/capital-mail` when
 using the umbrella crate:
 
 ```toml
-rullst = { version = "12.0.0-rc.1", features = ["capital-mail"] }
+rullst = { version = "12.0.0", features = ["capital-mail"] }
 ```
 
 Durable relational quota accounting is separately opt-in:
 
 ```toml
-rullst = { version = "12.0.0-rc.1", features = ["capital-quota-sql"] }
-# Or directly: rullst-capital = { version = "12.0.0-rc.1", features = ["quota-sql"] }
+rullst = { version = "12.0.0", features = ["capital-quota-sql"] }
+# Or directly: rullst-capital = { version = "12.0.0", features = ["quota-sql"] }
 ```
 
 Durable cross-process webhook replay claims are independently opt-in:
 
 ```toml
-rullst = { version = "12.0.0-rc.1", features = ["capital-webhook-sql"] }
-# Or directly: rullst-capital = { version = "12.0.0-rc.1", features = ["webhook-sql"] }
+rullst = { version = "12.0.0", features = ["capital-webhook-sql"] }
+# Or directly: rullst-capital = { version = "12.0.0", features = ["webhook-sql"] }
 ```
 
 Applications using the umbrella crate can derive the bounded billing facade on
@@ -484,7 +506,7 @@ Enable the crate's `nfse` feature (or umbrella `rullst/capital-nfse`) for the
 XSD, XMLDSig, protocol codec, and mTLS preparation APIs. The strict DPS builder
 and unmistakable offline mock remain available through the base Capital crate.
 
-The runnable [`nfse_v101_preview`](examples/nfse_v101_preview.rs) example emits
+The runnable [`nfse_v101_preview`](https://github.com/Rullst/Rullst/blob/v12.0.0/rullst-capital/examples/nfse_v101_preview.rs) example emits
 the unsigned bounded DPS. When `RULLST_NFSE_XSD_DIR` points to an extracted
 official production package whose files match the pinned hashes, it validates
 the document before writing it:

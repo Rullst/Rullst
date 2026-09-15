@@ -11,22 +11,12 @@ pub fn studio_layout(content: String, _active_table: Option<&str>, _tables: &[St
             <meta charset="UTF-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             <title>"Rullst Studio Control Center"</title>
-            <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
-            <script src="https://cdn.tailwindcss.com"></script>
-            <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-            <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-            <style>
-                "body { font-family: 'Outfit', sans-serif; }"
-                ":-webkit-scrollbar { width: 6px; height: 6px; }"
-                ":-webkit-scrollbar-track { background: #0b0f19; }"
-                ":-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }"
-                ":-webkit-scrollbar-thumb:hover { background: #334155; }"
-            </style>
+            <link href="/studio/assets/studio.css" rel="stylesheet" />
         </head>
         <body class="min-h-screen text-slate-100 flex flex-col antialiased selection:bg-sky-500/30 selection:text-sky-200">
             <header class="sticky top-0 z-50 flex-shrink-0 bg-slate-900 border-b border-slate-800 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between shadow-lg gap-3 lg:gap-4">
                 <div class="flex items-center gap-3">
-                    <a href="#" hx-get="/studio" hx-target="#studio-content" hx-push-url="true" class="flex items-center gap-2 group">
+                    <a href="/studio" class="flex items-center gap-2 group">
                         <span class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
                             "Rullst"
                         </span>
@@ -37,28 +27,28 @@ pub fn studio_layout(content: String, _active_table: Option<&str>, _tables: &[St
                 </div>
 
                 <nav class="order-3 w-full min-w-0 lg:order-none lg:w-auto flex items-center gap-1.5 bg-slate-950/80 p-1.5 rounded-xl border border-slate-800/80 overflow-x-auto text-xs font-semibold">
-                    <a href="#" hx-get="/studio" hx-target="#studio-content" hx-push-url="true" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                    <a href="/studio" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
                         <span>"🏠 Control Center"</span>
                     </a>
-                    <a href="#" hx-get="/studio/migrations" hx-target="#studio-content" hx-push-url="true" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                    <a href="/studio/migrations" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
                         <span>"🛠️ Database Tools"</span>
                     </a>
-                    <a href="#" hx-get="/studio/ai" hx-target="#studio-content" hx-push-url="true" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                    <a href="/studio/ai" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
                         <span>"🤖 AI Integration"</span>
                     </a>
-                    <a href="#" hx-get="/studio/radar" hx-target="#studio-content" hx-push-url="true" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                    <a href="/studio/radar" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
                         <span>"📡 Radar & Telemetry"</span>
                     </a>
-                    <a href="#" hx-get="/studio/capital" hx-target="#studio-content" hx-push-url="true" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                    <a href="/studio/capital" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
                         <span>"💳 Capital"</span>
                     </a>
-                    <a href="#" hx-get="/studio/security" hx-target="#studio-content" hx-push-url="true" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                    <a href="/studio/security" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
                         <span>"🛡️ Threat Radar"</span>
                     </a>
-                    <a href="#" hx-get="/studio/traces" hx-target="#studio-content" hx-push-url="true" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                    <a href="/studio/traces" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
                         <span>"🔍 Traces"</span>
                     </a>
-                    <a href="#" hx-get="/studio/cache" hx-target="#studio-content" hx-push-url="true" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
+                    <a href="/studio/cache" class="px-3.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/60 transition flex items-center gap-1.5 whitespace-nowrap">
                         <span>"🧊 Cache"</span>
                     </a>
                 </nav>

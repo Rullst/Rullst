@@ -5,7 +5,10 @@ pub mod models;
 pub mod routes;
 
 use super::common;
-use crate::generators::{ProjectOrmBackend, billing::render_billing_controller};
+use crate::generators::{
+    ProjectOrmBackend, auth::controllers::render_auth_controller,
+    billing::render_billing_controller,
+};
 
 pub fn file_manifest(
     project_name_safe: &str,
@@ -26,8 +29,7 @@ pub fn file_manifest(
     manifest.extend(billing::get_billing_pages());
 
     // 1. Controllers
-    let auth_controller_code =
-        include_str!("../../generators/auth/auth_controller.rs.template").to_string();
+    let auth_controller_code = render_auth_controller(None);
     manifest.push(("src/controllers/auth_controller.rs", auth_controller_code));
 
     let billing_controller_code = render_billing_controller("user_id", ProjectOrmBackend::Sqlx);
@@ -100,6 +102,7 @@ pub fn login_page(csrf_token: &str, error: Option<&str>, csp_nonce: &str) -> Htm
     Html(format!(
         "<!DOCTYPE html><html lang=\"en\" class=\"dark\"><head>\
          <meta charset=\"utf-8\" />\
+         <link rel=\"icon\" type=\"image/png\" href=\"/static/rullst.png\" />\
          <title>Login &mdash; Rullst SaaS</title>\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\
          <style nonce=\"{}\">\
@@ -142,6 +145,7 @@ pub fn register_page(csrf_token: &str, error: Option<&str>, csp_nonce: &str) -> 
     Html(format!(
         "<!DOCTYPE html><html lang=\"en\" class=\"dark\"><head>\
          <meta charset=\"utf-8\" />\
+         <link rel=\"icon\" type=\"image/png\" href=\"/static/rullst.png\" />\
          <title>Register &mdash; Rullst SaaS</title>\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\
          <style nonce=\"{}\">\
@@ -175,10 +179,13 @@ pub fn register_page(csrf_token: &str, error: Option<&str>, csp_nonce: &str) -> 
     ))
 }
 
-pub fn dashboard_page(_user_name: &str, csp_nonce: &str) -> Html<String> {
+pub fn dashboard_page(user_name: &str, csrf_token: &str, csp_nonce: &str) -> Html<String> {
     let nonce = rullst::html::escape_str(csp_nonce);
+    let user_name = rullst::html::escape_str(user_name);
+    let csrf_token = rullst::html::escape_str(csrf_token);
     Html(r#"<!DOCTYPE html><html lang="en" class="dark"><head>
          <meta charset="utf-8" />
+         <link rel="icon" type="image/png" href="/static/rullst.png" />
          <title>Dashboard — Rullst SaaS</title>
          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
          <style nonce="__RULLST_CSP_NONCE__">
@@ -189,7 +196,8 @@ pub fn dashboard_page(_user_name: &str, csp_nonce: &str) -> Html<String> {
          .container { max-width: 1200px; margin: 0 auto; }
          .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
          .card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-radius: 1rem; padding: 2rem; }
-         .btn-logout { background: #ef4444; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+         .btn-logout { background: #ef4444; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.9rem; border: 0; cursor: pointer; }
+         .logout-form { display: inline; }
          .btn-nexus { background: #1e293b; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem; border: 1px solid #374151; margin-right: 0.75rem; }
          .muted { color: #9ca3af; margin-top: 0.5rem; }
          .small { font-size: 0.85rem; }
@@ -204,30 +212,33 @@ pub fn dashboard_page(_user_name: &str, csp_nonce: &str) -> Html<String> {
            <div>
              <a href="/nexus" class="btn-nexus">⚙️ Nexus CMS</a>
              <a href="http://127.0.0.1:5555" target="_blank" class="btn-nexus">📊 Local Studio</a>
-             <a href="/logout" class="btn-logout">Logout</a>
+             <form method="post" action="/logout" class="logout-form"><input type="hidden" name="_token" value="__RULLST_CSRF_TOKEN__" /><button type="submit" class="btn-logout">Logout</button></form>
            </div>
          </div>
          <div class="container">
-           <h1>Welcome to your Pro Dashboard</h1>
-           <p class="muted">Your account is authenticated via Argon2id password hashing and encrypted session cookies.</p>
+           <h1>Welcome, __RULLST_USER_NAME__</h1>
+           <p class="muted">This starter authenticates passwords with Argon2id and stores the user ID in an encrypted session cookie.</p>
            <div class="grid">
              <div class="card">
                <h3 class="subscription">💳 Subscription</h3>
-               <p class="metric">Pro Plan — Active</p>
-               <p class="muted small">Renews next month via Stripe.</p>
+               <p class="metric">Webhook-derived state</p>
+               <p class="muted small">Persist entitlements only after a verified, replay-protected provider event.</p>
              </div>
              <div class="card">
                <h3 class="performance">⚡ Performance</h3>
-               <p class="metric">&lt; 1ms Response</p>
-               <p class="muted small">Zero-bundle Rust native SSR.</p>
+               <p class="metric">Server-rendered UI</p>
+               <p class="muted small">Measure latency in your own deployment; this starter makes no universal timing claim.</p>
              </div>
              <div class="card">
                <h3 class="security">🛡️ Security Guard</h3>
-               <p class="metric">Double-Submit CSRF</p>
-               <p class="muted small">Real-time RASP protection.</p>
+               <p class="metric">CSRF + secure headers</p>
+               <p class="muted small">Production still requires TLS termination, secret management and provider sandbox validation.</p>
              </div>
            </div>
-          </div></body></html>"#.replace("__RULLST_CSP_NONCE__", &nonce))
+          </div></body></html>"#
+        .replace("__RULLST_CSP_NONCE__", &nonce)
+        .replace("__RULLST_CSRF_TOKEN__", &csrf_token)
+        .replace("__RULLST_USER_NAME__", &user_name))
 }
 "##.to_string();
     manifest.push(("src/pages/auth.rs", pages_auth_code));

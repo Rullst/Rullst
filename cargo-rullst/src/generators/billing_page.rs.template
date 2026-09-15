@@ -1,15 +1,17 @@
 use rullst::server::Html;
 
-pub fn pricing_page() -> Html<String> {
+pub fn pricing_page(csrf_token: &str, csp_nonce: &str) -> Html<String> {
+    let csrf_token = rullst::html::escape_str(csrf_token);
+    let csp_nonce = rullst::html::escape_str(csp_nonce);
     Html(r##"
         <html lang="en" class="dark">
         <head>
             <meta charset="UTF-8" />
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             <title>Select a Plan - Rullst Billing</title>
-            <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-            <style>
-                * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+            <link rel="icon" type="image/png" href="/static/rullst.png" />
+            <style nonce="__RULLST_CSP_NONCE__">
+                * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
                 body { background: #0b0f19; color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow-x: hidden; position: relative; }
                 .glow-bg { position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.05) 50%, transparent 100%); top: -10%; left: -10%; z-index: -1; }
                 .glow-bg-right { position: absolute; width: 600px; height: 600px; background: radial-gradient(circle, rgba(236, 72, 153, 0.1) 0%, rgba(99, 102, 241, 0.05) 50%, transparent 100%); bottom: -10%; right: -10%; z-index: -1; }
@@ -52,23 +54,24 @@ pub fn pricing_page() -> Html<String> {
                 <div class="setup-banner">
                     <div class="setup-banner-icon">🚀</div>
                     <div class="setup-banner-content">
-                        <h4>Stripe Setup Required</h4>
-                        <p>To enable real checkouts, create a <code>.env</code> file in your project root with your API keys:</p>
+                        <h4>Provider sandbox setup required</h4>
+                        <p>Configure Stripe or Lemon Squeezy test credentials before exercising checkout and signed webhook flows:</p>
                         <pre><code>BILLING_PROVIDER=stripe
 BILLING_API_KEY=sk_test_...
-BILLING_WEBHOOK_SECRET=whsec_...</code></pre>
+BILLING_WEBHOOK_SECRET=whsec_...
+BILLING_ALLOWED_PLAN_IDS=price_starter,price_pro</code></pre>
                     </div>
                 </div>
                 <div class="header">
                     <span class="badge">Rullst Capital</span>
-                    <h1>Simple, Transparent Pricing</h1>
-                    <p class="subtitle">Choose the perfect plan to boost your application with next-gen fullstack performance.</p>
+                    <h1>Example Billing Plans</h1>
+                    <p class="subtitle">Replace these sample products, prices, plan IDs and entitlements with values owned by your application and provider account.</p>
                 </div>
                 <div class="pricing-grid">
                     <!-- Starter Plan -->
                     <div class="pricing-card">
-                        <h2 class="plan-name">Starter</h2>
-                        <p class="plan-desc">For hobbyists and early-stage startup prototypes.</p>
+                        <h2 class="plan-name">Example Starter</h2>
+                        <p class="plan-desc">Demonstrates an authenticated, CSRF-protected provider checkout command.</p>
                         <div class="price-container">
                             <span class="currency">$</span>
                             <span class="price">9</span>
@@ -77,24 +80,28 @@ BILLING_WEBHOOK_SECRET=whsec_...</code></pre>
                         <ul class="features-list">
                             <li>
                                 <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
-                                Up to 5 Projects
+                                Authenticated customer binding
                             </li>
                             <li>
                                 <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
-                                Standard SQLite Database
+                                Server-owned plan allowlist
                             </li>
                             <li>
                                 <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
-                                Email Support
+                                Deterministic offline fallback
                             </li>
                         </ul>
-                        <a href="/billing/checkout?plan=price_starter" class="btn-checkout secondary">Get Started</a>
+                        <form method="post" action="/billing/checkout">
+                            <input type="hidden" name="_token" value="__RULLST_CSRF_TOKEN__" />
+                            <input type="hidden" name="plan" value="price_starter" />
+                            <button type="submit" class="btn-checkout secondary">Test Starter Checkout</button>
+                        </form>
                     </div>
                     
                     <!-- Pro Plan -->
                     <div class="pricing-card premium">
-                        <h2 class="plan-name">Pro</h2>
-                        <p class="plan-desc">For growing apps needing production scaling and support.</p>
+                        <h2 class="plan-name">Example Pro</h2>
+                        <p class="plan-desc">Demonstrates replay-aware signed-webhook subscription persistence.</p>
                         <div class="price-container">
                             <span class="currency">$</span>
                             <span class="price">29</span>
@@ -103,26 +110,32 @@ BILLING_WEBHOOK_SECRET=whsec_...</code></pre>
                         <ul class="features-list">
                             <li>
                                 <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
-                                Unlimited Projects
+                                Exact signed-webhook verification
                             </li>
                             <li>
                                 <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
-                                PostgreSQL & SQLite Support
+                                Replay-aware persistence boundary
                             </li>
                             <li>
                                 <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
-                                Adaptive WAF & Bot Management
+                                Application-owned entitlements
                             </li>
                             <li>
                                 <svg aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
-                                Priority Support (Sub-1 hour)
+                                Provider sandbox verification required
                             </li>
                         </ul>
-                        <a href="/billing/checkout?plan=price_pro" class="btn-checkout primary">Go Pro</a>
+                        <form method="post" action="/billing/checkout">
+                            <input type="hidden" name="_token" value="__RULLST_CSRF_TOKEN__" />
+                            <input type="hidden" name="plan" value="price_pro" />
+                            <button type="submit" class="btn-checkout primary">Test Pro Checkout</button>
+                        </form>
                     </div>
                 </div>
             </div>
         </body>
         </html>
-    "##.to_string())
+    "##
+    .replace("__RULLST_CSP_NONCE__", &csp_nonce)
+    .replace("__RULLST_CSRF_TOKEN__", &csrf_token))
 }

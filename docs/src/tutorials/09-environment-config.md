@@ -57,12 +57,22 @@ csrf_same_site = "Strict"
 cors_allow_origins = ["https://academy.example"]
 cors_allow_credentials = false
 csp = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'nonce-{NONCE}'; style-src 'self' 'nonce-{NONCE}'"
+coep = "require-corp"
 ```
 
 Wildcard, path-bearing, credential-bearing, queried or duplicate CORS origins
 are configuration errors. When credentials are enabled, Core still grants them
 only to an origin in the exact allowlist. Test the final policy behind the real
 TLS proxy because an intermediary can change headers and cookie behavior.
+
+`coep` accepts only `require-corp`, `credentialless`, or `unsafe-none`.
+Keep the strict `require-corp` default for same-origin assets. If an application
+must load reviewed cross-origin media whose server does not emit CORP, it can
+explicitly select `credentialless` and update the relevant CSP source directive;
+the browser then omits credentials from those cross-origin no-CORS requests.
+`unsafe-none` lowers cross-origin isolation and should be chosen only after an
+application threat-model review. COEP configuration never makes an arbitrary
+remote origin trustworthy.
 
 ---
 

@@ -52,11 +52,18 @@ const chrome = spawn(process.env.CHROME_BIN || "google-chrome", [
   "--disable-dev-shm-usage", "--remote-debugging-port=0",
   `--user-data-dir=${profile}`, "about:blank",
 ], { stdio: ["ignore", "ignore", "pipe"] });
+// Hosted runners can spend more than 15 seconds starting Chromium while other
+// release jobs contend for CPU and I/O. Keep navigation/CDP assertions strict,
+// but give the one-time browser bootstrap a bounded, runner-safe window.
+const chromeStartupTimeoutMs = 45_000;
 let socket;
 try {
   const endpoint = await new Promise((accept, reject) => {
     let stderr = "";
-    const timeout = setTimeout(() => reject(new Error(`Chrome startup timed out: ${stderr}`)), 15000);
+    const timeout = setTimeout(
+      () => reject(new Error(`Chrome startup timed out after ${chromeStartupTimeoutMs}ms: ${stderr}`)),
+      chromeStartupTimeoutMs,
+    );
     chrome.once("error", (error) => { clearTimeout(timeout); reject(error); });
     chrome.once("exit", (code) => { clearTimeout(timeout); reject(new Error(`Chrome exited ${code}: ${stderr}`)); });
     chrome.stderr.on("data", (chunk) => {
@@ -143,19 +150,46 @@ try {
     );
     assert.equal(await evaluate("document.querySelectorAll('h1').length"), 1);
     assert.equal(await evaluate("document.querySelectorAll('.social-links a').length"), 13);
+    assert.deepEqual(await evaluate("[...document.querySelectorAll('[data-demo-link]')].map(link => link.href)"), [
+      "https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/",
+      "https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/",
+      "https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/",
+    ], "Demo buttons must retain the independently hosted application URLs");
     assert(await evaluate("[...document.images].filter(i => i.loading !== 'lazy').every(i => i.complete && i.naturalWidth > 0)"), "Hero image failed");
-    assert(await evaluate("document.body.innerText.includes('NO-GO for production')"));
+    assert(await evaluate("document.body.innerText.includes('Rullst v12.0.0 stable')"));
     if (output) {
-      // Wait for the finite entrance animation before recording the visual.
-      await evaluate("Promise.all(document.getAnimations().map(animation => animation.finished))");
+      // Capture the settled identity, not an arbitrary color mid-intro.
+      await evaluate("new Promise(resolve => setTimeout(resolve, 5100))");
+      // Stopping the bounded intro intentionally cancels CSS animations.
+      // Cancellation is not a page error; an unbounded animation still times out.
+      await evaluate("Promise.allSettled(document.getAnimations().map(animation => animation.finished))");
       const { data } = await send("Page.captureScreenshot", { format: "png" });
       await writeFile(join(output, `rullst-site-${width}.png`), Buffer.from(data, "base64"));
+      await evaluate("document.querySelector('#examples').scrollIntoView({behavior:'instant'}); new Promise(resolve => setTimeout(resolve, 1200))");
+      const demoScreenshot = await send("Page.captureScreenshot", { format: "png" });
+      await writeFile(join(output, `rullst-examples-${width}.png`), Buffer.from(demoScreenshot.data, "base64"));
+      // Scrolling an element into view changes Chromium's sequential focus
+      // navigation starting point. Reload so the keyboard test starts fresh.
+      await navigate();
     }
   };
   await layout(1440, 1100);
+  assert(await evaluate("document.querySelector('.hero').classList.contains('is-visible')"), "Hero reveal must initialize");
+  assert.equal(await evaluate("document.querySelector('link[rel=canonical]').href"), `https://rullst.win${landingPath}`, "Each entry point needs its own canonical URL");
+  await evaluate("if (document.documentElement.classList.contains('intro-playing')) document.querySelector('[data-intro-toggle]').click(); document.querySelector('[data-intro-toggle]').click()");
+  assert(await evaluate("document.querySelector('[data-intro-toggle]').getAttribute('aria-pressed') === 'true'"), "Intro must replay on request");
+  const startPosition = await evaluate("getComputedStyle(document.querySelector('.hero-wordmark')).backgroundPosition");
+  await evaluate("new Promise(resolve => setTimeout(resolve, 1000))");
+  assert.notEqual(await evaluate("getComputedStyle(document.querySelector('.hero-wordmark')).backgroundPosition"), startPosition, "Wordmark colors must actually animate");
+  await evaluate("document.querySelector('[data-intro-toggle]').click()");
+  assert(await evaluate("!document.documentElement.classList.contains('intro-playing') && document.querySelector('[data-intro-toggle]').textContent === 'Replay intro'"), "Intro must stop immediately");
+  await evaluate("document.querySelector('[data-intro-toggle]').click(); new Promise(resolve => setTimeout(resolve, 5100))");
+  assert(await evaluate("!document.documentElement.classList.contains('intro-playing') && document.querySelector('[data-intro-toggle]').getAttribute('aria-pressed') === 'false'"), "Intro must stop automatically instead of looping indefinitely");
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
   await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
   assert(await evaluate("document.activeElement.classList.contains('skip-link')"), "First keyboard target must skip navigation");
+  await evaluate("new Promise(resolve => { document.querySelector('#ecosystem').scrollIntoView({ behavior: 'instant', block: 'center' }); setTimeout(resolve, 120); })");
+  assert(await evaluate("document.querySelector('#ecosystem').classList.contains('is-visible')"), "Scroll reveal must initialize");
   await send("Browser.grantPermissions", { origin, permissions: ["clipboardReadWrite", "clipboardSanitizedWrite"] });
   await evaluate("document.querySelector('[data-copy-command]').click()");
   assert.equal(await evaluate("navigator.clipboard.readText()"), "cargo rullst new my_app");
@@ -172,24 +206,30 @@ try {
   await evaluate("document.querySelector('#privacy summary').click()");
   assert(await evaluate("document.querySelector('#privacy details').open"));
   await layout(320, 740);
+  await evaluate("if (!document.documentElement.classList.contains('intro-playing')) document.querySelector('[data-intro-toggle]').click()");
   await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+  await evaluate("new Promise(resolve => setTimeout(resolve, 100))");
+  assert(await evaluate("document.querySelector('[data-intro-toggle]').hidden && !document.documentElement.classList.contains('intro-playing')"), "Changing reduced-motion preference must stop an active intro");
   await navigate();
   assert.equal(await evaluate("document.getAnimations().length"), 0, "Reduced motion must remove entrance animation");
+  assert(await evaluate("[...document.querySelectorAll('[data-reveal]')].every(element => element.classList.contains('is-visible'))"), "Reduced motion must reveal content immediately");
   await send("Emulation.setScriptExecutionDisabled", { value: true });
   await navigate(false);
   const snapshot = await send("DOMSnapshot.captureSnapshot", { computedStyles: ["display"] });
   assert(snapshot.strings.includes("nav-links"), "No-JS navigation remains in document");
   await send("Emulation.setScriptExecutionDisabled", { value: false });
   assert(await evaluate("!document.documentElement.classList.contains('js') && getComputedStyle(document.querySelector('[data-navigation]')).display !== 'none'"), "Mobile navigation must work without JS");
+  assert(await evaluate("document.querySelector('[data-intro-toggle]').hidden"), "Nonfunctional intro controls must stay hidden without JS");
   assert.equal(await evaluate("document.cookie"), "");
   assert.equal(await evaluate("localStorage.length + sessionStorage.length"), 0);
   if (organization) {
     await navigate(true, "/privacy.html");
     assert(await evaluate("document.title === 'Website privacy notice — Rullst' && document.querySelector('#privacy details').open"), "Standalone privacy page must render with expanded notice");
+    assert.equal(await evaluate("document.querySelector('link[rel=canonical]').href"), "https://rullst.win/privacy.html");
   }
   assert([...requests].every(url => url.startsWith(origin + "/")), `External resource requests: ${[...requests].filter(url => !url.startsWith(origin + "/"))}`);
   assert.deepEqual(failures, [], "Browser errors, CSP failures or broken resources");
-  console.log("PASS: desktop/390px/320px, keyboard/mobile menu, clipboard success/denial, privacy, reduced motion, no-JS navigation, no storage or external landing requests.");
+  console.log("PASS: desktop/390px/320px, keyboard/mobile menu, animated intro/replay/stop, canonical URLs, clipboard success/denial, privacy, reduced motion, no-JS navigation, no storage or external landing requests.");
   await call("Browser.close");
 } finally {
   socket?.close();

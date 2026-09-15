@@ -85,13 +85,12 @@ async fn logger_dashboard() -> Html<String> {
     <meta charset="UTF-8">
     <title>Studio Logger</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/sse.js"></script>
+    <link href="/studio/assets/studio.css" rel="stylesheet">
+    <script src="/studio/assets/logger.js" defer></script>
 </head>
 <body class="h-full flex flex-col font-mono p-8">
     <h1 class="text-3xl font-bold mb-4 text-emerald-400">Request Logger</h1>
-    <div hx-ext="sse" sse-connect="/studio/requests/stream" sse-swap="message" hx-swap="afterbegin" class="flex-1 bg-slate-900 border border-slate-800 rounded-lg p-4 overflow-y-auto space-y-2">
+    <div id="studio-request-stream" class="flex-1 bg-slate-900 border border-slate-800 rounded-lg p-4 overflow-y-auto space-y-2">
         <!-- New logs will appear here -->
     </div>
 </body>

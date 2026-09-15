@@ -316,8 +316,9 @@ pub fn index_page(posts: Vec<Post>) -> String {
     html! {
         <html lang="en" class="dark">
             <head>
-            <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+            <link rel="icon" type="image/png" href="/static/rullst.png" />
                 <meta charset="UTF-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>"Rullst Press Feed"</title>
                 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
                 <style>
@@ -372,8 +373,9 @@ pub fn detail_page(post: Post) -> String {
     html! {
         <html lang="en" class="dark">
             <head>
-            <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" />
+            <link rel="icon" type="image/png" href="/static/rullst.png" />
                 <meta charset="UTF-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>{&post.title}</title>
                 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
                 <style>

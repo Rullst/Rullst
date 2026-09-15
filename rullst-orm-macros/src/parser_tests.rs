@@ -137,6 +137,21 @@ mod tests {
     fn morph_to_requires_persisted_id_and_string_discriminator() {
         use syn::parse_quote;
 
+        let invalid_id: DeriveInput = parse_quote! {
+            struct Comment {
+                id: i32,
+                commentable_id: Vec<i32>,
+                commentable_type: String,
+                #[orm(morph_to = "Post", morph_name = "commentable")]
+                post: Option<Post>,
+            }
+        };
+        let error = match parse(&invalid_id) {
+            Ok(_) => panic!("an unsupported polymorphic id type must fail"),
+            Err(error) => error,
+        };
+        assert!(error.to_string().contains("id fields support"));
+
         let missing_discriminator: DeriveInput = parse_quote! {
             struct Comment {
                 id: i32,
@@ -205,6 +220,66 @@ mod tests {
             .err()
             .expect("unknown backend must be rejected");
         assert!(error.to_string().contains("`sqlx` or `turso`"));
+    }
+
+    #[test]
+    fn rejects_unsupported_model_shapes_without_rendering_the_full_ast() {
+        // This compact form preserves the expression shape found by the v12
+        // release fuzz campaign. Formatting the complete union in
+        // `syn::Error::new_spanned` makes syn recursively print its attribute
+        // expression; anchoring the error to the identifier stays bounded.
+        let pathological_union = "#[Li=555527577500346.07.10/..0/..1./005L.07.100/..1./07.10/..0/..1./005L.03.77500346.07.10/..0/..1./005L10.07.10/..0/..1./005L.07.100/..1./07.10/..0/..1./005L.07.100/..1./005LL7.500346.07.10/..0/..1./005L107.100/..1./07.10/..0/..1./005L.07.100/..1./0/..1./00=5555555SSSSSSSSSSS]#[K]union n<l,>{}";
+        let input: DeriveInput = syn::parse_str(pathological_union)
+            .expect("the release-campaign union must remain a valid derive input");
+        let error = match parse(&input) {
+            Ok(_) => panic!("unions must not be accepted as ORM models"),
+            Err(error) => error,
+        };
+        assert_eq!(error.to_string(), "Orm macro can only be used on structs");
+
+        let pathological_struct = pathological_union.replacen("union n", "struct n", 1);
+        let input: DeriveInput = syn::parse_str(&pathological_struct)
+            .expect("the release-campaign struct must remain a valid derive input");
+        let error = match parse(&input) {
+            Ok(_) => panic!("models without a persisted id must not be accepted"),
+            Err(error) => error,
+        };
+        assert_eq!(
+            error.to_string(),
+            "Orm models require a persisted named `id` field"
+        );
+
+        let tuple: DeriveInput = syn::parse_str("struct Tuple(i64);")
+            .expect("the tuple-struct regression input must parse");
+        let error = match parse(&tuple) {
+            Ok(_) => panic!("tuple structs must not be accepted as ORM models"),
+            Err(error) => error,
+        };
+        assert_eq!(
+            error.to_string(),
+            "Orm macro only supports structs with named fields"
+        );
+    }
+
+    #[test]
+    fn rejects_missing_id_without_rendering_a_pathological_field() {
+        // The v12 release fuzz campaign found a valid derive input whose field
+        // type took more than ten seconds to render through `Field::span()`.
+        // The same checked-in corpus seed must reach the bounded model-name
+        // diagnostic without converting the complete field back into tokens.
+        let source = include_str!(
+            "../../rullst-orm/fuzz/corpus/fuzz_parser/pathological_field_span"
+        );
+        let input: DeriveInput = syn::parse_str(source)
+            .expect("the release-campaign field input must remain a valid derive input");
+        let error = match parse(&input) {
+            Ok(_) => panic!("models without a persisted id must not be accepted"),
+            Err(error) => error,
+        };
+        assert_eq!(
+            error.to_string(),
+            "Orm models require a persisted named `id` field"
+        );
     }
 
     #[test]

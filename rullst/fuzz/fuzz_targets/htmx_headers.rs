@@ -24,9 +24,8 @@ fuzz_target!(|data: &[u8]| {
                 .body(())
             {
                 let (mut parts, _) = req.into_parts();
-                if let Ok(req_htmx) = HtmxRequest::from_request_parts(&mut parts, &()).await {
-                    let _ = render_page(&req_htmx, s, s.to_string());
-                }
+                let Ok(req_htmx) = HtmxRequest::from_request_parts(&mut parts, &()).await;
+                let _ = render_page(&req_htmx, s, s.to_string());
             }
         });
     }

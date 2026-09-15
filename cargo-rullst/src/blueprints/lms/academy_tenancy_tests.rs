@@ -10,6 +10,28 @@ pub const GENERATED_TENANCY_TESTS_SUFFIX: &str = r##"
         .expect("default school membership");
         assert_eq!(resolved_demo.school_id, 1);
         assert_eq!(resolved_demo.tenant_key, "academy-demo");
+        let mut self_registration = Orm::begin_transaction()
+            .await
+            .expect("self-registration transaction");
+        assert_eq!(
+            crate::services::school_service::provision_self_registration_with_tx_at(
+                50,
+                &mut self_registration,
+                90_000,
+            )
+            .await
+            .expect("atomic default school membership"),
+            1,
+        );
+        self_registration
+            .commit()
+            .await
+            .expect("commit self-registration membership");
+        let registered_membership =
+            crate::services::school_service::resolve_membership_at(50, None, 90_000)
+                .await
+                .expect("new learner default school membership");
+        assert_eq!(registered_membership.tenant_key, "academy-demo");
         assert!(matches!(
             crate::services::school_service::resolve_membership_at(
                 7,

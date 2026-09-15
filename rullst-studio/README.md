@@ -1,9 +1,5 @@
 # Rullst Studio 📊
 
-> **v12 development notice:** This README documents the unreleased v12 source.
-> Use a path dependency from this checkout until an immutable v12 RC exists on
-> crates.io.
-
 `rullst-studio` is the built-in, local-first administration and monitoring
 dashboard for Rullst. It exposes bounded database, queue and in-process
 telemetry views from the sources explicitly supplied by the application.
@@ -36,13 +32,17 @@ telemetry views from the sources explicitly supplied by the application.
 - **Local-first security:** The supported launcher binds to loopback, verifies
   the direct peer and local `Host` authority, and requires same-origin `Origin`
   on mutations.
+- **Self-contained interface:** Studio embeds its compiled stylesheet and its
+  small request-stream client. Its database, cache, environment, trace and ER
+  pages do not depend on a browser-side Tailwind compiler, Google Fonts, HTMX,
+  Mermaid, or a public CDN.
 
 ## 🚀 Quickstart
 
 Add `rullst-studio` to your project:
 
-After that RC is published, install its exact train with
-`cargo add rullst-studio@12.0.0-rc.1`.
+Install the exact stable train with
+`cargo add rullst-studio@12.0.0`.
 
 ### Launching the Studio
 

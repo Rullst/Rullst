@@ -36,8 +36,8 @@ mod server_function;
 /// ```
 #[proc_macro]
 pub fn html(input: TokenStream) -> TokenStream {
-    let node = parse_macro_input!(input as html_parser::HtmlNode);
-    let expanded = node.to_tokens();
+    let document = parse_macro_input!(input as html_parser::HtmlDocument);
+    let expanded = document.to_tokens();
     expanded.into()
 }
 

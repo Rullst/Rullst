@@ -225,7 +225,10 @@ fn plan_tables(tables: &[String]) -> Result<Vec<TablePlan>, IntrospectionError> 
         .collect()
 }
 
-fn validate_database_identifier(value: &str, kind: &'static str) -> Result<(), IntrospectionError> {
+pub(super) fn validate_database_identifier(
+    value: &str,
+    kind: &'static str,
+) -> Result<(), IntrospectionError> {
     let bytes = value.as_bytes();
     let valid = !bytes.is_empty()
         && bytes.len() <= 64

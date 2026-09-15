@@ -2,8 +2,8 @@
 
 > **Status policy (2026-08-26):** all ideas below are preserved. Older `[x]`
 > markers can denote a useful foundation, not the entire enterprise claim in the
-> item. See the audited [`rullst-mail` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps)
-> and the [capability ledger](../docs/src/capability-ledger.md) for verified
+> item. See the audited [`rullst-mail` row](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#audit-of-the-detailed-crate-roadmaps)
+> and the [capability ledger](https://rullst.github.io/Rullst/book/capability-ledger.html) for verified
 > boundaries.
 
 > **Mission**: Transform `rullst-mail` into the most reliable, secure, productive, and developer-friendly transactional email engine in the Rust ecosystem — combining **Zero-Panic compile-time safety**, **AI-native intelligence**, **OWASP-grade DLP security**, and **Zero-Bundle SSR templating**.
@@ -161,9 +161,10 @@ flowchart TD
 
 ## Current capability boundary
 
-The former unsourced competitor matrix is preserved in the immutable historical
-snapshot referenced by `docs/src/v12.md`; it is not maintained as technical
-evidence because external ecosystems change. The current Rullst-only status is:
+The former unsourced competitor matrix is preserved in the immutable
+[`v12.0.0` historical snapshot](https://github.com/Rullst/Rullst/blob/v12.0.0/docs/src/v12.md);
+it is not maintained as technical evidence because external ecosystems change.
+The current Rullst-only status is:
 
 | Capability | Current status |
 | :--- | :--- |

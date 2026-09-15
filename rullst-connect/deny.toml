@@ -1,8 +1,8 @@
 [advisories]
 # Do not fail CI for unmaintained crates (warn only)
 unmaintained = "none"
-# Temporary exception documented in ../docs/src/security-advisory-exceptions.md.
-ignore = ["RUSTSEC-2023-0071"]
+# Active exceptions must be documented in ../docs/src/security-advisory-exceptions.md.
+ignore = []
 
 [bans]
 # Allow multiple versions of the same dependency (e.g. thiserror v1 and v2)

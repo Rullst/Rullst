@@ -204,6 +204,27 @@ fn transiently_busy_snapshot_is_retried_before_launch() {
     app.stop().unwrap();
 }
 
+#[cfg(target_os = "linux")]
+#[tokio::test]
+async fn transiently_busy_snapshot_is_retried_for_migrations() {
+    let temp = tempfile::tempdir().unwrap();
+    let executable = temp.path().join("migration");
+    fs::copy("/bin/true", &executable).unwrap();
+    let writer = fs::OpenOptions::new()
+        .write(true)
+        .open(&executable)
+        .unwrap();
+    let release = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(25));
+        drop(writer);
+    });
+    let mut command = tokio::process::Command::new(&executable);
+    command.kill_on_drop(true);
+    let mut child = spawn_snapshot_async(&mut command).await.unwrap();
+    assert!(child.wait().await.unwrap().success());
+    release.join().unwrap();
+}
+
 #[cfg(unix)]
 fn active_process(pid: u32) -> bool {
     ProcessGroup::new(pid)

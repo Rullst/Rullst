@@ -8,8 +8,8 @@ pub fn render_showcase_nav(active_route: &str) -> String {
     let routes = [
         (
             "/",
-            "⚡ HTMX SSR (Zero-Bundle)",
-            "Zero-bundle declarative HTML5 SSR (HTMX Standard)",
+            "⚡ Server-rendered HTML + HTMX",
+            "Typed server-rendered HTML with optional HTMX browser behavior",
         ),
         (
             "/live-feed",
@@ -28,8 +28,8 @@ pub fn render_showcase_nav(active_route: &str) -> String {
         ),
         (
             "/templates-demo",
-            "📄 File Templates (Tera)",
-            "External Jinja2/Tera templates in templates/*.html (Loco, Django & Rails pattern)",
+            "📄 Embedded File Template",
+            "External HTML embedded and populated by a deliberately small example renderer",
         ),
         (
             "/posts/repository",
@@ -39,7 +39,7 @@ pub fn render_showcase_nav(active_route: &str) -> String {
         (
             "/pricing",
             "💳 Capital Billing",
-            "SaaS MRR/ARR, Webhooks & SPED NFS-e",
+            "Billing adapters, offline checkout fixtures, and an unsigned NFS-e DPS preview",
         ),
         (
             "/security-demo",
@@ -78,13 +78,43 @@ pub fn render_showcase_nav(active_route: &str) -> String {
     let tenant_id =
         rullst::multitenant::current_tenant_id().unwrap_or_else(|| "community".to_string());
 
+    let portals_html = if cfg!(debug_assertions) {
+        [
+            html! {
+                <a href="http://127.0.0.1:5555" target="_blank" rel="noopener noreferrer" class="portal-btn studio-btn" title="Open the local Developer Control Room">
+                    "🚀 Local Studio"
+                </a>
+            },
+            html! {
+                <a href="/nexus" target="_blank" rel="noopener noreferrer" class="portal-btn nexus-btn" title="Open the loopback-only development CMS">
+                    "🛡️ Local Nexus"
+                </a>
+            },
+        ]
+        .concat()
+    } else {
+        [
+            html! {
+                <span class="portal-btn portal-disabled" title="Studio is a loopback-only developer tool and is not exposed by this public showcase">
+                    "🚀 Studio: local only"
+                </span>
+            },
+            html! {
+                <span class="portal-btn portal-disabled" title="Nexus requires a deployment-specific protected administration policy">
+                    "🛡️ Nexus: protected"
+                </span>
+            },
+        ]
+        .concat()
+    };
+
     html! {
         <div class="showcase-banner">
             <div class="showcase-banner-inner">
                 <a href="/" class="showcase-brand" style="text-decoration: none; color: inherit;">
-                    <img src="https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png" alt="Rullst Logo" class="showcase-brand-img" />
+                    <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" alt="Rullst Logo" class="showcase-brand-img" />
                     <span class="showcase-logo">"RULLST"</span>
-                    <span class="showcase-badge">"v12.0 Enterprise"</span>
+                    <span class="showcase-badge">"v12 showcase"</span>
                     <span class="tenant-badge" title="Active Multi-Tenant Context">
                         "Tenant: " <strong>{&tenant_id}</strong>
                     </span>
@@ -98,12 +128,7 @@ pub fn render_showcase_nav(active_route: &str) -> String {
                     { rullst::html::RawHtml(buttons_html.clone()) }
                 </div>
                 <div class="showcase-portals desktop-nav">
-                    <a href="http://127.0.0.1:5555" target="_blank" class="portal-btn studio-btn" title="Open local Developer Control Room">
-                        "🚀 Studio"
-                    </a>
-                    <a href="/nexus" target="_blank" class="portal-btn nexus-btn" title="Open Admin CMS">
-                        "🛡️ Nexus"
-                    </a>
+                    { rullst::html::RawHtml(portals_html.clone()) }
                 </div>
 
                 <div id="showcase-drawer" class="showcase-mobile-drawer">
@@ -111,12 +136,7 @@ pub fn render_showcase_nav(active_route: &str) -> String {
                         { rullst::html::RawHtml(buttons_html) }
                     </div>
                     <div class="showcase-mobile-portals">
-                        <a href="http://127.0.0.1:5555" target="_blank" class="portal-btn studio-btn" title="Open local Developer Control Room">
-                            "🚀 Studio"
-                        </a>
-                        <a href="/nexus" target="_blank" class="portal-btn nexus-btn" title="Open Admin CMS">
-                            "🛡️ Nexus"
-                        </a>
+                        { rullst::html::RawHtml(portals_html) }
                     </div>
                 </div>
             </div>
@@ -311,6 +331,12 @@ pub fn render_shared_styles() -> String {
         background: linear-gradient(135deg, #059669, #10b981);
         color: #fff;
         box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    }
+    .portal-disabled {
+        color: #94a3b8;
+        border-color: rgba(148, 163, 184, 0.25);
+        background: rgba(148, 163, 184, 0.08);
+        cursor: not-allowed;
     }
     .portal-btn:hover {
         opacity: 0.9;

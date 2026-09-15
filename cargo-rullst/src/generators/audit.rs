@@ -735,12 +735,12 @@ mod tests {
 
     #[test]
     fn advisory_exception_ids_are_strictly_validated() {
-        assert!(validate_audit_ignores(&["RUSTSEC-2023-0071".to_string()]).is_ok());
+        assert!(validate_audit_ignores(&["RUSTSEC-2099-0001".to_string()]).is_ok());
         for invalid in [
-            "rustsec-2023-0071",
-            "RUSTSEC-23-0071",
-            "RUSTSEC-2023-071",
-            "RUSTSEC-2023-0071 --quiet",
+            "rustsec-2099-0001",
+            "RUSTSEC-99-0001",
+            "RUSTSEC-2099-001",
+            "RUSTSEC-2099-0001 --quiet",
         ] {
             assert!(validate_audit_ignores(&[invalid.to_string()]).is_err());
         }
@@ -750,15 +750,15 @@ mod tests {
     fn advisory_exceptions_are_forwarded_as_distinct_cargo_audit_arguments() {
         assert_eq!(
             cargo_audit_arguments(&[
-                "RUSTSEC-2023-0071".to_string(),
-                "RUSTSEC-2026-0001".to_string(),
+                "RUSTSEC-2099-0001".to_string(),
+                "RUSTSEC-2099-0002".to_string(),
             ]),
             [
                 "audit",
                 "--ignore",
-                "RUSTSEC-2023-0071",
+                "RUSTSEC-2099-0001",
                 "--ignore",
-                "RUSTSEC-2026-0001",
+                "RUSTSEC-2099-0002",
             ]
         );
     }

@@ -5,12 +5,14 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import sys
 import tomllib
 
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 MATRIX_PATH = ROOT / ".github" / "fuzz-targets.json"
+FUZZ_TARGET = "x86_64-unknown-linux-gnu"
 
 
 def fail(message: str) -> None:
@@ -46,6 +48,10 @@ def discover_manifests() -> set[tuple[str, str]]:
         fail("no */fuzz/Cargo.toml manifests were found")
 
     for manifest in manifests:
+        lockfile = manifest.parent / "Cargo.lock"
+        if not lockfile.is_file():
+            fail(f"missing fuzz dependency lock {lockfile.relative_to(ROOT)}")
+
         try:
             cargo = tomllib.loads(manifest.read_text(encoding="utf-8-sig"))
         except (OSError, tomllib.TOMLDecodeError) as error:
@@ -67,7 +73,38 @@ def discover_manifests() -> set[tuple[str, str]]:
     return discovered
 
 
+def validate_workflow_build_targets() -> None:
+    required_commands = {
+        ".github/workflows/fuzzing.yml": ("build", "run"),
+        ".github/workflows/corpus-sync.yml": ("run", "cmin"),
+    }
+    for relative_path, commands in required_commands.items():
+        path = ROOT / relative_path
+        try:
+            workflow = path.read_text(encoding="utf-8")
+        except OSError as error:
+            fail(f"cannot read {relative_path}: {error}")
+
+        if f"FUZZ_BUILD_TARGET: {FUZZ_TARGET}" not in workflow:
+            fail(f"{relative_path} must pin FUZZ_BUILD_TARGET to {FUZZ_TARGET}")
+
+        logical_commands = re.sub(r"\\\s*\n\s*", " ", workflow)
+        for command in commands:
+            invocations = re.findall(
+                rf"cargo\s+[^\n]*?fuzz\s+{command}\b[^\n]*",
+                logical_commands,
+            )
+            if not invocations:
+                fail(f"{relative_path} contains no cargo fuzz {command} invocation")
+            if any('--target "$FUZZ_BUILD_TARGET"' not in item for item in invocations):
+                fail(
+                    f"every {relative_path} cargo fuzz {command} invocation must pass the pinned "
+                    "--target explicitly"
+                )
+
+
 def main() -> None:
+    validate_workflow_build_targets()
     declared_list = load_declared()
     declared = set(declared_list)
     if len(declared) != len(declared_list):

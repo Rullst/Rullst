@@ -1,9 +1,9 @@
 # 41. Tenant-Bound RAG in One Typed Operation
 
 > [!IMPORTANT]
-> Dependency examples use `12.0.0-rc.1`, the planned first v12 RC. Do not
-> request it from crates.io before it is published; use path dependencies from
-> this source checkout during development.
+> Dependency examples use stable `12.0.0`. Pin that exact version for
+> reproducible v12 builds; use path dependencies only when intentionally
+> testing checkout-local changes.
 
 Rullst's bounded RAG pipeline turns one authenticated question into a guarded
 embedding, authorized retrieval request, budgeted context, grounded model call,
@@ -18,7 +18,7 @@ dimensions define an index.
 
 ```toml
 [dependencies]
-rullst = { version = "12.0.0-rc.1", default-features = false, features = ["ai"] }
+rullst = { version = "12.0.0", default-features = false, features = ["ai"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 

@@ -2,8 +2,8 @@
 
 > **Status policy (2026-08-26):** this detailed design backlog is preserved.
 > Read legacy checkboxes through the audited
-> [`rullst-connect` row](../ROADMAP.md#audit-of-the-detailed-crate-roadmaps) and
-> the [capability ledger](../docs/src/capability-ledger.md); messaging now has a
+> [`rullst-connect` row](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#audit-of-the-detailed-crate-roadmaps) and
+> the [capability ledger](https://rullst.github.io/Rullst/book/capability-ledger.html); messaging now has a
 > separate bounded `rullst-messaging` foundation and remains outside OAuth.
 
 Welcome to the official roadmap for `rullst-connect`! The library currently supports 11 robust core providers, dynamic token parsing, `get_user_from_token` extraction, CSRF protection (via `state`), and `scopes` customization.

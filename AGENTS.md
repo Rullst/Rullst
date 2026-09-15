@@ -22,7 +22,7 @@ The Rullst framework is organized into decoupled, high-performance crates:
 | **`rullst-auth`** | Argon2 password hashing, encrypted session management, passkeys, RBAC helpers, and OAuth2/OIDC re-exports. |
 | **`rullst-security`** | RASP/WAF defense-in-depth, strict secure headers, Login Jail, DLP, honeypots, RBAC, and security telemetry. |
 | **`rullst-ai`** | Provider-agnostic LLM client (Gemini, OpenAI, Claude, DeepSeek, Ollama), prompt injection filter, PII masking. |
-| **`rullst-capital`** | Multi-provider payment and payout adapters, webhook verification, SaaS analytics, and an offline-only NFS-e preview; live fiscal authorization is roadmap work. |
+| **`rullst-capital`** | Multi-provider payment and payout adapters, webhook verification, SaaS analytics, an offline NFS-e preview and bounded local fiscal preparation; live transmission and fiscal authorization remain disabled pending external validation. |
 | **`rullst-connect`** | OAuth2/OIDC and social-login providers; brokered messaging is deliberately outside this identity-focused crate. |
 | **`rullst-messaging`** | Bounded broker-neutral envelopes, idempotent publication, consumer groups, leases, retry/DLQ, canonical wire/trace contracts, a deterministic process-local broker, opt-in durable local SQLite state with explicit encrypted content, and an opt-in ORM outbox relay; remote adapters are roadmap work. |
 | **`rullst-iot`** | `no_std` telemetry/frame helpers, bounded MQTT 5 PUBLISH and CoAP request encoders, Ed25519-signed OTA manifest verification, and a caller-provided durable rollback-counter CAS contract. Concrete counter storage, network transports/session state, HSM, PQC, flashing, and bootloader integration are roadmap work. |

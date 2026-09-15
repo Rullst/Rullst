@@ -1,9 +1,5 @@
 # rullst-iot
 
-> **v12 development notice:** This README documents the unreleased v12 source.
-> Use a path dependency from this checkout until an immutable v12 RC exists on
-> crates.io. `12.0.0-rc.1` below is the planned first RC.
-
 `rullst-iot` provides `no_std`-compatible telemetry models, protocol frame
 builders, deterministic edge helpers, and a fail-closed signed firmware gate.
 
@@ -145,7 +141,7 @@ The `experimental-simulators` feature exposes deterministic fixtures named
 `SimulatedMqttPayloadFormatter`. They are useful only in tests and demos:
 
 ```toml
-rullst-iot = { version = "12.0.0-rc.1", features = ["experimental-simulators"] }
+rullst-iot = { version = "12.0.0", features = ["experimental-simulators"] }
 ```
 
 They do **not** provide hardware-backed keys, signatures, ML-KEM/Kyber,
@@ -163,4 +159,5 @@ a packet helper. There are intentionally no aliases named `HsmDevice`,
   a concrete persistent anti-rollback storage implementation.
 - Bidirectional Digital Twin transport or Studio/Nexus device synchronization.
 
-See [ROADMAP.md](ROADMAP.md) for the remaining integration work.
+See the [crate roadmap](https://github.com/Rullst/Rullst/blob/v12.0.0/rullst-iot/ROADMAP.md)
+for the remaining integration work.

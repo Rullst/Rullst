@@ -33,6 +33,10 @@ fn valid_email(email: &str) -> bool {
         })
 }
 
+fn valid_name(name: &str) -> bool {
+    !name.is_empty() && name.len() <= 120 && !name.contains(['\r', '\n'])
+}
+
 fn get_csrf_token(headers: &HeaderMap) -> String {
     headers
         .get(rullst::server::header::COOKIE)
@@ -141,7 +145,12 @@ pub async fn register_submit(
 ) -> Response {
     let token = get_csrf_token(&headers);
     let nonce = get_csp_nonce(&csp_nonce);
+    let name = payload.name.trim();
     let email = normalize_email(&payload.email);
+    if !valid_name(name) {
+        return auth::register_page(&token, Some("Enter a name between 1 and 120 characters"), nonce)
+            .into_response();
+    }
     if !valid_email(&email) {
         return auth::register_page(&token, Some("Enter a valid email address"), nonce)
             .into_response();
@@ -183,7 +192,7 @@ pub async fn register_submit(
 
     let mut user = User {
         id: 0,
-        name: payload.name.trim().to_owned(),
+        name: name.to_owned(),
         email,
         password_hash: Some(password_hash),
         oauth_provider: None,
@@ -191,7 +200,32 @@ pub async fn register_submit(
         created_at: String::new(),
         updated_at: String::new(),
     };
-    if let Err(error) = user.save().await {
+    let original_id = user.id;
+    let mut transaction = match rullst::db::Orm::begin_transaction().await {
+        Ok(transaction) => transaction,
+        Err(error) => {
+            eprintln!("User transaction could not start: {error}");
+            return auth::register_page(&token, Some("Error creating account"), nonce)
+                .into_response();
+        }
+    };
+    let registration = async {
+        user.save_with_tx(&mut transaction).await?;
+        // __RULLST_REGISTRATION_HOOK__
+        Ok::<(), rullst_orm::Error>(())
+    }
+    .await;
+    if let Err(error) = registration {
+        user.id = original_id;
+        if let Err(rollback_error) = transaction.rollback().await {
+            eprintln!("User creation failed: {error}; rollback also failed: {rollback_error}");
+        } else {
+            eprintln!("User creation failed: {error}");
+        }
+        return auth::register_page(&token, Some("Error creating account"), nonce).into_response();
+    }
+    if let Err(error) = transaction.commit().await {
+        user.id = original_id;
         eprintln!("User creation failed: {error}");
         return auth::register_page(&token, Some("Error creating account"), nonce).into_response();
     }
@@ -211,11 +245,16 @@ pub async fn logout() -> Response {
 
 pub async fn dashboard(
     rullst::server::Extension(user_id): rullst::server::Extension<i32>,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
     csp_nonce: Option<Extension<rullst::security::CspNonce>>,
 ) -> Response {
     match User::find(user_id).await {
         Ok(Some(user)) => {
-            auth::dashboard_page(&user.name, get_csp_nonce(&csp_nonce)).into_response()
+            let csrf_token = csrf
+                .as_ref()
+                .map(|Extension(token)| token.as_str())
+                .unwrap_or_default();
+            auth::dashboard_page(&user.name, csrf_token, get_csp_nonce(&csp_nonce)).into_response()
         }
         Ok(None) => Redirect::to("/login").into_response(),
         Err(error) => {

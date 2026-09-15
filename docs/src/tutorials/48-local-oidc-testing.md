@@ -1,9 +1,9 @@
 # 48. Signed Local OIDC Testing
 
 > [!IMPORTANT]
-> Dependency examples use `12.0.0-rc.1`, the planned first v12 RC. Do not
-> request it from crates.io before it is published; use path dependencies from
-> this source checkout during development.
+> Dependency examples use stable `12.0.0`. Pin that exact version for
+> reproducible v12 builds; use path dependencies only when intentionally
+> testing checkout-local changes.
 
 Rullst Connect includes an explicitly mounted local identity-provider fixture so
 an application can exercise a cryptographically verified OIDC flow without a
@@ -17,7 +17,7 @@ Enable the Axum feature in development:
 
 ```toml
 [dev-dependencies]
-rullst-connect = { version = "12.0.0-rc.1", features = ["axum"] }
+rullst-connect = { version = "12.0.0", features = ["axum"] }
 ```
 
 Mount the router only on an exact loopback listener:

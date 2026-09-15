@@ -26,7 +26,7 @@ pub use pipeline::{
 /// use rullst_ai::ai::rag::build_rag_prompt;
 ///
 /// let contexts = vec![
-///     "Rullst is a web framework for Rust.".to_string(),
+///     "Rullst is a framework suite for Rust.".to_string(),
 ///     "It includes an ORM and AI integrations natively.".to_string()
 /// ];
 ///

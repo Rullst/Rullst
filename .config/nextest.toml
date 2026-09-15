@@ -1,0 +1,22 @@
+[profile.coverage]
+inherits = "default"
+test-threads = 4
+retries = 0
+flaky-result = "fail"
+
+[profile.coverage.junit]
+path = "junit.xml"
+report-name = "rullst-coverage"
+store-success-output = false
+store-failure-output = true
+
+[test-groups]
+generated-cargo = { max-threads = 2 }
+
+[[profile.coverage.overrides]]
+# These integration targets start independent Cargo builds for freshly
+# generated applications. Running two at once uses the hosted runner without
+# turning nested compiler fan-out into memory or disk contention.
+filter = 'binary_id(/^cargo-rullst::(billing_scaffold_cli|chat_scaffold_cli|generated_cli_profiles|generated_lms_modules_check|generated_saas_check|iot_scaffold_cli|mail_scaffold_cli|polyglot_scaffold_cli|upgrade_cli)$/)'
+test-group = "generated-cargo"
+slow-timeout = "60s"

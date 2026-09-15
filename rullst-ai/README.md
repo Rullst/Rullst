@@ -1,9 +1,5 @@
 # Rullst AI
 
-> **v12 development notice:** This README documents the unreleased v12 source.
-> Use a path dependency from this checkout until an immutable v12 RC exists on
-> crates.io.
-
 `rullst-ai` is a provider-agnostic LLM client with mandatory outbound prompt-injection checks,
 PII masking, deterministic offline fixtures, JSON mode, explicit JSON Schema output, and a bounded
 tenant-aware RAG pipeline.
@@ -246,7 +242,7 @@ rotation. Rullst does not inspect an arbitrary event value for secrets, run a
 durable delivery queue or claim SIEM availability; callers must export only
 the minimized records their policy permits.
 
-See the [tenant-bound RAG tutorial](../docs/src/tutorials/41-tenant-bound-rag.md) for a complete
+See the [tenant-bound RAG tutorial](https://rullst.github.io/Rullst/book/tutorials/41-tenant-bound-rag.html) for a complete
 offline example, audit behavior, and the production adapter boundary.
 
 ## Versioned and adaptive evaluations

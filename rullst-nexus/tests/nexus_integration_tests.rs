@@ -33,6 +33,29 @@ impl NexusModel for UserModel {
     }
 }
 
+struct MissingLifecycleModel;
+impl NexusModel for MissingLifecycleModel {
+    fn nexus_table() -> &'static str {
+        "nexus_lifecycle_missing"
+    }
+    fn nexus_label() -> &'static str {
+        "Unavailable records"
+    }
+    fn nexus_icon() -> &'static str {
+        "database"
+    }
+    fn nexus_pk() -> &'static str {
+        "id"
+    }
+    fn nexus_fields() -> Vec<FieldMeta> {
+        vec![
+            FieldMeta::new("id", "ID", FieldKind::Number).readonly(),
+            FieldMeta::new("username", "Username", FieldKind::Text),
+            FieldMeta::new("is_active", "Active", FieldKind::Boolean),
+        ]
+    }
+}
+
 struct ComplexModel;
 impl NexusModel for ComplexModel {
     fn nexus_table() -> &'static str {
@@ -119,8 +142,8 @@ async fn test_nexus_dashboard_and_views() {
 }
 
 #[tokio::test]
-async fn test_nexus_crud_lifecycle_requests() {
-    let nexus = Nexus::new().register::<UserModel>();
+async fn test_nexus_crud_unavailable_storage_fails_closed() {
+    let nexus = Nexus::new().register::<MissingLifecycleModel>();
     let app = local_test_router(nexus);
 
     let csrf_token = "valid_csrf_token_for_test_12345";
@@ -129,7 +152,7 @@ async fn test_nexus_crud_lifecycle_requests() {
     let form_body = "username=testuser&is_active=true";
     let req = local_request()
         .method("POST")
-        .uri("/table/users")
+        .uri("/table/nexus_lifecycle_missing")
         .header("Content-Type", "application/x-www-form-urlencoded")
         .header("Cookie", format!("rullst_csrf={}", csrf_token))
         .header("X-CSRF-Token", csrf_token)
@@ -137,17 +160,13 @@ async fn test_nexus_crud_lifecycle_requests() {
         .unwrap();
 
     let res = app.clone().oneshot(req).await.unwrap();
-    assert!(
-        res.status().is_success()
-            || res.status().is_server_error()
-            || res.status().is_redirection()
-    );
+    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 
     // 2. PUT update record
     let update_body = "username=updated_user&is_active=false";
     let req = local_request()
         .method("PUT")
-        .uri("/table/users/1")
+        .uri("/table/nexus_lifecycle_missing/1")
         .header("Content-Type", "application/x-www-form-urlencoded")
         .header("Cookie", format!("rullst_csrf={}", csrf_token))
         .header("X-CSRF-Token", csrf_token)
@@ -155,33 +174,25 @@ async fn test_nexus_crud_lifecycle_requests() {
         .unwrap();
 
     let res = app.clone().oneshot(req).await.unwrap();
-    assert!(
-        res.status().is_success()
-            || res.status().is_server_error()
-            || res.status().is_redirection()
-    );
+    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 
     // 3. DELETE record
     let req = local_request()
         .method("DELETE")
-        .uri("/table/users/1")
+        .uri("/table/nexus_lifecycle_missing/1")
         .header("Cookie", format!("rullst_csrf={}", csrf_token))
         .header("X-CSRF-Token", csrf_token)
         .body(Body::empty())
         .unwrap();
 
     let res = app.clone().oneshot(req).await.unwrap();
-    assert!(
-        res.status().is_success()
-            || res.status().is_server_error()
-            || res.status().is_redirection()
-    );
+    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 
-    // 4. Batch action
+    // 4. An empty batch remains an intentional, side-effect-free redirect.
     let batch_body = "action=delete";
     let req = local_request()
         .method("POST")
-        .uri("/table/users/batch")
+        .uri("/table/nexus_lifecycle_missing/batch")
         .header("Content-Type", "application/x-www-form-urlencoded")
         .header("Cookie", format!("rullst_csrf={}", csrf_token))
         .header("X-CSRF-Token", csrf_token)
@@ -189,12 +200,7 @@ async fn test_nexus_crud_lifecycle_requests() {
         .unwrap();
 
     let res = app.oneshot(req).await.unwrap();
-    assert!(
-        res.status().is_success()
-            || res.status().is_server_error()
-            || res.status().is_redirection()
-            || res.status().is_client_error()
-    );
+    assert_eq!(res.status(), StatusCode::SEE_OTHER);
 }
 
 #[tokio::test]
@@ -289,46 +295,41 @@ fn test_sanitize_identifier_multibyte() {
     assert!(clean.len() <= 64);
 }
 
+#[cfg(not(any(
+    feature = "strict-postgres",
+    feature = "strict-mysql",
+    feature = "strict-sqlite"
+)))]
 #[tokio::test]
 async fn test_nexus_with_sqlite_db_backed_crud() {
-    #[cfg(not(any(
-        feature = "strict-postgres",
-        feature = "strict-mysql",
-        feature = "strict-sqlite"
-    )))]
     use rullst_orm::_sqlx::Row;
 
-    let _ = rullst_orm::Orm::init("sqlite:file:memdb_nexus_shared?mode=memory&cache=shared").await;
+    rullst_orm::Orm::init("sqlite:file:memdb_nexus_shared?mode=memory&cache=shared")
+        .await
+        .expect("initialize isolated Nexus SQLite pool");
 
-    if let Some(pool) = rullst_core::db::safe_pool() {
-        let _ = rullst_orm::_sqlx::query(
-            "CREATE TABLE IF NOT EXISTS users (
+    let pool = rullst_core::db::safe_pool().expect("Nexus SQLite pool remains initialized");
+    rullst_orm::_sqlx::query(
+        "CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL,
                 is_active INTEGER NOT NULL DEFAULT 1
             )",
-        )
+    )
+    .execute(pool)
+    .await
+    .expect("create Nexus users fixture table");
+    rullst_orm::_sqlx::query("DELETE FROM users")
         .execute(pool)
-        .await;
-
-        let _ = rullst_orm::_sqlx::query(
-            "INSERT INTO users (username, is_active) VALUES ('alice', 1), ('bob', 0)",
-        )
-        .execute(pool)
-        .await;
-        #[cfg(not(any(
-            feature = "strict-postgres",
-            feature = "strict-mysql",
-            feature = "strict-sqlite"
-        )))]
-        {
-            let _ = rullst_orm::_sqlx::query(
-                "INSERT OR REPLACE INTO users (id, username, is_active) VALUES (100, 'batch', 1), (101, 'remove', 1)",
-            )
-            .execute(pool)
-            .await;
-        }
-    }
+        .await
+        .expect("reset Nexus users fixtures");
+    rullst_orm::_sqlx::query(
+        "INSERT INTO users (id, username, is_active) VALUES \
+         (1, 'alice', 1), (2, 'bob', 0), (100, 'batch', 1), (101, 'remove', 1)",
+    )
+    .execute(pool)
+    .await
+    .expect("insert deterministic Nexus users fixtures");
 
     let nexus = Nexus::new()
         .with_brand("Nexus DB Suite")
@@ -380,10 +381,15 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
         .body(Body::from("username=charlie&is_active=1"))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert!(
-        res.status().is_success()
-            || res.status().is_redirection()
-            || res.status().is_server_error()
+    let status = res.status();
+    let body = axum::body::to_bytes(res.into_body(), usize::MAX)
+        .await
+        .expect("create response body");
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "create returned {status}: {}",
+        String::from_utf8_lossy(&body)
     );
 
     // 6. PUT update record
@@ -396,11 +402,7 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
         .body(Body::from("username=alice_updated&is_active=0"))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert!(
-        res.status().is_success()
-            || res.status().is_redirection()
-            || res.status().is_server_error()
-    );
+    assert_eq!(res.status(), StatusCode::OK);
 
     // 7. DELETE record
     let req = local_request()
@@ -411,17 +413,8 @@ async fn test_nexus_with_sqlite_db_backed_crud() {
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert!(
-        res.status().is_success()
-            || res.status().is_redirection()
-            || res.status().is_server_error()
-    );
+    assert_eq!(res.status(), StatusCode::OK);
 
-    #[cfg(not(any(
-        feature = "strict-postgres",
-        feature = "strict-mysql",
-        feature = "strict-sqlite"
-    )))]
     {
         // 8. Batch deactivate a model that explicitly exposes a writable is_active flag.
         let req = local_request()

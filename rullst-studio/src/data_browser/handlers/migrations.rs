@@ -16,7 +16,7 @@ pub async fn handle_studio_tools_migrations(headers: axum::http::HeaderMap) -> i
         let enc = urlencoding::encode(t.as_str());
         let _ = write!(
             table_badges_html,
-            r##"<a href="#" hx-get="/studio/tables/{}" hx-target="#studio-content" hx-push-url="true" class="p-3 bg-slate-900/90 border border-slate-800 rounded-lg hover:border-sky-500/60 hover:bg-slate-900 transition group flex items-center justify-between">
+            r##"<a href="/studio/tables/{}" class="p-3 bg-slate-900/90 border border-slate-800 rounded-lg hover:border-sky-500/60 hover:bg-slate-900 transition group flex items-center justify-between">
                     <span class="text-sm font-semibold text-slate-200 group-hover:text-sky-400">{}</span>
                     <span class="text-xs font-mono text-slate-500 group-hover:text-slate-400">tbl →</span>
                 </a>"##,

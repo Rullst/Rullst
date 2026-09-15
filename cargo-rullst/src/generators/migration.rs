@@ -1,7 +1,10 @@
 // src/generators/migration.rs — Migration generator.
 #![cfg_attr(mutants, mutants::skip)]
 
-use crate::generators::{ProjectOrmBackend, is_rullst_project, project_orm_backend};
+use crate::generators::{
+    ProjectOrmBackend, introspect::validate_database_identifier, is_rullst_project,
+    project_orm_backend,
+};
 use colored::*;
 use std::fs;
 use std::path::Path;
@@ -254,23 +257,32 @@ pub async fn create_auto_migration() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
         for row in rows {
             let table_name: String = row.get("name");
+            validate_database_identifier(&table_name, "table")?;
             db_tables.push(table_name);
         }
 
         let mut db_schema = std::collections::HashMap::new();
         for table in db_tables {
             let mut cols = vec![];
-            let q = format!("PRAGMA table_info('{}')", table);
-            let q_static: &'static str = Box::leak(q.into_boxed_str());
-            let pragma_rows = sqlx::query(q_static).fetch_all(&pool).await?;
+            let pragma_rows = sqlx::query("SELECT name FROM pragma_table_info(?) ORDER BY cid")
+                .bind(&table)
+                .fetch_all(&pool)
+                .await?;
             for prow in pragma_rows {
                 let cname: String = prow.get("name");
+                validate_database_identifier(&cname, "column")?;
                 cols.push(cname);
             }
             db_schema.insert(table, cols);
         }
 
         let ast_tables = super::schema_diff::extract_tables_from_ast();
+        for table in &ast_tables {
+            validate_database_identifier(&table.table_name, "table")?;
+            for field in &table.fields {
+                validate_database_identifier(&field.name, "column")?;
+            }
+        }
 
         let mut up_queries = Vec::new();
         let mut down_queries = Vec::new();

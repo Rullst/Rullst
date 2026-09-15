@@ -70,4 +70,5 @@ Until that contract exists, documentation and packages must not claim that
 `RullstPackage.toml`, `RullstPackage`, automatic route registration, or
 third-party generator execution are implemented v12 APIs. See the
 [capability ledger](capability-ledger.md#connect-real-time-queues-storage-and-data)
-and [v12/v13 classification](v12.md) for the preserved vision.
+and the [capability ledger](capability-ledger.md) plus
+[roadmap](../../ROADMAP.md) for the preserved vision.
