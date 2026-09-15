@@ -33,3 +33,9 @@ updates:
       day: "monday"
       time: "08:00"
       timezone: "America/Sao_Paulo"
+    # CodeQL init/analyze/upload-sarif are one versioned toolchain. Updating
+    # them together also avoids duplicate CI for separate sub-action PRs.
+    groups:
+      codeql-toolchain:
+        patterns:
+          - "github/codeql-action*"

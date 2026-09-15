@@ -447,6 +447,29 @@ was removed because its composite action downloaded an unversioned `latest`
 binary without a repository-pinned checksum, which was unsuitable for a
 blocking supply-chain gate.
 
+### Reviewed Action updates on the v12 maintenance line
+
+Keep CodeQL `init`, `analyze`, and `upload-sarif` on one reviewed Action
+revision. Dependabot groups these sub-actions, and the local pin validator
+rejects mixed CodeQL revisions inside a workflow. Review the scanner bundle
+change as well as the wrapper SHA; the 4.38.0 update selects CodeQL 2.27.0.
+
+`setup-rust-toolchain` 2.0.0 changes warning enforcement from `RUSTFLAGS` to
+`CARGO_BUILD_WARNINGS` (Cargo 1.97+). The v12 migration explicitly retains
+`rustflags: "-D warnings"` and `build-warnings: ""`, preserving the previous
+compiler flags, strict warning behavior and compiler-cache inputs. This does
+not disable Clippy's explicit `-D warnings`. The MSRV job still uses a separate
+toolchain installer and Rust 1.96.0. Adopting the new Cargo warning mechanism
+is a separate measured migration, not an implicit side effect of updating an
+Action. See the [upstream migration notes](https://github.com/actions-rust-lang/setup-rust-toolchain/releases/tag/v2.0.0).
+
+TruffleHog's composite Action pin does not pin its default `latest` scanner
+image. The workflow therefore also specifies the reviewed 3.97.4 multi-platform
+image digest. Future scanner updates must review and change that digest;
+Dependabot updating the wrapper alone is insufficient. The scan's existing
+scope and verified-secret failure policy remain unchanged. These automation
+updates do not change published crate versions or constitute a v12.0.1 release.
+
 ## Workflow inventory (37 definitions)
 
 Durations are intentionally omitted because runner load, cache state, and the
