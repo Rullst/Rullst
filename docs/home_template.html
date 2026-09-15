@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Intelligent, security-conscious, and designed for effortless productivity. Explore Rullst v12.0.0: an open-source, Axum-based framework suite with a coordinated CLI, ORM, auth and developer tools.">
-  <meta name="theme-color" content="#090d0b">
+  <meta name="theme-color" content="#070b15">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta property="og:title" content="Rullst — Intelligent, Security-Conscious, and Designed for Effortless Productivity">
@@ -69,15 +69,34 @@
       <div class="workbench">
         <div class="workbench-orbit" aria-hidden="true"></div>
         <svg class="signal-map" viewBox="0 0 600 580" fill="none" aria-hidden="true" focusable="false"><g class="signal-routes" stroke="currentColor" stroke-width="1.5"><path pathLength="1" d="M0 120h40l35 35v145l30 30h80"/><path pathLength="1" d="M590 40h-75l-35 35v90l-60 60"/><path pathLength="1" d="M600 425h-65l-40 40h-65l-40 40v75"/></g><g class="signal-nodes" fill="currentColor"><circle cx="0" cy="120" r="4"/><circle cx="590" cy="40" r="4"/><circle cx="600" cy="425" r="4"/><circle cx="390" cy="580" r="4"/></g></svg>
-        <div class="workbench-label"><span class="status-dot" aria-hidden="true"></span> FROM IDEA TO INSPECTABLE RUST<button type="button" class="motion-control" data-intro-toggle aria-pressed="false" hidden>Replay intro</button></div>
+        <div class="workbench-label"><span class="status-dot" aria-hidden="true"></span> YOUR IDEA. A CONNECTED TOOLKIT.<button type="button" class="motion-control" data-intro-toggle aria-pressed="false" hidden>Replay intro</button></div>
+        <div class="engine" aria-label="Concept illustration: connect your application's data, identity and AI with Rullst. Not live telemetry.">
+          <div class="engine-halo" aria-hidden="true"></div>
+          <svg class="engine-orbits" viewBox="0 0 500 340" fill="none" aria-hidden="true" focusable="false">
+            <defs><linearGradient id="orbit-spectrum" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#62a9ff"/><stop offset="0.5" stop-color="#9cef8a"/><stop offset="1" stop-color="#ffad72"/></linearGradient></defs>
+            <g stroke="url(#orbit-spectrum)">
+              <ellipse class="orbit-track" cx="250" cy="170" rx="219" ry="94" transform="rotate(-23 250 170)"/>
+              <ellipse class="orbit-track" cx="250" cy="170" rx="219" ry="94" transform="rotate(23 250 170)"/>
+              <ellipse class="orbit-track" cx="250" cy="170" rx="97" ry="145"/>
+              <g class="engine-traces" stroke-width="2"><path pathLength="1" d="M80 75h51l65 65h34"/><path pathLength="1" d="M422 150h-54l-50 40h-45"/><path pathLength="1" d="M99 278h56l53-62h34"/></g>
+            </g>
+            <g class="engine-particles" fill="#a8f4a0"><circle cx="72" cy="88" r="3"/><circle cx="430" cy="249" r="4"/><circle cx="170" cy="279" r="3"/><circle cx="301" cy="32" r="3"/><circle cx="327" cy="293" r="2"/></g>
+          </svg>
+          <div class="engine-core" aria-hidden="true"><div class="engine-emblem"><span>R</span><span class="engine-corner">↗</span></div><strong>Your next idea</strong><span>POWERED BY RULLST</span></div>
+          <div class="engine-module module-data"><span class="module-symbol" aria-hidden="true">{ }</span><div><strong>Your data</strong><span>Models → queries</span></div></div>
+          <div class="engine-module module-identity"><span class="module-symbol" aria-hidden="true">⌘</span><div><strong>Your boundaries</strong><span>Identity + policy</span></div></div>
+          <div class="engine-module module-ai"><span class="module-symbol" aria-hidden="true">✦</span><div><strong>Your intelligence</strong><span>Local + cloud AI</span></div></div>
+          <span class="engine-caption">CONCEPT MAP / NOT A LIVE MONITOR</span>
+        </div>
         <div class="terminal" aria-label="Illustrative development workflow, not a live terminal">
           <div class="terminal-bar">
             <span class="terminal-dots" aria-hidden="true"><span></span><span></span><span></span></span>
             <span>~/your-next-idea</span><span class="terminal-mode">preview</span>
           </div>
           <div class="terminal-body">
-            <p class="terminal-comment"># With the v12 CLI installed</p>
+            <p class="terminal-comment"># Start here, with the v12 CLI installed</p>
             <div class="command-row"><code><span class="prompt">$</span> <span id="new-command">cargo rullst new my_app</span></code><button class="copy-command" type="button" data-copy-command="new-command" aria-label="Copy project creation command">Copy</button></div>
+            <details class="workflow-details"><summary>See what comes next <span aria-hidden="true">↗</span></summary>
             <div class="project-tree" aria-label="Example generated project layout">
               <div><span class="tree-branch">├─</span> src/controllers/ <span class="tree-note">your routes</span></div>
               <div><span class="tree-branch">├─</span> src/models/ <span class="tree-note">your data</span></div>
@@ -87,6 +106,7 @@
             <p><code><span class="prompt">$</span> cd my_app<br><span class="prompt">$</span> cargo rullst dev</code></p>
             <div class="dev-loop"><span>EDIT</span><b aria-hidden="true">→</b><span>BUILD</span><b aria-hidden="true">→</b><span>RESTART</span><b aria-hidden="true">→</b><span>REFRESH</span></div>
             <p class="terminal-comment terminal-caption">Workflow illustration · timings depend on your project</p>
+            </details>
           </div>
         </div>
         <div class="workbench-foot"><span class="code-symbol" aria-hidden="true">&lt;/&gt;</span><p>Generated code.<br><strong>Not a black box.</strong></p><a href="/Rullst/book/cli_reference.html" aria-label="Read the CLI reference">↗</a></div>
@@ -101,8 +121,8 @@
 
     <section id="examples" class="shell section examples-section" data-reveal>
       <div class="section-heading">
-        <p class="eyebrow">00 / Less imagining. More exploring.</p>
-        <h2>Not just a framework.<br><span class="gradient-text">A place to start creating.</span></h2>
+        <p class="eyebrow">00 / Open an app. Explore the source.</p>
+        <h2>Ideas belong<br><span class="gradient-text">out in the world.</span></h2>
         <p>Explore three independently deployed applications on Azure Container Apps. Follow the source, discover a starting point, then make it yours.</p>
       </div>
       <div class="demo-grid">
