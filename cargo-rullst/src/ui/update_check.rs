@@ -8,8 +8,8 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
 };
 
-const CATALOG_LIMIT: u64 = 256 * 1024;
-const CATALOG_URL: &str = "https://crates.io/api/v1/crates/cargo-rullst";
+pub(crate) const CATALOG_LIMIT: u64 = 256 * 1024;
+pub(crate) const CATALOG_URL: &str = "https://crates.io/api/v1/crates/cargo-rullst";
 // Notices are advisory, not installation authority. Do not trust the legacy
 // shared temporary file. Discovery keeps only a process-local validated result;
 // a persistent, cross-platform private cache needs its own reviewed contract.
@@ -17,7 +17,7 @@ static AVAILABLE_UPDATE: OnceLock<Version> = OnceLock::new();
 static DISCOVERY_STARTED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, thiserror::Error)]
-enum DiscoveryError {
+pub(crate) enum DiscoveryError {
     #[error("release metadata exceeds the discovery limit")]
     TooLarge,
     #[error("could not read release metadata: {0}")]
@@ -45,7 +45,7 @@ struct Release {
     yanked: bool,
 }
 
-fn enabled_env_flag(value: Option<&std::ffi::OsStr>) -> bool {
+pub(crate) fn enabled_env_flag(value: Option<&std::ffi::OsStr>) -> bool {
     value
         .and_then(std::ffi::OsStr::to_str)
         .is_some_and(|value| {
@@ -97,7 +97,7 @@ pub fn check_update_available() -> Option<String> {
     AVAILABLE_UPDATE.get().map(ToString::to_string)
 }
 
-fn discovery_client() -> reqwest::ClientBuilder {
+pub(crate) fn discovery_client() -> reqwest::ClientBuilder {
     reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(4))
         .connect_timeout(std::time::Duration::from_secs(2))
@@ -115,6 +115,16 @@ async fn fetch_update(
     url: &str,
     current: &str,
 ) -> Result<Option<Version>, DiscoveryError> {
+    match fetch_catalog(client, url).await? {
+        Some(bytes) => select_update(bytes.as_slice(), current),
+        None => Ok(None),
+    }
+}
+
+pub(crate) async fn fetch_catalog(
+    client: &reqwest::Client,
+    url: &str,
+) -> Result<Option<Vec<u8>>, DiscoveryError> {
     let mut response = client.get(url).send().await?.error_for_status()?;
     // error_for_status does not reject redirection or empty success responses.
     if response.status() != reqwest::StatusCode::OK {
@@ -127,7 +137,7 @@ async fn fetch_update(
         }
         bytes.extend_from_slice(&chunk);
     }
-    select_update(bytes.as_slice(), current)
+    Ok(Some(bytes))
 }
 
 async fn bounded_discovery(

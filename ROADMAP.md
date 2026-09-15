@@ -396,8 +396,10 @@ Initial discovery hardening is in the working source, not a completed 12.1.0
 delivery: interactive-only, offline/CI-aware notices use bounded HTTPS metadata
 and reject redirects, yanked versions, prereleases and unsolicited major jumps.
 The legacy shared temporary cache is removed; the current result is deliberately
-process-local. Persistent private caching, MSRV/platform presentation and the
-installation/preparation/application stages below are still unfinished. The
+process-local. Explicit `cargo rullst update check` now provides exact-target,
+MSRV/platform and versioned JSON discovery with separate major/prerelease
+opt-ins; it grants no installation or execution authority. Persistent private
+caching and the installation/preparation/application stages below are still unfinished. The
 published v12.0.0 release currently contains source crate archives and evidence,
 not an inventory of trusted prebuilt CLI executables; adding those artifacts
 requires release-pipeline work, not an assumed download URL.

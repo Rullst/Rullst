@@ -15,6 +15,7 @@ pub mod cli;
 pub mod generators;
 pub mod pkg;
 pub mod ui;
+mod update;
 
 #[cfg_attr(mutants, mutants::skip)]
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
@@ -30,8 +31,17 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         ui::trigger_background_update_check();
         ui::show_interactive_dashboard()?;
     } else {
-        let cli = <cli::Cli as clap::Parser>::parse_from(args);
-        cli::run_cli_command(&cli.command)?;
+        // Extend executable commands without adding a variant to the v12 public
+        // Commands enum, which downstream Rust callers may exhaustively match.
+        let matches = <cli::Cli as clap::CommandFactory>::command()
+            .subcommand(update::command())
+            .get_matches_from(args);
+        if let Some(update) = matches.subcommand_matches("update") {
+            update::run(update)?;
+        } else {
+            let cli = <cli::Cli as clap::FromArgMatches>::from_arg_matches(&matches)?;
+            cli::run_cli_command(&cli.command)?;
+        }
     }
     Ok(())
 }

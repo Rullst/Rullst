@@ -1184,9 +1184,16 @@ assistant, not a claim that compilation proves production compatibility.
   denies redirects, caps the response at 256 KiB and applies one four-second
   network/body deadline. Notices select a newer, non-yanked stable version in
   the installed major, not an arbitrary registry maximum. They authorize no
-  installation or project changes. A private persistent cache, target/MSRV
-  presentation, verified CLI installation and the expanded project acceptance
-  transaction remain planned for 12.1.0 and need platform/release evidence.
+  installation or project changes. The explicit `cargo rullst update check`
+  command now reports an exact eligible CLI release, its declared MSRV and the
+  current OS/architecture. `--to` pins selection; another major requires
+  `--allow-major`, and a prerelease separately requires `--prerelease`.
+  `--json` emits `rullst.update-discovery.v1` with every execution/write/artifact
+  authority false. It does not certify compiler/platform compatibility.
+  Offline discovery fails clearly while no private persistent cache exists.
+  A private persistent cache, verified CLI installation and the expanded
+  project acceptance transaction remain planned for 12.1.0 and need
+  platform/release evidence.
 
 ---
 

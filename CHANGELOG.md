@@ -33,6 +33,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### CLI update discovery
 
+- Add explicit read-only `cargo rullst update check` with an exact target,
+  separate major/prerelease opt-ins, MSRV/platform presentation and a versioned
+  JSON report. Offline mode refuses network access. Reuse bounded HTTPS discovery
+  without changing the public v12 command enum; discovery grants no artifact,
+  installation, project execution or deployment authority.
+
 - Preflight the complete legacy upgrade backup before restoring any original.
   Bound index and snapshot sizes, reject duplicate/ambiguous paths and linked
   sources/targets, stage all replacements first, and replace directory entries
