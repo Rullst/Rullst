@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### CLI update discovery
 
+- Preflight the complete legacy upgrade backup before restoring any original.
+  Bound index and snapshot sizes, reject duplicate/ambiguous paths and linked
+  sources/targets, stage all replacements first, and replace directory entries
+  without truncating hardlinked files. Automatic and persisted recovery share
+  these checks. An interrupted apply reports partial progress and retains its
+  backup; this is per-file replacement, not an all-files atomic transaction.
+
 - Include `rullst-messaging` and an application's optional `cargo-rullst`
   dependency in workspace upgrades. Check the managed package allowlist against
   the publication inventory and test alias/workspace inheritance without

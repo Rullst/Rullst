@@ -1149,9 +1149,18 @@ assistant, not a claim that compilation proves production compatibility.
   snapshot by default; `--keep-on-failure` is explicit, and `--restore` can
   recover a persisted, path-validated snapshot after an interruption.
   Process fixtures independently select the v5, v6 and v11 rule sets, prove
-  atomic restoration across multiple workspace members, preserve a failed edit
+  restoration across multiple workspace members, preserve a failed edit
   only when explicitly requested, restore that persisted review state, and
   reject symlinked Rust sources before starting the transaction.
+  **Unreleased recovery hardening:** automatic and persisted restores validate
+  the complete bounded index and every snapshot/target before staging all file
+  replacements. Limits are 8 MiB/index, 100,000 entries, 64 MiB/file and
+  512 MiB/restore. Symlinks/reparse points, malformed or duplicate entries and
+  non-regular files are rejected. Per-file replacement does not truncate a
+  hardlinked destination. A later apply error may leave earlier files restored;
+  it reports progress and retains the backup. Stop other writers first: this is
+  neither an all-files atomic commit nor protection from hostile concurrent
+  filesystem changes. Platform acceptance remains a release gate.
 * 🟠 **`[Manual Application Boundary]`** the command never installs a CLI,
   changes secrets, executes database migrations, invents authorization or
   tenant policy, exposes Nexus/Studio, validates providers, or declares an

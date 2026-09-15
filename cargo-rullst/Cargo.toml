@@ -49,6 +49,7 @@ toml = { workspace = true }
 dotenvy = { workspace = true }
 thiserror = { workspace = true }
 walkdir = "2.5.0"
+tempfile = "3.27.0"
 axum = { workspace = true, features = ["ws"] }
 notify = { workspace = true }
 syn = { version = "3.0.5", features = ["full", "visit", "visit-mut"] }
@@ -64,7 +65,6 @@ uuid = { workspace = true }
 
 [dev-dependencies]
 insta = { version = "1.41", features = ["yaml"] }
-tempfile = "3.27.0"
 # Keeps the generated Tera blueprint dependency locked and cached for the
 # packaged-distribution compile gate without adding it to the CLI runtime graph.
 tera = "2.4.0"
