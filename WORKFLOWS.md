@@ -499,8 +499,9 @@ development.** Compatible policy/tooling can serve both release lines after
 review; it does not require a new framework capability release. The draft/ready split,
 eight OS shards, Linux-only post-merge repetition, mutation recovery and
 targeted diagnostic modes described above already exist. Measurement and
-change-impact **observation tooling now exists on v13**, but selective execution
-and general cross-commit release-evidence reuse are **not enabled**.
+change-impact **observation tooling now exists on v13**. A narrowly scoped
+development-only site admission path is being validated below; affected-crate
+execution and general cross-commit release-evidence reuse are **not enabled**.
 
 The `ci.yml`, `documentation.yml` and `workflow-lint.yml` development triggers
 include v13. Other inherited branch filters remain unchanged; these three jobs
@@ -514,12 +515,38 @@ recommendation. Missing history or unsupported graph shapes also fall back to
 full. `may_skip_checks` is always false and no workflow consumes this report to
 skip a job. Candidate package lists are not a complete test/feature matrix.
 
+The separate `admit-site-only.py` / `plan-ci-scope.sh` path can avoid repeating
+Rust CI only for a **v13 push** whose committed changes exclusively touch
+`docs/home_template.html`, `docs/site.css` or `docs/site.js`. It requires the
+immediately preceding commit to have a successful full Linux push CI in this
+repository within 72 hours, with all 25 expected runtime jobs completed
+successfully. Run/attempt/source/repository/branch identity and the entire job
+inventory are checked. A skipped runtime job, unknown job, failure, missing
+history, unavailable API, changed policy, symlink, mode change or stale receipt
+retains full runtime checks. The source-equivalence check also prevents an
+untested intermediate code change from being hidden by a later CSS-only push.
+
+The helpers are loaded from the preceding committed source and executed with
+isolated Python imports. A candidate cannot replace its own admission helper;
+the shell's error path and every runtime job guard also retain full execution
+if scope planning fails. Admitted pushes still build the book and run static
+site validation and real Chromium tests, plus the separate documentation and
+workflow checks. They do not produce a quality scorecard or qualify as release
+evidence. PRs, `main`, manual matrices, fuzzing, mutation campaigns and release
+admission are unchanged. The first implementation deliberately does **not**
+chain presentation-only receipts or search arbitrarily old baselines; a missing
+immediate full baseline incurs a normal run. Hosted positive-path validation
+and a measured fast-path duration remain required before calling this rollout
+complete.
+
 Read-only local commands (the planner inspects commits, not uncommitted files):
 
 ```bash
 python3 .github/plan-verification.py --base main --head HEAD
 python3 .github/test-plan-verification.py
 python3 .github/test-report-ci-timings.py
+python3 .github/test-admit-site-only.py
+python3 .github/test-ci-scope.py
 gh api --paginate --slurp \
   'repos/Rullst/Rullst/actions/runs/34980693742/attempts/1/jobs?per_page=100' \
   | python3 .github/report-ci-timings.py --top 10
@@ -565,7 +592,7 @@ These ideas remain valuable, but are not current guarantees:
 | PGO and BOLT | **Not implemented — defer until production profiles exist.** Fixed throughput-gain percentages must not be promised in advance. |
 | Chaos testing with `fail-rs` | **Not implemented — worth implementing** around queues, database retries, and provider timeouts after deterministic failure contracts exist. |
 | AFL.rs/honggfuzz differential fuzzing | **Not implemented — valuable after the 40 libFuzzer targets have healthy corpora and triage ownership.** |
-| Cross-platform CI acceleration | **Partial — first v13 engineering priority, also applicable to compatible v12 maintenance.** The inherited v12 baseline already has eight shards per OS, isolated fixture targets and nextest with separate doctests. Preserve its exact workspace, feature, generated-project, outbox and live-provider contracts while measuring further scheduling/cache improvements. Speed alone must never reduce assertions or supported-platform evidence. |
+| Cross-platform CI acceleration | **Partial — first engineering priority, also applicable to compatible v12 maintenance.** The inherited v12 baseline has eight `cargo test` shards per OS and isolated fixture targets. Coverage separately uses nextest; the ordinary CI runner has not migrated to it. Preserve workspace, feature, generated-project, outbox, doctest and live-provider contracts while measuring further scheduling/cache improvements. Speed alone must never reduce assertions or supported-platform evidence. |
 | Differential database testing | **Not implemented — high-value v13 work.** Run equivalent generated ORM operations against the supported relational backends and compare normalized results, errors and transaction behavior; keep provider-specific semantics explicit instead of forcing false equivalence. |
 | Cross-browser and accessibility testing | **Not implemented — high-value v13 work.** Exercise generated applications with Playwright across Chromium, Firefox and WebKit, add keyboard and automated accessibility checks, and retain traces/screenshots for failures. This would complement, not replace, ZAP and server-level integration tests. |
 | Mobile physical-device farms | **Not implemented — requires external infrastructure.** Add Android and iOS device-farm execution, lifecycle/network interruption scenarios and signed-package evidence when accounts and secrets are governed. Simulator and compile checks must not be presented as physical-device or store-acceptance proof. |
@@ -588,8 +615,9 @@ cache collector traversed them, producing false missing-file annotations and
 multi-gigabyte uploads.
 
 This is historical context, not the current configuration or expected duration.
-The stable v12 baseline now uses the sharded nextest/doctest system documented
-above. New experiments must measure that inherited configuration, not claim a
+The stable v12 baseline now uses the sharded `cargo test` system documented
+above; pinned nextest currently schedules the coverage pass only. New
+experiments must measure that inherited configuration, not claim a
 speedup against obsolete commands or omit checks that moved into other jobs.
 
 An acceleration change is acceptable only when all of these conditions hold:
@@ -608,7 +636,7 @@ An acceleration change is acceptable only when all of these conditions hold:
    inputs; caches are performance hints, never release artifacts or evidence that
    tests ran. Bound storage and prevent untrusted pull requests from replacing a
    protected default-branch cache.
-5. Change the inherited `cargo-nextest` configuration only if ordinary tests,
+5. Evaluate nextest for ordinary CI (or change its coverage configuration) only if tests,
    ignored-test policy, retries, process cleanup and failure reporting remain
    equivalent. Run Cargo doctests
    separately because nextest does not replace them. Keep plain `cargo test` as
@@ -617,6 +645,14 @@ An acceleration change is acceptable only when all of these conditions hold:
    runs on every supported OS show a material wall-time reduction without new
    flakes, lost tests, hidden failures or multi-gigabyte cache churn. Retain the
    previous workflow as a quick rollback during the observation window.
+
+For development-only presentation skips, comparing with the immediately
+preceding commit is insufficient: that commit might have an unfinished or
+failed runtime run which a new push cancels. Admission must bind a completed
+successful runtime inventory to its exact baseline commit, compare that baseline
+with the candidate, and reject incomplete, stale, diagnostic or presentation-only
+receipts. Manual/release runs remain full. Do not infer receipt validity from a
+green workflow badge, file extensions alone or the observation report.
 
 This work optimizes feedback latency, not the evidence boundary. Any v12
 maintenance change must preserve the immutable v12.0.0 artifacts and carry its

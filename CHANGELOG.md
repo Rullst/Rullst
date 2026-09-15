@@ -16,6 +16,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   history retain full verification; no check is skipped by its reports.
 - Run Rust CI, documentation and workflow-policy checks on v13 as well as main.
   Other inherited workflow branch filters and release admission remain unchanged.
+- Add a development-only site admission path for v13 pushes, requiring a recent
+  exact-source baseline with all 25 Linux runtime jobs successful, a bounded
+  three-file presentation diff and fresh browser/documentation checks. Missing
+  or invalid evidence falls back to full runtime CI; PRs, main, manual and release
+  gates are unchanged. Hosted positive-path validation remains pending.
 
 ### Documentation
 
@@ -37,6 +42,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Define v13 API documentation acceptance criteria for connected Rust reference
   pages and tested REST journeys, using Qt's organization as inspiration.
   These documentation and expanded-updater programmes remain planned.
+- Correct the nextest scope: coverage uses nextest, while ordinary CI's existing
+  eight shards still use Cargo's test runner.
 
 ## [12.0.0] - 2026-09-15 🚀
 

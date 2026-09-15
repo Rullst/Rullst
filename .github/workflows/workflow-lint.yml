@@ -33,6 +33,8 @@ jobs:
         run: |
           python3 .github/test-plan-verification.py
           python3 .github/test-report-ci-timings.py
+          python3 .github/test-admit-site-only.py
+          python3 .github/test-ci-scope.py
 
       - name: Observe change impact without skipping checks
         env:

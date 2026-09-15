@@ -61,7 +61,59 @@ defaults:
     working-directory: .
 
 jobs:
+  scope:
+    name: Verification scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      runtime_required: ${{ steps.scope.outputs.runtime_required }}
+    steps:
+      - name: Checkout source and comparison history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Admit only source-equivalent v13 site pushes
+        id: scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.before || '' }}
+        run: bash .github/plan-ci-scope.sh
+
+  site-validation:
+    name: Verify site-only presentation
+    needs: scope
+    if: github.event_name == 'push' && github.ref == 'refs/heads/v13' && needs.scope.outputs.runtime_required == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RUSTC_WRAPPER: ""
+    steps:
+      - name: Checkout site candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned documentation builder
+        uses: taiki-e/install-action@5bf6ce016fd2e72eefc647cbca1e4213f65955b8 # v2.87.5
+        with:
+          tool: mdbook@0.5.4
+      - name: Set up browser-test runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Validate rendered content and real browser behavior
+        run: |
+          mdbook build docs
+          python3 .github/validate-site.py
+          node --check docs/site.js
+          node .github/site-browser-smoke.mjs
+
   check:
+    needs: scope
+    if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: Code Quality & Format
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -96,10 +148,13 @@ jobs:
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   test:
+    needs: scope
     name: Run Tests (${{ matrix.os }} / ${{ matrix.shard }})
     # Draft PRs still receive the faster format/Clippy feedback above. The
     # expensive cross-platform suite starts when the PR is ready for review.
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    if: >-
+      !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     runs-on: ${{ matrix.os }}
     # Generated CLI applications are real independent Cargo workspaces. Keep
     # them in isolated shards so their compile contracts run concurrently
@@ -203,6 +258,8 @@ jobs:
           cargo test -p rullst-capital --features quota-sql --test quota_sql_postgres --test quota_sql_mysql --test quota_sql_mariadb -- --test-threads=1
 
   strict-database-features:
+    needs: scope
+    if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: ORM ${{ matrix.feature }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -255,6 +312,8 @@ jobs:
           esac
 
   redis-rate-limit:
+    needs: scope
+    if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: Redis live contracts
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -308,6 +367,8 @@ jobs:
           --test scout_post_commit_test
 
   feature-boundaries:
+    needs: scope
+    if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: Public feature boundaries (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -334,6 +395,8 @@ jobs:
         run: bash .github/check-feature-boundaries.sh --shard "${{ matrix.shard }}/4"
 
   threat-model-release-minimum:
+    needs: scope
+    if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: Threat-model release-negative minimum (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -379,6 +442,8 @@ jobs:
           retention-days: 7
 
   versioned-ai-evals:
+    needs: scope
+    if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: Versioned deterministic AI evals
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -401,6 +466,8 @@ jobs:
         run: bash .github/check-ai-evals.sh
 
   generated-release-access:
+    needs: scope
+    if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: Generated release access boundaries
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -426,6 +493,8 @@ jobs:
         run: cargo test --release -p rullst-studio protected_router_accepts_only_a_verified_loopback_peer
 
   facade-composition:
+    needs: scope
+    if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: Facade shared-local recovery composition
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -448,6 +517,8 @@ jobs:
         run: bash .github/check-facade-composition.sh
 
   msrv:
+    needs: scope
+    if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: Check MSRV (Rust 1.96.0)
     runs-on: ubuntu-latest
     timeout-minutes: 90
