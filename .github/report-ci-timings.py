@@ -101,8 +101,16 @@ def summarize(payload: object) -> dict:
             conclusion = text(conclusion, "job conclusion")
         if completed and conclusion is None:
             raise ValueError("completed job is missing its conclusion")
-        runtime = duration(job.get("started_at"), job.get("completed_at")) if completed else None
-        wait = duration(job.get("created_at"), job.get("started_at")) if started else None
+        skipped = completed and conclusion == "skipped"
+        # GitHub can synthesize reversed timestamps for a job that never ran
+        # (observed in run 35016405011). Do not invent zero/negative runtime or
+        # reject the measurements of executed jobs because of those markers.
+        # Malformed timestamps and contradictory execution still fail closed.
+        if skipped:
+            for field in ("created_at", "started_at", "completed_at"):
+                timestamp(job.get(field))
+        runtime = duration(job.get("started_at"), job.get("completed_at")) if completed and not skipped else None
+        wait = duration(job.get("created_at"), job.get("started_at")) if started and not skipped else None
         rows.append({
             "id": job_id, "name": name, "status": status,
             "conclusion": conclusion, "wait_seconds": wait, "run_seconds": runtime,
@@ -113,6 +121,9 @@ def summarize(payload: object) -> dict:
         for step in job_steps:
             if not isinstance(step, dict):
                 raise ValueError("step entries must be objects")
+            if skipped and (step.get("status") == "in_progress"
+                            or step.get("conclusion") not in (None, "skipped")):
+                raise ValueError("skipped job contains contradictory execution steps")
             if step.get("status") != "completed" or step.get("conclusion") == "skipped":
                 continue
             elapsed = duration(step.get("started_at"), step.get("completed_at"))
@@ -127,12 +138,14 @@ def summarize(payload: object) -> dict:
         raise ValueError("do not mix workflows, runs, attempts or source SHAs")
     run_id, attempt, sha, workflow = identities.pop()
     completed_count = sum(row["status"] == "completed" for row in rows)
+    skipped_count = sum(row["status"] == "completed" and row["conclusion"] == "skipped" for row in rows)
     known_runtimes = [row["run_seconds"] for row in rows if row["run_seconds"] is not None]
     return {
         "schema_version": 1, "run_id": run_id, "run_attempt": attempt,
         "head_sha": sha, "workflow": workflow, "job_count": len(rows),
         "completed_jobs": completed_count,
-        "partial": completed_count != len(rows) or len(known_runtimes) != len(rows),
+        "partial": completed_count != len(rows) or len(known_runtimes) + skipped_count != len(rows),
+        "skipped_jobs": skipped_count,
         "measured_runtime_jobs": len(known_runtimes),
         "measured_runner_seconds": sum(known_runtimes),
         "longest_completed_job_seconds": max(known_runtimes, default=None),
@@ -161,6 +174,7 @@ def markdown(report: dict, top: int) -> str:
         f"Snapshot: {'partial' if report['partial'] else 'complete'}.", "",
         "Times are minutes. Wait means job creation to start, including possible orchestration "
         "or dependency waits; it is not proven runner-queue time. Unknown is not zero.",
+        f"Skipped jobs: {report['skipped_jobs']}. They did not execute and are excluded from timing totals.",
         "Execution includes setup, compilation, tests and cleanup. A combined Cargo step "
         "cannot separate compile time from test time. This report is not pass/fail or release evidence.", "",
         f"Measured runner-minutes: {minutes(report['measured_runner_seconds'])} "
@@ -170,9 +184,11 @@ def markdown(report: dict, top: int) -> str:
         "| Job | State | Wait | Execution |", "| :--- | :--- | ---: | ---: |",
     ]
     for row in report["jobs"][:top]:
+        skipped = row["status"] == "completed" and row["conclusion"] == "skipped"
         lines.append(
             f"| {cell(row['name'])} | {cell(row['conclusion'] or row['status'])} | "
-            f"{minutes(row['wait_seconds'])} | {minutes(row['run_seconds'])} |"
+            f"{'not run' if skipped else minutes(row['wait_seconds'])} | "
+            f"{'not run' if skipped else minutes(row['run_seconds'])} |"
         )
     waits = sorted(
         (row for row in report["jobs"] if row["wait_seconds"] is not None),

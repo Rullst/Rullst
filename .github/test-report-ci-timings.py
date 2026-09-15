@@ -100,6 +100,39 @@ class TimingTests(unittest.TestCase):
         report = MODULE.summarize(response(fixture))
         self.assertEqual(len(report["steps"]), 1)
 
+    def test_skipped_synthetic_timestamps_are_not_runtime_or_unknown_execution(self) -> None:
+        # Real GitHub ordering from run 35016405011's presentation-only job.
+        skipped = job(2, conclusion="skipped", steps=[],
+                      created_at="2026-09-15T19:56:41Z", started_at="2026-09-15T19:56:41Z",
+                      completed_at="2026-09-15T19:56:40Z")
+        report = MODULE.summarize(response(job(), skipped))
+        self.assertFalse(report["partial"])
+        self.assertEqual(report["completed_jobs"], 2)
+        self.assertEqual(report["skipped_jobs"], 1)
+        self.assertEqual(report["measured_runtime_jobs"], 1)
+        self.assertEqual(report["measured_runner_seconds"], 600)
+        self.assertIsNone(report["jobs"][1]["run_seconds"])
+        self.assertIsNone(report["jobs"][1]["wait_seconds"])
+        self.assertIn("| skipped | not run | not run |", MODULE.markdown(report, 10))
+
+    def test_all_skipped_inventory_does_not_manufacture_runtime_measurements(self) -> None:
+        report = MODULE.summarize(response(job(conclusion="skipped", steps=[])))
+        self.assertFalse(report["partial"])
+        self.assertEqual(report["measured_runtime_jobs"], 0)
+        self.assertIsNone(report["longest_completed_job_seconds"])
+        self.assertEqual(report["steps"], [])
+
+    def test_skipped_status_cannot_hide_malformed_time_or_executed_steps(self) -> None:
+        for fixture in (job(conclusion="skipped"),
+                        job(conclusion="skipped", steps=[], completed_at="not a date")):
+            with self.subTest(fixture=fixture), self.assertRaises(ValueError):
+                MODULE.summarize(response(fixture))
+
+    def test_other_outcomes_still_reject_reversed_intervals(self) -> None:
+        for outcome in ("success", "failure", "cancelled", "timed_out", "neutral"):
+            with self.subTest(outcome=outcome), self.assertRaises(ValueError):
+                MODULE.summarize(response(job(conclusion=outcome, completed_at="2026-09-15T10:04:59Z")))
+
     def test_zero_duration_is_measured(self) -> None:
         report = MODULE.summarize(response(job(completed_at="2026-09-15T10:05:00Z")))
         self.assertEqual(report["jobs"][0]["run_seconds"], 0)

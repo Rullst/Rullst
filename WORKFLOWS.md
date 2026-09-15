@@ -608,8 +608,33 @@ the old all-blueprint wrapper consumed 958.22 seconds inside threat shard 0,
 whose complete job took 26m12s. That gate needed LMS evidence, not another
 execution of the seven other project configurations. Hosted threat jobs now
 use the same bounded two-job nested compiler setting as the normal generated
-matrix. New hosted timings are still required; removing warm listing calls
-alone saves overhead, not half the compilation time.
+matrix. Removing warm listing calls alone saves overhead, not half the
+compilation time. The complete optimized Linux run passed all 25 required
+runtime jobs, plus documentation and workflow validation.
+
+| Measurement | [Before: 35011900532](https://github.com/Rullst/Rullst/actions/runs/35011900532) | [After: 35016405011](https://github.com/Rullst/Rullst/actions/runs/35016405011) |
+| :--- | ---: | ---: |
+| Required runtime jobs successful | 25/25 | 25/25 |
+| Threat-model shard 0 execution | 28m34s | 10m22s |
+| Generated-project threat wrapper | 1,063.37 seconds | 227.75 seconds |
+| Summed measured runner time | 196.68 minutes | 147.55 minutes |
+| Whole Rust CI elapsed time | 43m43s | 61m12s |
+
+These source revisions are `0b3588a4` and `d0898516`. Execution work decreased,
+but some jobs waited up to 51m40s between creation and start, so the whole
+workflow took longer. Waiting can include orchestration and runner availability.
+Cache warmth and overlapping workflows differ; this is not a controlled
+benchmark or a fixed speedup guarantee. Do not increase shard counts blindly:
+runner contention can outweigh shorter individual jobs. Complete and validate
+one feedback batch before pushing another when practical; no required check is
+cancelled merely to improve the displayed elapsed time.
+
+The timing reporter leaves skipped jobs visible but does not assign them an
+execution duration. GitHub can synthesize reversed timestamps for an unexecuted
+job. Malformed timestamps, contradictory executed steps and negative intervals
+in jobs that actually ran still fail. This observation-only correction does not
+change site admission or release-evidence rules. The compatible v12 backport
+must earn its own platform evidence; a v13 run is not a main acceptance receipt.
 
 Six parser tests include a real compiled Rust harness; five runner tests check
 the full exact inventory, shard partition and failure paths. Five generated

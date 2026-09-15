@@ -38,6 +38,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### CI tooling
 
+- Distinguish skipped jobs from measured execution in timing reports, including
+  GitHub's reversed synthetic timestamps; retain strict validation for jobs
+  that ran. Record successful hosted optimization evidence without hiding the
+  longer total elapsed time caused by substantial job-start waits.
 - Limit single-target fuzz diagnostic preparation to the exact requested target
   with fail-closed package selection. Retain every release preflight target,
   sanitizer setting and campaign duration; add scheduling/failure regressions.
@@ -49,7 +53,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   in the normal eight-project matrix, including ERP release builds; exclude only
   its redundant exact-name LMS wrapper there. Add real Rust harness and
   scheduling regressions, and bound nested compilation to two jobs in hosted
-  threat checks. Hosted speedup measurement remains pending.
+  threat checks. The optimized Linux run passed all 25 required runtime jobs;
+  reduced execution work did not guarantee shorter overall queue-plus-run time.
 - Add a bounded read-only job-timing reporter and negative fixtures; distinguish
   job waits, combined execution steps and summed runner time from release evidence.
 - Add an observation-only Git impact planner with transitive normal, optional,
