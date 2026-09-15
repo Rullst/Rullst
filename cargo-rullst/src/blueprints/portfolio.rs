@@ -556,7 +556,9 @@ fn cv_styles() -> String {{
         100% {{ transform: scale(1.1); opacity: 1; }}
     }}
 
-    .layout {{ display: flex; min-height: 100vh; max-width: 1400px; margin: 0 auto; padding: 2rem; gap: 3rem; }}
+    .layout {{ display: flex; width: 100%; min-height: 100vh; max-width: 1400px; margin: 0 auto; padding: 2rem; gap: 3rem; }}
+    .layout > *, .contact-item > * {{ min-width: 0; }}
+    .layout {{ overflow-wrap: anywhere; }}
     
     .sidebar {{
         width: 350px; flex-shrink: 0; position: sticky; top: 2rem; height: calc(100vh - 4rem);
@@ -567,7 +569,7 @@ fn cv_styles() -> String {{
     }}
     
     .profile-img {{ width: 140px; height: auto; max-height: 120px; border-radius: 12px; margin-bottom: 1rem; object-fit: contain; }}
-    h1 {{ font-size: 2.2rem; font-weight: 800; line-height: 1.1; margin-bottom: 0.5rem; background: linear-gradient(135deg, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
+    h1 {{ font-size: clamp(1.8rem, 4vw, 2.2rem); font-weight: 800; line-height: 1.1; margin-bottom: 0.5rem; background: linear-gradient(135deg, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
     h2.role {{ color: var(--accent); font-size: 1.1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }}
     .summary {{ color: var(--text-muted); font-size: 0.95rem; }}
 
@@ -595,7 +597,7 @@ fn cv_styles() -> String {{
     .exp-company {{ font-size: 1rem; color: #bbb; font-weight: 500; margin-bottom: 1rem; }}
     .exp-desc {{ color: var(--text-muted); font-size: 1rem; }}
 
-    .projects-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }}
+    .projects-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1.5rem; }}
     .project-card {{ background: var(--glass-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 1.5rem; }}
     .project-title {{ font-size: 1.2rem; font-weight: 700; margin-bottom: 0.5rem; }}
     .project-desc {{ font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1.5rem; }}
@@ -605,6 +607,24 @@ fn cv_styles() -> String {{
     .cms-btn:hover {{ background: #34d399; }}
 
     .engine-badge {{ display: inline-block; background: rgba(0, 255, 204, 0.1); border: 1px solid rgba(0, 255, 204, 0.3); color: #00ffcc; font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: 20px; margin-top: 0.5rem; }}
+    @media (max-width: 900px) {{
+        .layout {{ flex-direction: column; padding: 1.25rem 1rem; gap: 2.25rem; }}
+        .sidebar {{ width: 100%; position: static; height: auto; padding: 2rem; }}
+        .content {{ width: 100%; gap: 2.5rem; }}
+        .projects-grid {{ grid-template-columns: minmax(0, 1fr); }}
+        .section-title {{ font-size: 1.6rem; }}
+    }}
+    @media (max-width: 640px) {{
+        .layout {{ padding: 1rem 0.75rem; gap: 1.75rem; }}
+        .sidebar {{ padding: 1.5rem 1rem; }}
+        .profile-img {{ width: 100px; }}
+        .timeline {{ padding-left: 1.25rem; }}
+        .timeline-item::before {{ left: -1.6rem; }}
+        .project-card {{ padding: 1.25rem; }}
+    }}
+    @media (prefers-reduced-motion: reduce) {{
+        .bg-grid, .glow-blob {{ animation: none; }}
+    }}
     "#.to_string()
 }}
 

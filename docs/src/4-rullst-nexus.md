@@ -7,6 +7,36 @@ registered Rullst models.
 panel. Rullst builds CRUD, search, pagination, and batch routes from that
 registration; it does not discover an arbitrary database schema automatically.
 
+## Mobile maintenance in 12.1.0 and v13 (unreleased)
+
+The [Portfolio report, issues 3 and 4](https://github.com/Rullst/examples/blob/0182464b68a5adaf89fca65af8dd00142d78ad49/docs/portfolio-errors-found.md)
+identified a drawer that could not be dismissed on small screens and a
+desktop-only Portfolio layout. The maintenance changes are **not in published
+12.0.0**:
+
+- Nexus supplies a close button, click/touch backdrop, Escape and link dismissal,
+  focus containment and return, and synchronized `aria-expanded` state. Closed
+  mobile links are inert; the background is inert while the drawer is open.
+  Desktop resizing clears that state. Without JavaScript, ordinary navigation
+  stays visible. The drawer does not require HTMX or a CDN to dismiss.
+- The Portfolio generator stacks its sections below 900px, tightens spacing
+  below 640px, wraps long content and keeps project cards inside the viewport.
+  Reduced-motion preferences stop decorative animations.
+
+After the target release is published, update the application dependencies and
+lockfile, then remove the temporary `nexus_mobile_patch` middleware that buffers
+and rewrites Nexus HTML. Retaining it can introduce duplicate close controls,
+backdrops and event handlers. Do not remove authentication, authorization, TLS,
+CSRF or other security middleware along with that presentation-only patch.
+
+Existing Portfolio projects own their generated `src/pages/home.rs`: updating
+the CLI or dependency alone does **not** replace that file. Compare its styles
+with a fresh Portfolio scaffold, apply the responsive CSS while preserving your
+content/design, and remove conflicting old overrides. Verify narrow screens,
+long names/URLs, keyboard focus, touch dismissal, desktop resizing and reduced
+motion before redeployment. Other repositories and deployed Azure applications
+are not modified by these framework changes.
+
 ## Derive and register a model
 
 The `Nexus` derive generates `NexusModel` metadata for named-field structs. It
