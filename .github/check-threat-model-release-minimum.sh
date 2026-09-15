@@ -16,12 +16,6 @@ if [[ $# -ne 0 ]]; then
   fi
 fi
 
-# Several negative cases materialize a generated application and deliberately
-# compile it with CARGO_NET_OFFLINE=true. Prime every source referenced by the
-# reviewed lockfile so an isolated shard does not depend on another job having
-# downloaded a transitive crate first.
-cargo fetch --locked
-
 manifest_path=".github/threat-model-release-minimum.json"
 model_path="docs/src/threat-models.md"
 
@@ -99,8 +93,21 @@ grep -Fq -- "**Model version:** ${model_version}" "$model_path" || {
 
 executed_tests=()
 executed_count=0
+evidence_dir="$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/rullst-exact-evidence.XXXXXX")"
+trap 'rm -rf -- "${evidence_dir:?}"' EXIT
 
-while IFS=$'\t' read -r case_id crate target_kind target test_filter source marker; do
+# Keep each selected test in its own Cargo/libtest process with the same
+# all-feature graph and hash shard. Validate execution instead of compiling and
+# listing the target again before every test. A zero-test or ignored result is
+# not evidence, even though libtest itself can return status zero for it.
+run_exact_test() {
+  local log_path="$evidence_dir/test.log"
+  cargo test -p "$crate" --all-features "$@" "$test_filter" -- --exact --color never \
+    2>&1 | tee "$log_path"
+  python3 .github/assert-exact-rust-test.py "$log_path" "$test_filter"
+}
+
+validate_evidence_row() {
   if [[ ! "$case_id" =~ ^[A-Z]+-[0-9]{2}$ \
     || ! "$crate" =~ ^[a-z0-9_-]+$ \
     || ! "$target_kind" =~ ^(lib|integration)$ \
@@ -125,6 +132,25 @@ while IFS=$'\t' read -r case_id crate target_kind target test_filter source mark
     echo "Evidence source ${source} does not reference ${marker}."
     exit 1
   }
+  if [[ "$target_kind" == integration && -z "$target" ]]; then
+    echo "Integration evidence ${case_id} is missing a target name."
+    exit 1
+  fi
+}
+
+# Validate every row before downloads/builds, including rows in other shards.
+# A malformed late row must not waste earlier compilation or execute a partial
+# inventory. Capture jq's status directly instead of losing it in substitution.
+evidence_rows="$(jq -r '.cases[] | [.id, .crate, .target_kind, .target, .test_filter, .source, .marker] | @tsv' "$manifest_path")"
+while IFS=$'\t' read -r case_id crate target_kind target test_filter source marker; do
+  validate_evidence_row
+done <<<"$evidence_rows"
+
+# Generated application negatives compile offline. Populate the reviewed lock
+# after preflight, without relying on another isolated shard's package cache.
+cargo fetch --locked
+
+while IFS=$'\t' read -r case_id crate target_kind target test_filter source marker; do
 
   test_key="${crate}:${target_kind}:${target}:${test_filter}"
   test_digest="$(printf '%s' "$test_key" | sha256sum)"
@@ -151,27 +177,13 @@ while IFS=$'\t' read -r case_id crate target_kind target test_filter source mark
   echo "Running ${case_id}: ${crate} ${test_filter}"
   case "$target_kind" in
     lib)
-      test_list="$(cargo test -p "$crate" --all-features --lib -- --list)"
-      if ! grep -Fxq -- "${test_filter}: test" <<<"$test_list"; then
-        echo "Threat-model evidence test does not exist: ${test_filter}."
-        exit 1
-      fi
-      cargo test -p "$crate" --all-features --lib "$test_filter" -- --exact
+      run_exact_test --lib
       ;;
     integration)
-      if [ -z "$target" ]; then
-        echo "Integration evidence ${case_id} is missing a target name."
-        exit 1
-      fi
-      test_list="$(cargo test -p "$crate" --all-features --test "$target" -- --list)"
-      if ! grep -Fxq -- "${test_filter}: test" <<<"$test_list"; then
-        echo "Threat-model evidence test does not exist: ${test_filter}."
-        exit 1
-      fi
-      cargo test -p "$crate" --all-features --test "$target" "$test_filter" -- --exact
+      run_exact_test --test "$target"
       ;;
   esac
-done < <(jq -r '.cases[] | [.id, .crate, .target_kind, .target, .test_filter, .source, .marker] | @tsv' "$manifest_path")
+done <<<"$evidence_rows"
 
 if (( executed_count == 0 )); then
   echo "threat-model shard ${shard_index}/${shard_count} selected no tests" >&2

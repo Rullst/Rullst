@@ -497,9 +497,78 @@ dependency graph make static estimates unreliable.
 **Priority: immediate maintenance work on v12, carried forward to v13.** Faster
 feedback is not a reason to wait for a major release. The draft/ready split,
 eight OS shards, Linux-only post-merge repetition, mutation recovery and
-targeted diagnostic modes described above already exist. The additional work
-below is **planned**, not a claim that impact selection or cross-commit release
-evidence reuse has been implemented.
+targeted diagnostic modes described above already exist. The current maintenance
+batch removes repeated preparation while preserving full verification. Affected
+crate selection and general cross-commit release-evidence reuse remain planned;
+no new development-only skip policy is enabled on main.
+
+Before Clippy or campaign compilation, full locked Cargo metadata resolves the
+reviewed fuzz graphs for the campaign's explicit Linux target. The old
+`--no-deps` command did not resolve dependencies and could accept stale locks.
+Five regression tests include a real offline Cargo reproduction. This early
+failure check does not build or execute fuzzers.
+
+The threat runner preflights all 67 evidence mappings for 55 threat IDs before
+fetching or compiling. Its 59 unique exact tests still execute in separate
+all-feature processes with the same deterministic hash algorithm. Removing the
+per-test listing reduces top-level Cargo test invocations from 118 to 59,
+excluding each shard's retained locked fetch. A successful process exit and one
+named, passed, non-ignored libtest execution are both required; zero-test and
+ignored outcomes cannot count as successful security evidence.
+
+The eight LMS mappings now use `materialized_lms_executes_security_contracts`.
+It materializes the same LMS case and runs all its application tests with the
+original verification helper, independently of the normal group environment.
+The foundation/product matrix still runs all eight configurations, covering all
+six blueprints and API/hot-reload/database/release boundaries. It excludes only
+the duplicate exact-name LMS wrapper, not an application assertion. Unfiltered
+workspace tests also discover that wrapper. Hosted threat checks use the same
+bounded two-job nested compilation setting as the normal generated matrix.
+
+Single-target fuzz diagnostics compile only their exact requested target, after
+checking that it uniquely belongs to the selected package. Release preflights
+still compile every target in all ten packages, and all forty 5.5-hour campaigns
+remain unchanged. No sanitizer, instrumentation, corpus, failure or release
+admission rule is weakened. Fuzzing, Miri, Kani and mutation campaigns are manual,
+not dispatched by ordinary pushes.
+
+Twenty-one scheduling/parser tests include a real Rust libtest fixture and
+compiled actual generated-case selectors with a recorded verifier. The latter
+proves scheduling only; real application tests and platform CI remain required.
+
+Observed Linux development evidence (not a main-backport acceptance receipt):
+
+| Measurement | [Before: 35011900532](https://github.com/Rullst/Rullst/actions/runs/35011900532) | [After: 35016405011](https://github.com/Rullst/Rullst/actions/runs/35016405011) |
+| :--- | ---: | ---: |
+| Required runtime jobs successful | 25/25 | 25/25 |
+| Threat-model shard 0 execution | 28m34s | 10m22s |
+| Summed measured runner time | 196.68 minutes | 147.55 minutes |
+| Whole Rust CI elapsed time | 43m43s | 61m12s |
+
+The source revisions are `0b3588a4` and `d0898516`. The new run spent less time
+executing jobs, but some jobs waited up to 51m40s between creation and start;
+the total workflow was slower. Waiting can include orchestration and runner
+availability. Cache warmth and overlapping workflows differ, so this is not a
+controlled benchmark or a promise of a fixed speedup. Do not sum parallel job
+times to estimate elapsed duration or billing, or increase shard counts without
+measuring their effect on runner contention.
+
+The bounded `report-ci-timings.py` reporter keeps skipped jobs visible without
+assigning them invented runtime. GitHub's synthetic timestamps for a skipped job
+can be reversed; malformed times, contradictory executed steps, and negative
+intervals for jobs that actually ran still fail. This observation tool never
+authorizes skipping a required check.
+
+```bash
+python3 .github/test-report-ci-timings.py
+python3 .github/test-exact-rust-test.py
+python3 .github/test-threat-model-runner.py
+python3 .github/test-generated-evidence.py
+python3 .github/test-fuzz-preflight.py
+gh api --paginate --slurp \
+  'repos/Rullst/Rullst/actions/runs/35016405011/attempts/1/jobs?per_page=100' \
+  | python3 .github/report-ci-timings.py --top 10
+```
 
 | Order | Improvement | Acceptance evidence |
 | :--- | :--- | :--- |
