@@ -132,6 +132,19 @@ while IFS= read -r package; do
       fi
 
       echo "::group::$package against crates.io $baseline"
+      # The published 12.0.0 mail baseline predates Smithy types 1.7, which
+      # breaks the SDK's JSON 0.63 implementation during fresh resolution.
+      # Match the current resolver-only constraint without changing baseline
+      # Rust source, disabling aws-ses, or suppressing API comparisons.
+      if [[ "$package" == "rullst-mail" && "$baseline" == "12.0.0" ]]; then
+        if ! grep -Eq '^\[dependencies\.aws-smithy-types\][[:space:]]*$' "$baseline_root/Cargo.toml"; then
+          {
+            printf '\n[dependencies.aws-smithy-types]\n'
+            printf 'version = "=1.6.3"\n'
+            printf 'default-features = false\n'
+          } >> "$baseline_root/Cargo.toml"
+        fi
+      fi
       cargo semver-checks check-release \
         --package "$package" \
         --baseline-root "$baseline_root"

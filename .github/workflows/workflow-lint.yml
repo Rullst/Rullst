@@ -74,6 +74,9 @@ jobs:
       - name: Validate shared fuzz target inventory
         run: python3 .github/validate-fuzz-targets.py
 
+      - name: Validate native SES resolver constraint
+        run: python3 .github/test-mail-smithy-constraint.py
+
       - name: Validate stable release-note extraction
         run: python3 .github/render-release-notes.py 12.0.0 "$RUNNER_TEMP/release-notes.md"
 
