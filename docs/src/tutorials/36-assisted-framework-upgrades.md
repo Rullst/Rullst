@@ -198,6 +198,27 @@ not allowed to guess them.
 
 ## Planned simpler update experience
 
+**Working 12.1.0 source only, not published 12.0.0:** read-only discovery is now
+available through these commands:
+
+```bash
+cargo rullst update check
+cargo rullst update check --to 12.0.0 --json
+cargo rullst update check --offline
+```
+
+The default selects an eligible stable CLI in the installed major. An exact
+newer major needs `--allow-major`, and an exact prerelease also needs
+`--prerelease`. Neither flag authorizes migration or provides future-major
+rules. Unknown/yanked versions and downgrades are rejected. The report includes
+the exact version, declared Rust minimum, release-notes link and current
+OS/architecture; it does not certify compatibility. JSON uses
+`rullst.update-discovery.v1`; reject unknown schemas. Metadata checksums are
+not proof of publisher identity, and every authority field remains false.
+No CLI/project files change. While private caching is unfinished, `--offline`
+and `CARGO_NET_OFFLINE=true` return a clear error instead of accessing the
+registry or trusting the old shared cache.
+
 The [safe-update priority](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience) proposes
 one guided flow for CLI installation, project preparation, validation and
 approved application. This is planned for a compatible opt-in **12.1.0** release
