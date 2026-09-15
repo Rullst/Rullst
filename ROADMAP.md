@@ -376,6 +376,120 @@ over increasing the number of crates. The
 assurance experiments; move a proposal into the implementation column only
 after its code and evidence exist.
 
+### Safe update experience
+
+**Status: planned for 12.1.0 and carried forward into v13.** The goal is
+the easiest practical update journey without hiding risk: one guided entry point, a clear
+plan, minimal repeated input, useful progress, verification and recoverable
+application of the approved changes. Ease and speed are acceptance criteria,
+not reasons to skip compatibility or security checks.
+
+The existing `cargo rullst upgrade` already provides workspace-aware plans,
+versioned migration rules, controlled file snapshots, compiler fixes and Cargo
+checks. It does **not** install the CLI or run the application's full acceptance
+suite. Extend this boundary in `cargo-rullst`; do not introduce another crate
+or count this proposal as completed work in the capability ledger.
+
+Implementation and acceptance order:
+
+Initial discovery hardening is in the working source, not a completed 12.1.0
+delivery: interactive-only, offline/CI-aware notices use bounded HTTPS metadata
+and reject redirects, yanked versions, prereleases and unsolicited major jumps.
+The legacy shared temporary cache is removed; the current result is deliberately
+process-local. Persistent private caching, MSRV/platform presentation and the
+installation/preparation/application stages below are still unfinished. The
+published v12.0.0 release currently contains source crate archives and evidence,
+not an inventory of trusted prebuilt CLI executables; adding those artifacts
+requires release-pipeline work, not an assumed download URL.
+
+1. **Discover and explain.** Make update notices useful without blocking normal
+   CLI startup. Respect offline/CI settings and explicit notification opt-out;
+   use bounded responses, timeouts and a private, path-safe cache. Default to
+   supported stable releases within the selected major, with exact target pins;
+   prereleases and major migrations require explicit selection. Show release
+   notes, MSRV/platform requirements and unsupported migration paths before
+   proposing changes. Metadata or a notification never grants installation
+   authority.
+2. **Update the CLI safely.** Offer verified prebuilt binaries for supported
+   OS/architecture pairs, with a pinned source-install fallback when appropriate.
+   Bind artifact identity/version/platform/digest to a trusted publisher identity
+   through signatures or verified provenance; a checksum from the same untrusted
+   download is insufficient. Respect package-manager ownership and permissions;
+   stage replacements with concurrency locks, interrupted-download recovery and
+   Windows executable-lock handling. Test rejected tampering, unexpected
+   redirects/archives, stale metadata and unauthorized downgrades. Keep an
+   explicit, verified known-good recovery path, not a silent downgrade.
+3. **Prepare and verify the project.** Reuse the versioned migration catalog in
+   an isolated working copy, preserving uncommitted user work. Show dependency,
+   lockfile and source diffs and the validation commands before execution; Cargo
+   build scripts, procedural macros and tests execute code, so preparation is
+   not a sandbox or permission to run an untrusted project. Resolve the chosen
+   target reproducibly and validate the candidate lockfile, supported feature
+   sets and application-owned tests before accepting changes. Unknown or breaking
+   migrations stop with actionable instructions instead of guessed rewrites.
+4. **Apply with consent and recover.** Make the interactive happy path concise;
+   expose structured reports and explicit non-interactive policy for automation.
+   Verify that reviewed inputs have not changed before applying. Preserve bounded
+   backups and prove cancellation, concurrent edits, disk-full recovery and
+   restoration on Linux, Windows and macOS. State exactly which files are
+   restored: file rollback does not undo arbitrary test side effects, database
+   changes or external services. Opening an application or running a build must
+   never silently replace its framework, migrate its database or deploy it.
+5. **Prove usability and speed.** Exercise published-package/generated-project
+   fixtures, pinned versions, offline operation, unsupported targets and failed
+   migrations. Measure cold/warm discovery, download, compilation and validation
+   separately. Reuse only correctly keyed caches and applicable test evidence.
+   A prebuilt CLI can avoid CLI compilation; updating a Rust application can
+   still require rebuilding, testing and a separate deployment. Do not promise
+   instant upgrades, zero downtime or automatic production readiness.
+
+The 12.1.0 delivery must preserve v12's public APIs, CLI/configuration behavior
+and opt-in boundaries. It prepares discovery and installation of a compatible
+migration CLI, not guesses about a future major's source changes. Actual
+v12-to-v13 automation requires v13's published migration catalog and tested
+application fixtures; the same-major restriction of the current `upgrade`
+command must not be silently removed. Reserve incompatible changes for v13.
+
+After this bounded minor is implemented, validated and released, concentrate
+new capability work on v13, with v12 maintenance by exception. The website
+redesign is a separate documentation delivery, not a reason to bump framework
+versions or postpone verification work. This plan neither bumps package
+versions nor authorizes publication, and it does not claim that any major
+application migration is already automatic.
+
+### API documentation quality
+
+**Status: planned for v13; improve documentation alongside each implemented
+contract, not only at release time.** Distinguish the Rust framework API
+(types, traits, functions and features) from guides for building HTTP/REST
+APIs. The existing REST quickstart intentionally covers one JSON endpoint;
+routing, authentication and Scalar/OpenAPI guidance live in separate chapters.
+More pages alone will not make those paths easier to discover or complete.
+The [v12 navigation index](https://github.com/Rullst/Rullst/blob/v13/docs/src/api-reference.md)
+now connects existing guides to exact-version crate references and identifies
+the remaining REST walkthrough gaps. This first navigation improvement is not
+completion of the reference and behavioral-example programme below.
+
+Use [Qt's reference navigation](https://doc.qt.io/qt-6/reference-overview.html)
+and [a concrete class reference](https://doc.qt.io/qt-6/qnetworkaccessmanager.html)
+as organizational inspiration, not as a reason to adopt Qt or copy its text.
+Adapt the pattern to Rust with a searchable crate/module/task index linking the
+book and version-pinned rustdoc pages. For prioritized public interfaces,
+document purpose, imports/Cargo features, arguments, results and typed errors,
+security/ownership/concurrency constraints, runnable examples, related APIs,
+version availability and migration notes. Start with the umbrella facade,
+Core/routing, Auth/Security and ORM; extend coverage with each v13 increment.
+
+Provide a coherent REST learning path covering typed input validation, error
+responses, CRUD and pagination, authentication, owner/tenant authorization,
+OpenAPI, tests and deployment boundaries. Validate examples against the
+documented release and feature set, including rejected input and access denial.
+Keep the existing book-doctest integration and add behavioral fixtures where
+compilation alone cannot prove the documented result. Check rendered book links
+as well as repository-local links. Record which API surfaces
+were reviewed; do not infer complete reference coverage from a green book build
+or label unimplemented v13 contracts as available in v12.
+
 ### Published and planned release lines
 
 | Version | Status | Honest scope |
