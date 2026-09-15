@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789512979810,
+  "lastUpdate": 1789516797112,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -7705,6 +7705,48 @@ window.BENCHMARK_DATA = {
             "name": "capital_subscription/parse_status_active",
             "value": 20,
             "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8aab35db63cbac5789a50656f431762f39da1bbf",
+          "message": "Merge pull request #203 from Rullst/fix/studio-browser-assets\n\nfix(studio): serve browser assets and disconnected cache routes",
+          "timestamp": "2026-09-15T20:31:43-03:00",
+          "tree_id": "d28565ef4fece842b9fb94a14e6942cbf6a5e947",
+          "url": "https://github.com/Rullst/Rullst/commit/8aab35db63cbac5789a50656f431762f39da1bbf"
+        },
+        "date": 1789516796411,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
             "unit": "ns/iter"
           },
           {
