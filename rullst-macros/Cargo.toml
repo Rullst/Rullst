@@ -17,7 +17,7 @@ categories = ["development-tools::procedural-macro-helpers"]
 proc-macro = true
 
 [dependencies]
-syn = { version = "3", features = ["full", "extra-traits"] }
+syn = { version = "3.0.5", features = ["full", "extra-traits"] }
 quote = "1.0.45"
 proc-macro2 = "1.0.106"
 
@@ -25,7 +25,7 @@ proc-macro2 = "1.0.106"
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)', 'cfg(mutants)'] }
 
 [dev-dependencies]
-trybuild = "1.0"
+trybuild = "1.0.121"
 
 [package.metadata.cargo-machete]
 ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth"]

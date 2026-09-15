@@ -44,14 +44,14 @@ regex = "1.12.4"
 serde = { workspace = true }
 serde_json = { workspace = true }
 semver = "1.0.28"
-toml_edit = "0.25.13"
+toml_edit = "0.25.15"
 toml = { workspace = true }
 dotenvy = { workspace = true }
 thiserror = { workspace = true }
 walkdir = "2.5.0"
 axum = { workspace = true, features = ["ws"] }
 notify = { workspace = true }
-syn = { version = "3", features = ["full", "visit", "visit-mut"] }
+syn = { version = "3.0.5", features = ["full", "visit", "visit-mut"] }
 tokio = { workspace = true, features = ["full"] }
 brotli = "9.0.0"
 zstd = "0.14.0"
@@ -67,7 +67,7 @@ insta = { version = "1.41", features = ["yaml"] }
 tempfile = "3.27.0"
 # Keeps the generated Tera blueprint dependency locked and cached for the
 # packaged-distribution compile gate without adding it to the CLI runtime graph.
-tera = "2.2"
+tera = "2.4.0"
 tower = { workspace = true, features = ["util"] }
 tower-http = { workspace = true, features = ["cors"] }
 
