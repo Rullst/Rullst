@@ -92,6 +92,9 @@ jobs:
       - name: Check reload generation, singleton and refresh behavior
         run: node rullst-core/src/server/dev_reload/client_tests.cjs
 
+      - name: Verify all fuzz dependency locks before expensive checks
+        run: bash .github/check-fuzz-locks.sh
+
       - name: Run Clippy (Workspace)
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
@@ -337,6 +340,10 @@ jobs:
     name: Threat-model release-negative minimum (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      # Use the same bounded nested-Cargo parallelism as the generated-project
+      # matrix; the dedicated LMS evidence retains its complete application tests.
+      RULLST_GENERATED_BUILD_JOBS: "2"
     strategy:
       fail-fast: false
       matrix:

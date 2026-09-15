@@ -127,14 +127,47 @@ jobs:
 
       - name: Verify pinned fuzz dependency graph
         working-directory: ${{ matrix.dir }}
-        run: cargo +nightly-2026-08-21 metadata --locked --format-version 1 --no-deps > /dev/null
+        run: cargo +nightly-2026-08-21 metadata --locked --format-version 1 --filter-platform "$FUZZ_BUILD_TARGET" > /dev/null
 
-      - name: Compile every declared target in the selected package
+      - name: Compile the campaign's selected targets
         working-directory: ${{ matrix.dir }}
         shell: bash
+        env:
+          CAMPAIGN_MODE: ${{ needs.targets.outputs.mode }}
+          REQUESTED_TARGET: ${{ inputs.target }}
+          FUZZ_DIRECTORY: ${{ matrix.dir }}
         run: |
+          inventory="$GITHUB_WORKSPACE/.github/fuzz-targets.json"
+          jq -e --arg dir "$FUZZ_DIRECTORY" \
+            'any(.[]; .dir == $dir)' "$inventory" > /dev/null
+          build_targets=()
+          case "$CAMPAIGN_MODE" in
+            release)
+              if [ -n "$REQUESTED_TARGET" ]; then
+                echo "Release preflight must compile every target; leave target empty." >&2
+                exit 2
+              fi
+              ;;
+            diagnostic)
+              # Inventory was validated before this matrix. Check the exact
+              # unique target/package again; never allow a flag or another
+              # package's target to change the compiler invocation.
+              if [[ ! "$REQUESTED_TARGET" =~ ^[a-zA-Z0-9_]+$ ]]; then
+                echo "Diagnostic preflight requires one safe exact target." >&2
+                exit 2
+              fi
+              jq -e --arg dir "$FUZZ_DIRECTORY" --arg target "$REQUESTED_TARGET" \
+                '[.[] | select(.target == $target)] | length == 1 and .[0].dir == $dir' \
+                "$inventory" > /dev/null
+              build_targets+=("$REQUESTED_TARGET")
+              ;;
+            *)
+              echo "Unsupported fuzz preflight mode: $CAMPAIGN_MODE" >&2
+              exit 2
+              ;;
+          esac
           cargo +nightly-2026-08-21 fuzz build \
-            --target "$FUZZ_BUILD_TARGET"
+            --target "$FUZZ_BUILD_TARGET" "${build_targets[@]}"
 
       - name: Reject fuzz dependency lock drift after preflight
         working-directory: ${{ matrix.dir }}
@@ -180,7 +213,7 @@ jobs:
 
       - name: Verify pinned fuzz dependency graph
         working-directory: ${{ matrix.dir }}
-        run: cargo +nightly-2026-08-21 metadata --locked --format-version 1 --no-deps > /dev/null
+        run: cargo +nightly-2026-08-21 metadata --locked --format-version 1 --filter-platform "$FUZZ_BUILD_TARGET" > /dev/null
 
       - name: Run bounded target campaign
         working-directory: ${{ matrix.dir }}

@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### CI tooling
+
+- Resolve all ten locked fuzz dependency graphs before Clippy and campaign
+  preparation. Reject stale locks early instead of relying on the ineffective
+  metadata `--no-deps` check; retain the complete forty-target inventory.
+- Limit single-target fuzz diagnostic preparation to its exact requested target
+  with fail-closed package selection. Retain every release preflight target,
+  sanitizer setting and campaign duration; add scheduling/failure regressions.
+- Validate the complete threat manifest before builds, remove repeated Cargo
+  target listings, and require exact non-ignored execution. Preserve all 59
+  unique tests and every threat mapping.
+- Materialize only the LMS for its eight threat mappings with the original
+  application-test helper. Keep all eight normal project configurations,
+  including ERP release builds; exclude only the redundant exact-name LMS
+  wrapper there. Bound hosted nested compilation to two jobs.
+- Add a read-only CI timing reporter with provenance/inventory validation.
+  Skipped jobs stay visible but have no execution duration; malformed or reversed
+  timing in executed jobs still fails. Measurements are not release admission,
+  billing estimates or proof of security.
 ### Native SES dependency compatibility
 
 - Constrain optional `aws-ses` resolution to Smithy types 1.6.3: types 1.7
