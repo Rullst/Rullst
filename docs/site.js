@@ -44,7 +44,46 @@ document.querySelectorAll("[data-copy-command]").forEach((button) => {
 
 const revealTargets = [...document.querySelectorAll("[data-reveal]")];
 const revealAll = () => revealTargets.forEach((target) => target.classList.add("is-visible"));
-const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+const reducedMotion = motionPreference.matches;
+
+// One bounded intro, not a permanent render loop. Never persist preferences,
+// autoplay again on tab return, or override the OS reduced-motion setting.
+const introButton = document.querySelector("[data-intro-toggle]");
+let introTimer;
+const stopIntro = () => {
+  clearTimeout(introTimer);
+  document.documentElement.classList.remove("intro-playing");
+  if (introButton) {
+    introButton.textContent = "Replay intro";
+    introButton.setAttribute("aria-pressed", "false");
+  }
+};
+const playIntro = () => {
+  if (motionPreference.matches || document.hidden || !introButton) return;
+  stopIntro();
+  document.documentElement.classList.add("intro-playing");
+  introButton.textContent = "Stop intro";
+  introButton.setAttribute("aria-pressed", "true");
+  introTimer = setTimeout(stopIntro, 4800);
+};
+if (introButton) {
+  introButton.hidden = reducedMotion;
+  introButton.addEventListener("click", () => {
+    if (document.documentElement.classList.contains("intro-playing")) stopIntro();
+    else playIntro();
+  });
+  motionPreference.addEventListener("change", () => {
+    introButton.hidden = motionPreference.matches;
+    stopIntro();
+    if (motionPreference.matches) revealAll();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopIntro();
+  });
+  window.addEventListener("pagehide", stopIntro);
+  playIntro();
+}
 
 if (reducedMotion || !("IntersectionObserver" in window)) {
   revealAll();

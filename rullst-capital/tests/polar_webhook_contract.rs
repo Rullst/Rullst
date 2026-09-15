@@ -63,7 +63,10 @@ fn polar_standard_headers_bind_body_id_time_and_documented_key_schemes() {
         duplicate.insert("Webhook-Id".into(), "evt_fixture".into());
         assert!(provider.handle_webhook(PAYLOAD, &duplicate).is_err());
         assert!(provider.handle_webhook(b"{}", &valid).is_err());
-        for timestamp in [now - 301, now + 301] {
+        // This public API reads the real clock. A now + 301 fixture can enter
+        // the accepted 300-second window when the clock ticks during the test.
+        // Exact +/-300 and +/-301 boundaries use a fixed clock in unit tests.
+        for timestamp in [now - 3600, now + 3600] {
             assert!(
                 provider
                     .handle_webhook(PAYLOAD, &headers(signing_key, PAYLOAD, timestamp))

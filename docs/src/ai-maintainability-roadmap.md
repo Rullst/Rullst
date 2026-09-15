@@ -8,7 +8,7 @@ software.
 
 This document records the measurable work required to make Rullst excellent for
 AI-assisted framework maintenance and application development. It is a
-**post-v12-RC roadmap**, not a v12 release gate and not a description of
+**v13 roadmap**, not a v12 release gate and not a description of
 capabilities that have already shipped.
 
 ## Current foundation
@@ -51,7 +51,7 @@ application from stable public APIs. Cross-crate feature unification, procedural
 macros, database dialects, authentication, cryptography and release engineering
 require stronger review and broader gates than ordinary application CRUD.
 
-## Post-v12-RC workstreams
+## v13 workstreams
 
 ### 1. Project-specific agent instructions
 
@@ -169,7 +169,7 @@ unattended merge or production mutation.
 | C | Public model/harness results | Exact versions, commit SHA, limitations and repeatable commands |
 | D | Continuous regression programme | Scheduled or manual reruns, versioned baselines and reviewed score changes |
 
-Phases begin after the v12 RC is cut. Compatible documentation corrections may
+Phases belong to the v13 development line after the stable v12 release. Compatible documentation corrections may
 land in v12 maintenance, but new generator formats, fixtures and public support
 profiles belong to the v13 feature line unless a separate release decision says
 otherwise.

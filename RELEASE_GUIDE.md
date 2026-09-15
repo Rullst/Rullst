@@ -6,19 +6,21 @@
 
 ## 🧠 The Core Concept
 
-**The golden rule: `main` is the protected active integration and release
-source line.** Normal work is reviewed through short-lived branches before it
-reaches `main`. A branch name is not a publication or a security certification.
+**The golden rule: `main` is the protected v12 maintenance and release
+source line.** Normal work is reviewed through short-lived branches targeting
+the appropriate release line. A branch name is not a publication or a security certification.
 Official release artifacts remain crates.io packages and their matching
 immutable tags.
 
-The repository uses one permanent active line and preserves historical source
-only when it is useful:
+The repository separates maintained releases, next-major work, historical
+source and generated site data:
 
 | Reference | What it is | Published to crates.io? |
 |--------|------------|------------------------|
-| `main` | Active integration and source for v12 maintenance and future releases | Only after an approved release tag |
+| `main` | Protected source for v12 maintenance releases | Only after an approved release tag |
+| `v13` | Next-major development and breaking changes | Not until its own reviewed release |
 | `v5` | Frozen source snapshot of the legacy v5 line | No; use the existing `v5.0.0` tag/crate |
+| `gh-pages` | Generated website/benchmark history used by Pages | No |
 | `feat/*`, `fix/*`, etc. | Short-lived reviewed work | Never directly |
 | `vX.Y.Z[-pre]` | Immutable source snapshot approved for release | Triggers the release workflow |
 | crates.io `X.Y.Z[-pre]` | Official distributed artifact | Yes |
@@ -27,17 +29,18 @@ only when it is useful:
 
 ## 📋 The Full Release Cycle (Step by Step)
 
-### Phase 1 — Develop from `main`
+### Phase 1 — Select the maintenance or development line
 
-All new work starts from the latest green `main` and returns through a pull
-request targeting `main`. Keep branches short-lived and do not stack new work
-on a broken required gate.
+Compatible v12 work starts from the latest green `main` and returns through a
+pull request targeting `main`. Product features and breaking work start from
+`v13` and target `v13`. Keep branches short-lived and do not stack work on a
+broken required gate. The example below is for v12 maintenance:
 
 ```powershell
 # Synchronize main before starting any new work
 git switch main
 git pull --ff-only origin main
-git switch -c feat/<short-topic>
+git switch -c fix/<short-topic>
 ```
 
 Make your changes, bug fixes, new features, etc.
@@ -45,8 +48,8 @@ Make your changes, bug fixes, new features, etc.
 ```powershell
 # Commit your work as usual
 git add .
-git commit -m "feat(scope): add concise capability"
-git push -u origin feat/<short-topic>
+git commit -m "fix(scope): describe the correction"
+git push -u origin fix/<short-topic>
 ```
 
 Every push to `main` and every pull request targeting it triggers the relevant
@@ -57,14 +60,16 @@ development signal meaningless:
   implemented behavior, and current panic/unsafe/security invariants should
   remain green. A broken current contract is fixed before more work is stacked.
 - **Readiness evidence:** coverage, benchmarks, broader platform matrices and
-  unfinished v12 acceptance scenarios may be observational while their named
-  checklist item is open. Failures stay visible and tracked; they are not
+  exploratory future-version scenarios may be observational while their named
+  roadmap item is open. Failures stay visible and tracked; they are not
   silently presented as passing.
-- **Release gates:** before an RC or stable tag, every required check in
-  `docs/src/v12.md` must pass on the exact candidate commit.
+- **Release gates:** before an RC or stable tag, every required check in the
+  current release policy and `WORKFLOWS.md` must pass on the exact candidate
+  commit. The [v12 stable record](docs/src/v12.md) preserves the completed v12
+  release identity rather than serving as a future checklist.
 
 A test for a capability that is deliberately not implemented yet must be tied
-to a v12 checklist item and explicitly quarantined with a reason. It must not
+to a roadmap item and explicitly quarantined with a reason. It must not
 remain an unexplained ordinary test failure until the end of the release cycle.
 
 ---
@@ -117,7 +122,7 @@ Before releasing, make sure:
   matches `LiveSecurityEvent`, and any incompatible event change uses a new
   schema version instead of silently changing v1.
 - [ ] All 16 publishable crate `Cargo.toml` versions and internal requirements
-  are synchronized (`12.0.0-rc.1` for the RC or `12.0.0` for stable):
+  are synchronized at the selected new release version:
   - `rullst-macros`, `rullst-orm-macros`
   - `rullst-core`, `rullst-orm`, `rullst-auth`, `rullst-security`
   - `rullst-ai`, `rullst-capital`, `rullst-connect`, `rullst-messaging`, `rullst-iot`, `rullst-mail`
@@ -134,14 +139,15 @@ Once everything is stable and verified:
    reviewed pull request into `main`.
 2. Run the full local and CI release gates on the resulting `main` SHA.
 3. Record and review the package/evidence artifacts for that exact SHA.
-4. Create `v12.0.0-rc.1` or `v12.0.0` only on the approved SHA, then push that
-   tag to trigger the release workflow:
+4. Create a new version tag only on the approved SHA, then push that tag to
+   trigger the release workflow. The existing `v12.0.0` tag is immutable;
+   never recreate or move it:
 
 ```powershell
 git switch main
 git pull --ff-only origin main
-git tag v12.0.0
-git push origin v12.0.0
+git tag vX.Y.Z
+git push origin vX.Y.Z
 ```
 
 An RC or stable version is a real public crates.io release. It can be yanked but
@@ -165,24 +171,22 @@ independent certification.
 
 ---
 
-### Phase 4 — Start the Next Version from `main`
+### Phase 4 — Continue v13 while maintaining v12
 
-After the release, start the next development cycle through a short-lived
-branch created from `main`:
+The `v13` branch already exists. Start next-major work from that branch after
+reviewing its roadmap and differences from the published v12 source:
 
 ```powershell
-# Synchronize the released main line
-git switch main
-git pull --ff-only origin main
-git switch -c chore/start-next-version
-
-# Update versions to the next feature line (e.g., 13.0.0-dev)
-# Add new [Unreleased] section to CHANGELOG.md
-
-git add .
-git commit -m "chore(release): start 13.0 development"
-git push -u origin chore/start-next-version
+git switch v13
+git pull --ff-only origin v13
+git switch -c feat/<short-topic>
 ```
+
+Carry applicable v12 fixes forward through reviewed changes. Evaluate
+Dependabot updates individually: a dependency's major version does not by
+itself prove that Rullst's public API must break. Compatible fixes may ship in
+`12.0.x`; changes that break Rullst's compatibility contract belong to v13.
+Keep the v12 release gates active while v13's own CI policy evolves.
 
 ---
 
@@ -238,10 +242,10 @@ permanent repository-wide registry token.
 ## 📌 Quick Reference Commands
 
 ```powershell
-# Start new work
+# Start a compatible v12 maintenance change (use v13 for next-major work)
 git switch main
 git pull --ff-only origin main
-git switch -c feat/<short-topic>
+git switch -c fix/<short-topic>
 
 # Check status before releasing
 git status
@@ -262,7 +266,7 @@ git push origin vX.Y.Z
 | `rullst` | Check `rullst/Cargo.toml` |
 | `rullst-macros` | Check `rullst-macros/Cargo.toml` |
 | `cargo-rullst` | Check `cargo-rullst/Cargo.toml` |
-| Current `main` line | v12 stable maintenance and future integration after the approved tag |
+| Current `main` line | v12 stable maintenance after the approved tag; new feature work belongs on the v13 line |
 | Legacy source | Frozen `v5` branch and immutable `v5.0.0` tag |
 | Published prerelease | `12.0.0-rc.1` / `v12.0.0-rc.1` |
-| v12 stable publication | Requires exact-SHA gates, owner GO, immutable tag and registry receipts |
+| Published stable | `12.0.0` / `v12.0.0` at `eb11f892ae28f076e7a83c38a635316c6ed89028` |

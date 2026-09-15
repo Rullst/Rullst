@@ -65,14 +65,14 @@ the rule catalog, exact target, manifest changes, detected source majors,
 findings, automatic scope and mandatory manual gates. Consumers must reject an
 unknown schema version rather than silently interpreting it as v1.
 
-Use an explicit target only when intentionally evaluating another release in
-the installed CLI's major train:
+Use an explicit target to make the selected published version visible:
 
 ```bash
-cargo rullst upgrade --to 12.0.0-rc.2 --dry-run
+cargo rullst upgrade --to 12.0.0 --dry-run
 ```
 
-The same-major restriction prevents a v12 rules engine from pretending it
+Other targets must exist in the registry and belong to the installed CLI's
+major train. This restriction prevents a v12 rules engine from pretending it
 understands an eventual v13 migration.
 
 ## 3. Apply the transaction

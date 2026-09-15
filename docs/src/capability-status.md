@@ -6,71 +6,34 @@ from the root [ROADMAP](../../ROADMAP.md); that roadmap and the
 The labels here deliberately do not turn partial foundations into completed
 features.
 
-## v12 engineering snapshot — 13 September 2026
+## v12 stable snapshot — 15 September 2026
 
-This functionality inventory is deliberately separate from release quality.
-All 15 non-IoT crates currently meet the approved A floor and `rullst-iot`
-meets its approved B exception. All 15 active crates have also reached their
-higher audited local ceiling: **1,509/1,509 local campaign points are backed by
-repository evidence (100%), with zero planning points remaining**. The exact
-SHA still earns those dimensions only when its conditioning gates pass. The
-older 91.8% readiness estimate was superseded after the final correction batch.
-The [post-audit release report](v12-release-audit.md) is authoritative:
-`12.0.0-rc.1` was published after its local, hosted and package gates passed.
-Stable `12.0.0` is in exact-SHA closeout: its source, manifests and public copy
-are synchronized, but crates.io publication is established only after the
-fully verified tag commit receives owner approval and the registry workflow
-returns its receipts.
+Stable `12.0.0` was published from commit `eb11f892`. See the
+[release record](v12.md) for the immutable tag and publication receipt.
 
-Coverage is a separate release gate. Codecov measured the approved code candidate
-`a6b3bc8a` at **91.49%** across the whole repository (76,685/83,811) and 100%
-patch coverage (14/14); the separately enforced `framework_libraries` component
-also passed its zero-tolerance 90% target. This is SHA-bound evidence, not a
-security certification.
+The [Rust CI scorecard](https://github.com/Rullst/Rullst/actions/runs/34895536764)
+for that commit awarded **94/100 (A)** to the repository, with all fifteen
+non-IoT packages at A and IoT at its approved B exception. These are
+repository-owned audit scores constrained by test results, not a percentage
+of all planned functionality or an independent certification. The
+[quality scorecard](quality-scorecard.md) explains the scale.
 
-Approved RC code candidate `a6b3bc8a` completed all **22/22 applicable automatic
-push workflows** successfully, including the full all-feature workspace suite
-on Linux, macOS and Windows. The final documentation closeout must preserve
-that code and passed its documentation/site checks before the immutable RC tag.
-The RC tag workflow then passed verification and publication at `2b19567e`; its
-separate redundant SLSA job failed policy setup and is neither counted nor used
-for stable v12. The stable tag must repeat the retained GitHub attestation and
-complete release workflow.
+The [stable coverage run](https://github.com/Rullst/Rullst/actions/runs/34895523751)
+recorded the following local LLVM/LCOV gates before the Codecov upload:
 
-The later manual campaign on `45fbdbe7` produced passing bounded Miri, Kani and
-sanitizer evidence, while fuzzing usefully exposed three stale harnesses and a
-real Unicode-boundary panic in database-URL redaction. Those findings have
-committed regressions and corrections; the repaired ORM parser plus both
-affected security targets passed 100,000 local libFuzzer/AddressSanitizer
-executions. This is remediation evidence, not a substitute for rerunning the
-complete heavy matrix on the frozen RC SHA.
+| Coverage view | Stable-source measurement | Required floor |
+| :--- | :--- | :--- |
+| Whole repository | **90.3220%** (79,813/88,365 lines) | **90%** |
+| Framework libraries | **90.6186%** (60,014/66,227 lines across 436 files) | **90%** |
 
-| Coverage view | Audited checkpoint | Release meaning |
-| :--- | :---: | :--- |
-| Whole repository | **90.06%** (74,219/82,408) on `27e81152` | Historical passing checkpoint. This primary public number includes CLI and proc-macro production sources, but does not approve the post-audit candidate. |
-| Framework libraries | **91.33%** (56,119/61,446) on `27e81152` | Historical component pass; it does not replace either the repository aggregate or a fresh post-audit result. |
-| v12 release requirement | **at least 90% in both views** | Must be reproduced by Codecov on the exact frozen release candidate, together with at least 90% patch coverage. |
+These are distinct path sets, not values to average. The public Codecov badge
+tracks the current branch and may change as its source and report processing
+change. Do not relabel an older checkpoint as the latest measurement.
 
-The two percentages are neither conflicting measurements nor values to
-average: they answer questions about different path sets. Rullst must keep the
-whole-repository result primary and must not reuse this candidate's passing
-result as proof for a later SHA that Codecov has not measured.
-
-The latest ceiling gain is the umbrella `rullst` facade's dedicated shared-local
-SQLite profile. It composes Auth revocation, Capital quota, encrypted Connect
-tokens, Mail suppression, encrypted Messaging and Core queueing behind
-aggregate lifecycle readiness, then proves restart/idempotency, plaintext
-secret exclusion and isolated fail-closed corruption. It deliberately does not
-claim a cross-subsystem transaction, whole-file online consistency, key/backup
-operations or multi-host coordination.
-
-`rullst-ai` has now earned its audited 95/A local ceiling. In addition to strict
-opt-in OpenAI-compatible SSE/cancellation, `AuditDeliveryClient` supplies
-bounded HMAC-authenticated export and `AdaptiveAiEvaluator<P>` supplies
-bounded multi-turn feedback, explicit pass/fail/inconclusive results and a
-raw-content-free JSON report. Receiver operations, non-compatible provider
-protocols, exact live-model results and corpus quality remain external or v13
-work rather than being mislabeled as v12 guarantees.
+The [release audit](v12-release-audit.md) links the stable platform, property,
+Miri, Kani, fuzzing, sanitizer and publication results. New maintenance commits
+must satisfy their applicable gates; the published release cannot certify
+future source changes.
 
 ## `rullst` facade versus `rullst-core`
 
@@ -79,15 +42,15 @@ work rather than being mislabeled as v12 guarantees.
 | `rullst-core` | Low-level runtime engine: HTTP server, routes, lifecycle, queue/realtime, storage/cache and the default browser-security baseline. It deliberately does not aggregate every domain crate. | Use directly when a library/application wants only the runtime primitives and explicit dependencies. |
 | `rullst` | Ergonomic umbrella facade. Cargo features re-export Core plus selected ORM, Auth, Security, AI, Mail, Capital, Studio, Nexus, Messaging and IoT APIs through one dependency. It also exposes the browser/WASM surface used by web-first applications; Omni packaging itself is a CLI workflow, not a re-exported crate. Its maturity cannot exceed the crates selected underneath it. | Use for most Rullst applications and enable only the required features. |
 
-## Documentation release gate
+## Documentation maintenance gate
 
-Before stable v12 is tagged, the complete repository documentation remains an
-explicit review gate: build the mdBook, compile the Rust snippets sourced from
-all public tutorials, validate local links and anchors, reconcile commands,
-features and version examples with the frozen manifests, and manually review
-the upgrade guides and external-provider boundaries. A green documentation
-build proves structural consistency, not that every external service or store
-workflow was homologated.
+Stable v12 completed the documentation release gate: the mdBook and Rust
+snippets sourced from public tutorials built, local links and anchors were
+validated, commands/features/version examples were reconciled with the frozen
+manifests, and upgrade/provider boundaries were reviewed. Compatible v12
+maintenance must keep those checks green. A green documentation build proves
+structural consistency, not that every external service or store workflow was
+homologated.
 
 ## Canonical milestones
 
@@ -138,9 +101,9 @@ inside the 38-milestone web-framework horizon. M31 is excluded because it is a
 separately governed safety-critical programme. The weighted planning estimate
 is 44.7% complete and 55.3% remaining; this is not v12 release readiness and
 the 33 milestones without strict closure are not 33 blockers for v12.0. The
-[v12 programme](v12.md) owns release gates, while the root roadmap assigns
-confirmed v12 defects to `12.0.x` maintenance and all additive capability work,
-research or major contracts to v13.
+[v12 stable record](v12.md) preserves the completed release identity, while the
+root roadmap assigns confirmed v12 defects to `12.0.x` maintenance and all
+additive capability work, research or major contracts to v13.
 
 ## Claims that are impossible as framework guarantees
 

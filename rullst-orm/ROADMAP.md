@@ -4,7 +4,7 @@
 > and ambition. `[x]` means implemented only inside the bounded contract linked
 > from the v12 audit, `[~]` means a real but incomplete foundation, and `[ ]`
 > means absent. See the item-by-item
-> [v12 historical audit](https://rullst.github.io/Rullst/book/v12.html#invent%C3%A1rio-item-a-item--rullst-orm-hist%C3%B3rico)
+> [v12 historical audit](https://github.com/Rullst/Rullst/blob/v12.0.0/docs/src/v12.md#invent%C3%A1rio-item-a-item--rullst-orm-hist%C3%B3rico)
 > and the [capability ledger](https://rullst.github.io/Rullst/book/capability-ledger.html).
 
 Rullst ORM aims for an inspectable, AI-friendly Active Record experience while

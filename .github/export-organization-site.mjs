@@ -14,7 +14,9 @@ assert.equal(git("rev-parse", "--show-toplevel"), target, "Destination must be i
 assert(/(?:github\.com[:/])Rullst\/Rullst\.github\.io(?:\.git)?$/i.test(git("remote", "get-url", "origin")), "Destination must be the official website checkout");
 assert.equal(git("status", "--porcelain"), "", "Commit or preserve destination edits before exporting");
 const source = await readFile(join(root, "docs/home_template.html"), "utf8");
-const home = source.replace('./assets/site.css', './src/style.css').replace('./assets/site.js', './src/main.js');
+const home = source.replace('./assets/site.css', './src/style.css').replace('./assets/site.js', './src/main.js')
+  .replace('property="og:url" content="https://rullst.win/Rullst/"', 'property="og:url" content="https://rullst.win/"')
+  .replace('rel="canonical" href="https://rullst.win/Rullst/"', 'rel="canonical" href="https://rullst.win/"');
 const privacy = source.match(/      <section id="privacy"[\s\S]+?      <\/section>/)?.[0];
 assert(privacy, "Landing source must contain a complete privacy notice");
 const privacyPage = `<!doctype html>
@@ -26,7 +28,7 @@ const privacyPage = `<!doctype html>
   <meta name="description" content="How the Rullst website handles hosting, local resources, linked services and contact messages.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'none'; img-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Website privacy notice — Rullst</title>
-  <link rel="canonical" href="https://rullst.github.io/privacy.html">
+  <link rel="canonical" href="https://rullst.win/privacy.html">
   <link rel="icon" type="image/png" href="/Rullst/Rullst.png">
   <link rel="stylesheet" href="./src/style.css">
 </head>

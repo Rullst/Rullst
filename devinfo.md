@@ -5,7 +5,7 @@ official branch, verification, packaging, and tag process is
 [`RELEASE_GUIDE.md`](RELEASE_GUIDE.md); do not maintain a second release recipe
 in this file.
 
-## Work on the v12 source
+## Work on the v12 maintenance source
 
 From the repository root, install the CLI from the exact checkout:
 

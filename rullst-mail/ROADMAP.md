@@ -161,9 +161,10 @@ flowchart TD
 
 ## Current capability boundary
 
-The former unsourced competitor matrix is preserved in the immutable historical
-snapshot referenced by `docs/src/v12.md`; it is not maintained as technical
-evidence because external ecosystems change. The current Rullst-only status is:
+The former unsourced competitor matrix is preserved in the immutable
+[`v12.0.0` historical snapshot](https://github.com/Rullst/Rullst/blob/v12.0.0/docs/src/v12.md);
+it is not maintained as technical evidence because external ecosystems change.
+The current Rullst-only status is:
 
 | Capability | Current status |
 | :--- | :--- |

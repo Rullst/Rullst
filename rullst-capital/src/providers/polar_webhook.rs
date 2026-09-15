@@ -96,3 +96,66 @@ fn sign(key: &[u8], id: &str, timestamp: &str, payload: &[u8]) -> hmac::Tag {
     context.update(payload);
     context.sign()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const NOW: i64 = 1_800_000_000;
+    const PAYLOAD: &[u8] = br#"{"type":"subscription.updated"}"#;
+    const KEY: &[u8] = b"deterministic-polar-timestamp-contract";
+
+    fn signed_headers(timestamp: i64) -> HashMap<String, String> {
+        let id = "evt_clock_boundary";
+        let timestamp = timestamp.to_string();
+        // Build a genuine signature independently of the verifier's helper.
+        let message = [format!("{id}.{timestamp}.").as_bytes(), PAYLOAD].concat();
+        let tag = hmac::sign(&hmac::Key::new(hmac::HMAC_SHA256, KEY), &message);
+        HashMap::from([
+            ("webhook-id".into(), id.into()),
+            ("webhook-timestamp".into(), timestamp),
+            (
+                "webhook-signature".into(),
+                format!("v1,{}", STANDARD.encode(tag.as_ref())),
+            ),
+        ])
+    }
+
+    #[test]
+    fn exact_clock_window_accepts_endpoints_and_rejects_adjacent_seconds() {
+        let standard = format!("whsec_{}", STANDARD.encode(KEY));
+        let literal = std::str::from_utf8(KEY).unwrap();
+        for secret in [literal, standard.as_str()] {
+            for offset in [-300, -299, 0, 299, 300] {
+                assert!(
+                    verify(secret, PAYLOAD, &signed_headers(NOW + offset), NOW).is_ok(),
+                    "signed timestamp at offset {offset} must be accepted"
+                );
+            }
+            for offset in [-301, 301] {
+                assert!(matches!(
+                    verify(secret, PAYLOAD, &signed_headers(NOW + offset), NOW),
+                    Err(CapitalError::StaleWebhook(_))
+                ));
+            }
+        }
+    }
+
+    #[test]
+    fn clock_tick_moves_the_future_endpoint_into_the_accepted_window() {
+        let secret = format!("whsec_{}", STANDARD.encode(KEY));
+        let future = signed_headers(NOW + 301);
+        assert!(matches!(
+            verify(&secret, PAYLOAD, &future, NOW),
+            Err(CapitalError::StaleWebhook(_))
+        ));
+        assert!(verify(&secret, PAYLOAD, &future, NOW + 1).is_ok());
+
+        let past = signed_headers(NOW - 300);
+        assert!(verify(&secret, PAYLOAD, &past, NOW).is_ok());
+        assert!(matches!(
+            verify(&secret, PAYLOAD, &past, NOW + 1),
+            Err(CapitalError::StaleWebhook(_))
+        ));
+    }
+}

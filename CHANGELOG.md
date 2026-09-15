@@ -4,7 +4,24 @@ All notable changes to the **Rullst Framework** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [12.0.0] - 2026-09-13 🚀
+## [Unreleased]
+
+### Documentation
+
+- Replace the completed v12 development program with a concise English release
+  record and immutable publication receipts. Retire the CLI handoff and preserve
+  older audits through archive links.
+- Reconcile coverage, quality, migration commands, branch guidance and v13
+  priorities with the published v12 source. Preserve the 190 historical claim
+  classifications in a compact, validated dataset.
+- Shorten and reorder the README without removing its verification dashboard;
+  replace the framework comparison with focused Rullst capability links. Add
+  Showcase, LMS and Portfolio links to the landing page, with responsive
+  illustrated cards, finite animations and reduced-motion support.
+- Make safe verification-efficiency improvements a shared v12 maintenance and
+  v13 priority, with explicit inventory, cache-trust and release-evidence gates.
+
+## [12.0.0] - 2026-09-15 🚀
 
 > **Stable scope:** version 12 stabilizes the bounded public contracts described
 > in `docs/src/spec.md`. It does not turn roadmap foundations, offline fixtures,
@@ -56,8 +73,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   checksums, and uses GitHub's SHA-pinned build-provenance attestation. No named
   project-wide SLSA level or independent security certification is claimed.
 - Historical RC evidence and limitations remain visible in the release audit.
-  Stable publication requires the exact `v12.0.0` tag to repeat the complete
-  package, consumer, CLI, security, coverage, and release verification gates.
+  The exact `v12.0.0` tag repeated the required package, consumer, CLI,
+  security, coverage, and release verification gates before all sixteen
+  packages were published.
 
 ## [12.0.0-rc.1] - 2026-09-12 🚀
 

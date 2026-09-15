@@ -20,8 +20,9 @@ The guides state these evidence limits instead of inventing release history.
 1. Commit or stash the application and record its current `Cargo.lock`.
 2. Back up every database and prove that the backup can be restored.
 3. Run the old application's tests and save any known failures.
-4. Install the exact v12 CLI version only after that RC or stable version is
-   published. Do not use an unversioned install in a reproducible migration.
+4. Install the published stable CLI with
+   `cargo install cargo-rullst --version 12.0.0 --locked`.
+   Pin an exact version for reproducible migrations.
 5. Run `cargo rullst upgrade --dry-run` from the application root and resolve
    every `BLOCKER`; use `--dry-run --json` when CI or other tooling consumes the
    versioned plan.

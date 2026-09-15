@@ -9,15 +9,15 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'self'; script-src 'self'; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta property="og:title" content="Rullst — Intelligent, Security-Conscious, and Designed for Effortless Productivity">
   <meta property="og:description" content="Build beyond the endpoint with Rullst v12.0.0, code you can inspect and boundaries you control.">
-  <meta property="og:url" content="https://rullst.github.io/">
-  <meta property="og:image" content="https://rullst.github.io/Rullst/Rullst.png">
+  <meta property="og:url" content="https://rullst.win/Rullst/">
+  <meta property="og:image" content="https://rullst.win/Rullst/Rullst.png">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Rullst — Intelligent, Security-Conscious, and Designed for Effortless Productivity">
   <meta name="twitter:description" content="A coordinated, open-source Rust framework suite. Explore v12.0.0, its source and its evidence.">
-  <meta name="twitter:image" content="https://rullst.github.io/Rullst/Rullst.png">
+  <meta name="twitter:image" content="https://rullst.win/Rullst/Rullst.png">
   <title>Rullst — Intelligent, Security-Conscious, and Designed for Effortless Productivity</title>
-  <link rel="canonical" href="https://rullst.github.io/">
+  <link rel="canonical" href="https://rullst.win/Rullst/">
   <link rel="icon" type="image/png" href="/Rullst/Rullst.png">
   <link rel="stylesheet" href="./assets/site.css">
   <script src="./assets/site.js" defer></script>
@@ -34,13 +34,14 @@
 
   <nav class="site-nav" aria-label="Primary navigation">
     <div class="shell nav-inner">
-      <a class="brand" href="https://rullst.github.io/" aria-label="Rullst home">
+      <a class="brand" href="https://rullst.win/" aria-label="Rullst home">
         <img src="/Rullst/Rullst.png" alt="" width="40" height="40">
         <span>rullst<span class="brand-period">.</span></span>
       </a>
       <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-controls="navigation" aria-expanded="false" data-nav-toggle>☰</button>
       <div class="nav-links" id="navigation" data-navigation>
         <a href="#why">Why Rullst</a>
+        <a href="#examples">Examples</a>
         <a href="#ecosystem">Ecosystem</a>
         <a href="/Rullst/book/start-here.html">Learn</a>
         <a href="/Rullst/book/">Documentation</a>
@@ -54,18 +55,21 @@
     <header class="hero shell" data-reveal>
       <div class="hero-content">
         <p class="eyebrow"><span class="short-line" aria-hidden="true"></span> The open-source Rust framework suite</p>
-        <h1>Intelligent, Security-Conscious,<br><span class="gradient-text">and Designed for Effortless Productivity.</span></h1>
+        <h1 class="hero-wordmark">Rullst<span class="wordmark-period">.</span></h1>
+        <p class="hero-slogan">Intelligent. Security-Conscious.<br>Designed for <span>Effortless Productivity.</span></p>
         <p class="hero-copy"><strong>Because With Rullst, We Rule!</strong> Go beyond the endpoint. Bring your data, identity, AI and product workflows together—with one coordinated toolchain and Rust you can actually inspect.</p>
         <div class="hero-actions">
           <a class="button button-primary" href="/Rullst/book/start-here.html">Start building <span aria-hidden="true">↗</span></a>
-          <a class="button button-secondary" href="#journey">Explore the workflow <span aria-hidden="true">↓</span></a>
+          <a class="button button-secondary" href="#examples">Try the examples <span aria-hidden="true">↓</span></a>
         </div>
+        <div class="hero-tags" aria-label="Project foundations"><span>Web-first</span><span>16 coordinated crates</span><span>MIT licensed</span></div>
         <p class="hero-note">Axum + Tokio + Tower + SQLx. Your code. Your application policy.</p>
       </div>
 
       <div class="workbench">
         <div class="workbench-orbit" aria-hidden="true"></div>
-        <div class="workbench-label"><span class="status-dot" aria-hidden="true"></span> FROM IDEA TO INSPECTABLE RUST</div>
+        <svg class="signal-map" viewBox="0 0 600 580" fill="none" aria-hidden="true" focusable="false"><g class="signal-routes" stroke="currentColor" stroke-width="1.5"><path pathLength="1" d="M0 120h40l35 35v145l30 30h80"/><path pathLength="1" d="M590 40h-75l-35 35v90l-60 60"/><path pathLength="1" d="M600 425h-65l-40 40h-65l-40 40v75"/></g><g class="signal-nodes" fill="currentColor"><circle cx="0" cy="120" r="4"/><circle cx="590" cy="40" r="4"/><circle cx="600" cy="425" r="4"/><circle cx="390" cy="580" r="4"/></g></svg>
+        <div class="workbench-label"><span class="status-dot" aria-hidden="true"></span> FROM IDEA TO INSPECTABLE RUST<button type="button" class="motion-control" data-intro-toggle aria-pressed="false" hidden>Replay intro</button></div>
         <div class="terminal" aria-label="Illustrative development workflow, not a live terminal">
           <div class="terminal-bar">
             <span class="terminal-dots" aria-hidden="true"><span></span><span></span><span></span></span>
@@ -94,6 +98,41 @@
       <strong>Axum</strong><strong>Tokio</strong><strong>Tower</strong><strong>SQLx</strong>
       <a href="/Rullst/book/axum-sqlx-migration.html">Keep your escape hatches ↗</a>
     </div>
+
+    <section id="examples" class="shell section examples-section" data-reveal>
+      <div class="section-heading">
+        <p class="eyebrow">00 / Less imagining. More exploring.</p>
+        <h2>Not just a framework.<br><span class="gradient-text">A place to start creating.</span></h2>
+        <p>Explore three independently deployed applications on Azure Container Apps. Follow the source, discover a starting point, then make it yours.</p>
+      </div>
+      <div class="demo-grid">
+        <article class="demo-card demo-showcase">
+          <div class="demo-art" aria-hidden="true">
+            <span class="demo-orbit"></span>
+            <svg viewBox="0 0 200 120" fill="none" stroke="currentColor" stroke-width="2"><rect x="22" y="14" width="156" height="94" rx="9"/><path d="M22 34h156M34 24h3m7 0h3m7 0h3"/><rect x="36" y="48" width="55" height="43" rx="4"/><path d="M105 51h56m-56 13h42m-42 13h56m-56 13h29"/></svg>
+            <span class="demo-art-caption">ROUTES / DATA / IDEAS</span>
+          </div>
+          <div class="demo-content"><span class="demo-kicker">01 / EXPLORE THE BUILDING BLOCKS</span><h3>Rullst Showcase</h3><p>A blog and application showcase. Explore server-rendered pages and selected integration demonstrations.</p><a class="button button-secondary" href="https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>Explore Showcase <span aria-hidden="true">↗</span></a></div>
+        </article>
+        <article class="demo-card demo-lms">
+          <div class="demo-art" aria-hidden="true">
+            <span class="demo-orbit"></span>
+            <svg viewBox="0 0 200 120" fill="none" stroke="currentColor" stroke-width="2"><path d="m30 45 70-28 70 28-70 28zM55 56v29q45 32 90 0V56M170 45v42"/><circle cx="170" cy="93" r="5"/><path d="M87 45h26M100 36v18"/></svg>
+            <span class="demo-art-caption">LESSONS / QUIZZES / PROGRESS</span>
+          </div>
+          <div class="demo-content"><span class="demo-kicker">02 / MAKE ROOM FOR LEARNING</span><h3>LMS Academy</h3><p>Discover a learning-platform example, with a public course catalog and account entry points.</p><a class="button button-secondary" href="https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>Explore the LMS <span aria-hidden="true">↗</span></a></div>
+        </article>
+        <article class="demo-card demo-portfolio">
+          <div class="demo-art" aria-hidden="true">
+            <span class="demo-orbit"></span>
+            <svg viewBox="0 0 200 120" fill="none" stroke="currentColor" stroke-width="2"><rect x="27" y="18" width="146" height="86" rx="9"/><circle cx="57" cy="48" r="13"/><path d="M83 41h63m-63 13h42M43 79h35m-35 10h22"/><rect x="96" y="70" width="25" height="22" rx="3"/><rect x="132" y="70" width="25" height="22" rx="3"/></svg>
+            <span class="demo-art-caption">PROJECTS / SKILLS / YOUR STORY</span>
+          </div>
+          <div class="demo-content"><span class="demo-kicker">03 / PUT YOUR WORK OUT THERE</span><h3>Developer Portfolio</h3><p>A portfolio starting point for presenting projects, skills and experience in a focused web application.</p><a class="button button-secondary" href="https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/" data-demo-link>Explore Portfolio <span aria-hidden="true">↗</span></a></div>
+        </article>
+      </div>
+      <div class="demo-footnote"><p>Public demos, not production certifications. Snapshots may lag stable v12; Showcase payment fixtures are not live checkout. Use test data, not sensitive information. Availability is managed separately.</p><a href="https://github.com/Rullst/examples">Source &amp; deployment recipes ↗</a></div>
+    </section>
 
     <section id="why" class="shell section" data-reveal>
       <div class="section-heading">
