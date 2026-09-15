@@ -106,7 +106,8 @@ the 34 milestones without strict closure are not 34 blockers for v12.0. The
 root roadmap assigns confirmed v12 defects to `12.0.x` maintenance and new
 capability work to v13 by default. The
 [safe update experience](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience) is a top v13
-priority, with no v12 minor backport currently planned. It does not change the
+priority with a compatible opt-in 12.1.0 delivery planned first. Neither that
+updater nor the verification planner's observation-only reports change the
 implementation counts above.
 
 ## Claims that are impossible as framework guarantees

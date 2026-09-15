@@ -183,11 +183,15 @@ not allowed to guess them.
 
 The [safe-update priority](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience) proposes
 one guided flow for CLI installation, project preparation, validation and
-approved application. This is planned for **v13**, not a v12 minor release,
-and is not available yet. Until it ships, follow the explicit installation
+approved application. This is planned for a compatible opt-in **12.1.0** release
+and will be carried into v13; it is not available yet. Until it ships, follow the explicit installation
 and upgrade steps in this tutorial. File recovery
 does not replace database backups or application acceptance tests, and updating
 the CLI alone never updates a deployed application.
+
+Preparing the update mechanism in 12.1.0 does not implement unknown v13
+migrations. The future v13 CLI must still ship its own versioned rules and
+application acceptance fixtures before that major upgrade can be offered.
 
 ## Is this unique?
 

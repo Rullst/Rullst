@@ -1164,7 +1164,7 @@ assistant, not a claim that compilation proves production compatibility.
   execution consent and deployment authorization remain separate boundaries;
   starting an application must not silently update code or migrate data.
   The [roadmap acceptance plan](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience)
-  defines v13 priority work; no v12 minor backport is currently planned. Neither
+  defines a compatible opt-in 12.1.0 delivery carried forward into v13. Neither
   self-installation nor this expanded orchestration is implemented by the
   current `upgrade` command.
 

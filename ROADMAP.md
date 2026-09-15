@@ -349,12 +349,11 @@ contains the more detailed evidence and acceptance boundaries.
 
 ### v13 execution priorities
 
-**New implementation work is focused on v13.** Keep the published v12 line
-available without opening a new minor release or an optional maintenance
-programme now. Important compatibility or security defects can still justify
-a separately reviewed v12 fix; this is not an end-of-support announcement.
-Verification efficiency is the first v13 implementation task. Its acceptance
-rules also apply whenever v12 maintenance is necessary; the phased plan is in
+**Execution order: verification efficiency, then the compatible 12.1.0 update
+experience, then concentrated v13 product development.** The published v12
+packages remain immutable; important maintenance fixes remain independently
+reviewable. Carry the compatible updater and applicable fixes into v13 without
+merging unrelated breaking work into the v12 line. The phased efficiency plan is in
 [WORKFLOWS.md](WORKFLOWS.md#verification-efficiency--v12-maintenance-and-v13).
 Application API changes still belong to the appropriate release line.
 
@@ -366,7 +365,7 @@ development branch name alone does not prove that it includes later fixes.
 | Order | Outcome | Acceptance boundary |
 | :--- | :--- | :--- |
 | **P0 — verification efficiency** | Shorter local and hosted feedback, with measured cold/warm build and queue times | Compare test inventories; select affected crates and their consumers; preserve broad scheduled/release checks and a full-run fallback for unknown changes. Bind reusable evidence to source, dependencies, tools and policy. Prove that security, workflow, manifest and generator changes cannot silently skip required checks. |
-| **P0 — safe update experience** | A single guided entry point to discover, prepare, verify and approve CLI/project updates | First product priority after the verification foundation. Preserve supported upgrade contracts; require trusted artifacts, explicit target/channel selection, application tests and recoverable file changes. Planned for **v13**, not an implemented feature; see the [acceptance plan](#safe-update-experience). |
+| **P0 — safe update experience** | A single guided entry point to discover, prepare, verify and approve CLI/project updates | First product priority after the verification foundation: deliver a compatible opt-in **12.1.0** implementation and carry it into v13. Require trusted artifacts, explicit target/channel selection, application tests and recoverable file changes. Still planned; see the [acceptance plan](#safe-update-experience). |
 | **P1 — navigable API documentation** | Developers can find a capability, understand its contract and run a realistic example | Connect versioned Rust API references, task-based guides and tested REST examples. Document errors, feature flags, security boundaries and migration paths alongside each prioritized API; see the [documentation plan](#api-documentation-quality). |
 | **P1 — Omni application delivery** | Predictable desktop/mobile builds, diagnostics and installation guidance | Detect SDK/toolchain/signing/identifier/version/ABI mistakes, distinguish unsigned build output from installable signed packages, and test lifecycle, navigation and interrupted networks. Device and store acceptance need their own evidence. |
 | **P1 — coherent application contracts** | One clear path for sessions, ownership, tenant context and typed client APIs | Consolidate existing Auth/Core/Security boundaries, complete selected session/passkey flows and validate API/SDK serialization. Preserve explicit configuration and negative authorization tests. |
@@ -383,7 +382,7 @@ after its code and evidence exist.
 
 ### Safe update experience
 
-**Status: planned; one of the highest product priorities for v13.** The goal is
+**Status: planned for 12.1.0 and carried forward into v13.** The goal is
 the easiest practical update journey without hiding risk: one guided entry point, a clear
 plan, minimal repeated input, useful progress, verification and recoverable
 application of the approved changes. Ease and speed are acceptance criteria,
@@ -438,13 +437,19 @@ Implementation and acceptance order:
    still require rebuilding, testing and a separate deployment. Do not promise
    instant upgrades, zero downtime or automatic production readiness.
 
-Preserve today's supported upgrade behavior wherever possible and document
-any incompatible public CLI/API/configuration or migration contract in v13's
-migration guide. A compatible additive feature could technically fit a minor
-release, but **no 12.1.0 delivery is currently planned**: concentrate this work
-on v13. This plan neither bumps package versions nor authorizes a release, and
-it does not claim that v5-to-v12 or v12-to-v13 application migration is already
-automatic.
+The 12.1.0 delivery must preserve v12's public APIs, CLI/configuration behavior
+and opt-in boundaries. It prepares discovery and installation of a compatible
+migration CLI, not guesses about a future major's source changes. Actual
+v12-to-v13 automation requires v13's published migration catalog and tested
+application fixtures; the same-major restriction of the current `upgrade`
+command must not be silently removed. Reserve incompatible changes for v13.
+
+After this bounded minor is implemented, validated and released, concentrate
+new capability work on v13, with v12 maintenance by exception. The website
+redesign is a separate documentation delivery, not a reason to bump framework
+versions or postpone verification work. This plan neither bumps package
+versions nor authorizes publication, and it does not claim that any major
+application migration is already automatic.
 
 ### API documentation quality
 
@@ -480,7 +485,8 @@ or label unimplemented v13 contracts as available in v12.
 | Version | Status | Honest scope |
 | :--- | :---: | :--- |
 | **v12.0.0** | `[x] Published stable` | Tag `v12.0.0` at `eb11f892` completed the protected release workflow and published all sixteen packages on September 15, 2026. |
-| **v12.0.x** | `[~] Maintenance if needed` | Preserve the published stable line; separately review important compatible fixes when necessary. No new capability programme or minor release is currently planned. |
+| **v12.0.x** | `[~] Maintenance if needed` | Preserve the published stable line; separately review important compatible fixes when necessary. |
+| **v12.1.0** | `[ ] Planned compatible minor` | Opt-in guided CLI/project updates after verification-efficiency work. Preserve v12 contracts and validate artifact trust, recovery and platform behavior; not yet implemented or published. |
 | **v13.x** | `[ ] Next feature line` | Compatible and breaking improvements move together into the next deliberate cycle: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 
 The framework may call a milestone implemented only when the same commit passes

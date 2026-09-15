@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### CI tooling
+
+- Add a bounded read-only job-timing reporter and negative fixtures; distinguish
+  job waits, combined execution steps and summed runner time from release evidence.
+- Add an observation-only Git impact planner with transitive normal, optional,
+  target, build and development dependency edges. Unknown inputs, changed
+  policy/dependencies, critical crates, executable documentation and ambiguous
+  history retain full verification; no check is skipped by its reports.
+- Run Rust CI, documentation and workflow-policy checks on v13 as well as main.
+  Other inherited workflow branch filters and release admission remain unchanged.
+
 ### Documentation
 
 - Replace the completed v12 development program with a concise English release
@@ -20,9 +31,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   illustrated cards, finite animations and reduced-motion support.
 - Make safe verification-efficiency improvements a shared v12 maintenance and
   v13 priority, with explicit inventory, cache-trust and release-evidence gates.
-- Focus new implementation work on v13 and record guided updates as a top
-  priority, with artifact verification, project acceptance and bounded recovery
-  requirements. No v12 minor backport is currently planned.
+- Sequence verification efficiency before a compatible opt-in 12.1.0 updater,
+  then concentrated v13 development. Require artifact verification, project
+  acceptance and bounded recovery; future-major migrations need their own rules.
 - Define v13 API documentation acceptance criteria for connected Rust reference
   pages and tested REST journeys, using Qt's organization as inspiration.
   These documentation and expanded-updater programmes remain planned.

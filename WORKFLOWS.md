@@ -494,12 +494,45 @@ dependency graph make static estimates unreliable.
 
 ## Verification efficiency — v12 maintenance and v13
 
-**Priority: immediate maintenance work on v12, carried forward to v13.** Faster
-feedback is not a reason to wait for a major release. The draft/ready split,
+**Priority: first, before the planned 12.1.0 updater and concentrated v13 product
+development.** Compatible policy/tooling can serve both release lines after
+review; it does not require a new framework capability release. The draft/ready split,
 eight OS shards, Linux-only post-merge repetition, mutation recovery and
-targeted diagnostic modes described above already exist. The additional work
-below is **planned**, not a claim that impact selection or cross-commit release
-evidence reuse has been implemented.
+targeted diagnostic modes described above already exist. Measurement and
+change-impact **observation tooling now exists on v13**, but selective execution
+and general cross-commit release-evidence reuse are **not enabled**.
+
+The `ci.yml`, `documentation.yml` and `workflow-lint.yml` development triggers
+include v13. Other inherited branch filters remain unchanged; these three jobs
+are not the whole release gate. The workflow-lint job retains a source/policy-bound
+`rullst.verification-plan.v1` observation. It uses committed Git objects and TOML
+metadata without executing Cargo, build scripts, macros or project tests. All
+normal/optional/target/build/dev dependency edges participate in its reverse
+closure. Renames, deletions, symlinks, unknown paths, policy/lockfile changes,
+critical crates, generators and potentially executable Markdown retain the full
+recommendation. Missing history or unsupported graph shapes also fall back to
+full. `may_skip_checks` is always false and no workflow consumes this report to
+skip a job. Candidate package lists are not a complete test/feature matrix.
+
+Read-only local commands (the planner inspects commits, not uncommitted files):
+
+```bash
+python3 .github/plan-verification.py --base main --head HEAD
+python3 .github/test-plan-verification.py
+python3 .github/test-report-ci-timings.py
+gh api --paginate --slurp \
+  'repos/Rullst/Rullst/actions/runs/34980693742/attempts/1/jobs?per_page=100' \
+  | python3 .github/report-ci-timings.py --top 10
+```
+
+Initial timing observation: [Rust CI run 34980693742, attempt 1](https://github.com/Rullst/Rullst/actions/runs/34980693742)
+reported head `792c1d554465c016abfdc223cbcaf7d94ec8c0c5` and 42 completed jobs.
+The longest job was Windows/workspace at 30.05 minutes (27.83 in the combined
+build/test step); the longest creation-to-start wait was 17.50 minutes.
+Those waits can include orchestration, not just runner queues. The summed
+386.72 runner-minutes are neither elapsed workflow time nor a billing estimate.
+This one run is a baseline, not a measured speedup, cold/warm comparison or
+evidence that compilation and test execution have been timed separately.
 
 | Order | Improvement | Acceptance evidence |
 | :--- | :--- | :--- |

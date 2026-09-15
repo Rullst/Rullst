@@ -188,12 +188,14 @@ itself prove that Rullst's public API must break. Compatible fixes may ship in
 `12.0.x`; changes that break Rullst's compatibility contract belong to v13.
 Keep the v12 release gates active while v13's own CI policy evolves.
 
-Current implementation effort targets v13, including the
-[safe update experience](ROADMAP.md#safe-update-experience). No `12.1.0` feature
-release is currently planned. Preserve v12 as published and review important
-maintenance fixes separately when necessary; do not merge the entire v13
-branch into `main` as a maintenance update. This focus does not end v12 support
-or authorize a new release.
+The current order is verification-efficiency work, then a compatible opt-in
+`12.1.0` [update experience](ROADMAP.md#safe-update-experience), then concentrated
+v13 development. Prepare the minor against the maintained v12 baseline in a
+reviewed PR and carry it forward; do not merge the entire v13 branch into
+`main`. Synchronize package versions only when the candidate is accepted for
+release. A future major upgrade needs that major's own tested migration rules,
+not just an updated installer. This plan does not authorize publication or end
+v12 maintenance.
 
 ---
 

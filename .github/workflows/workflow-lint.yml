@@ -2,9 +2,9 @@ name: GitHub Actions Lint
 
 on:
   push:
-    branches: [main]
+    branches: [main, v13]
   pull_request:
-    branches: [main]
+    branches: [main, v13]
   workflow_dispatch:
 
 concurrency:
@@ -27,6 +27,37 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
+
+      - name: Test verification planning and timing observations
+        run: |
+          python3 .github/test-plan-verification.py
+          python3 .github/test-report-ci-timings.py
+
+      - name: Observe change impact without skipping checks
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        run: |
+          python3 .github/plan-verification.py \
+            --base "$BASE_SHA" --head "$GITHUB_SHA" \
+            > "$RUNNER_TEMP/verification-plan.json"
+          {
+            echo '### Verification impact observation'
+            echo 'This report cannot skip checks or qualify as release evidence.'
+            echo '```json'
+            jq '{schema, phase, base_sha, head_sha, candidate_scope, enforced_scope,
+                 may_skip_checks, release_evidence_eligible, fallback_reasons,
+                 direct_packages, affected_packages}' "$RUNNER_TEMP/verification-plan.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Retain the source-bound observation
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verification-plan-${{ github.sha }}
+          path: ${{ runner.temp }}/verification-plan.json
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Enforce canonical Action reference syntax
         run: |
