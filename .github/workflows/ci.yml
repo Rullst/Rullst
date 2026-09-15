@@ -76,8 +76,10 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           components: rustfmt, clippy
           cache: false
 
@@ -136,8 +138,10 @@ jobs:
           version: v0.17.0
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           # CLI integration tests intentionally create and remove nested Cargo
           # targets. Caching the whole workspace target races the cache cleanup,
           # emits false ENOENT annotations and uploads multi-gigabyte archives.
@@ -236,8 +240,10 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           cache: false
 
       - name: Compile ORM feature in isolation
@@ -291,8 +297,10 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           cache: false
 
       - name: Prove independent clients share one atomic budget
@@ -338,8 +346,10 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           cache: false
 
       - name: Compile all public minimal and isolated feature boundaries
@@ -368,8 +378,10 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           cache: false
 
       - name: Run the explicit threat-model release-negative minimum
@@ -409,8 +421,10 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           cache: false
 
       - name: Validate and run the versioned offline eval suite
@@ -431,8 +445,10 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           cache: false
 
       - name: Prove Nexus never selects credential-free release access
@@ -456,8 +472,10 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           cache: false
 
       - name: Prove cross-domain restart and corruption isolation
