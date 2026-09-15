@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789489295161,
+  "lastUpdate": 1789503306167,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -6739,6 +6739,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 542,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a43b05f564debc51b7a235315f08cc2a2e0d063",
+          "message": "fix(site): publish synchronized landing and SES compatibility",
+          "timestamp": "2026-09-15T16:54:06-03:00",
+          "tree_id": "52478355d5ce816967387155e0bec60f38be0c21",
+          "url": "https://github.com/Rullst/Rullst/commit/3a43b05f564debc51b7a235315f08cc2a2e0d063"
+        },
+        "date": 1789503305283,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 548,
+            "range": "± 24",
             "unit": "ns/iter"
           }
         ]
