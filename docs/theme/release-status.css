@@ -4,20 +4,20 @@
   box-sizing: border-box;
   width: 100%;
   padding: 0.9rem 1rem;
-  border-bottom: 1px solid rgba(251, 191, 36, 0.55);
-  background: #451a03;
-  color: #fef3c7;
+  border-bottom: 1px solid #38654a;
+  background: #10251c;
+  color: #d2e9d8;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
   text-align: center;
 }
 
 .rullst-release-status strong {
-  color: #fbbf24;
+  color: #c3f896;
 }
 
 .rullst-release-status a {
-  color: #fde68a;
+  color: #b8ddff;
   font-weight: 700;
   text-decoration: underline;
 }
@@ -26,6 +26,11 @@
   display: block;
   margin-bottom: 0.2rem;
 }
+
+.rullst-release-status details { margin-top: 0.5rem; font-size: 0.85em; }
+.rullst-release-status summary { width: fit-content; margin-inline: auto; cursor: pointer; color: #c5dec8; }
+.rullst-release-status summary:focus-visible { outline: 2px solid #ffa463; outline-offset: 4px; }
+.rullst-release-status details p { max-width: 65ch; margin: 0.75rem auto 0.25rem; }
 
 @media (max-width: 700px) {
   .rullst-release-status {
