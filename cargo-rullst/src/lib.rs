@@ -18,8 +18,6 @@ pub mod ui;
 
 #[cfg_attr(mutants, mutants::skip)]
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
-    ui::trigger_background_update_check();
-
     let mut args: Vec<String> = std::env::args().collect();
 
     // Cargo passes the subcommand name ("rullst") as the first argument to the binary.
@@ -29,6 +27,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if args.len() == 1 {
+        ui::trigger_background_update_check();
         ui::show_interactive_dashboard()?;
     } else {
         let cli = <cli::Cli as clap::Parser>::parse_from(args);

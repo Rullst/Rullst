@@ -28,6 +28,9 @@ impl DashboardUi for DialoguerUi {
         print!("\x1B[2J\x1B[1;1H");
         print_neon_logo()?;
         play_launch_pulse()?;
+        if let Some(version) = super::update_check::check_update_available() {
+            super::update_check::print_update_banner(&version);
+        }
         Ok(())
     }
 

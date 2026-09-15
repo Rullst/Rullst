@@ -1168,6 +1168,18 @@ assistant, not a claim that compilation proves production compatibility.
   self-installation nor this expanded orchestration is implemented by the
   current `upgrade` command.
 
+  **Unreleased discovery hardening, not the complete updater:** the working
+  CLI checks for notices only on interactive dashboard startup, respects
+  explicit offline/CI/notification-disable flags, and retains at most one
+  validated result in process memory. It no longer reads or writes the legacy
+  shared temporary cache. Discovery uses a fixed HTTPS registry endpoint,
+  denies redirects, caps the response at 256 KiB and applies one four-second
+  network/body deadline. Notices select a newer, non-yanked stable version in
+  the installed major, not an arbitrary registry maximum. They authorize no
+  installation or project changes. A private persistent cache, target/MSRV
+  presentation, verified CLI installation and the expanded project acceptance
+  transaction remain planned for 12.1.0 and need platform/release evidence.
+
 ---
 
 ## 📱 13. Omni Packaging Contract

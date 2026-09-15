@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### CLI update discovery
+
+- Restrict advisory update discovery to interactive dashboard startup; ordinary
+  commands, help and noninteractive use do not start the check. Respect offline,
+  CI and notification opt-out flags. Retire the shared temporary version file
+  in favor of a validated process-local result.
+- Bound registry responses and total network/body duration, deny redirects and
+  select only newer non-yanked stable versions in the current major. Add offline
+  selection and loopback HTTP regressions, including a continuously trickling
+  response. This does not install a CLI, run project acceptance tests or complete
+  the planned guided 12.1.0 update workflow.
+
 ### CI tooling
 
 - Add a bounded read-only job-timing reporter and negative fixtures; distinguish
