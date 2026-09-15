@@ -41,6 +41,27 @@ class ActionPinPolicyTests(unittest.TestCase):
     def test_rejects_mutable_shorthand_reference(self) -> None:
         self.assert_invalid("steps:\n  - uses: owner/action@main\n")
 
+    def test_accepts_coherent_codeql_sub_actions(self) -> None:
+        self.assert_valid(
+            f"steps:\n  - uses: github/codeql-action/init@{PIN}\n"
+            f"  - uses: 'github/codeql-action/analyze@{PIN.upper()}'\n"
+            f'  - uses: "github/codeql-action/upload-sarif@{PIN}"\n'
+            f"  - uses: another/action@{'a' * 40}\n"
+        )
+
+    def test_rejects_mixed_codeql_sub_action_versions(self) -> None:
+        self.assert_invalid(
+            f"steps:\n  - uses: github/codeql-action/init@{PIN}\n"
+            f"  - uses: github/codeql-action/analyze@{'f' * 40}\n"
+        )
+
+    def test_codeql_consistency_ignores_shell_text(self) -> None:
+        self.assert_valid(
+            f"steps:\n  - uses: github/codeql-action/init@{PIN}\n"
+            "  - run: |\n"
+            f"      uses: github/codeql-action/analyze@{'f' * 40}\n"
+        )
+
     def test_rejects_sha_text_that_exists_only_in_comment(self) -> None:
         self.assert_invalid(f"steps:\n  - uses: owner/action@v1 # @{PIN}\n")
 
