@@ -2,6 +2,7 @@
 // Does not commit, push, or deploy. Refuses the wrong repository or a dirty tree.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { lstat, readFile, realpath, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,11 +15,19 @@ assert.equal(git("rev-parse", "--show-toplevel"), target, "Destination must be i
 assert(/(?:github\.com[:/])Rullst\/Rullst\.github\.io(?:\.git)?$/i.test(git("remote", "get-url", "origin")), "Destination must be the official website checkout");
 assert.equal(git("status", "--porcelain"), "", "Commit or preserve destination edits before exporting");
 const source = await readFile(join(root, "docs/home_template.html"), "utf8");
+// Keep the HTML and assets one release, including the standalone privacy page.
+// Browsers/CDNs can retain old unversioned assets after a new HTML deployment.
+for (const name of ["site.css", "site.js"]) {
+  const digest = createHash("sha256").update(await readFile(join(root, "docs", name))).digest("hex").slice(0, 16);
+  assert(source.includes(`./assets/${name}?v=${digest}`), `Update the landing's ${name} content version before exporting`);
+}
 const home = source.replace('./assets/site.css', './src/style.css').replace('./assets/site.js', './src/main.js')
   .replace('property="og:url" content="https://rullst.win/Rullst/"', 'property="og:url" content="https://rullst.win/"')
   .replace('rel="canonical" href="https://rullst.win/Rullst/"', 'rel="canonical" href="https://rullst.win/"');
 const privacy = source.match(/      <section id="privacy"[\s\S]+?      <\/section>/)?.[0];
 assert(privacy, "Landing source must contain a complete privacy notice");
+const stylesheet = home.match(/<link rel="stylesheet" href="(\.\/src\/style\.css\?v=[a-f0-9]{16})">/)?.[1];
+assert(stylesheet, "Exported landing must reference a content-versioned stylesheet");
 const privacyPage = `<!doctype html>
 <html lang="en">
 <head>
@@ -30,7 +39,7 @@ const privacyPage = `<!doctype html>
   <title>Website privacy notice — Rullst</title>
   <link rel="canonical" href="https://rullst.win/privacy.html">
   <link rel="icon" type="image/png" href="/Rullst/Rullst.png">
-  <link rel="stylesheet" href="./src/style.css">
+  <link rel="stylesheet" href="${stylesheet}">
 </head>
 <body>
   <nav class="site-nav" aria-label="Primary navigation"><div class="shell nav-inner"><a class="brand" href="/">rullst<span class="brand-period">.</span></a><a href="/#privacy">Back to the website ↗</a></div></nav>

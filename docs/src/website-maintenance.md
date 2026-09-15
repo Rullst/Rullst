@@ -10,7 +10,7 @@ The public entry points have different deployment sources:
 
 The landing design and copy have one editable source: `docs/home_template.html`,
 `docs/site.css` and `docs/site.js`. Preserve the footer dedication and the v12
-release-candidate/v5 end-of-life notice. Use actual source and release evidence for claims;
+stable-release/v5 end-of-life notice. Use actual source and release evidence for claims;
 do not hardcode aspirational coverage, scorecard, speed or certification values.
 
 ## Validate before deployment
@@ -31,6 +31,22 @@ no-JavaScript navigation, resource failures, CSP errors, external requests and
 browser storage. It is not a complete accessibility audit or cross-browser
 certification. Optional `--screenshots /absolute/output/directory` records
 viewport previews without adding binary artifacts to the repository.
+
+### Keep cached assets in sync with the page
+
+The landing references CSS and JavaScript with a content version, such as
+`./assets/site.css?v=<first-16-hex-digits-of-SHA-256>`. After editing either
+asset, compute its SHA-256 and update its reference in `home_template.html`.
+The validator and organization exporter reject stale versions. This is cache
+invalidation, not an artifact-signing or browser integrity guarantee.
+
+The browser regression check first stores an old unversioned stylesheet and
+script in a real four-hour browser cache, confirms they are reused, then loads
+the new landing and checks the three illustrated module cards' actual styles.
+The organization privacy page shares the versioned stylesheet. Keep query
+parameters in any CDN cache key; an intermediary configured to ignore them
+requires a cache-policy change or content-hashed asset filenames instead.
+Previously cached HTML can still show the previous design until refreshed.
 
 The source landing has no analytics, social embeds, remote fonts, cookies or
 local/session storage. CSS and JavaScript are local; ambient, hero, workflow and

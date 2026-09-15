@@ -138,14 +138,16 @@ h1 { margin: 0; font-size: clamp(3rem, 4.5vw, 4rem); line-height: 1.08; font-wei
 .foundation-strip strong { color: #d1dacf; font-size: 1.25rem; font-weight: 550; letter-spacing: -0.03em; }
 .foundation-strip a { color: var(--muted); font-size: 0.7rem; text-decoration: none; }
 
-.examples-section { position: relative; }
+.examples-section { --line: #27342b; --text: #eff5ed; --muted: #a4b4a7; --green: #b2ee80; --orange: #ffa463; --blue: #91c6ef; position: relative; color: var(--text); }
+.examples-section .button-secondary { background: #111813; color: #d5dfd5; }
+.examples-section .button-secondary:hover { border-color: #66866c; background: #172219; }
 .demo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.2rem; }
 .demo-card { --demo-accent: var(--green); --demo-tint: #88ce6033; position: relative; display: flex; flex-direction: column; min-width: 0; border: 1px solid #3d503a; border-radius: 16px; background: linear-gradient(155deg, #172019, #0c130f); overflow: hidden; transition: transform 240ms ease, box-shadow 240ms ease, border-color 240ms ease; }
 .demo-lms { --demo-accent: var(--blue); --demo-tint: #508bdc33; border-color: #334a61; background: linear-gradient(155deg, #16212d, #0d1319); }
 .demo-portfolio { --demo-accent: var(--orange); --demo-tint: #e9924333; border-color: #5c4431; background: linear-gradient(155deg, #261d17, #17120f); }
-.demo-art { position: relative; display: grid; justify-items: center; place-content: center; gap: 1rem; min-height: 235px; overflow: hidden; border-bottom: 1px solid var(--line); color: var(--demo-accent); background: radial-gradient(ellipse at 50% 90%, var(--demo-tint), transparent 80%); }
+.demo-art { position: relative; display: grid; justify-items: center; place-content: center; gap: 1rem; min-height: 215px; overflow: hidden; border-bottom: 1px solid var(--line); color: var(--demo-accent); background: radial-gradient(ellipse at 50% 100%, var(--demo-tint), transparent 80%); }
 .demo-art::before { content: ""; position: absolute; inset: 0; background: linear-gradient(#ffffff08 1px, transparent 1px), linear-gradient(90deg, #ffffff08 1px, transparent 1px); background-size: 25px 25px; mask-image: linear-gradient(transparent, black); }
-.demo-art svg { position: relative; width: 200px; max-width: 80%; height: 120px; filter: drop-shadow(0 0 18px var(--demo-tint)); transition: transform 300ms ease; }
+.demo-art svg { position: relative; width: 180px; max-width: 80%; height: 108px; filter: drop-shadow(0 0 14px var(--demo-tint)); transition: transform 300ms ease; }
 .demo-art-caption { position: relative; font: 0.52rem var(--mono); letter-spacing: 0.09em; }
 .demo-orbit { position: absolute; width: 290px; height: 290px; top: -40px; left: calc(50% - 145px); border: 1px solid var(--demo-tint); border-radius: 50%; box-shadow: 0 0 0 24px #ffffff02, 0 0 0 48px #ffffff02; }
 .demo-content { display: flex; flex: 1; flex-direction: column; align-items: flex-start; padding: 1.7rem; }
@@ -286,7 +288,6 @@ h1 { margin: 0; font-size: clamp(3rem, 4.5vw, 4rem); line-height: 1.08; font-wei
   .js .examples-section.is-visible .demo-card:nth-child(2) { animation-delay: 120ms; }
   .js .examples-section.is-visible .demo-card:nth-child(3) { animation-delay: 240ms; }
   .js .examples-section.is-visible .demo-art svg { animation: art-arrive 1.1s ease-out; }
-  .js .examples-section.is-visible .demo-orbit { animation: halo-rise 2s ease-out both; }
 }
 @media (hover: hover) and (pointer: fine) {
   .terminal:hover { transform: translateY(-4px); border-color: #78a86b; box-shadow: 0 32px 80px #0008, 0 0 70px #8cb86416; }
