@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789420144488,
+  "lastUpdate": 1789489295161,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -6709,6 +6709,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 545,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b67c906419031169f791a8ac151a6695b34b7ac8",
+          "message": "Merge pull request #200 from Rullst/docs/v12-stable-closeout\n\ndocs(release): close out v12 documentation and refresh examples",
+          "timestamp": "2026-09-15T13:01:49-03:00",
+          "tree_id": "db6aa97445a144b0942c0e647fa6dd207c0162c9",
+          "url": "https://github.com/Rullst/Rullst/commit/b67c906419031169f791a8ac151a6695b34b7ac8"
+        },
+        "date": 1789489294360,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 542,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
