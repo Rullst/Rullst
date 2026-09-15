@@ -48,6 +48,9 @@ jobs:
       - name: Validate exact-run mutation recovery planning
         run: python3 .github/test-plan-mutation-resume.py
 
+      - name: Validate read-only CI timing reports
+        run: python3 .github/test-report-ci-timings.py
+
       - name: Run actionlint 1.7.7
         run: |
           docker run --rm \

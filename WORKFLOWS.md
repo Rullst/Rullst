@@ -98,6 +98,32 @@ when all 40 named target jobs and its evidence boundary succeeded. Physical
 devices, store approval, live provider accounts, external security review and
 human release approval remain outside GitHub Actions.
 
+## Measure before changing CI scheduling
+
+The read-only timing reporter uses GitHub's existing job/step metadata; it does
+not dispatch a workflow, download build logs, or consume another runner:
+
+```bash
+set -o pipefail
+gh api 'repos/Rullst/Rullst/actions/runs/RUN_ID/jobs?per_page=100&filter=latest' \
+  --paginate --slurp | python3 .github/report-ci-timings.py
+```
+
+Replace `RUN_ID` with one exact run ID. Use `--format json` for machine-readable
+output or `--top 20` for more table rows. The report retains run, attempt and
+source identity, rejects incomplete pagination or mixed/duplicate jobs, and
+marks in-progress snapshots and missing durations explicitly. Read-only local
+fixtures run in the existing workflow-lint job; no new workflow is required.
+
+Compare completed runs with the same test scope and note cache warmth and
+runner differences. Creation-to-start wait can include orchestration/dependency
+waits; it does not isolate runner capacity. A combined Cargo step includes
+compilation and test execution and cannot honestly split those timings from
+metadata alone. Summed runner-minutes are not wall-clock duration or an invoice.
+Use the longest jobs and waits to investigate cache misses, serial work and
+contention before adding shards. Timing observations never replace correctness
+checks, coverage floors or release evidence.
+
 ## Required local and release baseline
 
 The contributor baseline from `AGENTS.md` is:
