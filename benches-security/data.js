@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789512768229,
+  "lastUpdate": 1789516601623,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -10032,6 +10032,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 26,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8aab35db63cbac5789a50656f431762f39da1bbf",
+          "message": "Merge pull request #203 from Rullst/fix/studio-browser-assets\n\nfix(studio): serve browser assets and disconnected cache routes",
+          "timestamp": "2026-09-15T20:31:43-03:00",
+          "tree_id": "d28565ef4fece842b9fb94a14e6942cbf6a5e947",
+          "url": "https://github.com/Rullst/Rullst/commit/8aab35db63cbac5789a50656f431762f39da1bbf"
+        },
+        "date": 1789516600843,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5795,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 672,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 27,
             "range": "± 0",
             "unit": "ns/iter"
           }
