@@ -59,6 +59,14 @@ The earlier `StudioLayer` embedded-production idea was never implemented.
 Keeping an authenticated shared Studio is worthwhile, but it needs its own
 explicit identity/RBAC/TLS policy before it can become a supported mode.
 
+**12.1.0 maintenance (unreleased):** the raw data-browser router now includes
+the same-origin CSS/client and an unconnected Cache page, including when nested
+under `/studio`. Published `12.0.0` omits those routes. An unconnected cache is
+reported as **Unavailable**, not fabricated telemetry. Existing applications
+must remove temporary asset/Cache `.route(...)` overrides before updating to
+avoid duplicate-route collisions; preserve their access-control layers. See the
+[migration checklist](https://github.com/Rullst/Rullst/blob/main/docs/src/3-rullst-studio.md#v1210-browser-composition-fix-unreleased).
+
 **CLI Launch:**
 
 If you don't want to embed it, you can launch it statelessly via the Rullst CLI:

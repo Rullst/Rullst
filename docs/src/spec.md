@@ -103,6 +103,16 @@ evidence that the current revision satisfies these contracts.
 These describe required behavior, not a declaration that every final release
 gate has passed. The audit records the current evidence and remaining work.
 
+### Studio browser composition invariant (12.1.0, unreleased)
+
+Studio browser composition in the unreleased 12.1.0 maintenance train preserves
+both root and `/studio`-nested same-origin asset routes. A raw browser without
+a supplied cache renders an explicit unavailable state and exposes no cache
+mutation endpoints. The full local builder installs the configured cache once
+and retains its verified-loopback/same-origin protection. Assets and navigation
+fixes do not constitute a shared-production authentication mode; existing
+application-level workaround routes must be removed before upgrading.
+
 ### Pre-release scaffold source invariant
 
 An unpublished pre-release `cargo-rullst` may reuse only local framework crates
