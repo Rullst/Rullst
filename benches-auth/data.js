@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789489219669,
+  "lastUpdate": 1789503232423,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -10885,6 +10885,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4054,
             "range": "± 53",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3a43b05f564debc51b7a235315f08cc2a2e0d063",
+          "message": "fix(site): publish synchronized landing and SES compatibility",
+          "timestamp": "2026-09-15T16:54:06-03:00",
+          "tree_id": "52478355d5ce816967387155e0bec60f38be0c21",
+          "url": "https://github.com/Rullst/Rullst/commit/3a43b05f564debc51b7a235315f08cc2a2e0d063"
+        },
+        "date": 1789503231667,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1024,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 803,
+            "range": "± 211",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1843,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4058,
+            "range": "± 92",
             "unit": "ns/iter"
           }
         ]
