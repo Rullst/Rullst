@@ -20,7 +20,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   exact-source baseline with all 25 Linux runtime jobs successful, a bounded
   three-file presentation diff and fresh browser/documentation checks. Missing
   or invalid evidence falls back to full runtime CI; PRs, main, manual and release
-  gates are unchanged. Hosted positive-path validation remains pending.
+  gates are unchanged. The first hosted positive path completed Rust CI in 43s;
+  its immediately preceding full Linux baseline took 20m57s. These observed
+  timings do not predict runtime-change or release verification duration.
+- Resolve every fuzz dependency graph with locked Cargo metadata before Clippy
+  and campaign builds. Remove the ineffective `--no-deps` preflight and add real
+  stale-lock regression evidence; retain all forty fuzz targets and durations.
+- Use pinned prebuilt mdBook releases for documentation and Pages builds while
+  retaining their book, link and real-browser checks.
+
+### Dependency maintenance
+
+- Review grouped Rust dependency updates, zstd 0.14 and jsonschema 0.56; align
+  explicit manifest minimums and the independent fuzz lockfiles. These changes
+  still require runtime and platform validation before a 12.1.0 release.
+- Align pinned CodeQL sub-actions, update the tool installer and Rust setup
+  Action with explicit legacy warning behavior, and pin the secret scanner's
+  container digest independently of its Action wrapper.
 
 ### Documentation
 
@@ -42,6 +58,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Define v13 API documentation acceptance criteria for connected Rust reference
   pages and tested REST journeys, using Qt's organization as inspiration.
   These documentation and expanded-updater programmes remain planned.
+- Version landing CSS and JavaScript by content hash, including the organization
+  privacy page, with a real stale-browser-cache regression. Restore the earlier
+  examples presentation and describe Rullst as a suite for bringing ideas to life.
 - Correct the nextest scope: coverage uses nextest, while ordinary CI's existing
   eight shards still use Cargo's test runner.
 

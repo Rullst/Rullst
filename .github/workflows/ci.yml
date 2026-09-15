@@ -97,7 +97,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install pinned documentation builder
-        uses: taiki-e/install-action@5bf6ce016fd2e72eefc647cbca1e4213f65955b8 # v2.87.5
+        uses: taiki-e/install-action@9534c84618278caac52cb373bb164ed464dbd8af # v2.87.11
         with:
           tool: mdbook@0.5.4
       - name: Set up browser-test runtime
@@ -145,6 +145,9 @@ jobs:
 
       - name: Check reload generation, singleton and refresh behavior
         run: node rullst-core/src/server/dev_reload/client_tests.cjs
+
+      - name: Verify all fuzz dependency locks before expensive checks
+        run: bash .github/check-fuzz-locks.sh
 
       - name: Run Clippy (Workspace)
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings

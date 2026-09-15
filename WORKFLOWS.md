@@ -558,9 +558,29 @@ workflow checks. They do not produce a quality scorecard or qualify as release
 evidence. PRs, `main`, manual matrices, fuzzing, mutation campaigns and release
 admission are unchanged. The first implementation deliberately does **not**
 chain presentation-only receipts or search arbitrarily old baselines; a missing
-immediate full baseline incurs a normal run. Hosted positive-path validation
-and a measured fast-path duration remain required before calling this rollout
-complete.
+immediate full baseline incurs a normal run.
+
+Hosted rollout evidence on September 15, 2026: [full Linux push CI 35000185080](https://github.com/Rullst/Rullst/actions/runs/35000185080)
+at `42dd0545` passed all 25 runtime jobs in 20m57s creation-to-completion.
+The following [presentation-only CI 35002518137](https://github.com/Rullst/Rullst/actions/runs/35002518137)
+at `3229b762` passed scope admission and fresh site validation in 43s, with
+runtime jobs skipped as intended. Separate documentation and workflow checks
+also passed. These are two observed Rust CI elapsed times, not a universal
+speedup, a sum of all workflow durations, or permission to reuse release evidence.
+
+Documentation and Pages builds install the same pinned mdBook version from its
+prebuilt release instead of recompiling mdBook on each runner. Book, link and
+browser checks remain enabled. Dependency changes still require runtime CI.
+
+Before workspace Clippy, `check-fuzz-locks.sh` resolves all ten fuzz dependency
+graphs with `cargo metadata --locked` and the campaign's explicit Linux target.
+It does not compile or execute fuzzers. This catches stale fuzz lockfiles after
+workspace dependency updates without waiting for a long campaign build. Both
+campaign preflights use the same full graph resolution; `--no-deps` is forbidden
+because a real offline Cargo regression demonstrates that it accepts stale
+path-dependency locks. Five tests cover that failure, the complete inventory,
+early failure, argument rejection and CI wiring. Neither the forty-target
+inventory nor campaign duration or release admission is reduced.
 
 Read-only local commands (the planner inspects commits, not uncommitted files):
 

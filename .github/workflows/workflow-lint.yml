@@ -35,6 +35,7 @@ jobs:
           python3 .github/test-report-ci-timings.py
           python3 .github/test-admit-site-only.py
           python3 .github/test-ci-scope.py
+          python3 .github/test-check-fuzz-locks.py
 
       - name: Observe change impact without skipping checks
         env:

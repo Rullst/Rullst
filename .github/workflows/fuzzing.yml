@@ -127,7 +127,7 @@ jobs:
 
       - name: Verify pinned fuzz dependency graph
         working-directory: ${{ matrix.dir }}
-        run: cargo +nightly-2026-08-21 metadata --locked --format-version 1 --no-deps > /dev/null
+        run: cargo +nightly-2026-08-21 metadata --locked --format-version 1 --filter-platform "$FUZZ_BUILD_TARGET" > /dev/null
 
       - name: Compile every declared target in the selected package
         working-directory: ${{ matrix.dir }}
@@ -180,7 +180,7 @@ jobs:
 
       - name: Verify pinned fuzz dependency graph
         working-directory: ${{ matrix.dir }}
-        run: cargo +nightly-2026-08-21 metadata --locked --format-version 1 --no-deps > /dev/null
+        run: cargo +nightly-2026-08-21 metadata --locked --format-version 1 --filter-platform "$FUZZ_BUILD_TARGET" > /dev/null
 
       - name: Run bounded target campaign
         working-directory: ${{ matrix.dir }}
