@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789503306167,
+  "lastUpdate": 1789512639339,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -6769,6 +6769,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 548,
             "range": "± 24",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "8fd238264ee63d1dd6f7dd8a5dd3f24a014b059c",
+          "message": "Merge pull request #202 from Rullst/perf/v12-verification\n\nperf(ci): backport bounded feedback optimizations to v12",
+          "timestamp": "2026-09-15T19:30:15-03:00",
+          "tree_id": "1127ecabfd544faaef821ddf0c11cdfe485a9452",
+          "url": "https://github.com/Rullst/Rullst/commit/8fd238264ee63d1dd6f7dd8a5dd3f24a014b059c"
+        },
+        "date": 1789512638669,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 550,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
