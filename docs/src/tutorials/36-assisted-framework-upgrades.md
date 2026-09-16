@@ -198,13 +198,15 @@ not allowed to guess them.
 
 ## Planned simpler update experience
 
-**Working 12.1.0 source only, not published 12.0.0:** read-only discovery is now
+**Working 12.1.0 source only, not published 12.0.0:** advisory discovery is now
 available through these commands:
 
 ```bash
 cargo rullst update check
 cargo rullst update check --to 12.0.0 --json
 cargo rullst update check --offline
+cargo rullst update check --refresh
+cargo rullst update check --no-cache
 ```
 
 The default selects an eligible stable CLI in the installed major. An exact
@@ -215,9 +217,17 @@ the exact version, declared Rust minimum, release-notes link and current
 OS/architecture; it does not certify compatibility. JSON uses
 `rullst.update-discovery.v1`; reject unknown schemas. Metadata checksums are
 not proof of publisher identity, and every authority field remains false.
-No CLI/project files change. While private caching is unfinished, `--offline`
-and `CARGO_NET_OFFLINE=true` return a clear error instead of accessing the
-registry or trusting the old shared cache.
+No CLI/project files change. Linux/macOS explicit checks reuse a private,
+owner/permission-checked catalog for six hours. `--offline` and
+`CARGO_NET_OFFLINE=true` read only a fresh cache and revalidate its metadata;
+missing, expired or invalid caches fail without network access or writes.
+`--refresh` forces online discovery and `--no-cache` disables persistence;
+neither overrides the offline environment setting. JSON includes source and
+age, never installation authority. The old shared cache is not trusted.
+Windows persistence remains disabled pending owner/ACL validation; online
+discovery still works. See the
+[CLI reference](../cli_reference.md#cargo-rullst-update-check-1210-working-source-unreleased)
+for locations and boundaries.
 
 The [safe-update priority](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience) proposes
 one guided flow for CLI installation, project preparation, validation and

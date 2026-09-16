@@ -64,6 +64,9 @@ proc-macro2 = "1.0.107"
 sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls", "sqlite", "postgres", "mysql", "any"] }
 uuid = { workspace = true }
 
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1.1.4", features = ["fs", "process"] }
+
 [dev-dependencies]
 insta = { version = "1.41", features = ["yaml"] }
 # Keeps the generated Tera blueprint dependency locked and cached for the

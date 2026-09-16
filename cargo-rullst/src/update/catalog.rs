@@ -75,6 +75,9 @@ pub(super) struct Report {
     pub target: Option<Target>,
     pub platform: Platform,
     network_source: &'static str,
+    pub metadata_source: &'static str,
+    pub metadata_age_seconds: u64,
+    cache_max_age_seconds: u64,
     authority: Authority,
 }
 
@@ -182,6 +185,9 @@ pub(super) fn resolve(
             arch: std::env::consts::ARCH,
         },
         network_source: crate::ui::update_check::CATALOG_URL,
+        metadata_source: "registry",
+        metadata_age_seconds: 0,
+        cache_max_age_seconds: super::cache::MAX_AGE_SECONDS,
         authority: Authority {
             artifact_verified: false,
             cli_installation_authorized: false,

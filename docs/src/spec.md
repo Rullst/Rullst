@@ -1190,10 +1190,21 @@ assistant, not a claim that compilation proves production compatibility.
   `--allow-major`, and a prerelease separately requires `--prerelease`.
   `--json` emits `rullst.update-discovery.v1` with every execution/write/artifact
   authority false. It does not certify compiler/platform compatibility.
-  Offline discovery fails clearly while no private persistent cache exists.
-  A private persistent cache, verified CLI installation and the expanded
-  project acceptance transaction remain planned for 12.1.0 and need
-  platform/release evidence.
+  Explicit discovery now reuses a six-hour advisory cache on Unix platforms.
+  The caller-owned cache base and its ancestors are checked before using a
+  private `0700` directory; regular single-link `0600` files, bounded reads,
+  no-follow opens, a non-blocking writer lock and staged atomic replacement
+  protect the cache. Cached catalogs are parsed and selected again, never
+  accepted as artifact/installation authority. `--offline` never requests the
+  network or writes; missing, invalid, expired or future-dated caches fail.
+  `--refresh` skips cached reads; `--no-cache` disables persistence entirely.
+  Ordinary interactive notices remain process-local, not filesystem writers.
+  Windows persistence stays disabled until its owner/ACL checks are implemented
+  and validated; online discovery still works. A hostile same-user/root process
+  and authenticated release verification are outside this advisory cache's
+  contract. Windows caching, verified CLI installation and the expanded project
+  acceptance transaction remain 12.1.0 release blockers requiring platform and
+  release evidence.
 
 ---
 
