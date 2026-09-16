@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789516797112,
+  "lastUpdate": 1789521409170,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -7741,6 +7741,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/8aab35db63cbac5789a50656f431762f39da1bbf"
         },
         "date": 1789516796411,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b037f0c5fb659a081c2e0fd26d5f79b89f92e2d7",
+          "message": "Merge pull request #204 from Rullst/fix/mobile-portfolio-nexus\n\nfix(ui): repair mobile Nexus navigation and Portfolio layout",
+          "timestamp": "2026-09-15T21:52:42-03:00",
+          "tree_id": "834d7a16ac833c9005eaaa7b8ba391eabe96b817",
+          "url": "https://github.com/Rullst/Rullst/commit/b037f0c5fb659a081c2e0fd26d5f79b89f92e2d7"
+        },
+        "date": 1789521408770,
         "tool": "cargo",
         "benches": [
           {
