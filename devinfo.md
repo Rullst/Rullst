@@ -24,8 +24,8 @@ the stable v12 toolchain, install its exact version with
 
 Do not run `cargo clean` as a routine pre-flight; it destroys reusable build
 artifacts and makes verification slower. Low disk space is an exception:
-check `df -h` before and during local builds, preserve at least **25 GiB
-available to your user**, and intervene at **35 GiB** rather than waiting for
+check `df -h` before and during local builds, preserve at least **12 GiB
+available to your user**, and intervene at **15 GiB** rather than waiting for
 the reserve to run out. The predicted build peak must also fit above that
 reserve; otherwise use hosted CI. See the local disk policy in
 [`AGENTS.md`](AGENTS.md). Administrator-reserved filesystem blocks do not count
