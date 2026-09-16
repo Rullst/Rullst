@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789516710956,
+  "lastUpdate": 1789521319803,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -8917,6 +8917,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 789,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b037f0c5fb659a081c2e0fd26d5f79b89f92e2d7",
+          "message": "Merge pull request #204 from Rullst/fix/mobile-portfolio-nexus\n\nfix(ui): repair mobile Nexus navigation and Portfolio layout",
+          "timestamp": "2026-09-15T21:52:42-03:00",
+          "tree_id": "834d7a16ac833c9005eaaa7b8ba391eabe96b817",
+          "url": "https://github.com/Rullst/Rullst/commit/b037f0c5fb659a081c2e0fd26d5f79b89f92e2d7"
+        },
+        "date": 1789521319393,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1661,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 383,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 780,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
