@@ -83,12 +83,12 @@ The Rullst framework is organized into decoupled, high-performance crates:
   (for example, `df -h`), not total free blocks that include the filesystem's
   administrator reserve. Check the filesystems holding the workspace, Cargo
   target directory and temporary files before builds, tests or large downloads.
-- Keep at least **25 GiB available** as an operational reserve. At **35 GiB**,
+- Keep at least **12 GiB available** as an operational reserve. At **15 GiB**,
   intervene: do not start another disk-intensive job; stop/pause agent-owned
   builds if space is declining, review disposable artifacts and notify the user.
-  Do not wait until the reserve itself is exhausted.
-- A build may start only with at least 35 GiB available **and** enough additional
-  headroom for its estimated peak while retaining the 25 GiB reserve. An unknown
+  Stop agent-owned disk-consuming jobs at 12 GiB; do not exhaust the reserve.
+- A build may start only with at least 15 GiB available **and** enough additional
+  headroom for its estimated peak while retaining the 12 GiB reserve. An unknown
   cold all-feature/native build is not a small job; prefer hosted CI when its
   peak cannot be bounded. Recheck during long-running jobs and after each batch.
 - Prefer targeted, reusable builds over simultaneous local matrices. Clean only
