@@ -1,17 +1,19 @@
-//! Explicit read-only discovery for the staged 12.1 update experience.
+//! Explicit advisory discovery for the staged 12.1 update experience.
 //! Installation and application migration are separate consent boundaries.
 use crate::ui::update_check::{self, DiscoveryError};
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use semver::Version;
 use std::time::Duration;
 
+#[path = "update/cache.rs"]
+mod cache;
 #[path = "update/catalog.rs"]
 mod catalog;
 
 #[derive(thiserror::Error)]
 enum UpdateError {
-    #[error("offline mode forbids registry discovery; no persistent cache is trusted yet")]
-    Offline,
+    #[error("offline mode forbids registry discovery: {0}")]
+    Offline(String),
     #[error("cannot run synchronous discovery inside an existing async runtime")]
     NestedRuntime,
     #[error("release discovery failed: {0}")]
@@ -41,7 +43,7 @@ pub(crate) fn command() -> Command {
         .arg_required_else_help(true)
         .subcommand(
             Command::new("check")
-                .about("Show an exact CLI release, MSRV and update boundaries; make no changes")
+                .about("Show an exact CLI release and MSRV without changing the CLI or project")
                 .arg(Arg::new("to").long("to").value_name("EXACT_VERSION")
                     .help("Inspect this exact release; the default is stable within the current major"))
                 .arg(Arg::new("allow-major").long("allow-major").requires("to")
@@ -49,7 +51,11 @@ pub(crate) fn command() -> Command {
                 .arg(Arg::new("prerelease").long("prerelease").requires("to")
                     .action(ArgAction::SetTrue).help("Allow the exact prerelease selected with --to"))
                 .arg(Arg::new("offline").long("offline").action(ArgAction::SetTrue)
-                    .help("Forbid network access; fail clearly when no trusted cache is available"))
+                    .help("Use only a fresh private catalog cache; never access the network"))
+                .arg(Arg::new("refresh").long("refresh").action(ArgAction::SetTrue)
+                    .conflicts_with("offline").help("Bypass cached discovery and refresh from the registry"))
+                .arg(Arg::new("no-cache").long("no-cache").action(ArgAction::SetTrue)
+                    .conflicts_with("offline").help("Do not read or write persistent discovery metadata"))
                 .arg(Arg::new("json").long("json").action(ArgAction::SetTrue)
                     .help("Emit the versioned rullst.update-discovery.v1 report")),
         )
@@ -71,18 +77,61 @@ fn run_check(matches: &ArgMatches) -> Result<(), UpdateError> {
         matches.get_flag("allow-major"),
         matches.get_flag("prerelease"),
     )?;
-    if matches.get_flag("offline")
-        || update_check::enabled_env_flag(std::env::var_os("CARGO_NET_OFFLINE").as_deref())
-    {
-        return Err(UpdateError::Offline);
+    let report = discover(matches, &installed, &policy)?;
+    print_report(matches, &report)
+}
+
+fn discover(
+    matches: &ArgMatches,
+    installed: &Version,
+    policy: &catalog::Selection,
+) -> Result<catalog::Report, UpdateError> {
+    let offline = matches.get_flag("offline")
+        || update_check::enabled_env_flag(std::env::var_os("CARGO_NET_OFFLINE").as_deref());
+    let use_cache = !matches.get_flag("no-cache");
+    if use_cache && !matches.get_flag("refresh") {
+        let cached = cache::load()
+            .map_err(|error| error.to_string())
+            .and_then(|cached| {
+                // Revalidate every byte, identity and current selection policy. A
+                // cached report/previous selection is never deserialized as authority.
+                catalog::resolve(&cached.body, installed, policy)
+                    .map(|mut report| {
+                        report.metadata_source = "private-cache";
+                        report.metadata_age_seconds = cached.age_seconds;
+                        report
+                    })
+                    .map_err(|error| error.to_string())
+            });
+        match cached {
+            Ok(report) => return Ok(report),
+            Err(error) if offline => return Err(UpdateError::Offline(error)),
+            Err(_) => {} // Online discovery can recover from a missing/invalid cache.
+        }
+    } else if offline {
+        return Err(UpdateError::Offline(
+            "refresh/no-cache requires an online request".into(),
+        ));
     }
+    let body = fetch_catalog()?;
+    let report = catalog::resolve(&body, installed, policy)?;
+    if use_cache && let Err(error) = cache::store(&body) {
+        // Cache failure must not obscure a successfully validated network result.
+        eprintln!(
+            "Note: release discovery succeeded but its advisory cache was not saved: {error}"
+        );
+    }
+    Ok(report)
+}
+
+fn fetch_catalog() -> Result<Vec<u8>, UpdateError> {
     if tokio::runtime::Handle::try_current().is_ok() {
         return Err(UpdateError::NestedRuntime);
     }
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
-    let body = runtime
+    runtime
         .block_on(async {
             let client = update_check::discovery_client()
                 .build()
@@ -94,12 +143,18 @@ fn run_check(matches: &ArgMatches) -> Result<(), UpdateError> {
             .await
             .map_err(|_| DiscoveryError::Timeout)?
         })?
-        .ok_or(UpdateError::Unavailable)?;
-    let report = catalog::resolve(&body, &installed, &policy)?;
+        .ok_or(UpdateError::Unavailable)
+}
+
+fn print_report(matches: &ArgMatches, report: &catalog::Report) -> Result<(), UpdateError> {
     if matches.get_flag("json") {
         println!("{}", serde_json::to_string_pretty(&report)?);
     } else {
         println!("Installed CLI: {}", report.installed);
+        println!(
+            "Metadata: {} ({} seconds old)",
+            report.metadata_source, report.metadata_age_seconds
+        );
         if let Some(target) = &report.target {
             println!("Selected CLI: {} ({})", target.version, report.status);
             println!(
@@ -123,7 +178,7 @@ fn run_check(matches: &ArgMatches) -> Result<(), UpdateError> {
             println!("No eligible stable release was found in this major.");
         }
         println!(
-            "Discovery only: no CLI or project files changed. Metadata is not artifact verification."
+            "Discovery only: no CLI or project files changed. Cached metadata is advisory, not artifact verification."
         );
         println!(
             "Guided installation/preparation is still in development. Use the assisted-upgrade guide for the published workflow."
@@ -160,11 +215,19 @@ mod tests {
     }
 
     #[test]
-    fn offline_check_never_starts_a_runtime_or_network_request() {
-        let matches = command()
-            .try_get_matches_from(["update", "check", "--offline"])
-            .unwrap();
-        let error = run(&matches).unwrap_err().to_string();
-        assert!(error.contains("offline mode forbids registry discovery"));
+    fn explicit_offline_mode_conflicts_with_online_only_cache_options() {
+        // Explicit incompatible options are rejected before filesystem/network I/O.
+        for flag in ["--refresh", "--no-cache"] {
+            assert!(
+                command()
+                    .try_get_matches_from(["update", "check", "--offline", flag])
+                    .is_err()
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn nested_runtime_is_rejected_before_network_discovery() {
+        assert!(matches!(fetch_catalog(), Err(UpdateError::NestedRuntime)));
     }
 }

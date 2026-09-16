@@ -170,11 +170,14 @@ relevant [v12 migration guide](migration-v12.md).
 
 ### `cargo rullst update check` (12.1.0 working source; unreleased)
 
-Read-only release discovery; it does not install a CLI or migrate an application.
+Advisory release discovery; it does not install a CLI or migrate an application.
 
 ```bash
 cargo rullst update check
 cargo rullst update check --to 12.0.0 --json
+cargo rullst update check --refresh
+cargo rullst update check --offline --json
+cargo rullst update check --no-cache
 ```
 
 The default stays in the installed major's stable channel. Exact other-major
@@ -182,10 +185,24 @@ targets require `--allow-major`; prereleases also require `--prerelease`.
 Downgrades, yanked targets and ambiguous metadata fail closed. The bounded
 HTTPS query reports the selected release's declared Rust minimum and the
 current platform; it does not prove compatibility or artifact authenticity.
-`--offline` and `CARGO_NET_OFFLINE=true` fail without network access while no
-private persistent cache is available. `--json` uses
-`rullst.update-discovery.v1` and grants no installation, project or deployment
-authority. See the [upgrade guide](tutorials/36-assisted-framework-upgrades.md).
+On Linux/macOS, explicit discovery caches validated metadata for up to six
+hours under `$XDG_CACHE_HOME/rullst-update-v1` or
+`$HOME/.cache/rullst-update-v1`. An unsafe owner, permissions, linked file,
+oversized body or invalid timestamp prevents reuse. The directory is private
+and writer contention does not block discovery; an unusable cache falls back
+to the registry only when online. Cache failures never authorize an install.
+
+`--offline` and `CARGO_NET_OFFLINE=true` use only a fresh cache and fail without
+network access if none is usable. `--refresh` bypasses cache reads;
+`--no-cache` disables both cache reads and writes. Neither bypasses the offline
+environment setting. Windows currently supports online discovery without
+persistence; private Windows ACL validation is still a 12.1.0 release blocker.
+Ordinary dashboard notices remain process-local and never write this cache.
+
+`--json` uses `rullst.update-discovery.v1`, includes metadata source/age and
+grants no installation, project or deployment authority. Cached metadata is
+not proof of current yank status or artifact authenticity. See the
+[upgrade guide](tutorials/36-assisted-framework-upgrades.md).
 
 ### `cargo rullst pkg <action> [name]`
 Manages third-party community packages and extensions conforming to the `RullstPackage` trait standard.

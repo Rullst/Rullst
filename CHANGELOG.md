@@ -23,11 +23,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### CLI update discovery
 
-- Add explicit read-only `cargo rullst update check` with an exact target,
+- Add explicit advisory `cargo rullst update check` with an exact target,
   separate major/prerelease opt-ins, MSRV/platform presentation and a versioned
   JSON report. Offline mode refuses network access. Reuse bounded HTTPS discovery
   without changing the public v12 command enum; discovery grants no artifact,
   installation, project execution or deployment authority.
+
+- Cache explicit discovery for six hours on Unix using a private, owner-checked
+  directory, bounded single-link files, no-follow opens, a non-blocking writer
+  lock and staged replacement. Offline reads revalidate the catalog and current
+  selection policy; JSON includes metadata source/age. `--refresh` skips reads
+  and `--no-cache` disables persistence. Dashboard notices remain process-local.
+  Windows cache persistence stays disabled pending its owner/ACL implementation;
+  online discovery remains available. This is not verified CLI installation.
 
 - Preflight the complete legacy upgrade backup before restoring any original.
   Bound index and snapshot sizes, reject duplicate/ambiguous paths and linked

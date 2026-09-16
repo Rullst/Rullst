@@ -371,7 +371,7 @@ development branch name alone does not prove that it includes later fixes.
 | Order | Outcome | Acceptance boundary |
 | :--- | :--- | :--- |
 | **P0 — verification efficiency** | Shorter local and hosted feedback, with measured cold/warm build and queue times | Compare test inventories; select affected crates and their consumers; preserve broad scheduled/release checks and a full-run fallback for unknown changes. Bind reusable evidence to source, dependencies, tools and policy. Prove that security, workflow, manifest and generator changes cannot silently skip required checks. |
-| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | Compatible opt-in 12.1.0 delivery first, carried into v13. Discovery and recovery hardening exist; private caching, verified installation and isolated project acceptance remain release blockers. |
+| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | Compatible opt-in 12.1.0 delivery first, carried into v13. Discovery, private Unix caching and recovery hardening exist; Windows caching, verified installation and isolated project acceptance remain release blockers. |
 | **P1 — navigable API documentation** | Developers can find a capability, understand its contract and run a realistic example | Connect versioned Rust API references, task-based guides and tested REST examples. Document errors, feature flags, security boundaries and migration paths alongside each prioritized API; see the [documentation plan](#api-documentation-quality). |
 | **P1 — Omni application delivery** | Predictable desktop/mobile builds, diagnostics and installation guidance | Detect SDK/toolchain/signing/identifier/version/ABI mistakes, distinguish unsigned build output from installable signed packages, and test lifecycle, navigation and interrupted networks. Device and store acceptance need their own evidence. |
 | **P1 — coherent application contracts** | One clear path for sessions, ownership, tenant context and typed client APIs | Consolidate existing Auth/Core/Security boundaries, complete selected session/passkey flows and validate API/SDK serialization. Preserve explicit configuration and negative authorization tests. |
@@ -408,8 +408,11 @@ and reject redirects, yanked versions, prereleases and unsolicited major jumps.
 The legacy shared temporary cache is removed; the current result is deliberately
 process-local. Explicit `cargo rullst update check` now provides exact-target,
 MSRV/platform and versioned JSON discovery with separate major/prerelease
-opt-ins; it grants no installation or execution authority. Persistent private
-caching and the installation/preparation/application stages below are still unfinished. The
+opt-ins; it grants no installation or execution authority. Explicit discovery
+now reuses bounded, owner/permission-checked Unix metadata for six hours and
+supports offline reads, forced refresh and cache opt-out. Windows persistence
+is disabled until its private owner/ACL boundary is implemented. That Windows
+work and the installation/preparation/application stages below remain unfinished. The
 published v12.0.0 release currently contains source crate archives and evidence,
 not an inventory of trusted prebuilt CLI executables; adding those artifacts
 requires release-pipeline work, not an assumed download URL.
