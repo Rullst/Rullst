@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Omni icons and Android signing — planned 12.1.0
+
+- Embed the existing Rullst logo as the default square icon source and regenerate
+  platform icons after mobile initialization. Refuse to overwrite an existing
+  application-owned shell; document reviewed migration instead.
+- Add `cargo rullst omni android --release` without changing the public v12
+  command enum. New Android shells configure application-owned release signing
+  from four environment variables and fail when credentials are missing. Debug
+  builds retain development signing; no shared keys, passwords in generated
+  files, store publication or physical-device compatibility claims are added.
+- Cover tool ordering, failure propagation and secret-free diagnostics. Extend
+  hosted Android evidence with disposable-key release/certificate checks.
+- Fix Windows strict-lint compilation and macOS root-alias handling in upgrade
+  backup creation/restoration, preserving rejection of descendant symlinks.
+
 ### CLI update discovery
 
 - Add explicit read-only `cargo rullst update check` with an exact target,

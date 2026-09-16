@@ -1,6 +1,7 @@
 mod runtime;
 
 use super::OmniIdentity;
+use base64::Engine as _;
 use runtime::render_runtime;
 use serde_json::json;
 use std::fs;
@@ -134,6 +135,10 @@ tauri = {{ version = "=2.11.5", features = [] }}
         omni_dir.join("README.md"),
         generated_readme(identity, backend_url),
     )?;
+    fs::write(
+        omni_dir.join(".gitignore"),
+        "node_modules/\ntarget/\n*.jks\n*.keystore\n*.p12\nkeystore.properties\n.gradle/\n",
+    )?;
 
     Ok(())
 }
@@ -215,6 +220,19 @@ remains responsible for authentication, authorization, CSP, CSRF and data.
 
 ## Distribution checklist
 
+The default icon is the Rullst logo, embedded locally in `icons/icon.svg`.
+Replace that source with your own square SVG/PNG for your product and run
+`npm run tauri -- icon icons/icon.svg` **after** initializing every mobile target.
+Do not rerun `make:omni` over this directory; it contains application-owned code.
+
+For Android release APKs, configure your own keystore once, supply the four
+`RULLST_ANDROID_*` signing environment variables, then run
+`cargo rullst omni android --release` from the application root. No signing key
+or password is generated, shared or written into this project by the CLI.
+The generated Gradle guard rejects release builds with missing credentials;
+debug builds continue to use Android's development-only key. See the
+[Android signing and existing-shell migration guide](https://rullst.win/Rullst/tutorials/49-omni-android-signing.html).
+
 1. confirm the application-owned identifier, version, icons and product metadata;
 2. configure platform signing, provisioning and privacy/usage declarations;
 3. test the production HTTPS backend and authentication on physical devices;
@@ -230,14 +248,19 @@ capability policy, store publication and review remain application-owned.
 }
 
 pub(super) fn generate_icon_source(icons_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    // Reuse the shipped logo without fetching remote artwork. SVG provides the
+    // square, opaque canvas required by platform icon generators; no distortion.
+    let logo = base64::engine::general_purpose::STANDARD
+        .encode(include_bytes!("../../../blueprints/blank/rullst.png"));
     fs::write(
         icons_dir.join("icon.svg"),
-        r##"<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0f172a"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs>
-  <rect width="1024" height="1024" rx="224" fill="url(#g)"/>
-  <path d="M280 760V264h244c142 0 230 70 230 190 0 79-43 139-115 168l137 138H610L493 642h-67v118H280zm146-244h91c58 0 91-21 91-62s-33-62-91-62h-91v124z" fill="#f8fafc"/>
+        format!(
+            r##"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#020617"/>
+  <image x="176" y="176" width="672" height="672" preserveAspectRatio="xMidYMid meet" xlink:href="data:image/png;base64,{logo}"/>
 </svg>
-"##,
+"##
+        ),
     )?;
     Ok(())
 }

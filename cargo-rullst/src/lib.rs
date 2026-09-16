@@ -35,9 +35,26 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         // Commands enum, which downstream Rust callers may exhaustively match.
         let matches = <cli::Cli as clap::CommandFactory>::command()
             .subcommand(update::command())
+            // Extend executable syntax without changing the published v12 enum.
+            .mut_subcommand("omni", |command| {
+                command.arg(
+                    clap::Arg::new("release")
+                        .long("release")
+                        .action(clap::ArgAction::SetTrue)
+                        .help("Build an Android release APK with application-owned signing"),
+                )
+            })
             .get_matches_from(args);
         if let Some(update) = matches.subcommand_matches("update") {
             update::run(update)?;
+        } else if let Some(omni) = matches
+            .subcommand_matches("omni")
+            .filter(|m| m.get_flag("release"))
+        {
+            if omni.get_one::<String>("target").map(String::as_str) != Some("android") {
+                return Err("--release currently requires the android Omni target".into());
+            }
+            generators::desktop::build_android_release()?;
         } else {
             let cli = <cli::Cli as clap::FromArgMatches>::from_arg_matches(&matches)?;
             cli::run_cli_command(&cli.command)?;
