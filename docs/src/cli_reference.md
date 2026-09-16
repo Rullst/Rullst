@@ -577,6 +577,12 @@ migrations, data backup, external reachability check, or automatic rollback. It
 does not guarantee zero downtime and does not support IPv6 SCP targets.
 
 ### `cargo rullst omni`
+The unreleased 12.1.0 executable adds `cargo rullst omni android --release` for
+an explicit Android release build using application-owned signing inputs. It
+does not change the existing Rust `Commands::Omni` variant or start a backend.
+See [Android signing and icons](tutorials/49-omni-android-signing.md) for key
+setup, migration of existing shells and certificate/device verification.
+
 Runs the generated Tauri development client after `make:omni`. Android/iOS
 require their official SDK/toolchain and a reachable backend.
 * **Optional Arguments:** `<target>` specifies where to run (e.g., `desktop`, `android`, `ios`).

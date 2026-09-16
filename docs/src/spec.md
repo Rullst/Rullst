@@ -1223,6 +1223,16 @@ authoritative secrets into JavaScript or an untrusted client.
   real source-derived platform icons, and treats npm, icon generation or
   explicitly requested mobile initialization failures as command failures.
   Explicit iOS initialization requires macOS/Xcode.
+  **Unreleased 12.1.0:** new shells embed the existing Rullst logo as their
+  default square icon source and regenerate icons after all mobile init steps.
+  Existing shells are never regenerated in place. New Android shells bind the
+  release signing configuration to application-owned keystore/alias/password
+  environment inputs and fail release preparation when inputs are missing;
+  debug signing remains development-only. `omni android --release` checks
+  required inputs before invoking Tauri, without changing the public v12
+  command enum. No shared signing key, store publication or physical-device
+  evidence is implied. Existing/custom-flavor shells need reviewed migration;
+  see the [signing guide](tutorials/49-omni-android-signing.md).
 * 🟢 **`[Implemented / Bounded]` Remote-content Boundary:** the generated local
   bootstrap exposes no Tauri IPC API to the remote application. A native
   navigation callback permits only Tauri's packaged origin and the exact

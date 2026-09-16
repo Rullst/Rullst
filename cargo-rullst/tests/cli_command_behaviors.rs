@@ -159,7 +159,7 @@ pub async fn head() {}
             ("git", "#!/bin/sh\necho 'git version fixture'\n"),
             (
                 "npm",
-                "#!/bin/sh\nif [ \"$1\" = \"install\" ]; then\n  /bin/mkdir -p node_modules/@tauri-apps/cli\n  printf '{}' > node_modules/@tauri-apps/cli/package.json\nfi\nexit 0\n",
+                "#!/bin/sh\nif [ \"$1\" = \"install\" ]; then\n  /bin/mkdir -p node_modules/@tauri-apps/cli\n  printf '{}' > node_modules/@tauri-apps/cli/package.json\nfi\nif [ \"$5 $6\" = \"android init\" ]; then\n  /bin/mkdir -p gen/android/app\n  printf '// fixture' > gen/android/app/build.gradle.kts\nfi\nexit 0\n",
             ),
             ("ssh", "#!/bin/sh\n/bin/cat >/dev/null\nexit 0\n"),
             ("scp", "#!/bin/sh\nexit 0\n"),

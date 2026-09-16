@@ -6,6 +6,7 @@ on:
     paths:
       - "cargo-rullst/src/cli.rs"
       - "cargo-rullst/src/generators/desktop/**"
+      - "cargo-rullst/src/blueprints/blank/rullst.png"
       - "cargo-rullst/Cargo.toml"
       - "Cargo.toml"
       - "Cargo.lock"
@@ -15,6 +16,7 @@ on:
     paths:
       - "cargo-rullst/src/cli.rs"
       - "cargo-rullst/src/generators/desktop/**"
+      - "cargo-rullst/src/blueprints/blank/rullst.png"
       - "cargo-rullst/Cargo.toml"
       - "Cargo.toml"
       - "Cargo.lock"
@@ -89,6 +91,65 @@ jobs:
       - name: Compile a debug Android APK
         working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app
         run: npm run tauri -- android build --debug --target aarch64 --apk --ci
+
+      - name: Verify native icons match the application source
+        working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app
+        shell: bash
+        run: |
+          npm run tauri -- icon icons/icon.svg --output "$RUNNER_TEMP/omni-expected-icons"
+          count=0
+          while IFS= read -r -d '' expected; do
+            relative="${expected#"$RUNNER_TEMP/omni-expected-icons/android/"}"
+            cmp "$expected" "gen/android/app/src/main/res/$relative"
+            count=$((count + 1))
+          done < <(find "$RUNNER_TEMP/omni-expected-icons/android" -type f -name '*.png' -print0)
+          test "$count" -gt 0
+
+      - name: Reject unsigned release configuration
+        working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app/gen/android
+        shell: bash
+        run: |
+          if ./gradlew --no-daemon :app:preReleaseBuild > "$RUNNER_TEMP/omni-missing-signing.log" 2>&1; then
+            echo 'Release preparation unexpectedly accepted missing signing credentials' >&2
+            exit 1
+          fi
+          grep -F 'Set RULLST_ANDROID_KEYSTORE' "$RUNNER_TEMP/omni-missing-signing.log"
+
+      - name: Create an ephemeral CI-only signing key
+        shell: bash
+        run: |
+          signing_password="$(openssl rand -hex 32)"
+          echo "::add-mask::$signing_password"
+          export RULLST_ANDROID_STORE_PASSWORD="$signing_password"
+          export RULLST_ANDROID_KEY_PASSWORD="$signing_password"
+          keytool -genkeypair -keystore "$RUNNER_TEMP/omni-ci-signing.jks" \
+            -storetype JKS -alias rullst-ci -keyalg RSA -keysize 3072 -validity 2 \
+            -dname 'CN=Disposable Rullst CI' \
+            -storepass:env RULLST_ANDROID_STORE_PASSWORD -keypass:env RULLST_ANDROID_KEY_PASSWORD
+          keytool -exportcert -keystore "$RUNNER_TEMP/omni-ci-signing.jks" \
+            -alias rullst-ci -storepass:env RULLST_ANDROID_STORE_PASSWORD \
+            -file "$RUNNER_TEMP/omni-ci-certificate.der"
+          {
+            echo "RULLST_ANDROID_KEYSTORE=$RUNNER_TEMP/omni-ci-signing.jks"
+            echo 'RULLST_ANDROID_KEY_ALIAS=rullst-ci'
+            echo "RULLST_ANDROID_STORE_PASSWORD=$signing_password"
+            echo "RULLST_ANDROID_KEY_PASSWORD=$signing_password"
+          } >> "$GITHUB_ENV"
+
+      - name: Compile and verify a genuinely signed release APK
+        working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app
+        shell: bash
+        run: |
+          npm run tauri -- android build --target aarch64 --apk --ci
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          expected_digest="$(sha256sum "$RUNNER_TEMP/omni-ci-certificate.der" | cut -d ' ' -f 1)"
+          count=0
+          while IFS= read -r -d '' apk; do
+            "$build_tools/apksigner" verify --verbose --print-certs "$apk" > "$RUNNER_TEMP/omni-apk-certificate.txt"
+            grep -F "Signer #1 certificate SHA-256 digest: $expected_digest" "$RUNNER_TEMP/omni-apk-certificate.txt"
+            count=$((count + 1))
+          done < <(find gen/android/app/build/outputs/apk -type f -name '*-release.apk' -print0)
+          test "$count" -gt 0
 
       - name: Upload generated Android project on failure
         if: failure()

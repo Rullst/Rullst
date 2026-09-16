@@ -80,6 +80,9 @@ success.
 
 ## Security model
 
+For application icons, signed Android release APKs and migration of existing
+shells, see [Android signing and application icons](49-omni-android-signing.md).
+
 The generated local bootstrap has an origin-specific CSP and no inline script.
 Remote content is not given a global Tauri object or privileged command
 capability. A Rust-side navigation policy admits only:
