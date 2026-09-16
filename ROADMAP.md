@@ -357,6 +357,12 @@ merging unrelated breaking work into the v12 line. The phased efficiency plan is
 [WORKFLOWS.md](WORKFLOWS.md#verification-efficiency--v12-maintenance-and-v13).
 Application API changes still belong to the appropriate release line.
 
+Complete the compatible **12.1.0** update experience after the verification
+foundation and before concentrating new capability work on v13. The
+[maintenance checkpoint](docs/src/v12.md#1210-delivery-checkpoint-unreleased)
+distinguishes the working source from the published release and lists the
+remaining delivery gates.
+
 The released v12 baseline and documentation closeout have been merged into
 v13 while preserving its separate Labs proposal and planning commits. Keep
 subsequent applicable stable fixes synchronized through reviewed changes. A
@@ -365,7 +371,7 @@ development branch name alone does not prove that it includes later fixes.
 | Order | Outcome | Acceptance boundary |
 | :--- | :--- | :--- |
 | **P0 — verification efficiency** | Shorter local and hosted feedback, with measured cold/warm build and queue times | Compare test inventories; select affected crates and their consumers; preserve broad scheduled/release checks and a full-run fallback for unknown changes. Bind reusable evidence to source, dependencies, tools and policy. Prove that security, workflow, manifest and generator changes cannot silently skip required checks. |
-| **P0 — safe update experience** | A single guided entry point to discover, prepare, verify and approve CLI/project updates | First product priority after the verification foundation: deliver a compatible opt-in **12.1.0** implementation and carry it into v13. Require trusted artifacts, explicit target/channel selection, application tests and recoverable file changes. Still planned; see the [acceptance plan](#safe-update-experience). |
+| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | Compatible opt-in 12.1.0 delivery first, carried into v13. Discovery and recovery hardening exist; private caching, verified installation and isolated project acceptance remain release blockers. |
 | **P1 — navigable API documentation** | Developers can find a capability, understand its contract and run a realistic example | Connect versioned Rust API references, task-based guides and tested REST examples. Document errors, feature flags, security boundaries and migration paths alongside each prioritized API; see the [documentation plan](#api-documentation-quality). |
 | **P1 — Omni application delivery** | Predictable desktop/mobile builds, diagnostics and installation guidance | Detect SDK/toolchain/signing/identifier/version/ABI mistakes, distinguish unsigned build output from installable signed packages, and test lifecycle, navigation and interrupted networks. Device and store acceptance need their own evidence. |
 | **P1 — coherent application contracts** | One clear path for sessions, ownership, tenant context and typed client APIs | Consolidate existing Auth/Core/Security boundaries, complete selected session/passkey flows and validate API/SDK serialization. Preserve explicit configuration and negative authorization tests. |

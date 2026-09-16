@@ -122,6 +122,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Documentation
 
+- Connect versioned Rust references and HTTP/REST learning paths in the API
+  index. Clarify that complete REST walkthroughs and reference audits remain
+  follow-up work rather than claiming the index finishes the documentation.
+- Document first-visit CSRF token extraction, ordinary/HTMX forms, safe error
+  presentation and cookie/header troubleshooting; keep public AI chat protected.
+  Add production-baseline HTTP regressions for valid submissions, preserved
+  form data and denials before the handler. Keep the simple read-only HTMX search
+  on GET instead of demonstrating a POST without its required token.
+- Record the unreleased 12.1.0 delivery boundaries and remaining updater/release
+  blockers without presenting advisory discovery as installation or migration.
 - Replace the completed v12 development program with a concise English release
   record and immutable publication receipts. Retire the CLI handoff and preserve
   older audits through archive links.
