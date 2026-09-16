@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789515709580,
+  "lastUpdate": 1789520306003,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -19321,6 +19321,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2194,
             "range": "± 43",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b037f0c5fb659a081c2e0fd26d5f79b89f92e2d7",
+          "message": "Merge pull request #204 from Rullst/fix/mobile-portfolio-nexus\n\nfix(ui): repair mobile Nexus navigation and Portfolio layout",
+          "timestamp": "2026-09-15T21:52:42-03:00",
+          "tree_id": "834d7a16ac833c9005eaaa7b8ba391eabe96b817",
+          "url": "https://github.com/Rullst/Rullst/commit/b037f0c5fb659a081c2e0fd26d5f79b89f92e2d7"
+        },
+        "date": 1789520304594,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 745,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 984,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 629,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2221,
+            "range": "± 57",
             "unit": "ns/iter"
           }
         ]
