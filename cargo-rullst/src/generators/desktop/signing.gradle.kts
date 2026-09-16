@@ -10,7 +10,7 @@ val rullstKeyPassword = System.getenv("RULLST_ANDROID_KEY_PASSWORD")
 android {
     signingConfigs {
         create("rullstRelease") {
-            storeFile = rullstKeystore?.let { java.io.File(it) }
+            storeFile = rullstKeystore?.let { File(it) }
             keyAlias = rullstKeyAlias
             storePassword = rullstStorePassword
             keyPassword = rullstKeyPassword
@@ -29,7 +29,7 @@ val validateRullstReleaseSigning = tasks.register("validateRullstReleaseSigning"
         if (required.any { it.isNullOrEmpty() }) {
             throw GradleException("Set RULLST_ANDROID_KEYSTORE, RULLST_ANDROID_KEY_ALIAS, RULLST_ANDROID_STORE_PASSWORD and RULLST_ANDROID_KEY_PASSWORD before a release build. Never distribute an unsigned APK.")
         }
-        val key = java.io.File(rullstKeystore ?: "")
+        val key = File(rullstKeystore ?: "")
         if (!key.isAbsolute || !key.isFile) {
             throw GradleException("RULLST_ANDROID_KEYSTORE must be an existing absolute keystore path.")
         }

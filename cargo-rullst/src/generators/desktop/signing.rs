@@ -90,5 +90,8 @@ mod tests {
         assert!(first.contains("preReleaseBuild"));
         assert!(first.contains("signingConfig = signingConfigs.getByName(\"rullstRelease\")"));
         assert!(!first.contains("keystore.properties"));
+        // Gradle's `java` extension shadows package-qualified java.io.File.
+        // File is provided by Kotlin DSL's implicit java.io imports.
+        assert!(!first.contains("java.io.File"));
     }
 }

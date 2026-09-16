@@ -88,6 +88,10 @@ jobs:
             --backend-url https://example.invalid \
             --identifier dev.rullst.omnici
 
+      - name: Compile native Gradle configuration before the Rust APK build
+        working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app/gen/android
+        run: ./gradlew --no-daemon help
+
       - name: Compile a debug Android APK
         working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app
         run: npm run tauri -- android build --debug --target aarch64 --apk --ci
