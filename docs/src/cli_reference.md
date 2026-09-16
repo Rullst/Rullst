@@ -155,7 +155,7 @@ reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
 Process-level fixtures select the rule catalog independently for documented v5,
-v6 and v11 origins, verify atomic restoration across multiple workspace
+v6 and v11 origins, verify restoration across multiple workspace
 members, retain a deliberately failed edit only with `--keep-on-failure`, and
 restore that retained snapshot on demand. Symlinked Rust sources are rejected
 before a transaction begins. This is recovery evidence for the bounded file and
@@ -167,6 +167,25 @@ run database migrations, modify secrets or authorization, validate live
 providers, or replace the project's test suite. Follow the
 [assisted upgrade tutorial](tutorials/36-assisted-framework-upgrades.md) and the
 relevant [v12 migration guide](migration-v12.md).
+
+### `cargo rullst update check` (12.1.0 working source; unreleased)
+
+Read-only release discovery; it does not install a CLI or migrate an application.
+
+```bash
+cargo rullst update check
+cargo rullst update check --to 12.0.0 --json
+```
+
+The default stays in the installed major's stable channel. Exact other-major
+targets require `--allow-major`; prereleases also require `--prerelease`.
+Downgrades, yanked targets and ambiguous metadata fail closed. The bounded
+HTTPS query reports the selected release's declared Rust minimum and the
+current platform; it does not prove compatibility or artifact authenticity.
+`--offline` and `CARGO_NET_OFFLINE=true` fail without network access while no
+private persistent cache is available. `--json` uses
+`rullst.update-discovery.v1` and grants no installation, project or deployment
+authority. See the [upgrade guide](tutorials/36-assisted-framework-upgrades.md).
 
 ### `cargo rullst pkg <action> [name]`
 Manages third-party community packages and extensions conforming to the `RullstPackage` trait standard.

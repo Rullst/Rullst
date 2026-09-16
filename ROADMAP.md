@@ -355,6 +355,12 @@ just because they are listed here. The phased acceptance plan is in
 [WORKFLOWS.md](WORKFLOWS.md#verification-efficiency--v12-maintenance-and-v13).
 Application API changes still belong to the appropriate release line.
 
+Complete the compatible **12.1.0** update experience after the verification
+foundation and before concentrating new capability work on v13. The
+[maintenance checkpoint](docs/src/v12.md#1210-delivery-checkpoint-unreleased)
+distinguishes the working source from the published release and lists the
+remaining delivery gates.
+
 Begin by integrating the released v12 corrections into the existing v13 line
 through a reviewed merge. Preserve v13's separate Labs proposal and other
 planning commits. A development branch name alone does not mean its base
@@ -363,6 +369,7 @@ already includes the latest stable fixes.
 | Order | Outcome | Acceptance boundary |
 | :--- | :--- | :--- |
 | **P0 — verification efficiency** | Shorter local and hosted feedback, with measured cold/warm build and queue times | Compare test inventories; select affected crates and their consumers; preserve broad scheduled/release checks and a full-run fallback for unknown changes. Bind reusable evidence to source, dependencies, tools and policy. Prove that security, workflow, manifest and generator changes cannot silently skip required checks. |
+| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | Compatible opt-in 12.1.0 delivery first, carried into v13. Discovery and recovery hardening exist; private caching, verified installation and isolated project acceptance remain release blockers. |
 | **P1 — Omni application delivery** | Predictable desktop/mobile builds, diagnostics and installation guidance | Detect SDK/toolchain/signing/identifier/version/ABI mistakes, distinguish unsigned build output from installable signed packages, and test lifecycle, navigation and interrupted networks. Device and store acceptance need their own evidence. |
 | **P1 — coherent application contracts** | One clear path for sessions, ownership, tenant context and typed client APIs | Consolidate existing Auth/Core/Security boundaries, complete selected session/passkey flows and validate API/SDK serialization. Preserve explicit configuration and negative authorization tests. |
 | **P2 — interactive learning products** | Server-authoritative progress, gamification and isolated programming exercises | Build on the current LMS scaffolds; version grading rules, persist idempotent results and prove tenant isolation. Follow the existing v13 `rullst-labs`/`rullst-labs-runner` proposal; untrusted execution stays outside the web process. |

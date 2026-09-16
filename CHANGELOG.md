@@ -63,6 +63,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### CI tooling
 
+- Reuse version-pinned prebuilt mdBook tooling in documentation and Pages jobs;
+  retain the book, local-link, static-site and browser assertions.
 - Resolve all ten locked fuzz dependency graphs before Clippy and campaign
   preparation. Reject stale locks early instead of relying on the ineffective
   metadata `--no-deps` check; retain the complete forty-target inventory.
@@ -80,6 +82,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Skipped jobs stay visible but have no execution duration; malformed or reversed
   timing in executed jobs still fails. Measurements are not release admission,
   billing estimates or proof of security.
+### Dependency maintenance
+
+- Integrate the reviewed grouped Rust updates, zstd 0.14 and jsonschema 0.56
+  into the compatible maintenance candidate; align manifest minimums and all
+  independent fuzz lockfiles. Candidate-wide compatibility and release checks
+  remain required before publication.
+- Align pinned CodeQL sub-actions, update the installer and Rust setup Action
+  with explicit warning behavior, and independently digest-pin the secret
+  scanner container. Do not skip existing verification jobs.
+
 ### Native SES dependency compatibility
 
 - Constrain optional `aws-ses` resolution to Smithy types 1.6.3: types 1.7
@@ -92,6 +104,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Documentation
 
+- Connect versioned Rust references and HTTP/REST learning paths in the API
+  index. Clarify that complete REST walkthroughs and reference audits remain
+  follow-up work rather than claiming the index finishes the documentation.
+- Document first-visit CSRF token extraction, ordinary/HTMX forms, safe error
+  presentation and cookie/header troubleshooting; keep public AI chat protected.
+  Add production-baseline HTTP regressions for valid submissions, preserved
+  form data and denials before the handler. Keep the simple read-only HTMX search
+  on GET instead of demonstrating a POST without its required token.
+- Record the unreleased 12.1.0 delivery boundaries and remaining updater/release
+  blockers without presenting advisory discovery as installation or migration.
 - Replace the completed v12 development program with a concise English release
   record and immutable publication receipts. Retire the CLI handoff and preserve
   older audits through archive links.
