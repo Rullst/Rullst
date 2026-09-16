@@ -32,16 +32,9 @@ struct Entry {
 
 pub(super) fn restore_from(root: &Path, requested: &Path) -> Result<PathBuf, RestoreError> {
     let root = root.canonicalize()?;
-    let requested = if requested.is_absolute() {
-        requested.to_path_buf()
-    } else {
-        root.join(requested)
-    };
-    let relative = requested
-        .strip_prefix(&root)
-        .map_err(|_| RestoreError::Invalid("backup is outside the project"))?;
-    validate_directory_creation(&root, relative)?;
-    let backup = requested.canonicalize()?;
+    let relative = project_relative_path(&root, requested)?;
+    validate_directory_creation(&root, &relative)?;
+    let backup = root.join(relative).canonicalize()?;
     let allowed = root.join("target/rullst-upgrades");
     if !backup.starts_with(&allowed) || backup == allowed {
         return Err(RestoreError::Invalid(
@@ -111,6 +104,7 @@ fn plan(root: &Path, files: &Path, index: &str) -> Result<Vec<Entry>, RestoreErr
             .ok_or(RestoreError::Invalid("malformed index entry"))?;
         let relative = Path::new(relative);
         validate_relative_restore_path(relative)?;
+        #[cfg(not(windows))]
         let key = relative.to_path_buf();
         #[cfg(windows)]
         let key = PathBuf::from(relative.to_string_lossy().to_lowercase());
@@ -168,6 +162,36 @@ fn apply(
         fs::remove_file(original)?;
     }
     Ok(())
+}
+
+/// Resolve root aliases (macOS /var -> /private/var), never aliases inside the
+/// project. Outermost-first matching leaves descendants lexical for validation.
+pub(super) fn project_relative_path(root: &Path, path: &Path) -> Result<PathBuf, RestoreError> {
+    if path
+        .components()
+        .any(|part| matches!(part, Component::ParentDir))
+    {
+        return Err(RestoreError::Invalid("parent traversal in project path"));
+    }
+    if !path.is_absolute() {
+        return Ok(path.to_path_buf());
+    }
+    if let Ok(relative) = path.strip_prefix(root) {
+        return Ok(relative.to_path_buf());
+    }
+    let ancestors: Vec<_> = path.ancestors().collect();
+    for ancestor in ancestors.into_iter().rev() {
+        if ancestor
+            .canonicalize()
+            .is_ok_and(|resolved| resolved == root)
+        {
+            return path
+                .strip_prefix(ancestor)
+                .map(Path::to_path_buf)
+                .map_err(|_| RestoreError::Invalid("invalid project path"));
+        }
+    }
+    Err(RestoreError::Invalid("path is outside the project"))
 }
 
 pub(super) fn validate_relative_restore_path(path: &Path) -> Result<(), RestoreError> {

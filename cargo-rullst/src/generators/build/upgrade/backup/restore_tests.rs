@@ -6,6 +6,31 @@ struct Fixture {
     backup: PathBuf,
 }
 
+#[cfg(unix)]
+#[test]
+fn root_alias_is_accepted_without_allowing_descendant_symlinks() {
+    use std::os::unix::fs::symlink;
+    let fixture = Fixture::new();
+    let outside = tempfile::tempdir().unwrap();
+    let alias = outside.path().join("project-alias");
+    symlink(fixture.root(), &alias).unwrap();
+    let requested = alias.join("target/rullst-upgrades/test");
+    restore_from(&fixture.root(), &requested).unwrap();
+    assert_eq!(
+        fs::read_to_string(fixture.root().join("Cargo.toml")).unwrap(),
+        "previous manifest"
+    );
+    fs::write(fixture.root().join("Cargo.toml"), "current manifest").unwrap();
+    fs::rename(
+        fixture.root().join("target"),
+        fixture.root().join("real-target"),
+    )
+    .unwrap();
+    symlink("real-target", fixture.root().join("target")).unwrap();
+    assert!(restore_from(&fixture.root(), &requested).is_err());
+    fixture.unchanged_manifest();
+}
+
 impl Fixture {
     fn new() -> Self {
         let directory = tempfile::tempdir().unwrap();
