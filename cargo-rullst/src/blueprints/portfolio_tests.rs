@@ -48,3 +48,28 @@ fn hot_repository_portfolio_keeps_library_and_binary_modules_consistent() {
     assert!(binary.contains("portfolio_app::router()?"));
     assert!(file(&manifest, "src/pages/home.rs").contains("Zero-Bundle HTMX"));
 }
+
+#[test]
+fn every_portfolio_variant_keeps_responsive_and_reduced_motion_styles() {
+    for hot in [false, true] {
+        for pattern in ["Active Record", "Repository", "Hybrid"] {
+            let manifest = file_manifest("portfolio_app", hot, pattern, "Zero-Bundle HTMX");
+            let page = file(&manifest, "src/pages/home.rs");
+            for contract in [
+                "@media (max-width: 900px)",
+                "@media (max-width: 640px)",
+                "@media (prefers-reduced-motion: reduce)",
+                "overflow-wrap: anywhere",
+                "minmax(min(100%, 280px), 1fr)",
+                "flex-direction: column; padding: 1.25rem 1rem",
+                "width: 100%; position: static; height: auto",
+            ] {
+                assert!(
+                    page.contains(contract),
+                    "missing {contract} in {pattern}/{hot}"
+                );
+            }
+            assert!(!page.contains("overflow-x: hidden"));
+        }
+    }
+}

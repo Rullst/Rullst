@@ -171,20 +171,25 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
     out.push_str("    if (saveButton) nexusSave(saveButton);\n");
     out.push_str("});\n");
     out.push_str("</script>\n");
+    out.push_str("<script>\n");
+    out.push_str(include_str!("sidebar.js"));
+    out.push_str("\n</script>\n");
     out.push_str("<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n");
     out.push_str("<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap\" rel=\"stylesheet\">\n");
     out.push_str("<style>\n");
     out.push_str(NEXUS_CSS);
     out.push_str("\n</style>\n</head>\n<body class=\"nexus-body\">\n");
 
-    out.push_str("<nav class=\"nexus-sidebar\" id=\"nexus-sidebar\">");
+    out.push_str(
+        "<nav class=\"nexus-sidebar\" id=\"nexus-sidebar\" aria-label=\"Nexus navigation\">",
+    );
     out.push_str("<div class=\"nexus-brand\">");
     out.push_str("<img src=\"https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png\" class=\"nexus-brand-logo\" alt=\"Rullst\" style=\"width: 24px; height: 24px; object-fit: contain; display: inline-block; vertical-align: middle; margin-right: 8px;\" />");
     let _ = std::fmt::Write::write_fmt(
         &mut out,
         format_args!("<span class=\"nexus-brand-name\">{brand}</span>"),
     );
-    out.push_str("</div>");
+    out.push_str("<button type=\"button\" class=\"nexus-sidebar-close\" id=\"nexus-sidebar-close\" aria-label=\"Close navigation\">&times;</button></div>");
     out.push_str("<div class=\"nexus-nav-label\">MODELS</div>");
     out.push_str(sidebar);
     out.push_str("<div class=\"nexus-sidebar-footer\">");
@@ -197,10 +202,11 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
         ),
     );
     out.push_str("</div></nav>");
+    out.push_str("<div class=\"nexus-sidebar-backdrop\" id=\"nexus-sidebar-backdrop\" hidden aria-hidden=\"true\"></div>");
 
     out.push_str("<main class=\"nexus-main\">");
     out.push_str("<header class=\"nexus-topbar\">");
-    out.push_str("<button class=\"nexus-topbar-toggle\" onclick=\"document.getElementById(&quot;nexus-sidebar&quot;).classList.toggle(&quot;nexus-sidebar-open&quot;)\">&#9776;</button>");
+    out.push_str("<button type=\"button\" class=\"nexus-topbar-toggle\" aria-label=\"Open navigation\" aria-controls=\"nexus-sidebar\" aria-expanded=\"false\">&#9776;</button>");
     out.push_str("<div class=\"nexus-topbar-breadcrumb\" id=\"nexus-breadcrumb\">Dashboard</div>");
     out.push_str("<div class=\"nexus-topbar-actions\">");
     out.push_str("<div class=\"nexus-htmx-indicator\" id=\"nexus-htmx-indicator\">");
@@ -251,6 +257,10 @@ html, body { height: 100%; }
 .nexus-brand { display: flex; align-items: center; gap: 10px; padding: 20px 20px 16px; border-bottom: 1px solid var(--border); margin-bottom: 12px; flex-shrink: 0; }
 .nexus-brand-icon { font-size: 22px; }
 .nexus-brand-name { font-size: 15px; font-weight: 700; background: linear-gradient(135deg, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.nexus-brand-name { min-width: 0; overflow-wrap: anywhere; }
+.nexus-sidebar-close { display: none; flex-shrink: 0; margin-left: auto; width: 40px; height: 40px; background: var(--bg-700); border: 1px solid var(--border); border-radius: 6px; color: var(--text-100); font-size: 24px; cursor: pointer; }
+.nexus-sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 95; touch-action: manipulation; }
+.nexus-sidebar-close:focus-visible, .nexus-topbar-toggle:focus-visible, .nexus-nav-link:focus-visible { outline: 2px solid var(--accent-h); outline-offset: -2px; }
 .nexus-nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; color: var(--text-500); padding: 0 20px 8px; text-transform: uppercase; }
 .nexus-nav-link { display: flex; align-items: center; gap: 10px; padding: 9px 20px; color: var(--text-300); text-decoration: none; font-size: 13.5px; font-weight: 500; border-left: 3px solid transparent; transition: background var(--transition), color var(--transition); cursor: pointer; }
 .nexus-nav-link:hover { background: var(--bg-700); color: var(--text-100); }
@@ -393,13 +403,20 @@ html, body { height: 100%; }
 
 /* == Responsive ======================================================== */
 @media (max-width: 900px) {
-    .nexus-sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); }
-    .nexus-sidebar-open { transform: translateX(0); }
-    .nexus-topbar-toggle { display: flex; }
+    .nexus-body { flex-direction: column; height: auto; min-height: 100vh; overflow: auto; }
+    .nexus-sidebar { position: static; width: 100%; min-width: 0; height: auto; }
+    .nexus-drawer-ready .nexus-body { flex-direction: row; height: 100dvh; overflow: hidden; }
+    .nexus-drawer-ready .nexus-sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: min(var(--sidebar-w), calc(100vw - 48px)); height: 100dvh; transform: translateX(-100%); visibility: hidden; overscroll-behavior: contain; }
+    .nexus-drawer-ready .nexus-sidebar-open { transform: translateX(0); visibility: visible; }
+    .nexus-drawer-ready .nexus-topbar-toggle, .nexus-drawer-ready .nexus-sidebar-close { display: flex; align-items: center; justify-content: center; }
+    .nexus-drawer-ready .nexus-sidebar-backdrop:not([hidden]) { display: block; }
     .nexus-content { padding: 20px 16px; }
     .nexus-chat-layout { grid-template-columns: 1fr; }
     .nexus-chat-schema { max-height: 160px; }
     .nexus-fields-grid { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .nexus-sidebar { transition: none; }
 }
 ";
 
