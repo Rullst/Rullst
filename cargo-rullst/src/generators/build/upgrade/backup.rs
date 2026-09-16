@@ -41,15 +41,22 @@ impl UpgradeBackup {
 
         let mut originals = plans
             .iter()
-            .map(|plan| plan.path.clone())
+            .map(|plan| {
+                let relative = restore::project_relative_path(&project_root, &plan.path)?;
+                restore::validate_relative_restore_path(&relative)?;
+                restore::validate_file(&project_root, &relative)?;
+                Ok(project_root.join(relative))
+            })
+            .collect::<Result<Vec<_>, restore::RestoreError>>()?;
+        let package_roots = originals
+            .iter()
+            .zip(plans)
+            .filter(|(_, plan)| plan.is_package)
+            .filter_map(|(path, _)| path.parent().map(Path::to_path_buf))
             .collect::<Vec<_>>();
         originals.push(project_root.join("Cargo.lock"));
-        for package_root in plans
-            .iter()
-            .filter(|plan| plan.is_package)
-            .filter_map(|plan| plan.path.parent())
-        {
-            originals.extend(rust_sources(package_root)?);
+        for package_root in package_roots {
+            originals.extend(rust_sources(&package_root)?);
         }
         originals.sort();
         originals.dedup();
@@ -169,6 +176,38 @@ fn included_entry(entry: &DirEntry) -> bool {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn snapshot_accepts_a_project_root_alias_but_rejects_a_linked_manifest() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().join("actual");
+        let alias = directory.path().join("alias");
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::write(root.join("Cargo.toml"), "original").unwrap();
+        std::fs::write(root.join("src/main.rs"), "fn main() {}").unwrap();
+        std::os::unix::fs::symlink(&root, &alias).unwrap();
+        let plans = vec![ManifestUpgradePlan {
+            path: alias.join("Cargo.toml"),
+            original: String::new(),
+            updated: String::new(),
+            is_package: true,
+            matched: 1,
+            source_majors: Default::default(),
+            changes: Vec::new(),
+            warnings: Vec::new(),
+        }];
+        let backup = UpgradeBackup::create(&alias, &plans).unwrap();
+        std::fs::write(root.join("Cargo.toml"), "changed").unwrap();
+        backup.restore().unwrap();
+        assert_eq!(
+            std::fs::read_to_string(root.join("Cargo.toml")).unwrap(),
+            "original"
+        );
+        std::fs::rename(root.join("Cargo.toml"), root.join("other.toml")).unwrap();
+        std::os::unix::fs::symlink("other.toml", root.join("Cargo.toml")).unwrap();
+        assert!(UpgradeBackup::create(&alias, &plans).is_err());
+    }
 
     #[test]
     fn restores_existing_files_and_removes_a_created_lockfile() {
