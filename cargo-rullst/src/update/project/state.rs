@@ -68,11 +68,16 @@ impl State {
             return Err(ProjectError::Invalid("prepared file inventory changed"));
         }
         snapshot::unchanged(&prepared.source, &paths, &prepared.files)?;
+        // Cargo may return C:\... while private storage uses \?\C:\... .
+        // Compare filesystem-resolved paths, not incompatible lexical prefixes.
+        // The complete source tree above has already rejected links/reparse points.
+        let canonical_candidate = candidate.canonicalize()?;
         let manifests: Vec<_> = super::manifests(&candidate)?
             .into_iter()
             .map(|path| {
+                let path = path.canonicalize()?;
                 let relative = path
-                    .strip_prefix(&candidate)
+                    .strip_prefix(&canonical_candidate)
                     .map_err(|_| ProjectError::Invalid("workspace member leaves preparation"))?
                     .to_str()
                     .ok_or(ProjectError::Invalid("manifest path is not UTF-8"))?
