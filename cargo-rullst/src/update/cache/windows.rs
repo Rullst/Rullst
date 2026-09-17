@@ -175,6 +175,17 @@ pub(super) fn open_project(requested: &Path) -> Result<(PathBuf, File), CacheErr
     Ok((path, lock))
 }
 
+pub(super) fn source_lock(name: &str) -> Result<File, CacheError> {
+    let identity = Identity::current()?;
+    let directory = cache_directory(&base_directory()?, false, &identity)?;
+    let file = options(true)
+        .create(true)
+        .truncate(false)
+        .open(directory.join(name))?;
+    validate_file(&file, &identity)?;
+    Ok(file)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -244,4 +255,9 @@ mod tests {
         assert!(store_at(base.path(), &[], 100).is_err());
         assert!(store_at(base.path(), &vec![0; CATALOG_LIMIT as usize + 1], 100).is_err());
     }
+}
+
+// Used only for a new lockfile that has no original access policy to preserve.
+pub(super) fn private_file_descriptor() -> Result<String, CacheError> {
+    Ok(Identity::current()?.private_file_descriptor())
 }

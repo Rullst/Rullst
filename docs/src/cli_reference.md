@@ -319,8 +319,56 @@ resolved lockfile; original files are not edited. Source or baseline changes
 during verification and unexpected candidate writes are rejected. Review the
 complete diff and logs; compiler overrides/wrappers require separate review.
 The report is not a reusable apply token and grants no application/deployment
-authority. Native verification acceptance, application and recovery remain open.
+authority. Final native application/recovery acceptance remains open.
 Retained source copies can consume up to about 2 GiB, plus build outputs/logs.
+
+### `cargo rullst update project review` (12.1.0 working source; unreleased)
+
+```bash
+cargo rullst update project review --verified PATH --json
+```
+
+Use `verified_directory` from the verification result. Review validates the
+stored command policy, successful statuses, bounded logs, original/prepared
+files and verified candidate again under operation locks. Changed evidence is
+rejected. Git produces the full dependency diff with external helpers, text
+conversion and paging disabled; output is bounded to 8 MiB. No build/test runs
+and original files remain untouched.
+
+JSON contains `rullst.project-review.v1`, before/after file hashes, the full
+`diff` and `review_sha256` binding its evidence and contents. The digest is not
+authorization to apply changes; review does not invoke the legacy in-place
+upgrade command. The digest also binds the source access policies.
+
+### `cargo rullst update project apply|recover` (12.1.0 working source; unreleased)
+
+```bash
+cargo rullst update project apply --verified PATH --approved-review SHA256 --json
+cargo rullst update project recover --verified PATH --approved-review SHA256 --json
+```
+
+After reviewing the complete diff and logs, supply that exact `review_sha256`.
+Stop editors/builds and other writers first. The CLI revalidates all evidence,
+locks the canonical source within the configured private cache, stages every
+replacement and persists an intent before changing any original. Only reviewed
+workspace manifests and the root lockfile can change. Original hardlink aliases
+are not truncated, and a newly created lockfile cannot overwrite a competing file.
+
+Recovery checks every target before restoring any file. A changed file must match
+this operation's before or after state and access policy; later conflicting edits
+are refused. Unrelated files remain untouched. A root lockfile originally absent
+is removed only if it still matches the recorded created file. Repeating recovery
+is supported. Keep both private source copies and `application.json` until finished.
+
+Replacement is atomic per file, not for the whole workspace. Partial failures
+retain recovery evidence and report progress. Unix mode/owner/group and Windows
+owner/group/DACL are bound to the review. Unix extended ACLs/xattrs and special
+mode bits, Windows read-only/special attributes, alternate streams and policies that cannot be
+recreated exactly require manual handling. Other updater cache configurations and
+filesystem aliases do not share the lock. Forced termination during staging may
+leave sibling `.rullst-update-stage-*` files. Timestamp and Windows audit-policy preservation are not implemented;
+files that require them need manual handling. Native and process-interruption/power-loss acceptance remains pending.
+Recovery does not undo application-code effects, databases or deployments.
 
 ### `cargo rullst pkg <action> [name]`
 Manages third-party community packages and extensions conforming to the `RullstPackage` trait standard.

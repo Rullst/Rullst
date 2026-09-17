@@ -1502,7 +1502,7 @@ assistant, not a claim that compilation proves production compatibility.
   require manual review. Source reports stop above 10,000 findings. This is a
   source snapshot, not a filesystem sandbox: later
   verification must explicitly authorize trusted project execution. Bounded
-  reviewed application/recovery remain separate unfinished gates.
+  reviewed application/recovery have separate explicit consent and acceptance gates.
 
   **Candidate verification (working source; platform acceptance pending):**
   `update project verify` reloads the private preparation, validates its
@@ -1532,6 +1532,41 @@ assistant, not a claim that compilation proves production compatibility.
   remain release gates. Tests execute trusted project code with the caller's
   environment: the copy is not a sandbox, and external effects cannot be
   reversed through source-file recovery.
+
+  **Explicit candidate review (working source):** `update project review`
+  revalidates the private preparation, verified file inventory and bounded
+  successful command logs under both operation locks, then shows the complete
+  manifest/lockfile diff and a SHA-256 digest binding that review. Git external
+  diff/text-conversion helpers and paging are disabled; the diff is bounded to
+  8 MiB and no build/test or original-file edit occurs. The review digest grants
+  no application authority. Native acceptance remains required.
+
+  **Reviewed application/recovery (working source; native acceptance pending):**
+  `update project apply --verified PATH --approved-review SHA256` requires the
+  exact review digest and fresh source validation under both preparation locks
+  and a canonical-source lock in the configured private cache. Only the reviewed workspace
+  manifests and root lockfile are eligible. Stage all replacements before
+  changing originals, preserve original permissions and replace directory
+  entries without truncating hardlinks. Unix mode/owner/group and Windows
+  owner/group/DACL enter the review digest. Unix extended ACLs/xattrs and special
+  mode bits require manual updates; Windows read-only/special attributes, alternate
+  streams and
+  access policies that cannot be recreated exactly fail before source writes.
+  Staging installs the access policy before writing candidate contents. Keep a
+  durable bounded intent record
+  and before/after digests for interruption recovery. Recovery must refuse
+  divergent user edits and may restore only files from that intent; absent
+  original root lockfiles may be removed. Per-file replacement is not a single
+  atomic workspace commit. `update project recover` with the same approval
+  accepts only the recorded before/after states and supports repeated recovery.
+  Locks coordinate this CLI under the same cache configuration, not editors,
+  other caches or filesystem aliases. Stop other writers first; hostile concurrent
+  renames, external test effects and databases remain outside file recovery.
+  Forced process termination during staging can leave disposable sibling temp
+  files; the private before/verified trees and intent must be retained. Timestamp,
+  Windows audit-policy preservation and power-loss fault
+  acceptance remain outside this current implementation; final release approval
+  still requires platform and interruption/fault evidence.
 
 ---
 

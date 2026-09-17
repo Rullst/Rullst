@@ -12,6 +12,16 @@ pub(super) fn capture(
     root: &Path,
     limit: u64,
 ) -> Result<Vec<u8>, ProjectError> {
+    capture_with_status(program, args, root, limit, false)
+}
+
+fn capture_with_status(
+    program: &'static str,
+    args: &[&str],
+    root: &Path,
+    limit: u64,
+    diff: bool,
+) -> Result<Vec<u8>, ProjectError> {
     if tokio::runtime::Handle::try_current().is_ok() {
         return Err(ProjectError::Invalid(
             "project preparation requires a synchronous CLI context",
@@ -34,12 +44,43 @@ pub(super) fn capture(
             let (status, body, _diagnostic) = tokio::try_join!(
                 async { child.wait().await.map_err(ProjectError::Io) },
                 read(stdout, limit), read(stderr, 64 * 1024))?;
-            if !status.success() {
+            if !status.success() && !(diff && status.code() == Some(1)) {
                 return Err(ProjectError::Invalid("Git inventory or offline Cargo metadata failed; review the selected project's manifests and local dependencies"));
             }
             Ok(body)
         }).await.map_err(|_| ProjectError::Invalid("project metadata tool timed out"))?
     })
+}
+
+pub(super) fn diff(before: &Path, candidate: &Path) -> Result<String, ProjectError> {
+    let before = before
+        .to_str()
+        .ok_or(ProjectError::Invalid("review paths must be UTF-8"))?;
+    let candidate = candidate
+        .to_str()
+        .ok_or(ProjectError::Invalid("review paths must be UTF-8"))?;
+    let output = capture_with_status(
+        "git",
+        &[
+            "--no-pager",
+            "-c",
+            "core.fsmonitor=false",
+            "diff",
+            "--no-index",
+            "--text",
+            "--no-renames",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--no-color",
+            "--",
+            before,
+            candidate,
+        ],
+        Path::new(before),
+        8 * 1024 * 1024,
+        true,
+    )?;
+    String::from_utf8(output).map_err(|_| ProjectError::Invalid("review diff is not UTF-8"))
 }
 
 async fn read(

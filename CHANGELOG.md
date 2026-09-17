@@ -165,7 +165,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   target and run locked workspace checks/tests in a fresh private copy, with
   bounded commands/logs and supervised cancellation. Reject stale inputs,
   failed tests and unexpected source writes; reports grant no apply authority.
-  Native acceptance and the application/recovery stages remain unfinished.
+  Final native and application/recovery fault acceptance remain unfinished.
+
+- Add explicit candidate review with revalidated command logs, source/file
+  digests, a bounded full dependency diff and a review digest, without executing
+  or applying the candidate. Normalize and deduplicate Cargo metadata paths
+  before checking workspace membership, including Windows verbatim prefixes;
+  preserve executable bits in both private copies to avoid false mode diffs.
+
+- Add digest-approved application and recovery of the isolated candidate's
+  manifests/root lockfile, with evidence/access-policy revalidation, shared
+  source locks, staged directory-entry replacements and a persisted intent.
+  Refuse divergent edits, avoid clobbering newly created lockfiles, and preserve
+  unrelated files and hardlink aliases. Platform/fault acceptance remains open;
+  unsupported extended metadata requires manual handling.
 
 - Preflight the complete legacy upgrade backup before restoring any original.
   Bound index and snapshot sizes, reject duplicate/ambiguous paths and linked

@@ -128,7 +128,7 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
         .map_err(|error| ProjectError::Planning(error.to_string()))?;
     let files = accepted_files(&candidate, &state)?;
     let report = serde_json::json!({"schema_version":"rullst.project-verification.v1", "phase":"verified",
-        "prepared_directory":locked.path,"verified_candidate_directory":candidate,
+        "prepared_directory":locked.path,"verified_directory":workspace.path(),"verified_candidate_directory":candidate,
         "source":state.prepared.source,"target":state.prepared.target,"platform":std::env::consts::OS,
         "features":features,"offline":offline,"commands":observations,"files":files,
         "execution_authorized_for_this_invocation":true,"application_authorized":false,"production_ready":false});
@@ -151,7 +151,7 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
     Ok(())
 }
 
-fn features(matches: &ArgMatches) -> Result<Vec<String>, ProjectError> {
+pub(super) fn features(matches: &ArgMatches) -> Result<Vec<String>, ProjectError> {
     let mut args = Vec::new();
     if matches.get_flag("all-features") {
         args.push("--all-features".into());
@@ -179,12 +179,12 @@ fn features(matches: &ArgMatches) -> Result<Vec<String>, ProjectError> {
 }
 
 #[derive(serde::Serialize)]
-struct VerificationCommand {
-    program: &'static str,
-    args: Vec<String>,
+pub(super) struct VerificationCommand {
+    pub program: &'static str,
+    pub args: Vec<String>,
 }
 
-fn commands(features: &[String], offline: bool) -> Vec<VerificationCommand> {
+pub(super) fn commands(features: &[String], offline: bool) -> Vec<VerificationCommand> {
     let mut commands = vec![
         VerificationCommand {
             program: "rustc",

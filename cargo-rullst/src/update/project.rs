@@ -5,12 +5,20 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[path = "project/application.rs"]
+mod application;
 #[path = "project/process.rs"]
 mod process;
+#[path = "project/receipt.rs"]
+mod receipt;
+#[path = "project/review.rs"]
+mod review;
 #[path = "project/snapshot.rs"]
 mod snapshot;
 #[path = "project/state.rs"]
 mod state;
+#[path = "project/transaction.rs"]
+mod transaction;
 #[path = "project/verify.rs"]
 mod verify;
 
@@ -26,6 +34,14 @@ pub(super) enum ProjectError {
     Cache(#[from] super::cache::CacheError),
     #[error("project migration planning failed: {0}")]
     Planning(String),
+    #[error(
+        "project file operation stopped after {completed} replacements: {reason}; recovery data retained at {directory}"
+    )]
+    Apply {
+        completed: usize,
+        reason: String,
+        directory: PathBuf,
+    },
 }
 
 impl std::fmt::Debug for ProjectError {
@@ -43,9 +59,21 @@ pub(super) fn command() -> Command {
                 .arg(Arg::new("to").long("to").value_name("EXACT_VERSION"))
                 .arg(Arg::new("json").long("json").action(ArgAction::SetTrue)))
         .subcommand(verify::command())
+        .subcommand(review::command())
+        .subcommand(application::command("apply"))
+        .subcommand(application::command("recover"))
 }
 
 pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
+    if let Some(matches) = matches.subcommand_matches("apply") {
+        return application::run(matches, false);
+    }
+    if let Some(matches) = matches.subcommand_matches("recover") {
+        return application::run(matches, true);
+    }
+    if let Some(matches) = matches.subcommand_matches("review") {
+        return review::run(matches);
+    }
     if let Some(matches) = matches.subcommand_matches("verify") {
         return verify::run(matches);
     }
@@ -159,8 +187,8 @@ fn manifests(root: &Path) -> Result<Vec<PathBuf>, ProjectError> {
         .packages
         .into_iter()
         .filter(|package| metadata.workspace_members.contains(&package.id))
-        .map(|package| package.manifest_path)
-        .collect();
-    paths.insert(root.join("Cargo.toml"));
+        .map(|package| package.manifest_path.canonicalize())
+        .collect::<Result<_, _>>()?;
+    paths.insert(root.join("Cargo.toml").canonicalize()?);
     Ok(paths.into_iter().collect())
 }
