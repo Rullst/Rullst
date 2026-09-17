@@ -133,7 +133,7 @@ jobs:
 
       - name: Run portable transactional outbox contract
         run: >-
-          cargo test -p rullst-orm --no-default-features
+          cargo test -p rullst-orm --no-default-features --features drivers-all
           --test outbox_transaction_test -- --test-threads=1
 
       - name: Run provider matrices (SQL, document, edge and search)

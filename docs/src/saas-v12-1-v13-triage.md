@@ -59,6 +59,11 @@ means the complete release or a live-provider journey has passed:
   on all three profiles; their normal/build graphs contained only the selected
   SQLx driver. The default `drivers-all` profile retains existing convenience.
   Facade/Studio compositions still need their own opt-in isolation boundary.
+- The follow-up full CI run at `e1d8fe4d` exposed unconditional enum codecs in
+  backend-exclusive builds. Runtime-gated codecs fix the no-driver all-target
+  check, and the expanded standalone consumers now compile enum bindings and
+  decoding for PostgreSQL, MySQL and SQLite without importing other drivers.
+  These targeted checks do not supersede the next full candidate matrix.
 - Stripe subscription normalization now reads Basil item-level periods and
   rejects missing/confused event kinds, identities, states and price items.
   Legacy subscription-level periods and custom plan IDs remain supported;

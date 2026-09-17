@@ -3,6 +3,8 @@ use quote::quote;
 use std::collections::BTreeSet;
 use syn::{Data, DeriveInput, Fields, LitStr};
 
+mod codecs;
+
 const MAX_VARIANTS: usize = 64;
 const MAX_LABEL_BYTES: usize = 63;
 
@@ -100,6 +102,7 @@ fn expand_enum(input: TokenStream) -> syn::Result<TokenStream> {
         .map(|(variant, label)| quote! { #label => Ok(#name::#variant) })
         .collect::<Vec<_>>();
 
+    let type_codecs = codecs::type_codecs(name, &type_name);
     Ok(quote! {
         impl rullst_orm::DatabaseEnum for #name {
             const TYPE_NAME: &'static str = #type_name;
@@ -215,33 +218,7 @@ fn expand_enum(input: TokenStream) -> syn::Result<TokenStream> {
             }
         }
 
-        impl rullst_orm::_sqlx::Type<rullst_orm::_sqlx::Sqlite> for #name {
-            fn type_info() -> rullst_orm::_sqlx::sqlite::SqliteTypeInfo {
-                <str as rullst_orm::_sqlx::Type<rullst_orm::_sqlx::Sqlite>>::type_info()
-            }
-        }
-
-        impl rullst_orm::_sqlx::Type<rullst_orm::_sqlx::MySql> for #name {
-            fn type_info() -> rullst_orm::_sqlx::mysql::MySqlTypeInfo {
-                rullst_orm::_sqlx::mysql::MySqlTypeInfo::__enum()
-            }
-
-            fn compatible(type_info: &rullst_orm::_sqlx::mysql::MySqlTypeInfo) -> bool {
-                <str as rullst_orm::_sqlx::Type<rullst_orm::_sqlx::MySql>>::compatible(type_info)
-            }
-        }
-
-        impl rullst_orm::_sqlx::Type<rullst_orm::_sqlx::Postgres> for #name {
-            fn type_info() -> rullst_orm::_sqlx::postgres::PgTypeInfo {
-                rullst_orm::_sqlx::postgres::PgTypeInfo::with_name(#type_name)
-            }
-        }
-
-        impl rullst_orm::_sqlx::postgres::PgHasArrayType for #name {
-            fn array_type_info() -> rullst_orm::_sqlx::postgres::PgTypeInfo {
-                rullst_orm::_sqlx::postgres::PgTypeInfo::array_of(#type_name)
-            }
-        }
+        #type_codecs
     })
 }
 
@@ -372,8 +349,13 @@ mod tests {
         assert!(output.contains("DatabaseEnum for Status"));
         assert!(output.contains("account_status"));
         assert!(output.contains("awaiting_review"));
-        assert!(output.contains("PgHasArrayType for Status"));
-        assert!(output.contains("Type < rullst_orm :: _sqlx :: MySql > for Status"));
+        if cfg!(feature = "runtime-driver-codecs") {
+            assert!(output.contains("__rullst_enum_postgres ! (Status"));
+            assert!(output.contains("__rullst_enum_mysql ! (Status"));
+        } else {
+            assert!(output.contains("PgHasArrayType for Status"));
+            assert!(output.contains("Type < rullst_orm :: _sqlx :: MySql > for Status"));
+        }
     }
 
     #[test]

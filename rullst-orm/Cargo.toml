@@ -14,7 +14,7 @@ keywords = ["orm", "database", "sqlite", "postgres", "mysql"]
 categories = ["database"]
 
 [dependencies]
-rullst-orm-macros = { workspace = true }
+rullst-orm-macros = { workspace = true, features = ["runtime-driver-codecs"] }
 sqlx = { workspace = true, features = ["any", "runtime-tokio", "macros", "json", "tls-rustls"] }
 tokio = { workspace = true, features = ["full"] }
 async-trait = { workspace = true }

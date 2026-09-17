@@ -40,6 +40,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Make standalone ORM strict profiles select only their SQLx backend when
   defaults are disabled. Preserve default convenience through `drivers-all`
   and document additive dependency edges that can broaden a consumer graph.
+- Generate native enum codecs through the ORM's selected drivers, fixing
+  backend-exclusive and no-driver compilation. Exercise enums in each isolated
+  consumer; retain the macro crate's default expansion for the 12.0 runtime.
 
 ### Omni icons and Android signing — planned 12.1.0
 

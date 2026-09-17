@@ -17,6 +17,9 @@ categories = ["development-tools::procedural-macro-helpers", "database"]
 proc-macro = true
 
 [features]
+# Opted into by the matching 12.1 ORM runtime. Keep default expansion usable
+# with published 12.0 runtimes whose SQLx dependency includes every driver.
+runtime-driver-codecs = []
 strict-postgres = []
 strict-mysql = []
 strict-sqlite = []

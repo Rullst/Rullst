@@ -13,6 +13,10 @@ import tomllib
 DRIVERS = {"strict-postgres": "postgres", "strict-mysql": "mysql", "strict-sqlite": "sqlite"}
 SOURCE = """use rullst_orm::{FromRow, Orm};
 
+#[derive(Debug, Clone, Copy, rullst_orm::Enum)]
+#[rullst_enum(type_name = "consumer_state", rename_all = "snake_case")]
+pub enum State { Active, Disabled }
+
 #[derive(Debug, Clone, FromRow, Orm)]
 #[orm(table = "consumer_records")]
 pub struct Record {
@@ -31,6 +35,13 @@ pub async fn exercise(record: &mut Record) -> Result<(), rullst_orm::Error> {
     let _ = Record::find_with_tx(record.id, &mut transaction).await?;
     transaction.rollback().await?;
     record.delete().await
+}
+
+pub async fn exercise_enum() -> Result<State, rullst_orm::Error> {
+    sqlx::query("INSERT INTO consumer_states (state) VALUES (__PLACEHOLDER__)")
+        .bind(State::Active).execute(Orm::pool()?).await?;
+    Ok(sqlx::query_scalar::<_, State>("SELECT state FROM consumer_states LIMIT 1")
+        .fetch_one(Orm::pool()?).await?)
 }
 """
 
@@ -63,7 +74,8 @@ def main():
             + '[lints.rust]\nunexpected_cfgs = { level = "warn", check-cfg = [\'cfg(feature, values("redis"))\'] }\n',
             encoding="utf-8",
         )
-        (project / "src/lib.rs").write_text(SOURCE, encoding="utf-8")
+        placeholder = "$1" if args.feature == "strict-postgres" else "?"
+        (project / "src/lib.rs").write_text(SOURCE.replace("__PLACEHOLDER__", placeholder), encoding="utf-8")
         # Reuse audited dependency resolutions; Cargo removes unused workspace
         # packages when admitting this separate consumer into its own lockfile.
         shutil.copyfile(root / "Cargo.lock", project / "Cargo.lock")
@@ -81,7 +93,7 @@ def main():
         # A shared target is optional and caller-owned, never created under the
         # temporary project when CI/local policy supplies CARGO_TARGET_DIR.
         run(["cargo", "clippy", "--locked", "--lib", *network, "--", "-D", "warnings"], project)
-        print(f"PASS {args.feature}: generated CRUD/transaction consumer, only {expected}")
+        print(f"PASS {args.feature}: generated CRUD/transaction/enum consumer, only {expected}")
 
 
 if __name__ == "__main__":

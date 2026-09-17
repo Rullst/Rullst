@@ -648,6 +648,12 @@ while portability and semantic review remain the model author's responsibility.
   Workspace all-feature or all-target checks cannot prove driver isolation.
   Applications previously disabling defaults without selecting a driver must
   choose a strict backend or explicitly restore `drivers-all`.
+* Native enum codecs follow the ORM's selected drivers, not identically named
+  features in the consuming application. ORM 12.1 opts its paired macro crate
+  into `runtime-driver-codecs` and exports hidden, driver-gated codec helpers.
+  The macro crate's default expansion remains compatible with the all-driver
+  12.0 runtime; the opt-in helper expansion requires the matching 12.1 runtime.
+  Standalone isolation checks include enum encoding/decoding as well as CRUD.
 
 ### 5.12. ORM Telemetry Contract
 

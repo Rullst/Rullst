@@ -290,8 +290,10 @@ Cargo features combine across dependencies. A dependency enabling ORM defaults,
 Studio, a SQLite queue or Turso's offline transport can restore other drivers;
 the example above proves a standalone ORM boundary, not a complete facade or
 Studio application. Check the final normal/build graph with `cargo tree`.
-The CI consumer compiles generated CRUD and transaction methods and rejects
-unrelated SQLx driver packages separately from the workspace test matrix.
+Derived enums also emit codecs only for the ORM's selected drivers; the
+application does not need matching Cargo feature names. The CI consumer compiles
+generated CRUD, transactions and enum encoding/decoding and rejects unrelated
+SQLx driver packages separately from the workspace test matrix.
 
 ### Native database enums
 
