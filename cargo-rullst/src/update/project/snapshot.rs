@@ -11,7 +11,7 @@ pub(super) const MAX_ENTRIES: usize = 100_000;
 const MAX_FILE: u64 = 64 * 1024 * 1024;
 pub(super) const MAX_TOTAL: u64 = 512 * 1024 * 1024;
 
-#[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Record {
     pub path: String,
@@ -269,6 +269,7 @@ pub(super) fn copy(
                 use std::os::unix::fs::PermissionsExt;
                 let executable = fs::metadata(root.join(name))?.permissions().mode() & 0o100 != 0;
                 if executable {
+                    fs::set_permissions(baseline.join(name), fs::Permissions::from_mode(0o700))?;
                     fs::set_permissions(candidate.join(name), fs::Permissions::from_mode(0o700))?;
                 }
             }

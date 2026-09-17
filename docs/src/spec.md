@@ -1464,6 +1464,26 @@ assistant, not a claim that compilation proves production compatibility.
   environment: the copy is not a sandbox, and external effects cannot be
   reversed through source-file recovery.
 
+  **Explicit candidate review (working source):** `update project review`
+  revalidates the private preparation, verified file inventory and bounded
+  successful command logs under both operation locks, then shows the complete
+  manifest/lockfile diff and a SHA-256 digest binding that review. Git external
+  diff/text-conversion helpers and paging are disabled; the diff is bounded to
+  8 MiB and no build/test or original-file edit occurs. The review digest grants
+  no application authority. Native acceptance remains required.
+
+  **Reviewed application design (unfinished):** application
+  requires explicit approval of that digest and fresh source validation under
+  both preparation and project-wide locks. Only the reviewed workspace
+  manifests and root lockfile are eligible. Stage all replacements before
+  changing originals, preserve original permissions and replace directory
+  entries without truncating hardlinks. Keep a durable bounded intent record
+  and before/after digests for interruption recovery. Recovery must refuse
+  divergent user edits and may restore only files from that intent; absent
+  original root lockfiles may be removed. Per-file replacement is not a single
+  atomic workspace commit. Stop other writers first; hostile concurrent
+  renames, external test effects and databases remain outside file recovery.
+
 ---
 
 ## 📱 13. Omni Packaging Contract

@@ -6,7 +6,7 @@ use std::{
     process::{Command, Output},
 };
 
-fn fixture(source: &str) -> Fixture {
+pub(super) fn fixture(source: &str) -> Fixture {
     let fixture = Fixture::new("12", env!("CARGO_PKG_VERSION"));
     fs::write(
         fixture.app.join("build.rs"),
@@ -19,14 +19,14 @@ fn fixture(source: &str) -> Fixture {
     fixture
 }
 
-fn prepare(fixture: &Fixture) -> PathBuf {
+pub(super) fn prepare(fixture: &Fixture) -> PathBuf {
     let output = fixture.prepare();
     assert!(output.status.success(), "{}", text(&output));
     let report: Value = serde_json::from_slice(&output.stdout).unwrap();
     PathBuf::from(report["prepared_directory"].as_str().unwrap())
 }
 
-fn verify(fixture: &Fixture, stage: &Path, arguments: &[&str]) -> Output {
+pub(super) fn verify(fixture: &Fixture, stage: &Path, arguments: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_cargo-rullst"))
         .args(["update", "project", "verify", "--prepared"])
         .arg(stage)
@@ -141,7 +141,11 @@ fn failed_application_tests_retain_diagnostics_without_acceptance_or_original_ch
     let original = fs::read(fixture.app.join("Cargo.toml")).unwrap();
     let output = verify(&fixture, &stage, &["--allow-project-code"]);
     assert!(!output.status.success(), "{}", text(&output));
-    assert!(text(&output).contains("Cargo verification failed"));
+    assert!(
+        text(&output).contains("Cargo verification failed"),
+        "{}",
+        text(&output)
+    );
     assert!(fixture.base.join("build-executed").exists());
     assert_eq!(fs::read(fixture.app.join("Cargo.toml")).unwrap(), original);
     for entry in fs::read_dir(fixture.base.join("rullst-update-v1")).unwrap() {
@@ -157,7 +161,11 @@ fn application_test_writes_cannot_become_accepted_source_edits() {
     let stage = prepare(&fixture);
     let output = verify(&fixture, &stage, &["--allow-project-code"]);
     assert!(!output.status.success(), "{}", text(&output));
-    assert!(text(&output).contains("execution changed a prepared source input"));
+    assert!(
+        text(&output).contains("execution changed a prepared source input"),
+        "{}",
+        text(&output)
+    );
     assert!(
         fs::read_to_string(fixture.app.join("src/main.rs"))
             .unwrap()

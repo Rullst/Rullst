@@ -256,7 +256,10 @@ commands. Only after reviewing the trusted project, use `--allow-project-code`
 to authorize lockfile resolution, locked checks and tests in a fresh private
 copy. This is not a sandbox; tests inherit your environment and can have
 external effects. See the [verification options and limits](../cli_reference.md#cargo-rullst-update-project-verify-1210-working-source-unreleased).
-Application, recovery and the complete guided flow below remain unfinished.
+Then `update project review --verified PATH --json` revalidates the verification
+record and shows the full dependency diff with a review digest. Use the returned
+`verified_directory`; the digest grants no apply authority. Application,
+recovery and the complete guided flow below remain unfinished.
 
 The [safe-update priority](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience) proposes
 one guided flow for CLI installation, project preparation, validation and

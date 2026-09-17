@@ -322,6 +322,24 @@ The report is not a reusable apply token and grants no application/deployment
 authority. Native verification acceptance, application and recovery remain open.
 Retained source copies can consume up to about 2 GiB, plus build outputs/logs.
 
+### `cargo rullst update project review` (12.1.0 working source; unreleased)
+
+```bash
+cargo rullst update project review --verified PATH --json
+```
+
+Use `verified_directory` from the verification result. Review validates the
+stored command policy, successful statuses, bounded logs, original/prepared
+files and verified candidate again under operation locks. Changed evidence is
+rejected. Git produces the full dependency diff with external helpers, text
+conversion and paging disabled; output is bounded to 8 MiB. No build/test runs
+and original files remain untouched.
+
+JSON contains `rullst.project-review.v1`, before/after file hashes, the full
+`diff` and `review_sha256` binding its evidence and contents. The digest is not
+authorization to apply changes. Application and recovery are still unfinished;
+review does not invoke the legacy in-place upgrade command.
+
 ### `cargo rullst pkg <action> [name]`
 Manages third-party community packages and extensions conforming to the `RullstPackage` trait standard.
 * **Subcommands:**

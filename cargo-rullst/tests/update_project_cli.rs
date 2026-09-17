@@ -1,4 +1,6 @@
 //! Preparation uses real Git/Cargo metadata, but must never compile the project.
+#[path = "update_project_cli/review.rs"]
+mod review;
 #[path = "update_project_cli/verification.rs"]
 mod verification;
 use serde_json::Value;
@@ -159,6 +161,11 @@ fn preserves_dirty_untracked_deleted_and_ignored_lock_inputs_without_running_bui
     let prepared = &report["preparation"];
     assert_eq!(prepared["execution_authorized"], false);
     assert_eq!(prepared["application_authorized"], false);
+    assert_eq!(
+        prepared["plan"]["manifests"].as_array().unwrap().len(),
+        1,
+        "Cargo and private storage path spellings must identify one manifest"
+    );
     assert!(
         prepared["files"]
             .as_array()

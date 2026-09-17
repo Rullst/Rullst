@@ -440,7 +440,10 @@ operation lock, previews commands, and requires explicit trusted-code consent
 before resolving/checking/testing another private copy. Local process tests
 cover real acceptance, stale inputs, missing consent, contention, timeout,
 failed tests and unexpected source writes. Verification platform acceptance,
-review/application, recovery and the complete guided flow remain unfinished.
+application, recovery and the complete guided flow remain unfinished. Explicit
+`update project review` now revalidates command logs and both source inventories
+and emits the bounded full dependency diff plus a review digest. It performs no
+builds or original-file edits; the digest does not grant application authority.
 
 1. **Discover and explain.** Make update notices useful without blocking normal
    CLI startup. Respect offline/CI settings and explicit notification opt-out;

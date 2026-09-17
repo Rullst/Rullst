@@ -167,6 +167,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   failed tests and unexpected source writes; reports grant no apply authority.
   Native acceptance and the application/recovery stages remain unfinished.
 
+- Add explicit candidate review with revalidated command logs, source/file
+  digests, a bounded full dependency diff and a review digest, without executing
+  or applying the candidate. Normalize and deduplicate Cargo metadata paths
+  before checking workspace membership, including Windows verbatim prefixes;
+  preserve executable bits in both private copies to avoid false mode diffs.
+
 - Preflight the complete legacy upgrade backup before restoring any original.
   Bound index and snapshot sizes, reject duplicate/ambiguous paths and linked
   sources/targets, stage all replacements first, and replace directory entries
