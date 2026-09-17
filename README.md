@@ -222,7 +222,7 @@ Badges and test results are evidence for their stated scope, not a security
 certification of every application built with the framework.
 
 <details>
-<summary><strong>🛡️ Open the full v12 verification dashboard (37 workflows)</strong></summary>
+<summary><strong>🛡️ Open the full v12 verification dashboard (38 workflows)</strong></summary>
 
 <h3 align="center">🛡️ v12 Main Verification Dashboard</h3>
 

@@ -1373,6 +1373,15 @@ assistant, not a claim that compilation proves production compatibility.
   tag-workflow provenance, client verification, staged installation, recovery
   and application acceptance remain separate required boundaries; no build or
   discovery command installs these files automatically.
+  The tag-only release pipeline now calls the same native builder after exact
+  protected-main admission. A separate job with signing authority checks the
+  downloaded checksums and attests executables, manifests and inventory files
+  without checking out source or executing downloaded binaries. GitHub release
+  assets include those files only after crate publication and attestation pass.
+  Client-side verification must pin the publisher, tag workflow, source tag and
+  commit and then compare the expected platform/version/file digest; metadata
+  and matching checksums by themselves remain insufficient authority. This
+  pipeline change is unaccepted until its native and release evidence passes.
 
 ---
 

@@ -114,6 +114,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### CLI update discovery
 
+- Prepare native CLI artifacts for Linux x64, Windows x64 and macOS x64/ARM64,
+  with version smoke checks and bounded source/platform/digest inventories.
+  Ordinary CI candidates carry no release tag. The admitted tag pipeline
+  attests the files in a separate job without executing source and includes
+  them in GitHub release assets. Native/release acceptance and client-side
+  verification, installation and recovery remain required.
+
 - Pin managed upgrade requirements to the exact selected release and use
   `--locked` for the final Cargo check, preventing silent patch/minor drift.
 
