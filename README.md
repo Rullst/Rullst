@@ -72,6 +72,12 @@ deployment recipes in [Rullst/examples](https://github.com/Rullst/examples):
 | 🎓 **LMS** — course catalog and learning-platform example | [Open LMS ↗](https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/) |
 | 💼 **Portfolio** — projects, skills and experience presentation | [Open Portfolio ↗](https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/) |
 
+> **The first visit may take longer.** These Azure Container Apps demos may
+> scale down to zero while idle. Your request can trigger a container startup
+> (a *cold start*); please allow it to finish and retry if necessary. That initial
+> wait includes hosting startup time and is not a Rullst request-performance
+> benchmark. [How Azure scaling works](https://learn.microsoft.com/en-us/azure/container-apps/scale-app).
+
 These are independently maintained demo snapshots and may lag the stable release.
 Showcase payment fixtures are **not live checkout**. Deployment availability,
 native downloads and provider approval are separate from framework test evidence;
