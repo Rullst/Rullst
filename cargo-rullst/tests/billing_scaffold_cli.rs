@@ -19,12 +19,19 @@ fn assert_success(output: &Output, action: &str) {
     );
 }
 
+fn target_directory(workspace: &Path) -> PathBuf {
+    match std::env::var_os("CARGO_TARGET_DIR").filter(|value| !value.is_empty()) {
+        Some(value) => workspace.join(value),
+        None => workspace.join("target"),
+    }
+}
+
 fn clean_generated_package(project: &Path, workspace: &Path, package_name: &str) {
     let cleaned = run(
         Command::new("cargo")
             .current_dir(project)
             .args(["clean", "--package", package_name])
-            .env("CARGO_TARGET_DIR", workspace.join("target"))
+            .env("CARGO_TARGET_DIR", target_directory(workspace))
             .env("CARGO_NET_OFFLINE", "true"),
         "clean generated billing package",
     );
@@ -230,7 +237,7 @@ fn verify_backend(database: &str) {
         Command::new("cargo")
             .current_dir(&project)
             .args(["clippy", "--all-targets", "--", "-D", "warnings"])
-            .env("CARGO_TARGET_DIR", workspace.join("target"))
+            .env("CARGO_TARGET_DIR", target_directory(workspace))
             .env("CARGO_NET_OFFLINE", "true"),
         "Clippy generated billing project",
     );
@@ -240,7 +247,7 @@ fn verify_backend(database: &str) {
         Command::new("cargo")
             .current_dir(&project)
             .args(["run", "--quiet", "--bin", &package_name, "--", "db:migrate"])
-            .env("CARGO_TARGET_DIR", workspace.join("target"))
+            .env("CARGO_TARGET_DIR", target_directory(workspace))
             .env("CARGO_NET_OFFLINE", "true"),
         "run generated billing migrations",
     );
@@ -258,7 +265,7 @@ fn verify_backend(database: &str) {
                 "BILLING_REDIRECT_URL",
                 "https://app.example.invalid/dashboard",
             )
-            .env("CARGO_TARGET_DIR", workspace.join("target"))
+            .env("CARGO_TARGET_DIR", target_directory(workspace))
             .env("CARGO_NET_OFFLINE", "true"),
         "run generated billing contract",
     );
@@ -273,7 +280,7 @@ fn verify_backend(database: &str) {
             .env("BILLING_API_KEY", "fixture_invalid_live_credential")
             .env("BILLING_ALLOWED_PLAN_IDS", "price_pro")
             .env("BILLING_CONTRACT_LIVE_PORTAL", "1")
-            .env("CARGO_TARGET_DIR", workspace.join("target"))
+            .env("CARGO_TARGET_DIR", target_directory(workspace))
             .env("CARGO_NET_OFFLINE", "true"),
         "reject unsupported generated live portal",
     );
