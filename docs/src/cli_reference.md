@@ -195,8 +195,11 @@ to the registry only when online. Cache failures never authorize an install.
 `--offline` and `CARGO_NET_OFFLINE=true` use only a fresh cache and fail without
 network access if none is usable. `--refresh` bypasses cache reads;
 `--no-cache` disables both cache reads and writes. Neither bypasses the offline
-environment setting. Windows currently supports online discovery without
-persistence; private Windows ACL validation is still a 12.1.0 release blocker.
+environment setting. Windows uses `%LOCALAPPDATA%/rullst-update-v1` with an
+atomically created protected user/SYSTEM/Administrators DACL. Handle-based
+checks reject foreign owners, unsafe grants, reparse points and hard links;
+UNC paths and alternate data streams are unsupported. Unsafe ACLs are not
+modified. Native Windows acceptance remains a 12.1.0 release blocker.
 Ordinary dashboard notices remain process-local and never write this cache.
 
 `--json` uses `rullst.update-discovery.v1`, includes metadata source/age and

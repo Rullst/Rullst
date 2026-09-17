@@ -1205,10 +1205,15 @@ assistant, not a claim that compilation proves production compatibility.
   network or writes; missing, invalid, expired or future-dated caches fail.
   `--refresh` skips cached reads; `--no-cache` disables persistence entirely.
   Ordinary interactive notices remain process-local, not filesystem writers.
-  Windows persistence stays disabled until its owner/ACL checks are implemented
-  and validated; online discovery still works. A hostile same-user/root process
+  The Windows implementation uses `%LOCALAPPDATA%/rullst-update-v1`, a protected
+  DACL created atomically for the caller, SYSTEM and Administrators, handle-based
+  owner/access checks, no reparse points or multi-link files, bounded reads and
+  non-blocking staged replacement. Local-drive ancestors must exclude untrusted
+  replacement/control rights; UNC paths and alternate data streams are rejected.
+  ACLs are never repaired implicitly. Native Windows acceptance is still pending.
+  A hostile same-user/root/administrator process
   and authenticated release verification are outside this advisory cache's
-  contract. Windows caching, verified CLI installation and the expanded project
+  contract. Windows cache acceptance, verified CLI installation and the expanded project
   acceptance transaction remain 12.1.0 release blockers requiring platform and
   release evidence.
 

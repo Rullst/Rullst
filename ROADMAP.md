@@ -369,7 +369,7 @@ already includes the latest stable fixes.
 | Order | Outcome | Acceptance boundary |
 | :--- | :--- | :--- |
 | **P0 — verification efficiency** | Shorter local and hosted feedback, with measured cold/warm build and queue times | Compare test inventories; select affected crates and their consumers; preserve broad scheduled/release checks and a full-run fallback for unknown changes. Bind reusable evidence to source, dependencies, tools and policy. Prove that security, workflow, manifest and generator changes cannot silently skip required checks. |
-| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | Compatible opt-in 12.1.0 delivery first, carried into v13. Discovery, private Unix caching and recovery hardening exist; Windows caching, verified installation and isolated project acceptance remain release blockers. |
+| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | Compatible opt-in 12.1.0 delivery first, carried into v13. Discovery, private caching and recovery hardening exist; native Windows cache acceptance, verified installation and isolated project acceptance remain release blockers. |
 | **P1 — Omni application delivery** | Predictable desktop/mobile builds, diagnostics and installation guidance | Detect SDK/toolchain/signing/identifier/version/ABI mistakes, distinguish unsigned build output from installable signed packages, and test lifecycle, navigation and interrupted networks. Device and store acceptance need their own evidence. |
 | **P1 — coherent application contracts** | One clear path for sessions, ownership, tenant context and typed client APIs | Consolidate existing Auth/Core/Security boundaries, complete selected session/passkey flows and validate API/SDK serialization. Preserve explicit configuration and negative authorization tests. |
 | **P2 — interactive learning products** | Server-authoritative progress, gamification and isolated programming exercises | Build on the current LMS scaffolds; version grading rules, persist idempotent results and prove tenant isolation. Follow the existing v13 `rullst-labs`/`rullst-labs-runner` proposal; untrusted execution stays outside the web process. |
@@ -407,9 +407,10 @@ process-local. Explicit `cargo rullst update check` now provides exact-target,
 MSRV/platform and versioned JSON discovery with separate major/prerelease
 opt-ins; it grants no installation or execution authority. Explicit discovery
 now reuses bounded, owner/permission-checked Unix metadata for six hours and
-supports offline reads, forced refresh and cache opt-out. Windows persistence
-is disabled until its private owner/ACL boundary is implemented. That Windows
-work and the installation/preparation/application stages below remain unfinished. The
+supports offline reads, forced refresh and cache opt-out. A Windows implementation
+now creates a protected DACL atomically and checks owners, grants, ancestors and
+file handles; native platform acceptance is pending. That acceptance and the
+installation/preparation/application stages below remain unfinished. The
 published v12.0.0 release currently contains source crate archives and evidence,
 not an inventory of trusted prebuilt CLI executables; adding those artifacts
 requires release-pipeline work, not an assumed download URL.

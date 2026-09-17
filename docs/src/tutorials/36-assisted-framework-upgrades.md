@@ -224,8 +224,8 @@ missing, expired or invalid caches fail without network access or writes.
 `--refresh` forces online discovery and `--no-cache` disables persistence;
 neither overrides the offline environment setting. JSON includes source and
 age, never installation authority. The old shared cache is not trusted.
-Windows persistence remains disabled pending owner/ACL validation; online
-discovery still works. See the
+Windows has a protected owner/DACL cache implementation, with native platform
+acceptance still pending. Online discovery can recover from an unavailable cache. See the
 [CLI reference](../cli_reference.md#cargo-rullst-update-check-1210-working-source-unreleased)
 for locations and boundaries.
 
