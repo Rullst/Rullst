@@ -154,6 +154,11 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
+In 12.1, managed requirements use exact `=VERSION` pins. The final
+`cargo check --workspace --all-targets --locked` validates the lockfile produced
+by `cargo fix` without resolving a different version. Broader dependency ranges
+remain an application decision after reviewing the update.
+
 Process-level fixtures select the rule catalog independently for documented v5,
 v6 and v11 origins, verify restoration across multiple workspace
 members, retain a deliberately failed edit only with `--keep-on-failure`, and

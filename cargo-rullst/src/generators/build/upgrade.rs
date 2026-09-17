@@ -152,12 +152,15 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
     }
 
     let check_ok = with_spinner("Validating the migrated feature selection...", || {
-        cargo_command(&root, &["check", "--workspace", "--all-targets"])
+        cargo_command(
+            &root,
+            &["check", "--workspace", "--all-targets", "--locked"],
+        )
     });
     if !check_ok {
         let recovery = recover_after_failure(&backup, options.keep_on_failure)?;
         return Err(UpgradeError::CommandFailed {
-            command: "cargo check --workspace --all-targets",
+            command: "cargo check --workspace --all-targets --locked",
             recovery,
         }
         .into());
@@ -337,7 +340,7 @@ fn render_json_report(
             "workspace dependency manifests",
             "Cargo.lock resolution",
             "compiler-provided Rust fixes",
-            "cargo check for the selected features"
+            "locked cargo check for the selected features"
         ],
         "manual_gates": [
             "review the complete diff",

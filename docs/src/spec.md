@@ -1219,7 +1219,11 @@ assistant, not a claim that compilation proves production compatibility.
   that CLI. Before writes, the command snapshots workspace manifests, the root
   lockfile and Rust sources under `target/rullst-upgrades`. It applies only
   dependency edits and compiler-provided `cargo fix` changes, then requires
-  `cargo check --workspace --all-targets` to pass. A failed gate restores the
+  `cargo check --workspace --all-targets --locked` to pass. Managed version
+  requirements are exact `=VERSION` pins, so an explicitly selected release
+  cannot silently resolve a later patch/minor release. `cargo fix` resolves
+  the candidate lockfile; the final check must use that same resolution.
+  A failed gate restores the
   snapshot by default; `--keep-on-failure` is explicit, and `--restore` can
   recover a persisted, path-validated snapshot after an interruption.
   Process fixtures independently select the v5, v6 and v11 rule sets, prove

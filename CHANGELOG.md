@@ -79,6 +79,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### CLI update discovery
 
+- Pin managed upgrade requirements to the exact selected release and use
+  `--locked` for the final Cargo check, preventing silent patch/minor drift.
+
 - Add explicit advisory `cargo rullst update check` with an exact target,
   separate major/prerelease opt-ins, MSRV/platform presentation and a versioned
   JSON report. Offline mode refuses network access. Reuse bounded HTTPS discovery

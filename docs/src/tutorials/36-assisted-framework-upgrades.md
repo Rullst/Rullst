@@ -19,8 +19,14 @@ The automatic transaction owns only:
 - versioned Rullst dependencies in exact Cargo workspace manifests;
 - the root `Cargo.lock` produced by Cargo resolution;
 - Rust edits proposed by `cargo fix`;
-- a `cargo check --workspace --all-targets` gate using the application's
+- a `cargo check --workspace --all-targets --locked` gate using the application's
   selected features.
+
+The 12.1 updater writes managed requirements as `=VERSION`, preserving the
+explicitly selected release instead of allowing Cargo to choose a later patch
+or minor version. `cargo fix` resolves the candidate lockfile, and the final
+check must use that resolution unchanged. Review these pins before restoring
+any broader dependency-update policy in your application.
 
 It never runs migrations, changes secrets, invents tenant/ownership policy,
 opens Nexus or Studio, contacts application providers, or marks the result
