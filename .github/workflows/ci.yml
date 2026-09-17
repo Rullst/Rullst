@@ -226,6 +226,7 @@ jobs:
 
   strict-database-features:
     name: ORM ${{ matrix.feature }}
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -292,6 +293,7 @@ jobs:
 
   redis-rate-limit:
     name: Redis live contracts
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     services:
@@ -347,6 +349,7 @@ jobs:
 
   feature-boundaries:
     name: Public feature boundaries (${{ matrix.shard }}/4)
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -375,6 +378,7 @@ jobs:
 
   threat-model-release-minimum:
     name: Threat-model release-negative minimum (${{ matrix.shard }}/4)
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -426,6 +430,7 @@ jobs:
 
   versioned-ai-evals:
     name: Versioned deterministic AI evals
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -450,6 +455,7 @@ jobs:
 
   generated-release-access:
     name: Generated release access boundaries
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -477,6 +483,7 @@ jobs:
 
   facade-composition:
     name: Facade shared-local recovery composition
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -501,6 +508,7 @@ jobs:
 
   msrv:
     name: Check MSRV (Rust 1.96.0)
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
