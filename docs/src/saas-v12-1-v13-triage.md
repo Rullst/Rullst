@@ -98,6 +98,12 @@ means the complete release or a live-provider journey has passed:
   PostgreSQL placeholder from subscription lookup. All ten scaffold contracts,
   the four materialized foundation applications and CLI all-feature/all-target
   strict Clippy pass locally; this is not provider sandbox acceptance.
+- New SaaS/`make:billing` routes now contain the unfinished live flow: real or
+  mixed credentials return HTTP 503 before provider I/O, replay claims or SQL.
+  Offline development fixtures remain available. Existing applications require
+  a reviewed controller migration; new typed provider/inbox APIs do not replace
+  their owner binding automatically. Full live integration remains required
+  before enabling that generated operation, as permitted by the P0 allocation.
 
 All eleven v12 adapters are in scope: Stripe, Lemon Squeezy, InfinitePay,
 Polar, Paddle, Razorpay, Mercado Pago, Coinbase Commerce, PicPay, Alipay and Wise.
@@ -161,6 +167,22 @@ Razorpay documents distinct [states](https://razorpay.com/docs/payments/subscrip
 and [subscription events](https://razorpay.com/docs/webhooks/subscriptions/).
 
 ## Compatible maintenance boundaries
+
+InfinitePay's implemented HMAC/subscription payload does not match the reviewed
+[checkout callback contract](https://www.infinitepay.io/checkout-documentacao).
+The live verifier and handler are now explicitly unsupported pending reviewed
+authentication and payment lookup bound to merchant, order and amount. Offline
+fixtures still require an explicit mock secret. This contains the unsupported
+framework path; it does not assert that the provider lacks other API products.
+
+Additional Lemon Squeezy review found that the legacy parser accepted missing
+event/object kinds, serialized absent customer/variant IDs as `null`, and mapped
+`on_trial` to `Unpaid`. A dedicated subscription parser now validates lifecycle,
+store/mode/identity and expiry, separately from invoice events. Three real-HMAC
+regressions failed against the old code and pass after the correction. Provider
+[object](https://docs.lemonsqueezy.com/api/subscriptions/the-subscription-object)
+and [event](https://docs.lemonsqueezy.com/help/webhooks/event-types) contracts
+define the boundary; this is not a live-account test or durable reconciliation.
 
 - Preserve source compatibility in v12.1: additive constructors, builders,
   extension contracts and explicit deprecations. A mandatory trait method,

@@ -84,15 +84,30 @@ mod pages;
 use models::billing_customer::BillingCustomer;
 use models::subscription::Subscription;
 use rullst::capital::{{SubscriptionStatus, WebhookEvent}};
-use rullst::server::{{Extension, Form, StatusCode}};
+use rullst::server::{{Body, Extension, Form, Request, StatusCode}};
+use rullst::web::axum::Router;
+use tower::ServiceExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     use controllers::billing_controller::{{BillingIdentity, CheckoutForm}};
     let identity = BillingIdentity {{ owner_id: 7, email: "owner@example.com".into() }};
-    if std::env::var_os("BILLING_CONTRACT_LIVE_PORTAL").is_some() {{
-        // Must reject the unsupported live operation before any database or HTTP I/O.
-        let response = controllers::billing_controller::portal_redirect(Extension(identity)).await;
+    if std::env::var_os("BILLING_CONTRACT_REAL_CREDENTIALS").is_some() {{
+        // No pool is initialized: all real/mixed paths must stop before SQL/HTTP.
+        let response = controllers::billing_controller::portal_redirect(Extension(identity.clone())).await;
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let response = controllers::billing_controller::checkout_redirect(
+            Extension(identity), Form(CheckoutForm {{ plan: "price_pro".into() }})
+        ).await;
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let event = WebhookEvent {{ subscription_id: "sub_fixture".into(), customer_id: "cus_fixture".into(),
+            customer_email: "owner@example.com".into(), plan_id: "price_pro".into(),
+            status: SubscriptionStatus::Active, ends_at: None }};
+        let response = controllers::billing_controller::webhook_handler(Extension(event)).await;
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let router = Router::new().route("/webhook", rullst::routing::post(|| async {{ StatusCode::IM_A_TEAPOT }}))
+            .route_layer(rullst::server::from_fn(controllers::billing_controller::verify_billing_webhook));
+        let response = router.oneshot(Request::builder().method("POST").uri("/webhook").body(Body::empty())?).await?;
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
         return Ok(());
     }}
@@ -234,6 +249,16 @@ fn verify_backend(database: &str) {
 
     let manifest = fs::read_to_string(project.join("Cargo.toml")).expect("generated manifest");
     let parsed: toml::Value = toml::from_str(&manifest).expect("valid generated manifest");
+    assert!(parsed["dependencies"].get("tower").is_none());
+    fs::write(
+        project.join("Cargo.toml"),
+        manifest.replacen(
+            "[dependencies]",
+            "[dependencies]\ntower = { version = \"0.5\", features = [\"util\"] }",
+            1,
+        ),
+    )
+    .expect("install route-test dependency");
     let package_name = parsed["package"]["name"]
         .as_str()
         .expect("generated package name")
@@ -298,6 +323,7 @@ fn verify_backend(database: &str) {
             .env("RULLST_ENV", "development")
             .env("BILLING_PROVIDER", "stripe")
             .env("BILLING_API_KEY", "mock_key")
+            .env("BILLING_WEBHOOK_SECRET", "mock_webhook")
             .env("BILLING_ALLOWED_PLAN_IDS", "price_pro")
             .env(
                 "BILLING_REDIRECT_URL",
@@ -309,20 +335,34 @@ fn verify_backend(database: &str) {
     );
     assert_success(&runtime, "generated billing runtime contract");
 
-    let live_portal = run(
-        Command::new("cargo")
-            .current_dir(&project)
-            .args(["run", "--quiet", "--bin", "billing_contract"])
-            .env("RULLST_ENV", "development")
-            .env("BILLING_PROVIDER", "stripe")
-            .env("BILLING_API_KEY", "fixture_invalid_live_credential")
-            .env("BILLING_ALLOWED_PLAN_IDS", "price_pro")
-            .env("BILLING_CONTRACT_LIVE_PORTAL", "1")
-            .env("CARGO_TARGET_DIR", target_directory(workspace))
-            .env("CARGO_NET_OFFLINE", "true"),
-        "reject unsupported generated live portal",
-    );
-    assert_success(&live_portal, "unsupported generated live portal");
+    for provider in ["stripe", "lemonsqueezy"] {
+        for (api_key, webhook_secret) in [
+            ("fixture_invalid_live_credential", "mock_webhook"),
+            ("mock_key", "fixture_real_webhook_secret_0123456789"),
+            (
+                "fixture_invalid_live_credential",
+                "fixture_real_webhook_secret_0123456789",
+            ),
+            ("MOCK_uppercase_is_not_a_provider_mock", "mock_webhook"),
+        ] {
+            let real_billing = run(
+                Command::new("cargo")
+                    .current_dir(&project)
+                    .args(["run", "--quiet", "--bin", "billing_contract"])
+                    .env("RULLST_ENV", "development")
+                    .env("BILLING_PROVIDER", provider)
+                    .env("BILLING_STORE_ID", "42")
+                    .env("BILLING_API_KEY", api_key)
+                    .env("BILLING_WEBHOOK_SECRET", webhook_secret)
+                    .env("BILLING_ALLOWED_PLAN_IDS", "price_pro")
+                    .env("BILLING_CONTRACT_REAL_CREDENTIALS", "1")
+                    .env("CARGO_TARGET_DIR", target_directory(workspace))
+                    .env("CARGO_NET_OFFLINE", "true"),
+                "reject real generated billing before I/O",
+            );
+            assert_success(&real_billing, "real generated billing containment");
+        }
+    }
 
     let controller_before = controller;
     let duplicate = run(

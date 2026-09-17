@@ -18,6 +18,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Require Razorpay subscription events to match their entity state and carry
   subscription/customer/plan IDs; stop treating authentication or standalone
   payments as active subscriptions. Handle charged, resumed and paused events.
+- Require Lemon Squeezy subscription objects, lifecycle event/state agreement,
+  numeric IDs, configured store binding and consistent test-mode fields.
+  Correct `on_trial` normalization, preserve cancellation expiry, and reject
+  invoice/payment events or malformed data as subscription snapshots.
+- Reject InfinitePay's unreviewed live body-only webhook contract explicitly.
+  Preserve explicit offline fixtures; require authenticated payment lookup and
+  merchant/order/amount binding before enabling real callback processing.
 - Read Stripe Basil billing periods from the subscription item, retaining the
   legacy period fallback. Require supported subscription events, bounded IDs,
   one complete price item and valid subscription states; reject ambiguous
@@ -40,6 +47,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   serialize reads with domain updates and handle invoice settlement separately.
 - Generate HTTP 303 checkout redirects, an explicit unavailable live portal,
   retained application lockfiles, locked Docker builds and supported MSVC flags.
+- Restrict newly generated SaaS/`make:billing` routes to local fixtures until
+  scoped customer/attempt identity and atomic inbox processing are integrated.
+  Real or mixed credentials return HTTP 503 before provider calls, replay claims
+  or database changes. Demo pricing states that real payments are unavailable;
+  upgrading a crate does not rewrite existing application controllers.
 - Share SaaS billing models with `make:billing`, replacing the subscription
   lookup's hardcoded PostgreSQL placeholder with the ORM's parameterized query
   builder. Keep the SaaS Nexus metadata while avoiding backend-specific drift.

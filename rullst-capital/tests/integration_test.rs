@@ -94,7 +94,7 @@ async fn test_all_12_payment_and_payout_providers() {
     assert!(ls.report_usage("sub_ls", "seats", 5).await.is_ok());
     assert!(ls.apply_coupon("sub_ls", "PROMO").await.is_ok());
     assert!(ls.extend_trial("sub_ls", 1798761600).await.is_ok());
-    let ls_payload = br#"{"meta":{"event_name":"subscription_created"},"data":{"id":"sub_ls_1","attributes":{"user_email":"bob@ls.com","variant_id":999,"status":"active","renews_at":"2026-12-31T00:00:00Z"}}}"#;
+    let ls_payload = br#"{"meta":{"event_name":"subscription_created"},"data":{"type":"subscriptions","id":"1","attributes":{"customer_id":42,"store_id":42,"test_mode":true,"user_email":"bob@ls.com","variant_id":999,"status":"active","renews_at":"2026-12-31T00:00:00Z"}}}"#;
     assert!(ls.handle_webhook(ls_payload, &headers).is_err());
 
     // 3. InfinitePay

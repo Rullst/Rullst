@@ -16,6 +16,14 @@ overwrite an earlier billing scaffold. The generated runtime supports the
 selected `stripe` or `lemonsqueezy` adapter. It deliberately does not imply
 support for every Capital adapter or mount application routes without review.
 
+**Unreleased 12.1 safety boundary:** newly generated billing is a local
+development fixture. Checkout, portal and webhook paths return HTTP 503 with
+real or mixed credentials, including provider sandbox keys. Durable customer
+and attempt identity, account/mode scope and atomic inbox processing must be
+integrated before enabling real calls. There is no environment flag to bypass
+this guard. Existing controllers are application-owned and need a reviewed
+migration; changing a dependency version does not replace them.
+
 Set `BILLING_ALLOWED_PLAN_IDS` to the exact comma-separated provider price or
 variant IDs the server may accept. Production startup rejects a missing
 allowlist; a query-string plan outside it is denied before creating a billing
@@ -27,6 +35,11 @@ documented deterministic offline path; they are not accepted by the
 production-safe webhook middleware.
 
 ## 2. Create a checkout session
+
+This legacy adapter example explains the API; it is not the generated
+production flow. Prefer the bound Stripe request and inbox APIs described in
+the [Capital README](https://github.com/Rullst/Rullst/tree/main/rullst-capital)
+when implementing durable ownership and reconciliation.
 
 ```rust,no_run
 use rullst_capital::{init_provider, provider, StripeProvider};

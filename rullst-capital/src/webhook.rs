@@ -637,9 +637,12 @@ mod tests {
         let lemon_payload = serde_json::to_vec(&serde_json::json!({
             "meta": { "event_name": "subscription_updated" },
             "data": {
-                "id": "sub_lemon",
+                "type": "subscriptions",
+                "id": "123",
                 "attributes": {
                     "customer_id": 42,
+                    "store_id": 42,
+                    "test_mode": true,
                     "user_email": "lemon@example.com",
                     "variant_id": 7,
                     "status": "active"
@@ -658,7 +661,7 @@ mod tests {
             verify_payload(&lemon, &lemon_payload, &lemon_headers, &lemon_store, true)
                 .await
                 .expect("local mock signature must produce a normalized event");
-        assert_eq!(lemon_event.subscription_id, "sub_lemon");
+        assert_eq!(lemon_event.subscription_id, "123");
 
         assert!(matches!(
             verify_payload(

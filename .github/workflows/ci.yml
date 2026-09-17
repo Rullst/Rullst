@@ -594,6 +594,63 @@ jobs:
         # If any crate uses a stabilized API newer than 1.96.0, this will fail.
         run: cargo check --workspace --all-features
 
+  packaged-distribution:
+    name: Packaged distribution and installed CLI
+    # Exercise the actual archives before a tag or any registry publication.
+    # Diagnostic subsets and automatic development runs do not claim this proof.
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'all' && inputs.shard == 'all'
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      RULLST_DISABLE_UPDATE_CHECK: "true"
+    steps:
+      - name: Checkout source without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
+          cache: false
+
+      - name: Validate versions and topological package inventory
+        id: inventory
+        run: |
+          cargo metadata --locked --no-deps --format-version 1 > candidate-metadata.json
+          candidate_version="$(jq -er '.packages[] | select(.name == "cargo-rullst") | .version' candidate-metadata.json)"
+          jq --arg version "$candidate_version" \
+            --slurpfile release_order .github/release-order.json \
+            -f .github/release-preflight.jq candidate-metadata.json
+          printf 'version=%s\n' "$candidate_version" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch locked dependencies for the isolated offline consumer
+        run: cargo fetch --locked --target x86_64-unknown-linux-gnu
+
+      - name: Package and audit candidate archives without publication
+        env:
+          CANDIDATE_VERSION: ${{ steps.inventory.outputs.version }}
+        run: |
+          cargo package --workspace --exclude rullst-blog-example \
+            --all-features --locked --no-verify
+          bash .github/audit-packages.sh "$CANDIDATE_VERSION"
+
+      - name: Compile archive-only consumer and test the isolated installed CLI
+        env:
+          CANDIDATE_VERSION: ${{ steps.inventory.outputs.version }}
+        run: bash .github/test-packaged-distribution.sh "$CANDIDATE_VERSION"
+
   quality-scorecard:
     name: Evidence quality scorecard (observational)
     # The scorecard's verification dimension requires the full OS matrix. A

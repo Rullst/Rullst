@@ -916,6 +916,12 @@ instances must persist/claim the key and reconcile payment state durably before
 sending.
 
 ### 6.3. Webhook Signature Verification
+* InfinitePay's legacy body-only verifier has no reviewed authentication and
+  authoritative payment-lookup contract for the documented checkout callback.
+  Real-secret verification and normalization return `UnsupportedOperation`;
+  explicit mock-secret fixtures remain offline-only. A local HMAC fixture is
+  not evidence that the provider signs that protocol. Enabling live processing
+  requires order/merchant/amount binding and provider reconciliation first.
 * The additive `StripeProvider::verify_subscription_event` returns an immutable
   `StripeSubscriptionEvent` after the existing signature/freshness check and
   bounded subscription normalization. It retains event ID/type/API version,
@@ -945,6 +951,16 @@ sending.
   Email is optional contact data; durable owner binding, event ordering and
   reconciliation remain application responsibilities. Lifecycle activation is
   not a receipt proving settlement of an invoice.
+* Lemon Squeezy normalization accepts only explicit subscription lifecycle
+  events containing a `subscriptions` object, positive numeric identities and
+  a valid provider state. It binds the store when `with_store_id` is configured
+  and rejects conflicting test-mode fields. `on_trial` maps to `Trialing`;
+  `cancelled` and `expired` map to `Canceled` with a required valid `ends_at`.
+  Cancellation retains its grace-period timestamp; host policy decides access.
+  Invoice/payment/refund events require separate handling and cannot masquerade
+  as subscription snapshots. This legacy event does not retain account/mode or
+  causal identity, so durable owner/scope binding and reconciliation remain
+  application responsibilities.
 * The Axum and opt-in Actix middleware adapters call one canonical bounded
   verifier before dispatch. Built-in provider adapters use provider-appropriate
   cryptographic verification; equality checks for derived signatures are
@@ -986,6 +1002,12 @@ sending.
   This only establishes atomicity for the two domain rows: the generated
   email lookup, provider namespace, event ordering and middleware preclaim
   still require replacement by the durable identity/inbox flow above.
+  Until that integration is implemented, newly generated checkout, portal and
+  webhook paths are restricted to development fixtures with empty/`mock_*`
+  credentials. Any real API or webhook credential returns HTTP 503 before
+  provider dispatch, replay claims or domain writes, including mixed real/mock
+  configuration. Pricing pages disclose the demonstration boundary. Existing
+  application-owned code is not rewritten by updating the framework package.
 
 ### 6.4. NFS-e Nacional Specification (`FiscalEngine`)
 * 🟢 **`[Implemented / Bounded]` DPS 1.01 Builder:** `NfseDpsV101` models an ordinary domestic-service subset, validates CPF/CNPJ/IBGE/identifier/text limits, keeps BRL values in integer cents and ISS rates in basis points, and emits an unsigned DPS in the official namespace. The legacy floating-point preview remains compatibility-only.

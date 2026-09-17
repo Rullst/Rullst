@@ -17,6 +17,7 @@
         "ORM strict-mysql",
         "ORM strict-postgres",
         "ORM strict-sqlite",
+        "Packaged distribution and installed CLI",
         "Public feature boundaries (0/4)",
         "Public feature boundaries (1/4)",
         "Public feature boundaries (2/4)",

@@ -183,7 +183,12 @@ fn virtual_workspace_updates_only_cargo_metadata_members() {
 
 #[test]
 fn successful_upgrade_changes_the_manifest_and_keeps_a_review_report() {
-    let fixture = Fixture::new("success", ">=5, <13", "12.0.0", "fn main() {}\n");
+    let fixture = Fixture::new(
+        "success",
+        ">=5, <13",
+        env!("CARGO_PKG_VERSION"),
+        "fn main() {}\n",
+    );
     let original_manifest =
         std::fs::read_to_string(fixture.app().join("Cargo.toml")).expect("manifest before");
 

@@ -36,11 +36,18 @@ provider sandbox.
 
 ## ✨ Supported Providers
 
+The unreleased 12.1 SaaS/`make:billing` scaffold is restricted to local
+development fixtures. Real or mixed API/webhook credentials, including sandbox
+keys, return HTTP 503 before provider requests, replay claims or SQL writes.
+Durable scoped ownership, attempts and atomic inbox processing must replace
+its legacy email-based flow before real calls can be enabled. Updating Capital
+does not rewrite existing controllers; those need an application-owned migration.
+
 | Provider | Adapter category | Current boundary |
 | :--- | :--- | :--- |
 | **Stripe** | Billing | Checkout, bounded immediate Payment Intent charge, and documented webhook foundations; verify required live methods. |
 | **Lemon Squeezy** | Billing | Checkout requires explicit `with_store_id`; store and variant response identities are checked. |
-| **InfinitePay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
+| **InfinitePay** | Billing | Offline fixtures; live plan-only checkout and body-only callback verification are unsupported. |
 | **Polar** | Billing | Signed-webhook foundation; legacy live checkout is unsupported. |
 | **Paddle** | Billing | Signed-webhook foundation; legacy live checkout is unsupported. |
 | **Razorpay** | Billing | Adapter and signed-webhook foundation. |
@@ -78,6 +85,14 @@ before enabling these live checkout paths.
 `adapter` means a bounded request implementation exists, not that this audit
 validated acceptance or every response schema against a live provider account.
 Offline fixtures are deliberately excluded from the live-method matrix.
+
+InfinitePay's [checkout callback and payment lookup](https://www.infinitepay.io/checkout-documentacao)
+do not establish the HMAC/subscription contract assumed by the old adapter.
+The live body-only verifier and handler now return `UnsupportedOperation`;
+explicit mock-secret verification remains available for offline fixtures.
+Enabling a real callback needs reviewed authentication, merchant/order/amount
+binding and authoritative reconciliation. A locally signed fixture does not
+prove that the provider emits that protocol.
 
 The unreleased v12.1 maintenance rejects legacy Paddle and Polar checkout before
 network dispatch: their current provider contracts cannot be represented by the
@@ -279,6 +294,17 @@ make HTTP effects atomic. Stored event/scope/mutation hashes minimize identifier
 they are not encryption or a complete billing audit history.
 
 Missing or malformed status no longer implies a paid/active subscription.
+Lemon Squeezy accepts only its subscription lifecycle kinds and `subscriptions`
+objects with positive numeric IDs, valid states and consistent test-mode fields.
+An explicitly configured store must match. `on_trial` becomes `Trialing`;
+cancelled/expired snapshots retain a required valid end time as `Canceled`.
+Grace-period access remains application policy. Invoice/payment/refund events
+need separate processing; they are not subscription snapshots. See the provider's
+[subscription object](https://docs.lemonsqueezy.com/api/subscriptions/the-subscription-object)
+and [event types](https://docs.lemonsqueezy.com/help/webhooks/event-types).
+The legacy normalized event does not retain the provider mode or durable event
+identity; validated parsing alone does not complete owner binding or an inbox.
+
 Unsupported Razorpay and Coinbase event kinds fail closed; Coinbase event
 names are matched exactly, not by substring. This does not establish every
 provider payload schema or an application-specific entitlement/tenant policy.
