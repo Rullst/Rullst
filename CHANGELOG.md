@@ -18,8 +18,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Require Razorpay subscription events to match their entity state and carry
   subscription/customer/plan IDs; stop treating authentication or standalone
   payments as active subscriptions. Handle charged, resumed and paused events.
+- Add customer-bound Stripe subscription checkout with explicit retry identity,
+  immutable request digests, response/line-item binding and distinct offline
+  receipts. Preserve legitimate Stripe hosted-URL fragments. Durable customer
+  ownership, attempts and generated webhook integration remain separate work.
 - Generate HTTP 303 checkout redirects, an explicit unavailable live portal,
   retained application lockfiles, locked Docker builds and supported MSVC flags.
+- Commit generated billing customer/subscription changes atomically on SQLx
+  and Turso, with conditional customer binding and rollback/retry fixtures.
+  Durable webhook inbox processing remains a separate release requirement.
 - Share AI configuration resolution between Nexus and the client, including
   explicitly configured Groq and OpenAI-compatible models.
 

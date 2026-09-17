@@ -108,7 +108,11 @@ pub(crate) fn validate_checkout_url(
     provider: &'static str,
     value: &str,
 ) -> Result<String, CapitalError> {
-    let parsed = if value.len() <= MAX_PROVIDER_URL_BYTES {
+    let parsed = if value.len() <= MAX_PROVIDER_URL_BYTES
+        && !value
+            .chars()
+            .any(|character| character.is_whitespace() || character.is_control())
+    {
         reqwest::Url::parse(value).ok()
     } else {
         None
@@ -118,7 +122,9 @@ pub(crate) fn validate_checkout_url(
             && url.host_str().is_some()
             && url.username().is_empty()
             && url.password().is_none()
-            && url.fragment().is_none()
+            // Stripe's hosted checkout URL contains an opaque client fragment.
+            // Preserve it instead of rejecting or stripping provider state.
+            && (provider == "stripe" || url.fragment().is_none())
     });
     if !valid {
         return Err(ProviderFailure::contract_mismatch(provider, "create checkout").into());
@@ -153,6 +159,12 @@ mod tests {
 
     #[test]
     fn checkout_urls_require_bounded_credential_free_https() {
+        let stripe_url = "https://checkout.stripe.com/c/pay/cs_test_fixture#opaque-state";
+        assert_eq!(
+            validate_checkout_url("stripe", stripe_url).unwrap(),
+            stripe_url
+        );
+        assert!(validate_checkout_url("paddle", stripe_url).is_err());
         assert_eq!(
             validate_checkout_url("stripe", "https://checkout.example/session?id=1")
                 .expect("valid checkout URL"),
@@ -161,7 +173,7 @@ mod tests {
         for invalid in [
             "http://checkout.example/session",
             "https://user:pass@checkout.example/session",
-            "https://checkout.example/session#secret",
+            "\nhttps://checkout.example/session",
             "javascript:alert(1)",
             "/relative",
         ] {

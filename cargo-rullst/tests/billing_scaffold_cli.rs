@@ -64,6 +64,13 @@ fn contract_source(database: &str) -> String {
     } else {
         r#"rullst::orm::Orm::init("sqlite://db.sqlite?mode=rwc").await?;"#
     };
+    let execute_sql = if database == "turso" {
+        r#"rullst::orm::polyglot::TursoOrm::store()?.execute(
+            rullst::orm::polyglot::TursoStatement::new(statement, vec![])?
+        ).await?;"#
+    } else {
+        r#"rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement)).execute(rullst::db::Orm::pool()?).await?;"#
+    };
     format!(
         r#"#![allow(dead_code)]
 
@@ -155,6 +162,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         .await?
         .ok_or("other customer disappeared")?;
     assert!(other.customer_id.is_none());
+
+    // Abort either statement in the real generated transaction. Both rows must
+    // remain unchanged, and retrying after the failure must remain possible.
+    for (index, table, operation) in [(0, "billing_customers", "UPDATE"), (1, "subscriptions", "INSERT")] {{
+        let email = format!("rollback{{index}}@example.com");
+        let owner_id = 20 + index;
+        let mut customer = BillingCustomer {{
+            id: 0, workspace_id: owner_id, email: email.clone(), customer_id: None,
+            created_at: String::new(), updated_at: String::new(),
+        }};
+        customer.save().await?;
+        execute_sql(&format!("CREATE TRIGGER reject_billing_update BEFORE {{operation}} ON {{table}} BEGIN SELECT RAISE(ABORT, 'injected billing failure'); END")).await?;
+        let event = WebhookEvent {{
+            subscription_id: format!("sub_rollback{{index}}"), customer_id: format!("cus_rollback{{index}}"),
+            customer_email: email.clone(), plan_id: "price_pro".into(),
+            status: SubscriptionStatus::Active, ends_at: None,
+        }};
+        let failed = controllers::billing_controller::webhook_handler(Extension(event.clone())).await;
+        assert_eq!(failed.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let unchanged = BillingCustomer::find_by_email(&email).await?.ok_or("customer disappeared")?;
+        assert!(unchanged.customer_id.is_none(), "customer binding survived rollback");
+        assert!(Subscription::find_by_subscription_id(&event.subscription_id).await?.is_none(), "subscription survived rollback");
+        execute_sql("DROP TRIGGER reject_billing_update").await?;
+        let retried = controllers::billing_controller::webhook_handler(Extension(event)).await;
+        assert_eq!(retried.status(), StatusCode::OK);
+    }}
+    Ok(())
+}}
+
+async fn execute_sql(statement: &str) -> Result<(), Box<dyn std::error::Error>> {{
+    {execute_sql}
     Ok(())
 }}
 "#

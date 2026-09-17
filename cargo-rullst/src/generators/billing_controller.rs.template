@@ -376,20 +376,18 @@ pub async fn webhook_handler(Extension(event): Extension<WebhookEvent>) -> Respo
 
     if customer.customer_id.is_none() {
         customer.customer_id = Some(event.customer_id.clone());
-        if let Err(error) = customer.save().await {
-            eprintln!("Billing customer binding failed: {error}");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
     }
 
     subscription.customer_id = event.customer_id;
     subscription.plan_id = event.plan_id;
     subscription.status = event.status.as_str().to_string();
     subscription.ends_at = event.ends_at;
-    if let Err(error) = subscription.save().await {
-        eprintln!("Subscription persistence failed: {error}");
+    if let Err(error) = persist_billing_update(&customer, &subscription).await {
+        eprintln!("Billing transaction failed: {error}");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
 
     StatusCode::OK.into_response()
 }
+
+__PERSIST_BILLING_UPDATE__

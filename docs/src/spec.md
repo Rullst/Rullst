@@ -724,6 +724,26 @@ does not model raw payment credentials, prove that a stored method has a valid
 mandate, persist idempotency, grant an entitlement, reconcile webhooks or imply
 direct-charge parity across adapters.
 
+#### Customer-bound Stripe Subscription Checkout
+
+The additive `StripeCheckoutRequest` binds an existing provider customer, one
+server-owned recurring price, an opaque local owner reference, explicit HTTPS
+success/cancel URLs and an application-persisted idempotency key. The dedicated
+Stripe method sends that key and reference with the customer ID; it does not
+create or discover a customer by email. A bounded response must match the
+customer, owner reference, requested price/quantity, subscription mode and
+redirects before a checkout session is returned. Request/receipt debug output
+omits identifiers, URLs and keys. Empty/`mock_*` credentials produce an explicit
+deterministic mock, never payment evidence.
+
+The application must commit customer/tenant ownership and an immutable attempt
+with its request digest before dispatch, retain account/test-live namespaces,
+and reconcile unknown outcomes. Provider idempotency has a finite retention
+window; repeating an expired key is not a durable deduplication guarantee.
+Session creation and return navigation never grant paid access. The legacy
+email-based trait method remains source-compatible; generated persistence and
+atomic webhook processing are separate maintenance work.
+
 #### Provider-Specific Metered Usage
 
 `MeteredBillingProvider` deliberately uses an associated request type rather
@@ -843,6 +863,13 @@ sending.
   `check_and_record_event_key_with_transaction` through the same relational
   transaction as the mutation. Cross-system effects still require an outbox,
   idempotent consumers, and reconciliation.
+* Generated SQLx and Turso billing handlers commit the customer binding and
+  subscription row in one transaction. Conditional writes refuse to replace
+  an existing customer binding. Materialized SQLite and offline Turso tests
+  inject failures in both tables, require rollback, and retry successfully.
+  This only establishes atomicity for the two domain rows: the generated
+  email lookup, provider namespace, event ordering and middleware preclaim
+  still require replacement by the durable identity/inbox flow above.
 
 ### 6.4. NFS-e Nacional Specification (`FiscalEngine`)
 * 🟢 **`[Implemented / Bounded]` DPS 1.01 Builder:** `NfseDpsV101` models an ordinary domestic-service subset, validates CPF/CNPJ/IBGE/identifier/text limits, keeps BRL values in integer cents and ISS rates in basis points, and emits an unsigned DPS in the official namespace. The legacy floating-point preview remains compatibility-only.

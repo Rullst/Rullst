@@ -92,6 +92,48 @@ The plan argument must be a numeric variant ID belonging to that store. The
 generated billing application reads `BILLING_STORE_ID`; missing configuration
 fails before HTTP dispatch. Existing applications must adopt this setting.
 
+### Customer-bound Stripe subscription checkout (12.1 working source)
+
+`StripeProvider::create_subscription_checkout` accepts an existing Stripe
+customer ID and an immutable `StripeCheckoutRequest`. Persist the customer's
+authenticated owner/tenant binding and the attempt key/digest before dispatch:
+
+```rust,no_run
+use rullst_capital::{StripeCheckoutRequest, StripeProvider, StripeCheckoutStatus};
+
+async fn checkout() -> Result<(), rullst_capital::CapitalError> {
+    let provider = StripeProvider::new("mock_key", "mock_webhook");
+    let attempt = StripeCheckoutRequest::new(
+        "cus_existing", "price_monthly", "owner_opaque", "attempt_unique",
+        "https://app.example/billing/success", "https://app.example/billing/cancel",
+    )?;
+    let session = provider.create_subscription_checkout(&attempt).await?;
+    assert_eq!(session.status(), StripeCheckoutStatus::Mock);
+    // Store the session ID and compare its input digest with the persisted attempt.
+    // A Created session or a browser redirect never proves payment.
+    Ok(())
+}
+```
+
+The operation pins Stripe API `2025-03-31.basil`, sends the customer and opaque
+reference, copies the reference into subscription metadata and forwards
+`Idempotency-Key`. Expanded line items must match the requested recurring price
+and quantity. Response customer/reference/redirects/mode must also match before
+returning an open session. Stripe's hosted URL is preserved, including its
+documented opaque fragment. Request/receipt debug output omits identifiers,
+URLs and keys; mocks have a distinct status and no provider test/live mode.
+
+Account/test-live namespaces, customer creation, durable attempt persistence,
+webhook owner binding and atomic domain mutation remain application/integration
+work. Do not retry an old key indefinitely: Stripe may discard idempotency
+records after its retention period. An unknown outcome requires reconciliation,
+not a newly generated attempt key. See Stripe's
+[checkout contract](https://docs.stripe.com/api/checkout/sessions/create?api-version=2025-03-31.basil)
+and [idempotency semantics](https://docs.stripe.com/api/idempotent_requests).
+The legacy email-based trait method remains available for source compatibility;
+existing and newly generated applications are not automatically migrated by
+this additive operation.
+
 ### Provider verification levels
 
 Treat every provider and operation as a separate conformance target. Evidence

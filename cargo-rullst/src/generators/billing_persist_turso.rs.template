@@ -1,0 +1,59 @@
+/// Commits both billing rows atomically; incompatible ownership predicates change neither.
+/// A durable event inbox and event-order reconciliation remain separate requirements.
+async fn persist_billing_update(
+    customer: &BillingCustomer,
+    subscription: &Subscription,
+) -> Result<(), rullst::orm::polyglot::PolyglotError> {
+    use rullst::orm::polyglot::{PolyglotError, TursoOrm, TursoStatement, TursoValue};
+    if customer.id <= 0 || customer.__FOREIGN_KEY__ != subscription.__FOREIGN_KEY__
+        || customer.customer_id.as_deref() != Some(subscription.customer_id.as_str())
+    {
+        return Err(PolyglotError::InvalidConfiguration {
+            backend: "billing", reason: "inconsistent billing ownership",
+        });
+    }
+    let statements = vec![
+        TursoStatement::new(
+            "INSERT INTO subscriptions (__FOREIGN_KEY__, customer_id, subscription_id, plan_id, status, ends_at, created_at, updated_at)
+             SELECT ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now')
+             FROM billing_customers AS customer
+             WHERE customer.id = ? AND customer.__FOREIGN_KEY__ = ?
+               AND (customer.customer_id IS NULL OR customer.customer_id = ?)
+             ON CONFLICT(subscription_id) DO UPDATE SET
+               plan_id = excluded.plan_id, status = excluded.status,
+               ends_at = excluded.ends_at, updated_at = excluded.updated_at
+             WHERE subscriptions.__FOREIGN_KEY__ = excluded.__FOREIGN_KEY__
+               AND subscriptions.customer_id = excluded.customer_id",
+            vec![
+                TursoValue::Integer(subscription.__FOREIGN_KEY__),
+                TursoValue::Text(subscription.customer_id.clone()),
+                TursoValue::Text(subscription.subscription_id.clone()),
+                TursoValue::Text(subscription.plan_id.clone()),
+                TursoValue::Text(subscription.status.clone()),
+                subscription.ends_at.map(TursoValue::Integer).unwrap_or(TursoValue::Null),
+                TursoValue::Integer(customer.id), TursoValue::Integer(customer.__FOREIGN_KEY__),
+                TursoValue::Text(subscription.customer_id.clone()),
+            ],
+        )?,
+        TursoStatement::new(
+            "UPDATE billing_customers SET customer_id = ?, updated_at = datetime('now')
+             WHERE id = ? AND __FOREIGN_KEY__ = ? AND customer_id IS NULL
+               AND EXISTS (SELECT 1 FROM subscriptions WHERE subscription_id = ?
+                 AND __FOREIGN_KEY__ = ? AND customer_id = ?)",
+            vec![
+                TursoValue::Text(subscription.customer_id.clone()),
+                TursoValue::Integer(customer.id), TursoValue::Integer(customer.__FOREIGN_KEY__),
+                TursoValue::Text(subscription.subscription_id.clone()),
+                TursoValue::Integer(customer.__FOREIGN_KEY__),
+                TursoValue::Text(subscription.customer_id.clone()),
+            ],
+        )?,
+    ];
+    let affected = TursoOrm::store()?.transaction(statements).await?;
+    if affected.first() != Some(&1) {
+        return Err(PolyglotError::InvalidConfiguration {
+            backend: "billing", reason: "billing identity changed before commit",
+        });
+    }
+    Ok(())
+}

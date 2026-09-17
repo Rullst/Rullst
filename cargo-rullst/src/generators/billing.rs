@@ -18,6 +18,8 @@ const SQLX_CUSTOMER_MODEL: &str = include_str!("billing_customer_sqlx.rs.templat
 const TURSO_CUSTOMER_MODEL: &str = include_str!("billing_customer_turso.rs.template");
 const SQLX_MIGRATION: &str = include_str!("billing_migration_sqlx.rs.template");
 const TURSO_MIGRATION: &str = include_str!("billing_migration_turso.rs.template");
+const SQLX_PERSIST: &str = include_str!("billing_persist_sqlx.rs.template");
+const TURSO_PERSIST: &str = include_str!("billing_persist_turso.rs.template");
 
 const FIXED_OUTPUTS: [&str; 4] = [
     "src/models/subscription.rs",
@@ -32,6 +34,13 @@ pub(crate) fn render_billing_controller(foreign_key: &str, backend: ProjectOrmBa
         ProjectOrmBackend::Turso => "i64",
     };
     BILLING_CONTROLLER_TEMPLATE
+        .replace(
+            "__PERSIST_BILLING_UPDATE__",
+            match backend {
+                ProjectOrmBackend::Sqlx => SQLX_PERSIST,
+                ProjectOrmBackend::Turso => TURSO_PERSIST,
+            },
+        )
         .replace("__FOREIGN_KEY__", foreign_key)
         .replace("__OWNER_ID_TYPE__", owner_id_type)
 }

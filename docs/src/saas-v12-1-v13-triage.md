@@ -43,9 +43,17 @@ means the complete release or a live-provider journey has passed:
 - `efb9518b`: Razorpay lifecycle normalization and signed-event negatives;
   127 default-feature Capital tests and strict Clippy for all targets passed.
 - Materialized billing tests pass for SQLite and Turso, including 303 redirects,
-  cross-owner denial and unavailable live portals before database access.
+  cross-owner denial and unavailable live portals before database access. The
+  customer/subscription pair now commits atomically; fault injection in either
+  table proves rollback and a successful handler retry on both backends.
   Stable provider customer binding, checkout idempotency, provider namespaces
   and atomic inbox/domain state still need implementation and acceptance.
+- Additive `StripeCheckoutRequest`/`create_subscription_checkout` binds an
+  existing customer, local reference, recurring price, redirects and retry key;
+  validates the returned session and line item; and distinguishes local mocks.
+  All 132 default-feature Capital tests and strict all-target Clippy passed.
+  This is protocol/local evidence; the generated checkout still needs durable
+  customer provisioning, attempt persistence and the verified event flow.
 
 All eleven v12 adapters are in scope: Stripe, Lemon Squeezy, InfinitePay,
 Polar, Paddle, Razorpay, Mercado Pago, Coinbase Commerce, PicPay, Alipay and Wise.
