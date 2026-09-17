@@ -855,6 +855,19 @@ instances must persist/claim the key and reconcile payment state durably before
 sending.
 
 ### 6.3. Webhook Signature Verification
+* The additive `StripeProvider::verify_subscription_event` returns an immutable
+  `StripeSubscriptionEvent` after the existing signature/freshness check and
+  bounded subscription normalization. It retains event ID/type/API version,
+  creation time, matching event/subscription test-live mode, optional connected
+  account and opaque local owner reference, plus the original provider status.
+  A versioned mutation digest excludes contact email, delivery signature and
+  unrelated JSON fields; a separate digest binds the exact raw payload.
+  Neither digest is encryption or a persisted replay claim. Mock verification
+  is explicit in the result and `require_real` rejects it. The host must bind
+  the endpoint's provider account, mode, customer and owner, and atomically
+  commit the event claim with domain writes. Event creation time is not a
+  complete ordering/reconciliation protocol. The legacy `WebhookEvent` and
+  `BillingProvider` contracts are unchanged.
 * Stripe subscription normalization requires an explicit supported lifecycle
   event and subscription object with bounded subscription/customer/price IDs.
   Its single-price v12 contract rejects multiple or truncated item lists and

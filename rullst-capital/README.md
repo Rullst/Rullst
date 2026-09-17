@@ -190,6 +190,25 @@ Stripe's [billing-period API change](https://docs.stripe.com/changelog/basil/202
 Email is optional contact data. Signed subscription state alone still does not
 bind a local owner, order events, commit an inbox or prove invoice settlement.
 
+`StripeProvider::verify_subscription_event` supplies an additive immutable
+envelope for a caller-owned inbox transaction. It retains the signed event
+ID/type/API version, creation time, matching event/subscription test-live mode,
+optional connected account and `rullst_owner_reference`, and exact Stripe
+status alongside the legacy normalization. `require_real()` rejects explicit
+mock verification before production processing. The verifier does not claim
+the event, so a failed application transaction can retry verification.
+
+`mutation_digest()` binds the fields exposed for subscription processing and
+ignores contact email, signature timestamp and unrelated delivery/JSON fields.
+`payload_digest()` separately hashes the exact bytes. Persist the event ID and
+mutation digest under a namespace containing the configured account and mode,
+and commit with domain changes. Compare customer/owner references with saved
+application bindings. A changed mutation under the same event ID requires
+reconciliation; creation timestamps alone cannot order all updates. Neither
+digest encrypts data or supplies storage, authorization or settlement evidence.
+An absent connected-account field does not identify the platform account.
+See Stripe's [event envelope](https://docs.stripe.com/api/events/object).
+
 Missing or malformed status no longer implies a paid/active subscription.
 Unsupported Razorpay and Coinbase event kinds fail closed; Coinbase event
 names are matched exactly, not by substring. This does not establish every

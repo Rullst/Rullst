@@ -65,6 +65,12 @@ means the complete release or a live-provider journey has passed:
   contradictory periods fail. Three real-HMAC fixture tests cover those
   branches; 139 Capital tests with Actix enabled and strict all-target Clippy
   passed. Subscription state is still not invoice-settlement evidence.
+- The additive verified Stripe event envelope retains event/scope metadata,
+  the exact provider status and separate mutation/payload digests without a
+  pre-handler replay claim. Four signed-envelope contracts cover tampering,
+  scope/mode confusion, mutation identity, delivery variation and explicit mock
+  rejection. All 143 Capital tests with Actix and strict Clippy passed locally.
+  The generated handler has not yet switched to a durable atomic inbox.
 
 All eleven v12 adapters are in scope: Stripe, Lemon Squeezy, InfinitePay,
 Polar, Paddle, Razorpay, Mercado Pago, Coinbase Commerce, PicPay, Alipay and Wise.

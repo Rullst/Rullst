@@ -22,6 +22,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   legacy period fallback. Require supported subscription events, bounded IDs,
   one complete price item and valid subscription states; reject ambiguous
   periods and stop accepting payment-status aliases as subscription status.
+- Add an immutable verified Stripe subscription envelope retaining event/scope
+  metadata and separate mutation/payload digests, without consuming replay
+  admission before the caller's transaction. Production callers must reject
+  mock mode and bind account/customer/owner before committing an inbox claim.
 - Add customer-bound Stripe subscription checkout with explicit retry identity,
   immutable request digests, response/line-item binding and distinct offline
   receipts. Preserve legitimate Stripe hosted-URL fragments. Durable customer
