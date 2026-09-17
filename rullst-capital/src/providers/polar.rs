@@ -82,31 +82,9 @@ impl BillingProvider for PolarProvider {
             ));
         }
 
-        let client = crate::providers::http_client()?;
-        let payload = serde_json::json!({
-            "product_price_id": plan_id,
-            "customer_email": customer_email,
-            "success_url": redirect_url
-        });
-
-        let body: Value = crate::providers::send_http_json(
-            client
-                .post("https://api.polar.sh/v1/checkouts/custom/")
-                .bearer_auth(&self.api_key)
-                .header("Content-Type", "application/json")
-                .json(&payload),
-            "polar",
-            "create checkout",
-        )
-        .await?;
-
-        let url = body["url"].as_str().ok_or_else(|| {
-            CapitalError::from(crate::ProviderFailure::contract_mismatch(
-                "polar",
-                "create checkout",
-            ))
-        })?;
-        crate::providers::validate_checkout_url("polar", url)
+        Err(CapitalError::UnsupportedOperation(
+            "Polar checkout requires the current products-based contract; a legacy price ID cannot be reinterpreted".into(),
+        ))
     }
 
     fn handle_webhook(

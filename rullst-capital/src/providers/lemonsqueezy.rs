@@ -8,10 +8,14 @@ use ring::hmac;
 use serde_json::Value;
 use std::collections::HashMap;
 
+#[path = "lemonsqueezy_checkout.rs"]
+mod checkout;
+
 /// Billing provider implementation for LemonSqueezy.
 pub struct LemonSqueezyProvider {
     api_key: String,
     webhook_secret: String,
+    store_id: Option<String>,
 }
 
 impl LemonSqueezyProvider {
@@ -20,6 +24,7 @@ impl LemonSqueezyProvider {
         Self {
             api_key: api_key.into(),
             webhook_secret: webhook_secret.into(),
+            store_id: None,
         }
     }
 
@@ -91,34 +96,13 @@ impl BillingProvider for LemonSqueezyProvider {
             ));
         }
 
+        let store_id = self.store_id.as_deref().ok_or_else(|| {
+            CapitalError::ConfigurationError(
+                "Lemon Squeezy checkout requires an explicit store ID; use with_store_id".into(),
+            )
+        })?;
+        let payload = checkout::request(store_id, customer_email, plan_id, redirect_url)?;
         let client = crate::providers::http_client()?;
-        let payload = serde_json::json!({
-            "data": {
-                "type": "checkouts",
-                "attributes": {
-                    "checkout_data": {
-                        "email": customer_email
-                    },
-                    "product_options": {
-                        "redirect_url": redirect_url
-                    }
-                },
-                "relationships": {
-                    "store": {
-                        "data": {
-                            "type": "stores",
-                            "id": "1"
-                        }
-                    },
-                    "variant": {
-                        "data": {
-                            "type": "variants",
-                            "id": plan_id
-                        }
-                    }
-                }
-            }
-        });
 
         let body: Value = crate::providers::send_http_json(
             client
@@ -132,13 +116,7 @@ impl BillingProvider for LemonSqueezyProvider {
         )
         .await?;
 
-        let url = body["data"]["attributes"]["url"].as_str().ok_or_else(|| {
-            CapitalError::from(crate::ProviderFailure::contract_mismatch(
-                "lemonsqueezy",
-                "create checkout",
-            ))
-        })?;
-        crate::providers::validate_checkout_url("lemonsqueezy", url)
+        checkout::response(&body, store_id, plan_id)
     }
 
     fn handle_webhook(

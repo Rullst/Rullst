@@ -70,10 +70,18 @@ mod pages;
 use models::billing_customer::BillingCustomer;
 use models::subscription::Subscription;
 use rullst::capital::{{SubscriptionStatus, WebhookEvent}};
-use rullst::server::{{Extension, StatusCode}};
+use rullst::server::{{Extension, Form, StatusCode}};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
+    use controllers::billing_controller::{{BillingIdentity, CheckoutForm}};
+    let identity = BillingIdentity {{ owner_id: 7, email: "owner@example.com".into() }};
+    if std::env::var_os("BILLING_CONTRACT_LIVE_PORTAL").is_some() {{
+        // Must reject the unsupported live operation before any database or HTTP I/O.
+        let response = controllers::billing_controller::portal_redirect(Extension(identity)).await;
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        return Ok(());
+    }}
     {initialize}
     let mut owner = BillingCustomer {{
         id: 0,
@@ -84,6 +92,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         updated_at: String::new(),
     }};
     owner.save().await?;
+
+    let checkout = controllers::billing_controller::checkout_redirect(
+        Extension(identity), Form(CheckoutForm {{ plan: "price_pro".into() }})
+    ).await;
+    assert_eq!(checkout.status(), StatusCode::SEE_OTHER);
+    assert!(checkout.headers()["location"].to_str()?.starts_with("https://checkout.stripe.com/"));
 
     let event = WebhookEvent {{
         subscription_id: "sub_contract".to_string(),
@@ -236,11 +250,34 @@ fn verify_backend(database: &str) {
         Command::new("cargo")
             .current_dir(&project)
             .args(["run", "--quiet", "--bin", "billing_contract"])
+            .env("RULLST_ENV", "development")
+            .env("BILLING_PROVIDER", "stripe")
+            .env("BILLING_API_KEY", "mock_key")
+            .env("BILLING_ALLOWED_PLAN_IDS", "price_pro")
+            .env(
+                "BILLING_REDIRECT_URL",
+                "https://app.example.invalid/dashboard",
+            )
             .env("CARGO_TARGET_DIR", workspace.join("target"))
             .env("CARGO_NET_OFFLINE", "true"),
         "run generated billing contract",
     );
     assert_success(&runtime, "generated billing runtime contract");
+
+    let live_portal = run(
+        Command::new("cargo")
+            .current_dir(&project)
+            .args(["run", "--quiet", "--bin", "billing_contract"])
+            .env("RULLST_ENV", "development")
+            .env("BILLING_PROVIDER", "stripe")
+            .env("BILLING_API_KEY", "fixture_invalid_live_credential")
+            .env("BILLING_ALLOWED_PLAN_IDS", "price_pro")
+            .env("BILLING_CONTRACT_LIVE_PORTAL", "1")
+            .env("CARGO_TARGET_DIR", workspace.join("target"))
+            .env("CARGO_NET_OFFLINE", "true"),
+        "reject unsupported generated live portal",
+    );
+    assert_success(&live_portal, "unsupported generated live portal");
 
     let controller_before = controller;
     let duplicate = run(

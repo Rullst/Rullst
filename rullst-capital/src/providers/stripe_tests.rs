@@ -1,5 +1,44 @@
 use super::*;
 
+#[test]
+fn stripe_rotation_accepts_any_bounded_v1_and_rejects_ambiguous_timestamps() {
+    let provider = StripeProvider::new("mock_key", "rotation-secret");
+    let payload = b"exact raw webhook bytes";
+    let now = 1_800_000_000;
+    let key = hmac::Key::new(hmac::HMAC_SHA256, b"rotation-secret");
+    let mut context = hmac::Context::with_key(&key);
+    context.update(format!("{now}.").as_bytes());
+    context.update(payload);
+    let signature = hex::encode(context.sign().as_ref());
+    let invalid = "00".repeat(32);
+    for candidates in [
+        format!("v1={signature},v1={invalid},v1=malformed"),
+        format!("v1={invalid},v1={signature},v1=malformed"),
+        format!("v1=malformed,v1={invalid},v1={signature}"),
+    ] {
+        let header = format!("t={now},{candidates}");
+        assert!(provider.verify_signature_at(payload, &header, now).is_ok());
+        assert!(matches!(
+            provider.verify_signature_at(payload, &header, now + 301),
+            Err(CapitalError::StaleWebhook(_))
+        ));
+        assert!(
+            provider
+                .verify_signature_at(b"changed body", &header, now)
+                .is_err()
+        );
+    }
+    for header in [
+        format!("t={now},v1={invalid},v1=malformed"),
+        format!("t={now},t={now},v1={signature}"),
+        format!("t=wrong,t={now},v1={signature}"),
+        format!("t={now},v1={signature},{}", "v1=bad,".repeat(16)),
+        format!("t={now},v1={signature},v0={}", "x".repeat(4096)),
+    ] {
+        assert!(provider.verify_signature_at(payload, &header, now).is_err());
+    }
+}
+
 #[tokio::test]
 async fn test_stripe_provider_methods() {
     let provider = StripeProvider::new("mock_key", "whsec_stripe123");

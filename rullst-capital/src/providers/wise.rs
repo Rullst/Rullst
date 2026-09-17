@@ -6,7 +6,7 @@ use serde_json::Value;
 /// Payout provider implementation for Wise (Global Multi-Currency B2B Payouts & Disbursements).
 pub struct WiseProvider {
     api_token: String,
-    profile_id: String,
+    _profile_id: String,
 }
 
 impl WiseProvider {
@@ -14,7 +14,7 @@ impl WiseProvider {
     pub fn new(api_token: impl Into<String>, profile_id: impl Into<String>) -> Self {
         Self {
             api_token: api_token.into(),
-            profile_id: profile_id.into(),
+            _profile_id: profile_id.into(),
         }
     }
 
@@ -87,38 +87,9 @@ impl PayoutProvider for WiseProvider {
             ));
         }
 
-        let client = crate::providers::http_client()?;
-        let payload = serde_json::json!({
-            "targetAccount": recipient_email,
-            "quoteUuid": format!("profile_{}", self.profile_id),
-            "customerTransactionId": format!("payout_{}_{}", recipient_email, amount_cents),
-            "details": {
-                "reference": "SaaS Creator Payout",
-                "transferPurpose": "verification.transfers.purpose.pay.bills",
-                "sourceOfFunds": "verification.source.of.funds.other"
-            },
-            "amount": amount_cents as f64 / 100.0,
-            "currency": currency
-        });
-
-        let body: Value = crate::providers::send_http_json(
-            client
-                .post("https://api.wise.com/v1/transfers")
-                .bearer_auth(&self.api_token)
-                .header("Content-Type", "application/json")
-                .json(&payload),
-            "wise",
-            "create transfer",
-        )
-        .await?;
-
-        body["id"]
-            .as_i64()
-            .map(|id| id.to_string())
-            .or_else(|| body["id"].as_str().map(|s| s.to_string()))
-            .ok_or_else(|| {
-                crate::ProviderFailure::contract_mismatch("wise", "create transfer").into()
-            })
+        Err(CapitalError::UnsupportedOperation(
+            "Wise transfers require a real recipient account, authenticated quote UUID and durable UUID idempotency identity; the email-based method cannot establish them".into(),
+        ))
     }
 
     async fn get_transfer_status(&self, transfer_id: &str) -> Result<PayoutStatus, CapitalError> {

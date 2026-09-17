@@ -39,15 +39,15 @@ provider sandbox.
 | Provider | Adapter category | Current boundary |
 | :--- | :--- | :--- |
 | **Stripe** | Billing | Checkout, bounded immediate Payment Intent charge, and documented webhook foundations; verify required live methods. |
-| **Lemon Squeezy** | Billing | Adapter with explicit mock path; verify required live methods. |
+| **Lemon Squeezy** | Billing | Checkout requires explicit `with_store_id`; store and variant response identities are checked. |
 | **InfinitePay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
-| **Polar** | Billing | Adapter foundation; verify provider API coverage. |
-| **Paddle** | Billing | Adapter and signed-webhook foundation. |
+| **Polar** | Billing | Signed-webhook foundation; legacy live checkout is unsupported. |
+| **Paddle** | Billing | Signed-webhook foundation; legacy live checkout is unsupported. |
 | **Razorpay** | Billing | Adapter and signed-webhook foundation. |
 | **Mercado Pago** | Billing | Offline checkout fixture; live plan-only checkout and body-only webhook verification are unavailable. |
 | **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
 | **PicPay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
-| **Wise** | Payout | Payout adapter foundation rather than a subscription provider. |
+| **Wise** | Payout | Status/webhook foundation; legacy email-based live transfer is unsupported. |
 
 The shared `create_customer_portal(email, return_url)` methods do not have a
 reviewed live provider-session contract and return `UnsupportedOperation` for
@@ -70,13 +70,26 @@ before enabling these live checkout paths.
 
 | Reviewed legacy method boundary | Stripe | Lemon Squeezy | Paddle | Polar | Razorpay | Mercado Pago | Coinbase | InfinitePay | PicPay |
 |---|---|---|---|---|---|---|---|---|---|
-| Plan/price-based checkout request | adapter | adapter | adapter | adapter | adapter | unsupported | unsupported | unsupported | unsupported |
+| Plan/price-based checkout request | adapter | adapter | unsupported | unsupported | adapter | unsupported | unsupported | unsupported | unsupported |
 | Customer portal by email | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported |
 | Immediate evidence-bound charge | adapter | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported |
 
 `adapter` means a bounded request implementation exists, not that this audit
 validated acceptance or every response schema against a live provider account.
 Offline fixtures are deliberately excluded from the live-method matrix.
+
+The unreleased v12.1 maintenance rejects legacy Paddle and Polar checkout before
+network dispatch: their current provider contracts cannot be represented by the
+old request shapes. Wise's email-based transfer method also fails explicitly;
+it cannot infer a recipient account, authenticated quote or UUID idempotency
+identity, and transfer creation is not funding. Their offline mocks remain
+available. These operations require new typed contracts and provider evidence.
+
+Lemon Squeezy live checkout uses the merchant's explicit positive numeric store
+ID: `LemonSqueezyProvider::new(key, webhook_secret).with_store_id(store_id)?`.
+The plan argument must be a numeric variant ID belonging to that store. The
+generated billing application reads `BILLING_STORE_ID`; missing configuration
+fails before HTTP dispatch. Existing applications must adopt this setting.
 
 ### Provider verification levels
 
