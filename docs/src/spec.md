@@ -755,6 +755,17 @@ neighboring signatures cannot hide a valid one, and duplicate timestamps are
 rejected. The configured freshness window still applies to the exact raw body.
 This authenticates a delivery, not subscription ownership or settlement.
 
+Polar's signed subscription normalizer accepts only its explicit lifecycle
+events and states, with bounded subscription/customer/product identities and
+consistent current/legacy customer references. RFC3339 billing periods and the
+current nested customer contact are preserved; positive integer periods and
+unambiguous legacy user/price references remain compatible. Scheduled
+cancellation can retain an active state until final revocation. Order/payment
+events, ambiguous identities and malformed present periods are rejected.
+The legacy normalized event does not retain provider account/mode, scheduled
+flags or ordering metadata; hosts must retain those from verified raw events
+and reconcile ownership/settlement before changing entitlements.
+
 #### Customer-bound Stripe Subscription Checkout
 
 `StripeCustomerRequest` and `StripeProvider::create_customer` supply the

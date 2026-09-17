@@ -17,6 +17,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Accept any valid bounded Stripe webhook signature during secret rotation.
 - Accept any matching Paddle `h1` signature within bounded headers and reject
   duplicate timestamps, retaining raw-body verification and freshness checks.
+- Preserve Polar RFC3339 billing periods and current customer contact fields.
+  Reject non-subscription events, ambiguous identities and inconsistent states;
+  distinguish scheduled cancellation from final revocation. Retain bounded
+  legacy identity/period compatibility without treating orders as subscriptions.
 - Require Razorpay subscription events to match their entity state and carry
   subscription/customer/plan IDs; stop treating authentication or standalone
   payments as active subscriptions. Handle charged, resumed and paused events.

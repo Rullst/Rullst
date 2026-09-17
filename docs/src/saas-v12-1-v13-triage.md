@@ -185,6 +185,18 @@ freshness window remains in force. Paddle's
 allows multiple `h1` values; this correction does not imply live checkout or
 subscription-lifecycle acceptance.
 
+Polar review reproduced discarded RFC3339 billing periods/current customer
+contacts and acceptance of unrelated event kinds or conflicting identities.
+A bounded subscription parser now separates lifecycle events from orders,
+preserves current and unambiguous legacy fields, and distinguishes scheduled
+cancellation from final revocation. Three signed regressions failed before
+the fix; all 162 Capital tests with Actix and strict all-target Clippy pass
+afterward. The reviewed [subscription schema](https://polar.sh/docs/api-reference/2026-04/subscription_updated)
+and [event sequences](https://polar.sh/docs/integrate/webhooks/events) define
+that boundary. The legacy event still omits account/mode, scheduling and
+ordering metadata; hosts must retain verified raw evidence and reconcile
+ownership/settlement. No sandbox or generated checkout is enabled by this fix.
+
 InfinitePay's implemented HMAC/subscription payload does not match the reviewed
 [checkout callback contract](https://www.infinitepay.io/checkout-documentacao).
 The live verifier and handler are now explicitly unsupported pending reviewed
