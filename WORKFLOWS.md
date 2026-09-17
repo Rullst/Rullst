@@ -57,6 +57,14 @@ produce the exact-SHA release scorecard. Manual diagnostic runs may select one
 operating system and one test shard; those deliberately do not produce a
 full-matrix scorecard and do not replace final-candidate evidence.
 
+The manual `all`/`all` matrix additionally packages all sixteen public crates,
+audits their contents and uses the release pipeline's archive-only consumer
+and isolated CLI installation/blueprint checks. `Packaged distribution and
+installed CLI` is a required exact-SHA release-admission job. It runs without
+registry publication credentials and never uploads to crates.io. Automatic
+development runs and diagnostic subsets deliberately skip this expensive job;
+the tag pipeline still repeats its existing package verification.
+
 The existing Linux `workspace` and `cli-saas-product` shards also require
 `RULLST_UI_BROWSER_TESTS=1` with Node 24 and Chromium. They feed HTML from the
 real Nexus renderer and the compiled generated Portfolio view into the bounded
