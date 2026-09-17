@@ -7,15 +7,16 @@ use std::{
     path::{Component, Path},
 };
 
-const MAX_ENTRIES: usize = 100_000;
+pub(super) const MAX_ENTRIES: usize = 100_000;
 const MAX_FILE: u64 = 64 * 1024 * 1024;
-const MAX_TOTAL: u64 = 512 * 1024 * 1024;
+pub(super) const MAX_TOTAL: u64 = 512 * 1024 * 1024;
 
-#[derive(Debug, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct Record {
-    path: String,
-    bytes: u64,
-    sha256: Option<String>,
+    pub path: String,
+    pub bytes: u64,
+    pub sha256: Option<String>,
 }
 
 pub(super) fn inventory(root: &Path) -> Result<BTreeSet<String>, ProjectError> {
@@ -71,7 +72,7 @@ pub(super) fn inventory(root: &Path) -> Result<BTreeSet<String>, ProjectError> {
     Ok(paths)
 }
 
-fn validate_path(text: &str) -> Result<(), ProjectError> {
+pub(super) fn validate_path(text: &str) -> Result<(), ProjectError> {
     if text.is_empty()
         || text.len() > 4096
         || text.contains(['\\', ':'])
@@ -109,7 +110,7 @@ fn linked(metadata: &Metadata) -> bool {
     }
 }
 
-fn read(root: &Path, name: &str) -> Result<Option<Vec<u8>>, ProjectError> {
+pub(super) fn read(root: &Path, name: &str) -> Result<Option<Vec<u8>>, ProjectError> {
     validate_path(name)?;
     let relative = Path::new(name);
     let mut parent = root.to_path_buf();
@@ -168,12 +169,58 @@ fn read(root: &Path, name: &str) -> Result<Option<Vec<u8>>, ProjectError> {
     Ok(Some(bytes))
 }
 
-fn record(name: &str, body: Option<&[u8]>) -> Record {
+pub(super) fn record(name: &str, body: Option<&[u8]>) -> Record {
     Record {
         path: name.to_owned(),
         bytes: body.map_or(0, |value| value.len() as u64),
         sha256: body.map(|value| hex::encode(Sha256::digest(value))),
     }
+}
+
+pub(super) fn tree(root: &Path) -> Result<BTreeSet<String>, ProjectError> {
+    let metadata = fs::symlink_metadata(root)?;
+    if !metadata.is_dir() || linked(&metadata) {
+        return Err(ProjectError::Invalid(
+            "prepared source root must be an unlinked directory",
+        ));
+    }
+    let mut paths = BTreeSet::new();
+    let mut count = 0;
+    for entry in walkdir::WalkDir::new(root).follow_links(false) {
+        let entry = entry.map_err(|_| ProjectError::Invalid("cannot enumerate prepared source"))?;
+        count += 1;
+        if count > 2 * MAX_ENTRIES {
+            return Err(ProjectError::Invalid(
+                "prepared source entry count exceeds its bound",
+            ));
+        }
+        if entry.depth() == 0 {
+            continue;
+        }
+        let relative = entry
+            .path()
+            .strip_prefix(root)
+            .map_err(|_| ProjectError::Invalid("source escapes preparation"))?
+            .to_str()
+            .ok_or(ProjectError::Invalid("prepared paths must be UTF-8"))?
+            .replace('\\', "/");
+        validate_path(&relative)?;
+        let metadata = fs::symlink_metadata(entry.path())?;
+        if linked(&metadata) || (!metadata.is_dir() && !metadata.is_file()) {
+            return Err(ProjectError::Invalid(
+                "prepared source contains linked or special inputs",
+            ));
+        }
+        if metadata.is_file() {
+            paths.insert(relative);
+        }
+        if paths.len() > MAX_ENTRIES {
+            return Err(ProjectError::Invalid(
+                "prepared source exceeds its file count limit",
+            ));
+        }
+    }
+    Ok(paths)
 }
 
 fn write(root: &Path, name: &str, body: &[u8]) -> Result<(), ProjectError> {

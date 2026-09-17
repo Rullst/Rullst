@@ -1,4 +1,6 @@
 //! Preparation uses real Git/Cargo metadata, but must never compile the project.
+#[path = "update_project_cli/verification.rs"]
+mod verification;
 use serde_json::Value;
 use std::{
     fs,

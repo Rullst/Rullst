@@ -27,6 +27,7 @@ on:
           - all
           - workspace
           - cli-standard
+          - cli-updates
           - cli-profiles-basic
           - cli-profiles-relational
           - cli-profiles-polyglot

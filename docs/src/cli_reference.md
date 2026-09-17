@@ -279,8 +279,48 @@ deleted by the caller after use.
 
 Preparation executes no builds, procedural macros or tests, does not resolve a
 new candidate lockfile, and authorizes neither execution nor application. The
-copy is not a sandbox. Verification, application and recovery for this new flow
-are still unfinished; the existing `upgrade` command remains separate.
+copy is not a sandbox. Candidate verification is described below; application
+and recovery for this new flow remain unfinished. The existing `upgrade`
+command remains separate.
+
+### `cargo rullst update project verify` (12.1.0 working source; unreleased)
+
+Review the commands and then explicitly authorize trusted project execution:
+
+```bash
+cargo rullst update project verify --prepared PATH --dry-run --all-features
+cargo rullst update project verify --prepared PATH --allow-project-code --all-features --json
+```
+
+`PATH` is the private directory returned by preparation. The command validates
+its records, before/candidate copies and current original files under an
+exclusive operation lock. Unknown/stale inputs and unresolved migration findings
+fail before project code runs. Fix findings in the original and prepare again.
+Builds and tests use another fresh private copy, preserving the reviewed copy.
+
+The sequence probes `rustc --version --verbose` and `cargo --version`, resolves
+`Cargo.lock`, checks all workspace targets, and runs workspace tests with the
+resolved lockfile. Every managed Rullst package must resolve to the exact target.
+Default features apply unless `--all-features`, `--features names` or
+`--no-default-features` selects another policy. This verifies that policy only;
+application-specific service/browser/deployment tests remain separate.
+
+Cargo is offline by default. `--allow-network` permits dependency retrieval but
+cannot override `CARGO_NET_OFFLINE=true`. Rustup does not install missing
+toolchains. `--timeout-seconds` bounds each command (default 900, range 1–3,600);
+stdout/stderr are each capped at 8 MiB. Private logs retain failed Cargo output;
+failure, cancellation or timeout never records acceptance. Builds/tests inherit
+the caller's environment and can affect external files, databases or services:
+this copy and process cleanup are not a sandbox. Use trusted projects only.
+
+Success emits `rullst.project-verification.v1` and a private `verification.json`
+with commands, log hashes and final file digests. Its verified candidate has the
+resolved lockfile; original files are not edited. Source or baseline changes
+during verification and unexpected candidate writes are rejected. Review the
+complete diff and logs; compiler overrides/wrappers require separate review.
+The report is not a reusable apply token and grants no application/deployment
+authority. Native verification acceptance, application and recovery remain open.
+Retained source copies can consume up to about 2 GiB, plus build outputs/logs.
 
 ### `cargo rullst pkg <action> [name]`
 Manages third-party community packages and extensions conforming to the `RullstPackage` trait standard.

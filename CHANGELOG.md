@@ -158,8 +158,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   a legacy ignored root lockfile. Reuse the exact dependency editor and source
   catalog without compiling or applying changes; reject ambiguous requirements,
   downgrades, unsafe files and excessive findings. Emit versioned review JSON
-  with no execution/application authority. Subsequent verification and apply
-  stages remain unfinished.
+  with no execution/application authority.
+
+- Add explicit `update project verify` with a command preview, operation lock,
+  source/plan revalidation and separate trusted-code consent. Resolve the exact
+  target and run locked workspace checks/tests in a fresh private copy, with
+  bounded commands/logs and supervised cancellation. Reject stale inputs,
+  failed tests and unexpected source writes; reports grant no apply authority.
+  Native acceptance and the application/recovery stages remain unfinished.
 
 - Preflight the complete legacy upgrade backup before restoring any original.
   Bound index and snapshot sizes, reject duplicate/ambiguous paths and linked

@@ -79,6 +79,14 @@ mod platform {
             "private project preparation is unavailable on this platform",
         ))
     }
+
+    pub(super) fn open_project(
+        _path: &std::path::Path,
+    ) -> Result<(std::path::PathBuf, std::fs::File), CacheError> {
+        Err(CacheError::Invalid(
+            "private project verification is unavailable on this platform",
+        ))
+    }
 }
 
 pub(super) fn load() -> Result<CachedCatalog, CacheError> {
@@ -129,4 +137,66 @@ pub(super) fn project_workspace() -> Result<PrivateWorkspace, CacheError> {
         path: platform::project_workspace()?,
         retained: false,
     })
+}
+
+pub(super) struct LockedProject {
+    pub path: std::path::PathBuf,
+    lock: std::fs::File,
+}
+
+impl Drop for LockedProject {
+    fn drop(&mut self) {
+        let _ = self.lock.unlock();
+    }
+}
+
+pub(super) fn open_project(path: &std::path::Path) -> Result<LockedProject, CacheError> {
+    let (path, lock) = platform::open_project(path)?;
+    match lock.try_lock() {
+        Ok(()) => Ok(LockedProject { path, lock }),
+        Err(std::fs::TryLockError::WouldBlock) => {
+            Err(CacheError::Invalid("prepared project is busy"))
+        }
+        Err(std::fs::TryLockError::Error(error)) => {
+            #[cfg(any(unix, windows))]
+            {
+                Err(error.into())
+            }
+            #[cfg(not(any(unix, windows)))]
+            {
+                let _ = error;
+                Err(CacheError::Invalid("project lock failed"))
+            }
+        }
+    }
+}
+
+#[cfg(any(unix, windows))]
+fn project_path(
+    requested: &std::path::Path,
+    directory: &std::path::Path,
+) -> Result<std::path::PathBuf, CacheError> {
+    let name = requested
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or(CacheError::Invalid(
+            "select an existing private project preparation",
+        ))?;
+    let identifier = name
+        .strip_prefix("project-")
+        .ok_or(CacheError::Invalid("invalid preparation name"))?;
+    if uuid::Uuid::parse_str(identifier)
+        .map(|id| id.to_string() != identifier)
+        .unwrap_or(true)
+        || requested
+            .parent()
+            .ok_or(CacheError::Invalid("missing preparation parent"))?
+            .canonicalize()?
+            != directory.canonicalize()?
+    {
+        return Err(CacheError::Invalid(
+            "preparation must belong to the configured private update cache",
+        ));
+    }
+    Ok(directory.join(name))
 }

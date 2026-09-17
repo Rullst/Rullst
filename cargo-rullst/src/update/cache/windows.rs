@@ -162,6 +162,19 @@ pub(super) fn project_workspace() -> Result<PathBuf, CacheError> {
     Ok(path)
 }
 
+pub(super) fn open_project(requested: &Path) -> Result<(PathBuf, File), CacheError> {
+    let identity = Identity::current()?;
+    let directory = cache_directory(&base_directory()?, false, &identity)?;
+    let path = super::project_path(requested, &directory)?;
+    identity.validate(&directory_handle(&path)?, false, true, true)?;
+    let lock = options(true)
+        .create(true)
+        .truncate(false)
+        .open(path.join("operation.lock"))?;
+    validate_file(&lock, &identity)?;
+    Ok((path, lock))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
