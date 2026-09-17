@@ -73,6 +73,12 @@ mod platform {
             "private artifact verification is unavailable on this platform",
         ))
     }
+
+    pub(super) fn project_workspace() -> Result<std::path::PathBuf, CacheError> {
+        Err(CacheError::Invalid(
+            "private project preparation is unavailable on this platform",
+        ))
+    }
 }
 
 pub(super) fn load() -> Result<CachedCatalog, CacheError> {
@@ -89,4 +95,38 @@ pub(super) fn verification_manifest(body: &[u8]) -> Result<tempfile::NamedTempFi
         return Err(CacheError::Invalid("invalid verification manifest size"));
     }
     platform::verification_manifest(body)
+}
+
+pub(super) struct PrivateWorkspace {
+    path: std::path::PathBuf,
+    retained: bool,
+}
+
+impl PrivateWorkspace {
+    pub fn path(&self) -> &std::path::Path {
+        &self.path
+    }
+
+    pub fn retain(mut self) -> std::path::PathBuf {
+        self.retained = true;
+        self.path.clone()
+    }
+}
+
+impl Drop for PrivateWorkspace {
+    fn drop(&mut self) {
+        if !self.retained {
+            // Constructed only from a fresh private directory, never from a
+            // serialized or caller-supplied path. Same-user attacks are outside
+            // this boundary; removal does not follow contained symlinks.
+            let _ = std::fs::remove_dir_all(&self.path);
+        }
+    }
+}
+
+pub(super) fn project_workspace() -> Result<PrivateWorkspace, CacheError> {
+    Ok(PrivateWorkspace {
+        path: platform::project_workspace()?,
+        retained: false,
+    })
 }

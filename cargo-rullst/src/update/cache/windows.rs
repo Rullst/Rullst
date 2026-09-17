@@ -148,6 +148,20 @@ pub(super) fn verification_manifest(body: &[u8]) -> Result<tempfile::NamedTempFi
     Ok(file)
 }
 
+pub(super) fn project_workspace() -> Result<PathBuf, CacheError> {
+    let identity = Identity::current()?;
+    let directory = cache_directory(&base_directory()?, true, &identity)?;
+    let path = directory.join(format!("project-{}", uuid::Uuid::new_v4()));
+    if path.try_exists()? {
+        return Err(CacheError::Invalid(
+            "private project directory already exists",
+        ));
+    }
+    identity.create_directory(&path)?;
+    identity.validate(&directory_handle(&path)?, false, true, true)?;
+    Ok(path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

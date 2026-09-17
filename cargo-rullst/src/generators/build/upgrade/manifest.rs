@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use toml_edit::{DocumentMut, Formatted, Item, Table, Value};
 
-const RULLST_PACKAGES: &[&str] = &[
+pub(super) const RULLST_PACKAGES: &[&str] = &[
     "cargo-rullst",
     "rullst",
     "rullst-ai",
@@ -105,7 +105,7 @@ fn workspace_manifests(root: &Path) -> Result<Vec<PathBuf>, Box<dyn std::error::
     Ok(paths)
 }
 
-fn plan_manifest(
+pub(super) fn plan_manifest(
     path: PathBuf,
     target: &str,
 ) -> Result<ManifestUpgradePlan, Box<dyn std::error::Error>> {

@@ -439,6 +439,15 @@ digests. It grants no installation authority or registry eligibility and does
 not download, execute or install candidates. Platform/release acceptance is
 still required; this is one verifier boundary in the unfinished flow below.
 
+Working-source `update project prepare` now retains Git working contents and
+the root lockfile in private before/candidate copies, reuses exact dependency
+editing and the versioned source catalog, and rejects ambiguous inputs and
+downgrades. Local process fixtures cover dirty/untracked/deleted source,
+virtual workspaces, ignored or absent lockfiles, bounded findings and unsafe
+files without compiling application code. The copy grants no execution or
+application authority. Native acceptance and the subsequent verification,
+review, consent, application and recovery stages remain unfinished.
+
 1. **Discover and explain.** Make update notices useful without blocking normal
    CLI startup. Respect offline/CI settings and explicit notification opt-out;
    use bounded responses, timeouts and a private, path-safe cache. Default to

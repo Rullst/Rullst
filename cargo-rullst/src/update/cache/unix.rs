@@ -193,6 +193,14 @@ pub(super) fn verification_manifest(body: &[u8]) -> Result<tempfile::NamedTempFi
     Ok(file)
 }
 
+pub(super) fn project_workspace() -> Result<PathBuf, CacheError> {
+    let directory = cache_directory(&base_directory(true)?, true)?;
+    let path = directory.join(format!("project-{}", uuid::Uuid::new_v4()));
+    fs::DirBuilder::new().mode(0o700).create(&path)?;
+    validate_directory(&path, true)?;
+    Ok(path)
+}
+
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;

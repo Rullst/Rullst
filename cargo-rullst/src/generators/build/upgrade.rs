@@ -1,8 +1,11 @@
 // src/generators/build/upgrade.rs — Transactional, reviewable project upgrades.
 
 mod backup;
+mod isolated;
 mod manifest;
 mod scan;
+
+pub(crate) use isolated::prepare_manifests;
 
 use crate::ui::spinner::with_spinner;
 use colored::Colorize;

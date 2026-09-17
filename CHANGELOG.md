@@ -153,6 +153,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   points and hardlinks; native Windows cache contracts passed.
   This is not verified CLI installation.
 
+- Add opt-in `update project prepare` with bounded private before/candidate
+  copies of Git working contents, including dirty/untracked/deleted inputs and
+  a legacy ignored root lockfile. Reuse the exact dependency editor and source
+  catalog without compiling or applying changes; reject ambiguous requirements,
+  downgrades, unsafe files and excessive findings. Emit versioned review JSON
+  with no execution/application authority. Subsequent verification and apply
+  stages remain unfinished.
+
 - Preflight the complete legacy upgrade backup before restoring any original.
   Bound index and snapshot sizes, reject duplicate/ambiguous paths and linked
   sources/targets, stage all replacements first, and replace directory entries

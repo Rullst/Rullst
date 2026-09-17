@@ -127,6 +127,9 @@ pub(super) fn scan_workspace(
                             severity: rule.severity,
                             message: rule.message,
                         });
+                        if findings.len() > 10_000 {
+                            return Err("migration findings exceed 10,000 entries; review a smaller project first".into());
+                        }
                     }
                 }
             }
