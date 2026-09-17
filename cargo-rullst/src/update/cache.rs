@@ -87,6 +87,12 @@ mod platform {
             "private project verification is unavailable on this platform",
         ))
     }
+
+    pub(super) fn source_lock(_name: &str) -> Result<std::fs::File, CacheError> {
+        Err(CacheError::Invalid(
+            "private source locking is unavailable on this platform",
+        ))
+    }
 }
 
 pub(super) fn load() -> Result<CachedCatalog, CacheError> {
@@ -141,19 +147,28 @@ pub(super) fn project_workspace() -> Result<PrivateWorkspace, CacheError> {
 
 pub(super) struct LockedProject {
     pub path: std::path::PathBuf,
-    lock: std::fs::File,
+    _lease: FileLease,
 }
 
-impl Drop for LockedProject {
+pub(super) struct FileLease(std::fs::File);
+
+impl Drop for FileLease {
     fn drop(&mut self) {
-        let _ = self.lock.unlock();
+        let _ = self.0.unlock();
     }
 }
 
 pub(super) fn open_project(path: &std::path::Path) -> Result<LockedProject, CacheError> {
     let (path, lock) = platform::open_project(path)?;
+    Ok(LockedProject {
+        path,
+        _lease: acquire(lock)?,
+    })
+}
+
+fn acquire(lock: std::fs::File) -> Result<FileLease, CacheError> {
     match lock.try_lock() {
-        Ok(()) => Ok(LockedProject { path, lock }),
+        Ok(()) => Ok(FileLease(lock)),
         Err(std::fs::TryLockError::WouldBlock) => {
             Err(CacheError::Invalid("prepared project is busy"))
         }
@@ -169,6 +184,19 @@ pub(super) fn open_project(path: &std::path::Path) -> Result<LockedProject, Cach
             }
         }
     }
+}
+
+pub(super) fn source_lock(root: &std::path::Path) -> Result<FileLease, CacheError> {
+    use sha2::{Digest, Sha256};
+    #[cfg(any(unix, windows))]
+    let canonical = root.canonicalize()?;
+    #[cfg(not(any(unix, windows)))]
+    let canonical = root.to_path_buf();
+    let name = format!(
+        "source-{}.lock",
+        hex::encode(Sha256::digest(canonical.as_os_str().as_encoded_bytes()))
+    );
+    acquire(platform::source_lock(&name)?)
 }
 
 #[cfg(any(unix, windows))]
@@ -199,4 +227,9 @@ fn project_path(
         ));
     }
     Ok(directory.join(name))
+}
+
+#[cfg(windows)]
+pub(super) fn private_file_descriptor() -> Result<String, CacheError> {
+    platform::private_file_descriptor()
 }

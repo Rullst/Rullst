@@ -215,6 +215,18 @@ pub(super) fn open_project(requested: &Path) -> Result<(PathBuf, File), CacheErr
     Ok((path, lock))
 }
 
+pub(super) fn source_lock(name: &str) -> Result<File, CacheError> {
+    let directory = cache_directory(&base_directory(false)?, false)?;
+    let file = options()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(directory.join(name))?;
+    validate_file(&file)?;
+    Ok(file)
+}
+
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;

@@ -1,4 +1,6 @@
 //! Preparation uses real Git/Cargo metadata, but must never compile the project.
+#[path = "update_project_cli/application.rs"]
+mod application;
 #[path = "update_project_cli/review.rs"]
 mod review;
 #[path = "update_project_cli/verification.rs"]

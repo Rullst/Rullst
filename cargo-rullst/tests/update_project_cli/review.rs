@@ -9,7 +9,7 @@ use std::{
     process::{Command, Output},
 };
 
-fn verified(fixture: &Fixture) -> PathBuf {
+pub(super) fn verified(fixture: &Fixture) -> PathBuf {
     let stage = prepare(fixture);
     let output = verify(fixture, &stage, &["--allow-project-code"]);
     assert!(output.status.success(), "{}", text(&output));
@@ -17,7 +17,7 @@ fn verified(fixture: &Fixture) -> PathBuf {
     PathBuf::from(report["verified_directory"].as_str().unwrap())
 }
 
-fn review(fixture: &Fixture, stage: &Path) -> Output {
+pub(super) fn review(fixture: &Fixture, stage: &Path) -> Output {
     Command::new(env!("CARGO_BIN_EXE_cargo-rullst"))
         .args(["update", "project", "review", "--verified"])
         .arg(stage)

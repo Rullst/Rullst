@@ -16,6 +16,14 @@ pub(super) struct State {
 
 impl State {
     pub fn load(stage: &Path) -> Result<Self, ProjectError> {
+        Self::load_inner(stage, true)
+    }
+
+    pub fn load_for_recovery(stage: &Path) -> Result<Self, ProjectError> {
+        Self::load_inner(stage, false)
+    }
+
+    fn load_inner(stage: &Path, require_original: bool) -> Result<Self, ProjectError> {
         let bytes = snapshot::read(stage, "preparation.json")?
             .ok_or(ProjectError::Invalid("missing preparation record"))?;
         let prepared: Prepared = serde_json::from_slice(&bytes)?;
@@ -67,7 +75,9 @@ impl State {
         {
             return Err(ProjectError::Invalid("prepared file inventory changed"));
         }
-        snapshot::unchanged(&prepared.source, &paths, &prepared.files)?;
+        if require_original {
+            snapshot::unchanged(&prepared.source, &paths, &prepared.files)?;
+        }
         // Cargo may return C:\... while private storage uses \?\C:\... .
         // Compare filesystem-resolved paths, not incompatible lexical prefixes.
         // The complete source tree above has already rejected links/reparse points.
@@ -132,6 +142,10 @@ impl State {
     }
 
     pub fn unchanged(&self) -> Result<(), ProjectError> {
+        self.unchanged_ignoring(&BTreeSet::new())
+    }
+
+    pub fn unchanged_ignoring(&self, owned_staging: &BTreeSet<String>) -> Result<(), ProjectError> {
         let record = snapshot::read(&self.stage, "preparation.json")?
             .ok_or(ProjectError::Invalid("preparation record disappeared"))?;
         if hex::encode(Sha256::digest(&record)) != self.record_digest {
@@ -160,7 +174,12 @@ impl State {
                 ));
             }
         }
-        snapshot::unchanged(&self.prepared.source, &self.paths, &self.prepared.files)?;
+        snapshot::unchanged_ignoring(
+            &self.prepared.source,
+            &self.paths,
+            &self.prepared.files,
+            owned_staging,
+        )?;
         let expected: BTreeSet<_> = self
             .candidate_records
             .iter()

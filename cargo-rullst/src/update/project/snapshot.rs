@@ -284,7 +284,20 @@ pub(super) fn unchanged(
     paths: &BTreeSet<String>,
     records: &[Record],
 ) -> Result<(), ProjectError> {
-    if inventory(root)? != *paths {
+    unchanged_ignoring(root, paths, records, &BTreeSet::new())
+}
+
+pub(super) fn unchanged_ignoring(
+    root: &Path,
+    paths: &BTreeSet<String>,
+    records: &[Record],
+    owned_staging: &BTreeSet<String>,
+) -> Result<(), ProjectError> {
+    let mut current = inventory(root)?;
+    for name in owned_staging {
+        current.remove(name);
+    }
+    if current != *paths {
         return Err(ProjectError::Invalid(
             "project inventory changed during preparation; retry with writers stopped",
         ));

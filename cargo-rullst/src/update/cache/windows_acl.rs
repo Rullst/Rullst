@@ -138,6 +138,13 @@ mod ffi {
             }
         }
 
+        pub(crate) fn private_file_descriptor(&self) -> String {
+            format!(
+                "O:{}G:{}D:P(A;;FA;;;{})(A;;FA;;;SY)(A;;FA;;;BA)",
+                self.user_text, self.user_text, self.user_text
+            )
+        }
+
         pub(crate) fn create_directory(&self, path: &Path) -> Result<(), CacheError> {
             let path: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
             if path[..path.len() - 1].contains(&0) {
