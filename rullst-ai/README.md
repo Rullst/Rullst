@@ -41,6 +41,21 @@ the product name alone is not treated as compatibility evidence.
 
 ## Guarded client
 
+`AiClient::auto()` and Nexus use the same `AutoAiConfig` resolver. Its fallback
+order is OpenAI (or its explicitly configured compatible endpoint), Anthropic,
+Gemini, DeepSeek, Groq, then Ollama. Empty environment values are absent;
+`mock_*` credentials are labeled as offline. Configuration is not a health probe.
+With no provider it retains the deterministic offline fallback.
+
+Groq uses `GROQ_API_KEY` and an explicit account-supported `GROQ_MODEL` through
+the [documented compatible endpoint](https://console.groq.com/docs/openai).
+Custom HTTPS endpoints require all of `OPENAI_BASE_URL`, `OPENAI_API_KEY` and
+`OPENAI_MODEL`; these use the conservative chat-only compatible adapter.
+`OPENAI_BASE_URL` alone is a configuration error. Construct an explicit
+`OpenAiCompatibleProvider::try_local` for an unauthenticated local server.
+`AutoAiConfig::from_env()` captures the names and provider settings once;
+`into_client()` builds from that snapshot without another environment lookup.
+
 ```rust,no_run
 use rullst_ai::{AiClient, AiError, providers::openai::OpenAiProvider};
 

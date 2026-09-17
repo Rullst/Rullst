@@ -953,6 +953,12 @@ sending.
 ## 🤖 9. AI Agent & LLM Orchestration (`rullst-ai`)
 
 ### 9.1. Guarded AI Client
+* `AiClient::auto()` and Nexus share `AutoAiConfig`. Resolution uses one
+  snapshot in OpenAI/custom, Anthropic, Gemini, DeepSeek, Groq, Ollama order.
+  Empty environment values are absent; explicit mocks remain offline. Groq
+  requires `GROQ_API_KEY` plus `GROQ_MODEL`; a custom `OPENAI_BASE_URL` requires
+  `OPENAI_API_KEY` plus `OPENAI_MODEL` and uses the HTTPS chat-only compatible
+  adapter. Configuration indicators do not attest network/account health.
 * Provider-agnostic interface for **Google Gemini, OpenAI, Anthropic Claude,
   DeepSeek, Ollama, and explicit OpenAI-compatible endpoints**. The compatible
   adapter is chat-only by default; applications declare optional request shapes
