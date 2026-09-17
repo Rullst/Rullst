@@ -632,6 +632,23 @@ while portability and semantic review remain the model author's responsibility.
   hosted-provider availability, backups, cluster failover, tenant
   authorization, eviction policy, ANN quality, or cross-store transactions.
 
+### ORM Driver Selection
+
+* ORM defaults retain SQLite, PostgreSQL and MySQL/MariaDB through the explicit
+  `drivers-all` convenience feature. A standalone consumer can disable defaults
+  and select `strict-postgres`, `strict-mysql` or `strict-sqlite`; each enables
+  only its own SQLx backend. The strict pool's existing precedence when multiple
+  strict features are unified remains PostgreSQL, then MySQL, then SQLite.
+* Features are additive. Another dependency enabling ORM defaults, a SQLite
+  queue, Turso's offline SQLite transport or another SQLx driver can broaden the
+  final graph. Studio/facade compositions are not covered by a standalone ORM
+  isolation claim. Turso explicitly enables SQLite for its offline contract.
+* A standalone consumer check must compile generated model/query/transaction
+  code and inspect its normal/build graph for unrelated SQLx driver packages.
+  Workspace all-feature or all-target checks cannot prove driver isolation.
+  Applications previously disabling defaults without selecting a driver must
+  choose a strict backend or explicitly restore `drivers-all`.
+
 ### 5.12. ORM Telemetry Contract
 
 * Generated model/query entrypoints, transaction-aware variants, raw ORM

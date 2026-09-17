@@ -246,6 +246,12 @@ jobs:
           build-warnings: ""
           cache: false
 
+      - name: Prove standalone ORM driver isolation
+        env:
+          STRICT_DATABASE_FEATURE: ${{ matrix.feature }}
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target
+        run: python3 .github/check-orm-driver-consumer.py "$STRICT_DATABASE_FEATURE"
+
       - name: Compile ORM feature in isolation
         run: cargo check -p rullst-orm --all-targets --no-default-features --features ${{ matrix.feature }}
 

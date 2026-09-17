@@ -273,6 +273,26 @@ async fn main() -> Result<(), rullst_orm::Error> {
 }
 ```
 
+### Selecting an isolated SQLx driver
+
+From 12.1, a standalone ORM dependency can omit unrelated SQLx drivers:
+
+```toml
+rullst-orm = { version = "12.1.0", default-features = false, features = ["strict-postgres"] }
+```
+
+`strict-mysql` and `strict-sqlite` select their respective backends. The default
+`drivers-all` feature preserves the existing three-driver convenience profile.
+If an application previously disabled defaults without choosing a backend,
+enable `drivers-all` explicitly or select a strict backend when upgrading.
+
+Cargo features combine across dependencies. A dependency enabling ORM defaults,
+Studio, a SQLite queue or Turso's offline transport can restore other drivers;
+the example above proves a standalone ORM boundary, not a complete facade or
+Studio application. Check the final normal/build graph with `cargo tree`.
+The CI consumer compiles generated CRUD and transaction methods and rejects
+unrelated SQLx driver packages separately from the workspace test matrix.
+
 ### Native database enums
 
 Select a strict primary feature in generated applications. PostgreSQL native

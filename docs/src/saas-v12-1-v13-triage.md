@@ -54,6 +54,11 @@ means the complete release or a live-provider journey has passed:
   All 132 default-feature Capital tests and strict all-target Clippy passed.
   This is protocol/local evidence; the generated checkout still needs durable
   customer provisioning, attempt persistence and the verified event flow.
+- Standalone ORM consumers can disable defaults and enable exactly one strict
+  SQLx backend. Generated CRUD and transaction methods passed strict Clippy
+  on all three profiles; their normal/build graphs contained only the selected
+  SQLx driver. The default `drivers-all` profile retains existing convenience.
+  Facade/Studio compositions still need their own opt-in isolation boundary.
 
 All eleven v12 adapters are in scope: Stripe, Lemon Squeezy, InfinitePay,
 Polar, Paddle, Razorpay, Mercado Pago, Coinbase Commerce, PicPay, Alipay and Wise.

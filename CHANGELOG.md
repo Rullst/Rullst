@@ -29,6 +29,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Durable webhook inbox processing remains a separate release requirement.
 - Share AI configuration resolution between Nexus and the client, including
   explicitly configured Groq and OpenAI-compatible models.
+- Make standalone ORM strict profiles select only their SQLx backend when
+  defaults are disabled. Preserve default convenience through `drivers-all`
+  and document additive dependency edges that can broaden a consumer graph.
 
 ### Omni icons and Android signing — planned 12.1.0
 
