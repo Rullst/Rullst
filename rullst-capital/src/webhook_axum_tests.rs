@@ -21,7 +21,7 @@ fn payload() -> Vec<u8> {
                 "id": "sub_axum",
                 "customer": "cus_axum",
                 "customer_email": "axum@example.com",
-                "items": { "data": [{ "price": { "id": "price_axum" } }] },
+                "items": { "has_more": false, "data": [{ "price": { "id": "price_axum" } }] },
                 "status": "active",
                 "current_period_end": 1_900_000_000_i64
             }

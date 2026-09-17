@@ -604,7 +604,7 @@ mod tests {
                 "object": "subscription",
                 "id": "sub_stripe",
                 "customer": "cus_stripe",
-                "items": { "data": [{ "price": { "id": "price_stripe" } }] },
+                "items": { "has_more": false, "data": [{ "price": { "id": "price_stripe" } }] },
                 "status": "active"
             }}
         }))

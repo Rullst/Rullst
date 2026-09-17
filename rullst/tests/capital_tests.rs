@@ -97,6 +97,7 @@ async fn test_stripe_provider_webhook_parsing() {
                 "current_period_end": 1700000000,
                 "email": "test@test.com",
                 "items": {
+                    "has_more": false,
                     "data": [
                         { "price": { "id": "price_123" } }
                     ]

@@ -13,7 +13,7 @@ fn payload() -> Vec<u8> {
                 "id": "sub_actix",
                 "customer": "cus_actix",
                 "customer_email": "actix@example.com",
-                "items": { "data": [{ "price": { "id": "price_actix" } }] },
+                "items": { "has_more": false, "data": [{ "price": { "id": "price_actix" } }] },
                 "status": "active",
                 "current_period_end": 1_900_000_000_i64
             }

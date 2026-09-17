@@ -51,7 +51,7 @@ pub(super) fn parse(payload: &[u8]) -> Result<WebhookEvent, CapitalError> {
         .as_array()
         .filter(|items| items.len() == 1)
         .ok_or_else(|| invalid("exactly one subscription item is required"))?;
-    if !data["items"]["has_more"].is_null() && data["items"]["has_more"].as_bool() != Some(false) {
+    if data["items"]["has_more"].as_bool() != Some(false) {
         return Err(invalid("truncated subscription items are unsupported"));
     }
     let item = &items[0];

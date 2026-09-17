@@ -108,6 +108,7 @@ fn signed_confused_identities_periods_and_truncated_prices_are_rejected() {
         ("/data/object/status", json!("approved")),
         ("/data/object/status", json!("unknown")),
         ("/data/object/items/has_more", json!(true)),
+        ("/data/object/items/has_more", Value::Null),
         ("/data/object/items/data/0/subscription", json!("sub_other")),
         ("/data/object/items/data/0/price/id", json!("")),
         ("/data/object/items/data/0/price/id", json!("a".repeat(201))),
