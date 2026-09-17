@@ -1,0 +1,66 @@
+name: Native CLI artifact builder
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: "0"
+  CARGO_BUILD_JOBS: "2"
+  RULLST_DISABLE_UPDATE_CHECK: "true"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  inventory:
+    name: CLI artifact inventory
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.targets.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate artifact contracts and select native targets
+        id: targets
+        run: |
+          python3 .github/test-cli-artifacts.py
+          printf 'matrix=%s\n' "$(jq -c '{include: .}' .github/cli-artifact-targets.json)" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Native CLI (${{ matrix.target }})
+    needs: inventory
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.inventory.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
+          cache: false
+      - name: Build both native CLI entry points
+        run: cargo build -p cargo-rullst --locked --release --bin rullst --bin cargo-rullst
+      - name: Smoke and stage version/source/platform-bound executables
+        env:
+          CLI_ARTIFACT_TARGET: ${{ matrix.target }}
+        shell: bash
+        run: |
+          python3 .github/test-cli-artifacts.py
+          python3 .github/stage-cli-artifacts.py --target "$CLI_ARTIFACT_TARGET" \
+            --binary-dir target/release --output target/cli-artifacts
+      - name: Preserve native candidates without installation or signing authority
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cli-native-${{ matrix.target }}
+          path: target/cli-artifacts/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

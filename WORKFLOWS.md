@@ -65,6 +65,15 @@ registry publication credentials and never uploads to crates.io. Automatic
 development runs and diagnostic subsets deliberately skip this expensive job;
 the tag pipeline still repeats its existing package verification.
 
+Manual all-platform `all` and `cli-standard` selections also call the native CLI
+artifact builder for Linux x64, Windows x64, macOS ARM64 and macOS x64. The
+committed target inventory selects explicit runner labels. Both executable entry
+points must run and report the candidate version before bounded files, digests
+and source/platform metadata are retained. These ordinary CI artifacts have no
+release tag and no installation or publisher-verification authority. Exact
+full-candidate admission requires all four native jobs; a diagnostic CLI shard
+still does not replace the full matrix.
+
 The existing Linux `workspace` and `cli-saas-product` shards also require
 `RULLST_UI_BROWSER_TESTS=1` with Node 24 and Chromium. They feed HTML from the
 real Nexus renderer and the compiled generated Portfolio view into the bounded

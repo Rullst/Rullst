@@ -1363,6 +1363,17 @@ assistant, not a claim that compilation proves production compatibility.
   acceptance transaction remain 12.1.0 release blockers requiring platform and
   release evidence.
 
+  **Native CLI artifact preparation:** the candidate pipeline builds both CLI
+  entry points on the four targets in `.github/cli-artifact-targets.json` and
+  runs each executable's version check on its native host. A bounded
+  `rullst.cli-artifacts.v1` inventory binds file names, sizes and SHA-256 digests
+  to version, target, build runner, repository and source commit. Ordinary CI
+  inventories have no release tag and cannot be promoted to release artifacts.
+  These checks establish file integrity, not publisher authenticity. Trusted
+  tag-workflow provenance, client verification, staged installation, recovery
+  and application acceptance remain separate required boundaries; no build or
+  discovery command installs these files automatically.
+
 ---
 
 ## 📱 13. Omni Packaging Contract

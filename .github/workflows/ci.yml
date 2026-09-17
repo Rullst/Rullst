@@ -523,6 +523,13 @@ jobs:
         # If any crate uses a stabilized API newer than 1.96.0, this will fail.
         run: cargo check --workspace --all-features
 
+  native-cli-artifacts:
+    name: Native CLI distribution
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'all' && (inputs.shard == 'all' || inputs.shard == 'cli-standard')
+    uses: ./.github/workflows/cli-artifacts.yml
+    permissions:
+      contents: read
+
   packaged-distribution:
     name: Packaged distribution and installed CLI
     # Exercise the actual archives before a tag or any registry publication.
