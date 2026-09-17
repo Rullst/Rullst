@@ -160,13 +160,6 @@ fn symlinked_binaries_directories_and_fifos_are_rejected_without_blocking() {
     symlink(directory.path(), &alias).unwrap();
     assert!(files::directory(&alias).is_err());
     fs::remove_file(&file).unwrap();
-    rustix::fs::mknodat(
-        rustix::fs::CWD,
-        &file,
-        rustix::fs::FileType::Fifo,
-        rustix::fs::Mode::RUSR,
-        0,
-    )
-    .unwrap();
+    rustix::fs::mkfifoat(rustix::fs::CWD, &file, rustix::fs::Mode::RUSR).unwrap();
     assert!(manifest.verify_files(directory.path()).is_err());
 }
