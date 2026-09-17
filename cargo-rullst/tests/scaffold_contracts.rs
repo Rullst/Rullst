@@ -483,10 +483,24 @@ fn extracted_rust_templates_parse_after_substitution() {
                 .replace("// __RULLST_REGISTRATION_HOOK__", ""),
         ),
         (
-            "billing controller",
+            "SQLx billing controller",
             include_str!("../src/generators/billing_controller.rs.template")
+                .replace(
+                    "__PERSIST_BILLING_UPDATE__",
+                    include_str!("../src/generators/billing_persist_sqlx.rs.template"),
+                )
                 .replace("__FOREIGN_KEY__", "user_id")
                 .replace("__OWNER_ID_TYPE__", "i32"),
+        ),
+        (
+            "Turso billing controller",
+            include_str!("../src/generators/billing_controller.rs.template")
+                .replace(
+                    "__PERSIST_BILLING_UPDATE__",
+                    include_str!("../src/generators/billing_persist_turso.rs.template"),
+                )
+                .replace("__FOREIGN_KEY__", "team_id")
+                .replace("__OWNER_ID_TYPE__", "i64"),
         ),
         (
             "billing page",
@@ -516,6 +530,7 @@ fn extracted_rust_templates_parse_after_substitution() {
         for placeholder in [
             "__FOREIGN_KEY__",
             "__OWNER_ID_TYPE__",
+            "__PERSIST_BILLING_UPDATE__",
             "__MIGRATION_NAME__",
             "__MODULE_NAME__",
             "__TYPE_NAME__",
