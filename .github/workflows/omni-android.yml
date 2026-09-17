@@ -116,11 +116,17 @@ jobs:
         working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app/gen/android
         shell: bash
         run: |
-          if ./gradlew --no-daemon :app:preReleaseBuild > "$RUNNER_TEMP/omni-missing-signing.log" 2>&1; then
-            echo 'Release preparation unexpectedly accepted missing signing credentials' >&2
-            exit 1
-          fi
-          grep -F 'Set RULLST_ANDROID_KEYSTORE' "$RUNNER_TEMP/omni-missing-signing.log"
+          for variant in Universal Arm64 Arm X86 X86_64; do
+            log="$RUNNER_TEMP/omni-missing-signing-$variant.log"
+            if ./gradlew --no-daemon ":app:pre${variant}ReleaseBuild" > "$log" 2>&1; then
+              echo "Release preparation for $variant unexpectedly accepted missing signing credentials" >&2
+              exit 1
+            fi
+            if ! grep -F 'Set RULLST_ANDROID_KEYSTORE' "$log"; then
+              cat "$log"
+              exit 1
+            fi
+          done
 
       - name: Create an ephemeral CI-only signing key
         shell: bash

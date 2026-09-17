@@ -1,5 +1,5 @@
 
-// Rullst application-owned release signing v1
+// Rullst application-owned release signing v2
 // Secrets arrive through the environment, never generated files or CLI arguments.
 // Keep Gradle configuration caches/build scans private; do not enable debug logs.
 val rullstKeystore = System.getenv("RULLST_ANDROID_KEYSTORE")
@@ -35,6 +35,8 @@ val validateRullstReleaseSigning = tasks.register("validateRullstReleaseSigning"
         }
     }
 }
-tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+// Tauri creates ABI flavors such as preArm64ReleaseBuild and
+// preUniversalReleaseBuild. The unflavored task does not exist in that shell.
+tasks.matching { it.name.startsWith("pre") && it.name.endsWith("ReleaseBuild") }.configureEach {
     dependsOn(validateRullstReleaseSigning)
 }
