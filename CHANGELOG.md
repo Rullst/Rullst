@@ -36,6 +36,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   and customer binding remain required before checkout.
 - Generate HTTP 303 checkout redirects, an explicit unavailable live portal,
   retained application lockfiles, locked Docker builds and supported MSVC flags.
+- Share SaaS billing models with `make:billing`, replacing the subscription
+  lookup's hardcoded PostgreSQL placeholder with the ORM's parameterized query
+  builder. Keep the SaaS Nexus metadata while avoiding backend-specific drift.
 - Commit generated billing customer/subscription changes atomically on SQLx
   and Turso, with conditional customer binding and rollback/retry fixtures.
   Generated durable inbox integration remains a separate release requirement.
