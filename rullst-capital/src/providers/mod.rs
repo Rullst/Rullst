@@ -16,6 +16,7 @@ pub mod mercadopago;
 pub mod paddle;
 pub mod picpay;
 pub mod polar;
+mod polar_subscription_event;
 mod polar_webhook;
 pub mod razorpay;
 mod razorpay_webhook;

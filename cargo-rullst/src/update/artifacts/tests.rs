@@ -160,13 +160,14 @@ fn symlinked_binaries_directories_and_fifos_are_rejected_without_blocking() {
     symlink(directory.path(), &alias).unwrap();
     assert!(files::directory(&alias).is_err());
     fs::remove_file(&file).unwrap();
-    rustix::fs::mknodat(
-        rustix::fs::CWD,
-        &file,
-        rustix::fs::FileType::Fifo,
-        rustix::fs::Mode::RUSR,
-        0,
-    )
-    .unwrap();
+    // rustix omits both mknodat and mkfifoat on macOS. Use the POSIX
+    // utility, as the existing cache FIFO contract does on every Unix host.
+    assert!(
+        std::process::Command::new("mkfifo")
+            .arg(&file)
+            .status()
+            .expect("POSIX mkfifo is required by the Unix test environment")
+            .success()
+    );
     assert!(manifest.verify_files(directory.path()).is_err());
 }
