@@ -1,7 +1,7 @@
 # SaaS findings: v12.1 maintenance and v13 contracts
 
-**Status: planning and source review, 17 September 2026. No fix, provider
-acceptance or deployment is claimed by this document.**
+**Status: maintenance implementation in progress, 17 September 2026. Provider
+sandbox acceptance, publication and deployment remain unverified.**
 
 The input is the two reports from `Rullst/examples`, branch
 `feat/saas-staging-ai-fixes`, pinned to commit
@@ -12,9 +12,48 @@ The input is the two reports from `Rullst/examples`, branch
 
 Those reports inspect published 12.0.0. This review compares their findings
 with framework source at `de77430ccd86c847c98d67002f3478e57637180f` on `v13`.
-The reported source patterns remain present. This is inspection, not a fresh
+The table records that initial source review. The implementation notes below
+track subsequent corrections. The initial review was inspection, not a fresh
 Windows build, resolved feature-graph test, provider sandbox run, or examination
 of either deployed SaaS site. Application workarounds do not fix the packages.
+
+The follow-up report is pinned to branch `fix/saas-staging-healthcheck-waf`,
+commit `c49d6ee8f1b8df79dca8e9255a87b1a322fdc08b`:
+[rullst-errors.md, RULLST-003](https://github.com/Rullst/examples/blob/c49d6ee8f1b8df79dca8e9255a87b1a322fdc08b/rullst-errors.md#rullst-003--shield-blocks-legitimate-machine-clients-by-default).
+The report attributes an HTTPS reproduction to the examples team; this review
+independently confirms the source cause and exercises a local production router.
+
+## Implementation checkpoints
+
+The maintenance candidate is
+[PR #206](https://github.com/Rullst/Rullst/pull/206). None of these checkpoints
+means the complete release or a live-provider journey has passed:
+
+- `20218538`: configured Lemon Squeezy store/variant binding; bounded Stripe
+  rotated-signature verification; explicit unsupported Paddle/Polar checkout,
+  Wise email transfer and generated live portals; generated HTTP 303 handoffs,
+  committed application lockfiles and supported MSVC flags.
+- `9976da5b`: shared AI provider configuration, including explicit Groq and
+  custom OpenAI-compatible endpoints, for client and Nexus.
+- `8b7761a2`: RULLST-003 removes generic clients from the default User-Agent
+  blocklist. Local production-router tests retain configurable crawler denial,
+  CSRF, payload limits and secure headers. Existing explicit configuration is
+  not rewritten. Core library: 238 tests passed; strict default-feature Clippy
+  for all Core targets passed. This is not an all-feature workspace result.
+- `efb9518b`: Razorpay lifecycle normalization and signed-event negatives;
+  127 default-feature Capital tests and strict Clippy for all targets passed.
+- Materialized billing tests pass for SQLite and Turso, including 303 redirects,
+  cross-owner denial and unavailable live portals before database access.
+  Stable provider customer binding, checkout idempotency, provider namespaces
+  and atomic inbox/domain state still need implementation and acceptance.
+
+All eleven v12 adapters are in scope: Stripe, Lemon Squeezy, InfinitePay,
+Polar, Paddle, Razorpay, Mercado Pago, Coinbase Commerce, PicPay, Alipay and Wise.
+Wise is a payout adapter; the others implement the billing trait. Test each
+operation independently and record explicit unsupported boundaries. A passing
+mock or a failure-before-dispatch test is not sandbox acceptance. The generated
+SaaS currently only selects Stripe or Lemon Squeezy; extending that selector
+requires provider-specific configuration and lifecycle contracts.
 
 ## Release allocation
 
@@ -24,7 +63,7 @@ explicit unsupported operation is acceptable containment; a malformed request
 or fabricated success is not. Important compatible fixes can ship separately
 on the v12 maintenance line without waiting for all v13 capabilities.
 
-| Finding | Evidence in current source | v12.1 maintenance target | v13 target / acceptance |
+| Finding | Evidence in reviewed baseline | v12.1 maintenance target | v13 target / acceptance |
 | :--- | :--- | :--- | :--- |
 | **SAAS-001 · P0** Lemon Squeezy store | `providers/lemonsqueezy.rs` still sends store `1`. | Add validated store configuration without removing the existing constructor; an unconfigured real request must fail explicitly. | Bind response to store/variant, protocol fixtures and official sandbox evidence. |
 | **SAAS-002 · P0** Paddle checkout | `providers/paddle.rs` sends nested `customer.email` and top-level `return_url`. | Correct the supported flow if it fits the contract; otherwise disable that live operation with a typed error and accurate matrix. | Typed transaction/customer/checkout boundaries, approved payment-link prerequisites and usable sandbox checkout evidence. |
@@ -38,10 +77,11 @@ on the v12 maintenance line without waiting for all v13 capabilities.
 | **SAAS-010 · P0** Atomic billing state | Generated customer and subscription saves are separate. | Couple event processing and billing mutation in a transaction; add the event-envelope boundary needed to do so compatibly. | Durable inbox identity/digest/outcome, transactionally updated entitlements and outbox effects; crash, cancellation, duplicate, out-of-order and retry tests. |
 | **SAAS-011 · P1** MSVC flags | `project/env_config.rs` still emits `/DEBUG:FASTLINK`. | Remove the unconditional unsupported flag and validate generated Windows builds. The reported LNK4315 was not reproduced here. | Capability-tested linker choices without unmeasured performance claims. |
 | **SAAS-012 · P1** Reproducible applications | Generator ignores `/Cargo.lock`; Docker build omits `--locked`. | Retain the binary application's lockfile and require it in deployment builds, including dependency-cooking stages. Document initial lockfile generation. | Generate/build/package from one committed lockfile; test missing/stale lockfile failures. |
-| **SAAS-013 · P1** Strict backend graph | Workspace ORM dependency enables defaults; Studio requires `queue-sqlite`. | Audit all consumers and offer a backend-exclusive profile with migration guidance. Preserve existing default convenience deliberately rather than breaking it accidentally. | Explicit Studio queue feature and standalone PostgreSQL consumer graph excluding unrelated SQLx drivers. Confirm with `cargo tree`; a workspace `--all-features` graph is not an isolation test. |
+| **SAAS-013 · P1** Strict backend graph | ORM unconditionally enables SQLx SQLite/PostgreSQL/MySQL/Any drivers; its own `default` and `strict-*` features are empty. Studio also requires `queue-sqlite`. | Audit all consumers and offer a backend-exclusive profile with migration guidance. Preserve existing default convenience deliberately rather than breaking it accidentally. | Explicit Studio queue feature and standalone PostgreSQL consumer graph excluding unrelated SQLx drivers. Confirm with `cargo tree`; a workspace `--all-features` graph is not an isolation test. |
 | **SAAS-014 · P1** One-time checkout | Stripe checkout always uses `mode=subscription`; `charge()` is a different off-session contract. | Describe the existing method as subscription-only; add an opt-in one-time API only with full evidence. Never use a recurring plan for an advertised one-time purchase. | Explicit payment/subscription modes, server-owned prices, success/cancel URLs, durable receipts and the correct paid/refunded/disputed event sets. |
 | **SAAS-015 · P0** Stripe key rotation | Verifier overwrites each earlier `v1` signature. | Bound header/candidate sizes and accept any valid candidate with constant-time HMAC verification, one valid timestamp and freshness enforcement. | Test valid first/middle/last, malformed neighbors, duplicate timestamps, all-invalid, stale and oversized headers; preserve the fix. |
 | **RULLST-001 · P1** Nexus AI configuration | Nexus detection and `AiClient::auto()` both omit Groq configuration. | Add an explicit application-supplied client path or one consistent resolver, with documented precedence. | Reuse configuration across authorized panels; distinguish offline, configured and unavailable. Test Groq-only configuration, failure handling, authorization and safe rendering. |
+| **RULLST-003 · P1** Machine-client WAF denial | Default blocklist rejects curl, Wget, Python and Go regardless of request intent. | Remove those defaults and preserve request inspection and configurable crawler policy; test the production baseline. | Treat User-Agent as a forgeable traffic preference, never authentication or authorization. |
 
 Provider files above are under `rullst-capital/src/`. The shared billing
 template is under `cargo-rullst/src/generators/` and feeds both SaaS and
@@ -54,6 +94,19 @@ The Nexus resolver mismatch is broader than Groq: detection advertises
 consumes `DEEPSEEK_API_KEY` while the panel detector does not. One source of
 configuration should replace this drift. An environment variable is never
 connectivity evidence.
+
+## Additional framework review: Razorpay lifecycle
+
+The legacy adapter maps `subscription.authenticated` and `payment.captured`
+to an active subscription and can substitute an order ID for a subscription ID.
+The maintenance correction requires the subscription entity's own bounded
+identities and matching lifecycle state. Authentication, standalone payments,
+missing/confused identities and mismatched states fail instead of granting
+access. Supported activation/charged/resumed and pending/halted/paused/cancelled
+fixtures are signed with real HMACs. No live account was used; event ordering,
+durable processing and provider/customer/tenant binding remain host work.
+Razorpay documents distinct [states](https://razorpay.com/docs/payments/subscriptions/states/)
+and [subscription events](https://razorpay.com/docs/webhooks/subscriptions/).
 
 ## Compatible maintenance boundaries
 
