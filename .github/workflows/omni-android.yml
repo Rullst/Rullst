@@ -11,6 +11,8 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/omni-android.yml"
+      - ".github/check-android-signing.py"
+      - ".github/test-check-android-signing.py"
   pull_request:
     branches: [main]
     paths:
@@ -21,6 +23,8 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/omni-android.yml"
+      - ".github/check-android-signing.py"
+      - ".github/test-check-android-signing.py"
   workflow_dispatch:
 
 concurrency:
@@ -71,6 +75,9 @@ jobs:
 
       - name: Build the Rullst CLI
         run: cargo build -p cargo-rullst --bin rullst
+
+      - name: Validate signing evidence parser
+        run: python3 .github/test-check-android-signing.py
 
       - name: Create a disposable Rullst host project
         shell: bash
@@ -155,7 +162,6 @@ jobs:
         run: |
           npm run tauri -- android build --target aarch64 --apk --ci
           build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
-          expected_digest="$(sha256sum "$RUNNER_TEMP/omni-ci-certificate.der" | cut -d ' ' -f 1)"
           count=0
           while IFS= read -r -d '' apk; do
             if ! "$build_tools/apksigner" verify --verbose --print-certs "$apk" > "$RUNNER_TEMP/omni-apk-certificate.txt" 2>&1; then
@@ -163,9 +169,9 @@ jobs:
               echo 'Android APK signature verification failed' >&2
               exit 1
             fi
-            if ! grep -Fx "Signer #1 certificate SHA-256 digest: $expected_digest" "$RUNNER_TEMP/omni-apk-certificate.txt"; then
+            if ! python3 "$GITHUB_WORKSPACE/.github/check-android-signing.py" \
+              "$RUNNER_TEMP/omni-ci-certificate.der" "$RUNNER_TEMP/omni-apk-certificate.txt"; then
               cat "$RUNNER_TEMP/omni-apk-certificate.txt"
-              echo "APK signer differs from the disposable certificate: expected $expected_digest" >&2
               exit 1
             fi
             count=$((count + 1))
