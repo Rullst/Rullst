@@ -25,6 +25,13 @@ mod sql;
 #[cfg(feature = "webhook-sql")]
 pub use sql::{SqlWebhookBackend, SqlWebhookReplayStore};
 
+#[cfg(feature = "webhook-sql")]
+mod inbox;
+#[cfg(feature = "webhook-sql")]
+pub use inbox::{
+    SqlStripeEventInbox, StripeInboxError, StripeInboxOutcome, StripeInboxResult, StripeInboxScope,
+};
+
 pub(super) const MAX_WEBHOOK_PAYLOAD_BYTES: usize = 2 * 1024 * 1024;
 const DEFAULT_REPLAY_CAPACITY: usize = 10_000;
 const DEFAULT_REPLAY_TTL: Duration = Duration::from_secs(24 * 60 * 60);

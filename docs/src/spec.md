@@ -922,6 +922,21 @@ sending.
   `check_and_record_event_key_with_transaction` through the same relational
   transaction as the mutation. Cross-system effects still require an outbox,
   idempotent consumers, and reconciliation.
+* The additive `SqlStripeEventInbox` under `webhook-sql` owns the relational
+  transaction for a verified subscription event and its caller-supplied SQL
+  mutation. An immutable scope binds application namespace, configured Stripe
+  account, endpoint kind and test/live mode. Mock or mismatched events fail
+  before database access. A per-scope configuration lock serializes admission;
+  the stable event ID and versioned mutation digest distinguish an exact retry
+  from conflicting content. A committed retry returns the retained outcome
+  without invoking the mutation again. Domain errors and cancellation before
+  commit roll back both changes; uncertain commit requires replaying the same
+  event to discover the retained outcome. Capacity is immutable and bounded;
+  records are never automatically evicted. The host owns schema migration,
+  retention/reconciliation, account credential custody, authorized customer
+  binding, ordering and an outbox for external effects. No SQL transaction can
+  undo HTTP or other external effects performed by the callback. This API does
+  not migrate the generated handler or grant access from subscription status.
 * Generated SQLx and Turso billing handlers commit the customer binding and
   subscription row in one transaction. Conditional writes refuse to replace
   an existing customer binding. Materialized SQLite and offline Turso tests

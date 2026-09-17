@@ -38,7 +38,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   retained application lockfiles, locked Docker builds and supported MSVC flags.
 - Commit generated billing customer/subscription changes atomically on SQLx
   and Turso, with conditional customer binding and rollback/retry fixtures.
-  Durable webhook inbox processing remains a separate release requirement.
+  Generated durable inbox integration remains a separate release requirement.
+- Add `SqlStripeEventInbox` under `webhook-sql`: retain scoped event/mutation
+  identity and terminal outcomes in the same transaction as domain SQL.
+  Reject conflicting content and mock/wrong-scope events, preserve exact retries
+  at capacity, and roll back failures/cancellation before commit. Retention,
+  authorized customer bindings, ordering and generated integration remain explicit.
 - Share AI configuration resolution between Nexus and the client, including
   explicitly configured Groq and OpenAI-compatible models.
 - Make standalone ORM strict profiles select only their SQLx backend when

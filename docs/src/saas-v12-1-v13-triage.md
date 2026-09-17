@@ -81,6 +81,14 @@ means the complete release or a live-provider journey has passed:
   mode/identity. Five protocol/negative/mock contracts pass; all 148 Capital
   tests with Actix and strict all-target Clippy pass. This supplies the provider
   operation, not durable intent, account/owner binding or generated integration.
+- `SqlStripeEventInbox` atomically retains a verified event's scoped identity,
+  mutation digest and outcome with caller-supplied domain SQL. SQLite tests
+  cover restart and injected inbox-write failure; shared PostgreSQL, MySQL and
+  MariaDB contracts cover retries, conflicting content, eight concurrent
+  deliveries, domain rollback, cancellation, immutable capacity and scope/mock
+  denial. These pass with both Any and the matching native ORM pools. This is
+  database/protocol evidence; customer/attempt persistence, event ordering and
+  replacement of the generated handler remain required.
 
 All eleven v12 adapters are in scope: Stripe, Lemon Squeezy, InfinitePay,
 Polar, Paddle, Razorpay, Mercado Pago, Coinbase Commerce, PicPay, Alipay and Wise.

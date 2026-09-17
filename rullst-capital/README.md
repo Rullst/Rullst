@@ -235,6 +235,34 @@ digest encrypts data or supplies storage, authorization or settlement evidence.
 An absent connected-account field does not identify the platform account.
 See Stripe's [event envelope](https://docs.stripe.com/api/events/object).
 
+With `webhook-sql`, `SqlStripeEventInbox` owns the transaction that commits an
+event and a caller-supplied SQL mutation. `StripeInboxScope::platform` or
+`::connected` fixes the application namespace, configured account, endpoint
+kind and test/live mode; mock and mismatched events are rejected before SQL.
+The host must establish which account owns its credentials and endpoint secret.
+
+Construct the inbox with the ORM's selected relational pool and matching SQL
+dialect. Run `prepare_schema()` only during explicit setup/migration, then call
+`process(&verified_event, |transaction, event| Box::pin(async move { ... }))`.
+Inside that callback, validate the saved customer/owner binding and event order,
+write through the supplied transaction, and return `StripeInboxOutcome::Applied`
+or `Ignored`. External effects belong in an outbox in that same transaction.
+
+An exact committed retry returns its saved outcome without invoking the callback.
+Reusing an event ID with a changed mutation digest fails with `EventConflict`.
+Domain errors and cancellation before commit roll back uncommitted SQL; an
+uncertain commit returns `CommitUncertain`, which requires retrying the same event
+to discover its recorded outcome. Do not combine this path with middleware that
+claims replay admission before the handler.
+
+Capacity is bounded, persisted and immutable per scope. Entries never expire
+automatically; a full inbox rejects new events while retaining exact retries.
+The application owns retention, reconciliation, transactional domain tables,
+customer provisioning and authorization. This API does not migrate existing or
+generated handlers, support Turso's remote batch transport, order snapshots or
+make HTTP effects atomic. Stored event/scope/mutation hashes minimize identifiers;
+they are not encryption or a complete billing audit history.
+
 Missing or malformed status no longer implies a paid/active subscription.
 Unsupported Razorpay and Coinbase event kinds fail closed; Coinbase event
 names are matched exactly, not by substring. This does not establish every
