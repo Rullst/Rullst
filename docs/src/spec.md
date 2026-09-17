@@ -810,6 +810,18 @@ Session creation and return navigation never grant paid access. The legacy
 email-based trait method remains source-compatible; generated persistence and
 atomic webhook processing are separate maintenance work.
 
+`StripeSubscriptionLookup` and `StripeProvider::retrieve_subscription` provide
+an explicit read for reconciliation. The request binds subscription, persisted
+customer/local reference, expected price and test/live mode; the pinned-version
+response must match every binding and the bounded single-item state contract.
+`StripeSubscriptionSnapshot` preserves the exact provider status and separates
+retrieved state from deterministic non-entitled mocks. A retrieved snapshot is
+neither an event claim nor invoice-settlement evidence. Hosts must serialize
+reconciliation with their database update so a delayed earlier read cannot
+overwrite a newer state; fetching before an unrelated transaction does not
+establish event order. Account credential custody and durable intent remain
+application responsibilities.
+
 #### Provider-Specific Metered Usage
 
 `MeteredBillingProvider` deliberately uses an associated request type rather

@@ -10,6 +10,7 @@ pub mod invoice;
 pub mod providers;
 pub mod quota;
 pub mod stripe_event;
+pub mod stripe_snapshot;
 pub mod subscription;
 pub mod usage;
 
@@ -27,6 +28,7 @@ pub use fiscal::*;
 pub use invoice::*;
 pub use quota::*;
 pub use stripe_event::*;
+pub use stripe_snapshot::*;
 pub use subscription::*;
 pub use usage::*;
 
