@@ -22,6 +22,8 @@ mod razorpay_webhook;
 pub mod stripe;
 mod stripe_charge;
 mod stripe_checkout;
+pub(crate) mod stripe_contract;
+mod stripe_customer;
 mod stripe_event;
 mod stripe_subscription;
 mod stripe_usage;

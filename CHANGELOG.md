@@ -30,6 +30,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   immutable request digests, response/line-item binding and distinct offline
   receipts. Preserve legitimate Stripe hosted-URL fragments. Durable customer
   ownership, attempts and generated webhook integration remain separate work.
+- Add explicit Stripe customer creation with opaque owner metadata, optional
+  contact data, immutable request digests and provider idempotency. Validate
+  returned identity/mode and distinguish deterministic mocks; durable intent
+  and customer binding remain required before checkout.
 - Generate HTTP 303 checkout redirects, an explicit unavailable live portal,
   retained application lockfiles, locked Docker builds and supported MSVC flags.
 - Commit generated billing customer/subscription changes atomically on SQLx

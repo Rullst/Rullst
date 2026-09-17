@@ -1,10 +1,9 @@
 //! Explicit subscription checkout for an already persisted Stripe customer.
 
 use crate::CapitalError;
+use crate::providers::stripe_contract::{API_VERSION, valid_reference};
 use ring::digest::{Context, SHA256};
 use std::fmt;
-
-pub(crate) const STRIPE_CHECKOUT_API_VERSION: &str = "2025-03-31.basil";
 
 /// Immutable input for one hosted Stripe subscription checkout attempt.
 ///
@@ -92,7 +91,7 @@ impl StripeCheckoutRequest {
     pub fn request_digest(&self) -> [u8; 32] {
         let mut hash = Context::new(&SHA256);
         hash.update(b"rullst.stripe.subscription-checkout.v1\0");
-        hash.update(STRIPE_CHECKOUT_API_VERSION.as_bytes());
+        hash.update(API_VERSION.as_bytes());
         hash.update(b"\0");
         for field in [
             self.customer_id(),
@@ -117,15 +116,6 @@ impl fmt::Debug for StripeCheckoutRequest {
         f.debug_struct("StripeCheckoutRequest")
             .finish_non_exhaustive()
     }
-}
-
-pub(crate) fn valid_reference(value: &str, prefix: &str, limit: usize) -> bool {
-    value.len() > prefix.len()
-        && value.len() <= limit
-        && value.starts_with(prefix)
-        && value
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
 }
 
 /// Provenance of a created checkout session; neither variant proves payment.

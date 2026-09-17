@@ -94,7 +94,7 @@ pub(super) fn parse(payload: &[u8]) -> Result<WebhookEvent, CapitalError> {
 fn reference<'a>(value: &'a Value, prefix: &str) -> Result<&'a str, CapitalError> {
     value
         .as_str()
-        .filter(|value| crate::checkout::valid_reference(value, prefix, 200))
+        .filter(|value| super::stripe_contract::valid_reference(value, prefix, 200))
         .ok_or_else(|| invalid("missing or invalid subscription identity"))
 }
 

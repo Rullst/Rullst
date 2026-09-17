@@ -94,6 +94,32 @@ fails before HTTP dispatch. Existing applications must adopt this setting.
 
 ### Customer-bound Stripe subscription checkout (12.1 working source)
 
+`StripeProvider::create_customer` accepts a `StripeCustomerRequest` containing
+an opaque local owner reference, a persisted retry key and optional contact
+email. It requires the returned customer metadata, object identity, creation
+time and test/live mode to match the request contract. Email is never used to
+discover or claim an existing customer. Persist the intent before calling and
+the resulting customer/owner/account binding before checkout:
+
+```rust,no_run
+use rullst_capital::{StripeCustomerRequest, StripeCustomerStatus, StripeProvider};
+
+async fn provision() -> Result<(), rullst_capital::CapitalError> {
+    let provider = StripeProvider::new("mock_key", "mock_webhook");
+    let intent = StripeCustomerRequest::new("owner_opaque", "provision_unique")?;
+    // Persist the authorized intent and digest before dispatch.
+    let customer = provider.create_customer(&intent).await?;
+    assert_eq!(customer.status(), StripeCustomerStatus::Mock);
+    // Persist the returned ID and matching digest before creating a checkout.
+    Ok(())
+}
+```
+
+Changing optional email changes the provisioning digest. Retrying an uncertain
+outcome must preserve the original input; it must not silently create a second
+customer after provider idempotency retention expires. See Stripe's
+[customer creation contract](https://docs.stripe.com/api/customers/create?api-version=2025-03-31.basil).
+
 `StripeProvider::create_subscription_checkout` accepts an existing Stripe
 customer ID and an immutable `StripeCheckoutRequest`. Persist the customer's
 authenticated owner/tenant binding and the attempt key/digest before dispatch:
@@ -123,7 +149,7 @@ returning an open session. Stripe's hosted URL is preserved, including its
 documented opaque fragment. Request/receipt debug output omits identifiers,
 URLs and keys; mocks have a distinct status and no provider test/live mode.
 
-Account/test-live namespaces, customer creation, durable attempt persistence,
+Account/test-live namespaces, durable provisioning and attempt persistence,
 webhook owner binding and atomic domain mutation remain application/integration
 work. Do not retry an old key indefinitely: Stripe may discard idempotency
 records after its retention period. An unknown outcome requires reconciliation,

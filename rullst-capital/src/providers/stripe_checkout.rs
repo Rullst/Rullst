@@ -36,14 +36,7 @@ impl super::StripeProvider {
         .await?;
         let response: Value = read_http_json(response, "stripe", OPERATION).await?;
         let result = parse_response(request, &response)?;
-        let credential_mode = if api_key.starts_with("sk_live_") || api_key.starts_with("rk_live_")
-        {
-            Some(true)
-        } else if api_key.starts_with("sk_test_") || api_key.starts_with("rk_test_") {
-            Some(false)
-        } else {
-            None
-        };
+        let credential_mode = super::stripe_contract::credential_mode(api_key);
         if credential_mode.is_some() && credential_mode != result.livemode() {
             return Err(mismatch());
         }
@@ -68,10 +61,7 @@ fn build_request(
     client
         .post("https://api.stripe.com/v1/checkout/sessions")
         .bearer_auth(api_key)
-        .header(
-            "Stripe-Version",
-            crate::checkout::STRIPE_CHECKOUT_API_VERSION,
-        )
+        .header("Stripe-Version", super::stripe_contract::API_VERSION)
         .header("Idempotency-Key", request.idempotency_key())
         .header("Content-Type", "application/x-www-form-urlencoded")
         .body(body)
@@ -89,7 +79,7 @@ fn parse_response(
 ) -> Result<StripeCheckoutSession, CapitalError> {
     let id = response["id"]
         .as_str()
-        .filter(|id| crate::checkout::valid_reference(id, "cs_", 255))
+        .filter(|id| super::stripe_contract::valid_reference(id, "cs_", 255))
         .ok_or_else(mismatch)?;
     let livemode = response["livemode"].as_bool().ok_or_else(mismatch)?;
     let expires_at = response["expires_at"]

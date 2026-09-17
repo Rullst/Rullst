@@ -76,6 +76,11 @@ means the complete release or a live-provider journey has passed:
   scope/mode confusion, mutation identity, delivery variation and explicit mock
   rejection. All 143 Capital tests with Actix and strict Clippy passed locally.
   The generated handler has not yet switched to a durable atomic inbox.
+- Additive Stripe customer provisioning binds opaque owner metadata and an
+  immutable retry request, with optional contact email and validated response
+  mode/identity. Five protocol/negative/mock contracts pass; all 148 Capital
+  tests with Actix and strict all-target Clippy pass. This supplies the provider
+  operation, not durable intent, account/owner binding or generated integration.
 
 All eleven v12 adapters are in scope: Stripe, Lemon Squeezy, InfinitePay,
 Polar, Paddle, Razorpay, Mercado Pago, Coinbase Commerce, PicPay, Alipay and Wise.

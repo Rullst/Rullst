@@ -696,8 +696,9 @@ public error. Rullst deliberately does not retry billing mutations: callers may
 retry a transient or rate-limited result only when that exact operation has a
 persisted provider-forwarded idempotency key and a reconciliation policy.
 Returned checkout locations are accepted only as bounded, absolute,
-credential-free HTTPS URLs without fragments; provider/account sandbox
-acceptance remains external evidence.
+credential-free HTTPS URLs. Stripe's documented opaque hosted-URL fragment is
+preserved; other adapters reject fragments. Provider/account sandbox acceptance
+remains external evidence.
 
 ### 6.1. Multi-Gateway Payment Architecture
 Billing adapters implement `BillingProvider`; the Wise payout adapter implements
@@ -748,6 +749,18 @@ mandate, persist idempotency, grant an entitlement, reconcile webhooks or imply
 direct-charge parity across adapters.
 
 #### Customer-bound Stripe Subscription Checkout
+
+`StripeCustomerRequest` and `StripeProvider::create_customer` supply the
+preceding provider-customer operation. The immutable input binds an opaque
+local owner reference, a persisted retry key and optional bounded contact
+email. The response must be an undeleted customer with matching metadata,
+valid ID/time and the credential's test/live mode when that mode is known.
+Mock receipts are separate from provider creation. Requests carry a versioned
+digest, explicit idempotency header and the pinned checkout API version.
+The host must persist provisioning intent before HTTP, bind the result to the
+authorized account/owner before checkout, and reconcile unknown outcomes;
+provider idempotency retention is not durable application state. Email is not
+used to find or establish ownership of an existing provider customer.
 
 The additive `StripeCheckoutRequest` binds an existing provider customer, one
 server-owned recurring price, an opaque local owner reference, explicit HTTPS
