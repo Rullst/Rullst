@@ -107,6 +107,7 @@ fn store_at(base: &Path, body: &[u8], now: u64) -> Result<(), CacheError> {
         }
         Err(fs::TryLockError::Error(error)) => return Err(error.into()),
     }
+    let _unlock = super::UnlockOnDrop(&lock);
     let mut staged = tempfile::Builder::new()
         .prefix("catalog-stage-")
         .tempfile_in(&directory)?;
@@ -133,6 +134,18 @@ pub(super) fn load(now: u64) -> Result<CachedCatalog, CacheError> {
 }
 pub(super) fn store(body: &[u8], now: u64) -> Result<(), CacheError> {
     store_at(&base_directory()?, body, now)
+}
+
+pub(super) fn verification_manifest(body: &[u8]) -> Result<tempfile::NamedTempFile, CacheError> {
+    let identity = Identity::current()?;
+    let directory = cache_directory(&base_directory()?, true, &identity)?;
+    let mut file = tempfile::Builder::new()
+        .prefix("verify-manifest-")
+        .tempfile_in(directory)?;
+    validate_file(file.as_file(), &identity)?;
+    file.write_all(body)?;
+    file.as_file().sync_all()?;
+    Ok(file)
 }
 
 #[cfg(test)]
@@ -169,6 +182,7 @@ mod tests {
         lock.lock().unwrap();
         assert!(store_at(base.path(), b"new", 101).is_err());
         assert_eq!(load_at(base.path(), 101).unwrap().body, BODY);
+        lock.unlock().unwrap();
         drop(lock);
         let link = directory.join("hardlink");
         fs::hard_link(directory.join(CATALOG), &link).unwrap();

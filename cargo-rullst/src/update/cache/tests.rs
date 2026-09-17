@@ -130,9 +130,35 @@ fn readers_keep_old_snapshot_and_busy_writer_fails_without_waiting() {
     lock.try_lock().unwrap();
     assert!(store_at(&base, b"new", 101).is_err());
     assert_eq!(load_at(&base, 101).unwrap().body, BODY);
+    lock.unlock().unwrap();
     drop(lock);
     store_at(&base, b"new", 101).unwrap();
     assert_eq!(load_at(&base, 101).unwrap().body, b"new");
+}
+
+#[test]
+fn explicit_unlock_releases_a_lock_even_while_a_duplicate_handle_survives() {
+    let temp = fixture();
+    let path = temp.path().join("lock");
+    let owner = options()
+        .read(true)
+        .write(true)
+        .create_new(true)
+        .open(&path)
+        .unwrap();
+    owner.try_lock().unwrap();
+    let duplicate = owner.try_clone().unwrap();
+    let contender = options().read(true).write(true).open(&path).unwrap();
+    assert!(matches!(
+        contender.try_lock(),
+        Err(fs::TryLockError::WouldBlock)
+    ));
+    {
+        let _release = super::super::UnlockOnDrop(&owner);
+    }
+    contender.try_lock().unwrap();
+    contender.unlock().unwrap();
+    drop(duplicate);
 }
 
 #[test]

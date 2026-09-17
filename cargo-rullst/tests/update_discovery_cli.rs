@@ -60,6 +60,50 @@ fn environment_offline_is_not_overridden_by_refresh_or_no_cache() {
     }
 }
 
+#[test]
+fn artifact_verification_requires_exact_inputs_and_rejects_offline_before_io() {
+    assert!(run(&["update", "verify", "--help"]).status.success());
+    let directory = tempfile::tempdir().unwrap();
+    let missing = directory.path().join("does-not-exist");
+    let output = Command::new(env!("CARGO_BIN_EXE_cargo-rullst"))
+        .args([
+            "update",
+            "verify",
+            "--to",
+            env!("CARGO_PKG_VERSION"),
+            "--directory",
+        ])
+        .arg(&missing)
+        .env("CARGO_NET_OFFLINE", "true")
+        .env("RULLST_DISABLE_UPDATE_CHECK", "1")
+        .env("XDG_CACHE_HOME", &missing)
+        .env("LOCALAPPDATA", &missing)
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("offline mode forbids attestation verification")
+    );
+    assert!(!missing.exists());
+    for args in [
+        vec!["update", "verify", "--directory", "."],
+        vec!["update", "verify", "--to", "12.1.0"],
+        vec![
+            "update",
+            "verify",
+            "--to",
+            "12.1.0",
+            "--directory",
+            ".",
+            "--install",
+        ],
+    ] {
+        assert!(!run(&args).status.success());
+    }
+}
+
 #[cfg(unix)]
 mod private_cache {
     use super::*;

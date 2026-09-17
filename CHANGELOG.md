@@ -114,6 +114,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### CLI update discovery
 
+- Add explicit local native-artifact verification through certificate-bound
+  GitHub attestation policy and bounded manifest/binary digest checks. It never
+  executes or installs candidates, rejects offline before I/O, and requires a
+  caller-installed verifier. Reports are not reusable installation authority.
+- Explicitly unlock advisory cache writers on every return path, including
+  errors, rather than relying on the last duplicate file handle closing. This
+  addresses a macOS CI lock-contention failure during concurrent subprocesses.
+
+- Prepare native CLI artifacts for Linux x64, Windows x64 and macOS x64/ARM64,
+  with version smoke checks and bounded source/platform/digest inventories.
+  Ordinary CI candidates carry no release tag. The admitted tag pipeline
+  attests the files in a separate job without executing source and includes
+  them in GitHub release assets. Native/release acceptance and client-side
+  verification, installation and recovery remain required.
+
 - Pin managed upgrade requirements to the exact selected release and use
   `--locked` for the final Cargo check, preventing silent patch/minor drift.
 

@@ -65,6 +65,22 @@ registry publication credentials and never uploads to crates.io. Automatic
 development runs and diagnostic subsets deliberately skip this expensive job;
 the tag pipeline still repeats its existing package verification.
 
+Manual all-platform `all` and `cli-standard` selections also call the native CLI
+artifact builder for Linux x64, Windows x64, macOS ARM64 and macOS x64. The
+committed target inventory selects explicit runner labels. Both executable entry
+points must run and report the candidate version before bounded files, digests
+and source/platform metadata are retained. These ordinary CI artifacts have no
+release tag and no installation or publisher-verification authority. Exact
+full-candidate admission requires all four native jobs; a diagnostic CLI shard
+still does not replace the full matrix.
+
+The tag-only release also calls this builder after exact-main admission.
+The separate attestation job verifies downloaded checksums and includes native
+executables/manifests in build provenance without executing source or binaries.
+The GitHub release job adds those assets only after attestation and registry
+publication succeed. This prepares distribution, not an installer; no new
+installation command or platform recovery claim is implied.
+
 The existing Linux `workspace` and `cli-saas-product` shards also require
 `RULLST_UI_BROWSER_TESTS=1` with Node 24 and Chromium. They feed HTML from the
 real Nexus renderer and the compiled generated Portfolio view into the bounded
@@ -83,8 +99,8 @@ Tag publication remains deliberately unavailable through a manual button.
 
 ## Manual and periodic execution map
 
-Every verification workflow except the PR-context-only `ai-sentinel-pr.yml`
-and tag-only `release.yml` can now be started from **Actions → select workflow
+Every verification workflow except the PR-context-only `ai-sentinel-pr.yml`,
+reusable `cli-artifacts.yml` and tag-only `release.yml` can be started from **Actions → select workflow
 → Run workflow**. A manual run checks the selected branch's current SHA; record
 that SHA and the run URL before treating it as release evidence. The release
 workflow intentionally has no button because its publication authority begins
@@ -503,6 +519,7 @@ dependency graph make static estimates unreliable.
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
 | [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) | main push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
 | [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main push and PR, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, eight-shard multi-OS tests including Cargo-aware doctests sourced from all 52 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
+| [`cli-artifacts.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cli-artifacts.yml) | reusable call from manual Rust CI or admitted tag release | Blocking caller job | Builds and runs both CLI entry points on four explicit native targets; stages bounded executables and source/version/platform/digest inventories. CI artifacts are diagnostic; only the tag pipeline adds separate provenance and release assets. No installation occurs. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main push and PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check. |
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Validates the shared 40-target inventory and ten package lockfiles, restores each real target corpus, performs a bounded warm-up, minimizes it, uploads the result and warms the campaign's content-addressed compiler cache; individual target failures are retained but tolerated, while dependency-lock drift remains a hard failure. |
 | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation with a pinned, zero-retry, bounded-concurrency nextest scheduler and retained JUnit inventory; a focused default-SQLite pass for ORM/Studio/Nexus/the facade; exact local 90% floors; and blocking OIDC-authenticated Codecov upload. Scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |

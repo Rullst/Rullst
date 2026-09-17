@@ -236,6 +236,14 @@ Online discovery can recover from an unavailable cache. See the
 [CLI reference](../cli_reference.md#cargo-rullst-update-check-1210-working-source-unreleased)
 for locations and boundaries.
 
+Working-source `cargo rullst update verify --to VERSION --directory PATH`
+also authenticates an already-downloaded native manifest through the installed
+GitHub CLI, then checks the matching executables' sizes and hashes. Its
+[separate verification contract](../cli_reference.md#cargo-rullst-update-verify-1210-working-source-unreleased)
+does not install or execute those files, replace project files, or establish
+current registry eligibility. Native release assets are still being prepared;
+this command is not proof that 12.1.0 artifacts have been published.
+
 The [safe-update priority](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience) proposes
 one guided flow for CLI installation, project preparation, validation and
 approved application. This is planned for a compatible opt-in **12.1.0** release

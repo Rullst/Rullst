@@ -1432,6 +1432,41 @@ assistant, not a claim that compilation proves production compatibility.
   acceptance transaction remain 12.1.0 release blockers requiring platform and
   release evidence.
 
+  **Native CLI artifact preparation:** the candidate pipeline builds both CLI
+  entry points on the four targets in `.github/cli-artifact-targets.json` and
+  runs each executable's version check on its native host. A bounded
+  `rullst.cli-artifacts.v1` inventory binds file names, sizes and SHA-256 digests
+  to version, target, build runner, repository and source commit. Ordinary CI
+  inventories have no release tag and cannot be promoted to release artifacts.
+  These checks establish file integrity, not publisher authenticity. Trusted
+  tag-workflow provenance, client verification, staged installation, recovery
+  and application acceptance remain separate required boundaries; no build or
+  discovery command installs these files automatically.
+  The tag-only release pipeline now calls the same native builder after exact
+  protected-main admission. A separate job with signing authority checks the
+  downloaded checksums and attests executables, manifests and inventory files
+  without checking out source or executing downloaded binaries. GitHub release
+  assets include those files only after crate publication and attestation pass.
+  Client-side verification must pin the publisher, tag workflow, source tag and
+  commit and then compare the expected platform/version/file digest; metadata
+  and matching checksums by themselves remain insufficient authority. This
+  pipeline change is unaccepted until its native and release evidence passes.
+
+  **Explicit local artifact verification:** `cargo rullst update verify`
+  takes a caller-selected directory and exact `--to` version. It accepts only
+  the native supported target, a bounded release inventory and both standalone
+  binaries with matching sizes and SHA-256 digests. It authenticates a private
+  snapshot of the manifest through the caller-installed GitHub CLI, pinning
+  github.com, Rullst/Rullst, `.github/workflows/release.yml`, the exact source
+  tag/commit, GitHub's OIDC issuer and hosted runners. Failure, absence or timeout
+  of that verifier is a rejection; there is no checksum-only fallback. This
+  explicit operation can access attestation services and create a temporary
+  private manifest, but never executes candidate binaries or changes installed
+  files. Offline mode rejects before I/O. Its report describes only the bytes
+  just read, is not a reusable installation token, and does not establish
+  current registry eligibility or protect against hostile same-user writers.
+  Installation must independently revalidate the selected release and bytes.
+
 ---
 
 ## 📱 13. Omni Packaging Contract
