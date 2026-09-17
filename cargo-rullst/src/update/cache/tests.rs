@@ -191,20 +191,23 @@ fn fifo_catalog_and_lock_are_rejected_without_waiting_for_a_peer() {
     let directory = base.join("rullst-update-v1");
     let catalog = directory.join(CATALOG);
     fs::remove_file(&catalog).unwrap();
-    rustix::fs::mkfifoat(
-        rustix::fs::CWD,
-        &catalog,
-        rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR,
-    )
-    .unwrap();
+    create_test_fifo(&catalog);
     assert!(load_at(&base, 100).is_err());
     let lock = directory.join("catalog.lock");
     fs::remove_file(&lock).unwrap();
-    rustix::fs::mkfifoat(
-        rustix::fs::CWD,
-        &lock,
-        rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR,
-    )
-    .unwrap();
+    create_test_fifo(&lock);
     assert!(store_at(&base, BODY, 100).is_err());
+}
+
+fn create_test_fifo(path: &Path) {
+    // rustix::fs::mkfifoat is unavailable on macOS. The POSIX utility creates
+    // the same adversarial fixture on both supported Unix CI platforms.
+    assert!(
+        std::process::Command::new("mkfifo")
+            .args(["-m", "600"])
+            .arg(path)
+            .status()
+            .expect("POSIX mkfifo is required by the Unix test environment")
+            .success()
+    );
 }

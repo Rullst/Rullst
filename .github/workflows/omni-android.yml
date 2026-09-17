@@ -88,13 +88,16 @@ jobs:
             --backend-url https://example.invalid \
             --identifier dev.rullst.omnici
 
-      - name: Compile native Gradle configuration before the Rust APK build
-        working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app/gen/android
-        run: ./gradlew --no-daemon help
-
+      # Tauri materializes tauri.settings.gradle during build preparation.
+      # A bare Gradle invocation before this step lacks that required script.
+      # Gradle compiles its configuration before executing native build tasks.
       - name: Compile a debug Android APK
         working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app
         run: npm run tauri -- android build --debug --target aarch64 --apk --ci
+
+      - name: Recheck materialized native Gradle configuration
+        working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app/gen/android
+        run: ./gradlew --no-daemon help
 
       - name: Verify native icons match the application source
         working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app
