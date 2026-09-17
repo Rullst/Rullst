@@ -199,7 +199,8 @@ environment setting. Windows uses `%LOCALAPPDATA%/rullst-update-v1` with an
 atomically created protected user/SYSTEM/Administrators DACL. Handle-based
 checks reject foreign owners, unsafe grants, reparse points and hard links;
 UNC paths and alternate data streams are unsupported. Unsafe ACLs are not
-modified. Native Windows acceptance remains a 12.1.0 release blocker.
+modified. Native cache acceptance is recorded in the
+[maintenance checkpoint](v12.md#1210-delivery-checkpoint-unreleased).
 Ordinary dashboard notices remain process-local and never write this cache.
 
 `--json` uses `rullst.update-discovery.v1`, includes metadata source/age and

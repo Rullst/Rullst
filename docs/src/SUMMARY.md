@@ -91,6 +91,7 @@
 - [📜 Framework Spec](spec.md)
 - [🧭 Capability Status & Vision Decisions](capability-ledger.md)
 - [🚦 Rullst v12 Stable Release Record](v12.md)
+  - [SaaS Maintenance and v13 Contracts](saas-v12-1-v13-triage.md)
 - [🔁 Compatibility, MSRV & Support Policy](compatibility-policy.md)
 - [Cargo Feature Matrix](feature-matrix.md)
 - [Migrating Applications to v12](migration-v12.md)

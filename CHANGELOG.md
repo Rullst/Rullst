@@ -15,6 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Validate Lemon Squeezy store/variant configuration; reject obsolete Paddle
   and Polar checkout and incomplete Wise email-transfer flows explicitly.
   Accept any valid bounded Stripe webhook signature during secret rotation.
+- Require Razorpay subscription events to match their entity state and carry
+  subscription/customer/plan IDs; stop treating authentication or standalone
+  payments as active subscriptions. Handle charged, resumed and paused events.
 - Generate HTTP 303 checkout redirects, an explicit unavailable live portal,
   retained application lockfiles, locked Docker builds and supported MSVC flags.
 - Share AI configuration resolution between Nexus and the client, including
@@ -74,7 +77,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   selection policy; JSON includes metadata source/age. `--refresh` skips reads
   and `--no-cache` disables persistence. Dashboard notices remain process-local.
   Windows persistence now checks ownership, DACLs, path components, reparse
-  points and hardlinks; native Windows acceptance remains pending.
+  points and hardlinks; native Windows cache contracts passed.
   This is not verified CLI installation.
 
 - Preflight the complete legacy upgrade backup before restoring any original.

@@ -818,6 +818,12 @@ instances must persist/claim the key and reconcile payment state durably before
 sending.
 
 ### 6.3. Webhook Signature Verification
+* Razorpay subscription normalization requires its own subscription/customer/
+  plan identities and agreement between the event and entity state. Authentication
+  and standalone payment/order events cannot establish an active subscription.
+  Email is optional contact data; durable owner binding, event ordering and
+  reconciliation remain application responsibilities. Lifecycle activation is
+  not a receipt proving settlement of an invoice.
 * The Axum and opt-in Actix middleware adapters call one canonical bounded
   verifier before dispatch. Built-in provider adapters use provider-appropriate
   cryptographic verification; equality checks for derived signatures are
@@ -1210,10 +1216,11 @@ assistant, not a claim that compilation proves production compatibility.
   owner/access checks, no reparse points or multi-link files, bounded reads and
   non-blocking staged replacement. Local-drive ancestors must exclude untrusted
   replacement/control rights; UNC paths and alternate data streams are rejected.
-  ACLs are never repaired implicitly. Native Windows acceptance is still pending.
+  ACLs are never repaired implicitly. Native Windows cache contracts passed at
+  the [documented maintenance checkpoint](v12.md#1210-delivery-checkpoint-unreleased).
   A hostile same-user/root/administrator process
   and authenticated release verification are outside this advisory cache's
-  contract. Windows cache acceptance, verified CLI installation and the expanded project
+  contract. Verified CLI installation and the expanded project
   acceptance transaction remain 12.1.0 release blockers requiring platform and
   release evidence.
 
