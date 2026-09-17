@@ -213,6 +213,37 @@ grants no installation, project or deployment authority. Cached metadata is
 not proof of current yank status or artifact authenticity. See the
 [upgrade guide](tutorials/36-assisted-framework-upgrades.md).
 
+### `cargo rullst update verify` (12.1.0 working source; unreleased)
+
+Authenticate a downloaded native CLI inventory and both executables:
+
+```bash
+cargo rullst update verify --to 12.1.0 --directory ./downloaded-cli --json
+```
+
+This requires the exact release's `cli-manifest-TARGET.json`,
+`cargo-rullst-VERSION-TARGET[.exe]` and `rullst-VERSION-TARGET[.exe]`.
+The directory may contain other downloads; only these fixed names are read.
+No archive is extracted and no downloaded executable is run. The prepared
+pipeline supports Linux x64 GNU, Windows x64 MSVC and macOS x64/ARM64; native
+artifact publication remains pending. Published 12.0.0 has no such inventory.
+
+The caller-installed GitHub CLI must be available through an absolute trusted
+PATH entry and support [attestation verification](https://cli.github.com/manual/gh_attestation_verify).
+The command checks a temporary private copy of the manifest against the exact
+official repository, release workflow, source tag/commit and GitHub issuer,
+rejects self-hosted attestations, and compares both binary sizes and SHA-256
+digests. Missing/failed/timed-out verification is an error, with no fallback
+to checksums. It requires network access; `--offline` and `CARGO_NET_OFFLINE`
+reject before filesystem/network I/O. Major/prerelease opt-ins match `check`.
+
+JSON uses `rullst.update-verification.v1`. Only `artifact_verified` is true;
+installation, execution, project writes and deployment remain unauthorized.
+The report covers the bytes read during this invocation, is not an installation
+token and does not recheck registry yank status. A later installer must validate
+current release eligibility and reread/reverify the candidate. Hostile same-user
+writers and a compromised verifier/PATH are outside this boundary.
+
 ### `cargo rullst pkg <action> [name]`
 Manages third-party community packages and extensions conforming to the `RullstPackage` trait standard.
 * **Subcommands:**

@@ -23,6 +23,13 @@ commit `c49d6ee8f1b8df79dca8e9255a87b1a322fdc08b`:
 The report attributes an HTTPS reproduction to the examples team; this review
 independently confirms the source cause and exercises a local production router.
 
+The additional `fix/saas-nexus-trusted-tls` report at
+[`ac9a6b0625b703de8ca84d0bd10906395f500033`](https://github.com/Rullst/examples/blob/ac9a6b0625b703de8ca84d0bd10906395f500033/saas-improvements-needed.md#app-saas-002--azure-nexus-mount-omitted-the-trusted-tls-capability)
+adds APP-SAAS-002: the application omitted Nexus's explicit trusted-TLS
+capability behind Azure ingress. The existing framework correctly rejects
+Basic authentication without that evidence; forwarding headers alone must not
+enable it. The report retains SAAS-001–015 and adds no new framework defect.
+
 ## Implementation checkpoints
 
 The maintenance candidate is

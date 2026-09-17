@@ -5,6 +5,8 @@ use clap::{Arg, ArgAction, ArgMatches, Command};
 use semver::Version;
 use std::time::Duration;
 
+#[path = "update/artifacts.rs"]
+mod artifacts;
 #[path = "update/cache.rs"]
 mod cache;
 #[path = "update/catalog.rs"]
@@ -41,6 +43,7 @@ pub(crate) fn command() -> Command {
         .about("Discover framework updates without silently installing or migrating")
         .subcommand_required(true)
         .arg_required_else_help(true)
+        .subcommand(artifacts::command())
         .subcommand(
             Command::new("check")
                 .about("Show an exact CLI release and MSRV without changing the CLI or project")
@@ -62,6 +65,9 @@ pub(crate) fn command() -> Command {
 }
 
 pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(matches) = matches.subcommand_matches("verify") {
+        return artifacts::run(matches).map_err(Into::into);
+    }
     let Some(matches) = matches.subcommand_matches("check") else {
         return Err("unsupported update operation".into());
     };

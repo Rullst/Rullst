@@ -158,6 +158,7 @@ fn store_at(base: &Path, body: &[u8], now: u64) -> Result<(), CacheError> {
         }
         Err(fs::TryLockError::Error(error)) => return Err(error.into()),
     }
+    let _unlock = super::UnlockOnDrop(&lock);
     let mut staged = tempfile::Builder::new()
         .prefix("catalog-stage-")
         .tempfile_in(&directory)?;
@@ -179,6 +180,17 @@ pub(super) fn load(now: u64) -> Result<CachedCatalog, CacheError> {
 
 pub(super) fn store(body: &[u8], now: u64) -> Result<(), CacheError> {
     store_at(&base_directory(true)?, body, now)
+}
+
+pub(super) fn verification_manifest(body: &[u8]) -> Result<tempfile::NamedTempFile, CacheError> {
+    let directory = cache_directory(&base_directory(true)?, true)?;
+    let mut file = tempfile::Builder::new()
+        .prefix("verify-manifest-")
+        .tempfile_in(directory)?;
+    validate_file(file.as_file())?;
+    file.write_all(body)?;
+    file.as_file().sync_all()?;
+    Ok(file)
 }
 
 #[cfg(test)]

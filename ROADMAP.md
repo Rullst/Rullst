@@ -422,6 +422,11 @@ bounded inventory. The admitted tag workflow separately attests the files and
 adds release assets; ordinary CI inventories have no release tag. Native and
 release evidence is still pending, and verified client-side download/staging,
 installation, ownership/locking, recovery and project acceptance are unfinished.
+The explicit local `update verify` command now authenticates a private manifest
+snapshot with the caller-installed GitHub CLI and checks both native binary
+digests. It grants no installation authority or registry eligibility and does
+not download, execute or install candidates. Platform/release acceptance is
+still required; this is one verifier boundary in the unfinished flow below.
 
 1. **Discover and explain.** Make update notices useful without blocking normal
    CLI startup. Respect offline/CI settings and explicit notification opt-out;

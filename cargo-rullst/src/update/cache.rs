@@ -22,6 +22,19 @@ pub(super) struct CachedCatalog {
     pub age_seconds: u64,
 }
 
+#[cfg(any(unix, windows))]
+struct UnlockOnDrop<'a>(&'a std::fs::File);
+
+#[cfg(any(unix, windows))]
+impl Drop for UnlockOnDrop<'_> {
+    fn drop(&mut self) {
+        // Close-on-exec does not prevent transient inheritance during a fork
+        // in another thread. Unlock explicitly rather than waiting for every
+        // duplicate of the open file description to close.
+        let _ = self.0.unlock();
+    }
+}
+
 fn now() -> Result<u64, CacheError> {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -52,6 +65,14 @@ mod platform {
             "private catalog caching is not available on this platform yet",
         ))
     }
+
+    pub(super) fn verification_manifest(
+        _body: &[u8],
+    ) -> Result<tempfile::NamedTempFile, CacheError> {
+        Err(CacheError::Invalid(
+            "private artifact verification is unavailable on this platform",
+        ))
+    }
 }
 
 pub(super) fn load() -> Result<CachedCatalog, CacheError> {
@@ -60,4 +81,12 @@ pub(super) fn load() -> Result<CachedCatalog, CacheError> {
 
 pub(super) fn store(body: &[u8]) -> Result<(), CacheError> {
     platform::store(body, now()?)
+}
+
+// Shares only the private filesystem boundary, never cached catalog authority.
+pub(super) fn verification_manifest(body: &[u8]) -> Result<tempfile::NamedTempFile, CacheError> {
+    if body.is_empty() || body.len() > 16 * 1024 {
+        return Err(CacheError::Invalid("invalid verification manifest size"));
+    }
+    platform::verification_manifest(body)
 }
