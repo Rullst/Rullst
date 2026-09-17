@@ -162,6 +162,15 @@ and [subscription events](https://razorpay.com/docs/webhooks/subscriptions/).
 
 ## Compatible maintenance boundaries
 
+Additional Lemon Squeezy review found that the legacy parser accepted missing
+event/object kinds, serialized absent customer/variant IDs as `null`, and mapped
+`on_trial` to `Unpaid`. A dedicated subscription parser now validates lifecycle,
+store/mode/identity and expiry, separately from invoice events. Three real-HMAC
+regressions failed against the old code and pass after the correction. Provider
+[object](https://docs.lemonsqueezy.com/api/subscriptions/the-subscription-object)
+and [event](https://docs.lemonsqueezy.com/help/webhooks/event-types) contracts
+define the boundary; this is not a live-account test or durable reconciliation.
+
 - Preserve source compatibility in v12.1: additive constructors, builders,
   extension contracts and explicit deprecations. A mandatory trait method,
   changed public struct literal or silently changed identifier meaning can

@@ -1,5 +1,5 @@
 use super::{
-    BillingProvider, SubscriptionStatus, WebhookEvent, WebhookVerificationMode, url_encode,
+    BillingProvider, WebhookEvent, WebhookVerificationMode, url_encode,
     verify_explicit_mock_signature, webhook_mode_from_secret,
 };
 use crate::error::CapitalError;
@@ -10,6 +10,8 @@ use std::collections::HashMap;
 
 #[path = "lemonsqueezy_checkout.rs"]
 mod checkout;
+#[path = "lemonsqueezy_webhook.rs"]
+mod webhook;
 
 /// Billing provider implementation for LemonSqueezy.
 pub struct LemonSqueezyProvider {
@@ -133,54 +135,7 @@ impl BillingProvider for LemonSqueezyProvider {
             })?;
         self.verify_signature(payload, sig_header)?;
 
-        let json: Value = serde_json::from_slice(payload)
-            .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
-
-        if let Some(event_name) = json["meta"]["event_name"].as_str()
-            && !event_name.starts_with("subscription_")
-        {
-            return Err(CapitalError::PayloadParseError(format!(
-                "Uninteresting event name: {}",
-                event_name
-            )));
-        }
-
-        let data = &json["data"];
-        let attrs = &data["attributes"];
-
-        let subscription_id = data["id"].as_str().unwrap_or("").to_string();
-        let customer_id = attrs["customer_id"]
-            .as_u64()
-            .map(|id| id.to_string())
-            .or_else(|| attrs["customer_id"].as_str().map(|s| s.to_string()))
-            .unwrap_or_else(|| attrs["customer_id"].to_string());
-        let customer_email = attrs["user_email"].as_str().unwrap_or("").to_string();
-        let plan_id = attrs["variant_id"]
-            .as_u64()
-            .map(|id| id.to_string())
-            .or_else(|| attrs["variant_id"].as_str().map(|s| s.to_string()))
-            .unwrap_or_else(|| attrs["variant_id"].to_string());
-        let status_str = attrs["status"]
-            .as_str()
-            .filter(|status| !status.trim().is_empty())
-            .ok_or_else(|| {
-                CapitalError::PayloadParseError("Webhook status is missing or invalid".into())
-            })?;
-
-        let ends_at = attrs["ends_at"].as_str().and_then(|s| {
-            chrono::DateTime::parse_from_rfc3339(s)
-                .ok()
-                .map(|dt| dt.timestamp())
-        });
-
-        Ok(WebhookEvent {
-            subscription_id,
-            customer_id,
-            customer_email,
-            plan_id,
-            status: SubscriptionStatus::parse_status(status_str),
-            ends_at,
-        })
+        webhook::parse(payload, self.store_id.as_deref())
     }
 
     async fn create_customer_portal(
@@ -325,6 +280,7 @@ impl BillingProvider for LemonSqueezyProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SubscriptionStatus;
 
     #[tokio::test]
     async fn test_lemonsqueezy_provider_methods() {
@@ -381,7 +337,7 @@ mod tests {
 
         // 5. Signature verification
         let secret = "sec_lemon123";
-        let payload = br#"{"data":{"id":"sub_lmn_100","attributes":{"customer_id":12,"user_email":"user@lemon.com","variant_id":123,"status":"active","renews_at":"2026-12-31T23:59:59Z"}}}"#;
+        let payload = br#"{"meta":{"event_name":"subscription_created"},"data":{"type":"subscriptions","id":"100","attributes":{"store_id":42,"test_mode":true,"customer_id":12,"user_email":"user@lemon.com","variant_id":123,"status":"active","renews_at":"2026-12-31T23:59:59Z"}}}"#;
 
         let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
         let sig = hmac::sign(&key, payload);
@@ -410,7 +366,7 @@ mod tests {
         headers.insert("x-signature".to_string(), sig_hex);
 
         let event = provider.handle_webhook(payload, &headers).unwrap();
-        assert_eq!(event.subscription_id, "sub_lmn_100");
+        assert_eq!(event.subscription_id, "100");
         assert_eq!(event.customer_id, "12");
         assert_eq!(event.customer_email, "user@lemon.com");
         assert_eq!(event.status, SubscriptionStatus::Active);

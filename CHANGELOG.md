@@ -18,6 +18,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Require Razorpay subscription events to match their entity state and carry
   subscription/customer/plan IDs; stop treating authentication or standalone
   payments as active subscriptions. Handle charged, resumed and paused events.
+- Require Lemon Squeezy subscription objects, lifecycle event/state agreement,
+  numeric IDs, configured store binding and consistent test-mode fields.
+  Correct `on_trial` normalization, preserve cancellation expiry, and reject
+  invoice/payment events or malformed data as subscription snapshots.
 - Read Stripe Basil billing periods from the subscription item, retaining the
   legacy period fallback. Require supported subscription events, bounded IDs,
   one complete price item and valid subscription states; reject ambiguous

@@ -166,9 +166,12 @@ async fn test_lemonsqueezy_provider_webhook_parsing() {
             "event_name": "subscription_created"
         },
         "data": {
-            "id": "sub_456",
+            "type": "subscriptions",
+            "id": "456",
             "attributes": {
                 "customer_id": 999,
+                "store_id": 42,
+                "test_mode": true,
                 "user_email": "lemon@test.com",
                 "variant_id": 123,
                 "status": "past_due",
@@ -183,7 +186,7 @@ async fn test_lemonsqueezy_provider_webhook_parsing() {
     let event = provider
         .handle_webhook(payload.as_bytes(), &headers)
         .unwrap();
-    assert_eq!(event.subscription_id, "sub_456");
+    assert_eq!(event.subscription_id, "456");
     assert_eq!(event.customer_id, "999");
     assert_eq!(event.customer_email, "lemon@test.com");
     assert_eq!(event.plan_id, "123");
@@ -205,7 +208,10 @@ async fn test_lemonsqueezy_webhook_uninteresting() {
     headers.insert("x-signature".to_string(), "mock_secret".to_string());
     let res = provider.handle_webhook(payload.as_bytes(), &headers);
     assert!(res.is_err());
-    assert!(res.unwrap_err().to_string().contains("Uninteresting"));
+    assert!(matches!(
+        res,
+        Err(rullst::capital::CapitalError::PayloadParseError(_))
+    ));
 }
 
 #[tokio::test]

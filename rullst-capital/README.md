@@ -279,6 +279,17 @@ make HTTP effects atomic. Stored event/scope/mutation hashes minimize identifier
 they are not encryption or a complete billing audit history.
 
 Missing or malformed status no longer implies a paid/active subscription.
+Lemon Squeezy accepts only its subscription lifecycle kinds and `subscriptions`
+objects with positive numeric IDs, valid states and consistent test-mode fields.
+An explicitly configured store must match. `on_trial` becomes `Trialing`;
+cancelled/expired snapshots retain a required valid end time as `Canceled`.
+Grace-period access remains application policy. Invoice/payment/refund events
+need separate processing; they are not subscription snapshots. See the provider's
+[subscription object](https://docs.lemonsqueezy.com/api/subscriptions/the-subscription-object)
+and [event types](https://docs.lemonsqueezy.com/help/webhooks/event-types).
+The legacy normalized event does not retain the provider mode or durable event
+identity; validated parsing alone does not complete owner binding or an inbox.
+
 Unsupported Razorpay and Coinbase event kinds fail closed; Coinbase event
 names are matched exactly, not by substring. This does not establish every
 provider payload schema or an application-specific entitlement/tenant policy.

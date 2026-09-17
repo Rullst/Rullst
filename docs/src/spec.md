@@ -915,6 +915,16 @@ sending.
   Email is optional contact data; durable owner binding, event ordering and
   reconciliation remain application responsibilities. Lifecycle activation is
   not a receipt proving settlement of an invoice.
+* Lemon Squeezy normalization accepts only explicit subscription lifecycle
+  events containing a `subscriptions` object, positive numeric identities and
+  a valid provider state. It binds the store when `with_store_id` is configured
+  and rejects conflicting test-mode fields. `on_trial` maps to `Trialing`;
+  `cancelled` and `expired` map to `Canceled` with a required valid `ends_at`.
+  Cancellation retains its grace-period timestamp; host policy decides access.
+  Invoice/payment/refund events require separate handling and cannot masquerade
+  as subscription snapshots. This legacy event does not retain account/mode or
+  causal identity, so durable owner/scope binding and reconciliation remain
+  application responsibilities.
 * The Axum and opt-in Actix middleware adapters call one canonical bounded
   verifier before dispatch. Built-in provider adapters use provider-appropriate
   cryptographic verification; equality checks for derived signatures are
