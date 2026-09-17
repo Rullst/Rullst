@@ -17,6 +17,7 @@ members = [
     "rullst-studio",
     "rullst-security",
     "rullst-iot",
+    "rullst-privacy",
 ]
 exclude = [
     "benchmark/rullst",

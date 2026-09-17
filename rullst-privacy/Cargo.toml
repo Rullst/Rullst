@@ -1,0 +1,22 @@
+[package]
+name = "rullst-privacy"
+version = "13.0.0-alpha.1"
+authors = ["Rullst Core Team"]
+edition = "2024"
+rust-version = "1.96.0"
+description = "Bounded privacy and proportional age-assurance contracts for Rullst"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/Rullst/Rullst"
+# v13 foundation only; join the release inventory after provider/state acceptance.
+publish = false
+
+[features]
+default = []
+age-assurance = ["dep:ring", "dep:serde", "dep:serde_json", "dep:thiserror"]
+
+[dependencies]
+ring = { workspace = true, features = ["std"], optional = true }
+serde = { workspace = true, features = ["std"], optional = true }
+serde_json = { workspace = true, features = ["std"], optional = true }
+thiserror = { workspace = true, optional = true }
