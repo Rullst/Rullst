@@ -22,7 +22,22 @@ pub(super) fn parse(payload: &[u8]) -> Result<WebhookEvent, CapitalError> {
     ) {
         return Err(invalid("unsupported subscription lifecycle event"));
     }
-    let data = &json["data"]["object"];
+    let subscription = parse_subscription(&json["data"]["object"])?;
+    let status = subscription.status;
+    if (event == "customer.subscription.deleted" && status != SubscriptionStatus::Canceled)
+        || (event == "customer.subscription.paused" && status != SubscriptionStatus::Paused)
+        || (event == "customer.subscription.resumed"
+            && matches!(
+                status,
+                SubscriptionStatus::Paused | SubscriptionStatus::Canceled
+            ))
+    {
+        return Err(invalid("event and subscription status disagree"));
+    }
+    Ok(subscription)
+}
+
+pub(super) fn parse_subscription(data: &Value) -> Result<WebhookEvent, CapitalError> {
     if data["object"].as_str() != Some("subscription") {
         return Err(invalid("event must contain a subscription object"));
     }
@@ -37,16 +52,6 @@ pub(super) fn parse(payload: &[u8]) -> Result<WebhookEvent, CapitalError> {
         Some("paused") => SubscriptionStatus::Paused,
         _ => return Err(invalid("unsupported subscription status")),
     };
-    if (event == "customer.subscription.deleted" && status != SubscriptionStatus::Canceled)
-        || (event == "customer.subscription.paused" && status != SubscriptionStatus::Paused)
-        || (event == "customer.subscription.resumed"
-            && matches!(
-                status,
-                SubscriptionStatus::Paused | SubscriptionStatus::Canceled
-            ))
-    {
-        return Err(invalid("event and subscription status disagree"));
-    }
     let items = data["items"]["data"]
         .as_array()
         .filter(|items| items.len() == 1)

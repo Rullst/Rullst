@@ -235,6 +235,21 @@ digest encrypts data or supplies storage, authorization or settlement evidence.
 An absent connected-account field does not identify the platform account.
 See Stripe's [event envelope](https://docs.stripe.com/api/events/object).
 
+`StripeProvider::retrieve_subscription` reads current single-price state using
+a `StripeSubscriptionLookup` bound to the saved subscription/customer/reference,
+expected price and test/live mode. The response must match those bindings and
+the same bounded item/state parser as signed events. `StripeSubscriptionSnapshot`
+retains the exact provider status; `require_real()` rejects its deterministic
+non-entitled mock. This follows Stripe's pinned
+[subscription read contract](https://docs.stripe.com/api/subscriptions/retrieve?api-version=2025-03-31.basil).
+
+Stripe [does not guarantee event delivery order](https://docs.stripe.com/webhooks#event-ordering).
+Serialize reconciliation reads with their database updates; fetching two
+snapshots before unrelated transactions still permits the older read to commit
+last. The retrieval API does not implement that serialization, retry a request,
+grant entitlements or prove invoice settlement. Unknown outcomes and changed
+customer/price/reference bindings require explicit reconciliation.
+
 With `webhook-sql`, `SqlStripeEventInbox` owns the transaction that commits an
 event and a caller-supplied SQL mutation. `StripeInboxScope::platform` or
 `::connected` fixes the application namespace, configured account, endpoint

@@ -89,6 +89,15 @@ means the complete release or a live-provider journey has passed:
   denial. These pass with both Any and the matching native ORM pools. This is
   database/protocol evidence; customer/attempt persistence, event ordering and
   replacement of the generated handler remain required.
+- Subscription retrieval now binds the current Stripe response to a persisted
+  customer/owner/price/subscription/mode and preserves its exact provider state.
+  Four protocol, negative and mock contracts pass; all 152 Capital tests with
+  Actix and strict all-target Clippy pass. The read must still be serialized
+  with its domain update; it is not invoice settlement or event ordering.
+- The SaaS blueprint now reuses the shared billing models, removing a raw
+  PostgreSQL placeholder from subscription lookup. All ten scaffold contracts,
+  the four materialized foundation applications and CLI all-feature/all-target
+  strict Clippy pass locally; this is not provider sandbox acceptance.
 
 All eleven v12 adapters are in scope: Stripe, Lemon Squeezy, InfinitePay,
 Polar, Paddle, Razorpay, Mercado Pago, Coinbase Commerce, PicPay, Alipay and Wise.

@@ -25,6 +25,7 @@ mod stripe_checkout;
 pub(crate) mod stripe_contract;
 mod stripe_customer;
 mod stripe_event;
+mod stripe_snapshot;
 mod stripe_subscription;
 mod stripe_usage;
 mod stripe_webhook;

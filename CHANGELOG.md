@@ -34,6 +34,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   contact data, immutable request digests and provider idempotency. Validate
   returned identity/mode and distinguish deterministic mocks; durable intent
   and customer binding remain required before checkout.
+- Add a bound Stripe subscription read for reconciliation, validating the
+  subscription/customer/owner/price/mode against persisted expectations.
+  Preserve exact provider status and reject mocks as real state; callers must
+  serialize reads with domain updates and handle invoice settlement separately.
 - Generate HTTP 303 checkout redirects, an explicit unavailable live portal,
   retained application lockfiles, locked Docker builds and supported MSVC flags.
 - Share SaaS billing models with `make:billing`, replacing the subscription
