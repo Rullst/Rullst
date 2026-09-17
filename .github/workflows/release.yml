@@ -133,8 +133,13 @@ jobs:
 
       - name: Run portable transactional outbox contract
         run: >-
-          cargo test -p rullst-orm --no-default-features
+          cargo test -p rullst-orm --no-default-features --features drivers-all
           --test outbox_transaction_test -- --test-threads=1
+
+      - name: Run portable Stripe inbox transaction contract
+        env:
+          RULLST_REQUIRE_SQLITE_INBOX: "1"
+        run: cargo test -p rullst-capital --features webhook-sql --test stripe_inbox_sql --locked
 
       - name: Run provider matrices (SQL, document, edge and search)
         env:
@@ -155,7 +160,7 @@ jobs:
           cargo test -p rullst-studio --no-default-features --features strict-mysql --test data_browser_mutation_mariadb -- --test-threads=1
           cargo test -p rullst-nexus --no-default-features --test tenant_audit -- --test-threads=1
           cargo test -p rullst-ai --features sql-memory --test sql_chat_memory_postgres --test sql_chat_memory_mysql --test sql_chat_memory_mariadb -- --test-threads=1
-          cargo test -p rullst-capital --features quota-sql --test quota_sql_postgres --test quota_sql_mysql --test quota_sql_mariadb -- --test-threads=1
+          cargo test -p rullst-capital --features quota-sql,webhook-sql --test quota_sql_postgres --test quota_sql_mysql --test quota_sql_mariadb -- --test-threads=1
 
       - name: Run live Redis distributed rate-limit contract
         env:

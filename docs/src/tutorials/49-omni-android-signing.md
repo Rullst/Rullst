@@ -105,7 +105,10 @@ application. Commit/back up the existing shell and review the following changes:
 3. Review the [signing template](https://github.com/Rullst/Rullst/blob/main/cargo-rullst/src/generators/desktop/signing.gradle.kts)
    and append it to `omni-app/gen/android/app/build.gradle.kts` **only if you have
    no existing release-signing setup**. Do not duplicate/override another policy.
-   Custom product flavors need corresponding validation-task wiring.
+   The v2 guard covers Tauri's ABI-flavored `pre*ReleaseBuild` tasks. If you
+   installed the unreleased v1 guard, review that task predicate and update its
+   marker to v2; the CLI refuses to overwrite an application-owned v1 block.
+   Custom build types other than `release` need corresponding validation wiring.
 4. Ignore `*.jks`, `*.keystore`, `*.p12`, `keystore.properties` and `.gradle/`;
    keep real keys outside the repository and supply the four environment inputs.
 5. Verify the resulting certificate and test an actual device update. Projects

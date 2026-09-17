@@ -8,6 +8,10 @@ use rullst_capital::{CapitalError, SqlWebhookBackend, SqlWebhookReplayStore};
 #[cfg(feature = "webhook-sql")]
 use std::time::Duration;
 
+#[cfg(feature = "webhook-sql")]
+#[path = "../stripe_inbox_support/mod.rs"]
+mod stripe_inbox_support;
+
 pub fn handle_container_start_error(provider: &str, error: impl std::fmt::Display) {
     if std::env::var_os("RULLST_REQUIRE_TESTCONTAINERS").is_some() {
         panic!("{provider} testcontainer is required but unavailable: {error}");
@@ -180,6 +184,20 @@ pub async fn exercise_sql_webhook_replay(database_url: &str, backend: SqlWebhook
     drifted.close().await;
     second.close().await;
     first.close().await;
+
+    if stripe_inbox_support::supports_backend(backend) {
+        let pool = stripe_inbox_support::pool(database_url).await;
+        stripe_inbox_support::exercise(&pool, backend).await;
+        pool.close().await;
+    } else {
+        assert!(
+            std::env::var_os("RULLST_REQUIRE_TESTCONTAINERS").is_none(),
+            "provider inbox gate must select a matching ORM pool"
+        );
+        eprintln!(
+            "native ORM pool differs from this provider; the dedicated Any-pool matrix covers its inbox"
+        );
+    }
 }
 
 async fn exercise_concurrency(store: &SqlQuotaStore) {

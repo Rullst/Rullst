@@ -39,15 +39,16 @@ provider sandbox.
 | Provider | Adapter category | Current boundary |
 | :--- | :--- | :--- |
 | **Stripe** | Billing | Checkout, bounded immediate Payment Intent charge, and documented webhook foundations; verify required live methods. |
-| **Lemon Squeezy** | Billing | Adapter with explicit mock path; verify required live methods. |
+| **Lemon Squeezy** | Billing | Checkout requires explicit `with_store_id`; store and variant response identities are checked. |
 | **InfinitePay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
-| **Polar** | Billing | Adapter foundation; verify provider API coverage. |
-| **Paddle** | Billing | Adapter and signed-webhook foundation. |
+| **Polar** | Billing | Signed-webhook foundation; legacy live checkout is unsupported. |
+| **Paddle** | Billing | Signed-webhook foundation; legacy live checkout is unsupported. |
 | **Razorpay** | Billing | Adapter and signed-webhook foundation. |
 | **Mercado Pago** | Billing | Offline checkout fixture; live plan-only checkout and body-only webhook verification are unavailable. |
 | **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
 | **PicPay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
-| **Wise** | Payout | Payout adapter foundation rather than a subscription provider. |
+| **Alipay** | Billing | Explicit mock credentials only; live checkout and RSA2 webhook verification are unsupported. |
+| **Wise** | Payout | Status/webhook foundation; legacy email-based live transfer is unsupported. |
 
 The shared `create_customer_portal(email, return_url)` methods do not have a
 reviewed live provider-session contract and return `UnsupportedOperation` for
@@ -70,13 +71,94 @@ before enabling these live checkout paths.
 
 | Reviewed legacy method boundary | Stripe | Lemon Squeezy | Paddle | Polar | Razorpay | Mercado Pago | Coinbase | InfinitePay | PicPay |
 |---|---|---|---|---|---|---|---|---|---|
-| Plan/price-based checkout request | adapter | adapter | adapter | adapter | adapter | unsupported | unsupported | unsupported | unsupported |
+| Plan/price-based checkout request | adapter | adapter | unsupported | unsupported | adapter | unsupported | unsupported | unsupported | unsupported |
 | Customer portal by email | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported |
 | Immediate evidence-bound charge | adapter | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported | unsupported |
 
 `adapter` means a bounded request implementation exists, not that this audit
 validated acceptance or every response schema against a live provider account.
 Offline fixtures are deliberately excluded from the live-method matrix.
+
+The unreleased v12.1 maintenance rejects legacy Paddle and Polar checkout before
+network dispatch: their current provider contracts cannot be represented by the
+old request shapes. Wise's email-based transfer method also fails explicitly;
+it cannot infer a recipient account, authenticated quote or UUID idempotency
+identity, and transfer creation is not funding. Their offline mocks remain
+available. These operations require new typed contracts and provider evidence.
+
+Lemon Squeezy live checkout uses the merchant's explicit positive numeric store
+ID: `LemonSqueezyProvider::new(key, webhook_secret).with_store_id(store_id)?`.
+The plan argument must be a numeric variant ID belonging to that store. The
+generated billing application reads `BILLING_STORE_ID`; missing configuration
+fails before HTTP dispatch. Existing applications must adopt this setting.
+
+### Customer-bound Stripe subscription checkout (12.1 working source)
+
+`StripeProvider::create_customer` accepts a `StripeCustomerRequest` containing
+an opaque local owner reference, a persisted retry key and optional contact
+email. It requires the returned customer metadata, object identity, creation
+time and test/live mode to match the request contract. Email is never used to
+discover or claim an existing customer. Persist the intent before calling and
+the resulting customer/owner/account binding before checkout:
+
+```rust,no_run
+use rullst_capital::{StripeCustomerRequest, StripeCustomerStatus, StripeProvider};
+
+async fn provision() -> Result<(), rullst_capital::CapitalError> {
+    let provider = StripeProvider::new("mock_key", "mock_webhook");
+    let intent = StripeCustomerRequest::new("owner_opaque", "provision_unique")?;
+    // Persist the authorized intent and digest before dispatch.
+    let customer = provider.create_customer(&intent).await?;
+    assert_eq!(customer.status(), StripeCustomerStatus::Mock);
+    // Persist the returned ID and matching digest before creating a checkout.
+    Ok(())
+}
+```
+
+Changing optional email changes the provisioning digest. Retrying an uncertain
+outcome must preserve the original input; it must not silently create a second
+customer after provider idempotency retention expires. See Stripe's
+[customer creation contract](https://docs.stripe.com/api/customers/create?api-version=2025-03-31.basil).
+
+`StripeProvider::create_subscription_checkout` accepts an existing Stripe
+customer ID and an immutable `StripeCheckoutRequest`. Persist the customer's
+authenticated owner/tenant binding and the attempt key/digest before dispatch:
+
+```rust,no_run
+use rullst_capital::{StripeCheckoutRequest, StripeProvider, StripeCheckoutStatus};
+
+async fn checkout() -> Result<(), rullst_capital::CapitalError> {
+    let provider = StripeProvider::new("mock_key", "mock_webhook");
+    let attempt = StripeCheckoutRequest::new(
+        "cus_existing", "price_monthly", "owner_opaque", "attempt_unique",
+        "https://app.example/billing/success", "https://app.example/billing/cancel",
+    )?;
+    let session = provider.create_subscription_checkout(&attempt).await?;
+    assert_eq!(session.status(), StripeCheckoutStatus::Mock);
+    // Store the session ID and compare its input digest with the persisted attempt.
+    // A Created session or a browser redirect never proves payment.
+    Ok(())
+}
+```
+
+The operation pins Stripe API `2025-03-31.basil`, sends the customer and opaque
+reference, copies the reference into subscription metadata and forwards
+`Idempotency-Key`. Expanded line items must match the requested recurring price
+and quantity. Response customer/reference/redirects/mode must also match before
+returning an open session. Stripe's hosted URL is preserved, including its
+documented opaque fragment. Request/receipt debug output omits identifiers,
+URLs and keys; mocks have a distinct status and no provider test/live mode.
+
+Account/test-live namespaces, durable provisioning and attempt persistence,
+webhook owner binding and atomic domain mutation remain application/integration
+work. Do not retry an old key indefinitely: Stripe may discard idempotency
+records after its retention period. An unknown outcome requires reconciliation,
+not a newly generated attempt key. See Stripe's
+[checkout contract](https://docs.stripe.com/api/checkout/sessions/create?api-version=2025-03-31.basil)
+and [idempotency semantics](https://docs.stripe.com/api/idempotent_requests).
+The legacy email-based trait method remains available for source compatibility;
+existing and newly generated applications are not automatically migrated by
+this additive operation.
 
 ### Provider verification levels
 
@@ -121,10 +203,82 @@ accepted, matching the provider's SDK transition. Its old body-only
 See [Polar's signing contract](https://polar.sh/docs/integrate/webhooks/delivery)
 and the [Standard Webhooks specification](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md).
 
+Stripe's v12 normalized path accepts subscription `created`, `updated`,
+`deleted`, `paused` and `resumed` events. It requires a subscription object,
+bounded subscription/customer IDs and exactly one non-truncated price item;
+multi-item subscriptions need an application-specific integration. Missing
+event type, payment-status aliases, confused IDs and contradictory lifecycle
+states are rejected. `incomplete` and `incomplete_expired` map to the legacy
+non-entitled `Unpaid` value, not proof of a failed invoice payment.
+The billing-period end comes from the single item on Basil payloads, with a
+legacy subscription-level fallback; conflicting values fail. This follows
+Stripe's [billing-period API change](https://docs.stripe.com/changelog/basil/2025-03-31/deprecate-subscription-current-period-start-and-end).
+Email is optional contact data. Signed subscription state alone still does not
+bind a local owner, order events, commit an inbox or prove invoice settlement.
+
+`StripeProvider::verify_subscription_event` supplies an additive immutable
+envelope for a caller-owned inbox transaction. It retains the signed event
+ID/type/API version, creation time, matching event/subscription test-live mode,
+optional connected account and `rullst_owner_reference`, and exact Stripe
+status alongside the legacy normalization. `require_real()` rejects explicit
+mock verification before production processing. The verifier does not claim
+the event, so a failed application transaction can retry verification.
+
+`mutation_digest()` binds the fields exposed for subscription processing and
+ignores contact email, signature timestamp and unrelated delivery/JSON fields.
+`payload_digest()` separately hashes the exact bytes. Persist the event ID and
+mutation digest under a namespace containing the configured account and mode,
+and commit with domain changes. Compare customer/owner references with saved
+application bindings. A changed mutation under the same event ID requires
+reconciliation; creation timestamps alone cannot order all updates. Neither
+digest encrypts data or supplies storage, authorization or settlement evidence.
+An absent connected-account field does not identify the platform account.
+See Stripe's [event envelope](https://docs.stripe.com/api/events/object).
+
+With `webhook-sql`, `SqlStripeEventInbox` owns the transaction that commits an
+event and a caller-supplied SQL mutation. `StripeInboxScope::platform` or
+`::connected` fixes the application namespace, configured account, endpoint
+kind and test/live mode; mock and mismatched events are rejected before SQL.
+The host must establish which account owns its credentials and endpoint secret.
+
+Construct the inbox with the ORM's selected relational pool and matching SQL
+dialect. Run `prepare_schema()` only during explicit setup/migration, then call
+`process(&verified_event, |transaction, event| Box::pin(async move { ... }))`.
+Inside that callback, validate the saved customer/owner binding and event order,
+write through the supplied transaction, and return `StripeInboxOutcome::Applied`
+or `Ignored`. External effects belong in an outbox in that same transaction.
+
+An exact committed retry returns its saved outcome without invoking the callback.
+Reusing an event ID with a changed mutation digest fails with `EventConflict`.
+Domain errors and cancellation before commit roll back uncommitted SQL; an
+uncertain commit returns `CommitUncertain`, which requires retrying the same event
+to discover its recorded outcome. Do not combine this path with middleware that
+claims replay admission before the handler.
+
+Capacity is bounded, persisted and immutable per scope. Entries never expire
+automatically; a full inbox rejects new events while retaining exact retries.
+The application owns retention, reconciliation, transactional domain tables,
+customer provisioning and authorization. This API does not migrate existing or
+generated handlers, support Turso's remote batch transport, order snapshots or
+make HTTP effects atomic. Stored event/scope/mutation hashes minimize identifiers;
+they are not encryption or a complete billing audit history.
+
 Missing or malformed status no longer implies a paid/active subscription.
 Unsupported Razorpay and Coinbase event kinds fail closed; Coinbase event
 names are matched exactly, not by substring. This does not establish every
 provider payload schema or an application-specific entitlement/tenant policy.
+
+Razorpay subscription normalization requires the subscription's own bounded ID,
+customer ID and plan ID, plus an event/entity state match. Authentication alone
+and standalone payment/order events cannot activate a subscription. Activated,
+charged and resumed events require `active`; pending, halted, paused and
+cancelled events require their corresponding provider state. Completed and
+authenticated states remain unsupported by the v12 normalized contract. Email
+is optional contact data. The application still owns customer/tenant binding,
+event ordering, durable processing and reconciliation; `Active` is a lifecycle
+state, not proof that a particular invoice was paid. See Razorpay's
+[subscription states](https://razorpay.com/docs/payments/subscriptions/states/)
+and [webhook payloads](https://razorpay.com/docs/webhooks/subscriptions/).
 
 ---
 

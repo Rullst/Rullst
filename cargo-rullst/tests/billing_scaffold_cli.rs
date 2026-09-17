@@ -19,12 +19,19 @@ fn assert_success(output: &Output, action: &str) {
     );
 }
 
+fn target_directory(workspace: &Path) -> PathBuf {
+    match std::env::var_os("CARGO_TARGET_DIR").filter(|value| !value.is_empty()) {
+        Some(value) => workspace.join(value),
+        None => workspace.join("target"),
+    }
+}
+
 fn clean_generated_package(project: &Path, workspace: &Path, package_name: &str) {
     let cleaned = run(
         Command::new("cargo")
             .current_dir(project)
             .args(["clean", "--package", package_name])
-            .env("CARGO_TARGET_DIR", workspace.join("target"))
+            .env("CARGO_TARGET_DIR", target_directory(workspace))
             .env("CARGO_NET_OFFLINE", "true"),
         "clean generated billing package",
     );
@@ -57,6 +64,13 @@ fn contract_source(database: &str) -> String {
     } else {
         r#"rullst::orm::Orm::init("sqlite://db.sqlite?mode=rwc").await?;"#
     };
+    let execute_sql = if database == "turso" {
+        r#"rullst::orm::polyglot::TursoOrm::store()?.execute(
+            rullst::orm::polyglot::TursoStatement::new(statement, vec![])?
+        ).await?;"#
+    } else {
+        r#"rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement)).execute(rullst::db::Orm::pool()?).await?;"#
+    };
     format!(
         r#"#![allow(dead_code)]
 
@@ -70,10 +84,18 @@ mod pages;
 use models::billing_customer::BillingCustomer;
 use models::subscription::Subscription;
 use rullst::capital::{{SubscriptionStatus, WebhookEvent}};
-use rullst::server::{{Extension, StatusCode}};
+use rullst::server::{{Extension, Form, StatusCode}};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {{
+    use controllers::billing_controller::{{BillingIdentity, CheckoutForm}};
+    let identity = BillingIdentity {{ owner_id: 7, email: "owner@example.com".into() }};
+    if std::env::var_os("BILLING_CONTRACT_LIVE_PORTAL").is_some() {{
+        // Must reject the unsupported live operation before any database or HTTP I/O.
+        let response = controllers::billing_controller::portal_redirect(Extension(identity)).await;
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        return Ok(());
+    }}
     {initialize}
     let mut owner = BillingCustomer {{
         id: 0,
@@ -84,6 +106,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         updated_at: String::new(),
     }};
     owner.save().await?;
+
+    let checkout = controllers::billing_controller::checkout_redirect(
+        Extension(identity), Form(CheckoutForm {{ plan: "price_pro".into() }})
+    ).await;
+    assert_eq!(checkout.status(), StatusCode::SEE_OTHER);
+    assert!(checkout.headers()["location"].to_str()?.starts_with("https://checkout.stripe.com/"));
 
     let event = WebhookEvent {{
         subscription_id: "sub_contract".to_string(),
@@ -134,6 +162,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
         .await?
         .ok_or("other customer disappeared")?;
     assert!(other.customer_id.is_none());
+
+    // Abort either statement in the real generated transaction. Both rows must
+    // remain unchanged, and retrying after the failure must remain possible.
+    for (index, table, operation) in [(0, "billing_customers", "UPDATE"), (1, "subscriptions", "INSERT")] {{
+        let email = format!("rollback{{index}}@example.com");
+        let owner_id = 20 + index;
+        let mut customer = BillingCustomer {{
+            id: 0, workspace_id: owner_id, email: email.clone(), customer_id: None,
+            created_at: String::new(), updated_at: String::new(),
+        }};
+        customer.save().await?;
+        execute_sql(&format!("CREATE TRIGGER reject_billing_update BEFORE {{operation}} ON {{table}} BEGIN SELECT RAISE(ABORT, 'injected billing failure'); END")).await?;
+        let event = WebhookEvent {{
+            subscription_id: format!("sub_rollback{{index}}"), customer_id: format!("cus_rollback{{index}}"),
+            customer_email: email.clone(), plan_id: "price_pro".into(),
+            status: SubscriptionStatus::Active, ends_at: None,
+        }};
+        let failed = controllers::billing_controller::webhook_handler(Extension(event.clone())).await;
+        assert_eq!(failed.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        let unchanged = BillingCustomer::find_by_email(&email).await?.ok_or("customer disappeared")?;
+        assert!(unchanged.customer_id.is_none(), "customer binding survived rollback");
+        assert!(Subscription::find_by_subscription_id(&event.subscription_id).await?.is_none(), "subscription survived rollback");
+        execute_sql("DROP TRIGGER reject_billing_update").await?;
+        let retried = controllers::billing_controller::webhook_handler(Extension(event)).await;
+        assert_eq!(retried.status(), StatusCode::OK);
+    }}
+    Ok(())
+}}
+
+async fn execute_sql(statement: &str) -> Result<(), Box<dyn std::error::Error>> {{
+    {execute_sql}
     Ok(())
 }}
 "#
@@ -216,7 +275,7 @@ fn verify_backend(database: &str) {
         Command::new("cargo")
             .current_dir(&project)
             .args(["clippy", "--all-targets", "--", "-D", "warnings"])
-            .env("CARGO_TARGET_DIR", workspace.join("target"))
+            .env("CARGO_TARGET_DIR", target_directory(workspace))
             .env("CARGO_NET_OFFLINE", "true"),
         "Clippy generated billing project",
     );
@@ -226,7 +285,7 @@ fn verify_backend(database: &str) {
         Command::new("cargo")
             .current_dir(&project)
             .args(["run", "--quiet", "--bin", &package_name, "--", "db:migrate"])
-            .env("CARGO_TARGET_DIR", workspace.join("target"))
+            .env("CARGO_TARGET_DIR", target_directory(workspace))
             .env("CARGO_NET_OFFLINE", "true"),
         "run generated billing migrations",
     );
@@ -236,11 +295,34 @@ fn verify_backend(database: &str) {
         Command::new("cargo")
             .current_dir(&project)
             .args(["run", "--quiet", "--bin", "billing_contract"])
-            .env("CARGO_TARGET_DIR", workspace.join("target"))
+            .env("RULLST_ENV", "development")
+            .env("BILLING_PROVIDER", "stripe")
+            .env("BILLING_API_KEY", "mock_key")
+            .env("BILLING_ALLOWED_PLAN_IDS", "price_pro")
+            .env(
+                "BILLING_REDIRECT_URL",
+                "https://app.example.invalid/dashboard",
+            )
+            .env("CARGO_TARGET_DIR", target_directory(workspace))
             .env("CARGO_NET_OFFLINE", "true"),
         "run generated billing contract",
     );
     assert_success(&runtime, "generated billing runtime contract");
+
+    let live_portal = run(
+        Command::new("cargo")
+            .current_dir(&project)
+            .args(["run", "--quiet", "--bin", "billing_contract"])
+            .env("RULLST_ENV", "development")
+            .env("BILLING_PROVIDER", "stripe")
+            .env("BILLING_API_KEY", "fixture_invalid_live_credential")
+            .env("BILLING_ALLOWED_PLAN_IDS", "price_pro")
+            .env("BILLING_CONTRACT_LIVE_PORTAL", "1")
+            .env("CARGO_TARGET_DIR", target_directory(workspace))
+            .env("CARGO_NET_OFFLINE", "true"),
+        "reject unsupported generated live portal",
+    );
+    assert_success(&live_portal, "unsupported generated live portal");
 
     let controller_before = controller;
     let duplicate = run(

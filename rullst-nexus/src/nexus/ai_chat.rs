@@ -35,18 +35,12 @@ fn schema_summary(state: &NexusState) -> String {
 }
 
 pub fn detect_ai_provider() -> (bool, String) {
-    if std::env::var("GEMINI_API_KEY").is_ok() {
-        (true, "Google Gemini".to_string())
-    } else if std::env::var("OPENAI_API_KEY").is_ok() {
-        (true, "OpenAI".to_string())
-    } else if std::env::var("ANTHROPIC_API_KEY").is_ok() {
-        (true, "Anthropic Claude".to_string())
-    } else if std::env::var("OLLAMA_HOST").is_ok() {
-        (true, "Ollama Local".to_string())
-    } else if std::env::var("OPENAI_BASE_URL").is_ok() {
-        (true, "Custom LLM Endpoint".to_string())
-    } else {
-        (false, "Offline Embedded Intelligence".to_string())
+    match rullst_ai::AutoAiConfig::from_env() {
+        Ok(config) if !config.provider_names().is_empty() => {
+            (true, config.provider_names().join(" → "))
+        }
+        Ok(_) => (false, "Offline Embedded Intelligence".into()),
+        Err(_) => (false, "AI configuration incomplete or invalid".into()),
     }
 }
 
@@ -64,13 +58,15 @@ pub fn generate_smart_nexus_ai_response(message: &str, state: &NexusState) -> St
         || msg_lower.contains("kimi")
     {
         return "<p><strong>🌐 Universal LLM Setup Guide:</strong></p>\
-             <p>Rullst AI supports <strong>any LLM provider</strong> out of the box! Add any of these variables to your project's <code class=\"nexus-code\">.env</code> file:</p>\
+             <p>Rullst AI supports <strong>the configured providers below</strong>. Add the corresponding variables to your project's <code class=\"nexus-code\">.env</code> file:</p>\
              <ul style=\"margin: 0.5rem 0; padding-left: 1.25rem; font-size: 0.85rem;\">\
                <li><strong>Google Gemini:</strong> <code class=\"nexus-code\">GEMINI_API_KEY=your_key</code></li>\
                <li><strong>OpenAI / ChatGPT:</strong> <code class=\"nexus-code\">OPENAI_API_KEY=your_key</code></li>\
                <li><strong>Anthropic Claude:</strong> <code class=\"nexus-code\">ANTHROPIC_API_KEY=your_key</code></li>\
                <li><strong>Local Ollama:</strong> <code class=\"nexus-code\">OLLAMA_HOST=http://localhost:11434</code></li>\
-               <li><strong>DeepSeek / Qwen / Kimi:</strong> <code class=\"nexus-code\">OPENAI_BASE_URL=https://...</code></li>\
+               <li><strong>DeepSeek:</strong> <code class=\"nexus-code\">DEEPSEEK_API_KEY=your_key</code></li>\
+               <li><strong>Groq:</strong> <code class=\"nexus-code\">GROQ_API_KEY=your_key; GROQ_MODEL=your_model</code></li>\
+               <li><strong>Custom compatible endpoint:</strong> <code class=\"nexus-code\">OPENAI_BASE_URL=https://...; OPENAI_API_KEY=your_key; OPENAI_MODEL=your_model</code></li>\
              </ul>\
              <p style=\"font-size: 0.8rem; color: var(--text-300);\">Then restart your dev server (<code class=\"nexus-code\">cargo rullst dev</code> or <code class=\"nexus-code\">dash</code>).</p>".to_string();
     }
@@ -214,7 +210,7 @@ pub async fn nexus_chat_page(
     content.push_str("<div class=\"nexus-card\" style=\"padding: 1rem; margin: 0; background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.2);\">");
     content.push_str("<div style=\"font-size: 0.85rem; font-weight: 700; color: #f59e0b; margin-bottom: 0.5rem;\">&#127760; Universal LLM Support</div>");
     content.push_str("<p style=\"font-size: 0.75rem; color: var(--text-200); margin: 0 0 0.5rem 0; line-height: 1.4;\">Connect to <strong>Gemini, OpenAI, Claude, Ollama, DeepSeek, Qwen, or Kimi</strong> via your <code class=\"nexus-code\">.env</code> file:</p>");
-    content.push_str("<pre class=\"nexus-schema-pre\" style=\"font-size: 0.7rem; padding: 0.5rem;\">GEMINI_API_KEY=key\nOPENAI_API_KEY=key\nANTHROPIC_API_KEY=key\nOLLAMA_HOST=http://...\nOPENAI_BASE_URL=https://...</pre>");
+    content.push_str("<pre class=\"nexus-schema-pre\" style=\"font-size: 0.7rem; padding: 0.5rem;\">GEMINI_API_KEY=key\nOPENAI_API_KEY=key\nANTHROPIC_API_KEY=key\nDEEPSEEK_API_KEY=key\nGROQ_API_KEY=key\nGROQ_MODEL=model\nOLLAMA_HOST=http://...\nOPENAI_BASE_URL=https://...\nOPENAI_MODEL=model</pre>");
     content.push_str("</div>");
 
     // Database Schema Summary
@@ -270,8 +266,9 @@ pub async fn nexus_chat_query(
 ) -> Html<String> {
     let user_msg = rullst_core::html::escape_str(&req.message);
 
-    let (has_provider, _provider_name) = detect_ai_provider();
-    let ai_response = if has_provider {
+    let ai_response = if let Ok(config) = rullst_ai::AutoAiConfig::from_env()
+        && !config.provider_names().is_empty()
+    {
         let schema_summary = schema_summary(&state);
 
         let system_prompt = format!(
@@ -281,17 +278,15 @@ pub async fn nexus_chat_query(
             schema_summary
         );
 
-        match rullst_ai::AiClient::auto() {
-            Ok(client) => match client
-                .chat()
-                .system(&system_prompt)
-                .user(&req.message)
-                .send()
-                .await
-            {
-                Ok(resp) => resp,
-                Err(_) => generate_smart_nexus_ai_response(&req.message, &state),
-            },
+        match config
+            .into_client()
+            .chat()
+            .system(&system_prompt)
+            .user(&req.message)
+            .send()
+            .await
+        {
+            Ok(resp) => resp,
             Err(_) => generate_smart_nexus_ai_response(&req.message, &state),
         }
     } else {

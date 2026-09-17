@@ -286,19 +286,20 @@ fn replace_version(
     {
         state.source_majors.insert(comparator.major);
     }
-    if current.value() == state.target {
+    let exact_requirement = format!("={}", state.target);
+    if current.value() == &exact_requirement {
         return;
     }
     let previous = current.value().clone();
     let decoration = current.decor().clone();
-    let mut replacement = Formatted::new(state.target.to_string());
+    let mut replacement = Formatted::new(exact_requirement.clone());
     *replacement.decor_mut() = decoration;
     *current = replacement;
     state.changes.push(DependencyChange {
         key: key.to_string(),
         package: package.to_string(),
         from: previous,
-        to: state.target.to_string(),
+        to: exact_requirement,
     });
 }
 
@@ -336,18 +337,22 @@ rullst-security = "5.0.0"
 
         assert_eq!(result.matched, 5);
         assert_eq!(result.changes.len(), 4);
-        assert!(result.updated.contains("rullst = \"12.0.0-rc.1\""));
+        assert!(result.updated.contains("rullst = \"=12.0.0-rc.1\""));
         assert!(
             result
                 .updated
-                .contains("package = \"rullst-core\", version = \"12.0.0-rc.1\"")
+                .contains("package = \"rullst-core\", version = \"=12.0.0-rc.1\"")
         );
         assert!(
             result
                 .updated
-                .contains("rullst-auth = { version = \"12.0.0-rc.1\" }")
+                .contains("rullst-auth = { version = \"=12.0.0-rc.1\" }")
         );
-        assert!(result.updated.contains("rullst-security = \"12.0.0-rc.1\""));
+        assert!(
+            result
+                .updated
+                .contains("rullst-security = \"=12.0.0-rc.1\"")
+        );
         assert_eq!(result.warnings.len(), 1);
         assert!(result.warnings[0].contains("local_ai"));
     }
@@ -360,6 +365,21 @@ rullst-security = "5.0.0"
         assert!(result.updated.contains("# framework"));
         assert!(result.updated.contains("# keep this comment"));
         assert!(result.updated.contains("axum = \"0.8\""));
+    }
+
+    #[test]
+    fn selected_release_does_not_admit_newer_versions_and_replanning_is_stable() {
+        let first = plan("[dependencies]\nrullst = \"12.0.0-rc.1\"\n");
+        let document = first.updated.parse::<DocumentMut>().unwrap();
+        let selected =
+            VersionReq::parse(document["dependencies"]["rullst"].as_str().unwrap()).unwrap();
+        assert!(selected.matches(&semver::Version::parse("12.0.0-rc.1").unwrap()));
+        for newer in ["12.0.0-rc.2", "12.0.0", "12.0.1", "12.1.0"] {
+            assert!(!selected.matches(&semver::Version::parse(newer).unwrap()));
+        }
+        let second = plan(&first.updated);
+        assert!(second.changes.is_empty());
+        assert_eq!(first.updated, second.updated);
     }
 
     #[test]

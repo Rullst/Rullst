@@ -146,36 +146,9 @@ impl BillingProvider for PaddleProvider {
             ));
         }
 
-        let client = crate::providers::http_client()?;
-        let payload = serde_json::json!({
-            "items": [{
-                "price_id": plan_id,
-                "quantity": 1
-            }],
-            "customer": {
-                "email": customer_email
-            },
-            "return_url": redirect_url
-        });
-
-        let body: Value = crate::providers::send_http_json(
-            client
-                .post("https://api.paddle.com/transactions")
-                .bearer_auth(&self.api_key)
-                .header("Content-Type", "application/json")
-                .json(&payload),
-            "paddle",
-            "create checkout",
-        )
-        .await?;
-
-        let url = body["data"]["checkout"]["url"].as_str().ok_or_else(|| {
-            CapitalError::from(crate::ProviderFailure::contract_mismatch(
-                "paddle",
-                "create checkout",
-            ))
-        })?;
-        crate::providers::validate_checkout_url("paddle", url)
+        Err(CapitalError::UnsupportedOperation(
+            "Paddle checkout requires a reviewed transaction/customer and approved payment-link contract".into(),
+        ))
     }
 
     fn handle_webhook(

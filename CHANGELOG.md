@@ -6,6 +6,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### SaaS maintenance — planned 12.1.0
+
+- Allow ordinary curl, Wget, Python and Go clients through the default WAF
+  User-Agent policy, fixing deployment health probes (RULLST-003). Preserve
+  configurable crawler filtering, payload inspection, CSRF and secure headers.
+  Existing explicitly configured blocklists remain application-owned.
+- Validate Lemon Squeezy store/variant configuration; reject obsolete Paddle
+  and Polar checkout and incomplete Wise email-transfer flows explicitly.
+  Accept any valid bounded Stripe webhook signature during secret rotation.
+- Require Razorpay subscription events to match their entity state and carry
+  subscription/customer/plan IDs; stop treating authentication or standalone
+  payments as active subscriptions. Handle charged, resumed and paused events.
+- Read Stripe Basil billing periods from the subscription item, retaining the
+  legacy period fallback. Require supported subscription events, bounded IDs,
+  one complete price item and valid subscription states; reject ambiguous
+  periods and stop accepting payment-status aliases as subscription status.
+- Add an immutable verified Stripe subscription envelope retaining event/scope
+  metadata and separate mutation/payload digests, without consuming replay
+  admission before the caller's transaction. Production callers must reject
+  mock mode and bind account/customer/owner before committing an inbox claim.
+- Add customer-bound Stripe subscription checkout with explicit retry identity,
+  immutable request digests, response/line-item binding and distinct offline
+  receipts. Preserve legitimate Stripe hosted-URL fragments. Durable customer
+  ownership, attempts and generated webhook integration remain separate work.
+- Add explicit Stripe customer creation with opaque owner metadata, optional
+  contact data, immutable request digests and provider idempotency. Validate
+  returned identity/mode and distinguish deterministic mocks; durable intent
+  and customer binding remain required before checkout.
+- Generate HTTP 303 checkout redirects, an explicit unavailable live portal,
+  retained application lockfiles, locked Docker builds and supported MSVC flags.
+- Commit generated billing customer/subscription changes atomically on SQLx
+  and Turso, with conditional customer binding and rollback/retry fixtures.
+  Generated durable inbox integration remains a separate release requirement.
+- Add `SqlStripeEventInbox` under `webhook-sql`: retain scoped event/mutation
+  identity and terminal outcomes in the same transaction as domain SQL.
+  Reject conflicting content and mock/wrong-scope events, preserve exact retries
+  at capacity, and roll back failures/cancellation before commit. Retention,
+  authorized customer bindings, ordering and generated integration remain explicit.
+- Share AI configuration resolution between Nexus and the client, including
+  explicitly configured Groq and OpenAI-compatible models.
+- Make standalone ORM strict profiles select only their SQLx backend when
+  defaults are disabled. Preserve default convenience through `drivers-all`
+  and document additive dependency edges that can broaden a consumer graph.
+- Generate native enum codecs through the ORM's selected drivers, fixing
+  backend-exclusive and no-driver compilation. Exercise enums in each isolated
+  consumer; retain the macro crate's default expansion for the 12.0 runtime.
+
 ### Omni icons and Android signing — planned 12.1.0
 
 - Embed the existing Rullst logo as the default square icon source and regenerate
@@ -20,44 +67,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   hosted Android evidence with disposable-key release/certificate checks.
 - Fix Windows strict-lint compilation and macOS root-alias handling in upgrade
   backup creation/restoration, preserving rejection of descendant symlinks.
-
-### CLI update discovery
-
-- Add explicit advisory `cargo rullst update check` with an exact target,
-  separate major/prerelease opt-ins, MSRV/platform presentation and a versioned
-  JSON report. Offline mode refuses network access. Reuse bounded HTTPS discovery
-  without changing the public v12 command enum; discovery grants no artifact,
-  installation, project execution or deployment authority.
-
-- Cache explicit discovery for six hours on Unix using a private, owner-checked
-  directory, bounded single-link files, no-follow opens, a non-blocking writer
-  lock and staged replacement. Offline reads revalidate the catalog and current
-  selection policy; JSON includes metadata source/age. `--refresh` skips reads
-  and `--no-cache` disables persistence. Dashboard notices remain process-local.
-  Windows cache persistence stays disabled pending its owner/ACL implementation;
-  online discovery remains available. This is not verified CLI installation.
-
-- Preflight the complete legacy upgrade backup before restoring any original.
-  Bound index and snapshot sizes, reject duplicate/ambiguous paths and linked
-  sources/targets, stage all replacements first, and replace directory entries
-  without truncating hardlinked files. Automatic and persisted recovery share
-  these checks. An interrupted apply reports partial progress and retains its
-  backup; this is per-file replacement, not an all-files atomic transaction.
-
-- Include `rullst-messaging` and an application's optional `cargo-rullst`
-  dependency in workspace upgrades. Check the managed package allowlist against
-  the publication inventory and test alias/workspace inheritance without
-  rewriting similarly named third-party packages.
-
-- Restrict advisory update discovery to interactive dashboard startup; ordinary
-  commands, help and noninteractive use do not start the check. Respect offline,
-  CI and notification opt-out flags. Retire the shared temporary version file
-  in favor of a validated process-local result.
-- Bound registry responses and total network/body duration, deny redirects and
-  select only newer non-yanked stable versions in the current major. Add offline
-  selection and loopback HTTP regressions, including a continuously trickling
-  response. This does not install a CLI, run project acceptance tests or complete
-  the planned guided 12.1.0 update workflow.
 
 ### Mobile Nexus and Portfolio — planned 12.1.0 and v13
 
@@ -83,6 +92,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   visits, caller-owned access layers and the complete local builder. Document
   removal of application-level workaround routes before upgrading existing
   showcases; dependency updates do not rewrite generated source or redeploy it.
+
+### CLI update discovery
+
+- Pin managed upgrade requirements to the exact selected release and use
+  `--locked` for the final Cargo check, preventing silent patch/minor drift.
+
+- Add explicit advisory `cargo rullst update check` with an exact target,
+  separate major/prerelease opt-ins, MSRV/platform presentation and a versioned
+  JSON report. Offline mode refuses network access. Reuse bounded HTTPS discovery
+  without changing the public v12 command enum; discovery grants no artifact,
+  installation, project execution or deployment authority.
+
+- Cache explicit discovery for six hours on Unix using a private, owner-checked
+  directory, bounded single-link files, no-follow opens, a non-blocking writer
+  lock and staged replacement. Offline reads revalidate the catalog and current
+  selection policy; JSON includes metadata source/age. `--refresh` skips reads
+  and `--no-cache` disables persistence. Dashboard notices remain process-local.
+  Windows persistence now checks ownership, DACLs, path components, reparse
+  points and hardlinks; native Windows cache contracts passed.
+  This is not verified CLI installation.
+
+- Preflight the complete legacy upgrade backup before restoring any original.
+  Bound index and snapshot sizes, reject duplicate/ambiguous paths and linked
+  sources/targets, stage all replacements first, and replace directory entries
+  without truncating hardlinked files. Automatic and persisted recovery share
+  these checks. An interrupted apply reports partial progress and retains its
+  backup; this is per-file replacement, not an all-files atomic transaction.
+
+- Include `rullst-messaging` and an application's optional `cargo-rullst`
+  dependency in workspace upgrades. Check the managed package allowlist against
+  the publication inventory and test alias/workspace inheritance without
+  rewriting similarly named third-party packages.
+
+- Restrict advisory update discovery to interactive dashboard startup; ordinary
+  commands, help and noninteractive use do not start the check. Respect offline,
+  CI and notification opt-out flags. Retire the shared temporary version file
+  in favor of a validated process-local result.
+- Bound registry responses and total network/body duration, deny redirects and
+  select only newer non-yanked stable versions in the current major. Add offline
+  selection and loopback HTTP regressions, including a continuously trickling
+  response. This does not install a CLI, run project acceptance tests or complete
+  the planned guided 12.1.0 update workflow.
 
 ### CI tooling
 
@@ -126,12 +177,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Dependency maintenance
 
-- Review grouped Rust dependency updates, zstd 0.14 and jsonschema 0.56; align
-  explicit manifest minimums and the independent fuzz lockfiles. These changes
-  still require runtime and platform validation before a 12.1.0 release.
-- Align pinned CodeQL sub-actions, update the tool installer and Rust setup
-  Action with explicit legacy warning behavior, and pin the secret scanner's
-  container digest independently of its Action wrapper.
+- Integrate the reviewed grouped Rust updates, zstd 0.14 and jsonschema 0.56
+  into the compatible maintenance candidate; align manifest minimums and all
+  independent fuzz lockfiles. Candidate-wide compatibility and release checks
+  remain required before publication.
+- Align pinned CodeQL sub-actions, update the installer and Rust setup Action
+  with explicit warning behavior, and independently digest-pin the secret
+  scanner container. Do not skip existing verification jobs.
 
 ### Native SES dependency compatibility
 

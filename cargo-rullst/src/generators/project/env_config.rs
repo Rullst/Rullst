@@ -25,26 +25,11 @@ pub fn generate_env_and_configs(
     let mut config_toml = String::new();
     config_toml.push_str(
         r#"# 🚀 Rullst Compiler & Linker Optimization Configuration
-# Configures ultra-fast linkers for local development.
+# Selects available linkers for local development.
+# Windows uses the toolchain's supported linker and debug-information defaults.
 
 "#,
     );
-
-    if has_lld && cfg!(windows) {
-        config_toml.push_str(
-            r#"[target.x86_64-pc-windows-msvc]
-rustflags = ["-C", "link-arg=-fuse-ld=lld", "-C", "link-arg=/DEBUG:FASTLINK"]
-
-"#,
-        );
-    } else {
-        config_toml.push_str(
-            r#"[target.x86_64-pc-windows-msvc]
-rustflags = ["-C", "link-arg=/DEBUG:FASTLINK"]
-
-"#,
-        );
-    }
 
     if has_mold && cfg!(target_os = "linux") {
         config_toml.push_str(
@@ -99,7 +84,8 @@ csrf_signed_webhook_paths = ["/billing/webhook"]
 
     let gitignore_content = r#"# Rust build artifacts
 /target
-/Cargo.lock
+
+# Commit Cargo.lock for reproducible application/deployment builds.
 
 # Rullst: Database
 *.db
@@ -191,6 +177,8 @@ RULLST_ENV=development
         let billing_template = r#"
 # ── Billing (required in production) ──
 BILLING_PROVIDER=stripe
+# Required for live Lemon Squeezy checkout; use your merchant's numeric store ID.
+BILLING_STORE_ID=
 BILLING_API_KEY=
 BILLING_WEBHOOK_SECRET=
 BILLING_REDIRECT_URL=http://localhost:3000/dashboard

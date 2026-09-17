@@ -48,6 +48,7 @@ jobs:
               sort
           )"
           expected="$(printf '%s\n' \
+            'cargo-rullst/src/update/cache/windows_acl.rs' \
             'rullst-core/src/radar.rs' \
             'rullst-core/src/server/dylib_loader.rs' |
             sort)"
@@ -60,5 +61,6 @@ jobs:
       - name: Publish the audited unsafe inventory
         run: |
           grep -En -n 'unsafe\s*(\{|fn|impl|trait|extern)' \
+            cargo-rullst/src/update/cache/windows_acl.rs \
             rullst-core/src/radar.rs \
             rullst-core/src/server/dylib_loader.rs

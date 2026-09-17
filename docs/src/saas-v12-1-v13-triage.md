@@ -43,9 +43,52 @@ means the complete release or a live-provider journey has passed:
 - `efb9518b`: Razorpay lifecycle normalization and signed-event negatives;
   127 default-feature Capital tests and strict Clippy for all targets passed.
 - Materialized billing tests pass for SQLite and Turso, including 303 redirects,
-  cross-owner denial and unavailable live portals before database access.
+  cross-owner denial and unavailable live portals before database access. The
+  customer/subscription pair now commits atomically; fault injection in either
+  table proves rollback and a successful handler retry on both backends.
   Stable provider customer binding, checkout idempotency, provider namespaces
   and atomic inbox/domain state still need implementation and acceptance.
+- Additive `StripeCheckoutRequest`/`create_subscription_checkout` binds an
+  existing customer, local reference, recurring price, redirects and retry key;
+  validates the returned session and line item; and distinguishes local mocks.
+  All 132 default-feature Capital tests and strict all-target Clippy passed.
+  This is protocol/local evidence; the generated checkout still needs durable
+  customer provisioning, attempt persistence and the verified event flow.
+- Standalone ORM consumers can disable defaults and enable exactly one strict
+  SQLx backend. Generated CRUD and transaction methods passed strict Clippy
+  on all three profiles; their normal/build graphs contained only the selected
+  SQLx driver. The default `drivers-all` profile retains existing convenience.
+  Facade/Studio compositions still need their own opt-in isolation boundary.
+- The follow-up full CI run at `e1d8fe4d` exposed unconditional enum codecs in
+  backend-exclusive builds. Runtime-gated codecs fix the no-driver all-target
+  check, and the expanded standalone consumers now compile enum bindings and
+  decoding for PostgreSQL, MySQL and SQLite without importing other drivers.
+  These targeted checks do not supersede the next full candidate matrix.
+- Stripe subscription normalization now reads Basil item-level periods and
+  rejects missing/confused event kinds, identities, states and price items.
+  Legacy subscription-level periods and custom plan IDs remain supported;
+  contradictory periods fail. Three real-HMAC fixture tests cover those
+  branches; 139 Capital tests with Actix enabled and strict all-target Clippy
+  passed. Subscription state is still not invoice-settlement evidence.
+- The additive verified Stripe event envelope retains event/scope metadata,
+  the exact provider status and separate mutation/payload digests without a
+  pre-handler replay claim. Four signed-envelope contracts cover tampering,
+  scope/mode confusion, mutation identity, delivery variation and explicit mock
+  rejection. All 143 Capital tests with Actix and strict Clippy passed locally.
+  The generated handler has not yet switched to a durable atomic inbox.
+- Additive Stripe customer provisioning binds opaque owner metadata and an
+  immutable retry request, with optional contact email and validated response
+  mode/identity. Five protocol/negative/mock contracts pass; all 148 Capital
+  tests with Actix and strict all-target Clippy pass. This supplies the provider
+  operation, not durable intent, account/owner binding or generated integration.
+- `SqlStripeEventInbox` atomically retains a verified event's scoped identity,
+  mutation digest and outcome with caller-supplied domain SQL. SQLite tests
+  cover restart and injected inbox-write failure; shared PostgreSQL, MySQL and
+  MariaDB contracts cover retries, conflicting content, eight concurrent
+  deliveries, domain rollback, cancellation, immutable capacity and scope/mock
+  denial. These pass with both Any and the matching native ORM pools. This is
+  database/protocol evidence; customer/attempt persistence, event ordering and
+  replacement of the generated handler remain required.
 
 All eleven v12 adapters are in scope: Stripe, Lemon Squeezy, InfinitePay,
 Polar, Paddle, Razorpay, Mercado Pago, Coinbase Commerce, PicPay, Alipay and Wise.

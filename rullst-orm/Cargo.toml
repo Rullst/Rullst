@@ -14,8 +14,8 @@ keywords = ["orm", "database", "sqlite", "postgres", "mysql"]
 categories = ["database"]
 
 [dependencies]
-rullst-orm-macros = { workspace = true }
-sqlx = { workspace = true, features = ["sqlite", "postgres", "mysql", "any", "runtime-tokio", "macros", "json", "tls-rustls"] }
+rullst-orm-macros = { workspace = true, features = ["runtime-driver-codecs"] }
+sqlx = { workspace = true, features = ["any", "runtime-tokio", "macros", "json", "tls-rustls"] }
 tokio = { workspace = true, features = ["full"] }
 async-trait = { workspace = true }
 futures = "0.3"
@@ -44,19 +44,20 @@ tinyvec = { version = "=1.13.2", default-features = false }
 walkdir = "2.5.0"
 
 [features]
-default = []
+default = ["drivers-all"]
+drivers-all = ["sqlx/sqlite", "sqlx/postgres", "sqlx/mysql"]
 redis = ["dep:redis", "dep:sha2", "dep:url"]
 mongodb = ["dep:mongodb"]
 duckdb = ["dep:duckdb"]
-turso = ["dep:reqwest", "dep:url", "dep:sha2"]
+turso = ["dep:reqwest", "dep:url", "dep:sha2", "sqlx/sqlite"]
 surrealdb = ["dep:reqwest"]
 scout-http = ["dep:reqwest", "dep:url"]
 pgvector = ["dep:pgvector"]
 qdrant = ["dep:reqwest", "dep:url"]
 polyglot = ["mongodb", "duckdb", "turso", "surrealdb", "qdrant"]
-strict-postgres = []
-strict-mysql = []
-strict-sqlite = []
+strict-postgres = ["sqlx/postgres"]
+strict-mysql = ["sqlx/mysql"]
+strict-sqlite = ["sqlx/sqlite"]
 
 [dev-dependencies]
 mutants = "0.0.4"

@@ -11,6 +11,8 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/omni-android.yml"
+      - ".github/check-android-signing.py"
+      - ".github/test-check-android-signing.py"
   pull_request:
     branches: [main]
     paths:
@@ -21,6 +23,8 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/omni-android.yml"
+      - ".github/check-android-signing.py"
+      - ".github/test-check-android-signing.py"
   workflow_dispatch:
 
 concurrency:
@@ -72,6 +76,9 @@ jobs:
       - name: Build the Rullst CLI
         run: cargo build -p cargo-rullst --bin rullst
 
+      - name: Validate signing evidence parser
+        run: python3 .github/test-check-android-signing.py
+
       - name: Create a disposable Rullst host project
         shell: bash
         run: |
@@ -88,13 +95,16 @@ jobs:
             --backend-url https://example.invalid \
             --identifier dev.rullst.omnici
 
-      - name: Compile native Gradle configuration before the Rust APK build
-        working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app/gen/android
-        run: ./gradlew --no-daemon help
-
+      # Tauri materializes tauri.settings.gradle during build preparation.
+      # A bare Gradle invocation before this step lacks that required script.
+      # Gradle compiles its configuration before executing native build tasks.
       - name: Compile a debug Android APK
         working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app
         run: npm run tauri -- android build --debug --target aarch64 --apk --ci
+
+      - name: Recheck materialized native Gradle configuration
+        working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app/gen/android
+        run: ./gradlew --no-daemon help
 
       - name: Verify native icons match the application source
         working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app
@@ -113,11 +123,17 @@ jobs:
         working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app/gen/android
         shell: bash
         run: |
-          if ./gradlew --no-daemon :app:preReleaseBuild > "$RUNNER_TEMP/omni-missing-signing.log" 2>&1; then
-            echo 'Release preparation unexpectedly accepted missing signing credentials' >&2
-            exit 1
-          fi
-          grep -F 'Set RULLST_ANDROID_KEYSTORE' "$RUNNER_TEMP/omni-missing-signing.log"
+          for variant in Universal Arm64 Arm X86 X86_64; do
+            log="$RUNNER_TEMP/omni-missing-signing-$variant.log"
+            if ./gradlew --no-daemon ":app:pre${variant}ReleaseBuild" > "$log" 2>&1; then
+              echo "Release preparation for $variant unexpectedly accepted missing signing credentials" >&2
+              exit 1
+            fi
+            if ! grep -F 'Set RULLST_ANDROID_KEYSTORE' "$log"; then
+              cat "$log"
+              exit 1
+            fi
+          done
 
       - name: Create an ephemeral CI-only signing key
         shell: bash
@@ -146,14 +162,32 @@ jobs:
         run: |
           npm run tauri -- android build --target aarch64 --apk --ci
           build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
-          expected_digest="$(sha256sum "$RUNNER_TEMP/omni-ci-certificate.der" | cut -d ' ' -f 1)"
           count=0
           while IFS= read -r -d '' apk; do
-            "$build_tools/apksigner" verify --verbose --print-certs "$apk" > "$RUNNER_TEMP/omni-apk-certificate.txt"
-            grep -F "Signer #1 certificate SHA-256 digest: $expected_digest" "$RUNNER_TEMP/omni-apk-certificate.txt"
+            if ! "$build_tools/apksigner" verify --verbose --print-certs "$apk" > "$RUNNER_TEMP/omni-apk-certificate.txt" 2>&1; then
+              cat "$RUNNER_TEMP/omni-apk-certificate.txt"
+              echo 'Android APK signature verification failed' >&2
+              exit 1
+            fi
+            if ! python3 "$GITHUB_WORKSPACE/.github/check-android-signing.py" \
+              "$RUNNER_TEMP/omni-ci-certificate.der" "$RUNNER_TEMP/omni-apk-certificate.txt"; then
+              cat "$RUNNER_TEMP/omni-apk-certificate.txt"
+              exit 1
+            fi
             count=$((count + 1))
           done < <(find gen/android/app/build/outputs/apk -type f -name '*-release.apk' -print0)
           test "$count" -gt 0
+
+      - name: Upload public signing evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: omni-android-certificate-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/omni-ci-certificate.der
+            ${{ runner.temp }}/omni-apk-certificate.txt
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload generated Android project on failure
         if: failure()

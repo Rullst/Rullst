@@ -154,6 +154,11 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
+In 12.1, managed requirements use exact `=VERSION` pins. The final
+`cargo check --workspace --all-targets --locked` validates the lockfile produced
+by `cargo fix` without resolving a different version. Broader dependency ranges
+remain an application decision after reviewing the update.
+
 Process-level fixtures select the rule catalog independently for documented v5,
 v6 and v11 origins, verify restoration across multiple workspace
 members, retain a deliberately failed edit only with `--keep-on-failure`, and
@@ -195,8 +200,12 @@ to the registry only when online. Cache failures never authorize an install.
 `--offline` and `CARGO_NET_OFFLINE=true` use only a fresh cache and fail without
 network access if none is usable. `--refresh` bypasses cache reads;
 `--no-cache` disables both cache reads and writes. Neither bypasses the offline
-environment setting. Windows currently supports online discovery without
-persistence; private Windows ACL validation is still a 12.1.0 release blocker.
+environment setting. Windows uses `%LOCALAPPDATA%/rullst-update-v1` with an
+atomically created protected user/SYSTEM/Administrators DACL. Handle-based
+checks reject foreign owners, unsafe grants, reparse points and hard links;
+UNC paths and alternate data streams are unsupported. Unsafe ACLs are not
+modified. Native cache acceptance is recorded in the
+[maintenance checkpoint](v12.md#1210-delivery-checkpoint-unreleased).
 Ordinary dashboard notices remain process-local and never write this cache.
 
 `--json` uses `rullst.update-discovery.v1`, includes metadata source/age and

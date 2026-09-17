@@ -472,7 +472,8 @@ pub fn generate_docker_files(
         r#"FROM rust:1.98.1-slim-bookworm AS builder
 WORKDIR /app
 COPY . .
-RUN cargo build --release
+# Generate and commit Cargo.lock before building this application image.
+RUN cargo build --release --locked
 
 FROM docker.io/library/debian:bookworm-slim
 RUN apt-get update \

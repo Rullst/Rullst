@@ -4,11 +4,15 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 pub(super) const MAX_AGE_SECONDS: u64 = 6 * 60 * 60;
 
+#[cfg(any(unix, windows))]
+#[path = "cache/codec.rs"]
+mod codec;
+
 #[derive(Debug, thiserror::Error)]
 pub(super) enum CacheError {
     #[error("{0}")]
     Invalid(&'static str),
-    #[cfg(unix)]
+    #[cfg(any(unix, windows))]
     #[error("catalog cache I/O failed: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -29,7 +33,11 @@ fn now() -> Result<u64, CacheError> {
 #[path = "cache/unix.rs"]
 mod platform;
 
-#[cfg(not(unix))]
+#[cfg(windows)]
+#[path = "cache/windows.rs"]
+mod platform;
+
+#[cfg(not(any(unix, windows)))]
 mod platform {
     use super::{CacheError, CachedCatalog};
 

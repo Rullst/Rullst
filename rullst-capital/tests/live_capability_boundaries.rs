@@ -88,7 +88,16 @@ async fn plan_only_checkout_rejects_adapters_without_authoritative_pricing() {
     // so even the red regression never sends credentials to a real provider.
     let mut attempted_live = Vec::new();
     for provider in providers("fixture\ninvalid-header") {
-        if !["mercadopago", "coinbase", "infinitepay", "picpay"].contains(&provider.name()) {
+        if ![
+            "mercadopago",
+            "coinbase",
+            "infinitepay",
+            "picpay",
+            "paddle",
+            "polar",
+        ]
+        .contains(&provider.name())
+        {
             continue;
         }
         let result = provider
@@ -106,6 +115,28 @@ async fn plan_only_checkout_rejects_adapters_without_authoritative_pricing() {
         attempted_live.is_empty(),
         "unpriced live checkout attempted: {attempted_live:?}"
     );
+}
+
+#[tokio::test]
+async fn wise_email_transfer_cannot_fabricate_recipient_quote_or_funding() {
+    for key in ["live-fixture-key", "fixture\ninvalid-header"] {
+        let provider = WiseProvider::new(key, "profile-123");
+        assert!(matches!(
+            provider
+                .send_payout("person@example.invalid", 100, "BRL", "reference")
+                .await,
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
+    }
+    for key in ["", "mock_key"] {
+        assert!(
+            WiseProvider::new(key, "profile-123")
+                .send_payout("person@example.invalid", 100, "BRL", "reference")
+                .await
+                .unwrap()
+                .starts_with("wise_tr_mock_")
+        );
+    }
 }
 
 #[tokio::test]

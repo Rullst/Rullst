@@ -369,10 +369,16 @@ v13 while preserving its separate Labs proposal and planning commits. Keep
 subsequent applicable stable fixes synchronized through reviewed changes. A
 development branch name alone does not prove that it includes later fixes.
 
+The compatible maintenance source through `236579f3` is now carried into v13:
+SaaS provider/WAF fixes, Stripe customer/checkout/event contracts and transactional
+inbox, ORM driver/enum isolation, Windows cache and Android signing corrections.
+The unpublished age-assurance package and v13 Labs/privacy plans remain separate.
+This synchronization is not publication or completion of the remaining 12.1 gates.
+
 | Order | Outcome | Acceptance boundary |
 | :--- | :--- | :--- |
 | **P0 — verification efficiency** | Shorter local and hosted feedback, with measured cold/warm build and queue times | Compare test inventories; select affected crates and their consumers; preserve broad scheduled/release checks and a full-run fallback for unknown changes. Bind reusable evidence to source, dependencies, tools and policy. Prove that security, workflow, manifest and generator changes cannot silently skip required checks. |
-| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | Compatible opt-in 12.1.0 delivery first, carried into v13. Discovery, private Unix caching and recovery hardening exist; Windows caching, verified installation and isolated project acceptance remain release blockers. |
+| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | Compatible opt-in 12.1.0 delivery first, carried into v13. Discovery, private Unix/Windows caching and recovery hardening exist; verified installation and isolated project acceptance remain release blockers. |
 | **P0 — SaaS maintenance** | Contain affected live operations and repair confirmed examples feedback | Follow the [15-finding triage plus Nexus configuration fix](docs/src/saas-v12-1-v13-triage.md). Compatible v12.1 fixes remain independently deliverable; new payment contracts need durable ownership/idempotency and provider acceptance evidence. |
 | **P0 — privacy and age assurance** | Reusable privacy defaults and age checks proportionate to risk across SaaS, LMS and examples | Complete the [M41 delivery plan](docs/src/privacy-age-assurance-roadmap.md) before additional learning/monitoring features. Reject production mocks and unverifiable results; minimize data, offer alternatives and review jurisdiction profiles. No automatic legal certification. |
 | **P1 — navigable API documentation** | Developers can find a capability, understand its contract and run a realistic example | Connect versioned Rust API references, task-based guides and tested REST examples. Document errors, feature flags, security boundaries and migration paths alongside each prioritized API; see the [documentation plan](#api-documentation-quality). |
@@ -414,8 +420,9 @@ MSRV/platform and versioned JSON discovery with separate major/prerelease
 opt-ins; it grants no installation or execution authority. Explicit discovery
 now reuses bounded, owner/permission-checked Unix metadata for six hours and
 supports offline reads, forced refresh and cache opt-out. Windows persistence
-is disabled until its private owner/ACL boundary is implemented. That Windows
-work and the installation/preparation/application stages below remain unfinished. The
+has a private owner/DACL implementation with native acceptance recorded in the
+[maintenance checkpoint](docs/src/v12.md#1210-delivery-checkpoint-unreleased).
+The installation/preparation/application stages below remain unfinished. The
 published v12.0.0 release currently contains source crate archives and evidence,
 not an inventory of trusted prebuilt CLI executables; adding those artifacts
 requires release-pipeline work, not an assumed download URL.

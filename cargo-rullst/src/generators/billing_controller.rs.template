@@ -26,6 +26,7 @@ struct BillingConfig {
     api_key: String,
     webhook_secret: String,
     redirect_url: String,
+    store_id: Option<String>,
     allowed_plan_ids: HashSet<String>,
 }
 
@@ -78,6 +79,18 @@ fn billing_config() -> Result<BillingConfig, BillingConfigError> {
     }
     let api_key = std::env::var("BILLING_API_KEY").unwrap_or_default();
     let webhook_secret = std::env::var("BILLING_WEBHOOK_SECRET").unwrap_or_default();
+    let store_id = std::env::var("BILLING_STORE_ID")
+        .ok()
+        .filter(|value| !value.is_empty());
+    if provider == "lemonsqueezy" && !api_key.is_empty() && !api_key.starts_with("mock_")
+        && !store_id.as_deref().is_some_and(|value| {
+            value.parse::<u64>().is_ok_and(|id| id > 0 && id.to_string() == value)
+        })
+    {
+        return Err(BillingConfigError(
+            "live Lemon Squeezy billing requires a positive numeric BILLING_STORE_ID",
+        ));
+    }
     let redirect_url = std::env::var("BILLING_REDIRECT_URL")
         .unwrap_or_else(|_| "http://localhost:3000/dashboard".to_string());
     let configured_plans = std::env::var("BILLING_ALLOWED_PLAN_IDS").ok();
@@ -115,18 +128,25 @@ fn billing_config() -> Result<BillingConfig, BillingConfigError> {
         api_key,
         webhook_secret,
         redirect_url,
+        store_id,
         allowed_plan_ids,
     })
+}
+
+fn lemon_provider(config: &BillingConfig) -> Result<LemonSqueezyProvider, rullst::capital::CapitalError> {
+    let provider = LemonSqueezyProvider::new(config.api_key.clone(), config.webhook_secret.clone());
+    match &config.store_id {
+        Some(store_id) => provider.with_store_id(store_id),
+        None => Ok(provider),
+    }
 }
 
 /// Configures the provider used by the mandatory signed-webhook middleware.
 pub fn initialize_billing_provider() -> Result<(), BillingConfigError> {
     let config = billing_config()?;
     let provider: Box<dyn BillingProvider> = match config.provider.as_str() {
-        "lemonsqueezy" => Box::new(LemonSqueezyProvider::new(
-            config.api_key,
-            config.webhook_secret,
-        )),
+        "lemonsqueezy" => Box::new(lemon_provider(&config)
+            .map_err(|_| BillingConfigError("invalid Lemon Squeezy store configuration"))?),
         _ => Box::new(StripeProvider::new(config.api_key, config.webhook_secret)),
     };
     rullst::capital::init_provider(provider);
@@ -232,11 +252,12 @@ pub async fn checkout_redirect(
     };
 
     let result = match config.provider.as_str() {
-        "lemonsqueezy" => {
-            LemonSqueezyProvider::new(config.api_key, config.webhook_secret)
+        "lemonsqueezy" => match lemon_provider(&config) {
+            Ok(provider) => provider
                 .create_checkout_session(&customer.email, &form.plan, &config.redirect_url)
-                .await
-        }
+                .await,
+            Err(error) => Err(error),
+        },
         _ => {
             StripeProvider::new(config.api_key, config.webhook_secret)
                 .create_checkout_session(&customer.email, &form.plan, &config.redirect_url)
@@ -244,7 +265,7 @@ pub async fn checkout_redirect(
         }
     };
     match result {
-        Ok(url) => Redirect::temporary(&url).into_response(),
+        Ok(url) => Redirect::to(&url).into_response(),
         Err(error) => {
             eprintln!("Checkout creation failed: {error}");
             StatusCode::BAD_GATEWAY.into_response()
@@ -253,15 +274,18 @@ pub async fn checkout_redirect(
 }
 
 pub async fn portal_redirect(Extension(identity): Extension<BillingIdentity>) -> Response {
-    let customer = match billing_customer(&identity).await {
-        Ok(customer) => customer,
-        Err(error) => return error.into_response(),
-    };
     let config = match billing_config() {
         Ok(config) => config,
         Err(error) => {
             return (StatusCode::SERVICE_UNAVAILABLE, error.to_string()).into_response();
         }
+    };
+    if !config.api_key.is_empty() && !is_mock_credential(&config.api_key) {
+        return (StatusCode::SERVICE_UNAVAILABLE, "Customer portal is unavailable for this configuration").into_response();
+    }
+    let customer = match billing_customer(&identity).await {
+        Ok(customer) => customer,
+        Err(error) => return error.into_response(),
     };
 
     let result = match config.provider.as_str() {
@@ -277,7 +301,7 @@ pub async fn portal_redirect(Extension(identity): Extension<BillingIdentity>) ->
         }
     };
     match result {
-        Ok(url) => Redirect::temporary(&url).into_response(),
+        Ok(url) => Redirect::to(&url).into_response(),
         Err(error) => {
             eprintln!("Customer portal creation failed: {error}");
             StatusCode::BAD_GATEWAY.into_response()
@@ -352,20 +376,18 @@ pub async fn webhook_handler(Extension(event): Extension<WebhookEvent>) -> Respo
 
     if customer.customer_id.is_none() {
         customer.customer_id = Some(event.customer_id.clone());
-        if let Err(error) = customer.save().await {
-            eprintln!("Billing customer binding failed: {error}");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
     }
 
     subscription.customer_id = event.customer_id;
     subscription.plan_id = event.plan_id;
     subscription.status = event.status.as_str().to_string();
     subscription.ends_at = event.ends_at;
-    if let Err(error) = subscription.save().await {
-        eprintln!("Subscription persistence failed: {error}");
+    if let Err(error) = persist_billing_update(&customer, &subscription).await {
+        eprintln!("Billing transaction failed: {error}");
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
 
     StatusCode::OK.into_response()
 }
+
+__PERSIST_BILLING_UPDATE__

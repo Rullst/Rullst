@@ -1,0 +1,47 @@
+/// Commits the customer binding and subscription mutation in one database transaction.
+/// The signed event's durable inbox claim must ultimately join this transaction;
+/// middleware replay admission alone does not provide atomic event processing.
+async fn persist_billing_update(
+    customer: &BillingCustomer,
+    subscription: &Subscription,
+) -> Result<(), rullst::orm::Error> {
+    if customer.id <= 0 || customer.__FOREIGN_KEY__ != subscription.__FOREIGN_KEY__
+        || customer.customer_id.as_deref() != Some(subscription.customer_id.as_str())
+    {
+        return Err(rullst::orm::Error::Validation("inconsistent billing ownership".into()));
+    }
+    let mut subscription = subscription.clone();
+    let driver = rullst::db::Orm::driver()?;
+    let clock = if driver == "mysql" { "CAST(CURRENT_TIMESTAMP AS CHAR)" } else { "CAST(CURRENT_TIMESTAMP AS TEXT)" };
+    let update = format!("UPDATE billing_customers SET customer_id = ?, updated_at = {clock}
+        WHERE id = ? AND __FOREIGN_KEY__ = ? AND (customer_id IS NULL OR customer_id = ?)");
+    let check = "SELECT id FROM billing_customers WHERE id = ? AND __FOREIGN_KEY__ = ? AND customer_id = ?";
+    let (update, check) = if driver == "postgres" {
+        (rullst::orm::replace_placeholders(&update), rullst::orm::replace_placeholders(check))
+    } else { (update, check.to_string()) };
+    let mut transaction = rullst::db::Orm::begin_transaction().await?;
+    let result = async {
+        // This conditional write serializes concurrent first bindings. A retry
+        // cannot overwrite another provider customer discovered meanwhile.
+        // Only the static clock expression and placeholder dialect vary; every
+        // event value is bound, and the generator validates the owner column.
+        let affected = rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(update.as_str()))
+            .bind(&subscription.customer_id).bind(customer.id).bind(customer.__FOREIGN_KEY__)
+            .bind(&subscription.customer_id).execute(&mut *transaction).await?.rows_affected();
+        // MySQL may report changed rather than matched rows for an exact retry.
+        if affected == 0 && rullst::db::sqlx::query_scalar::<_, i32>(rullst::db::sqlx::AssertSqlSafe(check.as_str()))
+            .bind(customer.id).bind(customer.__FOREIGN_KEY__).bind(&subscription.customer_id)
+            .fetch_optional(&mut *transaction).await?.is_none()
+        {
+            return Err(rullst::orm::Error::Validation("billing identity changed before commit".into()));
+        }
+        subscription.save_with_tx(&mut transaction).await
+    }.await;
+    match result {
+        Ok(()) => transaction.commit().await.map_err(Into::into),
+        Err(error) => {
+            transaction.rollback().await?;
+            Err(error)
+        }
+    }
+}

@@ -1,5 +1,5 @@
 use super::{
-    BillingProvider, SubscriptionStatus, WebhookEvent, WebhookVerificationMode, url_encode,
+    BillingProvider, WebhookEvent, WebhookVerificationMode, url_encode,
     verify_explicit_mock_signature, webhook_mode_from_secret,
 };
 use crate::error::CapitalError;
@@ -143,58 +143,7 @@ impl BillingProvider for RazorpayProvider {
         let json: Value = serde_json::from_slice(payload)
             .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
 
-        let event = json["event"].as_str().unwrap_or("");
-        let sub_data = &json["payload"]["subscription"]["entity"];
-        let payment_data = &json["payload"]["payment"]["entity"];
-
-        let subscription_id = sub_data["id"]
-            .as_str()
-            .or_else(|| payment_data["order_id"].as_str())
-            .or_else(|| json["payload"]["order"]["entity"]["id"].as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let customer_id = sub_data["customer_id"]
-            .as_str()
-            .or_else(|| payment_data["customer_id"].as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let customer_email = payment_data["email"]
-            .as_str()
-            .or_else(|| sub_data["notes"]["customer_email"].as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let plan_id = sub_data["plan_id"]
-            .as_str()
-            .unwrap_or("default")
-            .to_string();
-
-        let status = match event {
-            "subscription.authenticated" | "subscription.activated" | "payment.captured" => {
-                SubscriptionStatus::Active
-            }
-            "subscription.cancelled" => SubscriptionStatus::Canceled,
-            "subscription.pending" => SubscriptionStatus::PastDue,
-            "subscription.halted" | "payment.failed" => SubscriptionStatus::Unpaid,
-            _ => {
-                return Err(CapitalError::PayloadParseError(
-                    "Unsupported Razorpay event".into(),
-                ));
-            }
-        };
-
-        let ends_at = sub_data["current_end"].as_i64();
-
-        Ok(WebhookEvent {
-            subscription_id,
-            customer_id,
-            customer_email,
-            plan_id,
-            status,
-            ends_at,
-        })
+        super::razorpay_webhook::parse(&json)
     }
 
     async fn create_customer_portal(
@@ -314,6 +263,7 @@ impl BillingProvider for RazorpayProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SubscriptionStatus;
 
     #[tokio::test]
     async fn test_razorpay_provider_methods() {
@@ -374,7 +324,7 @@ mod tests {
 
         // 5. Signature verification
         let secret = "sec_rzp123";
-        let payload = br#"{"event":"subscription.activated","payload":{"subscription":{"entity":{"id":"sub_rzp_123","customer_id":"cust_123","plan_id":"plan_pro","notes":{"customer_email":"rzp@test.com"},"current_end":1800000000}}}}"#;
+        let payload = br#"{"event":"subscription.activated","payload":{"subscription":{"entity":{"entity":"subscription","status":"active","id":"sub_rzp_123","customer_id":"cust_123","plan_id":"plan_pro","notes":{"customer_email":"rzp@test.com"},"current_end":1800000000}}}}"#;
 
         let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
         let sig = hmac::sign(&key, payload);
@@ -408,7 +358,7 @@ mod tests {
         assert_eq!(event.status, SubscriptionStatus::Active);
 
         // Cancelled event
-        let cancel_payload = br#"{"event":"subscription.cancelled","payload":{"subscription":{"entity":{"id":"sub_rzp_123"}}}}"#;
+        let cancel_payload = br#"{"event":"subscription.cancelled","payload":{"subscription":{"entity":{"entity":"subscription","status":"cancelled","id":"sub_rzp_123","customer_id":"cust_123","plan_id":"plan_pro"}}}}"#;
         let cancel_sig = hex::encode(hmac::sign(&key, cancel_payload).as_ref());
         let mut cancel_headers = HashMap::new();
         cancel_headers.insert("x-razorpay-signature".to_string(), cancel_sig);
