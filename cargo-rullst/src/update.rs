@@ -11,6 +11,8 @@ mod artifacts;
 mod cache;
 #[path = "update/catalog.rs"]
 mod catalog;
+#[path = "update/project.rs"]
+mod project;
 
 #[derive(thiserror::Error)]
 enum UpdateError {
@@ -44,6 +46,7 @@ pub(crate) fn command() -> Command {
         .subcommand_required(true)
         .arg_required_else_help(true)
         .subcommand(artifacts::command())
+        .subcommand(project::command())
         .subcommand(
             Command::new("check")
                 .about("Show an exact CLI release and MSRV without changing the CLI or project")
@@ -65,6 +68,9 @@ pub(crate) fn command() -> Command {
 }
 
 pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(matches) = matches.subcommand_matches("project") {
+        return project::run(matches).map_err(Into::into);
+    }
     if let Some(matches) = matches.subcommand_matches("verify") {
         return artifacts::run(matches).map_err(Into::into);
     }

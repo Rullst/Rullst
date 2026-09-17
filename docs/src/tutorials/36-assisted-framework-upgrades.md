@@ -244,6 +244,16 @@ does not install or execute those files, replace project files, or establish
 current registry eligibility. Native release assets are still being prepared;
 this command is not proof that 12.1.0 artifacts have been published.
 
+Working-source `cargo rullst update project prepare --project PATH --json`
+now copies the Git working directory into private storage and edits only the
+candidate's versioned workspace dependencies. It preserves dirty and untracked
+source, tracked deletions and the root lockfile, including a legacy ignored
+lockfile. Compare `before/` and `candidate/` at the reported location and review
+`preparation.json`. Builds/tests are not executed and neither execution nor
+application is authorized. See the [preparation limits and exclusions](../cli_reference.md#cargo-rullst-update-project-prepare-1210-working-source-unreleased).
+This prepares a reviewable input; it does not complete the verification,
+consent, application or recovery stages below.
+
 The [safe-update priority](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience) proposes
 one guided flow for CLI installation, project preparation, validation and
 approved application. This is planned for a compatible opt-in **12.1.0** release

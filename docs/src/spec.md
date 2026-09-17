@@ -1416,6 +1416,25 @@ assistant, not a claim that compilation proves production compatibility.
   current registry eligibility or protect against hostile same-user writers.
   Installation must independently revalidate the selected release and bytes.
 
+  **Isolated project preparation (working source):** the opt-in
+  `update project prepare` command snapshots tracked and non-ignored untracked
+  files from the selected Git working directory into private caller-owned
+  storage, preserving uncommitted source contents and deletions. Links,
+  special files, unsupported paths and oversized inputs fail before migration.
+  The copy is bounded to 100,000 entries, 64 MiB per file and 512 MiB total.
+  Cargo metadata and dependency planning run only inside that copy, with
+  Cargo network access and Rustup auto-installation disabled. The existing exact-version manifest editor and
+  versioned source rules supply its review report; preparation executes no
+  build scripts, procedural macros or application tests and grants no apply
+  authority. Ignored files, including typical secret files and build outputs,
+  are not copied, except the root `Cargo.lock` (legacy generators ignored that
+  reproducibility input). Version requirements and existing locked Rullst
+  packages must not imply a downgrade; unsupported or ambiguous requirements
+  require manual review. Source reports stop above 10,000 findings. This is a
+  source snapshot, not a filesystem sandbox: later
+  verification must explicitly authorize trusted project execution. Bounded
+  reviewed verification/application/recovery remain separate unfinished gates.
+
 ---
 
 ## 📱 13. Omni Packaging Contract

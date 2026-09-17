@@ -244,6 +244,44 @@ token and does not recheck registry yank status. A later installer must validate
 current release eligibility and reread/reverify the candidate. Hostile same-user
 writers and a compromised verifier/PATH are outside this boundary.
 
+### `cargo rullst update project prepare` (12.1.0 working source; unreleased)
+
+Prepare dependency edits in a private source copy for review:
+
+```bash
+cargo rullst update project prepare --project ./my-app --to 12.1.0 --json
+```
+
+The project must be a Git working directory containing `Cargo.toml`. The default
+target is this CLI's exact version, within its major train. Tracked and
+non-ignored untracked files are copied with their current contents, including
+uncommitted edits and tracked deletions. The root `Cargo.lock` is retained even
+when ignored by an older generator. Other ignored files are omitted; tracked
+secrets are still tracked inputs. The original files and Git index are not
+edited. Limits are 100,000 entries, 64 MiB/file and 512 MiB/source snapshot;
+the two copies can consume about 1 GiB before any build.
+
+The command rejects linked/special inputs, unsupported paths, unknown migration
+origins, ambiguous/unversioned managed dependencies and version/lockfile
+downgrades. Source rules support majors 5, 6, 11 and 12; findings remain review
+data, with a 10,000-entry ceiling. The exact-version editor preserves TOML
+comments. Offline, locked, dependency-free Cargo metadata enumerates workspace
+members inside the copy. Rustup auto-installation is disabled using its
+[documented environment setting](https://rust-lang.github.io/rustup/environment-variables.html);
+Git and Cargo must already be installed on absolute trusted PATH entries.
+
+The result points to `before/`, `candidate/` and `preparation.json` inside the
+private update cache. JSON uses `rullst.project-preparation-result.v1`, with a
+`rullst.project-preparation.v1` record of original file hashes and absences.
+Compare the two trees and inspect the plan. Failed preparation removes its own
+new staging directory. Successful preparations remain for review and can be
+deleted by the caller after use.
+
+Preparation executes no builds, procedural macros or tests, does not resolve a
+new candidate lockfile, and authorizes neither execution nor application. The
+copy is not a sandbox. Verification, application and recovery for this new flow
+are still unfinished; the existing `upgrade` command remains separate.
+
 ### `cargo rullst pkg <action> [name]`
 Manages third-party community packages and extensions conforming to the `RullstPackage` trait standard.
 * **Subcommands:**
