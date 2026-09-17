@@ -1416,6 +1416,18 @@ assistant, not a claim that compilation proves production compatibility.
   current registry eligibility or protect against hostile same-user writers.
   Installation must independently revalidate the selected release and bytes.
 
+  **Authenticated download (working source; native acceptance pending):**
+  `update stage --to EXACT_VERSION` fetches a fresh non-yanked registry
+  selection and uses only the fixed official
+  release URL with at most two HTTPS redirects through GitHub/release-assets hosts,
+  authenticates the bounded manifest before requesting executable bytes, and
+  stages at most two 128 MiB binaries in fresh private caller-owned storage.
+  Exact sizes and hashes must match the authenticated manifest. Ordinary failures
+  discard the stage; forced termination can leave an incomplete private directory
+  that later stages never reuse. Success records source/version/target and grants no execution,
+  installation or project authority. Offline mode rejects before I/O; install
+  must independently revalidate eligibility, provenance and bytes.
+
   **Isolated project preparation (working source):** the opt-in
   `update project prepare` command snapshots tracked and non-ignored untracked
   files from the selected Git working directory into private caller-owned
@@ -1497,7 +1509,10 @@ assistant, not a claim that compilation proves production compatibility.
   files; the private before/verified trees and intent must be retained. Timestamp,
   Windows audit-policy preservation and power-loss fault
   acceptance remain outside this current implementation; final release approval
-  still requires platform and interruption/fault evidence.
+  still requires final platform/fault evidence. Local process tests cover a
+  killed per-file commit with a persisted intent and subsequent engine recovery,
+  plus real CLI staging terminated by Linux's file-size limit without changing
+  originals. They do not establish power-loss durability.
 
 ---
 
