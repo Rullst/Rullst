@@ -17,6 +17,7 @@ fn payload() -> Vec<u8> {
         "type": "customer.subscription.updated",
         "data": {
             "object": {
+                "object": "subscription",
                 "id": "sub_axum",
                 "customer": "cus_axum",
                 "customer_email": "axum@example.com",

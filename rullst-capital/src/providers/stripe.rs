@@ -1,7 +1,6 @@
 use super::{
-    BillingProvider, DEFAULT_WEBHOOK_TOLERANCE, SubscriptionStatus, WebhookEvent,
-    WebhookVerificationMode, ensure_fresh_timestamp, url_encode, verify_explicit_mock_signature,
-    webhook_mode_from_secret,
+    BillingProvider, DEFAULT_WEBHOOK_TOLERANCE, WebhookEvent, WebhookVerificationMode,
+    ensure_fresh_timestamp, url_encode, verify_explicit_mock_signature, webhook_mode_from_secret,
 };
 use crate::error::CapitalError;
 use crate::{ChargeReceipt, ChargeRequest};
@@ -216,51 +215,7 @@ impl BillingProvider for StripeProvider {
         })?;
         self.verify_signature(payload, sig_header)?;
 
-        let json: Value = serde_json::from_slice(payload)
-            .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
-
-        if let Some(event_type) = json["type"].as_str()
-            && !event_type.starts_with("customer.subscription.")
-        {
-            return Err(CapitalError::PayloadParseError(format!(
-                "Uninteresting event: {}",
-                event_type
-            )));
-        }
-
-        let data = &json["data"]["object"];
-        let subscription_id = data["id"].as_str().unwrap_or("").to_string();
-        let customer_id = data["customer"].as_str().unwrap_or("").to_string();
-        let customer_email = data["customer_email"]
-            .as_str()
-            .or_else(|| data["customer_details"]["email"].as_str())
-            .or_else(|| data["email"].as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let plan_id = data["lines"]["data"][0]["price"]["id"]
-            .as_str()
-            .or_else(|| data["items"]["data"][0]["price"]["id"].as_str())
-            .or_else(|| data["plan"]["id"].as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let status_str = data["status"]
-            .as_str()
-            .filter(|status| !status.trim().is_empty())
-            .ok_or_else(|| {
-                CapitalError::PayloadParseError("Webhook status is missing or invalid".into())
-            })?;
-        let ends_at = data["current_period_end"].as_i64();
-
-        Ok(WebhookEvent {
-            subscription_id,
-            customer_id,
-            customer_email,
-            plan_id,
-            status: SubscriptionStatus::parse_status(status_str),
-            ends_at,
-        })
+        super::stripe_webhook::parse(payload)
     }
 
     async fn create_customer_portal(

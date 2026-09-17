@@ -90,6 +90,7 @@ async fn test_stripe_provider_webhook_parsing() {
         "type": "customer.subscription.updated",
         "data": {
             "object": {
+                "object": "subscription",
                 "id": "sub_123",
                 "customer": "cus_123",
                 "status": "active",
@@ -128,7 +129,11 @@ async fn test_stripe_provider_webhook_uninteresting() {
     headers.insert("stripe-signature".to_string(), "mock_secret".to_string());
     let res = provider.handle_webhook(payload.as_bytes(), &headers);
     assert!(res.is_err());
-    assert!(res.unwrap_err().to_string().contains("Uninteresting"));
+    assert!(matches!(
+        res,
+        Err(rullst::capital::CapitalError::PayloadParseError(reason))
+            if reason == "Stripe: unsupported subscription lifecycle event"
+    ));
 }
 
 #[tokio::test]

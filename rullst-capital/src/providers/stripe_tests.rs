@@ -1,4 +1,5 @@
 use super::*;
+use crate::SubscriptionStatus;
 
 #[test]
 fn stripe_rotation_accepts_any_bounded_v1_and_rejects_ambiguous_timestamps() {
@@ -90,7 +91,7 @@ async fn test_stripe_provider_methods() {
     let secret = "whsec_stripe123";
     let now = chrono::Utc::now().timestamp();
     let timestamp = now.to_string();
-    let payload = br#"{"data":{"object":{"id":"sub_str_100","customer":"cus_123","customer_email":"user@stripe.com","status":"active","items":{"data":[{"price":{"id":"price_pro"}}]}}}}"#;
+    let payload = br#"{"type":"customer.subscription.updated","data":{"object":{"object":"subscription","id":"sub_str_100","customer":"cus_123","customer_email":"user@stripe.com","status":"active","items":{"data":[{"price":{"id":"price_pro"}}]}}}}"#;
 
     let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
     let mut ctx = hmac::Context::with_key(&key);

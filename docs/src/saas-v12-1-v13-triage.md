@@ -59,6 +59,12 @@ means the complete release or a live-provider journey has passed:
   on all three profiles; their normal/build graphs contained only the selected
   SQLx driver. The default `drivers-all` profile retains existing convenience.
   Facade/Studio compositions still need their own opt-in isolation boundary.
+- Stripe subscription normalization now reads Basil item-level periods and
+  rejects missing/confused event kinds, identities, states and price items.
+  Legacy subscription-level periods and custom plan IDs remain supported;
+  contradictory periods fail. Three real-HMAC fixture tests cover those
+  branches; 139 Capital tests with Actix enabled and strict all-target Clippy
+  passed. Subscription state is still not invoice-settlement evidence.
 
 All eleven v12 adapters are in scope: Stripe, Lemon Squeezy, InfinitePay,
 Polar, Paddle, Razorpay, Mercado Pago, Coinbase Commerce, PicPay, Alipay and Wise.

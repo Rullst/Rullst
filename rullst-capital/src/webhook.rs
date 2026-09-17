@@ -601,6 +601,7 @@ mod tests {
         let stripe_payload = serde_json::to_vec(&serde_json::json!({
             "type": "customer.subscription.updated",
             "data": { "object": {
+                "object": "subscription",
                 "id": "sub_stripe",
                 "customer": "cus_stripe",
                 "items": { "data": [{ "price": { "id": "price_stripe" } }] },

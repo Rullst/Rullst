@@ -177,6 +177,19 @@ accepted, matching the provider's SDK transition. Its old body-only
 See [Polar's signing contract](https://polar.sh/docs/integrate/webhooks/delivery)
 and the [Standard Webhooks specification](https://github.com/standard-webhooks/standard-webhooks/blob/main/spec/standard-webhooks.md).
 
+Stripe's v12 normalized path accepts subscription `created`, `updated`,
+`deleted`, `paused` and `resumed` events. It requires a subscription object,
+bounded subscription/customer IDs and exactly one non-truncated price item;
+multi-item subscriptions need an application-specific integration. Missing
+event type, payment-status aliases, confused IDs and contradictory lifecycle
+states are rejected. `incomplete` and `incomplete_expired` map to the legacy
+non-entitled `Unpaid` value, not proof of a failed invoice payment.
+The billing-period end comes from the single item on Basil payloads, with a
+legacy subscription-level fallback; conflicting values fail. This follows
+Stripe's [billing-period API change](https://docs.stripe.com/changelog/basil/2025-03-31/deprecate-subscription-current-period-start-and-end).
+Email is optional contact data. Signed subscription state alone still does not
+bind a local owner, order events, commit an inbox or prove invoice settlement.
+
 Missing or malformed status no longer implies a paid/active subscription.
 Unsupported Razorpay and Coinbase event kinds fail closed; Coinbase event
 names are matched exactly, not by substring. This does not establish every

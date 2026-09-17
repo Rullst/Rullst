@@ -18,6 +18,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Require Razorpay subscription events to match their entity state and carry
   subscription/customer/plan IDs; stop treating authentication or standalone
   payments as active subscriptions. Handle charged, resumed and paused events.
+- Read Stripe Basil billing periods from the subscription item, retaining the
+  legacy period fallback. Require supported subscription events, bounded IDs,
+  one complete price item and valid subscription states; reject ambiguous
+  periods and stop accepting payment-status aliases as subscription status.
 - Add customer-bound Stripe subscription checkout with explicit retry identity,
   immutable request digests, response/line-item binding and distinct offline
   receipts. Preserve legitimate Stripe hosted-URL fragments. Durable customer

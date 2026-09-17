@@ -24,6 +24,7 @@ mod stripe_charge;
 mod stripe_checkout;
 mod stripe_subscription;
 mod stripe_usage;
+mod stripe_webhook;
 pub mod wise;
 
 pub use alipay::AlipayProvider;

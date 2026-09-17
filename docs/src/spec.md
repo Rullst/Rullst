@@ -855,6 +855,16 @@ instances must persist/claim the key and reconcile payment state durably before
 sending.
 
 ### 6.3. Webhook Signature Verification
+* Stripe subscription normalization requires an explicit supported lifecycle
+  event and subscription object with bounded subscription/customer/price IDs.
+  Its single-price v12 contract rejects multiple or truncated item lists and
+  statuses outside Stripe's subscription vocabulary. `incomplete` and
+  `incomplete_expired` map to the legacy non-entitled `Unpaid` status; they must
+  not be interpreted as proof of an unpaid invoice. Billing-period end is read
+  from the single item for Basil payloads, or from the subscription on older
+  payloads; conflicting period values are rejected. Email remains optional
+  contact data. Event identity, ordering and atomic inbox processing remain
+  separate requirements; an active subscription is not settlement evidence.
 * Razorpay subscription normalization requires its own subscription/customer/
   plan identities and agreement between the event and entity state. Authentication
   and standalone payment/order events cannot establish an active subscription.
