@@ -46,6 +46,7 @@ pub(crate) fn command() -> Command {
         .subcommand_required(true)
         .arg_required_else_help(true)
         .subcommand(artifacts::command())
+        .subcommand(artifacts::stage_command())
         .subcommand(project::command())
         .subcommand(
             Command::new("check")
@@ -68,6 +69,9 @@ pub(crate) fn command() -> Command {
 }
 
 pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(matches) = matches.subcommand_matches("stage") {
+        return artifacts::stage(matches);
+    }
     if let Some(matches) = matches.subcommand_matches("project") {
         return project::run(matches).map_err(Into::into);
     }

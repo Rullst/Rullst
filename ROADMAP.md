@@ -422,7 +422,7 @@ now reuses bounded, owner/permission-checked Unix metadata for six hours and
 supports offline reads, forced refresh and cache opt-out. Windows persistence
 has a private owner/DACL implementation with native acceptance recorded in the
 [maintenance checkpoint](docs/src/v12.md#1210-delivery-checkpoint-unreleased).
-The installation/preparation/application stages below remain unfinished. The
+The complete guided flow and final acceptance below remain unfinished. The
 published v12.0.0 release currently contains source crate archives and evidence,
 not an inventory of trusted prebuilt CLI executables; adding those artifacts
 requires release-pipeline work, not an assumed download URL.
@@ -431,8 +431,11 @@ Working-source preparation now builds native CLI candidates on four explicit
 targets and binds their version, source, platform, sizes and digests in a
 bounded inventory. The admitted tag workflow separately attests the files and
 adds release assets; ordinary CI inventories have no release tag. Native and
-release evidence is still pending, and verified client-side download/staging,
-installation, ownership/locking, recovery and project acceptance are unfinished.
+release evidence is still pending. Explicit `update stage` now rechecks a fresh
+registry selection, authenticates the manifest before executable downloads and
+bounds HTTPS redirects, sizes, time and hashes in private storage. It executes
+and installs nothing. Installation, ownership/locking, known-good CLI recovery
+and final project acceptance remain unfinished.
 The explicit local `update verify` command now authenticates a private manifest
 snapshot with the caller-installed GitHub CLI and checks both native binary
 digests. It grants no installation authority or registry eligibility and does
@@ -450,11 +453,19 @@ authority. Working-source verification now revalidates records/source under an
 operation lock, previews commands, and requires explicit trusted-code consent
 before resolving/checking/testing another private copy. Local process tests
 cover real acceptance, stale inputs, missing consent, contention, timeout,
-failed tests and unexpected source writes. Verification platform acceptance,
-application, recovery and the complete guided flow remain unfinished. Explicit
+failed tests and unexpected source writes. Verification passed Linux/macOS and
+the corrected Windows path contract at the recorded maintenance checkpoints.
+Final platform acceptance and the complete guided flow remain unfinished. Explicit
 `update project review` now revalidates command logs and both source inventories
 and emits the bounded full dependency diff plus a review digest. It performs no
 builds or original-file edits; the digest does not grant application authority.
+Explicit digest-approved `project apply`/`recover` now revalidate evidence/access
+policies, stage reviewed manifest/lockfile replacements and persist an intent.
+They refuse divergent edits and preserve unrelated files. Source locks coordinate
+only the same configured cache. Native/fault acceptance is still pending; a
+Windows SDDL length defect found by native tests has a focused correction under
+validation. Local child-kill and file-size-limit fixtures add interruption proof,
+not power-loss or a complete disk-full matrix.
 
 1. **Discover and explain.** Make update notices useful without blocking normal
    CLI startup. Respect offline/CI settings and explicit notification opt-out;

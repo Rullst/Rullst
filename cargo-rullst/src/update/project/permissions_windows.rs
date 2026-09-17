@@ -101,8 +101,22 @@ fn describe(file: &fs::File) -> Result<String, ProjectError> {
             "Windows file policy exceeds 32 Ki UTF-16 units",
         ));
     }
-    // SAFETY: successful API result includes length UTF-16 units and a trailing NUL.
-    let text = unsafe { std::slice::from_raw_parts(text, length as usize - 1) };
+    // Win32 reports buffer capacity, not string length. Inspect only the
+    // guaranteed terminated string; trailing allocation bytes may be unused.
+    let mut written = 0usize;
+    while written < length as usize {
+        // SAFETY: within the returned allocation and before the first NUL;
+        // successful conversion guarantees these string units are initialized.
+        if unsafe { *text.add(written) } == 0 {
+            break;
+        }
+        written += 1;
+    }
+    if written == length as usize {
+        return Err(ProjectError::Invalid("unterminated Windows file policy"));
+    }
+    // SAFETY: the walk established an initialized UTF-16 prefix in the live allocation.
+    let text = unsafe { std::slice::from_raw_parts(text, written) };
     String::from_utf16(text).map_err(|_| ProjectError::Invalid("invalid Windows file policy"))
 }
 
@@ -251,6 +265,7 @@ mod tests {
         original.write_all(b"before").unwrap();
         drop(original);
         let policy = capture(Some(&path)).unwrap();
+        assert!(!policy.windows_descriptor.as_ref().unwrap().contains('\0'));
         let mut temporary = stage(&policy, directory.path()).unwrap();
         assert_eq!(
             describe(temporary.as_file()).unwrap(),

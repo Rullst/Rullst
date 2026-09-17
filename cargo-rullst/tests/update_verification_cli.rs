@@ -141,3 +141,35 @@ fn main() {
         "invalid inventory must fail before verifier execution"
     );
 }
+
+#[test]
+fn staging_offline_rejection_precedes_registry_network_and_cache_creation() {
+    for explicit in [false, true] {
+        let directory = tempfile::tempdir().unwrap();
+        let missing = directory.path().join("absent-cache");
+        let mut command = Command::new(env!("CARGO_BIN_EXE_cargo-rullst"));
+        command
+            .args([
+                "update",
+                "stage",
+                "--to",
+                env!("CARGO_PKG_VERSION"),
+                "--json",
+            ])
+            .env("XDG_CACHE_HOME", &missing)
+            .env("LOCALAPPDATA", &missing)
+            .env("RULLST_DISABLE_UPDATE_CHECK", "true");
+        if explicit {
+            command.arg("--offline").env_remove("CARGO_NET_OFFLINE");
+        } else {
+            command.env("CARGO_NET_OFFLINE", "true");
+        }
+        let result = command.output().unwrap();
+        assert!(!result.status.success());
+        assert!(
+            String::from_utf8_lossy(&result.stderr)
+                .contains("offline mode forbids authenticated downloads")
+        );
+        assert!(!missing.exists());
+    }
+}

@@ -244,6 +244,29 @@ token and does not recheck registry yank status. A later installer must validate
 current release eligibility and reread/reverify the candidate. Hostile same-user
 writers and a compromised verifier/PATH are outside this boundary.
 
+### `cargo rullst update stage` (12.1.0 working source; unreleased)
+
+```bash
+cargo rullst update stage --to 12.1.0 --json
+```
+
+This exact version must be published and non-yanked. Another major requires
+`--allow-major`; a prerelease separately requires `--prerelease`. `--offline`
+and `CARGO_NET_OFFLINE` reject before filesystem/network work. The command reads
+fresh registry metadata, downloads the official platform manifest, authenticates
+it with the caller-installed GitHub CLI, then downloads the two named binaries.
+Redirects stay on HTTPS GitHub/release-assets hosts, with at most two redirects.
+The manifest is limited to 16 KiB; each binary to its authenticated size and at
+most 128 MiB. Each request has a 120-second total timeout. Exact hashes and sizes
+must match. Ordinary failures remove the private stage. Forced termination can
+leave an incomplete private directory; subsequent stages never reuse its files.
+
+The `rullst.cli-staging.v1` report names the retained private directory and source
+identity. Files remain unexecuted and uninstalled. No project files change. This
+report grants no future installation authority: an installer must revalidate the
+release, provenance and file contents. Published 12.1.0 asset acceptance and native
+staging checks remain release requirements.
+
 ### `cargo rullst update project prepare` (12.1.0 working source; unreleased)
 
 Prepare dependency edits in a private source copy for review:

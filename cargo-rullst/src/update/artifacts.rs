@@ -3,6 +3,8 @@ use clap::{Arg, ArgAction, ArgMatches, Command};
 use semver::Version;
 use std::path::PathBuf;
 
+#[path = "artifacts/download.rs"]
+mod download;
 #[path = "artifacts/files.rs"]
 mod files;
 #[path = "artifacts/manifest.rs"]
@@ -19,6 +21,8 @@ pub(super) enum ArtifactError {
     Invalid(&'static str),
     #[error("artifact verification I/O failed: {0}")]
     Io(#[from] std::io::Error),
+    #[error("artifact download failed: {0}")]
+    Http(#[from] reqwest::Error),
     #[error("invalid artifact manifest: {0}")]
     Json(#[from] serde_json::Error),
     #[error("invalid artifact selection: {0}")]
@@ -31,6 +35,13 @@ impl std::fmt::Debug for ArtifactError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self, formatter)
     }
+}
+
+pub(super) fn stage_command() -> Command {
+    download::command()
+}
+pub(super) fn stage(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+    download::run(matches)
 }
 
 pub(super) fn command() -> Command {

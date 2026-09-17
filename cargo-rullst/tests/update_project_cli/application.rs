@@ -243,3 +243,38 @@ fn recovery_rejects_changed_intent_scope_and_permissions_before_writing() {
         assert_eq!(fs::read(fixture.app.join("Cargo.toml")).unwrap(), after);
     }
 }
+
+#[cfg(target_os = "linux")]
+#[test]
+fn enforced_file_size_limit_terminates_staging_without_changing_originals() {
+    use std::os::unix::process::ExitStatusExt;
+    let fixture = fixture("fn main() {}\n");
+    let manifest = fixture.app.join("Cargo.toml");
+    let mut original = fs::read_to_string(&manifest).unwrap();
+    original.push_str(&format!("\n# {}\n", "retained comment ".repeat(1024)));
+    fs::write(&manifest, &original).unwrap();
+    let original_lock = fs::read(fixture.app.join("Cargo.lock")).ok();
+    let stage = verified(&fixture);
+    let approval = digest(&fixture, &stage);
+    let output = Command::new("bash")
+        .args([
+            "-c",
+            "ulimit -c 0; ulimit -f 1; exec \"$@\"",
+            "rullst-file-limit",
+        ])
+        .arg(env!("CARGO_BIN_EXE_cargo-rullst"))
+        .args(["update", "project", "apply", "--verified"])
+        .arg(&stage)
+        .args(["--approved-review", &approval, "--json"])
+        .env("XDG_CACHE_HOME", &fixture.base)
+        .env("LOCALAPPDATA", &fixture.base)
+        .env("CARGO_NET_OFFLINE", "true")
+        .env("RULLST_DISABLE_UPDATE_CHECK", "true")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert_eq!(output.status.signal(), Some(25), "{}", text(&output)); // SIGXFSZ on Linux
+    assert_eq!(fs::read_to_string(manifest).unwrap(), original);
+    assert_eq!(fs::read(fixture.app.join("Cargo.lock")).ok(), original_lock);
+    assert!(!stage.join("application.json").exists());
+}

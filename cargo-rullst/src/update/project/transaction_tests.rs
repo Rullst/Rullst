@@ -175,3 +175,152 @@ fn a_new_lockfile_never_clobbers_a_concurrently_created_file() {
     assert!(replace(Some(temporary), &target, true).is_err());
     assert_eq!(fs::read_to_string(target).unwrap(), "other writer");
 }
+
+#[test]
+fn interruption_child_fixture() {
+    let Some(base) = std::env::var_os("RULLST_TEST_TRANSACTION_ROOT") else {
+        return;
+    };
+    let base = PathBuf::from(base);
+    let root = base.join("source");
+    let content = base.join("candidate");
+    let mut replacements = Vec::new();
+    for name in ["Cargo.lock", "Cargo.toml"] {
+        let current = snapshot::record(name, snapshot::read(&root, name).unwrap().as_deref());
+        replacements.push(Replacement {
+            permissions: Permissions::capture(&root, &current).unwrap(),
+            current,
+            desired: snapshot::record(name, snapshot::read(&content, name).unwrap().as_deref()),
+        });
+    }
+    let intent = Intent {
+        schema_version: "rullst.project-application-intent.v1".into(),
+        phase: "applying".into(),
+        source: root.clone(),
+        prepared_directory: base.join("before"),
+        verified_directory: base.clone(),
+        receipt_sha256: "a".repeat(64),
+        review_sha256: "b".repeat(64),
+        changes: replacements
+            .iter()
+            .map(|replacement| super::super::review::Change {
+                before: replacement.current.clone(),
+                after: replacement.desired.clone(),
+            })
+            .collect(),
+        permissions: replacements
+            .iter()
+            .map(|replacement| replacement.permissions.clone())
+            .collect(),
+    };
+    let staged = Staged::create(&root, &content, replacements).unwrap();
+    intent.store(&base).unwrap();
+    let _ = staged.commit_with(&root, |index, temporary, target, absent| {
+        replace(temporary, target, absent)?;
+        if index == 0 {
+            fs::write(base.join("first-written"), "ready")?;
+            // A test-only barrier: the parent kills this real child after one
+            // production replacement. No runtime/CLI fault switch is exposed.
+            loop {
+                std::thread::park_timeout(std::time::Duration::from_secs(1));
+            }
+        }
+        Ok(())
+    });
+}
+
+#[test]
+fn killed_commit_retains_a_readable_intent_and_recoverable_before_after_states() {
+    use std::{
+        process::{Command, Stdio},
+        time::{Duration, Instant},
+    };
+    let fixture = Fixture::new();
+    let base = fixture.root.parent().unwrap();
+    let before = base.join("before");
+    fs::create_dir(&before).unwrap();
+    for name in ["Cargo.lock", "Cargo.toml"] {
+        fs::copy(fixture.root.join(name), before.join(name)).unwrap();
+    }
+    struct Child(std::process::Child);
+    impl Drop for Child {
+        fn drop(&mut self) {
+            let _ = self.0.kill();
+            let _ = self.0.wait();
+        }
+    }
+    let mut child = Child(
+        Command::new(std::env::current_exe().unwrap())
+            .args([
+                "interruption_child_fixture",
+                "--test-threads=1",
+                "--nocapture",
+            ])
+            .env("RULLST_TEST_TRANSACTION_ROOT", base)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap(),
+    );
+    let start = Instant::now();
+    while !base.join("first-written").exists() {
+        assert!(
+            child.0.try_wait().unwrap().is_none(),
+            "child exited before replacement barrier"
+        );
+        assert!(
+            start.elapsed() < Duration::from_secs(15),
+            "child did not reach replacement barrier"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    child.0.kill().unwrap();
+    assert!(!child.0.wait().unwrap().success());
+    let intent: Intent =
+        serde_json::from_slice(&fs::read(base.join("application.json")).unwrap()).unwrap();
+    assert_eq!(intent.phase, "applying");
+    assert_eq!(
+        fs::read_to_string(fixture.root.join("Cargo.lock")).unwrap(),
+        "after Cargo.lock"
+    );
+    assert_eq!(
+        fs::read_to_string(fixture.root.join("Cargo.toml")).unwrap(),
+        "before Cargo.toml"
+    );
+    let replacements = intent
+        .changes
+        .into_iter()
+        .zip(intent.permissions)
+        .filter_map(|(change, permissions)| {
+            let current = snapshot::record(
+                &change.before.path,
+                snapshot::read(&fixture.root, &change.before.path)
+                    .unwrap()
+                    .as_deref(),
+            );
+            if current == change.before {
+                return None;
+            }
+            assert_eq!(current, change.after);
+            Some(Replacement {
+                current,
+                desired: change.before,
+                permissions,
+            })
+        })
+        .collect();
+    assert_eq!(
+        Staged::create(&fixture.root, &before, replacements)
+            .unwrap()
+            .commit(&fixture.root)
+            .unwrap(),
+        1
+    );
+    for name in ["Cargo.lock", "Cargo.toml"] {
+        assert_eq!(
+            fs::read(fixture.root.join(name)).unwrap(),
+            fs::read(before.join(name)).unwrap()
+        );
+    }
+}

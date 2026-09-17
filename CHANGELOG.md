@@ -167,6 +167,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   failed tests and unexpected source writes; reports grant no apply authority.
   Final native and application/recovery fault acceptance remain unfinished.
 
+- Add explicit authenticated native CLI staging with a fresh non-yanked release
+  selection, fixed official URLs, bounded HTTPS redirects and downloads,
+  attestation before executable retrieval, and exact size/hash checks. Failed
+  private stages are discarded. Staging executes and installs nothing; native
+  and published-release acceptance remain required.
+
 - Add explicit candidate review with revalidated command logs, source/file
   digests, a bounded full dependency diff and a review digest, without executing
   or applying the candidate. Normalize and deduplicate Cargo metadata paths
