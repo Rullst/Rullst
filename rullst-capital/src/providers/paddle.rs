@@ -61,28 +61,42 @@ impl PaddleProvider {
             WebhookVerificationMode::Real => {}
         }
 
-        let mut timestamp = "";
-        let mut signature_hex = "";
+        if signature_header.len() > 4096 {
+            return Err(CapitalError::InvalidSignature(
+                "Paddle signature header is too large".into(),
+            ));
+        }
+        let mut timestamp = None;
+        let mut signatures = Vec::new();
 
         for part in signature_header.split(';') {
             let mut kv = part.splitn(2, '=');
             let k = kv.next().unwrap_or("").trim();
             let v = kv.next().unwrap_or("").trim();
             if k == "ts" {
-                timestamp = v;
+                if timestamp.replace(v).is_some() {
+                    return Err(CapitalError::InvalidSignature(
+                        "Duplicate Paddle timestamp".into(),
+                    ));
+                }
             } else if k == "h1" {
-                signature_hex = v;
+                if signatures.len() >= 16 {
+                    return Err(CapitalError::InvalidSignature(
+                        "Too many Paddle signatures".into(),
+                    ));
+                }
+                signatures.push(v);
             }
         }
 
-        if timestamp.is_empty() || signature_hex.is_empty() {
+        let timestamp = timestamp.filter(|value| !value.is_empty()).ok_or_else(|| {
+            CapitalError::InvalidSignature("Invalid Paddle-Signature timestamp".into())
+        })?;
+        if signatures.is_empty() {
             return Err(CapitalError::InvalidSignature(
                 "Invalid Paddle-Signature header format".to_string(),
             ));
         }
-
-        let sig_bytes = hex::decode(signature_hex)
-            .map_err(|e| CapitalError::InvalidSignature(format!("Invalid hex signature: {}", e)))?;
 
         let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
         let mut ctx = hmac::Context::with_key(&key);
@@ -91,7 +105,14 @@ impl PaddleProvider {
         ctx.update(payload);
 
         let tag = ctx.sign();
-        if tag.as_ref().ct_eq(&sig_bytes).unwrap_u8() == 0 {
+        let mut matched = subtle::Choice::from(0);
+        for candidate in signatures {
+            let mut decoded = [0_u8; 32];
+            if candidate.len() == 64 && hex::decode_to_slice(candidate, &mut decoded).is_ok() {
+                matched |= tag.as_ref().ct_eq(&decoded);
+            }
+        }
+        if matched.unwrap_u8() == 0 {
             return Err(CapitalError::InvalidSignature(
                 "Paddle signature verification failed".to_string(),
             ));

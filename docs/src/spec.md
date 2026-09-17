@@ -748,6 +748,13 @@ does not model raw payment credentials, prove that a stored method has a valid
 mandate, persist idempotency, grant an entitlement, reconcile webhooks or imply
 direct-charge parity across adapters.
 
+Paddle signature verification accepts any matching `h1` candidate under a
+4 KiB header and 16-candidate bound, with constant-time comparison for each
+decoded HMAC. Exactly one nonempty `ts` timestamp is required; malformed
+neighboring signatures cannot hide a valid one, and duplicate timestamps are
+rejected. The configured freshness window still applies to the exact raw body.
+This authenticates a delivery, not subscription ownership or settlement.
+
 #### Customer-bound Stripe Subscription Checkout
 
 `StripeCustomerRequest` and `StripeProvider::create_customer` supply the

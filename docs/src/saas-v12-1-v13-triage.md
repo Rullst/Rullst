@@ -175,6 +175,16 @@ and [subscription events](https://razorpay.com/docs/webhooks/subscriptions/).
 
 ## Compatible maintenance boundaries
 
+Paddle review found the same last-signature-only pattern as Stripe, plus
+duplicate-timestamp acceptance. Its verifier now accepts any matching bounded
+`h1` candidate and requires exactly one timestamp. Two real-HMAC regressions
+failed before the correction and pass afterward, together with all 159 Capital
+tests under Actix and strict all-target Clippy. The existing configured
+freshness window remains in force. Paddle's
+[signature contract](https://developer.paddle.com/webhooks/about/signature-verification/)
+allows multiple `h1` values; this correction does not imply live checkout or
+subscription-lifecycle acceptance.
+
 InfinitePay's implemented HMAC/subscription payload does not match the reviewed
 [checkout callback contract](https://www.infinitepay.io/checkout-documentacao).
 The live verifier and handler are now explicitly unsupported pending reviewed
