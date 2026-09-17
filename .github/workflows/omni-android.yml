@@ -158,11 +158,30 @@ jobs:
           expected_digest="$(sha256sum "$RUNNER_TEMP/omni-ci-certificate.der" | cut -d ' ' -f 1)"
           count=0
           while IFS= read -r -d '' apk; do
-            "$build_tools/apksigner" verify --verbose --print-certs "$apk" > "$RUNNER_TEMP/omni-apk-certificate.txt"
-            grep -F "Signer #1 certificate SHA-256 digest: $expected_digest" "$RUNNER_TEMP/omni-apk-certificate.txt"
+            if ! "$build_tools/apksigner" verify --verbose --print-certs "$apk" > "$RUNNER_TEMP/omni-apk-certificate.txt" 2>&1; then
+              cat "$RUNNER_TEMP/omni-apk-certificate.txt"
+              echo 'Android APK signature verification failed' >&2
+              exit 1
+            fi
+            if ! grep -Fx "Signer #1 certificate SHA-256 digest: $expected_digest" "$RUNNER_TEMP/omni-apk-certificate.txt"; then
+              cat "$RUNNER_TEMP/omni-apk-certificate.txt"
+              echo "APK signer differs from the disposable certificate: expected $expected_digest" >&2
+              exit 1
+            fi
             count=$((count + 1))
           done < <(find gen/android/app/build/outputs/apk -type f -name '*-release.apk' -print0)
           test "$count" -gt 0
+
+      - name: Upload public signing evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: omni-android-certificate-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/omni-ci-certificate.der
+            ${{ runner.temp }}/omni-apk-certificate.txt
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload generated Android project on failure
         if: failure()
