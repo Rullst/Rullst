@@ -283,6 +283,7 @@ jobs:
     needs: scope
     if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: ORM ${{ matrix.feature }}
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -351,6 +352,7 @@ jobs:
     needs: scope
     if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: Redis live contracts
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     services:
@@ -408,6 +410,7 @@ jobs:
     needs: scope
     if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: Public feature boundaries (${{ matrix.shard }}/4)
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -438,6 +441,7 @@ jobs:
     needs: scope
     if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: Threat-model release-negative minimum (${{ matrix.shard }}/4)
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -491,6 +495,7 @@ jobs:
     needs: scope
     if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: Versioned deterministic AI evals
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -517,6 +522,7 @@ jobs:
     needs: scope
     if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: Generated release access boundaries
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -546,6 +552,7 @@ jobs:
     needs: scope
     if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: Facade shared-local recovery composition
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -572,6 +579,7 @@ jobs:
     needs: scope
     if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
     name: Check MSRV (Rust 1.96.0)
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:

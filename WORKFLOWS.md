@@ -56,6 +56,11 @@ verification credit. Run `ci.yml` manually on a final `main` candidate to
 produce the exact-SHA release scorecard. Manual diagnostic runs may select one
 operating system and one test shard; those deliberately do not produce a
 full-matrix scorecard and do not replace final-candidate evidence.
+Manual CLI-only shards also skip unrelated ORM/Redis/feature/threat/eval/facade
+and MSRV jobs, keeping correction runs bounded. Manual `workspace` and `all`
+selections, automatic runs and ready PRs retain those jobs. Strict workspace
+Clippy/format still runs for every diagnostic; release admission continues to
+require every job from the full `all`/`all` matrix.
 
 The manual `all`/`all` matrix additionally packages all sixteen public crates,
 audits their contents and uses the release pipeline's archive-only consumer
