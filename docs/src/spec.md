@@ -886,6 +886,12 @@ instances must persist/claim the key and reconcile payment state durably before
 sending.
 
 ### 6.3. Webhook Signature Verification
+* InfinitePay's legacy body-only verifier has no reviewed authentication and
+  authoritative payment-lookup contract for the documented checkout callback.
+  Real-secret verification and normalization return `UnsupportedOperation`;
+  explicit mock-secret fixtures remain offline-only. A local HMAC fixture is
+  not evidence that the provider signs that protocol. Enabling live processing
+  requires order/merchant/amount binding and provider reconciliation first.
 * The additive `StripeProvider::verify_subscription_event` returns an immutable
   `StripeSubscriptionEvent` after the existing signature/freshness check and
   bounded subscription normalization. It retains event ID/type/API version,

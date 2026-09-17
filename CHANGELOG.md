@@ -22,6 +22,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   numeric IDs, configured store binding and consistent test-mode fields.
   Correct `on_trial` normalization, preserve cancellation expiry, and reject
   invoice/payment events or malformed data as subscription snapshots.
+- Reject InfinitePay's unreviewed live body-only webhook contract explicitly.
+  Preserve explicit offline fixtures; require authenticated payment lookup and
+  merchant/order/amount binding before enabling real callback processing.
 - Read Stripe Basil billing periods from the subscription item, retaining the
   legacy period fallback. Require supported subscription events, bounded IDs,
   one complete price item and valid subscription states; reject ambiguous

@@ -40,7 +40,7 @@ provider sandbox.
 | :--- | :--- | :--- |
 | **Stripe** | Billing | Checkout, bounded immediate Payment Intent charge, and documented webhook foundations; verify required live methods. |
 | **Lemon Squeezy** | Billing | Checkout requires explicit `with_store_id`; store and variant response identities are checked. |
-| **InfinitePay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
+| **InfinitePay** | Billing | Offline fixtures; live plan-only checkout and body-only callback verification are unsupported. |
 | **Polar** | Billing | Signed-webhook foundation; legacy live checkout is unsupported. |
 | **Paddle** | Billing | Signed-webhook foundation; legacy live checkout is unsupported. |
 | **Razorpay** | Billing | Adapter and signed-webhook foundation. |
@@ -78,6 +78,14 @@ before enabling these live checkout paths.
 `adapter` means a bounded request implementation exists, not that this audit
 validated acceptance or every response schema against a live provider account.
 Offline fixtures are deliberately excluded from the live-method matrix.
+
+InfinitePay's [checkout callback and payment lookup](https://www.infinitepay.io/checkout-documentacao)
+do not establish the HMAC/subscription contract assumed by the old adapter.
+The live body-only verifier and handler now return `UnsupportedOperation`;
+explicit mock-secret verification remains available for offline fixtures.
+Enabling a real callback needs reviewed authentication, merchant/order/amount
+binding and authoritative reconciliation. A locally signed fixture does not
+prove that the provider emits that protocol.
 
 The unreleased v12.1 maintenance rejects legacy Paddle and Polar checkout before
 network dispatch: their current provider contracts cannot be represented by the

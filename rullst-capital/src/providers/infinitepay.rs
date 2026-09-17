@@ -4,10 +4,8 @@ use super::{
 };
 use crate::error::CapitalError;
 use async_trait::async_trait;
-use ring::hmac;
 use serde_json::Value;
 use std::collections::HashMap;
-use subtle::ConstantTimeEq;
 
 /// Billing provider adapter for InfinitePay (CloudWalk Brazil).
 ///
@@ -27,10 +25,14 @@ impl InfinitePayProvider {
         }
     }
 
-    /// Verifies the webhook signature using HMAC-SHA256 of the raw body payload.
+    /// Retained for source compatibility; live callback authentication is unavailable.
+    ///
+    /// The documented checkout callback and payment lookup need a separately
+    /// reviewed merchant/order/amount contract. A locally generated HMAC does
+    /// not establish that InfinitePay authenticates this body-only protocol.
     pub fn verify_signature(
         &self,
-        payload: &[u8],
+        _payload: &[u8],
         signature_hex: &str,
     ) -> Result<(), CapitalError> {
         if self.webhook_verification_mode()? == WebhookVerificationMode::Mock {
@@ -41,19 +43,7 @@ impl InfinitePayProvider {
             );
         }
 
-        let sig_bytes = hex::decode(signature_hex)
-            .map_err(|e| CapitalError::InvalidSignature(format!("Invalid hex signature: {}", e)))?;
-
-        let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
-        let tag = hmac::sign(&key, payload);
-
-        if tag.as_ref().ct_eq(&sig_bytes).unwrap_u8() == 0 {
-            return Err(CapitalError::InvalidSignature(
-                "InfinitePay signature verification failed".to_string(),
-            ));
-        }
-
-        Ok(())
+        Err(live_webhook_unavailable())
     }
 }
 
@@ -104,7 +94,9 @@ impl BillingProvider for InfinitePayProvider {
         payload: &[u8],
         headers: &HashMap<String, String>,
     ) -> Result<WebhookEvent, CapitalError> {
-        let _ = self.webhook_verification_mode()?;
+        if self.webhook_verification_mode()? == WebhookVerificationMode::Real {
+            return Err(live_webhook_unavailable());
+        }
         let sig_header = headers
             .get("x-signature")
             .or_else(|| headers.get("x-infinitepay-signature"))
@@ -229,9 +221,16 @@ impl BillingProvider for InfinitePayProvider {
     }
 }
 
+fn live_webhook_unavailable() -> CapitalError {
+    CapitalError::UnsupportedOperation(
+        "InfinitePay live callbacks require reviewed authentication and authoritative payment lookup".into(),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ring::hmac;
 
     #[tokio::test]
     async fn test_infinitepay_provider_methods() {
@@ -301,7 +300,10 @@ mod tests {
         let sig = hmac::sign(&key, payload);
         let sig_hex = hex::encode(sig.as_ref());
 
-        assert!(provider.verify_signature(payload, &sig_hex).is_ok());
+        assert!(matches!(
+            provider.verify_signature(payload, &sig_hex),
+            Err(CapitalError::UnsupportedOperation(_))
+        ));
 
         // Signature error paths
         let no_sec = InfinitePayProvider::new("k", "");
@@ -320,8 +322,9 @@ mod tests {
         );
 
         // 7. Handle webhook
+        let provider = InfinitePayProvider::new("mock_key", "mock_webhook");
         let mut headers = HashMap::new();
-        headers.insert("x-signature".to_string(), sig_hex);
+        headers.insert("x-signature".to_string(), "mock_webhook".into());
 
         let event = provider.handle_webhook(payload, &headers).unwrap();
         assert_eq!(event.subscription_id, "tx_inf_100");

@@ -162,6 +162,13 @@ and [subscription events](https://razorpay.com/docs/webhooks/subscriptions/).
 
 ## Compatible maintenance boundaries
 
+InfinitePay's implemented HMAC/subscription payload does not match the reviewed
+[checkout callback contract](https://www.infinitepay.io/checkout-documentacao).
+The live verifier and handler are now explicitly unsupported pending reviewed
+authentication and payment lookup bound to merchant, order and amount. Offline
+fixtures still require an explicit mock secret. This contains the unsupported
+framework path; it does not assert that the provider lacks other API products.
+
 Additional Lemon Squeezy review found that the legacy parser accepted missing
 event/object kinds, serialized absent customer/variant IDs as `null`, and mapped
 `on_trial` to `Unpaid`. A dedicated subscription parser now validates lifecycle,
