@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### SaaS maintenance — planned 12.1.0
+
+- Allow ordinary curl, Wget, Python and Go clients through the default WAF
+  User-Agent policy, fixing deployment health probes (RULLST-003). Preserve
+  configurable crawler filtering, payload inspection, CSRF and secure headers.
+  Existing explicitly configured blocklists remain application-owned.
+- Validate Lemon Squeezy store/variant configuration; reject obsolete Paddle
+  and Polar checkout and incomplete Wise email-transfer flows explicitly.
+  Accept any valid bounded Stripe webhook signature during secret rotation.
+- Generate HTTP 303 checkout redirects, an explicit unavailable live portal,
+  retained application lockfiles, locked Docker builds and supported MSVC flags.
+- Share AI configuration resolution between Nexus and the client, including
+  explicitly configured Groq and OpenAI-compatible models.
+
 ### Omni icons and Android signing — planned 12.1.0
 
 - Embed the existing Rullst logo as the default square icon source and regenerate
@@ -59,8 +73,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   lock and staged replacement. Offline reads revalidate the catalog and current
   selection policy; JSON includes metadata source/age. `--refresh` skips reads
   and `--no-cache` disables persistence. Dashboard notices remain process-local.
-  Windows cache persistence stays disabled pending its owner/ACL implementation;
-  online discovery remains available. This is not verified CLI installation.
+  Windows persistence now checks ownership, DACLs, path components, reparse
+  points and hardlinks; native Windows acceptance remains pending.
+  This is not verified CLI installation.
 
 - Preflight the complete legacy upgrade backup before restoring any original.
   Bound index and snapshot sizes, reject duplicate/ambiguous paths and linked

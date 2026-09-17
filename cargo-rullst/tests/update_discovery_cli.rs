@@ -8,6 +8,7 @@ fn run(args: &[&str]) -> std::process::Output {
         .env("CARGO_NET_OFFLINE", "true")
         .env("RULLST_DISABLE_UPDATE_CHECK", "1")
         .env("XDG_CACHE_HOME", cache.path())
+        .env("LOCALAPPDATA", cache.path())
         .output()
         .unwrap()
 }

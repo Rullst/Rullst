@@ -177,7 +177,9 @@ pub struct SecurityConfig {
     /// explicit application-level decision.
     #[serde(default = "default_coep")]
     pub coep: String,
-    /// User-Agent strings or substrings to block in the WAF middleware.
+    /// Case-insensitive User-Agent substrings to block in the WAF middleware.
+    /// Defaults cover selected crawlers, not general HTTP clients or health probes.
+    /// This forgeable header is a traffic preference, never authentication.
     #[serde(default = "default_user_agent_blocklist")]
     pub user_agent_blocklist: Vec<String>,
     /// Enable global automatic PII masking middleware on all textual responses (heavy performance cost).
@@ -203,10 +205,6 @@ fn default_coep() -> String {
 
 fn default_user_agent_blocklist() -> Vec<String> {
     vec![
-        "curl".to_string(),
-        "wget".to_string(),
-        "python-requests".to_string(),
-        "go-http-client".to_string(),
         "gptbot".to_string(),
         "chatgpt-user".to_string(),
         "google-extended".to_string(),
@@ -421,7 +419,7 @@ cors_allow_origins = ["https://example.com"]
         assert!(config.csp.contains("default-src"));
         assert!(!config.csp.contains("unsafe-inline"));
         assert!(!config.csp.contains("unsafe-eval"));
-        assert!(config.user_agent_blocklist.contains(&"curl".to_string()));
+        assert!(config.user_agent_blocklist.contains(&"gptbot".to_string()));
         assert!(config.csrf_signed_webhook_paths.is_empty());
     }
 
