@@ -47,6 +47,7 @@ provider sandbox.
 | **Mercado Pago** | Billing | Offline checkout fixture; live plan-only checkout and body-only webhook verification are unavailable. |
 | **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
 | **PicPay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
+| **Alipay** | Billing | Explicit mock credentials only; live checkout and RSA2 webhook verification are unsupported. |
 | **Wise** | Payout | Status/webhook foundation; legacy email-based live transfer is unsupported. |
 
 The shared `create_customer_portal(email, return_url)` methods do not have a
@@ -138,6 +139,18 @@ Missing or malformed status no longer implies a paid/active subscription.
 Unsupported Razorpay and Coinbase event kinds fail closed; Coinbase event
 names are matched exactly, not by substring. This does not establish every
 provider payload schema or an application-specific entitlement/tenant policy.
+
+Razorpay subscription normalization requires the subscription's own bounded ID,
+customer ID and plan ID, plus an event/entity state match. Authentication alone
+and standalone payment/order events cannot activate a subscription. Activated,
+charged and resumed events require `active`; pending, halted, paused and
+cancelled events require their corresponding provider state. Completed and
+authenticated states remain unsupported by the v12 normalized contract. Email
+is optional contact data. The application still owns customer/tenant binding,
+event ordering, durable processing and reconciliation; `Active` is a lifecycle
+state, not proof that a particular invoice was paid. See Razorpay's
+[subscription states](https://razorpay.com/docs/payments/subscriptions/states/)
+and [webhook payloads](https://razorpay.com/docs/webhooks/subscriptions/).
 
 ---
 
