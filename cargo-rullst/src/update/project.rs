@@ -9,6 +9,10 @@ use std::{
 mod process;
 #[path = "project/snapshot.rs"]
 mod snapshot;
+#[path = "project/state.rs"]
+mod state;
+#[path = "project/verify.rs"]
+mod verify;
 
 #[derive(thiserror::Error)]
 pub(super) enum ProjectError {
@@ -38,9 +42,13 @@ pub(super) fn command() -> Command {
                     .value_parser(clap::value_parser!(PathBuf)))
                 .arg(Arg::new("to").long("to").value_name("EXACT_VERSION"))
                 .arg(Arg::new("json").long("json").action(ArgAction::SetTrue)))
+        .subcommand(verify::command())
 }
 
 pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
+    if let Some(matches) = matches.subcommand_matches("verify") {
+        return verify::run(matches);
+    }
     let matches = matches
         .subcommand_matches("prepare")
         .ok_or(ProjectError::Invalid("unsupported project operation"))?;
@@ -74,20 +82,21 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
         .map_err(|error| ProjectError::Planning(error.to_string()))?;
     snapshot::unchanged(&root, &paths, &records)?;
     let prepared = Prepared {
-        schema_version: "rullst.project-preparation.v1",
-        phase: "prepared",
+        schema_version: "rullst.project-preparation.v1".into(),
+        phase: "prepared".into(),
         source: root,
         target: target.to_owned(),
-        platform: std::env::consts::OS,
+        platform: std::env::consts::OS.into(),
         files: records,
         plan,
         execution_authorized: false,
         application_authorized: false,
     };
-    std::fs::write(
-        stage.path().join("preparation.json"),
-        serde_json::to_vec_pretty(&prepared)?,
-    )?;
+    let serialized = serde_json::to_vec_pretty(&prepared)?;
+    if serialized.len() > 64 * 1024 * 1024 {
+        return Err(ProjectError::Invalid("preparation report exceeds 64 MiB"));
+    }
+    std::fs::write(stage.path().join("preparation.json"), serialized)?;
     let path = stage.retain();
     let report = serde_json::json!({"schema_version":"rullst.project-preparation-result.v1",
         "prepared_directory":path, "candidate_directory":candidate, "preparation":prepared});
@@ -100,19 +109,20 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
             "Review preparation.json and compare before/ with candidate/. Original project files were not edited."
         );
         println!(
-            "No build, test or application step is authorized by preparation. Verification/application are still in development."
+            "Preparation grants no execution or application authority. Preview checks with update project verify --prepared DIRECTORY --dry-run."
         );
     }
     Ok(())
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Prepared {
-    schema_version: &'static str,
-    phase: &'static str,
+    schema_version: String,
+    phase: String,
     source: PathBuf,
     target: String,
-    platform: &'static str,
+    platform: String,
     files: Vec<snapshot::Record>,
     plan: serde_json::Value,
     execution_authorized: bool,

@@ -5,7 +5,9 @@ mod isolated;
 mod manifest;
 mod scan;
 
-pub(crate) use isolated::prepare_manifests;
+pub(crate) use isolated::{
+    prepare_manifests, validate_prepared_manifests, validate_prepared_resolution,
+};
 
 use crate::ui::spinner::with_spinner;
 use colored::Colorize;

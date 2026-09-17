@@ -201,6 +201,20 @@ pub(super) fn project_workspace() -> Result<PathBuf, CacheError> {
     Ok(path)
 }
 
+pub(super) fn open_project(requested: &Path) -> Result<(PathBuf, File), CacheError> {
+    let directory = cache_directory(&base_directory(false)?, false)?;
+    let path = super::project_path(requested, &directory)?;
+    validate_directory(&path, true)?;
+    let lock = options()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(path.join("operation.lock"))?;
+    validate_file(&lock)?;
+    Ok((path, lock))
+}
+
 #[cfg(test)]
 #[path = "tests.rs"]
 mod tests;

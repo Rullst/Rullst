@@ -6,6 +6,15 @@ pub(crate) fn prepare_manifests(
     paths: Vec<PathBuf>,
     target: &str,
 ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    plan_manifests(root, paths, target, true)
+}
+
+fn plan_manifests(
+    root: &Path,
+    paths: Vec<PathBuf>,
+    target: &str,
+    apply: bool,
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     let version = super::target_version(Some(target))?;
     let root = root.canonicalize()?;
     let mut plans = Vec::new();
@@ -69,8 +78,56 @@ pub(crate) fn prepare_manifests(
         &root, &version, &plans, &findings,
     )?)?;
     report["automatic_scope"] = serde_json::json!(["workspace dependency manifests in candidate/"]);
-    super::manifest::apply_plans(&plans)?;
+    if apply {
+        super::manifest::apply_plans(&plans)?;
+    }
     Ok(report)
+}
+
+pub(crate) fn validate_prepared_manifests(
+    before: &Path,
+    candidate: &Path,
+    paths: &[String],
+    target: &str,
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    let paths: Vec<_> = paths.iter().map(|path| before.join(path)).collect();
+    let plan = plan_manifests(before, paths.clone(), target, false)?;
+    for path in paths {
+        let relative = path.strip_prefix(before)?;
+        let expected = super::manifest::plan_manifest(path.clone(), target)?;
+        if std::fs::read(candidate.join(relative))? != expected.updated.as_bytes() {
+            return Err("candidate manifest changed after preparation; review the original and prepare again".into());
+        }
+    }
+    Ok(plan)
+}
+
+pub(crate) fn validate_prepared_resolution(
+    root: &Path,
+    target: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let document: toml::Value = toml::from_str(&std::fs::read_to_string(root.join("Cargo.lock"))?)?;
+    let packages = document
+        .get("package")
+        .and_then(toml::Value::as_array)
+        .ok_or("missing candidate lockfile packages")?;
+    let mut matched = false;
+    for package in packages {
+        let name = package
+            .get("name")
+            .and_then(toml::Value::as_str)
+            .ok_or("invalid candidate package name")?;
+        if super::manifest::RULLST_PACKAGES.contains(&name) {
+            matched = true;
+            if package.get("version").and_then(toml::Value::as_str) != Some(target) {
+                return Err("candidate lockfile contains a Rullst package outside the exact selected version".into());
+            }
+        }
+    }
+    if !matched {
+        return Err("candidate lockfile contains no Rullst packages".into());
+    }
+    Ok(())
 }
 
 fn validate_lockfile(

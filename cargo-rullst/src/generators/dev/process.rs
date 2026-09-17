@@ -264,13 +264,13 @@ impl Drop for Application {
     }
 }
 
-pub(super) struct BuildChild {
-    pub(super) child: tokio::process::Child,
+pub(crate) struct BuildChild {
+    pub(crate) child: tokio::process::Child,
     group: ProcessGroup,
 }
 
 impl BuildChild {
-    pub(super) fn new(child: tokio::process::Child) -> io::Result<Self> {
+    pub(crate) fn new(child: tokio::process::Child) -> io::Result<Self> {
         let id = child
             .id()
             .ok_or_else(|| io::Error::other("spawned child has no process ID"))?;
@@ -280,7 +280,7 @@ impl BuildChild {
         })
     }
 
-    pub(super) async fn wait(&mut self) -> io::Result<ExitStatus> {
+    pub(crate) async fn wait(&mut self) -> io::Result<ExitStatus> {
         #[cfg(unix)]
         {
             while !self.group.exit_observed()? {
@@ -307,7 +307,7 @@ impl Drop for BuildChild {
     }
 }
 
-pub(super) fn configure_group(command: &mut Command) {
+pub(crate) fn configure_group(command: &mut Command) {
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;

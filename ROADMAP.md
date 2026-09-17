@@ -433,9 +433,14 @@ the root lockfile in private before/candidate copies, reuses exact dependency
 editing and the versioned source catalog, and rejects ambiguous inputs and
 downgrades. Local process fixtures cover dirty/untracked/deleted source,
 virtual workspaces, ignored or absent lockfiles, bounded findings and unsafe
-files without compiling application code. The copy grants no execution or
-application authority. Native acceptance and the subsequent verification,
-review, consent, application and recovery stages remain unfinished.
+files without compiling application code. Native preparation tests passed on
+Windows and macOS at `88ddabad`. Preparation grants no execution or application
+authority. Working-source verification now revalidates records/source under an
+operation lock, previews commands, and requires explicit trusted-code consent
+before resolving/checking/testing another private copy. Local process tests
+cover real acceptance, stale inputs, missing consent, contention, timeout,
+failed tests and unexpected source writes. Verification platform acceptance,
+review/application, recovery and the complete guided flow remain unfinished.
 
 1. **Discover and explain.** Make update notices useful without blocking normal
    CLI startup. Respect offline/CI settings and explicit notification opt-out;

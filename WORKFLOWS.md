@@ -56,6 +56,9 @@ verification credit. Run `ci.yml` manually on a final `main` candidate to
 produce the exact-SHA release scorecard. Manual diagnostic runs may select one
 operating system and one test shard; those deliberately do not produce a
 full-matrix scorecard and do not replace final-candidate evidence.
+The manual `cli-updates` diagnostic selects discovery/cache/artifact tests,
+isolated project preparation/verification and legacy upgrade process fixtures.
+It does not replace the complete `cli-standard` shard in release matrices.
 Manual CLI-only shards also skip unrelated ORM/Redis/feature/threat/eval/facade
 and MSRV jobs, keeping correction runs bounded. Manual `workspace` and `all`
 selections, automatic runs and ready PRs retain those jobs. Strict workspace

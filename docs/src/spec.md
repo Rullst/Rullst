@@ -1433,7 +1433,36 @@ assistant, not a claim that compilation proves production compatibility.
   require manual review. Source reports stop above 10,000 findings. This is a
   source snapshot, not a filesystem sandbox: later
   verification must explicitly authorize trusted project execution. Bounded
-  reviewed verification/application/recovery remain separate unfinished gates.
+  reviewed application/recovery remain separate unfinished gates.
+
+  **Candidate verification (working source; platform acceptance pending):**
+  `update project verify` reloads the private preparation, validates its
+  baseline/current source/candidate against bounded records and recomputed
+  migration plans, rejects stale inputs, and takes an exclusive operation lock.
+  `--dry-run` shows the selected commands without running builds/tests. Execution
+  requires `--allow-project-code` and uses another fresh private copy. Cargo
+  resolves the lockfile; every locked managed Rullst package must match the
+  exact target before checking all workspace targets and running workspace
+  tests with `--locked` and the selected feature policy. Default features are
+  the default policy, with explicit all/custom/no-default selection. Cargo is
+  offline unless separately authorized; an offline environment cannot be
+  overridden. Rustup auto-installation remains disabled.
+  Build outputs live outside the verified source tree. Each tool has a bounded
+  deadline (900 seconds by default, at most 3,600) and at most 8 MiB per output
+  stream. Execution reuses the supervised child/process-group cleanup and
+  responds to cancellation. This is best-effort process-tree cleanup, not
+  containment of hostile descendants. Private logs include Cargo/rustc version
+  probes, commands and their output digests. Configured compiler wrappers or
+  alternate toolchains still require operator review; probes are not toolchain
+  attestations. Original/prepared/baseline changes, unresolved migration
+  findings, failed commands and unexpected source writes reject acceptance.
+  Only the candidate root lockfile may change during verification.
+  `rullst.project-verification.v1` records successful commands, feature policy
+  and final file digests, grants no application/deployment authority, and is not
+  a reusable apply token. Native acceptance and complete application/recovery
+  remain release gates. Tests execute trusted project code with the caller's
+  environment: the copy is not a sandbox, and external effects cannot be
+  reversed through source-file recovery.
 
 ---
 
