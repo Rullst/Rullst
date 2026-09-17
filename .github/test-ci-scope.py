@@ -126,7 +126,15 @@ class WorkflowGuardTests(unittest.TestCase):
         runtime = {"check", "test", "strict-database-features", "redis-rate-limit",
                    "feature-boundaries", "threat-model-release-minimum", "versioned-ai-evals",
                    "generated-release-access", "facade-composition", "msrv"}
-        self.assertEqual(set(jobs), runtime | {"scope", "site-validation", "quality-scorecard"})
+        distribution = {"native-cli-artifacts", "packaged-distribution"}
+        self.assertEqual(set(jobs), runtime | distribution | {"scope", "site-validation", "quality-scorecard"})
+        for name, body in jobs.items():
+            self.assertEqual(len(re.findall(r"(?m)^    if:", body)), 1 if name != "scope" else 0, name)
+        for name in distribution:
+            guard = jobs[name].split("    runs-on:", 1)[0].split("    uses:", 1)[0]
+            self.assertIn("github.event_name == 'workflow_dispatch'", guard)
+            self.assertIn("inputs.platform == 'all'", guard)
+            self.assertIn("inputs.shard == 'all'", guard)
         for name in runtime:
             with self.subTest(job=name):
                 guard = jobs[name].split("    runs-on:", 1)[0]
