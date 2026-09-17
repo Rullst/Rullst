@@ -47,6 +47,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   serialize reads with domain updates and handle invoice settlement separately.
 - Generate HTTP 303 checkout redirects, an explicit unavailable live portal,
   retained application lockfiles, locked Docker builds and supported MSVC flags.
+- Restrict newly generated SaaS/`make:billing` routes to local fixtures until
+  scoped customer/attempt identity and atomic inbox processing are integrated.
+  Real or mixed credentials return HTTP 503 before provider calls, replay claims
+  or database changes. Demo pricing states that real payments are unavailable;
+  upgrading a crate does not rewrite existing application controllers.
 - Share SaaS billing models with `make:billing`, replacing the subscription
   lookup's hardcoded PostgreSQL placeholder with the ORM's parameterized query
   builder. Keep the SaaS Nexus metadata while avoiding backend-specific drift.

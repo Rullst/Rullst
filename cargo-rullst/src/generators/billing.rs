@@ -141,7 +141,12 @@ pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Er
     );
     println!("👉 Mount authenticated checkout/portal routes and the exact signed webhook route.");
     println!("👉 BILLING_PROVIDER accepts stripe or lemonsqueezy.");
-    println!("👉 Configure BILLING_API_KEY, BILLING_WEBHOOK_SECRET, and BILLING_REDIRECT_URL.");
+    println!(
+        "👉 Generated billing currently supports development fixtures only (empty/mock_* credentials)."
+    );
+    println!(
+        "👉 Real credentials return HTTP 503 until durable ownership, attempts and atomic webhooks are integrated."
+    );
     println!("👉 Lemon Squeezy also requires BILLING_STORE_ID and numeric variant IDs.");
     println!("👉 Set BILLING_ALLOWED_PLAN_IDS to a comma-separated server-owned allowlist.");
     Ok(())

@@ -141,6 +141,15 @@ fn lemon_provider(config: &BillingConfig) -> Result<LemonSqueezyProvider, rullst
     }
 }
 
+// This scaffold's email lookup and replay preclaim are development fixtures.
+// Real billing needs durable scoped ownership/attempts and atomic inbox/domain
+// processing. Do not turn this guard into an environment-variable bypass.
+fn local_billing_fixture(config: &BillingConfig) -> bool {
+    !is_production()
+        && (config.api_key.is_empty() || config.api_key.starts_with("mock_"))
+        && (config.webhook_secret.is_empty() || config.webhook_secret.starts_with("mock_"))
+}
+
 /// Configures the provider used by the mandatory signed-webhook middleware.
 pub fn initialize_billing_provider() -> Result<(), BillingConfigError> {
     let config = billing_config()?;
@@ -159,6 +168,10 @@ pub async fn verify_billing_webhook(
     request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    let config = billing_config().map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    if !local_billing_fixture(&config) {
+        return Err(StatusCode::SERVICE_UNAVAILABLE);
+    }
     if let Err(error) = initialize_billing_provider() {
         eprintln!("Billing webhook configuration error: {error}");
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
@@ -246,6 +259,9 @@ pub async fn checkout_redirect(
     if !config.allowed_plan_ids.contains(&form.plan) {
         return (StatusCode::BAD_REQUEST, "Plan is not enabled").into_response();
     }
+    if !local_billing_fixture(&config) {
+        return (StatusCode::SERVICE_UNAVAILABLE, "Billing is unavailable").into_response();
+    }
     let customer = match billing_customer(&identity).await {
         Ok(customer) => customer,
         Err(error) => return error.into_response(),
@@ -280,7 +296,7 @@ pub async fn portal_redirect(Extension(identity): Extension<BillingIdentity>) ->
             return (StatusCode::SERVICE_UNAVAILABLE, error.to_string()).into_response();
         }
     };
-    if !config.api_key.is_empty() && !is_mock_credential(&config.api_key) {
+    if !local_billing_fixture(&config) {
         return (StatusCode::SERVICE_UNAVAILABLE, "Customer portal is unavailable for this configuration").into_response();
     }
     let customer = match billing_customer(&identity).await {
@@ -331,6 +347,9 @@ pub async fn webhook_handler(Extension(event): Extension<WebhookEvent>) -> Respo
     };
     if !config.allowed_plan_ids.contains(&event.plan_id) {
         return StatusCode::UNPROCESSABLE_ENTITY.into_response();
+    }
+    if !local_billing_fixture(&config) {
+        return StatusCode::SERVICE_UNAVAILABLE.into_response();
     }
 
     let mut customer = match BillingCustomer::find_by_email(&email).await {

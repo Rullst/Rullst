@@ -26,9 +26,8 @@ fn pricing_setup_banner() -> String {
         <div class="setup-banner">
             <div class="setup-banner-icon">"🚀"</div>
             <div class="setup-banner-content">
-                <h4>"Provider sandbox setup required"</h4>
-                <p>"Configure a Stripe or Lemon Squeezy test environment before exercising checkout and signed webhook flows:"</p>
-                <pre><code>"BILLING_PROVIDER=stripe\nBILLING_API_KEY=sk_test_...\nBILLING_WEBHOOK_SECRET=whsec_...\nBILLING_ALLOWED_PLAN_IDS=price_starter,price_pro"</code></pre>
+                <h4>"Billing demonstration"</h4>
+                <p>"These plans demonstrate the billing interface. Real payments are unavailable and no purchase grants access."</p>
             </div>
         </div>
     }
@@ -91,8 +90,7 @@ fn pricing_plans(csrf_token: &str) -> String {
 }
 
 pub fn pricing_page(csrf_token: &str, _csp_nonce: &str) -> Html<String> {
-    let has_keys = std::env::var("BILLING_API_KEY").map(|k| !k.is_empty() && k != "mock_key").unwrap_or(false);
-    let banner_code = if !has_keys { pricing_setup_banner() } else { String::new() };
+    let banner_code = pricing_setup_banner();
 
     let document = html! {
         <html lang="en">

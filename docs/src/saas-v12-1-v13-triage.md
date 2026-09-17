@@ -98,6 +98,12 @@ means the complete release or a live-provider journey has passed:
   PostgreSQL placeholder from subscription lookup. All ten scaffold contracts,
   the four materialized foundation applications and CLI all-feature/all-target
   strict Clippy pass locally; this is not provider sandbox acceptance.
+- New SaaS/`make:billing` routes now contain the unfinished live flow: real or
+  mixed credentials return HTTP 503 before provider I/O, replay claims or SQL.
+  Offline development fixtures remain available. Existing applications require
+  a reviewed controller migration; new typed provider/inbox APIs do not replace
+  their owner binding automatically. Full live integration remains required
+  before enabling that generated operation, as permitted by the P0 allocation.
 
 All eleven v12 adapters are in scope: Stripe, Lemon Squeezy, InfinitePay,
 Polar, Paddle, Razorpay, Mercado Pago, Coinbase Commerce, PicPay, Alipay and Wise.

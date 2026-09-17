@@ -972,6 +972,12 @@ sending.
   This only establishes atomicity for the two domain rows: the generated
   email lookup, provider namespace, event ordering and middleware preclaim
   still require replacement by the durable identity/inbox flow above.
+  Until that integration is implemented, newly generated checkout, portal and
+  webhook paths are restricted to development fixtures with empty/`mock_*`
+  credentials. Any real API or webhook credential returns HTTP 503 before
+  provider dispatch, replay claims or domain writes, including mixed real/mock
+  configuration. Pricing pages disclose the demonstration boundary. Existing
+  application-owned code is not rewritten by updating the framework package.
 
 ### 6.4. NFS-e Nacional Specification (`FiscalEngine`)
 * 🟢 **`[Implemented / Bounded]` DPS 1.01 Builder:** `NfseDpsV101` models an ordinary domestic-service subset, validates CPF/CNPJ/IBGE/identifier/text limits, keeps BRL values in integer cents and ISS rates in basis points, and emits an unsigned DPS in the official namespace. The legacy floating-point preview remains compatibility-only.

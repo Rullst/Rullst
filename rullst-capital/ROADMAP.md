@@ -49,7 +49,7 @@ Rullst Capital simplifies the billing and subscription complexities of building 
 
 ## Phase 4: Customer Portal & UI Scaffold
 - [x] **Customer Portal Link**: Method to generate a direct login link to Stripe Customer Portal or LemonSqueezy Customer Hub (`user.billing_portal_url().await`).
-- [x] **Ready-made Scaffold**: `cargo rullst make:billing --model Workspace` generates registered SQLx or Turso-primary models/migrations, pricing, authenticated checkout/portal and mandatory webhook code for the selected Stripe/LemonSqueezy adapter. Materialized contracts compile, migrate, persist, deny cross-owner reuse and refuse collisions; route mounting, live sandbox proof and distributed reconciliation stay application-owned.
+- [x] **Local Billing Scaffold**: `cargo rullst make:billing --model Workspace` generates registered SQLx or Turso-primary models/migrations, demo pricing and guarded billing routes. Materialized contracts compile, migrate, persist offline fixtures, deny cross-owner reuse and refuse collisions. Real or mixed credentials return HTTP 503 until durable scoped ownership, attempts and atomic webhook processing replace the legacy demo flow; provider sandbox acceptance remains separate.
 
 ## Phase 5: Entitlements & Tax Management
 - [x] **Tier-based Features**: Check if a user can access a feature based on their subscription tier (`user.can_access("pro_dashboard")`).

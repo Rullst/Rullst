@@ -36,6 +36,13 @@ provider sandbox.
 
 ## ✨ Supported Providers
 
+The unreleased 12.1 SaaS/`make:billing` scaffold is restricted to local
+development fixtures. Real or mixed API/webhook credentials, including sandbox
+keys, return HTTP 503 before provider requests, replay claims or SQL writes.
+Durable scoped ownership, attempts and atomic inbox processing must replace
+its legacy email-based flow before real calls can be enabled. Updating Capital
+does not rewrite existing controllers; those need an application-owned migration.
+
 | Provider | Adapter category | Current boundary |
 | :--- | :--- | :--- |
 | **Stripe** | Billing | Checkout, bounded immediate Payment Intent charge, and documented webhook foundations; verify required live methods. |
