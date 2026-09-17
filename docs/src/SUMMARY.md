@@ -22,6 +22,8 @@
 - [Rullst AI Architecture & Local Models](7-ai-token-economy-and-local-llms.md)
 - [AI Maintainability & Project-Building Roadmap](ai-maintainability-roadmap.md)
 - [Rullst Labs & Isolated Runner Roadmap](rullst-labs-roadmap.md)
+- [Privacy & Proportional Age Assurance](privacy-age-assurance-roadmap.md)
+- [SaaS Findings: v12.1 & v13 Triage](saas-v12-1-v13-triage.md)
 - [⚡ Redis Architecture, Caching & Distributed Queues](redis-guide.md)
 
 # 🍳 Rullst Cookbook & Tutorials

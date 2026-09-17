@@ -1,0 +1,123 @@
+# SaaS findings: v12.1 maintenance and v13 contracts
+
+**Status: planning and source review, 17 September 2026. No fix, provider
+acceptance or deployment is claimed by this document.**
+
+The input is the two reports from `Rullst/examples`, branch
+`feat/saas-staging-ai-fixes`, pinned to commit
+`d6094dbd67d12ee965ce73dfb539d3ada9b4195a`:
+
+- [saas-improvements-needed.md](https://github.com/Rullst/examples/blob/d6094dbd67d12ee965ce73dfb539d3ada9b4195a/saas-improvements-needed.md)
+- [rullst-errors.md](https://github.com/Rullst/examples/blob/d6094dbd67d12ee965ce73dfb539d3ada9b4195a/rullst-errors.md)
+
+Those reports inspect published 12.0.0. This review compares their findings
+with framework source at `de77430ccd86c847c98d67002f3478e57637180f` on `v13`.
+The reported source patterns remain present. This is inspection, not a fresh
+Windows build, resolved feature-graph test, provider sandbox run, or examination
+of either deployed SaaS site. Application workarounds do not fix the packages.
+
+## Release allocation
+
+P0 below means necessary before enabling the affected live operation, not that
+every provider must become live before a framework maintenance release. An
+explicit unsupported operation is acceptable containment; a malformed request
+or fabricated success is not. Important compatible fixes can ship separately
+on the v12 maintenance line without waiting for all v13 capabilities.
+
+| Finding | Evidence in current source | v12.1 maintenance target | v13 target / acceptance |
+| :--- | :--- | :--- | :--- |
+| **SAAS-001 · P0** Lemon Squeezy store | `providers/lemonsqueezy.rs` still sends store `1`. | Add validated store configuration without removing the existing constructor; an unconfigured real request must fail explicitly. | Bind response to store/variant, protocol fixtures and official sandbox evidence. |
+| **SAAS-002 · P0** Paddle checkout | `providers/paddle.rs` sends nested `customer.email` and top-level `return_url`. | Correct the supported flow if it fits the contract; otherwise disable that live operation with a typed error and accurate matrix. | Typed transaction/customer/checkout boundaries, approved payment-link prerequisites and usable sandbox checkout evidence. |
+| **SAAS-003 · P0** Polar checkout | `providers/polar.rs` uses `product_price_id` and `/v1/checkouts/custom/`. | Contain the obsolete path; do not silently reinterpret an existing price ID as a product ID. | Current products-based API, local-subject binding and reviewed webhook lifecycle. Any client IP forwarding requires a trusted proxy boundary and a stated purpose. |
+| **SAAS-004 · P0** Stripe ownership | `providers/stripe.rs` lacks a local subject in checkout; the generated handler requires webhook email. | Add an opt-in typed checkout/receipt path and safe generator flow, or keep the affected live scaffold disabled. Do not claim an email lookup solves ownership. | Persist attempt/session/customer/subscription bindings; accept the relevant signed lifecycle events; test missing email, changed email and cross-owner/tenant denial. |
+| **SAAS-005 · P0** POST redirect | `billing_controller.rs.template` uses `Redirect::temporary`. | Emit HTTP 303 after POST; assert status and `Location` in a materialized route test. Review the portal handoff too. | Preserve browser method semantics in every checkout flow. |
+| **SAAS-006 · P0** Portal capability | Scaffold mounts a portal backed by a live `UnsupportedOperation`. | Expose an honest unavailable state and capability-gate route generation; no invented customer portal. | Provider-specific sessions bound to persisted customer identity, with their own sandbox tests. |
+| **SAAS-007 · P0** Wise transfer | `providers/wise.rs` constructs recipient/quote/idempotency values from email/profile/amount. | Reject the unsupported live flow before dispatch; preserve deterministic offline behavior. | Separate recipient, quote, transfer and funding operations; UUID idempotency, corridor rules and reconciliation. Transfer creation is not funding confirmation. |
+| **SAAS-008 · P0** Checkout idempotency | Generic checkout has no durable attempt/idempotency input. | Add an optional typed API without adding required methods to downstream trait implementations; legacy ambiguity must be documented and contained. | Persist attempt before dispatch, bind key to request digest, forward it only under a reviewed provider contract and reconcile unknown outcomes. |
+| **SAAS-009 · P0 for multiple gateways** Provider namespace | Generated customer/subscription schemas omit provider; uniqueness is email/subscription ID only. | Keep the supported scope explicit and provide a reviewed opt-in migration; never guess the provider for existing rows. | Namespace by provider account and test/live mode as well as provider, with authenticated tenant/subject ownership; cover ID collisions and provider migration. |
+| **SAAS-010 · P0** Atomic billing state | Generated customer and subscription saves are separate. | Couple event processing and billing mutation in a transaction; add the event-envelope boundary needed to do so compatibly. | Durable inbox identity/digest/outcome, transactionally updated entitlements and outbox effects; crash, cancellation, duplicate, out-of-order and retry tests. |
+| **SAAS-011 · P1** MSVC flags | `project/env_config.rs` still emits `/DEBUG:FASTLINK`. | Remove the unconditional unsupported flag and validate generated Windows builds. The reported LNK4315 was not reproduced here. | Capability-tested linker choices without unmeasured performance claims. |
+| **SAAS-012 · P1** Reproducible applications | Generator ignores `/Cargo.lock`; Docker build omits `--locked`. | Retain the binary application's lockfile and require it in deployment builds, including dependency-cooking stages. Document initial lockfile generation. | Generate/build/package from one committed lockfile; test missing/stale lockfile failures. |
+| **SAAS-013 · P1** Strict backend graph | Workspace ORM dependency enables defaults; Studio requires `queue-sqlite`. | Audit all consumers and offer a backend-exclusive profile with migration guidance. Preserve existing default convenience deliberately rather than breaking it accidentally. | Explicit Studio queue feature and standalone PostgreSQL consumer graph excluding unrelated SQLx drivers. Confirm with `cargo tree`; a workspace `--all-features` graph is not an isolation test. |
+| **SAAS-014 · P1** One-time checkout | Stripe checkout always uses `mode=subscription`; `charge()` is a different off-session contract. | Describe the existing method as subscription-only; add an opt-in one-time API only with full evidence. Never use a recurring plan for an advertised one-time purchase. | Explicit payment/subscription modes, server-owned prices, success/cancel URLs, durable receipts and the correct paid/refunded/disputed event sets. |
+| **SAAS-015 · P0** Stripe key rotation | Verifier overwrites each earlier `v1` signature. | Bound header/candidate sizes and accept any valid candidate with constant-time HMAC verification, one valid timestamp and freshness enforcement. | Test valid first/middle/last, malformed neighbors, duplicate timestamps, all-invalid, stale and oversized headers; preserve the fix. |
+| **RULLST-001 · P1** Nexus AI configuration | Nexus detection and `AiClient::auto()` both omit Groq configuration. | Add an explicit application-supplied client path or one consistent resolver, with documented precedence. | Reuse configuration across authorized panels; distinguish offline, configured and unavailable. Test Groq-only configuration, failure handling, authorization and safe rendering. |
+
+Provider files above are under `rullst-capital/src/`. The shared billing
+template is under `cargo-rullst/src/generators/` and feeds both SaaS and
+`make:billing`; fixes must cover both. The SaaS schema is in
+`cargo-rullst/src/blueprints/saas/models.rs`, with separate SQLx and Turso
+generator templates that also require review.
+
+The Nexus resolver mismatch is broader than Groq: detection advertises
+`OPENAI_BASE_URL` while `AiClient::auto()` does not consume it, and the latter
+consumes `DEEPSEEK_API_KEY` while the panel detector does not. One source of
+configuration should replace this drift. An environment variable is never
+connectivity evidence.
+
+## Compatible maintenance boundaries
+
+- Preserve source compatibility in v12.1: additive constructors, builders,
+  extension contracts and explicit deprecations. A mandatory trait method,
+  changed public struct literal or silently changed identifier meaning can
+  break applications even when the function name stays the same.
+- Containing an invalid live operation may change runtime behavior; document
+  the failure and upgrade path. Do not retain fabricated values for the sake
+  of apparent compatibility.
+- Generator fixes affect newly generated code. Existing applications need
+  reviewable source/database migrations, collision reports and rollback or
+  forward-recovery guidance. Do not regenerate over customized code.
+- A webhook replay claim alone is not atomic domain processing. The database
+  commit must determine whether processing completed; failed work must remain
+  recoverable. A timeout after provider mutation remains an unknown outcome.
+- Test-mode and offline mocks remain useful. Production configuration must
+  reject a mock as payment evidence; a success redirect never grants access.
+- Allocation to v12.1 is a target, not evidence of merge or publication. Carry
+  reviewed fixes into v13 and verify their presence by commit, not branch name.
+
+## Boundaries that are not framework defects
+
+`RULLST-002` is the umbrella reference to SAAS-001–015, not a sixteenth
+independent payment defect. Studio's disconnected AI playground is a documented
+limitation. Adapters that explicitly reject unsupported live methods are also
+documented capability boundaries, not automatically broken integrations.
+
+The reports attribute Docker dependency-copy mistakes, assistant formatting,
+proxy/origin behavior, unsafe example HTML and application error disclosure to
+the examples repository. Keep their regression work there and contribute only
+reusable fixes upstream. A paid file already committed publicly cannot become
+exclusive through route authorization; private artifact storage is application
+work. No private Academy implementation or learner data is copied into this
+public planning document.
+
+## Delivery slices and required evidence
+
+1. **Compatible containment and small regressions:** SAAS-005/006/011/012/015;
+   contain SAAS-001/002/003/007 until their request contracts are complete.
+2. **One complete Stripe journey:** SAAS-004/008/010 plus provider-scoped
+   persistence from SAAS-009; opt-in SAAS-014 only when payment and subscription
+   evidence are distinct. Test retries, refunds and disputes as well as success.
+3. **Configuration consistency:** RULLST-001 and SAAS-013, with explicit migration
+   and feature-consumer coverage. These can proceed independently of gateways.
+4. **v13 capabilities:** finish additional providers one operation at a time,
+   then multi-provider reconciliation, portals and Wise payouts. Retain the
+   operation-level capability matrix and sanitized provider evidence.
+
+Every implementation slice needs targeted negatives, materialized generator
+coverage, compatible consumer checks and the repository release gates. Hosted
+checks should handle cold native/all-feature matrices whose disk peak cannot be
+bounded locally. Local tests must respect the disk reserve in `AGENTS.md`.
+Provider sandbox evidence is separate from Rust tests; no live payment, payout,
+deployment or credential change is part of this planning review.
+
+## Provider contracts consulted on 17 September 2026
+
+The request discrepancies above are consistent with the provider-owned
+[Lemon Squeezy checkout](https://docs.lemonsqueezy.com/api/checkouts/create-checkout),
+[Paddle transaction](https://developer.paddle.com/api-reference/transactions/create-transaction/),
+[Polar checkout](https://polar.sh/docs/features/checkout/session) and
+[Wise transfer](https://docs.wise.com/api-reference/transfer) contracts.
+Stripe documents overlapping endpoint secrets and multiple signatures in its
+[webhook guide](https://docs.stripe.com/webhooks).
+These references support contract review; they do not prove account eligibility
+or acceptance of a Rullst request.

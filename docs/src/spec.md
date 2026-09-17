@@ -79,6 +79,25 @@ the application to expose a container control socket. A complete offensive CTF
 arena is external, separately governed deployment infrastructure even when it
 uses Rullst identity, challenge, score and receipt contracts.
 
+### v13 privacy and age-assurance boundary
+
+`rullst-privacy` is an opt-in, unpublished v13 package. Its initial
+`age-assurance` feature owns bounded risk policies, server-issued challenges,
+minimal signed age attestations, explicit decisions and replay-store contracts.
+Low-risk declarations, facial estimates and verified age attributes have
+different assurance semantics; configured policy determines their eligibility.
+No camera, image retention, external inference, database or Core dependency is
+enabled implicitly. Production must reject offline mock evidence and
+process-local replay protection. The host owns authentication, tenant/subject
+binding, risk/legal assessment and durable shared state.
+
+This first contract does not implement a facial model, vendor transport,
+guardian verification or global privacy compliance. The
+[privacy and age-assurance roadmap](privacy-age-assurance-roadmap.md) defines
+the remaining consent, rights, retention, provider and jurisdiction work.
+The separate [SaaS triage](saas-v12-1-v13-triage.md) assigns the examples' reported
+defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidence.
+
 ### v12 audit correction invariants
 
 The current [release audit](v12-release-audit.md) reopens earlier readiness

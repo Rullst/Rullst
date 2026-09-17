@@ -104,6 +104,7 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M38** | In-memory/local-NVMe SQLite read replicas with background synchronization | `[ ] Not implemented` *(worth vendor-specific adapters when demanded; generic “transparent replication” is not worth claiming because consistency and failover semantics belong to the selected database)* | v13 research |
 | **M39** | Optional self-hosted Rullst Gateway and load balancer | `[ ] Not implemented` *(worth a phased v13 design as a separate opt-in `rullst-gateway` crate/binary, preferably on a maintained proxy foundation such as Pingora. It should consume explicit readiness/drain signals and begin with bounded upstream selection, health checks, WebSocket forwarding and telemetry. It must not live inside `rullst-core` or claim parity with a managed global cloud service, whose network, DDoS controls, multi-zone operations and SLA are external infrastructure.)* | v13 research/foundation |
 | **M40** | Isolated programming labs and learning-game execution | `[ ] Not implemented` *(worth a phased v13 design as opt-in `rullst-labs` contracts plus a separately deployed `rullst-labs-runner`. The web process must never execute learner code or receive a container control socket. Full offensive CTF arenas require independently operated, isolated infrastructure; see the dedicated roadmap.)* | v13 research/foundation |
+| **M41** | Privacy defaults and proportional age assurance | `[~] Initial foundation` *(opt-in unpublished `rullst-privacy` age policies, signed evidence and replay contracts; real age providers, guardian verification, consent/rights/retention workflows and reviewed regional profiles remain open. See the [delivery plan](docs/src/privacy-age-assurance-roadmap.md). No automatic worldwide compliance claim.)* | v13 P0 |
 
 ## Quantified planning horizon through v13
 
@@ -111,34 +112,34 @@ This second progress lens answers a different question from release readiness:
 how much of the **canonical long-term milestone programme through v13** remains
 if every milestone that is not yet `[x]` stays in scope?
 
-The snapshot below was recalculated on 11 September 2026 from M1–M40. It includes
+The snapshot below was recalculated on 17 September 2026 from M1–M41. It includes
 v12 hardening, continuous, next-SemVer, v13 and v13-research rows. M31 is excluded
 because the tracker explicitly assigns aerospace/autonomous/defence work to a
 separately governed future programme rather than the general v12/v13 framework suite.
 Detailed crate-roadmap checkboxes are not added again: they overlap with and
 decompose these canonical milestones, so a raw sum would double-count work.
 
-| State | Milestones | Share of the 39-milestone horizon |
+| State | Milestones | Share of the 40-milestone horizon |
 | :--- | ---: | ---: |
-| `[x]` bounded completion | **5** | **12.8%** |
-| `[~]` useful but incomplete foundation | **24** | **61.5%** |
-| `[ ]` not implemented | **10** | **25.6%** |
-| **Total in scope through v13** | **39** | **100%** |
+| `[x]` bounded completion | **5** | **12.5%** |
+| `[~]` useful but incomplete foundation | **25** | **62.5%** |
+| `[ ]` not implemented | **10** | **25.0%** |
+| **Total in scope through v13** | **40** | **100%** |
 
 Two calculations are intentionally retained:
 
-- **Strict closure:** 5/39 are closed, so **87.2% remains open** (34
+- **Strict closure:** 5/40 are closed, so **87.5% remains open** (35
   milestones). This is the correct answer when a partial milestone counts as
   unfinished.
-- **Weighted engineering maturity:** `(5 + 24 × 0.5) / 39` is **43.6% complete**,
-  leaving **56.4% equivalent work**. That remainder is the ten untouched
-  milestones (25.6 percentage points) plus the unfinished half of the 24
-  partial milestones (30.8 points).
+- **Weighted engineering maturity:** `(5 + 25 × 0.5) / 40` is **43.75% complete**,
+  leaving **56.25% equivalent work**. That remainder is the ten untouched
+  milestones (25 percentage points) plus the unfinished half of the 25
+  partial milestones (31.25 points).
 
 This is a scope/maturity indicator, not a duration estimate. Provider accounts,
 physical hardware, store acceptance, fiscal homologation, independent audits
 and research-grade cryptography cannot be completed by repository code alone.
-The 56.4% must not be added to the historical-claim campaign or the v12 release
+The 56.25% must not be added to the historical-claim campaign or the v12 release
 checklist because those lenses substantially overlap.
 
 ## AI-native vision, without absolutes
@@ -372,6 +373,8 @@ development branch name alone does not prove that it includes later fixes.
 | :--- | :--- | :--- |
 | **P0 — verification efficiency** | Shorter local and hosted feedback, with measured cold/warm build and queue times | Compare test inventories; select affected crates and their consumers; preserve broad scheduled/release checks and a full-run fallback for unknown changes. Bind reusable evidence to source, dependencies, tools and policy. Prove that security, workflow, manifest and generator changes cannot silently skip required checks. |
 | **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | Compatible opt-in 12.1.0 delivery first, carried into v13. Discovery, private Unix caching and recovery hardening exist; Windows caching, verified installation and isolated project acceptance remain release blockers. |
+| **P0 — SaaS maintenance** | Contain affected live operations and repair confirmed examples feedback | Follow the [15-finding triage plus Nexus configuration fix](docs/src/saas-v12-1-v13-triage.md). Compatible v12.1 fixes remain independently deliverable; new payment contracts need durable ownership/idempotency and provider acceptance evidence. |
+| **P0 — privacy and age assurance** | Reusable privacy defaults and age checks proportionate to risk across SaaS, LMS and examples | Complete the [M41 delivery plan](docs/src/privacy-age-assurance-roadmap.md) before additional learning/monitoring features. Reject production mocks and unverifiable results; minimize data, offer alternatives and review jurisdiction profiles. No automatic legal certification. |
 | **P1 — navigable API documentation** | Developers can find a capability, understand its contract and run a realistic example | Connect versioned Rust API references, task-based guides and tested REST examples. Document errors, feature flags, security boundaries and migration paths alongside each prioritized API; see the [documentation plan](#api-documentation-quality). |
 | **P1 — Omni application delivery** | Predictable desktop/mobile builds, diagnostics and installation guidance | Detect SDK/toolchain/signing/identifier/version/ABI mistakes, distinguish unsigned build output from installable signed packages, and test lifecycle, navigation and interrupted networks. Device and store acceptance need their own evidence. |
 | **P1 — coherent application contracts** | One clear path for sessions, ownership, tenant context and typed client APIs | Consolidate existing Auth/Core/Security boundaries, complete selected session/passkey flows and validate API/SDK serialization. Preserve explicit configuration and negative authorization tests. |
@@ -511,7 +514,7 @@ or label unimplemented v13 contracts as available in v12.
 | :--- | :---: | :--- |
 | **v12.0.0** | `[x] Published stable` | Tag `v12.0.0` at `eb11f892` completed the protected release workflow and published all sixteen packages on September 15, 2026. |
 | **v12.0.x** | `[~] Maintenance if needed` | Preserve the published stable line; separately review important compatible fixes when necessary. |
-| **v12.1.0** | `[ ] Planned compatible minor` | Opt-in guided CLI/project updates after verification-efficiency work. Preserve v12 contracts and validate artifact trust, recovery and platform behavior; not yet implemented or published. |
+| **v12.1.0** | `[ ] Planned compatible minor` | Guided CLI/project updates and separately reviewable SaaS/Nexus maintenance from the [examples triage](docs/src/saas-v12-1-v13-triage.md). Preserve v12 contracts and validate artifact trust, recovery, generated migrations and platform behavior; not yet published. |
 | **v13.x** | `[ ] Next feature line` | Compatible and breaking improvements move together into the next deliberate cycle: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 
 The framework may call a milestone implemented only when the same commit passes
