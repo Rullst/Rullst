@@ -2,7 +2,8 @@
 
 **Status: SAAS-002, SAAS-003 and SAAS-004 have typed replacements in maintenance
 source. Stripe test-mode API, hosted Checkout and CLI-relayed signed events
-passed at `0f15d70a`. Final candidate CI remains in progress after correcting a
+passed at `0f15d70a`; generated SQLite controller/webhook persistence passed at
+`370a4170`. Final candidate CI remains in progress after correcting a
 test-only dependency in the no-default build. Other provider accounts,
 publication and candidate deployment remain unverified.**
 
@@ -131,10 +132,27 @@ state and archived catalog responses were checked. See the
 
 This proves the listed adapter operations against Stripe test mode, including
 simulated payment completion. It does not prove delivery to the deployed
-application's webhook or an end-to-end generated application database
-transaction. SQLx/Turso domain integration has separate materialized tests.
-Polar/Paddle account acceptance also remains separate; no credentials for those
-providers were available here. The 12.0 application deployment was unchanged.
+application's webhook. A subsequent isolated run at `370a4170` generated fresh
+SQLite billing modules through the candidate CLI and checked them against its
+templates without modifying the billing implementation. The generated controller
+persisted customer/checkout intents before payment, returned HTTP 303, and
+resumed the same open session in a fresh process. Hosted Checkout completed in
+test mode, and provider reads confirmed the expected customer, BRL 100 minor
+units and paid invoice.
+
+The genuine signed Checkout completion and subscription creation/deletion
+events passed through the generated webhook router. Fresh processes read the
+matching active and canceled subscription rows and durable event receipts.
+Replaying each delivery left persisted state unchanged; altered signed bytes
+returned HTTP 400 without changing state or receipts. All fifteen checks and
+cleanup operations passed; see the
+[generated SQLite acceptance record](evidence/v12-1-generated-stripe-sandbox.json).
+The harness supplied a synthetic trusted owner identity and used an isolated
+local database. It did not exercise deployed SaaS ingress, login/session
+authentication, or that deployment's database. Turso has separate materialized
+domain tests. Polar/Paddle account acceptance also remains separate; no
+credentials for those providers were available here. The 12.0 application
+deployment was unchanged.
 
 Use the [12.1 migration guide](migration-v12-1.md) and the Capital provider matrix
 for current behavior; the chronological containment notes below are historical.

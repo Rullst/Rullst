@@ -1,0 +1,56 @@
+{
+  "source": "370a41700c44cac61d254692a207fb12a376598f",
+  "result": "passed generated SQLite billing and signed webhook acceptance",
+  "checks": [
+    "generated additive migration",
+    "generated controller returns HTTP 303",
+    "customer and immutable checkout intent persisted before payment",
+    "process restart resumes same open Checkout",
+    "browser handoff binds a provider-confirmed test session",
+    "hosted test Checkout completes and returns",
+    "provider confirms paid test Checkout and expected amount/currency/customer",
+    "provider confirms matching paid test invoice",
+    "genuine Checkout completion commits through generated webhook route",
+    "genuine subscription creation commits through generated webhook route",
+    "fresh process reads matching active subscription and durable event receipts",
+    "genuine cancellation event commits through generated webhook route",
+    "fresh process reads matching canceled subscription and event receipt",
+    "signed redeliveries leave persisted state and receipts unchanged",
+    "tampered signed bytes never change persisted state or event receipts"
+  ],
+  "cleanup": {
+    "session": true,
+    "subscription": true,
+    "customer": true,
+    "price": true,
+    "product": true
+  },
+  "browser": {
+    "ok": true,
+    "submitted": true,
+    "returned": true
+  },
+  "webhooks": [
+    {
+      "kind": "checkout.session.completed",
+      "committed": true,
+      "replay_unchanged": true,
+      "invalid_signature_rejected": true
+    },
+    {
+      "kind": "customer.subscription.created",
+      "committed": true,
+      "replay_unchanged": true,
+      "invalid_signature_rejected": true
+    },
+    {
+      "kind": "customer.subscription.deleted",
+      "committed": true,
+      "replay_unchanged": true,
+      "invalid_signature_rejected": true
+    }
+  ],
+  "date": "2026-09-18",
+  "environment": "Stripe test mode; staging account; isolated synthetic objects and local SQLite database",
+  "scope": "Unmodified CLI-generated billing controller and webhook router, real signed events through Stripe CLI relay, hosted test Checkout and SQLite persistence. Synthetic trusted owner identity; deployed SaaS ingress, authentication and database not exercised."
+}
