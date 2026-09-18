@@ -49,7 +49,7 @@ jobs:
         with:
           rustflags: "-D warnings"
           build-warnings: ""
-          components: llvm-tools-preview
+          components: llvm-tools-preview, clippy
           cache: false
 
       - name: Install pinned coverage tools
@@ -168,7 +168,7 @@ jobs:
           rustflags: "-D warnings"
           build-warnings: ""
           toolchain: nightly-2026-08-21
-          components: llvm-tools-preview
+          components: llvm-tools-preview, clippy
           cache: false
 
       - name: Install pinned coverage tools
