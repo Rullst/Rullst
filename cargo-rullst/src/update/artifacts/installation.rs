@@ -5,100 +5,244 @@ use semver::Version;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
+#[path = "installation/application.rs"]
+mod application;
+#[cfg(test)]
+#[path = "installation/tests.rs"]
+mod native_tests;
+#[path = "installation/recovery.rs"]
+mod recovery;
+#[path = "installation/retention.rs"]
+mod retention;
+#[path = "installation/smoke.rs"]
+mod smoke;
 #[path = "installation/state.rs"]
 mod state;
+#[path = "installation/storage.rs"]
+mod storage;
+#[path = "installation/transaction.rs"]
+mod transaction;
 
 pub(super) fn command() -> Command {
-    Command::new("install").about("Review an authenticated native CLI installation")
-        .subcommand_required(true).arg_required_else_help(true)
-        .subcommand(Command::new("review").about("Preview a new or receipt-owned private installation without executing candidates or editing the destination")
-            .arg(Arg::new("directory").long("directory").required(true).value_name("ARTIFACTS").value_parser(clap::value_parser!(PathBuf)))
-            .arg(Arg::new("root").long("root").required(true).value_name("ABSOLUTE_INSTALLATION_DIRECTORY").value_parser(clap::value_parser!(PathBuf)))
-            .arg(Arg::new("to").long("to").required(true).value_name("EXACT_VERSION"))
-            .arg(Arg::new("allow-major").long("allow-major").action(ArgAction::SetTrue))
-            .arg(Arg::new("prerelease").long("prerelease").action(ArgAction::SetTrue))
-            .arg(Arg::new("offline").long("offline").action(ArgAction::SetTrue))
-            .arg(Arg::new("json").long("json").action(ArgAction::SetTrue)))
+    let flags = |command: Command| {
+        command
+            .arg(
+                Arg::new("root")
+                    .long("root")
+                    .required(true)
+                    .value_parser(clap::value_parser!(PathBuf))
+                    .value_name("ABSOLUTE_INSTALLATION_DIRECTORY"),
+            )
+            .arg(
+                Arg::new("offline")
+                    .long("offline")
+                    .action(ArgAction::SetTrue),
+            )
+            .arg(Arg::new("json").long("json").action(ArgAction::SetTrue))
+    };
+    let candidate = |command: Command| {
+        flags(command)
+            .arg(
+                Arg::new("directory")
+                    .long("directory")
+                    .required(true)
+                    .value_parser(clap::value_parser!(PathBuf)),
+            )
+            .arg(
+                Arg::new("to")
+                    .long("to")
+                    .required(true)
+                    .value_name("EXACT_VERSION"),
+            )
+            .arg(
+                Arg::new("allow-major")
+                    .long("allow-major")
+                    .action(ArgAction::SetTrue),
+            )
+            .arg(
+                Arg::new("prerelease")
+                    .long("prerelease")
+                    .action(ArgAction::SetTrue),
+            )
+    };
+    let approval = || {
+        Arg::new("approved-review")
+            .long("approved-review")
+            .required(true)
+            .value_name("SHA256")
+    };
+    Command::new("install")
+        .about("Review, apply or recover an authenticated private CLI installation")
+        .subcommand_required(true)
+        .arg_required_else_help(true)
+        .subcommand(candidate(Command::new("review").about(
+            "Authenticate and preview without executing or installing candidates",
+        )))
+        .subcommand(
+            candidate(
+                Command::new("apply")
+                    .about("Run the approved version probes and install the reviewed binaries"),
+            )
+            .arg(approval()),
+        )
+        .subcommand(
+            flags(Command::new("recover").about(
+                "Restore only the recorded predecessor of the current installation operation",
+            ))
+            .arg(approval()),
+        )
 }
 
 pub(super) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
-    let matches = matches
-        .subcommand_matches("review")
-        .ok_or(ArtifactError::Invalid("unsupported installation operation"))?;
+    let (action, matches) = matches
+        .subcommand()
+        .ok_or(ArtifactError::Invalid("installation operation required"))?;
     if matches.get_flag("offline")
         || crate::ui::update_check::enabled_env_flag(
             std::env::var_os("CARGO_NET_OFFLINE").as_deref(),
         )
     {
         return Err(ArtifactError::Invalid(
-            "offline mode forbids authenticated installation review",
+            "offline mode forbids authenticated installation operations",
         )
         .into());
     }
+    let approved = if action == "review" {
+        None
+    } else {
+        let digest = matches
+            .get_one::<String>("approved-review")
+            .ok_or(ArtifactError::Invalid("explicit reviewed digest required"))?;
+        if !transaction::valid_digest(digest) {
+            return Err(ArtifactError::Invalid(
+                "approval must be a lowercase SHA-256 review digest",
+            )
+            .into());
+        }
+        Some(digest.as_str())
+    };
+    let requested = matches
+        .get_one::<PathBuf>("root")
+        .ok_or(ArtifactError::Invalid("installation root required"))?;
+    let root = crate::update::cache::installation_root(requested)?;
+    let report = if action == "recover" {
+        application::recover(
+            &root,
+            approved.ok_or(ArtifactError::Invalid("recovery approval required"))?,
+        )?
+    } else {
+        let candidate = inspect(matches, root)?;
+        let report = review(
+            &candidate.root,
+            &candidate.artifact,
+            candidate.prior.as_ref(),
+        )?;
+        if action == "review" {
+            report
+        } else if action == "apply" {
+            let approved =
+                approved.ok_or(ArtifactError::Invalid("installation approval required"))?;
+            if report["review_sha256"].as_str() != Some(approved) {
+                return Err(ArtifactError::Invalid(
+                    "review changed or approval does not match; run install review again",
+                )
+                .into());
+            }
+            application::apply(&candidate, approved)?
+        } else {
+            return Err(ArtifactError::Invalid("unsupported installation operation").into());
+        }
+    };
+    if matches.get_flag("json") {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else if action == "review" {
+        println!(
+            "Installation review: {}",
+            report["review_sha256"].as_str().unwrap_or("unavailable")
+        );
+        println!(
+            "No binary was executed or installed. Inspect --json for the destination, exact candidate and proposed --version probes."
+        );
+        println!(
+            "Apply requires --approved-review with this digest. Existing package-manager installations require their pinned source/manager fallback."
+        );
+    } else {
+        println!(
+            "CLI installation {action} completed. {}",
+            serde_json::to_string(&report)?
+        );
+    }
+    Ok(())
+}
+
+struct Candidate {
+    root: PathBuf,
+    directory: PathBuf,
+    artifact: Manifest,
+    raw_manifest: Vec<u8>,
+    prior: Option<state::Installed>,
+}
+
+fn inspect(matches: &ArgMatches, root: PathBuf) -> Result<Candidate, ArtifactError> {
     let exact = matches
         .get_one::<String>("to")
         .ok_or(ArtifactError::Invalid("exact version required"))?;
-    let version = Version::parse(exact)?;
+    let version = Version::parse(exact).map_err(crate::update::catalog::SelectionError::Version)?;
     let target = native_target()?;
     let directory = matches
         .get_one::<PathBuf>("directory")
         .ok_or(ArtifactError::Invalid("artifact directory required"))?;
-    let requested = matches
-        .get_one::<PathBuf>("root")
-        .ok_or(ArtifactError::Invalid("installation root required"))?;
-    let root = super::super::cache::installation_root(requested)?;
     let prior = state::inspect(&root, target)?;
     let installed = match &prior {
         Some(previous) => previous.version()?,
-        None => Version::parse(env!("CARGO_PKG_VERSION"))?,
+        None => Version::parse(env!("CARGO_PKG_VERSION"))
+            .map_err(crate::update::catalog::SelectionError::Version)?,
     };
-    let policy = super::super::catalog::Selection::new(
+    let policy = crate::update::catalog::Selection::new(
         &installed,
         Some(exact),
         matches.get_flag("allow-major"),
         matches.get_flag("prerelease"),
     )?;
     if let Some(previous) = &prior {
-        let snapshot = super::super::cache::verification_manifest(&previous.raw_manifest)?;
-        provenance::verify(snapshot.path(), &previous.manifest)?;
+        authenticate(&previous.raw_manifest, &previous.manifest)?;
     }
-    let registry = super::super::fetch_catalog()?;
-    super::super::catalog::resolve(&registry, &installed, &policy)?;
+    let registry = crate::update::fetch_catalog()?;
+    crate::update::catalog::resolve(&registry, &installed, &policy)?;
     files::directory(directory)?;
     let body = files::read_bounded(
         &directory.join(format!("cli-manifest-{target}.json")),
         16 * 1024,
     )?;
     let artifact = Manifest::parse(&body, &version, target)?;
-    let private = super::super::cache::verification_manifest(&body)?;
-    provenance::verify(private.path(), &artifact)?;
+    authenticate(&body, &artifact)?;
     artifact.verify_files(directory)?;
-    // Destination state is rechecked after the network/verifier work.
-    if super::super::cache::installation_root(requested)? != root
-        || state::inspect(&root, target)?
+    let candidate = Candidate {
+        root,
+        directory: directory.clone(),
+        artifact,
+        raw_manifest: body,
+        prior,
+    };
+    unchanged(&candidate)?;
+    Ok(candidate)
+}
+
+fn authenticate(body: &[u8], manifest: &Manifest) -> Result<(), ArtifactError> {
+    let private = crate::update::cache::verification_manifest(body)?;
+    provenance::verify(private.path(), manifest)
+}
+
+fn unchanged(candidate: &Candidate) -> Result<(), ArtifactError> {
+    if crate::update::cache::installation_root(&candidate.root)? != candidate.root
+        || state::inspect(&candidate.root, &candidate.artifact.target)?
             .as_ref()
             .map(state::Installed::summary)
-            != prior.as_ref().map(state::Installed::summary)
+            != candidate.prior.as_ref().map(state::Installed::summary)
     {
-        return Err(
-            ArtifactError::Invalid("installation destination changed during review").into(),
-        );
-    }
-    let report = review(&root, &artifact, prior.as_ref())?;
-    if matches.get_flag("json") {
-        println!("{}", serde_json::to_string_pretty(&report)?);
-    } else {
-        println!("Reviewed CLI {version} for {target}: {}", root.display());
-        println!(
-            "Installation review: {}",
-            report["review_sha256"].as_str().unwrap_or("unavailable")
-        );
-        println!(
-            "No candidate was executed or installed. Apply/recovery acceptance is still under development."
-        );
-        println!(
-            "For an existing Cargo-owned installation, use the pinned command in the JSON plan after reviewing source compilation."
-        );
+        return Err(ArtifactError::Invalid(
+            "installation destination changed after review",
+        ));
     }
     Ok(())
 }

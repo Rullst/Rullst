@@ -6,12 +6,18 @@ mod ffi {
     use std::{
         ffi::c_void,
         fs::File,
-        os::windows::{ffi::OsStrExt, io::AsRawHandle},
+        os::windows::{
+            ffi::OsStrExt,
+            io::{AsRawHandle, FromRawHandle},
+        },
         path::Path,
         ptr,
     };
     use windows_sys::Win32::{
-        Foundation::{CloseHandle, ERROR_ALREADY_EXISTS, HANDLE, LocalFree},
+        Foundation::{
+            CloseHandle, ERROR_ALREADY_EXISTS, GENERIC_READ, GENERIC_WRITE, HANDLE,
+            INVALID_HANDLE_VALUE, LocalFree,
+        },
         Security::{Authorization::*, *},
         Storage::FileSystem::*,
         System::Threading::{GetCurrentProcess, OpenProcessToken},
@@ -183,6 +189,52 @@ mod ffi {
                 }
             }
             Ok(()) // Existing entries are validated, never repaired/chmodded.
+        }
+
+        pub(crate) fn create_file(&self, path: &Path) -> Result<File, CacheError> {
+            let path: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+            if path[..path.len() - 1].contains(&0) {
+                return Err(invalid("invalid installation path"));
+            }
+            let sddl = wide(&self.private_file_descriptor());
+            let mut descriptor = ptr::null_mut();
+            // SAFETY: terminated fixed-syntax SDDL uses only OS-produced SIDs;
+            // output is owned and freed after atomic file creation.
+            if unsafe {
+                ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                    sddl.as_ptr(),
+                    1,
+                    &mut descriptor,
+                    ptr::null_mut(),
+                )
+            } == 0
+            {
+                return Err(os_error());
+            }
+            let descriptor = Allocation(descriptor);
+            let attributes = SECURITY_ATTRIBUTES {
+                nLength: size_of::<SECURITY_ATTRIBUTES>() as u32,
+                lpSecurityDescriptor: descriptor.0,
+                bInheritHandle: 0,
+            };
+            // SAFETY: live terminated path/descriptor; CREATE_NEW never follows
+            // or overwrites an existing entry. The returned handle is owned once.
+            let handle = unsafe {
+                CreateFileW(
+                    path.as_ptr(),
+                    GENERIC_READ | GENERIC_WRITE,
+                    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                    &attributes,
+                    CREATE_NEW,
+                    FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT,
+                    ptr::null_mut(),
+                )
+            };
+            if handle == INVALID_HANDLE_VALUE {
+                return Err(os_error());
+            }
+            // SAFETY: ownership of a successful unique file handle is transferred.
+            Ok(unsafe { File::from_raw_handle(handle) })
         }
 
         pub(crate) fn validate(

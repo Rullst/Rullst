@@ -30,7 +30,7 @@ fn linked(metadata: &Metadata) -> bool {
     }
 }
 
-fn open(path: &Path, limit: u64) -> Result<File, ArtifactError> {
+pub(super) fn open(path: &Path, limit: u64) -> Result<File, ArtifactError> {
     let mut options = OpenOptions::new();
     options.read(true);
     #[cfg(unix)]

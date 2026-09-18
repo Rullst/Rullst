@@ -19,6 +19,16 @@ mod tests;
 
 #[derive(thiserror::Error)]
 pub(super) enum ArtifactError {
+    #[error("installation release discovery failed: {0}")]
+    Discovery(#[from] super::UpdateError),
+    #[error(
+        "installation requires review/recovery for root {root}; use update install recover with --approved-review {approved}; retained evidence: {source}"
+    )]
+    Installation {
+        root: PathBuf,
+        approved: String,
+        source: Box<ArtifactError>,
+    },
     #[error("artifact verification rejected: {0}")]
     Invalid(&'static str),
     #[error("artifact verification I/O failed: {0}")]
