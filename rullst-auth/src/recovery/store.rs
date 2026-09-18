@@ -35,7 +35,15 @@ impl AuthenticatedRecoveryAccount {
 }
 
 impl SqlRecoveryStore {
+    /// Closes the shared pool, including all clones, and waits for connections
+    /// to release database resources. Stop request and worker tasks first.
+    pub async fn close(self) {
+        self.pool.close().await;
+    }
+
     /// Connects without changing schema. Call `migrate` explicitly during deployment.
+    /// SQLite filenames must be URL-encoded. Prefer `sqlite:PATH?mode=rwc`
+    /// (without an authority) for absolute paths, including Windows drive letters.
     pub async fn connect(
         url: impl Into<String>,
         secrets: RecoverySecrets,

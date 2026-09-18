@@ -13,6 +13,33 @@ fn keys() -> RecoverySecrets {
     RecoverySecrets::new([3; 32], [9; 32]).unwrap()
 }
 
+#[cfg(feature = "recovery-sqlite")]
+fn database_url(path: &std::path::Path) -> String {
+    // AnyPool parses a URL before SQLite sees the filename. Keep drive letters
+    // out of the authority and encode reserved path bytes (including '%'/'#').
+    let encoded: String =
+        url::form_urlencoded::byte_serialize(path.to_str().expect("UTF-8 fixture path").as_bytes())
+            .collect();
+    format!("sqlite:{}?mode=rwc", encoded.replace('+', "%20"))
+}
+
+#[cfg(feature = "recovery-sqlite")]
+#[test]
+fn sqlite_fixture_urls_preserve_windows_and_unix_filenames() {
+    for filename in [
+        r"C:\Users\Example User\recovery 100%#1.db",
+        "/tmp/recovery 100%#1.db",
+    ] {
+        let path = std::path::Path::new(filename);
+        let options: sqlx::any::AnyConnectOptions = database_url(path).parse().unwrap();
+        assert!(options.database_url.host_str().is_none());
+        assert!(options.database_url.fragment().is_none());
+        let sqlite: sqlx::sqlite::SqliteConnectOptions =
+            options.database_url.as_str().parse().unwrap();
+        assert_eq!(sqlite.get_filename(), path);
+    }
+}
+
 async fn consume_welcome(store: &SqlRecoveryStore, now: u64) {
     let welcome = store.claim_notice(now).await.unwrap().unwrap();
     assert_eq!(welcome.notice().kind(), RecoveryNoticeKind::Welcome);
@@ -141,8 +168,9 @@ async fn postgres_recovery_contract() {
 #[cfg(feature = "recovery-sqlite")]
 #[tokio::test]
 async fn outbox_survives_restart_encrypts_payloads_and_fences_workers() {
-    let path = std::env::temp_dir().join(format!("rullst-recovery-{}.db", rand::random::<u64>()));
-    let url = format!("sqlite://{}?mode=rwc", path.display());
+    let path =
+        std::env::temp_dir().join(format!("rullst-recovery 100%#{}.db", rand::random::<u64>()));
+    let url = database_url(&path);
     let store = SqlRecoveryStore::connect(&url, keys()).await.unwrap();
     store.migrate().await.unwrap();
     store
@@ -161,7 +189,7 @@ async fn outbox_survives_restart_encrypts_payloads_and_fences_workers() {
                 .any(|window| window == secret.as_bytes())
         );
     }
-    drop(store);
+    store.close().await;
     let restarted = SqlRecoveryStore::connect(&url, keys()).await.unwrap();
     restarted.migrate().await.unwrap();
     let retry = restarted.claim_notice(1071).await.unwrap().unwrap();
@@ -194,9 +222,9 @@ async fn outbox_survives_restart_encrypts_payloads_and_fences_workers() {
             .await
             .is_err()
     );
-    drop(wrong);
-    drop(restarted);
-    let _ = std::fs::remove_file(path);
+    wrong.close().await;
+    restarted.close().await;
+    std::fs::remove_file(path).unwrap();
 }
 
 #[cfg(feature = "recovery-sqlite")]
@@ -206,7 +234,7 @@ async fn outbox_insert_failure_rolls_back_password_token_and_session_changes() {
         "rullst-recovery-rollback-{}.db",
         rand::random::<u64>()
     ));
-    let url = format!("sqlite://{}?mode=rwc", path.display());
+    let url = database_url(&path);
     let store = SqlRecoveryStore::connect(&url, keys()).await.unwrap();
     store.migrate().await.unwrap();
     store
@@ -253,6 +281,6 @@ async fn outbox_insert_failure_rolls_back_password_token_and_session_changes() {
             .is_none()
     );
     pool.close().await;
-    drop(store);
+    store.close().await;
     std::fs::remove_file(path).unwrap();
 }

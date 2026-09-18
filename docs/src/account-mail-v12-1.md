@@ -28,6 +28,10 @@ umbrella defaults when a backend-exclusive dependency graph is required.
    PostgreSQL and SQLite share the fixed authoritative schema. Namespace stores
    by application/tenant with separate databases and secrets; a public request
    cannot select a tenant or supply a database URL.
+   SQLite filesystem paths must be URL-encoded; use `sqlite:PATH?mode=rwc`
+   without an authority for Windows drive letters. During shutdown, stop the
+   request/worker tasks and await `close()` before moving or deleting a database;
+   it closes the connection pool shared by every store clone.
 3. Register new accounts with `register_account_with_locale`. Account creation
    and the encrypted welcome notice commit together. The supported recorded
    locales are English, Brazilian Portuguese and Spanish; the worker supplies a

@@ -35,6 +35,9 @@ async fn authenticated_permanent_feedback_is_replay_bound_and_suppresses() {
         )
         .unwrap();
     assert_eq!(verified.kind(), MailFeedbackKind::PermanentBounce);
+    assert_eq!(verified.event_id(), "msg_event1");
+    assert_eq!(verified.email_id(), "email_opaque");
+    assert_eq!(verified.recipient(), "member@example.com");
     assert!(!format!("{verified:?}").contains("member@example.com"));
     assert!(!format!("{verified:?}").contains("NEVER_LOG_THIS"));
     let store = InMemorySuppressionStore::new(10, 10).unwrap();
@@ -49,6 +52,29 @@ async fn authenticated_permanent_feedback_is_replay_bound_and_suppresses() {
             .unwrap()
             .reason(),
         SuppressionReason::HardBounce
+    );
+    let payload = body("email.complained", "");
+    let complaint = verifier()
+        .verify(
+            &payload,
+            "msg_complaint",
+            &now.to_string(),
+            &sign(&payload, "msg_complaint", now),
+            now,
+        )
+        .unwrap();
+    store
+        .record(complaint.suppression_event().unwrap().unwrap())
+        .await
+        .unwrap();
+    assert_eq!(
+        store
+            .lookup("member@example.com")
+            .await
+            .unwrap()
+            .unwrap()
+            .reason(),
+        SuppressionReason::SpamComplaint
     );
     for (kind, bounce, expected) in [
         ("email.delivered", "", MailFeedbackKind::Delivered),
@@ -68,6 +94,50 @@ async fn authenticated_permanent_feedback_is_replay_bound_and_suppresses() {
             .unwrap();
         assert_eq!(event.kind(), expected);
         assert!(event.suppression_event().unwrap().is_none());
+    }
+}
+
+#[test]
+fn valid_signature_does_not_authorize_malformed_provider_feedback() {
+    let now = chrono::Utc::now().timestamp() as u64;
+    let original: serde_json::Value = serde_json::from_slice(&body("email.delivered", "")).unwrap();
+    for (pointer, invalid) in [
+        ("/type", json!("email.unreviewed")),
+        ("/created_at", json!("2099-01-01T00:00:00Z")),
+        ("/created_at", json!("1960-01-01T00:00:00Z")),
+        ("/created_at", json!("invalid")),
+        ("/data/to", json!([])),
+        (
+            "/data/to",
+            json!(["member@example.com", "other@example.com"]),
+        ),
+        ("/data/to", json!(["invalid\r\naddress"])),
+        ("/data/email_id", json!("")),
+        ("/data/email_id", json!("private@example.com")),
+    ] {
+        let mut value = original.clone();
+        *value.pointer_mut(pointer).unwrap() = invalid;
+        let payload = serde_json::to_vec(&value).unwrap();
+        let result = verifier().verify(
+            &payload,
+            "msg_contract",
+            &now.to_string(),
+            &sign(&payload, "msg_contract", now),
+            now,
+        );
+        let error = result.unwrap_err();
+        assert_eq!(error, MailFeedbackError::InvalidPayload, "{pointer}");
+        assert!(!error.to_string().contains("private@example.com"));
+    }
+    assert!(matches!(
+        verifier().verify(b"", "msg_contract", &now.to_string(), "", now),
+        Err(MailFeedbackError::InvalidPayload)
+    ));
+    for size in [1, 129] {
+        assert!(matches!(
+            ResendFeedbackVerifier::new(format!("whsec_{}", STANDARD.encode(vec![7; size]))),
+            Err(MailFeedbackError::Configuration)
+        ));
     }
 }
 
