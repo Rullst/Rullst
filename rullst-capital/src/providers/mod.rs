@@ -14,6 +14,10 @@ mod lemonsqueezy_subscription;
 mod lemonsqueezy_usage;
 pub mod mercadopago;
 pub mod paddle;
+mod paddle_checkout;
+mod paddle_subscription;
+#[cfg(test)]
+mod paddle_test_support;
 pub mod picpay;
 pub mod polar;
 mod polar_checkout;

@@ -97,6 +97,7 @@
 - [🔁 Compatibility, MSRV & Support Policy](compatibility-policy.md)
 - [Cargo Feature Matrix](feature-matrix.md)
 - [Migrating Applications to v12](migration-v12.md)
+  - [12.0 to 12.1](migration-v12-1.md)
   - [v5 to v12](migration-v5-to-v12.md)
   - [v6 to v12](migration-v6-to-v12.md)
   - [v11-era Dependencies to v12](migration-v11-to-v12.md)

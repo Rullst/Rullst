@@ -17,8 +17,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   User-Agent policy, fixing deployment health probes (RULLST-003). Preserve
   configurable crawler filtering, payload inspection, CSRF and secure headers.
   Existing explicitly configured blocklists remain application-owned.
-- Validate Lemon Squeezy store/variant configuration; reject obsolete Paddle
-  and Polar checkout and incomplete Wise email-transfer flows explicitly.
+- Validate Lemon Squeezy store/variant configuration; replace obsolete Paddle
+  and Polar checkout with typed provider-specific contracts. Their legacy
+  email/price-only methods and incomplete Wise email-transfer flows fail explicitly.
   Accept any valid bounded Stripe webhook signature during secret rotation.
 - Accept any matching Paddle `h1` signature within bounded headers and reject
   duplicate timestamps, retaining raw-body verification and freshness checks.
@@ -26,6 +27,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Reject non-subscription events, ambiguous identities and inconsistent states;
   distinguish scheduled cancellation from final revocation. Retain bounded
   legacy identity/period compatibility without treating orders as subscriptions.
+- Add Polar product checkout with opaque external customer identity, explicit
+  sandbox selection, optional typed trusted client IP, bound response and signed
+  subscription events. Do not retry creation without provider evidence.
+- Add Paddle customer provisioning, recurring transaction checkout through an
+  approved Paddle.js payment page, read-only customer/transaction recovery and
+  owner/attempt-bound signed subscription events. Reconcile current subscriptions
+  and validate cancellation/pause responses on the selected sandbox/live API.
+  Attempt metadata is not a provider idempotency guarantee; no blind retry or
+  email-based customer claim is introduced.
 - Require Razorpay subscription events to match their entity state and carry
   subscription/customer/plan IDs; stop treating authentication or standalone
   payments as active subscriptions. Handle charged, resumed and paused events.
@@ -46,8 +56,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   mock mode and bind account/customer/owner before committing an inbox claim.
 - Add customer-bound Stripe subscription checkout with explicit retry identity,
   immutable request digests, response/line-item binding and distinct offline
-  receipts. Preserve legitimate Stripe hosted-URL fragments. Durable customer
-  ownership, attempts and generated webhook integration remain separate work.
+  receipts. Preserve legitimate Stripe hosted-URL fragments. Generated modules
+  now persist customer ownership, attempts and session IDs before handoff.
 - Add explicit Stripe customer creation with opaque owner metadata, optional
   contact data, immutable request digests and provider idempotency. Validate
   returned identity/mode and distinguish deterministic mocks; durable intent
@@ -56,19 +66,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   subscription/customer/owner/price/mode against persisted expectations.
   Preserve exact provider status and reject mocks as real state; callers must
   serialize reads with domain updates and handle invoice settlement separately.
-- Generate HTTP 303 checkout redirects, an explicit unavailable live portal,
+- Generate HTTP 303 checkout redirects and a customer-ID-bound Stripe portal,
   retained application lockfiles, locked Docker builds and supported MSVC flags.
-- Restrict newly generated SaaS/`make:billing` routes to local fixtures until
-  scoped customer/attempt identity and atomic inbox processing are integrated.
-  Real or mixed credentials return HTTP 503 before provider calls, replay claims
-  or database changes. Demo pricing states that real payments are unavailable;
-  upgrading a crate does not rewrite existing application controllers.
+- Generate durable Stripe SaaS/`make:billing` integration on SQLx and Turso:
+  account/mode-scoped provisioning, immutable checkout attempts, session recovery,
+  signed Checkout/subscription events without email ownership, and current-state
+  reconciliation under database revision fencing. Mixed credentials and other
+  generated real providers remain unavailable. Existing application controllers
+  and migrations require reviewed adoption; dependency updates do not rewrite them.
 - Share SaaS billing models with `make:billing`, replacing the subscription
   lookup's hardcoded PostgreSQL placeholder with the ORM's parameterized query
   builder. Keep the SaaS Nexus metadata while avoiding backend-specific drift.
-- Commit generated billing customer/subscription changes atomically on SQLx
-  and Turso, with conditional customer binding and rollback/retry fixtures.
-  Generated durable inbox integration remains a separate release requirement.
+- Commit generated event receipts and billing customer/subscription changes
+  atomically on SQLx and Turso, with conditional customer binding, bounded retired
+  attempts, stale-read rejection, process-restart and rollback/retry fixtures.
 - Add `SqlStripeEventInbox` under `webhook-sql`: retain scoped event/mutation
   identity and terminal outcomes in the same transaction as domain SQL.
   Reject conflicting content and mock/wrong-scope events, preserve exact retries
