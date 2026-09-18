@@ -1,9 +1,10 @@
 # SaaS findings: v12.1 maintenance and v13 contracts
 
 **Status: SAAS-002, SAAS-003 and SAAS-004 have typed replacements in maintenance
-source. The earlier Stripe/Polar candidate passed hosted checks; the additional
-Paddle source requires fresh candidate CI. Provider-account sandbox acceptance
-of this candidate, publication and deployment remain unverified.**
+source. Stripe sandbox API and CLI-relayed signed events passed at `a4c07bfa`.
+The additional Paddle source still requires final candidate CI; its no-default
+test build needed an explicit development server dependency. Hosted Checkout
+completion, other provider accounts, publication and deployment remain unverified.**
 
 The input is the two reports from `Rullst/examples`, branch
 `feat/saas-staging-ai-fixes`, pinned to commit
@@ -106,6 +107,24 @@ The staging health endpoint answered successfully, and the examples repository's
 passed its authenticated Chromium Stripe handoff. That app uses 12.0 dependencies
 and an application-owned one-time payment flow. It does not validate 12.1's
 recurring subscription contract, final payment or webhook delivery.
+
+On 18 September, a separate candidate executable built from `a4c07bfa` used the
+staging account's test key without deploying or changing the SaaS. Two bounded
+runs passed: API-only acceptance and API plus signed events delivered through
+the official Stripe CLI 1.51.0 relay. They exercised account/mode binding,
+customer and checkout idempotent retries, authorized reads, rejection of a
+foreign owner, expired-checkout recovery, current trial/canceled subscription
+reads, and signed Checkout expiration/subscription creation/deletion events.
+Signature verification used the relay's actual secret and original payload;
+test events were not locally fabricated or resigned. All synthetic customers,
+sessions, subscriptions and catalog objects were deleted, closed or archived.
+No credentials, contact data or hosted checkout URLs are retained in this book.
+
+This proves the listed adapter operations against Stripe test mode. It does not
+prove hosted payment completion, delivery to the deployed application's webhook,
+or an end-to-end generated application database transaction. SQLx/Turso domain
+integration has separate materialized tests. Polar/Paddle account acceptance
+also remains separate; no credentials for those providers were available here.
 
 Use the [12.1 migration guide](migration-v12-1.md) and the Capital provider matrix
 for current behavior; the chronological containment notes below are historical.
