@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789744687097,
+  "lastUpdate": 1789757500206,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -11125,6 +11125,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4663,
             "range": "± 16",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "174d31e131ce53db498c75b5eea47276a8528f86",
+          "message": "chore(deps): include all six Dependabot updates in v12.1 (#213)",
+          "timestamp": "2026-09-18T15:28:17-03:00",
+          "tree_id": "a0bae6ac3d50dc29ca31b96af7dbe206431bff2e",
+          "url": "https://github.com/Rullst/Rullst/commit/174d31e131ce53db498c75b5eea47276a8528f86"
+        },
+        "date": 1789757499791,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1004,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 788,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1826,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4048,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
