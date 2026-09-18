@@ -79,6 +79,17 @@ fn create_private_directory(path: &Path) -> Result<(), CacheError> {
 }
 
 fn cache_directory(base: &Path, create: bool) -> Result<PathBuf, CacheError> {
+    validate_ancestors(base)?;
+    validate_directory(base, false)?;
+    let path = base.join("rullst-update-v1");
+    if create {
+        create_private_directory(&path)?;
+    }
+    validate_directory(&path, true)?;
+    Ok(path)
+}
+
+fn validate_ancestors(base: &Path) -> Result<(), CacheError> {
     // An otherwise private leaf is not trustworthy inside another user's
     // replaceable parent. Permit root's sticky /tmp, but not arbitrary writers.
     for ancestor in base.ancestors() {
@@ -92,13 +103,27 @@ fn cache_directory(base: &Path, create: bool) -> Result<PathBuf, CacheError> {
             return Err(CacheError::Invalid("unsafe catalog cache ancestor"));
         }
     }
-    validate_directory(base, false)?;
-    let path = base.join("rullst-update-v1");
-    if create {
-        create_private_directory(&path)?;
+    Ok(())
+}
+
+pub(super) fn installation_root(requested: &Path) -> Result<PathBuf, CacheError> {
+    validate_absolute(requested)?;
+    let name = requested.file_name().ok_or(CacheError::Invalid(
+        "installation needs a named destination directory",
+    ))?;
+    let parent = requested
+        .parent()
+        .ok_or(CacheError::Invalid("installation needs an existing parent"))?
+        .canonicalize()?;
+    validate_ancestors(&parent)?;
+    validate_directory(&parent, false)?;
+    let root = parent.join(name);
+    match fs::symlink_metadata(&root) {
+        Ok(_) => validate_directory(&root, true)?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+        Err(error) => return Err(error.into()),
     }
-    validate_directory(&path, true)?;
-    Ok(path)
+    Ok(root)
 }
 
 fn options() -> OpenOptions {

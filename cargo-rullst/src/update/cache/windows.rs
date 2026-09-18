@@ -261,3 +261,30 @@ mod tests {
 pub(super) fn private_file_descriptor() -> Result<String, CacheError> {
     Ok(Identity::current()?.private_file_descriptor())
 }
+
+pub(super) fn installation_root(requested: &Path) -> Result<PathBuf, CacheError> {
+    validate_path(requested)?;
+    let name = requested.file_name().ok_or(CacheError::Invalid(
+        "installation needs a named destination directory",
+    ))?;
+    let parent = requested
+        .parent()
+        .ok_or(CacheError::Invalid("installation needs an existing parent"))?
+        .canonicalize()?;
+    let identity = Identity::current()?;
+    for ancestor in parent.ancestors() {
+        identity.validate(
+            &directory_handle(ancestor)?,
+            ancestor != parent,
+            false,
+            true,
+        )?;
+    }
+    let root = parent.join(name);
+    match fs::symlink_metadata(&root) {
+        Ok(_) => identity.validate(&directory_handle(&root)?, false, true, true)?,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+        Err(error) => return Err(error.into()),
+    }
+    Ok(root)
+}

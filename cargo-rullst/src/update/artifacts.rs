@@ -7,6 +7,8 @@ use std::path::PathBuf;
 mod download;
 #[path = "artifacts/files.rs"]
 mod files;
+#[path = "artifacts/installation.rs"]
+mod installation;
 #[path = "artifacts/manifest.rs"]
 mod manifest;
 #[path = "artifacts/provenance.rs"]
@@ -35,6 +37,13 @@ impl std::fmt::Debug for ArtifactError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self, formatter)
     }
+}
+
+pub(super) fn install_command() -> Command {
+    installation::command()
+}
+pub(super) fn installation(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+    installation::run(matches)
 }
 
 pub(super) fn stage_command() -> Command {
