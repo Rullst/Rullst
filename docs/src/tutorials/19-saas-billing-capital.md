@@ -70,6 +70,12 @@ The legacy email/price-only method cannot supply those bindings. See the
 [Capital README](https://github.com/Rullst/Rullst/tree/main/rullst-capital)
 for sandbox selection, trusted client IP and signed subscription binding.
 
+Paddle callers use `PaddleCustomerRequest`, `PaddleCheckoutRequest` and
+`create_transaction_checkout` with a recurring price and approved Paddle.js
+payment page. Persist the customer/attempt/transaction binding and reconcile
+uncertain creation before retrying; correlation metadata is not provider
+idempotency. The same README describes signed lifecycle and current-state reads.
+
 ### 2.1 Handle provider failure without blindly repeating a charge
 
 Built-in live adapters return a redacted `CapitalError::Provider` for outbound

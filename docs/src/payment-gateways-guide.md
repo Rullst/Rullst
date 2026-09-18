@@ -162,7 +162,9 @@ async fn handle_billing_event(request: HttpRequest) -> HttpResponse {
     let Some(event) = request.extensions().get::<WebhookEvent>().cloned() else {
         return HttpResponse::InternalServerError().finish();
     };
-    // Apply an idempotent subscription transition using `event`.
+    // This example only demonstrates middleware extraction. Before any domain
+    // mutation, bind verified identity and reconcile current state as above.
+    let _ = event;
     HttpResponse::NoContent().finish()
 }
 
@@ -262,19 +264,12 @@ The complete runnable shape and its outbox boundary are shown in
 
 ### 6. International Payouts with Wise
 
-```rust
-use rullst_capital::{CapitalError, WiseProvider};
-
-pub async fn disburse_affiliate_commission(
-    provider: &WiseProvider,
-    affiliate_email: &str,
-    amount_usd_cents: u64,
-) -> Result<String, CapitalError> {
-    provider
-        .send_payout(affiliate_email, amount_usd_cents, "USD", "affiliate commission")
-        .await
-}
-```
+Wise is an outgoing payout adapter. The legacy `send_payout`/`create_transfer`
+email-based operation remains an offline fixture and returns
+`UnsupportedOperation` with real credentials before network dispatch. A usable
+transfer needs a real recipient account, authenticated quote UUID and durable
+UUID idempotency identity; funding is a separate operation. The existing
+status/webhook foundation does not provide that missing transfer workflow.
 
 ---
 
