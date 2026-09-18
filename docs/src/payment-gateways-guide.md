@@ -122,7 +122,7 @@ supply another customer's ID or choose a raw provider URL. For the complete
 SQLx/Turso application flow, use the new SaaS/`make:billing` modules and follow
 its generated `BILLING.md`; see [12.1 migration](migration-v12-1.md).
 
-### 3. Verify, bind and reconcile webhook events
+### 3. Cryptographically Verified Webhook Endpoint
 
 Signature verification authenticates raw delivery bytes. It does not establish
 application ownership or settlement. Use the provider's typed verified envelope
