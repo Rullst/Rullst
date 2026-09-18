@@ -61,7 +61,7 @@ fn build_request(
         .map_err(|_| crate::ProviderFailure::request_build("stripe", OPERATION).into())
 }
 
-fn parse_response(
+pub(super) fn parse_response(
     request: &StripeCustomerRequest,
     body: &Value,
     expected_mode: Option<bool>,

@@ -50,13 +50,16 @@ fn build_request(
     request: &StripeCheckoutRequest,
 ) -> Result<reqwest::Request, CapitalError> {
     let body = format!(
-        "mode=subscription&customer={}&client_reference_id={}&subscription_data[metadata][rullst_owner_reference]={}&line_items[0][price]={}&line_items[0][quantity]=1&success_url={}&cancel_url={}&expand[0]=line_items",
+        "mode=subscription&customer={}&client_reference_id={}&subscription_data[metadata][rullst_owner_reference]={}&line_items[0][price]={}&line_items[0][quantity]=1&success_url={}&cancel_url={}&expand[0]=line_items&metadata[rullst_owner_reference]={}&metadata[rullst_attempt_reference]={}&subscription_data[metadata][rullst_attempt_reference]={}",
         url_encode(request.customer_id()),
         url_encode(request.owner_reference()),
         url_encode(request.owner_reference()),
         url_encode(request.price_id()),
         url_encode(request.success_url()),
         url_encode(request.cancel_url()),
+        url_encode(request.owner_reference()),
+        url_encode(request.idempotency_key()),
+        url_encode(request.idempotency_key()),
     );
     client
         .post("https://api.stripe.com/v1/checkout/sessions")

@@ -41,10 +41,14 @@ impl Migration for MigrationImpl {
         )
         .execute(pool)
         .await?;
+        sqlx::query("CREATE TABLE billing_state (scope VARCHAR(220) NOT NULL, owner_id VARCHAR(24) NOT NULL, reference VARCHAR(200) NOT NULL, revision VARCHAR(200) NOT NULL, customer_id VARCHAR(200), payload TEXT NOT NULL, PRIMARY KEY (scope, owner_id), UNIQUE (scope, reference), UNIQUE (scope, customer_id))").execute(pool).await?;
+        sqlx::query("CREATE TABLE billing_events (scope VARCHAR(220) NOT NULL, event_id VARCHAR(255) NOT NULL, digest VARCHAR(64) NOT NULL, reference VARCHAR(200) NOT NULL, PRIMARY KEY (scope, event_id))").execute(pool).await?;
         Ok(())
     }
 
     async fn down(&self) -> Result<(), rullst::orm::Error> {
+        Schema::drop_if_exists("billing_events").await?;
+        Schema::drop_if_exists("billing_state").await?;
         Schema::drop_if_exists("subscriptions").await?;
         Schema::drop_if_exists("billing_customers").await
     }

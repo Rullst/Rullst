@@ -169,3 +169,34 @@ fn polar_scheduled_cancellation_and_final_revocation_are_distinct() {
         SubscriptionStatus::Paused
     );
 }
+
+#[test]
+fn current_product_checkout_and_signed_external_customer_share_the_same_owner() {
+    let product = "1dbfc517-0bbf-4301-9ba8-555ca42b9737";
+    let request = rullst_capital::PolarCheckoutRequest::new(
+        product,
+        "owner_opaque",
+        "https://app.example/return",
+    )
+    .unwrap();
+    let secret = "fixture-polar-bound-owner-secret";
+    let provider = PolarProvider::new("fixture", secret);
+    let mut value = subscription_fixture();
+    value["data"]["product_id"] = serde_json::json!(product);
+    value["data"]["customer"]["external_id"] = serde_json::json!("owner_opaque");
+    value["data"]["customer"]["email"] = serde_json::Value::Null;
+    let verify = |value: &serde_json::Value| {
+        let body = serde_json::to_vec(value).unwrap();
+        provider.verify_checkout_subscription(
+            &request,
+            &body,
+            &headers(secret.as_bytes(), &body, chrono::Utc::now().timestamp()),
+        )
+    };
+    assert_eq!(verify(&value).unwrap().customer_id, "cus_1");
+    value["data"]["customer"]["external_id"] = serde_json::json!("other_owner");
+    assert!(verify(&value).is_err());
+    value["data"]["customer"]["external_id"] = serde_json::json!("owner_opaque");
+    value["data"]["product_id"] = serde_json::json!("other_product");
+    assert!(verify(&value).is_err());
+}

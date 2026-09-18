@@ -1,0 +1,63 @@
+# Billing setup
+
+The generated Stripe integration persists an opaque billing subject for the
+session-authorized owner, customer provisioning intent, an immutable checkout
+attempt, its session ID, and verified event receipts. Email is contact data only.
+Run the generated migrations before mounting billing routes.
+
+Configure `BILLING_PROVIDER=stripe`, `BILLING_ACCOUNT_ID=acct_...`,
+`BILLING_API_KEY`, `BILLING_WEBHOOK_SECRET`, `BILLING_REDIRECT_URL` (HTTPS), and
+`BILLING_ALLOWED_PLAN_IDS` (server-owned recurring price IDs). Test keys use a
+separate namespace from live keys. API credentials must have permission to read
+the account, customers, Checkout Sessions and subscriptions, and create customers
+and Checkout Sessions. The generated integration uses platform accounts, not
+Stripe Connect impersonation. Configure the webhook endpoint with Stripe API
+version `2025-03-31.basil` (see the capital adapter's pinned version).
+
+Subscribe to `checkout.session.completed`, `checkout.session.expired`,
+`checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`,
+`customer.subscription.created`, `customer.subscription.updated`,
+`customer.subscription.deleted`, `customer.subscription.paused` and
+`customer.subscription.resumed`. Mount the exact
+POST webhook route behind `verify_billing_webhook`; retain the framework's WAF,
+secure headers and exact signed-webhook CSRF exemption. Live processing uses
+signature verification followed by atomic event completion; do not add a separate
+replay-claim middleware before it. Unknown event kinds are rejected, so configure
+only supported notifications.
+
+Checkout is an authenticated CSRF-protected POST. Keep the price allowlist and
+pricing page in sync. Add the exact `https://checkout.stripe.com` origin to the
+pricing page's CSP `form-action`; retain server validation and browser testing.
+Session creation/navigation never grants an entitlement. Signed events trigger
+current provider-state reads. Revision fencing prevents delayed reads from
+replacing a newer committed state, and receipt/subscription writes commit together.
+The application's access policy must use persisted subscription status and period;
+`active` is subscription state, not proof of invoice settlement. Require separate
+invoice evidence for application features that specifically depend on settlement.
+
+Retry a failed checkout POST to resume the same persisted attempt. An existing
+open session is retrieved and reused. Provider mutation retries reuse the exact
+key for at most 23 hours; older unknown outcomes are recovered by read-only
+customer metadata search or bounded customer/session listing. No match, ambiguous
+results or exhausted listing bounds return 503 without creating a duplicate.
+Customer search can lag and is unavailable to merchants in India. Retry later
+or locate the original customer in the Stripe dashboard. An authorized server
+operator can call `billing_controller::recover_stripe_customer` with the local
+identity and known customer ID; it verifies account, mode and the original opaque
+metadata before binding it. This recovery function is not exposed as a route.
+Retain the database across deploys. Back up `billing_state`, `billing_events` and
+`subscriptions` together. Do not delete a pending intent to bypass reconciliation.
+The inbox is retained durably; plan audited retention and reconciliation for your
+application's data retention policy. An owner retains up to 64 previous
+checkout bindings to prevent old notifications changing a replacement subscription.
+
+HTTP 409 can indicate an existing subscription or an incompatible checkout attempt.
+A checkout that has just expired is reconciled before the next POST creates a new
+attempt. Failed/repeated requests do not create quota consumption; an application
+adding billing quotas should count newly persisted session IDs, not HTTP requests.
+
+Empty/mock credentials remain explicit offline demonstrations. The legacy email
+fixture handler never processes live events. Other generated providers remain
+fixtures until their durable application integration is implemented. Existing
+applications must merge these generated modules and add the new billing tables in
+a new migration; updating the dependency does not overwrite existing controllers.

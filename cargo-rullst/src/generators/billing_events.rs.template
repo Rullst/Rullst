@@ -1,0 +1,86 @@
+use super::*;
+use rullst::server::Request;
+use std::collections::HashMap;
+
+pub(super) struct Notice {
+    pub(super) receipt: Receipt,
+    pub(super) owner: String,
+    pub(super) customer: String,
+    pub(super) session: Option<String>,
+    pub(super) subscription: Option<String>,
+    pub(super) attempt: Option<String>,
+}
+fn verified(provider: &StripeProvider, body: &[u8], headers: &HashMap<String, String>, mode: bool) -> Result<Notice> {
+    // Parse no unbounded body; each branch independently verifies the signature.
+    let json: serde_json::Value = serde_json::from_slice(body).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let digest = |bytes: [u8; 32]| bytes.iter().map(|byte| format!("{byte:02x}")).collect::<String>();
+    if json["type"].as_str().is_some_and(|kind| kind.starts_with("checkout.session.")) {
+        let event = provider.verify_checkout_event(body, headers).map_err(|_| StatusCode::BAD_REQUEST)?;
+        if event.livemode() != mode { return Err(CONFLICT); }
+        Ok(Notice { receipt: Receipt { id: event.event_id().into(), digest: digest(event.mutation_digest()) },
+            owner: event.owner_reference().into(), customer: event.customer_id().into(), session: Some(event.session_id().into()),
+            subscription: event.subscription_id().map(str::to_owned), attempt: Some(event.attempt_reference().into()) })
+    } else {
+        let event = provider.verify_subscription_event(body, headers).map_err(|_| StatusCode::BAD_REQUEST)?;
+        event.require_real().map_err(|_| StatusCode::BAD_REQUEST)?;
+        if event.livemode() != mode || event.connected_account().is_some() { return Err(CONFLICT); }
+        Ok(Notice { receipt: Receipt { id: event.event_id().into(), digest: digest(event.mutation_digest()) },
+            owner: event.owner_reference().ok_or(CONFLICT)?.into(), customer: event.subscription().customer_id.clone(),
+            session: None, subscription: Some(event.subscription().subscription_id.clone()), attempt: None })
+    }
+}
+
+pub(in super::super) async fn webhook(config: &BillingConfig, request: Request) -> Result<Response> {
+    if request.method() != rullst::web::axum::http::Method::POST { return Err(StatusCode::METHOD_NOT_ALLOWED); }
+    let (namespace, account, mode) = scope(config)?;
+    let provider = provider(config);
+    let mut headers = HashMap::new();
+    let mut signatures = request.headers().get_all("stripe-signature").iter();
+    let signature = signatures.next().ok_or(StatusCode::BAD_REQUEST)?.to_str().map_err(|_| StatusCode::BAD_REQUEST)?;
+    if signatures.next().is_some() { return Err(StatusCode::BAD_REQUEST); }
+    headers.insert("stripe-signature".into(), signature.into());
+    let body = rullst::web::axum::body::to_bytes(request.into_body(), 2 * 1024 * 1024).await
+        .map_err(|_| StatusCode::PAYLOAD_TOO_LARGE)?;
+    let notice = verified(&provider, &body, &headers, mode)?;
+    process(config, &provider, &namespace, &account, mode, notice).await
+}
+
+pub(super) async fn process(config: &BillingConfig, provider: &impl Gateway, namespace: &str, account: &str, mode: bool, notice: Notice) -> Result<Response> {
+    let state = store::reference(namespace, &notice.owner).await?.ok_or(CONFLICT)?;
+    if state.customer.as_deref() != Some(&notice.customer) { return Err(CONFLICT); }
+    if let Some(digest) = store::receipt(namespace, &notice.receipt.id).await? {
+        return if digest == notice.receipt.digest { Ok(StatusCode::OK.into_response()) } else { Err(CONFLICT) };
+    }
+    provider.verify_account(account, mode).await.map_err(|_| UNAVAILABLE)?;
+    if state.previous_attempts.iter().any(|prior| {
+        let subscription_matches = notice.subscription.as_ref().is_some_and(|id| prior.subscription.as_ref() == Some(id));
+        let checkout_matches = notice.session.as_ref().is_some_and(|id| prior.session.as_ref() == Some(id))
+            && notice.attempt.as_ref() == Some(&prior.key);
+        subscription_matches || checkout_matches
+    }) {
+        // A retained prior subscription cannot overwrite the current entitlement.
+        commit(&state, state.clone(), Some(&notice.receipt)).await?;
+        return Ok(StatusCode::OK.into_response());
+    }
+    let attempt = state.attempt.as_ref().ok_or(CONFLICT)?;
+    if notice.attempt.as_ref().is_some_and(|key| key != &attempt.key)
+        || notice.session.as_ref().is_some_and(|id| attempt.session.as_ref().is_some_and(|known| id != known))
+        || notice.subscription.as_ref().is_some_and(|id| attempt.subscription.as_ref().is_some_and(|known| id != known))
+    { return Err(CONFLICT); }
+    let created = attempt.created;
+    let request = checkout_request(&state)?;
+    let state = fence(&state).await?;
+    let snapshot = match notice.session.as_deref().or_else(|| state.attempt.as_ref().and_then(|attempt| attempt.session.as_deref())) {
+        Some(id) => provider.retrieve_checkout(&request, id, mode).await.map_err(|_| UNAVAILABLE)?,
+        None => provider.find_checkout(&request, created, notice.subscription.as_deref(), mode).await
+            .map_err(|_| UNAVAILABLE)?.ok_or(UNAVAILABLE)?,
+    };
+    if notice.subscription.as_deref().is_some_and(|id| snapshot.subscription_id() != Some(id)) { return Err(CONFLICT); }
+    let mut next = state.clone();
+    apply_checkout(&mut next, &snapshot)?;
+    refresh_subscription(config, provider, mode, &mut next).await?;
+    // Inbox receipt and current subscription state commit atomically. SQL errors
+    // and stale fences leave the event retryable, including uncertain commits.
+    commit(&state, next, Some(&notice.receipt)).await?;
+    Ok(StatusCode::OK.into_response())
+}

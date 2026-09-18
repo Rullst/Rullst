@@ -21,11 +21,16 @@ const TURSO_MIGRATION: &str = include_str!("billing_migration_turso.rs.template"
 const SQLX_PERSIST: &str = include_str!("billing_persist_sqlx.rs.template");
 const TURSO_PERSIST: &str = include_str!("billing_persist_turso.rs.template");
 
-const FIXED_OUTPUTS: [&str; 4] = [
+const FIXED_OUTPUTS: [&str; 9] = [
     "src/models/subscription.rs",
     "src/models/billing_customer.rs",
     "src/pages/billing.rs",
     "src/controllers/billing_controller.rs",
+    "src/controllers/billing_live.rs",
+    "src/controllers/billing_store.rs",
+    "src/controllers/billing_events.rs",
+    "BILLING.md",
+    "src/controllers/billing_gateway.rs",
 ];
 
 pub(crate) fn render_billing_controller(foreign_key: &str, backend: ProjectOrmBackend) -> String {
@@ -43,6 +48,56 @@ pub(crate) fn render_billing_controller(foreign_key: &str, backend: ProjectOrmBa
         )
         .replace("__FOREIGN_KEY__", foreign_key)
         .replace("__OWNER_ID_TYPE__", owner_id_type)
+}
+
+pub(crate) fn live_billing_files(
+    foreign_key: &str,
+    backend: ProjectOrmBackend,
+) -> Vec<(&'static str, String)> {
+    let store = match backend {
+        ProjectOrmBackend::Sqlx => include_str!("billing_store_sqlx.rs.template"),
+        ProjectOrmBackend::Turso => include_str!("billing_store_turso.rs.template"),
+    };
+    let owner_type = if backend == ProjectOrmBackend::Sqlx {
+        "i32"
+    } else {
+        "i64"
+    };
+    vec![
+        (
+            "src/controllers/billing_gateway.rs",
+            include_str!("billing_gateway.rs.template").into(),
+        ),
+        (
+            "src/controllers/billing_live.rs",
+            include_str!("billing_live.rs.template").replace(
+                "__OWNER_TO_I64__",
+                if backend == ProjectOrmBackend::Sqlx {
+                    "i64::from(identity.owner_id)"
+                } else {
+                    "identity.owner_id"
+                },
+            ),
+        ),
+        (
+            "src/controllers/billing_events.rs",
+            include_str!("billing_events.rs.template").into(),
+        ),
+        (
+            "src/controllers/billing_store.rs",
+            store
+                .replace("__FOREIGN_KEY__", foreign_key)
+                .replace("__OWNER_ID_TYPE__", owner_type)
+                .replace(
+                    "__OWNER_CAST__",
+                    "i32::try_from(next.owner).map_err(|_| UNAVAILABLE)?",
+                ),
+        ),
+        (
+            "BILLING.md",
+            include_str!("billing_readme.md.template").into(),
+        ),
+    ]
 }
 
 pub(crate) fn render_billing_models(
@@ -118,6 +173,9 @@ pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Er
     fs::write(FIXED_OUTPUTS[1], customer_model)?;
     fs::write(FIXED_OUTPUTS[2], include_str!("billing_page.rs.template"))?;
     fs::write(FIXED_OUTPUTS[3], controller)?;
+    for (path, contents) in live_billing_files(&foreign_key, backend) {
+        fs::write(path, contents)?;
+    }
     fs::write(&migration_path, migration)?;
     fs::write(manifest_path, updated_manifest)?;
 
@@ -142,10 +200,10 @@ pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Er
     println!("👉 Mount authenticated checkout/portal routes and the exact signed webhook route.");
     println!("👉 BILLING_PROVIDER accepts stripe or lemonsqueezy.");
     println!(
-        "👉 Generated billing currently supports development fixtures only (empty/mock_* credentials)."
+        "👉 Stripe supports durable customer/checkout ownership and atomic webhook reconciliation."
     );
     println!(
-        "👉 Real credentials return HTTP 503 until durable ownership, attempts and atomic webhooks are integrated."
+        "👉 Configure BILLING_ACCOUNT_ID, HTTPS redirect, credentials and plans; follow BILLING.md. Other generated providers remain fixtures."
     );
     println!("👉 Lemon Squeezy also requires BILLING_STORE_ID and numeric variant IDs.");
     println!("👉 Set BILLING_ALLOWED_PLAN_IDS to a comma-separated server-owned allowlist.");

@@ -36,20 +36,21 @@ provider sandbox.
 
 ## ✨ Supported Providers
 
-The unreleased 12.1 SaaS/`make:billing` scaffold is restricted to local
-development fixtures. Real or mixed API/webhook credentials, including sandbox
-keys, return HTTP 503 before provider requests, replay claims or SQL writes.
-Durable scoped ownership, attempts and atomic inbox processing must replace
-its legacy email-based flow before real calls can be enabled. Updating Capital
-does not rewrite existing controllers; those need an application-owned migration.
+The unreleased 12.1 SaaS/`make:billing` Stripe integration persists authorized
+customer bindings, immutable attempts, Checkout Session IDs and atomic event
+receipts. It reconciles current provider state under database revision fencing
+and resumes existing open sessions. Configure the account, credentials, recurring
+price allowlist and HTTPS return URL as described in generated `BILLING.md`.
+Mixed credentials and other generated live providers remain unavailable.
+Updating Capital does not rewrite existing controllers or apply new migrations.
 
 | Provider | Adapter category | Current boundary |
 | :--- | :--- | :--- |
 | **Stripe** | Billing | Checkout, bounded immediate Payment Intent charge, and documented webhook foundations; verify required live methods. |
 | **Lemon Squeezy** | Billing | Checkout requires explicit `with_store_id`; store and variant response identities are checked. |
 | **InfinitePay** | Billing | Offline fixtures; live plan-only checkout and body-only callback verification are unsupported. |
-| **Polar** | Billing | Signed-webhook foundation; legacy live checkout is unsupported. |
-| **Paddle** | Billing | Signed-webhook foundation; legacy live checkout is unsupported. |
+| **Polar** | Billing | Current typed product checkout, external customer binding and signed subscription events; legacy price-only checkout is unsupported. |
+| **Paddle** | Billing | Current typed product checkout, external customer binding and signed subscription events; legacy price-only checkout is unsupported. |
 | **Razorpay** | Billing | Adapter and signed-webhook foundation. |
 | **Mercado Pago** | Billing | Offline checkout fixture; live plan-only checkout and body-only webhook verification are unavailable. |
 | **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
@@ -99,13 +100,44 @@ network dispatch: their current provider contracts cannot be represented by the
 old request shapes. Wise's email-based transfer method also fails explicitly;
 it cannot infer a recipient account, authenticated quote or UUID idempotency
 identity, and transfer creation is not funding. Their offline mocks remain
-available. These operations require new typed contracts and provider evidence.
+available. Polar now supplies the explicit typed replacement shown below.
+Paddle and Wise still require their dedicated contracts and provider evidence.
 
 Lemon Squeezy live checkout uses the merchant's explicit positive numeric store
 ID: `LemonSqueezyProvider::new(key, webhook_secret).with_store_id(store_id)?`.
 The plan argument must be a numeric variant ID belonging to that store. The
 generated billing application reads `BILLING_STORE_ID`; missing configuration
 fails before HTTP dispatch. Existing applications must adopt this setting.
+
+### Product-based Polar checkout
+
+Use product UUIDs and an opaque application-owned billing subject, not legacy
+price IDs or email as identity. `with_sandbox(true)` selects the sandbox API.
+
+```rust,no_run
+use rullst_capital::{PolarCheckoutRequest, PolarProvider, CapitalError};
+async fn checkout() -> Result<(), CapitalError> {
+    let provider = PolarProvider::new("mock_token", "mock_secret").with_sandbox(true);
+    let intent = PolarCheckoutRequest::new(
+        "1dbfc517-0bbf-4301-9ba8-555ca42b9737", "opaque_billing_subject",
+        "https://app.example/billing/return",
+    )?;
+    // Persist intent and authorize its owner before dispatch.
+    let session = provider.create_product_checkout(&intent).await?;
+    // Persist session.id() before redirecting to session.url().
+    assert!(session.is_mock());
+    Ok(())
+}
+```
+
+Only supply `with_trusted_client_ip` from your socket/trusted-proxy resolver;
+omit it when that boundary is unavailable. The adapter never trusts raw
+`Forwarded`/`X-Forwarded-For`. Creation is not automatically retried: Polar's
+checkout contract does not establish a provider idempotency guarantee. Use
+`verify_checkout_subscription` with the persisted request to bind signed
+subscription notifications to the external customer and product. Retain account,
+environment, event receipts and entitlement/reconciliation policy in your app.
+See [Polar's current checkout contract](https://polar.sh/docs/api-reference/checkouts/create-session).
 
 ### Customer-bound Stripe subscription checkout (12.1 working source)
 
@@ -157,23 +189,23 @@ async fn checkout() -> Result<(), rullst_capital::CapitalError> {
 ```
 
 The operation pins Stripe API `2025-03-31.basil`, sends the customer and opaque
-reference, copies the reference into subscription metadata and forwards
+reference, copies owner/attempt references into session and subscription metadata and forwards
 `Idempotency-Key`. Expanded line items must match the requested recurring price
 and quantity. Response customer/reference/redirects/mode must also match before
 returning an open session. Stripe's hosted URL is preserved, including its
 documented opaque fragment. Request/receipt debug output omits identifiers,
 URLs and keys; mocks have a distinct status and no provider test/live mode.
 
-Account/test-live namespaces, durable provisioning and attempt persistence,
-webhook owner binding and atomic domain mutation remain application/integration
-work. Do not retry an old key indefinitely: Stripe may discard idempotency
+The generated SaaS/`make:billing` modules provide account/test-live namespaces,
+durable provisioning and attempts, signed Checkout/subscription event handling,
+atomic completion and revision-fenced reconciliation. Hosts calling the low-level
+adapter directly must supply those same application boundaries. Do not retry an old key indefinitely: Stripe may discard idempotency
 records after its retention period. An unknown outcome requires reconciliation,
 not a newly generated attempt key. See Stripe's
 [checkout contract](https://docs.stripe.com/api/checkout/sessions/create?api-version=2025-03-31.basil)
 and [idempotency semantics](https://docs.stripe.com/api/idempotent_requests).
 The legacy email-based trait method remains available for source compatibility;
-existing and newly generated applications are not automatically migrated by
-this additive operation.
+existing application-owned controllers require an explicit code/database migration.
 
 ### Provider verification levels
 

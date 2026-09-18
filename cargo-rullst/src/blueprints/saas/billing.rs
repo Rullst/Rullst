@@ -27,7 +27,7 @@ fn pricing_setup_banner() -> String {
             <div class="setup-banner-icon">"🚀"</div>
             <div class="setup-banner-content">
                 <h4>"Billing demonstration"</h4>
-                <p>"These plans demonstrate the billing interface. Real payments are unavailable and no purchase grants access."</p>
+                <p>"These are example plans. Configure your products and prices before accepting payments."</p>
             </div>
         </div>
     }

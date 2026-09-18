@@ -45,7 +45,19 @@ fn outbound_request_binds_customer_owner_price_and_retry_without_email() {
     let fields = form
         .query_pairs()
         .collect::<std::collections::HashMap<_, _>>();
-    assert_eq!(fields.len(), 9);
+    assert_eq!(fields.len(), 12);
+    assert_eq!(
+        fields["metadata[rullst_owner_reference]"],
+        request.owner_reference()
+    );
+    assert_eq!(
+        fields["metadata[rullst_attempt_reference]"],
+        request.idempotency_key()
+    );
+    assert_eq!(
+        fields["subscription_data[metadata][rullst_attempt_reference]"],
+        request.idempotency_key()
+    );
     for (name, value) in [
         ("mode", "subscription"),
         ("customer", request.customer_id()),

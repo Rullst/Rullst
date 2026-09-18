@@ -214,6 +214,35 @@ async fn execute_sql(statement: &str) -> Result<(), Box<dyn std::error::Error>> 
     )
 }
 
+fn install_live_contract(project: &Path, database: &str) {
+    let initialize = if database == "turso" {
+        r#"let turso_config = rullst::orm::polyglot::TursoConfig::new("mock_billing", "")
+            .with_offline_path("turso-development.db").unwrap();
+        rullst::orm::polyglot::TursoOrm::init(turso_config).await.unwrap();"#
+    } else {
+        r#"rullst::orm::Orm::init("sqlite://db.sqlite?mode=rwc").await.unwrap();"#
+    };
+    let execute = if database == "turso" {
+        r#"rullst::orm::polyglot::TursoOrm::store().unwrap().execute(
+            rullst::orm::polyglot::TursoStatement::new(statement, vec![]).unwrap()).await.unwrap();"#
+    } else {
+        r#"rullst::db::sqlx::query(rullst::db::sqlx::AssertSqlSafe(statement))
+        .execute(rullst::db::Orm::pool().unwrap()).await.unwrap();"#
+    };
+    let source = include_str!("fixtures/billing_live_contract.rs")
+        .replace("__INITIALIZE_DB__", initialize)
+        .replace("__EXECUTE_SQL__", execute);
+    fs::write(
+        project.join("src/controllers/billing_live_contract.rs"),
+        source,
+    )
+    .unwrap();
+    let path = project.join("src/controllers/billing_live.rs");
+    let mut live = fs::read_to_string(&path).unwrap();
+    live.push_str("\n#[cfg(test)]\n#[path = \"billing_live_contract.rs\"]\nmod live_contract;\n");
+    fs::write(path, live).unwrap();
+}
+
 fn verify_backend(database: &str) {
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -295,6 +324,7 @@ fn verify_backend(database: &str) {
     )
     .expect("write billing runtime contract");
     install_workspace_lock(&project, workspace);
+    install_live_contract(&project, database);
 
     let checked = run(
         Command::new("cargo")
@@ -315,6 +345,29 @@ fn verify_backend(database: &str) {
         "run generated billing migrations",
     );
     assert_success(&migrated, "generated billing migrations");
+
+    for restart in [false, true] {
+        let mut command = Command::new("cargo");
+        command
+            .current_dir(&project)
+            .args([
+                "test",
+                "--quiet",
+                "--bin",
+                "billing_contract",
+                "durable_live_billing_contract",
+            ])
+            .env("BILLING_ACCOUNT_ID", "acct_contract")
+            .env("CARGO_TARGET_DIR", target_directory(workspace))
+            .env("CARGO_NET_OFFLINE", "true");
+        if restart {
+            command.env("BILLING_RESTART_CHECK", "1");
+        }
+        assert_success(
+            &run(&mut command, "exercise durable billing and restart"),
+            "live billing state contract",
+        );
+    }
 
     let runtime = run(
         Command::new("cargo")
