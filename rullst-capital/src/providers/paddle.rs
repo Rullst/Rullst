@@ -13,9 +13,12 @@ use subtle::ConstantTimeEq;
 
 /// Billing provider implementation for Paddle Billing (Enterprise Global MoR).
 pub struct PaddleProvider {
-    api_key: String,
+    pub(super) api_key: String,
     webhook_secret: String,
     webhook_tolerance: Duration,
+    pub(super) sandbox: bool,
+    #[cfg(test)]
+    pub(super) fixture_url: Option<String>,
 }
 
 impl PaddleProvider {
@@ -25,7 +28,16 @@ impl PaddleProvider {
             api_key: api_key.into(),
             webhook_secret: webhook_secret.into(),
             webhook_tolerance: DEFAULT_WEBHOOK_TOLERANCE,
+            sandbox: false,
+            #[cfg(test)]
+            fixture_url: None,
         }
+    }
+
+    /// Selects Paddle's separate sandbox API. Use an environment-matching key.
+    pub fn with_sandbox(mut self, sandbox: bool) -> Self {
+        self.sandbox = sandbox;
+        self
     }
 
     /// Overrides the default five-minute webhook timestamp acceptance window.
@@ -246,19 +258,7 @@ impl BillingProvider for PaddleProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            crate::subscription::validate_provider_subscription_id(subscription_id)?;
-            let client = crate::providers::http_client()?;
-            crate::providers::send_http(
-                client
-                    .post(format!(
-                        "https://api.paddle.com/subscriptions/{}/cancel",
-                        subscription_id
-                    ))
-                    .bearer_auth(&self.api_key),
-                "paddle",
-                "cancel subscription",
-            )
-            .await?;
+            self.change_subscription(subscription_id, "cancel").await?;
         }
         Ok(())
     }
@@ -270,19 +270,7 @@ impl BillingProvider for PaddleProvider {
             ));
         }
         if !self.api_key.is_empty() && !self.api_key.starts_with("mock_") {
-            crate::subscription::validate_provider_subscription_id(subscription_id)?;
-            let client = crate::providers::http_client()?;
-            crate::providers::send_http(
-                client
-                    .post(format!(
-                        "https://api.paddle.com/subscriptions/{}/pause",
-                        subscription_id
-                    ))
-                    .bearer_auth(&self.api_key),
-                "paddle",
-                "pause subscription",
-            )
-            .await?;
+            self.change_subscription(subscription_id, "pause").await?;
         }
         Ok(())
     }

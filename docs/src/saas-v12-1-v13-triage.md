@@ -1,8 +1,9 @@
 # SaaS findings: v12.1 maintenance and v13 contracts
 
-**Status: SAAS-003 and SAAS-004 implemented in maintenance source on 18 September
-2026; final candidate CI is in progress. Provider-account sandbox acceptance,
-publication and deployment remain unverified.**
+**Status: SAAS-002, SAAS-003 and SAAS-004 have typed replacements in maintenance
+source. The earlier Stripe/Polar candidate passed hosted checks; the additional
+Paddle source requires fresh candidate CI. Provider-account sandbox acceptance
+of this candidate, publication and deployment remain unverified.**
 
 The input is the two reports from `Rullst/examples`, branch
 `feat/saas-staging-ai-fixes`, pinned to commit
@@ -75,6 +76,39 @@ Maintenance commit `8c3c8391` and its v13 carry `d44f9520` provide:
   migrations, lost-response/replay/rollback, cross-owner and stale-read rejection,
   replacement subscriptions and process restart. Full candidate CI remains
   distinct from this targeted evidence and from live provider-account testing.
+
+## Final maintenance consolidation
+
+The Stripe/Polar source at `8c3c8391` passed
+[SemVer for all sixteen packages](https://github.com/Rullst/Rullst/actions/runs/35337758652),
+[coverage](https://github.com/Rullst/Rullst/actions/runs/35337761613) and
+[CodeQL](https://github.com/Rullst/Rullst/actions/runs/35337764638).
+The documentation-only follow-up `4b5aca21` passed the
+[full 48-job Rust matrix](https://github.com/Rullst/Rullst/actions/runs/35338109743).
+These runs do not cover the subsequent Paddle implementation or substitute for
+the required exact-main release gates.
+
+SAAS-002 now has typed Paddle customer and recurring transaction creation,
+approved payment-page binding, explicit sandbox selection, read-only recovery,
+transaction-bound signed subscription events and current-state reconciliation.
+Cancellation and pause use the selected API and validate the returned change.
+Local Capital tests and strict all-target Clippy passed; protocol fixtures are
+not evidence of an approved Paddle account or a completed sandbox payment.
+
+Reports on `examples/main` at `6c3e371cc48eae9ba0311b42155f2cf3ff8b0cb4`
+retain the same framework findings and add APP-SAAS-005–011, covering application
+ingress, seller disclosure, OIDC/resource permissions, payment-mode presentation
+and backup/restore operations. Their reported corrections belong to the example
+and infrastructure. They introduce no additional framework defect.
+
+The staging health endpoint answered successfully, and the examples repository's
+[deployment run](https://github.com/Rullst/examples/actions/runs/35345667696)
+passed its authenticated Chromium Stripe handoff. That app uses 12.0 dependencies
+and an application-owned one-time payment flow. It does not validate 12.1's
+recurring subscription contract, final payment or webhook delivery.
+
+Use the [12.1 migration guide](migration-v12-1.md) and the Capital provider matrix
+for current behavior; the chronological containment notes below are historical.
 
 ## Implementation checkpoints
 

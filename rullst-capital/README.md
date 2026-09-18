@@ -46,11 +46,11 @@ Updating Capital does not rewrite existing controllers or apply new migrations.
 
 | Provider | Adapter category | Current boundary |
 | :--- | :--- | :--- |
-| **Stripe** | Billing | Checkout, bounded immediate Payment Intent charge, and documented webhook foundations; verify required live methods. |
+| **Stripe** | Billing | Typed customer/subscription checkout, customer-ID portal, current-state reads and signed events; generated durable SQLx/Turso integration. Immediate Payment Intent charge is separate. |
 | **Lemon Squeezy** | Billing | Checkout requires explicit `with_store_id`; store and variant response identities are checked. |
 | **InfinitePay** | Billing | Offline fixtures; live plan-only checkout and body-only callback verification are unsupported. |
 | **Polar** | Billing | Current typed product checkout, external customer binding and signed subscription events; legacy price-only checkout is unsupported. |
-| **Paddle** | Billing | Current typed product checkout, external customer binding and signed subscription events; legacy price-only checkout is unsupported. |
+| **Paddle** | Billing | Typed customer/transaction checkout, approved Paddle.js payment page, bound signed subscription events and current-state reads; legacy email-only checkout is unsupported. |
 | **Razorpay** | Billing | Adapter and signed-webhook foundation. |
 | **Mercado Pago** | Billing | Offline checkout fixture; live plan-only checkout and body-only webhook verification are unavailable. |
 | **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
@@ -100,14 +100,69 @@ network dispatch: their current provider contracts cannot be represented by the
 old request shapes. Wise's email-based transfer method also fails explicitly;
 it cannot infer a recipient account, authenticated quote or UUID idempotency
 identity, and transfer creation is not funding. Their offline mocks remain
-available. Polar now supplies the explicit typed replacement shown below.
-Paddle and Wise still require their dedicated contracts and provider evidence.
+available. Polar and Paddle supply the explicit typed replacements below.
+Wise still requires a dedicated recipient/quote/transfer/funding contract.
+Provider-account sandbox acceptance remains separate from protocol tests.
 
 Lemon Squeezy live checkout uses the merchant's explicit positive numeric store
 ID: `LemonSqueezyProvider::new(key, webhook_secret).with_store_id(store_id)?`.
 The plan argument must be a numeric variant ID belonging to that store. The
 generated billing application reads `BILLING_STORE_ID`; missing configuration
 fails before HTTP dispatch. Existing applications must adopt this setting.
+
+### Transaction-based Paddle checkout
+
+Configure a default payment-link page in the Paddle account and load Paddle.js
+on that page. The domain must meet Paddle's approval rules. `checkout.url` is
+this launcher, not a return URL after payment; setting a custom URL does not
+remove the default-page prerequisite. `with_sandbox(true)` selects the sandbox
+API explicitly.
+
+```rust,no_run
+use rullst_capital::{PaddleCheckoutRequest, PaddleCustomerRequest, PaddleProvider};
+
+async fn checkout() -> Result<(), rullst_capital::CapitalError> {
+    let provider = PaddleProvider::new("mock_key", "mock_secret").with_sandbox(true);
+    let provision = PaddleCustomerRequest::new(
+        "owner_opaque", "provision_unique", "customer@example.com",
+    )?;
+    // Authorize the owner and persist this intent before dispatch.
+    let customer = provider.create_customer(&provision).await?;
+    // Persist the customer binding before the separate checkout attempt.
+    let attempt = PaddleCheckoutRequest::new(
+        customer.id(), "pri_01h7vjes1v2y4d0v3t4b4e2q8s", "owner_opaque",
+        "checkout_unique", "https://app.example/pay",
+    )?;
+    let session = provider.create_transaction_checkout(&attempt).await?;
+    assert!(session.is_mock());
+    // Persist the transaction ID before redirecting to an available session.url().
+    Ok(())
+}
+```
+
+The request binds one existing customer, one server-owned recurring price and
+quantity one. Customer ownership is checked before transaction creation. The
+response must match customer, owner, attempt, recurring price and payment page;
+its only query parameter is `_ptxn` for that exact transaction. Receipts retain
+the request digest and selected environment; mocks have no real environment.
+
+Paddle does not support arbitrary client-supplied idempotency keys. The attempt
+reference is correlation metadata. Persist it before dispatch and never blindly
+retry an uncertain creation. `retrieve_bound_customer` and
+`retrieve_transaction_checkout` reconcile independently recovered known IDs
+without mutation or email-based ownership claims.
+
+`verify_checkout_subscription` binds signed events to the request and persisted
+transaction receipt. The first `subscription.created` must carry the matching
+transaction ID. Later events require a receipt with the already-bound
+subscription ID, obtained through the transaction read. Use
+`retrieve_bound_subscription` for current-state reconciliation; commit event
+receipts and domain changes atomically under a revision fence. Account scope,
+entitlement policy and settlement remain application-owned. Cancellation and
+pause respect the selected environment and validate the returned immediate or
+scheduled change. See Paddle's [transaction creation](https://developer.paddle.com/api-reference/transactions/create-transaction/),
+[payment-page setup](https://developer.paddle.com/build/transactions/pass-transaction-checkout/)
+and [retry limitations](https://developer.paddle.com/sdks/libraries/).
 
 ### Product-based Polar checkout
 

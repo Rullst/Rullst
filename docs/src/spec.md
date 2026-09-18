@@ -755,6 +755,30 @@ neighboring signatures cannot hide a valid one, and duplicate timestamps are
 rejected. The configured freshness window still applies to the exact raw body.
 This authenticates a delivery, not subscription ownership or settlement.
 
+`PaddleCustomerRequest` and `PaddleProvider::create_customer` bind explicit
+customer provisioning to an opaque owner and durable attempt. The typed
+`PaddleCheckoutRequest`/`create_transaction_checkout` replacement uses an
+existing customer, one server-owned recurring price, quantity one, automatic
+collection and an approved Paddle.js payment-link page. It verifies customer
+ownership before mutation and response identity, metadata, recurring price and
+the exact payment page plus transaction-bound `_ptxn` before returning a URL.
+The page is a checkout launcher, not an after-payment return URL. The account's
+default payment-link configuration and domain approval remain prerequisites.
+
+Paddle's sandbox is selected explicitly. Receipts distinguish offline mocks
+from real selected-environment evidence. No arbitrary provider idempotency key
+or automatic retry is promised: persist intent before dispatch and reconcile
+uncertain outcomes by independently recovered known customer/transaction IDs.
+Do not discover or claim ownership by contact email. Signed subscription events
+must match owner, attempt, customer and recurring price; initial creation also
+matches the persisted transaction ID, and later lifecycle events require its
+bound subscription ID. Current subscription reads preserve status and billing
+periods. Hosts retain account/environment scope, atomic inbox/domain commits,
+revision fencing and entitlement/settlement policy. Cancellation/pause use the
+selected API and accept only matching immediate or scheduled changes. Legacy
+email/price-only checkout remains unsupported because it cannot express these
+bindings. Generated durable billing integration remains Stripe-specific.
+
 `PolarCheckoutRequest` and `PolarProvider::create_product_checkout` implement
 POST `/v1/checkouts/` with one explicit product UUID, stable opaque external
 customer identity, HTTPS success URL and optional contact email. The response
