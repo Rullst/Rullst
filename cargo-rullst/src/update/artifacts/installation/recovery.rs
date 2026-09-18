@@ -46,6 +46,14 @@ pub(super) fn validate(operation: &Path, intent: &Intent) -> Result<(), Artifact
 }
 
 pub(super) fn restore(operation: &Path, intent: &mut Intent) -> Result<(), ArtifactError> {
+    restore_with(operation, intent, |_, _| Ok(()))
+}
+
+pub(super) fn restore_with(
+    operation: &Path,
+    intent: &mut Intent,
+    mut observe: impl FnMut(usize, bool) -> Result<(), ArtifactError>,
+) -> Result<(), ArtifactError> {
     validate(operation, intent)?;
     if intent.phase == Phase::Recovered {
         return Ok(());
@@ -72,7 +80,7 @@ pub(super) fn restore(operation: &Path, intent: &mut Intent) -> Result<(), Artif
     validate(operation, intent)?;
     intent.phase = Phase::Recovering;
     intent.save(operation)?;
-    for change in &intent.changes {
+    for (index, change) in intent.changes.iter().enumerate() {
         let target = intent.root.join(&change.name);
         let actual = transaction::record(&target)?;
         if actual == change.before {
@@ -83,6 +91,7 @@ pub(super) fn restore(operation: &Path, intent: &mut Intent) -> Result<(), Artif
             transaction::matching(&retired, &None)?;
             fs::rename(&target, retired)?;
             storage::sync(&intent.root)?;
+            observe(index, false)?;
         } else if actual.is_some() {
             return Err(ArtifactError::Invalid(
                 "installation changed while recovering",
@@ -93,6 +102,7 @@ pub(super) fn restore(operation: &Path, intent: &mut Intent) -> Result<(), Artif
             transaction::matching(&restore.join(&change.name), &change.before)?;
             fs::rename(restore.join(&change.name), &target)?;
             storage::sync(&intent.root)?;
+            observe(index, true)?;
         }
     }
     for change in &intent.changes {

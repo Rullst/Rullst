@@ -63,6 +63,17 @@ pub(super) fn stage(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Erro
     download::run(matches)
 }
 
+pub(super) fn execute(
+    action: &str,
+    matches: &ArgMatches,
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+    match action {
+        "stage" => download::execute(matches),
+        "install" => installation::execute(matches),
+        _ => Err(ArtifactError::Invalid("unsupported guided artifact operation").into()),
+    }
+}
+
 pub(super) fn command() -> Command {
     Command::new("verify")
         .about("Authenticate downloaded native CLI files without executing or installing them")

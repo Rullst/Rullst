@@ -11,6 +11,8 @@ mod artifacts;
 mod cache;
 #[path = "update/catalog.rs"]
 mod catalog;
+#[path = "update/guided.rs"]
+mod guided;
 #[path = "update/project.rs"]
 mod project;
 
@@ -49,6 +51,7 @@ pub(crate) fn command() -> Command {
         .subcommand(artifacts::stage_command())
         .subcommand(artifacts::install_command())
         .subcommand(project::command())
+        .subcommand(guided::command())
         .subcommand(
             Command::new("check")
                 .about("Show an exact CLI release and MSRV without changing the CLI or project")
@@ -70,6 +73,9 @@ pub(crate) fn command() -> Command {
 }
 
 pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(matches) = matches.subcommand_matches("guided") {
+        return guided::run(matches);
+    }
     if let Some(matches) = matches.subcommand_matches("install") {
         return artifacts::installation(matches);
     }

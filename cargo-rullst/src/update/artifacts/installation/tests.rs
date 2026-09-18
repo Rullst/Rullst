@@ -1,6 +1,8 @@
 //! Native transaction/probe tests use locally compiled trusted fixture binaries.
 //! They do not substitute for published artifact provenance or registry acceptance.
 use super::*;
+#[path = "fault_tests.rs"]
+mod fault_tests;
 use crate::update::cache;
 use sha2::{Digest, Sha256};
 use std::{

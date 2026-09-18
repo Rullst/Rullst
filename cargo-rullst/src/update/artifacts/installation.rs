@@ -94,6 +94,35 @@ pub(super) fn command() -> Command {
 }
 
 pub(super) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+    let report = execute(matches)?;
+    let (action, matches) = matches
+        .subcommand()
+        .ok_or(ArtifactError::Invalid("installation operation required"))?;
+    if matches.get_flag("json") {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else if action == "review" {
+        println!(
+            "Installation review: {}",
+            report["review_sha256"].as_str().unwrap_or("unavailable")
+        );
+        println!(
+            "No binary was executed or installed. Inspect --json for the destination, exact candidate and proposed --version probes."
+        );
+        println!(
+            "Apply requires --approved-review with this digest. Existing package-manager installations require their pinned source/manager fallback."
+        );
+    } else {
+        println!(
+            "CLI installation {action} completed. {}",
+            serde_json::to_string(&report)?
+        );
+    }
+    Ok(())
+}
+
+pub(super) fn execute(
+    matches: &ArgMatches,
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     let (action, matches) = matches
         .subcommand()
         .ok_or(ArtifactError::Invalid("installation operation required"))?;
@@ -153,26 +182,7 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>
             return Err(ArtifactError::Invalid("unsupported installation operation").into());
         }
     };
-    if matches.get_flag("json") {
-        println!("{}", serde_json::to_string_pretty(&report)?);
-    } else if action == "review" {
-        println!(
-            "Installation review: {}",
-            report["review_sha256"].as_str().unwrap_or("unavailable")
-        );
-        println!(
-            "No binary was executed or installed. Inspect --json for the destination, exact candidate and proposed --version probes."
-        );
-        println!(
-            "Apply requires --approved-review with this digest. Existing package-manager installations require their pinned source/manager fallback."
-        );
-    } else {
-        println!(
-            "CLI installation {action} completed. {}",
-            serde_json::to_string(&report)?
-        );
-    }
-    Ok(())
+    Ok(report)
 }
 
 struct Candidate {

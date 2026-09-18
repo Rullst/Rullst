@@ -50,6 +50,9 @@ pub(super) fn record(path: &Path) -> Result<Option<Record>, ArtifactError> {
     match fs::symlink_metadata(path) {
         Ok(metadata) => {
             cache::installation_file(path)?;
+            if metadata.len() > super::super::manifest::MAX_BINARY {
+                return Err(ArtifactError::Invalid("installation file exceeds 128 MiB"));
+            }
             if metadata.permissions().readonly() {
                 return Err(ArtifactError::Invalid(
                     "read-only installed files require manual review",

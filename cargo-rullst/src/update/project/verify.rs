@@ -24,6 +24,22 @@ pub(super) fn command() -> Command {
 }
 
 pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
+    let report = execute(matches)?;
+    if matches.get_flag("json") || matches.get_flag("dry-run") {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        println!(
+            "Candidate checks/tests passed. Review: {}/verification.json",
+            report["verified_directory"]
+        );
+        println!(
+            "Original project files were not edited. Application and deployment remain separate steps."
+        );
+    }
+    Ok(())
+}
+
+pub(super) fn execute(matches: &ArgMatches) -> Result<serde_json::Value, ProjectError> {
     if !matches.get_flag("allow-project-code") && !matches.get_flag("dry-run") {
         return Err(ProjectError::Invalid(
             "review the preparation first; --allow-project-code is required because Cargo builds and tests execute project code",
@@ -50,8 +66,7 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
             "commands":commands, "features":features, "offline":offline,
             "execution_authorized":false,"application_authorized":false,
             "execution_location":"fresh private copy; not a sandbox"});
-        println!("{}", serde_json::to_string_pretty(&report)?);
-        return Ok(());
+        return Ok(report);
     }
     let workspace = super::super::cache::project_workspace()?;
     let candidate = workspace.path().join("candidate");
@@ -136,19 +151,8 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
         workspace.path().join("verification.json"),
         serde_json::to_vec_pretty(&report)?,
     )?;
-    let path = workspace.retain();
-    if matches.get_flag("json") {
-        println!("{}", serde_json::to_string_pretty(&report)?);
-    } else {
-        println!(
-            "Candidate checks/tests passed. Review: {}",
-            path.join("verification.json").display()
-        );
-        println!(
-            "Original project files were not edited. Application and deployment remain separate steps."
-        );
-    }
-    Ok(())
+    workspace.retain();
+    Ok(report)
 }
 
 pub(super) fn features(matches: &ArgMatches) -> Result<Vec<String>, ProjectError> {

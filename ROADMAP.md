@@ -385,7 +385,7 @@ after its code and evidence exist.
 
 ### Safe update experience
 
-**Status: planned for 12.1.0 and carried forward into v13.** The goal is
+**Status: working-source 12.1.0 implementation; final release acceptance pending.** The goal is
 the easiest practical update journey without hiding risk: one guided entry point, a clear
 plan, minimal repeated input, useful progress, verification and recoverable
 application of the approved changes. Ease and speed are acceptance criteria,
@@ -411,10 +411,9 @@ supports offline reads, forced refresh and cache opt-out. A Windows implementati
 now creates a protected DACL atomically and checks owners, grants, ancestors and
 file handles; its native Windows contracts passed at the
 [maintenance checkpoint](docs/src/v12.md#1210-delivery-checkpoint-unreleased).
-The complete guided flow and final acceptance below remain unfinished. The
-published v12.0.0 release currently contains source crate archives and evidence,
-not an inventory of trusted prebuilt CLI executables; adding those artifacts
-requires release-pipeline work, not an assumed download URL.
+The final acceptance below remains required. The existing published v12.0.0
+artifact provenance was exercised separately; it does not authenticate an
+unpublished 12.1.0 candidate.
 
 Working-source preparation now builds native CLI candidates on four explicit
 targets and binds their version, source, platform, sizes and digests in a
@@ -423,8 +422,13 @@ adds release assets; ordinary CI inventories have no release tag. Native and
 release evidence is still pending. Explicit `update stage` now rechecks a fresh
 registry selection, authenticates the manifest before executable downloads and
 bounds HTTPS redirects, sizes, time and hashes in private storage. It executes
-and installs nothing. Installation, ownership/locking, known-good CLI recovery
-and final project acceptance remain unfinished.
+and installs nothing. Managed installation now revalidates eligibility, original
+manifest provenance, private root ownership and exact bytes under a destination-local
+lock. Explicit digest-approved application stages bounded version probes and
+backups before replacing entries; explicit recovery restores only the authenticated
+predecessor and rejects unrelated edits. Native installation/lock/interruption/
+executing-image tests passed on Linux, Windows and macOS at `ef0a8577` in
+[run 35296176849](https://github.com/Rullst/Rullst/actions/runs/35296176849).
 The explicit local `update verify` command now authenticates a private manifest
 snapshot with the caller-installed GitHub CLI and checks both native binary
 digests. It grants no installation authority or registry eligibility and does
@@ -444,17 +448,26 @@ before resolving/checking/testing another private copy. Local process tests
 cover real acceptance, stale inputs, missing consent, contention, timeout,
 failed tests and unexpected source writes. Verification passed Linux/macOS and
 the corrected Windows path contract at the recorded maintenance checkpoints.
-Final platform acceptance and the complete guided flow remain unfinished. Explicit
+Final release acceptance remains required. Explicit
 `update project review` now revalidates command logs and both source inventories
 and emits the bounded full dependency diff plus a review digest. It performs no
 builds or original-file edits; the digest does not grant application authority.
 Explicit digest-approved `project apply`/`recover` now revalidate evidence/access
 policies, stage reviewed manifest/lockfile replacements and persist an intent.
 They refuse divergent edits and preserve unrelated files. Source locks coordinate
-only the same configured cache. Native/fault acceptance is still pending; a
-Windows SDDL length defect found by native tests has a focused correction under
-validation. Local child-kill and file-size-limit fixtures add interruption proof,
-not power-loss or a complete disk-full matrix.
+only the same configured cache. Native project acceptance passed on all three
+systems at `8b58cd12`; corrected Windows SDDL/Git path handling is included.
+Local child-kill, OS file-size-limit and injected replacement/recovery faults
+add bounded interruption proof, not power-loss or a complete disk-full matrix.
+
+Working-source `update guided --to VERSION` composes CLI/project/both flows
+through the same validators. It retains exact paths and separate review digests,
+shows complete reviews, defaults each approval to no and reports elapsed time
+per stage. Project code/network and original-file writes need separate consent.
+Noninteractive approval and unsupported project major jumps reject. A real
+terminal regression covers declined preparation/execution, failed application
+tests and approved application followed by exact recovery. Native checks of
+this final composition and full candidate release evidence remain required.
 
 1. **Discover and explain.** Make update notices useful without blocking normal
    CLI startup. Respect offline/CI settings and explicit notification opt-out;

@@ -8,6 +8,30 @@ use std::{
     process::{Command, Output},
 };
 
+#[test]
+fn guided_flow_refuses_piped_approval_before_any_filesystem_or_network_work() {
+    let base = tempfile::tempdir().unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_cargo-rullst"))
+        .args([
+            "update",
+            "guided",
+            "--to",
+            env!("CARGO_PKG_VERSION"),
+            "--scope",
+            "both",
+            "--root",
+        ])
+        .arg(base.path().join("not-created"))
+        .env("XDG_CACHE_HOME", base.path().join("missing-cache"))
+        .env("LOCALAPPDATA", base.path().join("missing-cache"))
+        .env("RULLST_DISABLE_UPDATE_CHECK", "true")
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    assert!(String::from_utf8_lossy(&result.stderr).contains("interactive terminal"));
+    assert_eq!(fs::read_dir(base.path()).unwrap().count(), 0);
+}
+
 fn target() -> &'static str {
     match (std::env::consts::OS, std::env::consts::ARCH) {
         ("linux", "x86_64") if cfg!(target_env = "gnu") => "x86_64-unknown-linux-gnu",

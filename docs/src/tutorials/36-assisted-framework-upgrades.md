@@ -258,14 +258,23 @@ copy. This is not a sandbox; tests inherit your environment and can have
 external effects. See the [verification options and limits](../cli_reference.md#cargo-rullst-update-project-verify-1210-working-source-unreleased).
 Then `update project review --verified PATH --json` revalidates the verification
 record and shows the full dependency diff with a review digest. Use the returned
-`verified_directory`; the digest grants no apply authority. Application,
-recovery and the complete guided flow below remain unfinished.
+`verified_directory`; the digest grants no apply authority. Explicit
+`update project apply --verified PATH --approved-review SHA256` applies only
+the reviewed manifests/root lockfile. The matching `recover` command restores
+only that operation and refuses unrelated edits.
 
 The [safe-update priority](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience) proposes
 one guided flow for CLI installation, project preparation, validation and
-approved application. This is planned for a compatible opt-in **12.1.0** release
-and will be carried into v13; it is not available yet. Until it ships, follow the explicit installation
-and upgrade steps in this tutorial. File recovery
+approved application. The working-source **12.1.0** CLI now composes those
+commands through `cargo rullst update guided --to 12.1.0 --scope both --root
+ABSOLUTE_PRIVATE_DIRECTORY --project PATH`. Each approval defaults to no and
+follows its complete review. Version, directories and digests are carried
+between steps; separate prompts govern download, CLI installation, trusted
+project execution/network and original-file application. `--scope project
+--offline` uses local project preparation/verification without CLI downloads.
+See the [guided command](../cli_reference.md#cargo-rullst-update-guided-1210-working-source-unreleased).
+Native/fault and complete user-journey acceptance remain release gates; these
+unpublished changes do not imply published 12.1.0 assets. File recovery
 does not replace database backups or application acceptance tests, and updating
 the CLI alone never updates a deployed application.
 

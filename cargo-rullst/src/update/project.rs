@@ -80,6 +80,23 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
     let matches = matches
         .subcommand_matches("prepare")
         .ok_or(ProjectError::Invalid("unsupported project operation"))?;
+    let report = prepare(matches)?;
+    if matches.get_flag("json") {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        println!("Prepared source copy: {}", report["prepared_directory"]);
+        println!("Candidate: {}", report["candidate_directory"]);
+        println!(
+            "Review preparation.json and compare before/ with candidate/. Original project files were not edited."
+        );
+        println!(
+            "Preparation grants no execution or application authority. Preview checks with update project verify --prepared DIRECTORY --dry-run."
+        );
+    }
+    Ok(())
+}
+
+fn prepare(matches: &ArgMatches) -> Result<serde_json::Value, ProjectError> {
     let root = matches
         .get_one::<PathBuf>("project")
         .ok_or(ProjectError::Invalid("a project directory is required"))?
@@ -128,19 +145,25 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
     let path = stage.retain();
     let report = serde_json::json!({"schema_version":"rullst.project-preparation-result.v1",
         "prepared_directory":path, "candidate_directory":candidate, "preparation":prepared});
-    if matches.get_flag("json") {
-        println!("{}", serde_json::to_string_pretty(&report)?);
-    } else {
-        println!("Prepared source copy: {}", path.display());
-        println!("Candidate: {}", candidate.display());
-        println!(
-            "Review preparation.json and compare before/ with candidate/. Original project files were not edited."
-        );
-        println!(
-            "Preparation grants no execution or application authority. Preview checks with update project verify --prepared DIRECTORY --dry-run."
-        );
+    Ok(report)
+}
+
+pub(super) fn execute(matches: &ArgMatches) -> Result<serde_json::Value, ProjectError> {
+    let (action, matches) = matches
+        .subcommand()
+        .ok_or(ProjectError::Invalid("project operation required"))?;
+    match action {
+        "prepare" => prepare(matches),
+        "verify" => verify::execute(matches),
+        "review" => review::execute(matches),
+        "apply" => application::execute(matches, false),
+        "recover" => application::execute(matches, true),
+        _ => Err(ProjectError::Invalid("unsupported project operation")),
     }
-    Ok(())
+}
+
+pub(super) fn verification_features(matches: &ArgMatches) -> Result<Vec<String>, ProjectError> {
+    verify::features(matches)
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
