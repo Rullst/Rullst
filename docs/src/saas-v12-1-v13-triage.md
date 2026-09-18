@@ -30,6 +30,32 @@ capability behind Azure ingress. The existing framework correctly rejects
 Basic authentication without that evidence; forwarding headers alone must not
 enable it. The report retains SAAS-001–015 and adds no new framework defect.
 
+The subsequent report is on `examples/main`, pinned to
+[`1af10ed4da60a5e101c9f0dd20b2c823f38ac5ee`](https://github.com/Rullst/examples/blob/1af10ed4da60a5e101c9f0dd20b2c823f38ac5ee/saas-improvements-needed.md):
+
+- **APP-SAAS-003:** a rejected duplicate checkout consumed the application's
+  new-session limit, and the owner could not resume an already-created session.
+  The report describes a correction in the example's application orchestration,
+  not the framework limiter. The generated live flow remains contained. Before
+  enabling it, persist and reconcile owner-bound attempts, retrieve and validate
+  an open session before applying the new-session quota, distinguish completed,
+  expired and unknown states, return `Retry-After` on quota rejection and test
+  simultaneous clicks/retries. A separate abuse limit may protect all requests.
+- **APP-SAAS-004:** Chromium blocked the local POST's hosted Checkout redirect
+  under `form-action 'self'`. The maintenance SaaS generator now adds only
+  `https://checkout.stripe.com` to its own CSP, matching its explicit default
+  provider. Core's default is unchanged. Other providers need an exact reviewed
+  store/custom origin; `make:billing` explains this without overwriting existing
+  policy. Server-side URL/session ownership validation remains mandatory.
+  Browser regression covers generated policy rendered by Core with a synthetic
+  POST/303 and intercepted destinations. It is not deployed SaaS, authentication,
+  provider, payment or full generated-application acceptance.
+
+Both integration requirements carry into v13. The report's correction claims
+are attributed to the examples repository; no deployed site or live session was
+tested here. The CSP rule is described in the W3C
+[form-action contract](https://www.w3.org/TR/CSP3/#directive-form-action).
+
 ## Implementation checkpoints
 
 The maintenance candidate is

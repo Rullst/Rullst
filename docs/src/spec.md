@@ -996,6 +996,26 @@ sending.
   provider dispatch, replay claims or domain writes, including mixed real/mock
   configuration. Pricing pages disclose the demonstration boundary. Existing
   application-owned code is not rewritten by updating the framework package.
+* Hosted checkout forms require an explicit provider-specific CSP `form-action`
+  origin on the document that submits the form, including its HTTP 303 handoff.
+  The SaaS starter selects Stripe and adds only `https://checkout.stripe.com`
+  to its generated policy; Core's default remains `form-action 'self'`.
+  Changing providers requires reviewing that exact checkout origin, including
+  any merchant/custom domain. `make:billing` advises this integration without
+  overwriting an existing application's policy. This is a browser policy
+  boundary, not provider URL authentication: real flows must independently
+  validate HTTPS, exact host/port, absence of credentials and durable session,
+  customer, tenant, product and test/live bindings before emitting a redirect.
+  A real-browser POST/303 positive and disallowed-origin negative are required;
+  HTTP-client status checks alone cannot establish this behavior.
+* Before the future generated live flow creates a checkout, resolve the
+  authenticated owner's persisted attempt. Resume only a provider-retrieved
+  open session with all the bindings above; completed, expired and uncertain
+  attempts need distinct handling. A business new-session quota applies only
+  to new attempts, with a useful `Retry-After` on rejection; a separate request
+  abuse limit may still protect retrieval. Concurrent clicks must converge on
+  one durable intent/idempotency key. A disabled submit button is only feedback,
+  never the duplicate-payment or ownership boundary.
 
 ### 6.4. NFS-e Nacional Specification (`FiscalEngine`)
 * 🟢 **`[Implemented / Bounded]` DPS 1.01 Builder:** `NfseDpsV101` models an ordinary domestic-service subset, validates CPF/CNPJ/IBGE/identifier/text limits, keeps BRL values in integer cents and ISS rates in basis points, and emits an unsigned DPS in the official namespace. The legacy floating-point preview remains compatibility-only.

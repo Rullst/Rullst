@@ -507,6 +507,27 @@ Scaffolds a SaaS billing starting point with subscription models, authenticated
 billing routes, and signed-webhook integration points. Provider credentials,
 tenant policy, and deployment behavior still require application configuration.
 
+Generated billing currently accepts only development fixtures with empty or
+`mock_*` credentials; real or mixed credentials return HTTP 503 until durable
+owner/attempt binding and atomic webhook processing are integrated.
+
+Hosted checkout also requires the submitting page's CSP to allow its exact
+reviewed destination in `form-action`. The SaaS starter selects Stripe and
+generates `form-action 'self' https://checkout.stripe.com` while retaining the
+rest of Core's strict policy. `make:billing` prints this requirement and leaves
+your existing policy for review. Changing to Lemon Squeezy or another provider
+requires its exact merchant/custom checkout origin; do not allow `https:` or
+wildcard domains. Keep a single `form-action` directive in `security.csp` and
+review proxy/CDN policies too: another restrictive CSP still applies.
+
+Independently validate each returned URL (HTTPS, exact host/port, no embedded
+credentials) and the session's owner, product and test/live mode before a 303.
+Test the form submission in a real browser: a successful HTTP redirect alone
+does not prove that CSP permits navigation. Before enabling live billing,
+resolve an owner's persisted open attempt before charging the new-session
+quota; resume only a retrieved, fully bound open session. Expired, completed
+and uncertain outcomes require separate handling and reconciliation.
+
 ### `cargo rullst make:mail <Name>`
 Scaffolds a registered transactional mailable. `--welcome`, `--reset`, `--otp`
 and `--invoice` select the bounded built-in variants; without a flag the command
