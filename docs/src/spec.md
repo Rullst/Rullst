@@ -1642,6 +1642,11 @@ assistant, not a claim that compilation proves production compatibility.
   mode bits require manual updates; Windows read-only/special attributes, alternate
   streams, resource/central-access policies and
   access policies that cannot be recreated exactly fail before source writes.
+  Darwin extended ACLs are inspected through a narrowly scoped OS FFI module,
+  since they are separate from xattr names. It owns and frees the returned ACL
+  and never changes it; a native ACL regression and the exact unsafe-source
+  allowlist govern this exception. The API follows Apple's
+  [ACL entry contract](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/acl_get_entry.3.html).
   Staging installs the access policy before writing candidate contents. Keep a
   durable bounded intent record
   and before/after digests for interruption recovery. Recovery must refuse

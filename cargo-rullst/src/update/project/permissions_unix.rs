@@ -117,9 +117,13 @@ mod apple_acl {
             return Err(ProjectError::Invalid("unexpected Darwin ACL sentinel"));
         }
         let mut entry = std::ptr::null_mut();
-        // ACL_FIRST_ENTRY is zero on Darwin. Entry is only inspected for presence.
+        // SAFETY: acl is the live owned acl_get_fd allocation, entry is a valid
+        // output pointer, and zero selects its first entry on Darwin. The
+        // borrowed entry is never dereferenced or retained after freeing acl.
         let result = unsafe { acl_get_entry(acl, 0, &mut entry) };
         let error = std::io::Error::last_os_error();
+        // SAFETY: this is the allocation returned by acl_get_fd, freed once;
+        // neither acl nor the borrowed entry is used after this call.
         unsafe {
             acl_free(acl);
         }

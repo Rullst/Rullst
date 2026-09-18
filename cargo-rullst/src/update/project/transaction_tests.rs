@@ -176,6 +176,53 @@ fn a_new_lockfile_never_clobbers_a_concurrently_created_file() {
     assert_eq!(fs::read_to_string(target).unwrap(), "other writer");
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+fn darwin_extended_acl_rejects_replacement_without_changing_the_acl_or_content() {
+    let fixture = Fixture::new();
+    let path = fixture.root.join("Cargo.toml");
+    let record = snapshot::record("Cargo.toml", Some(b"before Cargo.toml"));
+    assert!(Permissions::capture(&fixture.root, &record).is_ok());
+    let owner = std::process::Command::new("id")
+        .arg("-un")
+        .output()
+        .unwrap();
+    assert!(owner.status.success());
+    let owner = String::from_utf8(owner.stdout).unwrap();
+    let grant = format!("user:{} allow read", owner.trim());
+    let result = std::process::Command::new("chmod")
+        .args(["+a", &grant])
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert!(result.status.success(), "{:?}", result);
+    let error = Permissions::capture(&fixture.root, &record).unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("extended ACL requires manual update"),
+        "{error}"
+    );
+    let retained = std::process::Command::new("ls")
+        .arg("-le")
+        .arg(&path)
+        .output()
+        .unwrap();
+    assert!(retained.status.success());
+    assert!(String::from_utf8_lossy(&retained.stdout).contains("allow read"));
+    assert_eq!(fs::read(&path).unwrap(), b"before Cargo.toml");
+    assert_eq!(fs::read_dir(&fixture.root).unwrap().count(), 2);
+    assert!(
+        std::process::Command::new("chmod")
+            .arg("-N")
+            .arg(&path)
+            .status()
+            .unwrap()
+            .success()
+    );
+    assert!(Permissions::capture(&fixture.root, &record).is_ok());
+}
+
 #[test]
 fn interruption_child_fixture() {
     let Some(base) = std::env::var_os("RULLST_TEST_TRANSACTION_ROOT") else {
