@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789521319803,
+  "lastUpdate": 1789745010649,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -8965,6 +8965,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 780,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "229d5e179c374aed3c2e82de621f3bd0d73f2012",
+          "message": "fix(release): prepare v12.1 maintenance release (#206)",
+          "timestamp": "2026-09-18T11:57:01-03:00",
+          "tree_id": "10e15833bee2f707432294be639a2b0381c105c9",
+          "url": "https://github.com/Rullst/Rullst/commit/229d5e179c374aed3c2e82de621f3bd0d73f2012"
+        },
+        "date": 1789745010118,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1834,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 346,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 685,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
