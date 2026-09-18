@@ -1491,9 +1491,10 @@ assistant, not a claim that compilation proves production compatibility.
   manifests and root lockfile are eligible. Stage all replacements before
   changing originals, preserve original permissions and replace directory
   entries without truncating hardlinks. Unix mode/owner/group and Windows
-  owner/group/DACL enter the review digest. Unix extended ACLs/xattrs and special
+  owner/group/DACL/integrity label enter the review digest, with a 1 MiB aggregate
+  serialized access-policy limit. Unix extended ACLs/xattrs and special
   mode bits require manual updates; Windows read-only/special attributes, alternate
-  streams and
+  streams, resource/central-access policies and
   access policies that cannot be recreated exactly fail before source writes.
   Staging installs the access policy before writing candidate contents. Keep a
   durable bounded intent record

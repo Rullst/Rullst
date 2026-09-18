@@ -53,12 +53,27 @@ fn capture_with_status(
 }
 
 pub(super) fn diff(before: &Path, candidate: &Path) -> Result<String, ProjectError> {
-    let before = before
-        .to_str()
-        .ok_or(ProjectError::Invalid("review paths must be UTF-8"))?;
-    let candidate = candidate
-        .to_str()
-        .ok_or(ProjectError::Invalid("review paths must be UTF-8"))?;
+    let before = before.canonicalize()?;
+    let candidate = candidate.canonicalize()?;
+    let root = before
+        .parent()
+        .and_then(Path::parent)
+        .ok_or(ProjectError::Invalid(
+            "review source has no private cache parent",
+        ))?;
+    // Git for Windows does not consistently accept verbatim \\?\ paths in
+    // no-index arguments. Use bounded relative paths within the same private
+    // cache; canonical source identity is still validated by the caller.
+    let relative = |path: &Path| -> Result<String, ProjectError> {
+        Ok(path
+            .strip_prefix(root)
+            .map_err(|_| ProjectError::Invalid("review paths must share the private cache"))?
+            .to_str()
+            .ok_or(ProjectError::Invalid("review paths must be UTF-8"))?
+            .replace('\\', "/"))
+    };
+    let before_argument = relative(&before)?;
+    let candidate_argument = relative(&candidate)?;
     let output = capture_with_status(
         "git",
         &[
@@ -73,10 +88,10 @@ pub(super) fn diff(before: &Path, candidate: &Path) -> Result<String, ProjectErr
             "--no-textconv",
             "--no-color",
             "--",
-            before,
-            candidate,
+            &before_argument,
+            &candidate_argument,
         ],
-        Path::new(before),
+        root,
         8 * 1024 * 1024,
         true,
     )?;
@@ -166,4 +181,32 @@ pub(super) fn execute(
             result = tokio::signal::ctrl_c() => { result?; Err(ProjectError::Invalid("project verification cancelled; acceptance was not recorded")) },
         }
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn diff_uses_paths_relative_to_the_private_cache_on_every_platform() {
+        let directory = tempfile::Builder::new()
+            .prefix("rullst review ")
+            .tempdir()
+            .unwrap();
+        let base = directory.path().canonicalize().unwrap();
+        let before = base.join("project-one/before");
+        let candidate = base.join("project-two/candidate");
+        std::fs::create_dir_all(&before).unwrap();
+        std::fs::create_dir_all(&candidate).unwrap();
+        std::fs::write(before.join("Cargo.toml"), "old\n").unwrap();
+        std::fs::write(candidate.join("Cargo.toml"), "new\n").unwrap();
+        let patch = diff(&before, &candidate).unwrap();
+        assert!(patch.contains("project-one/before/Cargo.toml"), "{patch}");
+        assert!(
+            patch.contains("project-two/candidate/Cargo.toml"),
+            "{patch}"
+        );
+        assert!(patch.contains("-old"));
+        assert!(patch.contains("+new"));
+        assert!(!patch.contains(base.to_str().unwrap()));
+    }
 }
