@@ -21,6 +21,24 @@ pub(super) fn command() -> Command {
 }
 
 pub(super) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
+    let report = execute(matches)?;
+    if matches.get_flag("json") {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        println!(
+            "Authenticated CLI {} for {} staged at {}",
+            report["artifact"]["version"], report["artifact"]["target"], report["directory"]
+        );
+        println!(
+            "No candidate was executed or installed. Installation must revalidate this release and its files."
+        );
+    }
+    Ok(())
+}
+
+pub(super) fn execute(
+    matches: &ArgMatches,
+) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
     if matches.get_flag("offline")
         || crate::ui::update_check::enabled_env_flag(
             std::env::var_os("CARGO_NET_OFFLINE").as_deref(),
@@ -63,18 +81,7 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>
         "artifact":artifact,"registry_selection":selection,"authority":{"artifact_verified":true,
         "registry_eligibility_checked":true,"candidate_executed":false,"cli_installation_authorized":false,
         "project_execution_authorized":false,"project_changes_authorized":false,"deployment_authorized":false}});
-    if matches.get_flag("json") {
-        println!("{}", serde_json::to_string_pretty(&report)?);
-    } else {
-        println!(
-            "Authenticated CLI {version} for {target} staged at {}",
-            directory.display()
-        );
-        println!(
-            "No candidate was executed or installed. Installation must revalidate this release and its files."
-        );
-    }
-    Ok(())
+    Ok(report)
 }
 
 fn stage_into(

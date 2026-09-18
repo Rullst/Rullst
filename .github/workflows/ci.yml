@@ -234,6 +234,10 @@ jobs:
             exit "$test_status"
           fi
 
+      - name: Exercise guided update in a real terminal
+        if: runner.os == 'Linux' && (matrix.shard == 'cli-standard' || matrix.shard == 'cli-updates')
+        run: python3 .github/cli-guided-pty-smoke.py target/debug/cargo-rullst
+
       - name: Upload failed workspace test log
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

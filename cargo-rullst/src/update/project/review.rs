@@ -17,19 +17,24 @@ pub(super) fn command() -> Command {
 }
 
 pub(super) fn run(matches: &ArgMatches) -> Result<(), ProjectError> {
+    let report = execute(matches)?;
+    if matches.get_flag("json") {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        print!("{}", report["diff"].as_str().unwrap_or(""));
+        println!("Review SHA-256: {}", report["review_sha256"]);
+        println!("Application is not authorized by this review.");
+    }
+    Ok(())
+}
+
+pub(super) fn execute(matches: &ArgMatches) -> Result<serde_json::Value, ProjectError> {
     let requested = matches
         .get_one::<PathBuf>("verified")
         .ok_or(ProjectError::Invalid("a verified directory is required"))?;
     let evidence = Evidence::load(requested)?;
     let report = serde_json::json!({"review":evidence.proposal,"review_sha256":evidence.digest,"diff":evidence.diff});
-    if matches.get_flag("json") {
-        println!("{}", serde_json::to_string_pretty(&report)?);
-    } else {
-        print!("{}", evidence.diff);
-        println!("Review SHA-256: {}", evidence.digest);
-        println!("Application is not authorized by this review.");
-    }
-    Ok(())
+    Ok(report)
 }
 
 pub(super) struct Evidence {

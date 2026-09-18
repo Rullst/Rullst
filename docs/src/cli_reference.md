@@ -267,6 +267,37 @@ report grants no future installation authority: an installer must revalidate the
 release, provenance and file contents. Published 12.1.0 asset acceptance and native
 staging checks remain release requirements.
 
+### `cargo rullst update guided` (12.1.0 working source; unreleased)
+
+```bash
+cargo rullst update guided --to 12.1.0 --scope both \
+  --root "$HOME/.local/share/rullst-cli" --project ./my-app
+cargo rullst update guided --to 12.1.0 --scope project --project ./my-app --offline
+```
+
+This interactive entry point composes the same authenticated installation and
+isolated project commands described below. `--scope cli`, `project` or `both`
+selects the work; `both` is the default and requires an absolute `--root`.
+Each complete review appears before its own default-no confirmation. The flow
+reuses the exact version, directories and review digests without shell commands
+or manual copying. It reports elapsed milliseconds per executed stage, excluding
+time spent answering prompts. Declining stops before the next operation;
+completed steps and their recovery records remain available.
+
+CLI download/review uses the network. Project verification separately asks
+whether Cargo may use the network and requires explicit consent to execute
+trusted build scripts, macros and tests. `--offline` keeps project verification
+offline and rejects scopes containing CLI installation. Feature selection and
+command deadlines use the same `--all-features`, `--features`,
+`--no-default-features` and `--timeout-seconds` options as project verification.
+The running CLI cannot acquire another major's migration rules by installing
+it: use `--scope cli --allow-major` first, then explicitly invoke the new CLI's
+project flow. PATH, databases and deployments are not changed.
+
+Piped input/output rejects before I/O; use the explicit commands with JSON and
+review digests for automation. This flow does not make unpublished 12.1.0 assets
+available or bypass release eligibility, provenance, ownership or recovery checks.
+
 ### `cargo rullst update install review` (12.1.0 working source; unreleased)
 
 ```bash

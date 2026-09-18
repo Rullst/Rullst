@@ -17,6 +17,25 @@ pub(super) fn command(name: &'static str) -> Command {
 }
 
 pub(super) fn run(matches: &ArgMatches, recovery: bool) -> Result<(), ProjectError> {
+    let report = execute(matches, recovery)?;
+    if matches.get_flag("json") {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else {
+        println!(
+            "{} {} reviewed file operations. Recovery record: {}",
+            if recovery { "Restored" } else { "Applied" },
+            report["file_operations"],
+            report["intent"]
+        );
+        println!("Database and external effects were not reversed. Deployment remains separate.");
+    }
+    Ok(())
+}
+
+pub(super) fn execute(
+    matches: &ArgMatches,
+    recovery: bool,
+) -> Result<serde_json::Value, ProjectError> {
     let path = matches
         .get_one::<PathBuf>("verified")
         .ok_or(ProjectError::Invalid("a verified directory is required"))?;
@@ -53,21 +72,7 @@ pub(super) fn run(matches: &ArgMatches, recovery: bool) -> Result<(), ProjectErr
     let report = serde_json::json!({"schema_version":"rullst.project-application.v1", "phase":if recovery { "restored" } else { "applied" },
         "source":evidence.state.prepared.source,"review_sha256":approval,"file_operations":completed,
         "intent":evidence.verified_lock.path.join("application.json"),"deployment_authorized":false,"database_changes":false});
-    if matches.get_flag("json") {
-        println!("{}", serde_json::to_string_pretty(&report)?);
-    } else {
-        println!(
-            "{} {completed} reviewed file operations. Recovery record: {}",
-            if recovery { "Restored" } else { "Applied" },
-            evidence
-                .verified_lock
-                .path
-                .join("application.json")
-                .display()
-        );
-        println!("Database and external effects were not reversed. Deployment remains separate.");
-    }
-    Ok(())
+    Ok(report)
 }
 
 fn apply(evidence: &Evidence) -> Result<usize, ProjectError> {

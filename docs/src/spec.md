@@ -1561,6 +1561,19 @@ assistant, not a claim that compilation proves production compatibility.
   Native concurrency, interruption, disk faults, executable-lock and complete
   user-journey acceptance remain release gates.
 
+  **Guided update composition:** `update guided --to EXACT_VERSION` is an
+  opt-in interactive composition of the same checked commands. An explicit
+  `cli`, `project` or `both` scope reuses the selected version, directories and
+  review digests. Show each complete review before a default-no approval;
+  distinguish authenticated download, CLI probe/replacement, trusted project
+  execution/network access and original-file application. No blanket approval
+  or noninteractive implicit yes is accepted. Declining stops before the next
+  operation, preserving any already completed step and its recovery evidence.
+  The current CLI's versioned migration rules remain authoritative: installing
+  another major does not teach this running process that major's migrations.
+  Existing structured commands remain the automation interface. Report elapsed
+  time per executed stage, excluding user input; do not promise instant upgrades.
+
   **Isolated project preparation (working source):** the opt-in
   `update project prepare` command snapshots tracked and non-ignored untracked
   files from the selected Git working directory into private caller-owned

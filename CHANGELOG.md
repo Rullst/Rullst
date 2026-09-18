@@ -192,6 +192,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   retention. First-install recovery removes only recorded entries. Native
   interruption, filesystem-fault and full user-journey acceptance remain gates.
 
+- Add opt-in `update guided` for CLI/project/both flows using the same checked
+  commands, exact paths and separate review digests. Default-no prompts separate
+  downloading, installation, trusted project execution/network and file
+  application. Reject piped approval and unsupported project major jumps;
+  report per-stage elapsed time and retain recovery instructions.
+
 - Add explicit candidate review with revalidated command logs, source/file
   digests, a bounded full dependency diff and a review digest, without executing
   or applying the candidate. Normalize and deduplicate Cargo metadata paths
