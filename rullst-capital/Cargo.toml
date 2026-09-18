@@ -53,6 +53,8 @@ tokio = { workspace = true, features = ["sync"] }
 printpdf = { workspace = true, optional = true }
 
 [dev-dependencies]
+# Local provider protocol fixtures need a server even without the public Axum adapter.
+axum = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tower = { workspace = true, features = ["util"] }
 criterion = { workspace = true, features = ["async_tokio"] }
