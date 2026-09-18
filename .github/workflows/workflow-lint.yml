@@ -91,8 +91,10 @@ jobs:
       - name: Validate native SES resolver constraint
         run: python3 .github/test-mail-smithy-constraint.py
 
-      - name: Validate stable release-note extraction
-        run: python3 .github/render-release-notes.py 12.0.0 "$RUNNER_TEMP/release-notes.md"
+      - name: Validate release notes for the current package version
+        run: |
+          release_version="$(python3 -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("rullst/Cargo.toml").read_text())["package"]["version"])')"
+          python3 .github/render-release-notes.py "$release_version" "$RUNNER_TEMP/release-notes.md"
 
       - name: Validate mutation artifact aggregation
         run: bash .github/test-summarize-mutation-artifacts.sh

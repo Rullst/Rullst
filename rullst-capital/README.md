@@ -36,7 +36,7 @@ provider sandbox.
 
 ## ✨ Supported Providers
 
-The unreleased 12.1 SaaS/`make:billing` Stripe integration persists authorized
+The 12.1 SaaS/`make:billing` Stripe integration persists authorized
 customer bindings, immutable attempts, Checkout Session IDs and atomic event
 receipts. It reconciles current provider state under database revision fencing
 and resumes existing open sessions. Configure the account, credentials, recurring
@@ -95,7 +95,7 @@ Enabling a real callback needs reviewed authentication, merchant/order/amount
 binding and authoritative reconciliation. A locally signed fixture does not
 prove that the provider emits that protocol.
 
-The unreleased v12.1 maintenance rejects legacy Paddle and Polar checkout before
+The v12.1 maintenance rejects legacy Paddle and Polar checkout before
 network dispatch: their current provider contracts cannot be represented by the
 old request shapes. Wise's email-based transfer method also fails explicitly;
 it cannot infer a recipient account, authenticated quote or UUID idempotency

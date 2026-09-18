@@ -6,7 +6,76 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### SaaS maintenance — planned 12.1.0
+Publication status is recorded in [the v12 release record](docs/src/v12.md).
+A prepared version section does not establish that its tag or crates exist.
+
+### CI tooling
+
+- Distinguish skipped jobs from measured execution in timing reports, including
+  GitHub's reversed synthetic timestamps; retain strict validation for jobs
+  that ran. Record successful hosted optimization evidence without hiding the
+  longer total elapsed time caused by substantial job-start waits.
+- Limit single-target fuzz diagnostic preparation to the exact requested target
+  with fail-closed package selection. Retain every release preflight target,
+  sanitizer setting and campaign duration; add scheduling/failure regressions.
+- Validate the entire threat evidence manifest before builds, remove repeated
+  Cargo target-listing calls, and require exact non-ignored execution instead
+  of accepting a zero-test success. Preserve all 59 unique negative tests.
+- Run only the fully materialized LMS for its eight threat mappings, using the
+  same case and application-test helper. Keep every configuration and assertion
+  in the normal eight-project matrix, including ERP release builds; exclude only
+  its redundant exact-name LMS wrapper there. Add real Rust harness and
+  scheduling regressions, and bound nested compilation to two jobs in hosted
+  threat checks. The optimized Linux run passed all 25 required runtime jobs;
+  reduced execution work did not guarantee shorter overall queue-plus-run time.
+- Add a bounded read-only job-timing reporter and negative fixtures; distinguish
+  job waits, combined execution steps and summed runner time from release evidence.
+- Add an observation-only Git impact planner with transitive normal, optional,
+  target, build and development dependency edges. Unknown inputs, changed
+  policy/dependencies, critical crates, executable documentation and ambiguous
+  history retain full verification; no check is skipped by its reports.
+- Run Rust CI, documentation and workflow-policy checks on v13 as well as main.
+  Other inherited workflow branch filters and release admission remain unchanged.
+- Add a development-only site admission path for v13 pushes, requiring a recent
+  exact-source baseline with all 25 Linux runtime jobs successful, a bounded
+  three-file presentation diff and fresh browser/documentation checks. Missing
+  or invalid evidence falls back to full runtime CI; PRs, main, manual and release
+  gates are unchanged. The first hosted positive path completed Rust CI in 43s;
+  its immediately preceding full Linux baseline took 20m57s. These observed
+  timings do not predict runtime-change or release verification duration.
+- Resolve every fuzz dependency graph with locked Cargo metadata before Clippy
+  and campaign builds. Remove the ineffective `--no-deps` preflight and add real
+  stale-lock regression evidence; retain all forty fuzz targets and durations.
+- Use pinned prebuilt mdBook releases for documentation and Pages builds while
+  retaining their book, link and real-browser checks.
+
+### Documentation
+
+- Sequence verification efficiency before a compatible opt-in 12.1.0 updater,
+  then concentrated v13 development. Require artifact verification, project
+  acceptance and bounded recovery; future-major migrations need their own rules.
+- Define v13 API documentation acceptance criteria for connected Rust reference
+  pages and tested REST journeys, using Qt's organization as inspiration.
+  These documentation and expanded-updater programmes remain planned.
+- Version landing CSS and JavaScript by content hash, including the organization
+  privacy page, with a real stale-browser-cache regression. Restore the earlier
+  examples presentation and describe Rullst as a suite for bringing ideas to life.
+- Correct the nextest scope: coverage uses nextest, while ordinary CI's existing
+  eight shards still use Cargo's test runner.
+
+## [12.1.0] - 2026-09-18
+
+This compatible maintenance release corrects billing contracts, generated
+application behavior and CLI update/recovery flows. Existing applications must
+review the [12.1 migration guide](docs/src/migration-v12-1.md); updating packages
+does not rewrite their controllers, migrate databases or deploy them.
+
+Stripe test-mode acceptance covers hosted Checkout, signed events and isolated
+generated SQLite persistence. Other provider adapters retain the explicit
+capabilities and account-acceptance requirements in the Capital provider matrix.
+Privacy, age assurance and untrusted exercise execution remain v13 roadmap work.
+
+### SaaS maintenance
 
 - Add the exact Stripe hosted-checkout origin to the SaaS starter's CSP so its
   POST/303 handoff works in Chromium. Preserve Core's strict default; document
@@ -94,7 +163,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   backend-exclusive and no-driver compilation. Exercise enums in each isolated
   consumer; retain the macro crate's default expansion for the 12.0 runtime.
 
-### Omni icons and Android signing — planned 12.1.0
+### Omni icons and Android signing
 
 - Embed the existing Rullst logo as the default square icon source and regenerate
   platform icons after mobile initialization. Refuse to overwrite an existing
@@ -109,7 +178,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Fix Windows strict-lint compilation and macOS root-alias handling in upgrade
   backup creation/restoration, preserving rejection of descendant symlinks.
 
-### Mobile Nexus and Portfolio — planned 12.1.0 and v13
+### Mobile Nexus and Portfolio
 
 - Fix the Nexus mobile drawer trapping navigation: provide a close button,
   backdrop dismissal, Escape/link dismissal, focus containment/return and
@@ -122,7 +191,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   generated-product shards; retain the full existing generated-project matrix.
   Document removal of the showcase's temporary Nexus HTML-rewriting middleware.
 
-### Studio browser composition — planned 12.1.0
+### Studio browser composition
 
 - Serve the embedded CSS and request-stream client from raw and `/studio`-nested
   data-browser routers, fixing the unstyled embedded Portfolio/LMS shell.
@@ -134,7 +203,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   removal of application-level workaround routes before upgrading existing
   showcases; dependency updates do not rewrite generated source or redeploy it.
 
-### CLI update discovery
+### CLI updates and recovery
 
 - Add explicit local native-artifact verification through certificate-bound
   GitHub attestation policy and bounded manifest/binary digest checks. It never
@@ -148,8 +217,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   with version smoke checks and bounded source/platform/digest inventories.
   Ordinary CI candidates carry no release tag. The admitted tag pipeline
   attests the files in a separate job without executing source and includes
-  them in GitHub release assets. Native/release acceptance and client-side
-  verification, installation and recovery remain required.
+  them in GitHub release assets. Candidate binaries cannot substitute for the
+  admitted release's provenance, verification and installation policy.
 
 - Pin managed upgrade requirements to the exact selected release and use
   `--locked` for the final Cargo check, preventing silent patch/minor drift.
@@ -181,7 +250,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   target and run locked workspace checks/tests in a fresh private copy, with
   bounded commands/logs and supervised cancellation. Reject stale inputs,
   failed tests and unexpected source writes; reports grant no apply authority.
-  Final native and application/recovery fault acceptance remain unfinished.
+  Native and application/recovery fault checks remain mandatory release gates.
 
 - Add explicit authenticated native CLI staging with a fresh non-yanked release
   selection, fixed official URLs, bounded HTTPS redirects and downloads,
@@ -219,7 +288,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   manifests/root lockfile, with evidence/access-policy revalidation, shared
   source locks, staged directory-entry replacements and a persisted intent.
   Refuse divergent edits, avoid clobbering newly created lockfiles, and preserve
-  unrelated files and hardlink aliases. Platform/fault acceptance remains open;
+  unrelated files and hardlink aliases. Platform/fault acceptance is mandatory;
   unsupported extended metadata requires manual handling.
 
 - Preflight the complete legacy upgrade backup before restoring any original.
@@ -241,49 +310,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Bound registry responses and total network/body duration, deny redirects and
   select only newer non-yanked stable versions in the current major. Add offline
   selection and loopback HTTP regressions, including a continuously trickling
-  response. This does not install a CLI, run project acceptance tests or complete
-  the planned guided 12.1.0 update workflow.
+  response. Advisory discovery remains separate from the explicit guided
+  installation and project-acceptance commands above.
 
 ### CI tooling
 
-- Distinguish skipped jobs from measured execution in timing reports, including
-  GitHub's reversed synthetic timestamps; retain strict validation for jobs
-  that ran. Record successful hosted optimization evidence without hiding the
-  longer total elapsed time caused by substantial job-start waits.
-- Limit single-target fuzz diagnostic preparation to the exact requested target
+- Reuse version-pinned prebuilt mdBook tooling in documentation and Pages jobs;
+  retain the book, local-link, static-site and browser assertions.
+- Resolve all ten locked fuzz dependency graphs before Clippy and campaign
+  preparation. Reject stale locks early instead of relying on the ineffective
+  metadata `--no-deps` check; retain the complete forty-target inventory.
+- Limit single-target fuzz diagnostic preparation to its exact requested target
   with fail-closed package selection. Retain every release preflight target,
   sanitizer setting and campaign duration; add scheduling/failure regressions.
-- Validate the entire threat evidence manifest before builds, remove repeated
-  Cargo target-listing calls, and require exact non-ignored execution instead
-  of accepting a zero-test success. Preserve all 59 unique negative tests.
-- Run only the fully materialized LMS for its eight threat mappings, using the
-  same case and application-test helper. Keep every configuration and assertion
-  in the normal eight-project matrix, including ERP release builds; exclude only
-  its redundant exact-name LMS wrapper there. Add real Rust harness and
-  scheduling regressions, and bound nested compilation to two jobs in hosted
-  threat checks. The optimized Linux run passed all 25 required runtime jobs;
-  reduced execution work did not guarantee shorter overall queue-plus-run time.
-- Add a bounded read-only job-timing reporter and negative fixtures; distinguish
-  job waits, combined execution steps and summed runner time from release evidence.
-- Add an observation-only Git impact planner with transitive normal, optional,
-  target, build and development dependency edges. Unknown inputs, changed
-  policy/dependencies, critical crates, executable documentation and ambiguous
-  history retain full verification; no check is skipped by its reports.
-- Run Rust CI, documentation and workflow-policy checks on v13 as well as main.
-  Other inherited workflow branch filters and release admission remain unchanged.
-- Add a development-only site admission path for v13 pushes, requiring a recent
-  exact-source baseline with all 25 Linux runtime jobs successful, a bounded
-  three-file presentation diff and fresh browser/documentation checks. Missing
-  or invalid evidence falls back to full runtime CI; PRs, main, manual and release
-  gates are unchanged. The first hosted positive path completed Rust CI in 43s;
-  its immediately preceding full Linux baseline took 20m57s. These observed
-  timings do not predict runtime-change or release verification duration.
-- Resolve every fuzz dependency graph with locked Cargo metadata before Clippy
-  and campaign builds. Remove the ineffective `--no-deps` preflight and add real
-  stale-lock regression evidence; retain all forty fuzz targets and durations.
-- Use pinned prebuilt mdBook releases for documentation and Pages builds while
-  retaining their book, link and real-browser checks.
-
+- Validate the complete threat manifest before builds, remove repeated Cargo
+  target listings, and require exact non-ignored execution. Preserve all 59
+  unique tests and every threat mapping.
+- Materialize only the LMS for its eight threat mappings with the original
+  application-test helper. Keep all eight normal project configurations,
+  including ERP release builds; exclude only the redundant exact-name LMS
+  wrapper there. Bound hosted nested compilation to two jobs.
+- Add a read-only CI timing reporter with provenance/inventory validation.
+  Skipped jobs stay visible but have no execution duration; malformed or reversed
+  timing in executed jobs still fails. Measurements are not release admission,
+  billing estimates or proof of security.
 ### Dependency maintenance
 
 - Integrate the reviewed grouped Rust updates, zstd 0.14 and jsonschema 0.56
@@ -328,17 +378,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   illustrated cards, finite animations and reduced-motion support.
 - Make safe verification-efficiency improvements a shared v12 maintenance and
   v13 priority, with explicit inventory, cache-trust and release-evidence gates.
-- Sequence verification efficiency before a compatible opt-in 12.1.0 updater,
-  then concentrated v13 development. Require artifact verification, project
-  acceptance and bounded recovery; future-major migrations need their own rules.
-- Define v13 API documentation acceptance criteria for connected Rust reference
-  pages and tested REST journeys, using Qt's organization as inspiration.
-  These documentation and expanded-updater programmes remain planned.
-- Version landing CSS and JavaScript by content hash, including the organization
-  privacy page, with a real stale-browser-cache regression. Restore the earlier
-  examples presentation and describe Rullst as a suite for bringing ideas to life.
-- Correct the nextest scope: coverage uses nextest, while ordinary CI's existing
-  eight shards still use Cargo's test runner.
 
 ## [12.0.0] - 2026-09-15 🚀
 

@@ -14,6 +14,15 @@ and Checkout Sessions. The generated integration uses platform accounts, not
 Stripe Connect impersonation. Configure the webhook endpoint with Stripe API
 version `2025-03-31.basil` (see the capital adapter's pinned version).
 
+Before enabling `/billing/portal`, save an active default customer-portal
+configuration in the Stripe account for the selected test/live mode. Review its
+allowed plan changes, cancellation and payment-method settings; API credentials
+also need permission to create portal sessions. The generated route authorizes
+the persisted customer ID and uses the account's default configuration, as
+described in the [Stripe session API](https://docs.stripe.com/api/customer_portal/sessions/create).
+A working Checkout does not establish that the portal is configured. Test its
+authenticated handoff separately before offering subscription management.
+
 Subscribe to `checkout.session.completed`, `checkout.session.expired`,
 `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`,
 `customer.subscription.created`, `customer.subscription.updated`,

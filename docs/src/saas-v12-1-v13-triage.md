@@ -4,7 +4,8 @@
 source. Stripe test-mode API, hosted Checkout and CLI-relayed signed events
 passed at `0f15d70a`; generated SQLite controller/webhook persistence passed at
 `370a4170`. Final candidate CI remains in progress after correcting a
-test-only dependency in the no-default build. Other provider accounts,
+test-only dependency in the no-default build; SemVer, coverage and CodeQL passed.
+Other provider accounts,
 publication and candidate deployment remain unverified.**
 
 The input is the two reports from `Rullst/examples`, branch
@@ -96,6 +97,18 @@ transaction-bound signed subscription events and current-state reconciliation.
 Cancellation and pause use the selected API and validate the returned change.
 Local Capital tests and strict all-target Clippy passed; protocol fixtures are
 not evidence of an approved Paddle account or a completed sandbox payment.
+
+The Paddle source at `e7f63a2e` passed
+[SemVer for all sixteen packages](https://github.com/Rullst/Rullst/actions/runs/35349062411),
+[line and branch coverage workflows](https://github.com/Rullst/Rullst/actions/runs/35349065882)
+and [CodeQL](https://github.com/Rullst/Rullst/actions/runs/35349069091), with no
+open branch alerts observed. Line coverage reached 90.1240% repository-wide
+(86,711/96,213) and 90.6740% for framework libraries (62,838/69,301).
+The test-server dev-dependency repair at `0f15d70a` passed 154 no-default-feature
+Capital tests and strict Clippy; the
+[full candidate Rust matrix](https://github.com/Rullst/Rullst/actions/runs/35352552936)
+remains the separate cross-platform gate. Subsequent release-preparation changes
+to documentation and workflow validation still require exact-main admission.
 
 Reports on `examples/main` at `6c3e371cc48eae9ba0311b42155f2cf3ff8b0cb4`
 retain the same framework findings and add APP-SAAS-005–011, covering application
