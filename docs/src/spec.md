@@ -1026,6 +1026,26 @@ sending.
   provider dispatch, replay claims or domain writes, including mixed real/mock
   configuration. Pricing pages disclose the demonstration boundary. Existing
   application-owned code is not rewritten by updating the framework package.
+* Hosted checkout forms require an explicit provider-specific CSP `form-action`
+  origin on the document that submits the form, including its HTTP 303 handoff.
+  The SaaS starter selects Stripe and adds only `https://checkout.stripe.com`
+  to its generated policy; Core's default remains `form-action 'self'`.
+  Changing providers requires reviewing that exact checkout origin, including
+  any merchant/custom domain. `make:billing` advises this integration without
+  overwriting an existing application's policy. This is a browser policy
+  boundary, not provider URL authentication: real flows must independently
+  validate HTTPS, exact host/port, absence of credentials and durable session,
+  customer, tenant, product and test/live bindings before emitting a redirect.
+  A real-browser POST/303 positive and disallowed-origin negative are required;
+  HTTP-client status checks alone cannot establish this behavior.
+* Before the future generated live flow creates a checkout, resolve the
+  authenticated owner's persisted attempt. Resume only a provider-retrieved
+  open session with all the bindings above; completed, expired and uncertain
+  attempts need distinct handling. A business new-session quota applies only
+  to new attempts, with a useful `Retry-After` on rejection; a separate request
+  abuse limit may still protect retrieval. Concurrent clicks must converge on
+  one durable intent/idempotency key. A disabled submit button is only feedback,
+  never the duplicate-payment or ownership boundary.
 
 ### 6.4. NFS-e Nacional Specification (`FiscalEngine`)
 * 🟢 **`[Implemented / Bounded]` DPS 1.01 Builder:** `NfseDpsV101` models an ordinary domestic-service subset, validates CPF/CNPJ/IBGE/identifier/text limits, keeps BRL values in integer cents and ISS rates in basis points, and emits an unsigned DPS in the official namespace. The legacy floating-point preview remains compatibility-only.
@@ -1496,6 +1516,33 @@ assistant, not a claim that compilation proves production compatibility.
   that later stages never reuse. Success records source/version/target and grants no execution,
   installation or project authority. Offline mode rejects before I/O; install
   must independently revalidate eligibility, provenance and bytes.
+
+  **Managed CLI installation (preview implemented; apply/recovery unfinished):**
+  `update install review` authenticates a fresh eligible local candidate and
+  previews only a new/empty private destination, a root/source-bound digest,
+  proposed version smoke checks and the pinned Cargo source fallback. It does
+  not create the installation directory, execute binaries or install files.
+  The remaining application/recovery design uses an explicit installation
+  root separate from the advisory cache and existing package-manager roots.
+  First installation accepts only a new/empty private caller-owned directory;
+  later updates require the updater's strict receipt and exact installed hashes.
+  Never take over unknown binaries or Cargo/Homebrew/system-manager records;
+  show the pinned manager/source-install command when that owner must update it.
+  A preview authenticates an exact eligible native candidate and binds its
+  source/files, destination and prior installed state to a review digest. Apply
+  requires explicit approval, rechecks fresh registry/provenance/bytes, holds a
+  destination-local lock and copies candidates to private staging on that
+  filesystem before execution or replacement. Approved installation may run only
+  the declared bounded version smoke checks. Preserve authenticated prior bytes
+  and a bounded intent before replacing either entry point; per-file operations
+  are not an atomic two-binary swap. Windows in-use failures must leave a known
+  state with actionable recovery, never a success report over a failed copy.
+  Explicit recovery accepts only this operation's before/after states, rejects
+  foreign edits and revalidates the selected known-good predecessor; it is not
+  arbitrary or silent downgrade authority. PATH/shell configuration, source
+  compilation, project migration and deployment remain separate consent scopes.
+  Native concurrency, interruption, disk faults, executable-lock and complete
+  user-journey acceptance are required before marking this design implemented.
 
   **Isolated project preparation (working source):** the opt-in
   `update project prepare` command snapshots tracked and non-ignored untracked

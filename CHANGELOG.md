@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### SaaS maintenance — planned 12.1.0
 
+- Add the exact Stripe hosted-checkout origin to the SaaS starter's CSP so its
+  POST/303 handoff works in Chromium. Preserve Core's strict default; document
+  explicit provider changes, server-side URL binding and open-attempt recovery.
+  `make:billing` reports the policy requirement without rewriting existing CSP.
+  Add an intercepted Chromium policy regression without provider credentials.
 - Allow ordinary curl, Wget, Python and Go clients through the default WAF
   User-Agent policy, fixing deployment health probes (RULLST-003). Preserve
   configurable crawler filtering, payload inspection, CSRF and secure headers.
@@ -172,6 +177,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   attestation before executable retrieval, and exact size/hash checks. Failed
   private stages are discarded. Staging executes and installs nothing; native
   and published-release acceptance remain required.
+
+- Add authenticated installation preview for a new private destination, binding
+  exact source/files/root to a review digest and showing version probes and a
+  pinned Cargo fallback without executing either. Reject existing files and
+  unsafe ownership/permissions. CLI installation/recovery remains unfinished.
 
 - Add explicit candidate review with revalidated command logs, source/file
   digests, a bounded full dependency diff and a review digest, without executing

@@ -185,3 +185,54 @@ fn http_failures_and_oversized_content_length_never_create_assets() {
         assert!(!path.exists());
     }
 }
+
+#[test]
+fn a_trickling_body_cannot_reset_the_total_download_deadline() {
+    use std::{
+        io::{Read, Write},
+        net::TcpListener,
+        time::Duration,
+    };
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("asset");
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = std::thread::spawn(move || {
+        let (mut socket, _) = listener.accept().unwrap();
+        socket
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        let mut request = [0u8; 4096];
+        assert!(socket.read(&mut request).unwrap() > 0);
+        socket
+            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\nConnection: close\r\n\r\n")
+            .unwrap();
+        for _ in 0..100 {
+            if socket.write_all(b"x").is_err() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    });
+    let client = reqwest::blocking::Client::builder()
+        .no_proxy()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .unwrap();
+    assert!(
+        fetch_with_deadline(
+            &client,
+            &format!("http://{address}/asset"),
+            100,
+            &path,
+            Duration::from_millis(500)
+        )
+        .is_err()
+    );
+    server.join().unwrap();
+    let bytes = fs::metadata(path).unwrap().len();
+    assert!(
+        bytes > 0 && bytes < 100,
+        "body must start but cannot complete: {bytes}"
+    );
+}

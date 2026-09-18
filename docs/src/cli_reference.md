@@ -267,6 +267,26 @@ report grants no future installation authority: an installer must revalidate the
 release, provenance and file contents. Published 12.1.0 asset acceptance and native
 staging checks remain release requirements.
 
+### `cargo rullst update install review` (12.1.0 working source; unreleased)
+
+```bash
+cargo rullst update install review --to 12.1.0 --directory STAGED_FILES \
+  --root "$HOME/.local/share/rullst-cli" --json
+```
+
+The absolute installation root must be new or empty; its parent must already
+exist and pass owner/ancestor checks. An existing destination must be private
+(`0700` on Unix or a protected caller DACL on Windows). Existing files and
+package-manager installations are refused. No permissions are repaired.
+
+Review fetches fresh registry eligibility, verifies official provenance and
+exact local binary hashes, then rechecks the destination. JSON binds source,
+version, native target and destination to `review_sha256`, lists the future
+version probes and supplies an exact Cargo source-install command for separately
+reviewed manager use. Offline mode rejects before I/O. The destination is not
+created and neither the probes nor fallback command run. Installation application
+and known-good CLI recovery are still unfinished; this digest grants no writes.
+
 ### `cargo rullst update project prepare` (12.1.0 working source; unreleased)
 
 Prepare dependency edits in a private source copy for review:
@@ -486,6 +506,27 @@ fallible typed migration registry.
 Scaffolds a SaaS billing starting point with subscription models, authenticated
 billing routes, and signed-webhook integration points. Provider credentials,
 tenant policy, and deployment behavior still require application configuration.
+
+Generated billing currently accepts only development fixtures with empty or
+`mock_*` credentials; real or mixed credentials return HTTP 503 until durable
+owner/attempt binding and atomic webhook processing are integrated.
+
+Hosted checkout also requires the submitting page's CSP to allow its exact
+reviewed destination in `form-action`. The SaaS starter selects Stripe and
+generates `form-action 'self' https://checkout.stripe.com` while retaining the
+rest of Core's strict policy. `make:billing` prints this requirement and leaves
+your existing policy for review. Changing to Lemon Squeezy or another provider
+requires its exact merchant/custom checkout origin; do not allow `https:` or
+wildcard domains. Keep a single `form-action` directive in `security.csp` and
+review proxy/CDN policies too: another restrictive CSP still applies.
+
+Independently validate each returned URL (HTTPS, exact host/port, no embedded
+credentials) and the session's owner, product and test/live mode before a 303.
+Test the form submission in a real browser: a successful HTTP redirect alone
+does not prove that CSP permits navigation. Before enabling live billing,
+resolve an owner's persisted open attempt before charging the new-session
+quota; resume only a retrieved, fully bound open session. Expired, completed
+and uncertain outcomes require separate handling and reconciliation.
 
 ### `cargo rullst make:mail <Name>`
 Scaffolds a registered transactional mailable. `--welcome`, `--reset`, `--otp`

@@ -144,8 +144,21 @@ fn fetch(
     limit: u64,
     path: &Path,
 ) -> Result<(), ArtifactError> {
+    fetch_with_deadline(client, url, limit, path, Duration::from_secs(120))
+}
+
+fn fetch_with_deadline(
+    client: &reqwest::blocking::Client,
+    url: &str,
+    limit: u64,
+    path: &Path,
+    timeout: Duration,
+) -> Result<(), ArtifactError> {
+    // The blocking client's timeout applies to individual operations. A request
+    // timeout also installs the async body's total deadline, including slow reads.
     let response = client
         .get(url)
+        .timeout(timeout)
         .send()
         .map_err(|error| ArtifactError::Http(error.without_url()))?;
     if response.status() != reqwest::StatusCode::OK

@@ -173,3 +173,31 @@ fn staging_offline_rejection_precedes_registry_network_and_cache_creation() {
         assert!(!missing.exists());
     }
 }
+
+#[test]
+fn installation_review_offline_rejection_does_not_create_or_inspect_destinations() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path().join("not-created");
+    let output = Command::new(env!("CARGO_BIN_EXE_cargo-rullst"))
+        .args([
+            "update",
+            "install",
+            "review",
+            "--to",
+            env!("CARGO_PKG_VERSION"),
+            "--directory",
+        ])
+        .arg(directory.path().join("missing-artifacts"))
+        .arg("--root")
+        .arg(&root)
+        .args(["--offline", "--json"])
+        .env("RULLST_DISABLE_UPDATE_CHECK", "true")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("offline mode forbids authenticated installation review")
+    );
+    assert!(!root.exists());
+}

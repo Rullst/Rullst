@@ -88,6 +88,14 @@ mod platform {
         ))
     }
 
+    pub(super) fn installation_root(
+        _path: &std::path::Path,
+    ) -> Result<std::path::PathBuf, CacheError> {
+        Err(CacheError::Invalid(
+            "private CLI installation is unavailable on this platform",
+        ))
+    }
+
     pub(super) fn source_lock(_name: &str) -> Result<std::fs::File, CacheError> {
         Err(CacheError::Invalid(
             "private source locking is unavailable on this platform",
@@ -232,4 +240,8 @@ fn project_path(
 #[cfg(windows)]
 pub(super) fn private_file_descriptor() -> Result<String, CacheError> {
     platform::private_file_descriptor()
+}
+
+pub(super) fn installation_root(path: &std::path::Path) -> Result<std::path::PathBuf, CacheError> {
+    platform::installation_root(path)
 }

@@ -149,6 +149,12 @@ pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Er
     );
     println!("👉 Lemon Squeezy also requires BILLING_STORE_ID and numeric variant IDs.");
     println!("👉 Set BILLING_ALLOWED_PLAN_IDS to a comma-separated server-owned allowlist.");
+    println!(
+        "👉 Review CSP form-action on the pricing page: Stripe requires https://checkout.stripe.com; other providers require their exact reviewed checkout origin."
+    );
+    println!(
+        "👉 Validate returned checkout URLs on the server and test the POST/303 handoff in a real browser. Existing security policy is not rewritten."
+    );
     Ok(())
 }
 
