@@ -96,6 +96,12 @@ mod platform {
         ))
     }
 
+    pub(super) fn installation_file(_path: &std::path::Path) -> Result<(), CacheError> {
+        Err(CacheError::Invalid(
+            "private CLI installation is unavailable on this platform",
+        ))
+    }
+
     pub(super) fn source_lock(_name: &str) -> Result<std::fs::File, CacheError> {
         Err(CacheError::Invalid(
             "private source locking is unavailable on this platform",
@@ -117,6 +123,10 @@ pub(super) fn verification_manifest(body: &[u8]) -> Result<tempfile::NamedTempFi
         return Err(CacheError::Invalid("invalid verification manifest size"));
     }
     platform::verification_manifest(body)
+}
+
+pub(super) fn installation_file(path: &std::path::Path) -> Result<(), CacheError> {
+    platform::installation_file(path)
 }
 
 pub(super) struct PrivateWorkspace {

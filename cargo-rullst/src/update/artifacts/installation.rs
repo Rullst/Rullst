@@ -3,15 +3,15 @@ use super::{ArtifactError, files, manifest::Manifest, native_target, provenance}
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use semver::Version;
 use sha2::{Digest, Sha256};
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
+
+#[path = "installation/state.rs"]
+mod state;
 
 pub(super) fn command() -> Command {
     Command::new("install").about("Review an authenticated native CLI installation")
         .subcommand_required(true).arg_required_else_help(true)
-        .subcommand(Command::new("review").about("Preview a new private installation without executing candidates or editing the destination")
+        .subcommand(Command::new("review").about("Preview a new or receipt-owned private installation without executing candidates or editing the destination")
             .arg(Arg::new("directory").long("directory").required(true).value_name("ARTIFACTS").value_parser(clap::value_parser!(PathBuf)))
             .arg(Arg::new("root").long("root").required(true).value_name("ABSOLUTE_INSTALLATION_DIRECTORY").value_parser(clap::value_parser!(PathBuf)))
             .arg(Arg::new("to").long("to").required(true).value_name("EXACT_VERSION"))
@@ -38,13 +38,6 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>
     let exact = matches
         .get_one::<String>("to")
         .ok_or(ArtifactError::Invalid("exact version required"))?;
-    let installed = Version::parse(env!("CARGO_PKG_VERSION"))?;
-    let policy = super::super::catalog::Selection::new(
-        &installed,
-        Some(exact),
-        matches.get_flag("allow-major"),
-        matches.get_flag("prerelease"),
-    )?;
     let version = Version::parse(exact)?;
     let target = native_target()?;
     let directory = matches
@@ -53,7 +46,22 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>
     let requested = matches
         .get_one::<PathBuf>("root")
         .ok_or(ArtifactError::Invalid("installation root required"))?;
-    let root = new_destination(requested)?;
+    let root = super::super::cache::installation_root(requested)?;
+    let prior = state::inspect(&root, target)?;
+    let installed = match &prior {
+        Some(previous) => previous.version()?,
+        None => Version::parse(env!("CARGO_PKG_VERSION"))?,
+    };
+    let policy = super::super::catalog::Selection::new(
+        &installed,
+        Some(exact),
+        matches.get_flag("allow-major"),
+        matches.get_flag("prerelease"),
+    )?;
+    if let Some(previous) = &prior {
+        let snapshot = super::super::cache::verification_manifest(&previous.raw_manifest)?;
+        provenance::verify(snapshot.path(), &previous.manifest)?;
+    }
     let registry = super::super::fetch_catalog()?;
     super::super::catalog::resolve(&registry, &installed, &policy)?;
     files::directory(directory)?;
@@ -66,12 +74,17 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>
     provenance::verify(private.path(), &artifact)?;
     artifact.verify_files(directory)?;
     // Destination state is rechecked after the network/verifier work.
-    if new_destination(requested)? != root {
+    if super::super::cache::installation_root(requested)? != root
+        || state::inspect(&root, target)?
+            .as_ref()
+            .map(state::Installed::summary)
+            != prior.as_ref().map(state::Installed::summary)
+    {
         return Err(
             ArtifactError::Invalid("installation destination changed during review").into(),
         );
     }
-    let report = review(&root, &artifact)?;
+    let report = review(&root, &artifact, prior.as_ref())?;
     if matches.get_flag("json") {
         println!("{}", serde_json::to_string_pretty(&report)?);
     } else {
@@ -90,24 +103,18 @@ pub(super) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>
     Ok(())
 }
 
-fn new_destination(requested: &Path) -> Result<PathBuf, ArtifactError> {
-    let root = super::super::cache::installation_root(requested)?;
-    if root.try_exists()? && fs::read_dir(&root)?.next().transpose()?.is_some() {
-        return Err(ArtifactError::Invalid(
-            "destination is not empty; existing binaries and package-manager installations cannot be taken over",
-        ));
-    }
-    Ok(root)
-}
-
-fn review(root: &Path, artifact: &Manifest) -> Result<serde_json::Value, ArtifactError> {
+fn review(
+    root: &Path,
+    artifact: &Manifest,
+    prior: Option<&state::Installed>,
+) -> Result<serde_json::Value, ArtifactError> {
     let suffix = if artifact.target.ends_with("windows-msvc") {
         ".exe"
     } else {
         ""
     };
     let plan = serde_json::json!({"schema_version":"rullst.cli-installation-review.v1", "root":root,
-        "artifact":artifact,"prior_installation":null,"proposed_version_checks":[
+        "artifact":artifact,"prior_installation":prior.map(state::Installed::summary),"proposed_version_checks":[
             [format!("cargo-rullst{suffix}"),"--version"],[format!("rullst{suffix}"),"--version"]],
         "source_fallback":{"program":"cargo","args":["install","cargo-rullst","--version",format!("={}",artifact.version),"--locked"],"requires_source_execution_consent":true},
         "authority":{"artifact_verified":true,"registry_eligibility_checked":true,"candidate_executed":false,
@@ -119,19 +126,29 @@ fn review(root: &Path, artifact: &Manifest) -> Result<serde_json::Value, Artifac
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+
+    fn new_destination(path: &Path) -> Result<PathBuf, ArtifactError> {
+        let root = super::super::super::cache::installation_root(path)?;
+        if state::inspect(&root, native_target()?)?.is_some() {
+            return Err(ArtifactError::Invalid("expected new destination"));
+        }
+        Ok(root)
+    }
+
     #[test]
     fn proposed_binary_execution_and_source_fallback_grant_no_write_authority() {
         let manifest = super::super::tests::fixture_manifest();
         let directory = tempfile::tempdir().unwrap();
-        let report = review(directory.path(), &manifest).unwrap();
-        assert_eq!(report, review(directory.path(), &manifest).unwrap());
+        let report = review(directory.path(), &manifest, None).unwrap();
+        assert_eq!(report, review(directory.path(), &manifest, None).unwrap());
         assert_eq!(
             report["review"]["authority"]["cli_installation_authorized"],
             false
         );
         assert_eq!(report["review"]["authority"]["candidate_executed"], false);
         assert_eq!(report["review"]["source_fallback"]["args"][3], "=12.1.0");
-        let changed = review(&directory.path().join("another"), &manifest).unwrap();
+        let changed = review(&directory.path().join("another"), &manifest, None).unwrap();
         assert_ne!(report["review_sha256"], changed["review_sha256"]);
     }
     #[cfg(unix)]

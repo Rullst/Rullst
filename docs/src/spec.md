@@ -1519,9 +1519,17 @@ assistant, not a claim that compilation proves production compatibility.
 
   **Managed CLI installation (preview implemented; apply/recovery unfinished):**
   `update install review` authenticates a fresh eligible local candidate and
-  previews only a new/empty private destination, a root/source-bound digest,
+  previews a new/empty or receipt-owned private destination, a root/source-bound digest,
   proposed version smoke checks and the pinned Cargo source fallback. It does
   not create the installation directory, execute binaries or install files.
+  An existing destination must contain exactly the two private single-link
+  executables and a bounded `rullst.cli-installation.v1` receipt binding the
+  canonical root to the original attested manifest bytes. Their hashes and the
+  prior manifest's provenance are revalidated; unknown/package-manager entries
+  and divergent files reject. Selection uses that installed version, so a stale
+  CLI cannot authorize its downgrade. The review digest binds the exact prior
+  receipt and rechecks local state after network verification. This read-only
+  contract does not yet create receipts or implement replacement/recovery.
   The remaining application/recovery design uses an explicit installation
   root separate from the advisory cache and existing package-manager roots.
   First installation accepts only a new/empty private caller-owned directory;
