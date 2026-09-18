@@ -385,8 +385,9 @@ is supported. Keep both private source copies and `application.json` until finis
 
 Replacement is atomic per file, not for the whole workspace. Partial failures
 retain recovery evidence and report progress. Unix mode/owner/group and Windows
-owner/group/DACL are bound to the review. Unix extended ACLs/xattrs and special
-mode bits, Windows read-only/special attributes, alternate streams and policies that cannot be
+owner/group/DACL/integrity label are bound to the review (1 MiB total policy budget). Unix extended ACLs/xattrs and special
+mode bits, Windows read-only/special attributes, alternate streams, resource/central-access
+policies and policies that cannot be
 recreated exactly require manual handling. Other updater cache configurations and
 filesystem aliases do not share the lock. Forced termination during staging may
 leave sibling `.rullst-update-stage-*` files. Timestamp and Windows audit-policy preservation are not implemented;

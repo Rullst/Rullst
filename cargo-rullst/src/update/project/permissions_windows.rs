@@ -17,8 +17,10 @@ use windows_sys::Win32::{
     Storage::FileSystem::*,
 };
 
-const POLICY: OBJECT_SECURITY_INFORMATION =
-    OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION;
+const POLICY: OBJECT_SECURITY_INFORMATION = OWNER_SECURITY_INFORMATION
+    | GROUP_SECURITY_INFORMATION
+    | DACL_SECURITY_INFORMATION
+    | LABEL_SECURITY_INFORMATION;
 struct Allocation(*mut c_void);
 impl Drop for Allocation {
     fn drop(&mut self) {
@@ -47,10 +49,7 @@ pub(super) fn capture(path: Option<&Path>) -> Result<Permissions, ProjectError> 
         }
         (flags & FILE_ATTRIBUTE_READONLY != 0, describe(&file)?)
     } else {
-        (
-            false,
-            super::super::super::super::cache::private_file_descriptor()?,
-        )
+        (false, default_descriptor()?)
     };
     Ok(Permissions {
         readonly,
@@ -58,6 +57,18 @@ pub(super) fn capture(path: Option<&Path>) -> Result<Permissions, ProjectError> 
         unix_owner: None,
         windows_descriptor: Some(descriptor),
     })
+}
+
+fn default_descriptor() -> Result<String, ProjectError> {
+    // A missing root lockfile has no original policy. Canonicalize the private
+    // creation policy through an empty OS-created prototype, including the
+    // process integrity label, without creating anything in the source tree.
+    let workspace = crate::update::cache::project_workspace()?;
+    let descriptor = crate::update::cache::private_file_descriptor()?;
+    let prototype = tempfile::Builder::new()
+        .prefix("policy-")
+        .make_in(workspace.path(), |path| create(path, &descriptor))?;
+    describe(prototype.as_file())
 }
 
 fn describe(file: &fs::File) -> Result<String, ProjectError> {
@@ -80,6 +91,7 @@ fn describe(file: &fs::File) -> Result<String, ProjectError> {
         return Err(std::io::Error::from_raw_os_error(result as i32).into());
     }
     let descriptor = Allocation(descriptor);
+    reject_resource_policy(file)?;
     let mut text = ptr::null_mut();
     let mut length = 0;
     // SAFETY: descriptor remains alive; Win32 allocates the UTF-16 output string.
@@ -96,7 +108,7 @@ fn describe(file: &fs::File) -> Result<String, ProjectError> {
         return Err(std::io::Error::last_os_error().into());
     }
     let _text = Allocation(text.cast());
-    if length == 0 || length > 32 * 1024 {
+    if text.is_null() || length == 0 || length > 32 * 1024 {
         return Err(ProjectError::Invalid(
             "Windows file policy exceeds 32 Ki UTF-16 units",
         ));
@@ -118,6 +130,47 @@ fn describe(file: &fs::File) -> Result<String, ProjectError> {
     // SAFETY: the walk established an initialized UTF-16 prefix in the live allocation.
     let text = unsafe { std::slice::from_raw_parts(text, written) };
     String::from_utf16(text).map_err(|_| ProjectError::Invalid("invalid Windows file policy"))
+}
+
+fn reject_resource_policy(file: &fs::File) -> Result<(), ProjectError> {
+    let mut descriptor = ptr::null_mut();
+    // Resource attributes and central-access policies can restrict access beyond
+    // a DACL. These subsets require READ_CONTROL, not audit-log privileges.
+    // SAFETY: borrowed live handle, documented flags and writable output pointer.
+    let status = unsafe {
+        GetSecurityInfo(
+            file.as_raw_handle(),
+            SE_FILE_OBJECT,
+            ATTRIBUTE_SECURITY_INFORMATION | SCOPE_SECURITY_INFORMATION,
+            ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+            &mut descriptor,
+        )
+    };
+    if status != 0 {
+        return Err(std::io::Error::from_raw_os_error(status as i32).into());
+    }
+    let descriptor = Allocation(descriptor);
+    let mut present = 0;
+    let mut defaulted = 0;
+    let mut acl = ptr::null_mut();
+    // SAFETY: the descriptor allocation lives through the borrowed SACL inspection.
+    if unsafe { GetSecurityDescriptorSacl(descriptor.0, &mut present, &mut acl, &mut defaulted) }
+        == 0
+    {
+        return Err(std::io::Error::last_os_error().into());
+    }
+    if present != 0 && !acl.is_null() {
+        // SAFETY: OS-produced ACL is validated before reading its fixed header.
+        if unsafe { IsValidAcl(acl) == 0 || (*acl).AceCount != 0 } {
+            return Err(ProjectError::Invalid(
+                "Windows resource/central access policy requires manual update",
+            ));
+        }
+    }
+    Ok(())
 }
 
 pub(super) fn stage(
@@ -258,23 +311,29 @@ mod tests {
 
     #[test]
     fn a_protected_dacl_is_installed_before_candidate_bytes_and_survives_replacement() {
-        let directory = tempfile::tempdir().unwrap();
-        let path = directory.path().join("Cargo.toml");
-        let sddl = super::super::super::super::super::cache::private_file_descriptor().unwrap();
-        let mut original = create(&path, &sddl).unwrap();
-        original.write_all(b"before").unwrap();
-        drop(original);
-        let policy = capture(Some(&path)).unwrap();
-        assert!(!policy.windows_descriptor.as_ref().unwrap().contains('\0'));
-        let mut temporary = stage(&policy, directory.path()).unwrap();
-        assert_eq!(
-            describe(temporary.as_file()).unwrap(),
-            policy.windows_descriptor.clone().unwrap()
-        );
-        temporary.write_all(b"after").unwrap();
-        temporary.persist(&path).unwrap();
-        assert_eq!(capture(Some(&path)).unwrap(), policy);
-        assert_eq!(fs::read(path).unwrap(), b"after");
+        for label in ["", "S:(ML;;NW;;;LW)"] {
+            let directory = tempfile::tempdir().unwrap();
+            let path = directory.path().join("Cargo.toml");
+            let sddl = format!(
+                "{}{}",
+                super::super::super::super::super::cache::private_file_descriptor().unwrap(),
+                label
+            );
+            let mut original = create(&path, &sddl).unwrap();
+            original.write_all(b"before").unwrap();
+            drop(original);
+            let policy = capture(Some(&path)).unwrap();
+            assert!(!policy.windows_descriptor.as_ref().unwrap().contains('\0'));
+            let mut temporary = stage(&policy, directory.path()).unwrap();
+            assert_eq!(
+                describe(temporary.as_file()).unwrap(),
+                policy.windows_descriptor.clone().unwrap()
+            );
+            temporary.write_all(b"after").unwrap();
+            temporary.persist(&path).unwrap();
+            assert_eq!(capture(Some(&path)).unwrap(), policy);
+            assert_eq!(fs::read(path).unwrap(), b"after");
+        }
     }
 
     #[test]

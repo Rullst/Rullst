@@ -39,6 +39,13 @@ impl Permissions {
         }
     }
 
+    pub fn capture_many<'a>(
+        root: &Path,
+        records: impl Iterator<Item = &'a snapshot::Record>,
+    ) -> Result<Vec<Self>, ProjectError> {
+        bounded(records.map(|record| Self::capture(root, record)))
+    }
+
     pub fn stage(&self, parent: &Path) -> Result<tempfile::NamedTempFile, ProjectError> {
         #[cfg(any(unix, windows))]
         {
@@ -51,5 +58,45 @@ impl Permissions {
                 "file permission preservation is unavailable on this platform",
             ))
         }
+    }
+}
+
+fn bounded(
+    policies: impl Iterator<Item = Result<Permissions, ProjectError>>,
+) -> Result<Vec<Permissions>, ProjectError> {
+    let mut total = 0usize;
+    let mut result = Vec::new();
+    for policy in policies {
+        let policy = policy?;
+        total = total
+            .checked_add(serde_json::to_vec(&policy)?.len())
+            .ok_or(ProjectError::Invalid("file access policy size overflow"))?;
+        if total > 1024 * 1024 {
+            return Err(ProjectError::Invalid(
+                "reviewed file access policies exceed 1 MiB",
+            ));
+        }
+        result.push(policy);
+    }
+    Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn aggregate_permission_budget_stops_before_collecting_all_descriptors() {
+        let inspected = std::cell::Cell::new(0);
+        let policies = (0..100_000).map(|_| {
+            inspected.set(inspected.get() + 1);
+            Ok(Permissions {
+                readonly: false,
+                unix_mode: None,
+                unix_owner: None,
+                windows_descriptor: Some("x".repeat(32 * 1024)),
+            })
+        });
+        assert!(bounded(policies).is_err());
+        assert!(inspected.get() < 33);
     }
 }

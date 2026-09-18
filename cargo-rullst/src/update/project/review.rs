@@ -75,12 +75,10 @@ impl Evidence {
                 after: after.clone(),
             })
             .collect();
-        let permissions = changes
-            .iter()
-            .map(|change| {
-                super::transaction::Permissions::capture(&state.prepared.source, &change.before)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let permissions = super::transaction::Permissions::capture_many(
+            &state.prepared.source,
+            changes.iter().map(|change| &change.before),
+        )?;
         let diff = process::diff(
             &prepared_lock.path.join("before"),
             &verified.verified_candidate_directory,
