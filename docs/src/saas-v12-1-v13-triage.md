@@ -1,7 +1,8 @@
 # SaaS findings: v12.1 maintenance and v13 contracts
 
-**Status: maintenance implementation in progress, 17 September 2026. Provider
-sandbox acceptance, publication and deployment remain unverified.**
+**Status: SAAS-003 and SAAS-004 implemented in maintenance source on 18 September
+2026; final candidate CI is in progress. Provider-account sandbox acceptance,
+publication and deployment remain unverified.**
 
 The input is the two reports from `Rullst/examples`, branch
 `feat/saas-staging-ai-fixes`, pinned to commit
@@ -36,11 +37,12 @@ The subsequent report is on `examples/main`, pinned to
 - **APP-SAAS-003:** a rejected duplicate checkout consumed the application's
   new-session limit, and the owner could not resume an already-created session.
   The report describes a correction in the example's application orchestration,
-  not the framework limiter. The generated live flow remains contained. Before
-  enabling it, persist and reconcile owner-bound attempts, retrieve and validate
-  an open session before applying the new-session quota, distinguish completed,
-  expired and unknown states, return `Retry-After` on quota rejection and test
-  simultaneous clicks/retries. A separate abuse limit may protect all requests.
+  not the framework limiter. Generated Stripe billing now persists owner-bound
+  attempts and retrieves an existing open session before creating another. It
+  distinguishes complete, expired and unknown outcomes and tests retries and
+  lost responses. Applications adding a new-session quota must count newly
+  persisted sessions, return `Retry-After` on quota rejection, and keep any
+  all-request abuse limit separate.
 - **APP-SAAS-004:** Chromium blocked the local POST's hosted Checkout redirect
   under `form-action 'self'`. The maintenance SaaS generator now adds only
   `https://checkout.stripe.com` to its own CSP, matching its explicit default
@@ -56,11 +58,31 @@ are attributed to the examples repository; no deployed site or live session was
 tested here. The CSP rule is described in the W3C
 [form-action contract](https://www.w3.org/TR/CSP3/#directive-form-action).
 
+## Completed SAAS-003/004 implementation
+
+Maintenance commit `8c3c8391` and its v13 carry `d44f9520` provide:
+
+- Polar's current product checkout, external customer identity, sandbox endpoint,
+  optional typed trusted client IP, response/return-placeholder binding, and
+  signed subscription matching. Legacy price-only callers migrate explicitly.
+- Generated Stripe customer/checkout intents and session IDs, account/mode scope,
+  signed Checkout and subscription events without email ownership, ID-bound
+  portal, current-state reconciliation, database revision fencing and atomic
+  event/subscription commits on SQLx and Turso. Unknown old outcomes have bounded
+  read recovery and an explicit verified customer-recovery function for operators.
+- Local evidence: 171 Capital tests with Actix; 341 CLI library tests; ten
+  structural contracts; strict Clippy; materialized SQLite/Turso compilation,
+  migrations, lost-response/replay/rollback, cross-owner and stale-read rejection,
+  replacement subscriptions and process restart. Full candidate CI remains
+  distinct from this targeted evidence and from live provider-account testing.
+
 ## Implementation checkpoints
 
 The maintenance candidate is
 [PR #206](https://github.com/Rullst/Rullst/pull/206). None of these checkpoints
-means the complete release or a live-provider journey has passed:
+means the complete release or a live-provider journey has passed. Pending items
+in older checkpoint descriptions describe that historical point; the completed
+implementation above supersedes their SAAS-003/004 containment:
 
 - `20218538`: configured Lemon Squeezy store/variant binding; bounded Stripe
   rotated-signature verification; explicit unsupported Paddle/Polar checkout,
@@ -275,7 +297,8 @@ public planning document.
 ## Delivery slices and required evidence
 
 1. **Compatible containment and small regressions:** SAAS-005/006/011/012/015;
-   contain SAAS-001/002/003/007 until their request contracts are complete.
+   contain SAAS-001/002/007 until their request contracts are complete; SAAS-003
+   now has its typed product contract.
 2. **One complete Stripe journey:** SAAS-004/008/010 plus provider-scoped
    persistence from SAAS-009; opt-in SAAS-014 only when payment and subscription
    evidence are distinct. Test retries, refunds and disputes as well as success.
