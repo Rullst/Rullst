@@ -310,19 +310,32 @@ mod ffi {
                     ));
                 }
             }
-            // SAFETY: IsValidAcl succeeded on the owned descriptor.
-            let count = unsafe { (*acl).AceCount };
-            if count > 128 {
+            let mut information = ACL_SIZE_INFORMATION::default();
+            // SAFETY: the non-null validated ACL remains borrowed from descriptor;
+            // the output is an aligned, writable structure of the declared size.
+            if unsafe {
+                GetAclInformation(
+                    acl,
+                    (&mut information as *mut ACL_SIZE_INFORMATION).cast(),
+                    size_of::<ACL_SIZE_INFORMATION>() as u32,
+                    AclSizeInformation,
+                )
+            } == 0
+            {
+                return Err(os_error());
+            }
+            if information.AceCount > 128 {
                 return Err(invalid("cache DACL exceeds the review bound"));
             }
-            for index in 0..u32::from(count) {
+            for index in 0..information.AceCount {
                 let mut ace = ptr::null_mut();
                 // SAFETY: index is below the validated ACL's AceCount.
                 if unsafe { GetAce(acl, index, &mut ace) } == 0 {
                     return Err(os_error());
                 }
+                let ace = ptr::NonNull::new(ace).ok_or_else(|| invalid("cache ACE is missing"))?;
                 // SAFETY: GetAce returns a complete ACE_HEADER within the live ACL.
-                let header = unsafe { &*ace.cast::<ACE_HEADER>() };
+                let header = unsafe { ace.cast::<ACE_HEADER>().as_ref() };
                 if header.AceType == 1
                     || (u32::from(header.AceFlags) & INHERIT_ONLY_ACE != 0
                         && !(private && directory))
@@ -335,10 +348,10 @@ mod ffi {
                     return Err(invalid("unsupported cache DACL entry"));
                 }
                 // SAFETY: size/type establish Mask and the minimum SID header.
-                let allowed = unsafe { &*ace.cast::<ACCESS_ALLOWED_ACE>() };
+                let allowed = unsafe { ace.cast::<ACCESS_ALLOWED_ACE>().as_ref() };
                 let candidate = ptr::addr_of!(allowed.SidStart).cast_mut().cast::<c_void>();
-                // SAFETY: byte 1 lies in the minimum 8-byte SID header checked above.
-                let sub_authorities = unsafe { *candidate.cast::<u8>().add(1) };
+                // The first DWORD contains the SID revision and subauthority count.
+                let sub_authorities = allowed.SidStart.to_ne_bytes()[1];
                 if 16 + usize::from(sub_authorities) * 4 > usize::from(header.AceSize) {
                     return Err(invalid("invalid cache ACE SID length"));
                 }

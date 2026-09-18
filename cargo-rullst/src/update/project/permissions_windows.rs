@@ -163,8 +163,25 @@ fn reject_resource_policy(file: &fs::File) -> Result<(), ProjectError> {
         return Err(std::io::Error::last_os_error().into());
     }
     if present != 0 && !acl.is_null() {
-        // SAFETY: OS-produced ACL is validated before reading its fixed header.
-        if unsafe { IsValidAcl(acl) == 0 || (*acl).AceCount != 0 } {
+        // SAFETY: the non-null ACL remains borrowed from the live descriptor.
+        if unsafe { IsValidAcl(acl) } == 0 {
+            return Err(ProjectError::Invalid("invalid Windows resource policy ACL"));
+        }
+        let mut information = ACL_SIZE_INFORMATION::default();
+        // SAFETY: validated borrowed ACL and an aligned writable output buffer
+        // whose size and requested information class agree.
+        if unsafe {
+            GetAclInformation(
+                acl,
+                (&mut information as *mut ACL_SIZE_INFORMATION).cast(),
+                size_of::<ACL_SIZE_INFORMATION>() as u32,
+                AclSizeInformation,
+            )
+        } == 0
+        {
+            return Err(std::io::Error::last_os_error().into());
+        }
+        if information.AceCount != 0 {
             return Err(ProjectError::Invalid(
                 "Windows resource/central access policy requires manual update",
             ));

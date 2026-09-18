@@ -316,13 +316,18 @@ where assertion panics are test semantics.
 
 `unsafe-policy.yml` compiles production libraries and binaries with
 `-Dunsafe-code`. The exact reviewed source allowlist contains the Radar OS probe,
-dynamic-library loader, the CLI's Windows owner/DACL boundary and its macOS
-extended-ACL inspection module. The macOS module borrows an open descriptor,
+dynamic-library loader, the CLI's Windows cache/installation owner/DACL boundary,
+Windows project access-policy preservation and macOS extended-ACL inspection.
+Both inner and outer unsafe-lint attributes enter the source inventory.
+The macOS module borrows an open descriptor,
 inspects the first ACL entry and frees the returned allocation; it never edits
 an ACL. Its native regression adds an ACL and verifies that replacement rejects
 without discarding it. Windows descriptors are installed atomically and
 validated through owned handles. Each unsafe call documents pointer/handle
 ownership and lifetime; the workflow fails if the source allowlist changes.
+Windows ACL counts come from `GetAclInformation` into owned output structures;
+ACE pointers must be non-null before creating bounded borrowed views. SID lengths
+are checked before OS validation and no borrowed pointer outlives its descriptor.
 This is an enforced boundary, not a claim that all dependencies contain no
 unsafe Rust.
 
