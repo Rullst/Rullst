@@ -197,7 +197,49 @@ fn installation_review_offline_rejection_does_not_create_or_inspect_destinations
     assert!(!output.status.success());
     assert!(
         String::from_utf8_lossy(&output.stderr)
-            .contains("offline mode forbids authenticated installation review")
+            .contains("offline mode forbids authenticated installation operations")
     );
     assert!(!root.exists());
+}
+
+#[test]
+fn installation_apply_and_recovery_require_explicit_approval_before_destination_io() {
+    for action in ["apply", "recover"] {
+        for approval in [
+            None,
+            Some("invalid-digest"),
+            Some("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+        ] {
+            let directory = tempfile::tempdir().unwrap();
+            let root = directory.path().join("not-created");
+            let mut command = Command::new(env!("CARGO_BIN_EXE_cargo-rullst"));
+            command
+                .args(["update", "install", action, "--root"])
+                .arg(&root)
+                .env("CARGO_NET_OFFLINE", "false")
+                .env("RULLST_DISABLE_UPDATE_CHECK", "true");
+            if action == "apply" {
+                command
+                    .args(["--to", env!("CARGO_PKG_VERSION"), "--directory"])
+                    .arg(directory.path().join("not-inspected"));
+            }
+            if let Some(value) = approval {
+                command.args(["--approved-review", value]);
+            }
+            if approval.is_some_and(|value| value.len() == 64) {
+                command.arg("--offline");
+            }
+            let result = command.output().unwrap();
+            assert!(!result.status.success());
+            assert!(!root.exists());
+            assert_eq!(fs::read_dir(directory.path()).unwrap().count(), 0);
+            let error = String::from_utf8_lossy(&result.stderr);
+            assert!(
+                error.contains("approved-review")
+                    || error.contains("approval")
+                    || error.contains("offline mode"),
+                "{error}"
+            );
+        }
+    }
 }

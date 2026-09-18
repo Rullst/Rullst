@@ -1448,7 +1448,7 @@ assistant, not a claim that compilation proves production compatibility.
   installation or project authority. Offline mode rejects before I/O; install
   must independently revalidate eligibility, provenance and bytes.
 
-  **Managed CLI installation (preview implemented; apply/recovery unfinished):**
+  **Managed CLI installation (working source; native acceptance pending):**
   `update install review` authenticates a fresh eligible local candidate and
   previews a new/empty or receipt-owned private destination, a root/source-bound digest,
   proposed version smoke checks and the pinned Cargo source fallback. It does
@@ -1459,9 +1459,8 @@ assistant, not a claim that compilation proves production compatibility.
   prior manifest's provenance are revalidated; unknown/package-manager entries
   and divergent files reject. Selection uses that installed version, so a stale
   CLI cannot authorize its downgrade. The review digest binds the exact prior
-  receipt and rechecks local state after network verification. This read-only
-  contract does not yet create receipts or implement replacement/recovery.
-  The remaining application/recovery design uses an explicit installation
+  receipt and rechecks local state after network verification.
+  `update install apply --approved-review SHA256` uses an explicit installation
   root separate from the advisory cache and existing package-manager roots.
   First installation accepts only a new/empty private caller-owned directory;
   later updates require the updater's strict receipt and exact installed hashes.
@@ -1469,19 +1468,29 @@ assistant, not a claim that compilation proves production compatibility.
   show the pinned manager/source-install command when that owner must update it.
   A preview authenticates an exact eligible native candidate and binds its
   source/files, destination and prior installed state to a review digest. Apply
-  requires explicit approval, rechecks fresh registry/provenance/bytes, holds a
+  requires the matching review digest, rechecks fresh registry/provenance/bytes, holds a
   destination-local lock and copies candidates to private staging on that
-  filesystem before execution or replacement. Approved installation may run only
-  the declared bounded version smoke checks. Preserve authenticated prior bytes
-  and a bounded intent before replacing either entry point; per-file operations
-  are not an atomic two-binary swap. Windows in-use failures must leave a known
-  state with actionable recovery, never a success report over a failed copy.
-  Explicit recovery accepts only this operation's before/after states, rejects
-  foreign edits and revalidates the selected known-good predecessor; it is not
-  arbitrary or silent downgrade authority. PATH/shell configuration, source
+  filesystem before execution or replacement. Only the declared `--version`
+  probes run, with a 15-second deadline and 4 KiB per output stream per binary.
+  Both must report the selected version without stderr. Authenticated prior bytes
+  and a bounded intent are saved before replacing either entry point. Old entries
+  are moved aside instead of truncating executing images; per-file operations
+  are not an atomic two-binary swap and do not promise power-loss durability.
+  Windows in-use failures report the root and approval digest for recovery.
+  `update install recover --approved-review SHA256` accepts only the selected
+  operation's before/after states, rejects foreign edits and reauthenticates
+  both manifests before restoring the exact predecessor. Interrupted first
+  installation removes only the recorded new entries. Repeated recovery is
+  idempotent; an unrelated older version is never a recovery target.
+  The private destination-local sibling stores a root-bound owner marker, lock,
+  selected operation and at most eight operation directories, independently of
+  advisory cache settings. New operations prune only verified terminal older
+  evidence, retaining the selected recovery. Unknown files and incomplete
+  unselected operations require manual review. An in-use historical executable
+  can require closing the older CLI before pruning. PATH/shell configuration, source
   compilation, project migration and deployment remain separate consent scopes.
   Native concurrency, interruption, disk faults, executable-lock and complete
-  user-journey acceptance are required before marking this design implemented.
+  user-journey acceptance remain release gates.
 
   **Isolated project preparation (working source):** the opt-in
   `update project prepare` command snapshots tracked and non-ignored untracked

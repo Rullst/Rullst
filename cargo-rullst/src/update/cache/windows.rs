@@ -267,6 +267,20 @@ pub(super) fn installation_root(requested: &Path) -> Result<PathBuf, CacheError>
     let name = requested.file_name().ok_or(CacheError::Invalid(
         "installation needs a named destination directory",
     ))?;
+    let text = name
+        .to_str()
+        .ok_or(CacheError::Invalid("installation name must be ASCII"))?;
+    if text.is_empty()
+        || text.len() > 128
+        || text.ends_with(['.', ' '])
+        || !text
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"-_. ".contains(&b))
+    {
+        return Err(CacheError::Invalid(
+            "installation name must use bounded ASCII without a trailing dot or space",
+        ));
+    }
     let parent = requested
         .parent()
         .ok_or(CacheError::Invalid("installation needs an existing parent"))?
@@ -282,7 +296,10 @@ pub(super) fn installation_root(requested: &Path) -> Result<PathBuf, CacheError>
     }
     let root = parent.join(name);
     match fs::symlink_metadata(&root) {
-        Ok(_) => identity.validate(&directory_handle(&root)?, false, true, true)?,
+        Ok(_) => {
+            identity.validate(&directory_handle(&root)?, false, true, true)?;
+            return Ok(root.canonicalize()?);
+        }
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
         Err(error) => return Err(error.into()),
     }
@@ -291,4 +308,32 @@ pub(super) fn installation_root(requested: &Path) -> Result<PathBuf, CacheError>
 
 pub(super) fn installation_file(path: &Path) -> Result<(), CacheError> {
     Identity::current()?.validate(&options(false).open(path)?, false, true, false)
+}
+
+pub(super) fn create_installation_directory(path: &Path) -> Result<PathBuf, CacheError> {
+    let path = installation_root(path)?;
+    Identity::current()?.create_directory(&path)?;
+    installation_root(&path)
+}
+
+pub(super) fn new_installation_file(path: &Path) -> Result<File, CacheError> {
+    let identity = Identity::current()?;
+    let file = identity.create_file(path)?;
+    identity.validate(&file, false, true, false)?;
+    Ok(file)
+}
+
+pub(super) fn installation_lock(path: &Path) -> Result<File, CacheError> {
+    let file = match new_installation_file(path) {
+        Ok(file) => file,
+        Err(CacheError::Io(error)) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+            options(true).open(path)?
+        }
+        Err(error) => return Err(error),
+    };
+    Identity::current()?.validate(&file, false, true, false)?;
+    if file.metadata()?.len() != 0 {
+        return Err(CacheError::Invalid("invalid installation lock"));
+    }
+    Ok(file)
 }

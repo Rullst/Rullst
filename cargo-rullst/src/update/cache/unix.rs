@@ -119,7 +119,14 @@ pub(super) fn installation_root(requested: &Path) -> Result<PathBuf, CacheError>
     validate_directory(&parent, false)?;
     let root = parent.join(name);
     match fs::symlink_metadata(&root) {
-        Ok(_) => validate_directory(&root, true)?,
+        Ok(metadata) => {
+            validate_directory(&root, true)?;
+            if metadata.dev() != fs::metadata(&parent)?.dev() {
+                return Err(CacheError::Invalid(
+                    "installation root must share its parent's filesystem",
+                ));
+            }
+        }
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
         Err(error) => return Err(error.into()),
     }
@@ -159,6 +166,36 @@ fn validate_private_file(file: &File) -> Result<(), CacheError> {
 
 pub(super) fn installation_file(path: &Path) -> Result<(), CacheError> {
     validate_private_file(&options().read(true).open(path)?)
+}
+
+pub(super) fn create_installation_directory(path: &Path) -> Result<PathBuf, CacheError> {
+    let path = installation_root(path)?;
+    create_private_directory(&path)?;
+    installation_root(&path)
+}
+
+pub(super) fn new_installation_file(path: &Path) -> Result<File, CacheError> {
+    let file = options()
+        .read(true)
+        .write(true)
+        .create_new(true)
+        .open(path)?;
+    validate_private_file(&file)?;
+    Ok(file)
+}
+
+pub(super) fn installation_lock(path: &Path) -> Result<File, CacheError> {
+    let file = options()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(path)?;
+    validate_private_file(&file)?;
+    if file.metadata()?.len() != 0 {
+        return Err(CacheError::Invalid("invalid installation lock"));
+    }
+    Ok(file)
 }
 
 fn load_at(base: &Path, now: u64) -> Result<CachedCatalog, CacheError> {

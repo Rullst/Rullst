@@ -183,7 +183,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   pinned Cargo fallback without executing either. Reauthenticate prior manifest
   bytes, bind the prior receipt, reject altered/hardlinked/nonprivate binaries
   and refuse unknown files/package-manager takeover. Use the installed version
-  to reject stale-CLI downgrades. CLI installation/recovery remains unfinished.
+  to reject stale-CLI downgrades.
+
+- Add digest-approved private CLI installation and explicit predecessor recovery,
+  with destination-local locking, authenticated staged copies, bounded version
+  probes, strict receipts and a persisted replacement intent. Preserve old
+  executable entries, reject divergent recovery state and bound evidence
+  retention. First-install recovery removes only recorded entries. Native
+  interruption, filesystem-fault and full user-journey acceptance remain gates.
 
 - Add explicit candidate review with revalidated command logs, source/file
   digests, a bounded full dependency diff and a review digest, without executing

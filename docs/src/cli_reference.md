@@ -281,16 +281,50 @@ must be private (`0700` on Unix or a protected caller DACL on Windows). Unknown
 files and package-manager installations are refused. No permissions are repaired.
 The original attested manifest bytes and private single-link binaries must still
 match; review reauthenticates the prior manifest and uses the installed version
-to reject downgrades even when the reviewing CLI is older. Receipt creation and
-actual replacement remain unfinished.
+to reject downgrades even when the reviewing CLI is older.
 
 Review fetches fresh registry eligibility, verifies official provenance and
 exact local binary hashes, then rechecks the destination. JSON binds source,
 version, native target, destination and exact prior receipt to `review_sha256`, lists the future
 version probes and supplies an exact Cargo source-install command for separately
 reviewed manager use. Offline mode rejects before I/O. The destination is not
-created and neither the probes nor fallback command run. Installation application
-and known-good CLI recovery are still unfinished; this digest grants no writes.
+created and neither the probes nor fallback command run. The digest grants no
+writes until passed explicitly to `apply`.
+
+### `cargo rullst update install apply` / `recover` (12.1.0 working source; unreleased)
+
+```bash
+cargo rullst update install apply --to 12.1.0 --directory STAGED_FILES \
+  --root "$HOME/.local/share/rullst-cli" --approved-review REVIEW_SHA256 --json
+cargo rullst update install recover --root "$HOME/.local/share/rullst-cli" \
+  --approved-review REVIEW_SHA256 --json
+```
+
+Apply repeats registry, provenance, file and destination checks. It refuses a
+changed review. A destination-local lock coordinates installations even when
+callers use different advisory caches. Private copies on the destination
+filesystem must pass both approved `--version` checks (15 seconds and 4 KiB per
+output stream each) before any installed entry is replaced. The CLI retains
+verified predecessor bytes and a bounded intent, then replaces the two binary
+entries and receipt. A running older executable is moved aside, never truncated.
+The three replacements are individually performed; this is not an atomic swap
+or a power-loss durability guarantee.
+
+An interrupted replacement reports the same root and approval digest needed for
+recovery. Recovery authenticates the recorded manifests again, accepts only the
+recorded before/after states and restores the exact predecessor. For a first
+installation, it removes only its recorded new entries. Unrelated edits reject
+without being overwritten; repeated successful recovery is a no-op. Both
+commands reject offline mode before I/O. They never change PATH, compile source,
+migrate a project or deploy an application.
+
+Keep the private `.rullst-install-*` sibling: it holds the destination lock,
+receipt ownership record and recovery evidence. The selected operation remains
+recoverable. Later installs prune only verified older completed/recovered
+operations; at most eight operation directories may be retained. Unknown or
+incomplete historical evidence requires manual review. On Windows, closing an
+older running CLI may be necessary before its historical executable is pruned.
+Native fault and complete user-journey acceptance remain release requirements.
 
 ### `cargo rullst update project prepare` (12.1.0 working source; unreleased)
 

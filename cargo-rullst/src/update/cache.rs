@@ -102,6 +102,28 @@ mod platform {
         ))
     }
 
+    pub(super) fn create_installation_directory(
+        _path: &std::path::Path,
+    ) -> Result<std::path::PathBuf, CacheError> {
+        Err(CacheError::Invalid(
+            "private installation is unavailable on this platform",
+        ))
+    }
+
+    pub(super) fn new_installation_file(
+        _path: &std::path::Path,
+    ) -> Result<std::fs::File, CacheError> {
+        Err(CacheError::Invalid(
+            "private installation is unavailable on this platform",
+        ))
+    }
+
+    pub(super) fn installation_lock(_path: &std::path::Path) -> Result<std::fs::File, CacheError> {
+        Err(CacheError::Invalid(
+            "private installation is unavailable on this platform",
+        ))
+    }
+
     pub(super) fn source_lock(_name: &str) -> Result<std::fs::File, CacheError> {
         Err(CacheError::Invalid(
             "private source locking is unavailable on this platform",
@@ -127,6 +149,23 @@ pub(super) fn verification_manifest(body: &[u8]) -> Result<tempfile::NamedTempFi
 
 pub(super) fn installation_file(path: &std::path::Path) -> Result<(), CacheError> {
     platform::installation_file(path)
+}
+
+pub(super) fn create_installation_directory(
+    path: &std::path::Path,
+) -> Result<std::path::PathBuf, CacheError> {
+    platform::create_installation_directory(path)
+}
+
+pub(super) fn new_installation_file(path: &std::path::Path) -> Result<std::fs::File, CacheError> {
+    platform::new_installation_file(path)
+}
+
+pub(super) fn installation_lock(path: &std::path::Path) -> Result<FileLease, CacheError> {
+    acquire(
+        platform::installation_lock(path)?,
+        "installation destination is busy",
+    )
 }
 
 pub(super) struct PrivateWorkspace {
@@ -180,16 +219,14 @@ pub(super) fn open_project(path: &std::path::Path) -> Result<LockedProject, Cach
     let (path, lock) = platform::open_project(path)?;
     Ok(LockedProject {
         path,
-        _lease: acquire(lock)?,
+        _lease: acquire(lock, "prepared project is busy")?,
     })
 }
 
-fn acquire(lock: std::fs::File) -> Result<FileLease, CacheError> {
+fn acquire(lock: std::fs::File, busy_message: &'static str) -> Result<FileLease, CacheError> {
     match lock.try_lock() {
         Ok(()) => Ok(FileLease(lock)),
-        Err(std::fs::TryLockError::WouldBlock) => {
-            Err(CacheError::Invalid("prepared project is busy"))
-        }
+        Err(std::fs::TryLockError::WouldBlock) => Err(CacheError::Invalid(busy_message)),
         Err(std::fs::TryLockError::Error(error)) => {
             #[cfg(any(unix, windows))]
             {
@@ -214,7 +251,7 @@ pub(super) fn source_lock(root: &std::path::Path) -> Result<FileLease, CacheErro
         "source-{}.lock",
         hex::encode(Sha256::digest(canonical.as_os_str().as_encoded_bytes()))
     );
-    acquire(platform::source_lock(&name)?)
+    acquire(platform::source_lock(&name)?, "prepared project is busy")
 }
 
 #[cfg(any(unix, windows))]
