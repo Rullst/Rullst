@@ -282,6 +282,10 @@ Privacy, age assurance and untrusted exercise execution remain v13 roadmap work.
   billing estimates or proof of security.
 ### Dependency maintenance
 
+- Integrate Dependabot PRs #207–#212 into the 12.1 candidate: Clap 4.6.7,
+  p12-keystore 0.3.2, SeaORM 2.0.3 and tinyvec 1.13.3, plus the reviewed
+  installer, Python setup, spellcheck, benchmark and coverage Actions. Refresh
+  the four ORM-dependent fuzz locks and retain immutable Action commit pins.
 - Integrate the reviewed grouped Rust updates, zstd 0.14 and jsonschema 0.56
   into the compatible maintenance candidate; align manifest minimums and all
   independent fuzz lockfiles. Candidate-wide compatibility and release checks

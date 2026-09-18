@@ -57,7 +57,7 @@ jobs:
         run: git checkout Cargo.lock || true
 
       - name: Publish → gh-pages:benches/
-        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
+        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
         with:
           name: 'Rullst Core Benchmark'
           tool: 'cargo'
@@ -80,7 +80,7 @@ jobs:
         run: git checkout Cargo.lock || true
 
       - name: Publish → gh-pages:benches-orm/
-        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
+        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
         with:
           name: 'Rullst ORM Benchmark'
           tool: 'cargo'
@@ -102,7 +102,7 @@ jobs:
         run: git checkout Cargo.lock || true
 
       - name: Publish → gh-pages:benches-core/
-        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
+        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
         with:
           name: 'Rullst Core Primitives Benchmark'
           tool: 'cargo'
@@ -124,7 +124,7 @@ jobs:
         run: git checkout Cargo.lock || true
 
       - name: Publish → gh-pages:benches-auth/
-        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
+        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
         with:
           name: 'Rullst Auth Benchmark'
           tool: 'cargo'
@@ -146,7 +146,7 @@ jobs:
         run: git checkout Cargo.lock || true
 
       - name: Publish → gh-pages:benches-connect/
-        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
+        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
         with:
           name: 'Rullst Connect Benchmark'
           tool: 'cargo'
@@ -168,7 +168,7 @@ jobs:
         run: git checkout Cargo.lock || true
 
       - name: Publish → gh-pages:benches-security/
-        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
+        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
         with:
           name: 'Rullst Security Benchmark'
           tool: 'cargo'
@@ -190,7 +190,7 @@ jobs:
         run: git checkout Cargo.lock || true
 
       - name: Publish → gh-pages:benches-ai/
-        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
+        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
         with:
           name: 'Rullst AI Benchmark'
           tool: 'cargo'
@@ -212,7 +212,7 @@ jobs:
         run: git checkout Cargo.lock || true
 
       - name: Publish → gh-pages:benches-capital/
-        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1
+        uses: benchmark-action/github-action-benchmark@4322e5726e6334590d251fc4f92bec0efafc45dc # v1
         with:
           name: 'Rullst Capital Benchmark'
           tool: 'cargo'
