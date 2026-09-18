@@ -33,7 +33,7 @@ jobs:
           node-version: 24
 
       - name: Install mdBook
-        uses: taiki-e/install-action@9534c84618278caac52cb373bb164ed464dbd8af # v2.87.11
+        uses: taiki-e/install-action@26e9283f268b880168bdbd2c545dfcd60ec2c6ab # v2.87.13
         with:
           tool: mdbook@0.5.4
 
