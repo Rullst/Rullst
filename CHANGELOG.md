@@ -6,7 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### SaaS maintenance — planned 12.1.0
+Publication status is recorded in [the v12 release record](docs/src/v12.md).
+A prepared version section does not establish that its tag or crates exist.
+
+## [12.1.0] - 2026-09-18
+
+This compatible maintenance release corrects billing contracts, generated
+application behavior and CLI update/recovery flows. Existing applications must
+review the [12.1 migration guide](docs/src/migration-v12-1.md); updating packages
+does not rewrite their controllers, migrate databases or deploy them.
+
+Stripe test-mode acceptance covers hosted Checkout, signed events and isolated
+generated SQLite persistence. Other provider adapters retain the explicit
+capabilities and account-acceptance requirements in the Capital provider matrix.
+Privacy, age assurance and untrusted exercise execution remain v13 roadmap work.
+
+### SaaS maintenance
 
 - Add the exact Stripe hosted-checkout origin to the SaaS starter's CSP so its
   POST/303 handoff works in Chromium. Preserve Core's strict default; document
@@ -94,7 +109,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   backend-exclusive and no-driver compilation. Exercise enums in each isolated
   consumer; retain the macro crate's default expansion for the 12.0 runtime.
 
-### Omni icons and Android signing — planned 12.1.0
+### Omni icons and Android signing
 
 - Embed the existing Rullst logo as the default square icon source and regenerate
   platform icons after mobile initialization. Refuse to overwrite an existing
@@ -109,7 +124,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Fix Windows strict-lint compilation and macOS root-alias handling in upgrade
   backup creation/restoration, preserving rejection of descendant symlinks.
 
-### Mobile Nexus and Portfolio — planned 12.1.0 and v13
+### Mobile Nexus and Portfolio
 
 - Fix the Nexus mobile drawer trapping navigation: provide a close button,
   backdrop dismissal, Escape/link dismissal, focus containment/return and
@@ -122,7 +137,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   generated-product shards; retain the full existing generated-project matrix.
   Document removal of the showcase's temporary Nexus HTML-rewriting middleware.
 
-### Studio browser composition — planned 12.1.0
+### Studio browser composition
 
 - Serve the embedded CSS and request-stream client from raw and `/studio`-nested
   data-browser routers, fixing the unstyled embedded Portfolio/LMS shell.
@@ -134,7 +149,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   removal of application-level workaround routes before upgrading existing
   showcases; dependency updates do not rewrite generated source or redeploy it.
 
-### CLI update discovery
+### CLI updates and recovery
 
 - Add explicit local native-artifact verification through certificate-bound
   GitHub attestation policy and bounded manifest/binary digest checks. It never
@@ -148,8 +163,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   with version smoke checks and bounded source/platform/digest inventories.
   Ordinary CI candidates carry no release tag. The admitted tag pipeline
   attests the files in a separate job without executing source and includes
-  them in GitHub release assets. Native/release acceptance and client-side
-  verification, installation and recovery remain required.
+  them in GitHub release assets. Candidate binaries cannot substitute for the
+  admitted release's provenance, verification and installation policy.
 
 - Pin managed upgrade requirements to the exact selected release and use
   `--locked` for the final Cargo check, preventing silent patch/minor drift.
@@ -181,7 +196,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   target and run locked workspace checks/tests in a fresh private copy, with
   bounded commands/logs and supervised cancellation. Reject stale inputs,
   failed tests and unexpected source writes; reports grant no apply authority.
-  Final native and application/recovery fault acceptance remain unfinished.
+  Native and application/recovery fault checks remain mandatory release gates.
 
 - Add explicit authenticated native CLI staging with a fresh non-yanked release
   selection, fixed official URLs, bounded HTTPS redirects and downloads,
@@ -219,7 +234,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   manifests/root lockfile, with evidence/access-policy revalidation, shared
   source locks, staged directory-entry replacements and a persisted intent.
   Refuse divergent edits, avoid clobbering newly created lockfiles, and preserve
-  unrelated files and hardlink aliases. Platform/fault acceptance remains open;
+  unrelated files and hardlink aliases. Platform/fault acceptance is mandatory;
   unsupported extended metadata requires manual handling.
 
 - Preflight the complete legacy upgrade backup before restoring any original.
@@ -241,8 +256,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Bound registry responses and total network/body duration, deny redirects and
   select only newer non-yanked stable versions in the current major. Add offline
   selection and loopback HTTP regressions, including a continuously trickling
-  response. This does not install a CLI, run project acceptance tests or complete
-  the planned guided 12.1.0 update workflow.
+  response. Advisory discovery remains separate from the explicit guided
+  installation and project-acceptance commands above.
 
 ### CI tooling
 

@@ -18,6 +18,12 @@ lockfile, generate a separate comparison project, and review the changes below.
 | Lemon Squeezy checkout | Supply the merchant's positive numeric store ID through `with_store_id` and a variant belonging to that store. |
 | Wise email-based transfer | Do not invoke it with real credentials. Recipient, quote, transfer and funding need separate reviewed contracts; the legacy call fails before network dispatch. |
 
+Stripe's customer-ID portal requires an active default portal configuration in
+the selected account and test/live mode, plus permission to create portal
+sessions. Configure allowed subscription changes and cancellation explicitly and
+test the portal handoff separately. Successful Checkout acceptance does not
+validate portal configuration; generated `BILLING.md` records this prerequisite.
+
 The new generated durable real-provider integration is Stripe-specific. Paddle
 and Polar expose typed adapter operations; their application persistence and
 event orchestration remain explicit. Consult the
