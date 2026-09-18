@@ -43,7 +43,7 @@ pub enum MailError {
         provider: &'static str,
         /// HTTP response status.
         status: u16,
-        /// Provider response detail; official adapters bound and secret-redact this field.
+        /// Operational detail; official HTTP adapters omit provider response bodies.
         message: String,
     },
     /// The provider could not be reached or its transport failed before a response.
@@ -57,7 +57,7 @@ pub enum MailError {
     RateLimited {
         /// Stable provider label.
         provider: &'static str,
-        /// Provider response detail; official adapters bound and secret-redact this field.
+        /// Operational detail; official HTTP adapters omit provider response bodies.
         message: String,
         /// Delta-seconds `Retry-After`, capped at one day when supplied.
         retry_after: Option<Duration>,
@@ -214,22 +214,23 @@ pub(crate) async fn provider_http_error(
         .and_then(|value| value.to_str().ok())
         .and_then(|value| value.parse::<u64>().ok())
         .map(|seconds| Duration::from_secs(seconds.min(86_400)));
-    let mut body = Vec::new();
-    while body.len() < MAX_ERROR_MESSAGE_LEN {
+    // Provider errors can echo addresses, action URLs and arbitrary message
+    // content. Consume only bounded chunks under the client deadline, then
+    // retain status/retry metadata instead of trying to recognize every secret.
+    let mut received = 0usize;
+    while received < MAX_ERROR_MESSAGE_LEN {
         match response.chunk().await {
-            Ok(Some(chunk)) => {
-                let remaining = MAX_ERROR_MESSAGE_LEN - body.len();
-                body.extend_from_slice(&chunk[..chunk.len().min(remaining)]);
-                if chunk.len() > remaining {
-                    break;
-                }
-            }
+            Ok(Some(chunk)) => received = received.saturating_add(chunk.len()),
             Ok(None) => break,
             Err(_) => return MailError::transport(provider, "failed to read provider response"),
         }
     }
-    let detail = crate::security::redact_email_secrets(&String::from_utf8_lossy(&body));
-    MailError::from_provider_response(provider, status, detail, retry_after)
+    MailError::from_provider_response(
+        provider,
+        status,
+        "provider response body omitted [REDACTED]",
+        retry_after,
+    )
 }
 
 #[cfg(test)]

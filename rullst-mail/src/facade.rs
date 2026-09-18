@@ -235,6 +235,37 @@ impl Mail {
                 let api_key = std::env::var("RESEND_API_KEY").unwrap_or_default();
                 Ok(Box::new(ResendDriver::try_new(api_key)?))
             }
+            "sendpulse" => Ok(Box::new(SendPulseDriver::try_new(
+                std::env::var("SENDPULSE_API_KEY").unwrap_or_default(),
+            )?)),
+            "mailjet" | "mailjet-sandbox" => {
+                let driver = MailjetDriver::try_new(
+                    std::env::var("MAILJET_API_KEY").unwrap_or_default(),
+                    std::env::var("MAILJET_SECRET_KEY").unwrap_or_default(),
+                )?;
+                Ok(Box::new(if driver_name == "mailjet-sandbox" {
+                    driver.with_sandbox()
+                } else {
+                    driver
+                }))
+            }
+            "mailtrap" => Ok(Box::new(MailtrapDriver::try_new(
+                std::env::var("MAILTRAP_API_TOKEN").unwrap_or_default(),
+            )?)),
+            "mailtrap-sandbox" => {
+                let id = std::env::var("MAILTRAP_SANDBOX_ID")
+                    .ok()
+                    .and_then(|v| v.parse::<u64>().ok())
+                    .ok_or_else(|| {
+                        MailError::ConfigError(
+                            "MAILTRAP_SANDBOX_ID must be a positive integer".into(),
+                        )
+                    })?;
+                Ok(Box::new(MailtrapDriver::sandbox(
+                    std::env::var("MAILTRAP_API_TOKEN").unwrap_or_default(),
+                    id,
+                )?))
+            }
             "sendgrid" => {
                 let api_key = std::env::var("SENDGRID_API_KEY").unwrap_or_default();
                 Ok(Box::new(SendGridDriver::try_new(api_key)?))
@@ -249,6 +280,21 @@ impl Mail {
                     driver = driver.with_message_stream(stream);
                 }
                 Ok(Box::new(driver))
+            }
+            "azure-acs" => {
+                let endpoint =
+                    std::env::var("AZURE_COMMUNICATION_EMAIL_ENDPOINT").unwrap_or_default();
+                if endpoint.is_empty() || endpoint.starts_with("mock_") {
+                    Ok(Box::new(AzureCommunicationDriver::new(
+                        endpoint,
+                        StaticAzureMailCredential::new("mock_azure", 0)?,
+                    )?))
+                } else {
+                    Ok(Box::new(AzureCommunicationDriver::new(
+                        endpoint,
+                        AzureManagedIdentity::from_environment()?,
+                    )?))
+                }
             }
             "ses" | "aws_ses" => {
                 let region =

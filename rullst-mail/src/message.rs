@@ -22,7 +22,7 @@ pub fn escape_html(value: &str) -> String {
 }
 
 /// An email message structure to be sent via a mail driver.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Message {
     /// The recipient email address.
     pub to: String,
@@ -47,6 +47,16 @@ pub struct Message {
 impl Default for Message {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl std::fmt::Debug for Message {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Message")
+            .field("content", &"[REDACTED]")
+            .field("attachments", &self.attachments.len())
+            .field("scheduled", &self.send_at.is_some())
+            .finish_non_exhaustive()
     }
 }
 
@@ -185,14 +195,15 @@ impl Message {
         }
     }
 
-    /// Sanitizes sensitive secrets, AWS keys, passwords, and tokens from the email subject and bodies.
+    /// Redacts accidental secrets. Body action URLs retain opaque `token` query
+    /// values; subjects and non-URL text always use strict secret redaction.
     pub fn sanitize_secrets(mut self) -> Self {
         self.subject = redact_email_secrets(&self.subject);
         if let Some(ref html) = self.body_html {
-            self.body_html = Some(redact_email_secrets(html));
+            self.body_html = Some(crate::action::redact_body_secrets(html));
         }
         if let Some(ref text) = self.body_text {
-            self.body_text = Some(redact_email_secrets(text));
+            self.body_text = Some(crate::action::redact_body_secrets(text));
         }
         self
     }

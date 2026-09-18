@@ -23,20 +23,13 @@ impl MailDriver for LogDriver {
                 MailError::DriverError(format!("Failed to create log directory: {}", e))
             })?;
         }
-        let unsub_info = if let Some(unsub) = message.list_unsubscribe_header() {
-            format!("List-Unsubscribe: {}\n", unsub)
-        } else {
-            String::new()
-        };
+        // Log delivery metadata only: even intended action tokens must never
+        // become plaintext log records. MemoryDriver is the explicit preview.
         let formatted = format!(
-            "========================================\n[MAIL SENT] {}\nTo: {}\nFrom: {}\nSubject: {}\n{}----------------------------------------\n[TEXT BODY]\n{}\n----------------------------------------\n[HTML BODY]\n{}\n========================================\n\n",
-            chrono::Local::now().to_rfc3339(),
-            message.to,
-            message.from.as_deref().unwrap_or("noreply@rullst.dev"),
-            message.subject,
-            unsub_info,
-            message.body_text.as_deref().unwrap_or(""),
-            message.body_html.as_deref().unwrap_or("")
+            "[MAIL LOGGED] {} attachments={} scheduled={}\n",
+            chrono::Utc::now().to_rfc3339(),
+            message.attachments.len(),
+            message.send_at.is_some(),
         );
         println!(
             "[MAIL LOGGED] {} | Target: {}",

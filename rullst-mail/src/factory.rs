@@ -56,7 +56,13 @@ impl MailFactory {
             expires = expires_in_mins
         );
 
-        Message::new().to(to).subject(subject).html(html)
+        Message::new()
+            .to(to)
+            .subject(subject)
+            .text(format!(
+                "Reset your password: {reset_url}\nThis link expires in {expires_in_mins} minutes."
+            ))
+            .html(html)
     }
 
     /// Generates a high-visibility OTP authentication code email.

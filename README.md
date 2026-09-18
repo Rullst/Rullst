@@ -68,6 +68,13 @@ deployment recipes in [Rullst/examples](https://github.com/Rullst/examples):
 | 🌐 **Showcase** — blog, SSR and selected integration demonstrations | [Open Showcase ↗](https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/) |
 | 🎓 **LMS** — course catalog and learning-platform example | [Open LMS ↗](https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/) |
 | 💼 **Portfolio** — projects, skills and experience presentation | [Open Portfolio ↗](https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/) |
+| 🛒 **SaaS production** — real purchases with the founding-member certificate offer | [Open SaaS ↗](https://saas.rullst.win/) |
+| 🧪 **SaaS staging** — Stripe sandbox, with no real charges | [Open SaaS staging ↗](https://saas-staging.rullst.win/) |
+
+> **The SaaS production checkout charges real money.** The founding-member
+> certificate is part of the published customer offer; review its terms and
+> availability on the site before purchasing. Use **SaaS staging** for test
+> payments. Production and staging have separate payment credentials and data.
 
 > **The first visit may take longer.** These Azure Container Apps demos may
 > scale down to zero while idle. Your request can trigger a container startup
@@ -78,7 +85,7 @@ deployment recipes in [Rullst/examples](https://github.com/Rullst/examples):
 These are independently maintained demo snapshots and may lag the stable release.
 Showcase payment fixtures are **not live checkout**. Deployment availability,
 native downloads and provider approval are separate from framework test evidence;
-use test data, not sensitive information, in public demos.
+use test data, not sensitive information, in public test environments.
 
 ## ✨ What you can build on
 

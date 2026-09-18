@@ -55,6 +55,12 @@ fn clear_provider_environment(environment: &mut EnvironmentGuard) {
         "MAIL_USERNAME",
         "MAIL_PASSWORD",
         "RESEND_API_KEY",
+        "SENDPULSE_API_KEY",
+        "MAILJET_API_KEY",
+        "MAILJET_SECRET_KEY",
+        "MAILTRAP_API_TOKEN",
+        "MAILTRAP_SANDBOX_ID",
+        "AZURE_COMMUNICATION_EMAIL_ENDPOINT",
         "SENDGRID_API_KEY",
         "POSTMARK_SERVER_TOKEN",
         "POSTMARK_API_KEY",
@@ -83,12 +89,37 @@ async fn resolves_every_offline_provider_and_rejects_unknown_drivers() {
         .text("offline fixture");
 
     for name in [
-        "log", "memory", "resend", "sendgrid", "postmark", "ses", "aws_ses",
+        "log",
+        "memory",
+        "resend",
+        "sendgrid",
+        "postmark",
+        "ses",
+        "aws_ses",
+        "sendpulse",
+        "mailjet",
+        "mailjet-sandbox",
+        "mailtrap",
+        "azure-acs",
     ] {
         environment.set("MAIL_DRIVER", name);
         let driver = Mail::resolve_driver().await.unwrap();
         driver.send(&message).await.unwrap();
     }
+
+    environment.set("MAIL_DRIVER", "mailtrap-sandbox");
+    assert!(Mail::resolve_driver().await.is_err());
+    environment.set("MAILTRAP_SANDBOX_ID", "42");
+    Mail::resolve_driver()
+        .await
+        .unwrap()
+        .send(&message)
+        .await
+        .unwrap();
+    environment.set("MAIL_DRIVER", "mailjet");
+    environment.set("MAILJET_API_KEY", "real_fixture");
+    assert!(Mail::resolve_driver().await.is_err());
+    environment.clear("MAILJET_API_KEY");
 
     environment.set("MAIL_DRIVER", "smtp");
     environment.set("MAIL_HOST", "127.0.0.1");

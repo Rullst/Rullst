@@ -28,6 +28,7 @@ mod razorpay_webhook;
 pub mod stripe;
 mod stripe_charge;
 mod stripe_checkout;
+mod stripe_one_time;
 mod stripe_reconcile;
 pub use stripe_reconcile::StripeCheckoutSnapshot;
 pub(crate) mod stripe_contract;

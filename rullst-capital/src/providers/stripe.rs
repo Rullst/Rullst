@@ -34,7 +34,7 @@ impl StripeProvider {
         self
     }
 
-    pub(super) fn usage_api_key(&self) -> &str {
+    pub(crate) fn usage_api_key(&self) -> &str {
         &self.api_key
     }
 
