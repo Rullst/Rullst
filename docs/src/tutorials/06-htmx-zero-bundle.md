@@ -48,7 +48,7 @@ in `RawHtml`.
         name="query" 
         placeholder="Search users..." 
         class="w-full px-4 py-2 bg-slate-900 text-white rounded border border-slate-700 focus:outline-none"
-        hx-post="/api/users/search" 
+        hx-get="/api/users/search"
         hx-trigger="keyup changed delay:300ms" 
         hx-target="#user-list" 
         hx-swap="outerHTML" 
@@ -59,6 +59,14 @@ in `RawHtml`.
     </div>
 </div>
 ```
+
+Mount the example search handler as a **GET** route: this example only reads a
+list. GET is not a workaround for CSRF. Commands that change data, send messages
+or incur provider charges must not be converted to GET to avoid validation.
+For POST forms, including an AI chat, follow the
+[CSRF form contract](07-forms-and-validation.md#step-3-send-the-csrf-token-with-browser-forms).
+HTMX does not automatically copy Rullst's CSRF cookie into a header or make
+HTTP error bodies visible in the target element.
 
 ---
 

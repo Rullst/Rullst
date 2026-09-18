@@ -1,18 +1,18 @@
 use super::{
-    BillingProvider, SubscriptionStatus, WebhookEvent, WebhookVerificationMode, url_encode,
+    BillingProvider, WebhookEvent, WebhookVerificationMode, url_encode,
     verify_explicit_mock_signature, webhook_mode_from_secret,
 };
 use crate::error::CapitalError;
 use async_trait::async_trait;
 #[cfg(test)]
 use ring::hmac;
-use serde_json::Value;
 use std::collections::HashMap;
 
 /// Billing provider implementation for Polar.sh (Developer-First MoR & Open Source).
 pub struct PolarProvider {
-    api_key: String,
+    pub(super) api_key: String,
     webhook_secret: String,
+    pub(super) sandbox: bool,
 }
 
 impl PolarProvider {
@@ -21,7 +21,14 @@ impl PolarProvider {
         Self {
             api_key: api_key.into(),
             webhook_secret: webhook_secret.into(),
+            sandbox: false,
         }
+    }
+
+    /// Selects Polar's isolated sandbox API; credentials must belong to that environment.
+    pub fn with_sandbox(mut self, sandbox: bool) -> Self {
+        self.sandbox = sandbox;
+        self
     }
 
     /// Offline compatibility helper. Live verification requires all Standard
@@ -82,31 +89,9 @@ impl BillingProvider for PolarProvider {
             ));
         }
 
-        let client = crate::providers::http_client()?;
-        let payload = serde_json::json!({
-            "product_price_id": plan_id,
-            "customer_email": customer_email,
-            "success_url": redirect_url
-        });
-
-        let body: Value = crate::providers::send_http_json(
-            client
-                .post("https://api.polar.sh/v1/checkouts/custom/")
-                .bearer_auth(&self.api_key)
-                .header("Content-Type", "application/json")
-                .json(&payload),
-            "polar",
-            "create checkout",
-        )
-        .await?;
-
-        let url = body["url"].as_str().ok_or_else(|| {
-            CapitalError::from(crate::ProviderFailure::contract_mismatch(
-                "polar",
-                "create checkout",
-            ))
-        })?;
-        crate::providers::validate_checkout_url("polar", url)
+        Err(CapitalError::UnsupportedOperation(
+            "Polar checkout requires the current products-based contract; a legacy price ID cannot be reinterpreted".into(),
+        ))
     }
 
     fn handle_webhook(
@@ -131,45 +116,7 @@ impl BillingProvider for PolarProvider {
             )?;
         }
 
-        let json: Value = serde_json::from_slice(payload)
-            .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
-
-        let data = &json["data"];
-        let subscription_id = data["id"].as_str().unwrap_or("").to_string();
-        let customer_id = data["user_id"]
-            .as_str()
-            .or_else(|| data["customer_id"].as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let customer_email = data["user"]["email"]
-            .as_str()
-            .or_else(|| data["email"].as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let plan_id = data["product_id"]
-            .as_str()
-            .or_else(|| data["price_id"].as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let status_str = data["status"]
-            .as_str()
-            .filter(|status| !status.trim().is_empty())
-            .ok_or_else(|| {
-                CapitalError::PayloadParseError("Webhook status is missing or invalid".into())
-            })?;
-        let ends_at = data["current_period_end"].as_i64();
-
-        Ok(WebhookEvent {
-            subscription_id,
-            customer_id,
-            customer_email,
-            plan_id,
-            status: SubscriptionStatus::parse_status(status_str),
-            ends_at,
-        })
+        super::polar_subscription_event::parse(payload)
     }
 
     async fn create_customer_portal(
@@ -203,7 +150,12 @@ impl BillingProvider for PolarProvider {
             crate::providers::send_http(
                 client
                     .delete(format!(
-                        "https://api.polar.sh/v1/subscriptions/{}",
+                        "{}/v1/subscriptions/{}",
+                        if self.sandbox {
+                            "https://sandbox-api.polar.sh"
+                        } else {
+                            "https://api.polar.sh"
+                        },
                         subscription_id
                     ))
                     .bearer_auth(&self.api_key),
@@ -276,6 +228,7 @@ impl BillingProvider for PolarProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SubscriptionStatus;
 
     #[tokio::test]
     async fn test_polar_provider_methods() {
@@ -336,7 +289,7 @@ mod tests {
 
         // 5. Signature verification
         let secret = "sec_polar123";
-        let payload = br#"{"data":{"id":"sub_polar_100","user_id":"u_1","user":{"email":"user@polar.sh"},"product_id":"prod_polar_plan","status":"active"}}"#;
+        let payload = br#"{"type":"subscription.updated","data":{"id":"sub_polar_100","user_id":"u_1","user":{"email":"user@polar.sh"},"product_id":"prod_polar_plan","status":"active"}}"#;
 
         let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
         let sig = hmac::sign(&key, payload);

@@ -75,6 +75,27 @@ The Rullst framework is organized into decoupled, high-performance crates:
 - On Windows systems, procedural macro dynamic libraries (`.dll` files in `target/debug/deps/`) remain locked by running processes.
 - Always ensure active background compiler or test processes are terminated before executing destructive workspace operations like `cargo clean`.
 
+#### Local disk-space safety
+
+- On a developer workstation, measure space **available to the current user**
+  (for example, `df -h`), not total free blocks that include the filesystem's
+  administrator reserve. Check the filesystems holding the workspace, Cargo
+  target directory and temporary files before builds, tests or large downloads.
+- Keep at least **12 GiB available** as an operational reserve. At **15 GiB**,
+  intervene: do not start another disk-intensive job; stop/pause agent-owned
+  builds if space is declining, review disposable artifacts and notify the user.
+  Stop agent-owned disk-consuming jobs at 12 GiB; do not exhaust the reserve.
+- A build may start only with at least 15 GiB available **and** enough additional
+  headroom for its estimated peak while retaining the 12 GiB reserve. An unknown
+  cold all-feature/native build is not a small job; prefer hosted CI when its
+  peak cannot be bounded. Recheck during long-running jobs and after each batch.
+- Prefer targeted, reusable builds over simultaneous local matrices. Clean only
+  verified generated artifacts, after checking for active users of that target.
+  Never delete source, user files, credentials or database state, and never
+  reduce the OS filesystem reserve to make a build fit.
+- These thresholds are an agent operating policy, not an OS disk quota or a
+  guarantee against writes by other processes. Report that limitation honestly.
+
 ### 3.9. Official Inquiries & Vulnerability Disclosure
 - Official Framework Email: `officialrullst@gmail.com`.
 - Security vulnerabilities must be handled via coordinated private disclosure directly to the core team.

@@ -59,6 +59,13 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: python3 .github/check-release-admission.py
 
+  cli-artifacts:
+    name: Build admitted native CLI artifacts
+    needs: admit
+    uses: ./.github/workflows/cli-artifacts.yml
+    permissions:
+      contents: read
+
   verify:
     name: Verify release artifacts without release identity
     needs: admit
@@ -96,13 +103,15 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           components: rustfmt, clippy
           cache: false
 
       - name: Install cargo-audit for release evidence
-        uses: taiki-e/install-action@5bf6ce016fd2e72eefc647cbca1e4213f65955b8 # v2.87.5
+        uses: taiki-e/install-action@9534c84618278caac52cb373bb164ed464dbd8af # v2.87.11
         with:
           tool: cargo-audit
 
@@ -131,8 +140,13 @@ jobs:
 
       - name: Run portable transactional outbox contract
         run: >-
-          cargo test -p rullst-orm --no-default-features
+          cargo test -p rullst-orm --no-default-features --features drivers-all
           --test outbox_transaction_test -- --test-threads=1
+
+      - name: Run portable Stripe inbox transaction contract
+        env:
+          RULLST_REQUIRE_SQLITE_INBOX: "1"
+        run: cargo test -p rullst-capital --features webhook-sql --test stripe_inbox_sql --locked
 
       - name: Run provider matrices (SQL, document, edge and search)
         env:
@@ -153,7 +167,7 @@ jobs:
           cargo test -p rullst-studio --no-default-features --features strict-mysql --test data_browser_mutation_mariadb -- --test-threads=1
           cargo test -p rullst-nexus --no-default-features --test tenant_audit -- --test-threads=1
           cargo test -p rullst-ai --features sql-memory --test sql_chat_memory_postgres --test sql_chat_memory_mysql --test sql_chat_memory_mariadb -- --test-threads=1
-          cargo test -p rullst-capital --features quota-sql --test quota_sql_postgres --test quota_sql_mysql --test quota_sql_mariadb -- --test-threads=1
+          cargo test -p rullst-capital --features quota-sql,webhook-sql --test quota_sql_postgres --test quota_sql_mysql --test quota_sql_mariadb -- --test-threads=1
 
       - name: Run live Redis distributed rate-limit contract
         env:
@@ -251,6 +265,8 @@ jobs:
             "$evidence_dir/security-advisory-exceptions.md"
           cp .github/release-order.json \
             "$evidence_dir/release-order.json"
+          cp .github/cli-artifact-targets.json \
+            "$evidence_dir/cli-artifact-targets.json"
           mv target/package/crates-ownership.json \
             "$evidence_dir/crates-ownership.json"
 
@@ -293,7 +309,7 @@ jobs:
 
   attest:
     name: Attest verified artifacts without source execution
-    needs: verify
+    needs: [verify, cli-artifacts]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -314,6 +330,20 @@ jobs:
           sha256sum --check checksums.txt
           sha256sum --check evidence-checksums.txt
 
+      - name: Download native CLI artifacts without executing them
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: cli-native-*
+          path: native-cli
+          merge-multiple: true
+
+      - name: Check native artifact integrity without source execution
+        working-directory: native-cli
+        run: |
+          for checksum_file in cli-checksums-*.txt; do
+            sha256sum --check "$checksum_file"
+          done
+
       - name: Generate cryptographic build attestation
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
@@ -321,6 +351,7 @@ jobs:
             verified-crates/*.crate
             verified-crates/evidence-checksums.txt
             verified-crates/release-evidence/*
+            native-cli/*
 
   publication_preflight:
     name: Reproduce publication inputs without registry identity
@@ -337,7 +368,10 @@ jobs:
           persist-credentials: false
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
 
       - name: Download verified release artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -403,7 +437,10 @@ jobs:
       id-token: write
     steps:
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
 
       - name: Download verified release artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -568,6 +605,20 @@ jobs:
           sha256sum --check checksums.txt
           sha256sum --check evidence-checksums.txt
 
+      - name: Download previously attested native CLI artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: cli-native-*
+          path: native-cli
+          merge-multiple: true
+
+      - name: Verify native CLI artifact checksums
+        working-directory: native-cli
+        run: |
+          for checksum_file in cli-checksums-*.txt; do
+            sha256sum --check "$checksum_file"
+          done
+
       - name: Create GitHub release from verified artifacts
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
@@ -578,4 +629,5 @@ jobs:
             verified-crates/checksums.txt
             verified-crates/evidence-checksums.txt
             verified-crates/release-evidence/*
+            native-cli/*
           fail_on_unmatched_files: true

@@ -200,6 +200,10 @@ tutorial!(
     "../../docs/src/tutorials/48-local-oidc-testing.md"
 );
 tutorial!(
+    tutorial_49_omni_android_signing,
+    "../../docs/src/tutorials/49-omni-android-signing.md"
+);
+tutorial!(
     tutorial_49_brokered_messaging,
     "../../docs/src/tutorials/49-brokered-messaging.md"
 );

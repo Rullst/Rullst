@@ -6,7 +6,125 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Mobile Nexus and Portfolio — planned 12.1.0 and v13
+Publication status is recorded in [the v12 release record](docs/src/v12.md).
+A prepared version section does not establish that its tag or crates exist.
+
+## [12.1.0] - 2026-09-18
+
+This compatible maintenance release corrects billing contracts, generated
+application behavior and CLI update/recovery flows. Existing applications must
+review the [12.1 migration guide](docs/src/migration-v12-1.md); updating packages
+does not rewrite their controllers, migrate databases or deploy them.
+
+Stripe test-mode acceptance covers hosted Checkout, signed events and isolated
+generated SQLite persistence. Other provider adapters retain the explicit
+capabilities and account-acceptance requirements in the Capital provider matrix.
+Privacy, age assurance and untrusted exercise execution remain v13 roadmap work.
+
+### SaaS maintenance
+
+- Add the exact Stripe hosted-checkout origin to the SaaS starter's CSP so its
+  POST/303 handoff works in Chromium. Preserve Core's strict default; document
+  explicit provider changes, server-side URL binding and open-attempt recovery.
+  `make:billing` reports the policy requirement without rewriting existing CSP.
+  Add an intercepted Chromium policy regression without provider credentials.
+- Allow ordinary curl, Wget, Python and Go clients through the default WAF
+  User-Agent policy, fixing deployment health probes (RULLST-003). Preserve
+  configurable crawler filtering, payload inspection, CSRF and secure headers.
+  Existing explicitly configured blocklists remain application-owned.
+- Validate Lemon Squeezy store/variant configuration; replace obsolete Paddle
+  and Polar checkout with typed provider-specific contracts. Their legacy
+  email/price-only methods and incomplete Wise email-transfer flows fail explicitly.
+  Accept any valid bounded Stripe webhook signature during secret rotation.
+- Accept any matching Paddle `h1` signature within bounded headers and reject
+  duplicate timestamps, retaining raw-body verification and freshness checks.
+- Preserve Polar RFC3339 billing periods and current customer contact fields.
+  Reject non-subscription events, ambiguous identities and inconsistent states;
+  distinguish scheduled cancellation from final revocation. Retain bounded
+  legacy identity/period compatibility without treating orders as subscriptions.
+- Add Polar product checkout with opaque external customer identity, explicit
+  sandbox selection, optional typed trusted client IP, bound response and signed
+  subscription events. Do not retry creation without provider evidence.
+- Add Paddle customer provisioning, recurring transaction checkout through an
+  approved Paddle.js payment page, read-only customer/transaction recovery and
+  owner/attempt-bound signed subscription events. Reconcile current subscriptions
+  and validate cancellation/pause responses on the selected sandbox/live API.
+  Attempt metadata is not a provider idempotency guarantee; no blind retry or
+  email-based customer claim is introduced.
+- Require Razorpay subscription events to match their entity state and carry
+  subscription/customer/plan IDs; stop treating authentication or standalone
+  payments as active subscriptions. Handle charged, resumed and paused events.
+- Require Lemon Squeezy subscription objects, lifecycle event/state agreement,
+  numeric IDs, configured store binding and consistent test-mode fields.
+  Correct `on_trial` normalization, preserve cancellation expiry, and reject
+  invoice/payment events or malformed data as subscription snapshots.
+- Reject InfinitePay's unreviewed live body-only webhook contract explicitly.
+  Preserve explicit offline fixtures; require authenticated payment lookup and
+  merchant/order/amount binding before enabling real callback processing.
+- Read Stripe Basil billing periods from the subscription item, retaining the
+  legacy period fallback. Require supported subscription events, bounded IDs,
+  one complete price item and valid subscription states; reject ambiguous
+  periods and stop accepting payment-status aliases as subscription status.
+- Add an immutable verified Stripe subscription envelope retaining event/scope
+  metadata and separate mutation/payload digests, without consuming replay
+  admission before the caller's transaction. Production callers must reject
+  mock mode and bind account/customer/owner before committing an inbox claim.
+- Add customer-bound Stripe subscription checkout with explicit retry identity,
+  immutable request digests, response/line-item binding and distinct offline
+  receipts. Preserve legitimate Stripe hosted-URL fragments. Generated modules
+  now persist customer ownership, attempts and session IDs before handoff.
+- Add explicit Stripe customer creation with opaque owner metadata, optional
+  contact data, immutable request digests and provider idempotency. Validate
+  returned identity/mode and distinguish deterministic mocks; durable intent
+  and customer binding remain required before checkout.
+- Add a bound Stripe subscription read for reconciliation, validating the
+  subscription/customer/owner/price/mode against persisted expectations.
+  Preserve exact provider status and reject mocks as real state; callers must
+  serialize reads with domain updates and handle invoice settlement separately.
+- Generate HTTP 303 checkout redirects and a customer-ID-bound Stripe portal,
+  retained application lockfiles, locked Docker builds and supported MSVC flags.
+- Generate durable Stripe SaaS/`make:billing` integration on SQLx and Turso:
+  account/mode-scoped provisioning, immutable checkout attempts, session recovery,
+  signed Checkout/subscription events without email ownership, and current-state
+  reconciliation under database revision fencing. Mixed credentials and other
+  generated real providers remain unavailable. Existing application controllers
+  and migrations require reviewed adoption; dependency updates do not rewrite them.
+- Share SaaS billing models with `make:billing`, replacing the subscription
+  lookup's hardcoded PostgreSQL placeholder with the ORM's parameterized query
+  builder. Keep the SaaS Nexus metadata while avoiding backend-specific drift.
+- Commit generated event receipts and billing customer/subscription changes
+  atomically on SQLx and Turso, with conditional customer binding, bounded retired
+  attempts, stale-read rejection, process-restart and rollback/retry fixtures.
+- Add `SqlStripeEventInbox` under `webhook-sql`: retain scoped event/mutation
+  identity and terminal outcomes in the same transaction as domain SQL.
+  Reject conflicting content and mock/wrong-scope events, preserve exact retries
+  at capacity, and roll back failures/cancellation before commit. Retention,
+  authorized customer bindings, ordering and generated integration remain explicit.
+- Share AI configuration resolution between Nexus and the client, including
+  explicitly configured Groq and OpenAI-compatible models.
+- Make standalone ORM strict profiles select only their SQLx backend when
+  defaults are disabled. Preserve default convenience through `drivers-all`
+  and document additive dependency edges that can broaden a consumer graph.
+- Generate native enum codecs through the ORM's selected drivers, fixing
+  backend-exclusive and no-driver compilation. Exercise enums in each isolated
+  consumer; retain the macro crate's default expansion for the 12.0 runtime.
+
+### Omni icons and Android signing
+
+- Embed the existing Rullst logo as the default square icon source and regenerate
+  platform icons after mobile initialization. Refuse to overwrite an existing
+  application-owned shell; document reviewed migration instead.
+- Add `cargo rullst omni android --release` without changing the public v12
+  command enum. New Android shells configure application-owned release signing
+  from four environment variables and fail when credentials are missing. Debug
+  builds retain development signing; no shared keys, passwords in generated
+  files, store publication or physical-device compatibility claims are added.
+- Cover tool ordering, failure propagation and secret-free diagnostics. Extend
+  hosted Android evidence with disposable-key release/certificate checks.
+- Fix Windows strict-lint compilation and macOS root-alias handling in upgrade
+  backup creation/restoration, preserving rejection of descendant symlinks.
+
+### Mobile Nexus and Portfolio
 
 - Fix the Nexus mobile drawer trapping navigation: provide a close button,
   backdrop dismissal, Escape/link dismissal, focus containment/return and
@@ -19,7 +137,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   generated-product shards; retain the full existing generated-project matrix.
   Document removal of the showcase's temporary Nexus HTML-rewriting middleware.
 
-### Studio browser composition — planned 12.1.0
+### Studio browser composition
 
 - Serve the embedded CSS and request-stream client from raw and `/studio`-nested
   data-browser routers, fixing the unstyled embedded Portfolio/LMS shell.
@@ -31,8 +149,120 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   removal of application-level workaround routes before upgrading existing
   showcases; dependency updates do not rewrite generated source or redeploy it.
 
+### CLI updates and recovery
+
+- Add explicit local native-artifact verification through certificate-bound
+  GitHub attestation policy and bounded manifest/binary digest checks. It never
+  executes or installs candidates, rejects offline before I/O, and requires a
+  caller-installed verifier. Reports are not reusable installation authority.
+- Explicitly unlock advisory cache writers on every return path, including
+  errors, rather than relying on the last duplicate file handle closing. This
+  addresses a macOS CI lock-contention failure during concurrent subprocesses.
+
+- Prepare native CLI artifacts for Linux x64, Windows x64 and macOS x64/ARM64,
+  with version smoke checks and bounded source/platform/digest inventories.
+  Ordinary CI candidates carry no release tag. The admitted tag pipeline
+  attests the files in a separate job without executing source and includes
+  them in GitHub release assets. Candidate binaries cannot substitute for the
+  admitted release's provenance, verification and installation policy.
+
+- Pin managed upgrade requirements to the exact selected release and use
+  `--locked` for the final Cargo check, preventing silent patch/minor drift.
+
+- Add explicit advisory `cargo rullst update check` with an exact target,
+  separate major/prerelease opt-ins, MSRV/platform presentation and a versioned
+  JSON report. Offline mode refuses network access. Reuse bounded HTTPS discovery
+  without changing the public v12 command enum; discovery grants no artifact,
+  installation, project execution or deployment authority.
+
+- Cache explicit discovery for six hours on Unix using a private, owner-checked
+  directory, bounded single-link files, no-follow opens, a non-blocking writer
+  lock and staged replacement. Offline reads revalidate the catalog and current
+  selection policy; JSON includes metadata source/age. `--refresh` skips reads
+  and `--no-cache` disables persistence. Dashboard notices remain process-local.
+  Windows persistence now checks ownership, DACLs, path components, reparse
+  points and hardlinks; native Windows cache contracts passed.
+  This is not verified CLI installation.
+
+- Add opt-in `update project prepare` with bounded private before/candidate
+  copies of Git working contents, including dirty/untracked/deleted inputs and
+  a legacy ignored root lockfile. Reuse the exact dependency editor and source
+  catalog without compiling or applying changes; reject ambiguous requirements,
+  downgrades, unsafe files and excessive findings. Emit versioned review JSON
+  with no execution/application authority.
+
+- Add explicit `update project verify` with a command preview, operation lock,
+  source/plan revalidation and separate trusted-code consent. Resolve the exact
+  target and run locked workspace checks/tests in a fresh private copy, with
+  bounded commands/logs and supervised cancellation. Reject stale inputs,
+  failed tests and unexpected source writes; reports grant no apply authority.
+  Native and application/recovery fault checks remain mandatory release gates.
+
+- Add explicit authenticated native CLI staging with a fresh non-yanked release
+  selection, fixed official URLs, bounded HTTPS redirects and downloads,
+  attestation before executable retrieval, and exact size/hash checks. Failed
+  private stages are discarded. Staging executes and installs nothing; native
+  and published-release acceptance remain required.
+
+- Add authenticated installation preview for a new or receipt-owned private destination, binding
+  exact source/files/root to a review digest and showing version probes and a
+  pinned Cargo fallback without executing either. Reauthenticate prior manifest
+  bytes, bind the prior receipt, reject altered/hardlinked/nonprivate binaries
+  and refuse unknown files/package-manager takeover. Use the installed version
+  to reject stale-CLI downgrades.
+
+- Add digest-approved private CLI installation and explicit predecessor recovery,
+  with destination-local locking, authenticated staged copies, bounded version
+  probes, strict receipts and a persisted replacement intent. Preserve old
+  executable entries, reject divergent recovery state and bound evidence
+  retention. First-install recovery removes only recorded entries. Native
+  interruption, filesystem-fault and full user-journey acceptance remain gates.
+
+- Add opt-in `update guided` for CLI/project/both flows using the same checked
+  commands, exact paths and separate review digests. Default-no prompts separate
+  downloading, installation, trusted project execution/network and file
+  application. Reject piped approval and unsupported project major jumps;
+  report per-stage elapsed time and retain recovery instructions.
+
+- Add explicit candidate review with revalidated command logs, source/file
+  digests, a bounded full dependency diff and a review digest, without executing
+  or applying the candidate. Normalize and deduplicate Cargo metadata paths
+  before checking workspace membership, including Windows verbatim prefixes;
+  preserve executable bits in both private copies to avoid false mode diffs.
+
+- Add digest-approved application and recovery of the isolated candidate's
+  manifests/root lockfile, with evidence/access-policy revalidation, shared
+  source locks, staged directory-entry replacements and a persisted intent.
+  Refuse divergent edits, avoid clobbering newly created lockfiles, and preserve
+  unrelated files and hardlink aliases. Platform/fault acceptance is mandatory;
+  unsupported extended metadata requires manual handling.
+
+- Preflight the complete legacy upgrade backup before restoring any original.
+  Bound index and snapshot sizes, reject duplicate/ambiguous paths and linked
+  sources/targets, stage all replacements first, and replace directory entries
+  without truncating hardlinked files. Automatic and persisted recovery share
+  these checks. An interrupted apply reports partial progress and retains its
+  backup; this is per-file replacement, not an all-files atomic transaction.
+
+- Include `rullst-messaging` and an application's optional `cargo-rullst`
+  dependency in workspace upgrades. Check the managed package allowlist against
+  the publication inventory and test alias/workspace inheritance without
+  rewriting similarly named third-party packages.
+
+- Restrict advisory update discovery to interactive dashboard startup; ordinary
+  commands, help and noninteractive use do not start the check. Respect offline,
+  CI and notification opt-out flags. Retire the shared temporary version file
+  in favor of a validated process-local result.
+- Bound registry responses and total network/body duration, deny redirects and
+  select only newer non-yanked stable versions in the current major. Add offline
+  selection and loopback HTTP regressions, including a continuously trickling
+  response. Advisory discovery remains separate from the explicit guided
+  installation and project-acceptance commands above.
+
 ### CI tooling
 
+- Reuse version-pinned prebuilt mdBook tooling in documentation and Pages jobs;
+  retain the book, local-link, static-site and browser assertions.
 - Resolve all ten locked fuzz dependency graphs before Clippy and campaign
   preparation. Reject stale locks early instead of relying on the ineffective
   metadata `--no-deps` check; retain the complete forty-target inventory.
@@ -50,6 +280,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   Skipped jobs stay visible but have no execution duration; malformed or reversed
   timing in executed jobs still fails. Measurements are not release admission,
   billing estimates or proof of security.
+### Dependency maintenance
+
+- Integrate the reviewed grouped Rust updates, zstd 0.14 and jsonschema 0.56
+  into the compatible maintenance candidate; align manifest minimums and all
+  independent fuzz lockfiles. Candidate-wide compatibility and release checks
+  remain required before publication.
+- Align pinned CodeQL sub-actions, update the installer and Rust setup Action
+  with explicit warning behavior, and independently digest-pin the secret
+  scanner container. Do not skip existing verification jobs.
+
 ### Native SES dependency compatibility
 
 - Constrain optional `aws-ses` resolution to Smithy types 1.6.3: types 1.7
@@ -62,6 +302,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Documentation
 
+- Connect versioned Rust references and HTTP/REST learning paths in the API
+  index. Clarify that complete REST walkthroughs and reference audits remain
+  follow-up work rather than claiming the index finishes the documentation.
+- Document first-visit CSRF token extraction, ordinary/HTMX forms, safe error
+  presentation and cookie/header troubleshooting; keep public AI chat protected.
+  Add production-baseline HTTP regressions for valid submissions, preserved
+  form data and denials before the handler. Keep the simple read-only HTMX search
+  on GET instead of demonstrating a POST without its required token.
+- Record the unreleased 12.1.0 delivery boundaries and remaining updater/release
+  blockers without presenting advisory discovery as installation or migration.
 - Replace the completed v12 development program with a concise English release
   record and immutable publication receipts. Retire the CLI handoff and preserve
   older audits through archive links.

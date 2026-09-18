@@ -3,17 +3,14 @@ use chrono::Utc;
 use std::path::{Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
 
-#[derive(Debug)]
-struct BackupEntry {
-    original: PathBuf,
-    snapshot: Option<PathBuf>,
-}
+#[path = "backup/restore.rs"]
+mod restore;
 
 #[derive(Debug)]
 pub(super) struct UpgradeBackup {
+    project_root: PathBuf,
     root: PathBuf,
     report_path: PathBuf,
-    entries: Vec<BackupEntry>,
 }
 
 impl UpgradeBackup {
@@ -21,6 +18,7 @@ impl UpgradeBackup {
         project_root: &Path,
         plans: &[ManifestUpgradePlan],
     ) -> Result<Self, Box<dyn std::error::Error>> {
+        let project_root = project_root.canonicalize()?;
         let run_id = format!(
             "{}-{:016x}",
             Utc::now().format("%Y%m%dT%H%M%SZ"),
@@ -31,80 +29,86 @@ impl UpgradeBackup {
             .join("rullst-upgrades")
             .join(run_id);
         let files_root = root.join("files");
-        std::fs::create_dir_all(&files_root)?;
+        restore::validate_directory_creation(&project_root, Path::new("target/rullst-upgrades"))?;
+        let mut builder = std::fs::DirBuilder::new();
+        builder.recursive(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            builder.mode(0o700);
+        }
+        builder.create(&files_root)?;
 
         let mut originals = plans
             .iter()
-            .map(|plan| plan.path.clone())
+            .map(|plan| {
+                let relative = restore::project_relative_path(&project_root, &plan.path)?;
+                restore::validate_relative_restore_path(&relative)?;
+                restore::validate_file(&project_root, &relative)?;
+                Ok(project_root.join(relative))
+            })
+            .collect::<Result<Vec<_>, restore::RestoreError>>()?;
+        let package_roots = originals
+            .iter()
+            .zip(plans)
+            .filter(|(_, plan)| plan.is_package)
+            .filter_map(|(path, _)| path.parent().map(Path::to_path_buf))
             .collect::<Vec<_>>();
         originals.push(project_root.join("Cargo.lock"));
-        for package_root in plans
-            .iter()
-            .filter(|plan| plan.is_package)
-            .filter_map(|plan| plan.path.parent())
-        {
-            originals.extend(rust_sources(package_root)?);
+        for package_root in package_roots {
+            originals.extend(rust_sources(&package_root)?);
         }
         originals.sort();
         originals.dedup();
+        if originals.len() > restore::MAX_ENTRIES {
+            return Err("upgrade snapshot exceeds the file count limit".into());
+        }
 
-        let mut entries = Vec::with_capacity(originals.len());
         let mut index = String::new();
+        let mut total_bytes = 0u64;
         for original in originals {
-            let relative = original.strip_prefix(project_root)?;
-            if std::fs::symlink_metadata(&original)
-                .is_ok_and(|metadata| metadata.file_type().is_symlink())
-            {
-                return Err(format!(
-                    "refusing to snapshot symlinked upgrade input {}",
-                    relative.display()
-                )
-                .into());
-            }
-            if original.is_file() {
+            let relative = original.strip_prefix(&project_root)?;
+            restore::validate_relative_restore_path(relative)?;
+            let metadata = restore::validate_file(&project_root, relative)?;
+            if let Some(metadata) = metadata {
+                total_bytes = total_bytes
+                    .checked_add(metadata.len())
+                    .ok_or("upgrade snapshot size overflow")?;
+                if metadata.len() > restore::MAX_FILE_BYTES
+                    || total_bytes > restore::MAX_TOTAL_BYTES
+                {
+                    return Err("upgrade snapshot exceeds 64 MiB/file or 512 MiB/backup".into());
+                }
                 let snapshot = files_root.join(relative);
                 if let Some(parent) = snapshot.parent() {
                     std::fs::create_dir_all(parent)?;
                 }
                 std::fs::copy(&original, &snapshot)?;
                 index.push_str(&format!("present\t{}\n", relative.display()));
-                entries.push(BackupEntry {
-                    original,
-                    snapshot: Some(snapshot),
-                });
             } else {
+                if relative != Path::new("Cargo.lock") {
+                    return Err(
+                        "only the root Cargo.lock may be absent from an upgrade snapshot".into(),
+                    );
+                }
                 index.push_str(&format!("absent\t{}\n", relative.display()));
-                entries.push(BackupEntry {
-                    original,
-                    snapshot: None,
-                });
+            }
+            if index.len() as u64 > restore::MAX_INDEX_BYTES {
+                return Err("upgrade snapshot index exceeds 8 MiB".into());
             }
         }
         std::fs::write(root.join("index.tsv"), index)?;
         let report_path = root.join("report.md");
 
         Ok(Self {
+            project_root,
             root,
             report_path,
-            entries,
         })
     }
 
     pub(super) fn restore(&self) -> Result<(), Box<dyn std::error::Error>> {
-        for entry in &self.entries {
-            match &entry.snapshot {
-                Some(snapshot) => {
-                    if let Some(parent) = entry.original.parent() {
-                        std::fs::create_dir_all(parent)?;
-                    }
-                    std::fs::copy(snapshot, &entry.original)?;
-                }
-                None if entry.original.is_file() => {
-                    std::fs::remove_file(&entry.original)?;
-                }
-                None => {}
-            }
-        }
+        Self::restore_from(&self.project_root, &self.root)?;
         Ok(())
     }
 
@@ -112,63 +116,7 @@ impl UpgradeBackup {
         project_root: &Path,
         requested: &Path,
     ) -> Result<PathBuf, Box<dyn std::error::Error>> {
-        let project_root = project_root.canonicalize()?;
-        let allowed_root = project_root.join("target").join("rullst-upgrades");
-        let requested = if requested.is_absolute() {
-            requested.to_path_buf()
-        } else {
-            project_root.join(requested)
-        };
-        let allowed_root = allowed_root.canonicalize()?;
-        let backup_root = requested.canonicalize()?;
-        if !backup_root.starts_with(&allowed_root) {
-            return Err(
-                "backup must be inside this project's target/rullst-upgrades directory".into(),
-            );
-        }
-
-        let index = std::fs::read_to_string(backup_root.join("index.tsv"))?;
-        if index.lines().count() > 100_000 {
-            return Err("backup index exceeds the restore entry limit".into());
-        }
-        let files_root = backup_root.join("files").canonicalize()?;
-        for line in index.lines() {
-            let (state, relative) = line
-                .split_once('\t')
-                .ok_or("backup index contains a malformed entry")?;
-            let relative = Path::new(relative);
-            validate_relative_restore_path(relative)?;
-            let original = project_root.join(relative);
-
-            match state {
-                "present" => {
-                    let snapshot = backup_root.join("files").join(relative).canonicalize()?;
-                    if !snapshot.starts_with(&files_root) || !snapshot.is_file() {
-                        return Err("backup snapshot escapes the approved files directory".into());
-                    }
-                    if let Some(parent) = original.parent() {
-                        let canonical_parent = parent.canonicalize()?;
-                        if !canonical_parent.starts_with(&project_root) {
-                            return Err("restore target escapes the project root".into());
-                        }
-                    }
-                    if original.exists() && !original.canonicalize()?.starts_with(&project_root) {
-                        return Err("restore target resolves outside the project root".into());
-                    }
-                    std::fs::copy(snapshot, original)?;
-                }
-                "absent" if relative == Path::new("Cargo.lock") => {
-                    if original.is_file() {
-                        std::fs::remove_file(original)?;
-                    }
-                }
-                "absent" => {
-                    return Err("only a newly created root Cargo.lock may be removed".into());
-                }
-                _ => return Err("backup index contains an unknown entry state".into()),
-            }
-        }
-        Ok(backup_root)
+        Ok(restore::restore_from(project_root, requested)?)
     }
 
     pub(super) fn write_reports(
@@ -188,24 +136,6 @@ impl UpgradeBackup {
     pub(super) fn report_path(&self) -> &Path {
         &self.report_path
     }
-}
-
-fn validate_relative_restore_path(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    if path.as_os_str().is_empty()
-        || path.is_absolute()
-        || !path
-            .components()
-            .all(|component| matches!(component, std::path::Component::Normal(_)))
-    {
-        return Err("backup index contains an unsafe relative path".into());
-    }
-    let allowed = path == Path::new("Cargo.lock")
-        || path.file_name().and_then(|name| name.to_str()) == Some("Cargo.toml")
-        || path.extension().and_then(|extension| extension.to_str()) == Some("rs");
-    if !allowed {
-        return Err("backup index contains a file outside the upgrade snapshot contract".into());
-    }
-    Ok(())
 }
 
 fn rust_sources(project_root: &Path) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
@@ -246,6 +176,38 @@ fn included_entry(entry: &DirEntry) -> bool {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn snapshot_accepts_a_project_root_alias_but_rejects_a_linked_manifest() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().join("actual");
+        let alias = directory.path().join("alias");
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::write(root.join("Cargo.toml"), "original").unwrap();
+        std::fs::write(root.join("src/main.rs"), "fn main() {}").unwrap();
+        std::os::unix::fs::symlink(&root, &alias).unwrap();
+        let plans = vec![ManifestUpgradePlan {
+            path: alias.join("Cargo.toml"),
+            original: String::new(),
+            updated: String::new(),
+            is_package: true,
+            matched: 1,
+            source_majors: Default::default(),
+            changes: Vec::new(),
+            warnings: Vec::new(),
+        }];
+        let backup = UpgradeBackup::create(&alias, &plans).unwrap();
+        std::fs::write(root.join("Cargo.toml"), "changed").unwrap();
+        backup.restore().unwrap();
+        assert_eq!(
+            std::fs::read_to_string(root.join("Cargo.toml")).unwrap(),
+            "original"
+        );
+        std::fs::rename(root.join("Cargo.toml"), root.join("other.toml")).unwrap();
+        std::os::unix::fs::symlink("other.toml", root.join("Cargo.toml")).unwrap();
+        assert!(UpgradeBackup::create(&alias, &plans).is_err());
+    }
 
     #[test]
     fn restores_existing_files_and_removes_a_created_lockfile() {

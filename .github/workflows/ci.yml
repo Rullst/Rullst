@@ -27,6 +27,7 @@ on:
           - all
           - workspace
           - cli-standard
+          - cli-updates
           - cli-profiles-basic
           - cli-profiles-relational
           - cli-profiles-polyglot
@@ -76,8 +77,10 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           components: rustfmt, clippy
           cache: false
 
@@ -116,6 +119,7 @@ jobs:
       # Reuse real renderer/generated-project tests; do not add another build.
       RULLST_UI_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && (matrix.shard == 'workspace' || matrix.shard == 'cli-saas-product') && '1' || '0' }}
       RULLST_UI_BROWSER_SCRIPT: ${{ github.workspace }}/.github/mobile-ui-browser-smoke.mjs
+      RULLST_BILLING_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'cli-standard' && '1' || '0' }}
     strategy:
       fail-fast: false
       matrix:
@@ -136,15 +140,17 @@ jobs:
           version: v0.17.0
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           # CLI integration tests intentionally create and remove nested Cargo
           # targets. Caching the whole workspace target races the cache cleanup,
           # emits false ENOENT annotations and uploads multi-gigabyte archives.
           cache: false
 
-      - name: Set up Node for mobile UI browser regressions
-        if: env.RULLST_UI_BROWSER_TESTS == '1'
+      - name: Set up Node for browser regressions
+        if: env.RULLST_UI_BROWSER_TESTS == '1' || env.RULLST_BILLING_BROWSER_TESTS == '1'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
@@ -173,6 +179,10 @@ jobs:
             exit "$test_status"
           fi
 
+      - name: Exercise guided update in a real terminal
+        if: runner.os == 'Linux' && (matrix.shard == 'cli-standard' || matrix.shard == 'cli-updates')
+        run: python3 .github/cli-guided-pty-smoke.py target/debug/cargo-rullst
+
       - name: Upload failed workspace test log
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -185,8 +195,14 @@ jobs:
       - name: Run portable transactional outbox contract
         if: matrix.shard == 'workspace'
         run: >-
-          cargo test -p rullst-orm --no-default-features
+          cargo test -p rullst-orm --no-default-features --features drivers-all
           --test outbox_transaction_test -- --test-threads=1
+
+      - name: Run portable Stripe inbox transaction contract
+        if: matrix.shard == 'workspace'
+        env:
+          RULLST_REQUIRE_SQLITE_INBOX: "1"
+        run: cargo test -p rullst-capital --features webhook-sql --test stripe_inbox_sql --locked
 
       - name: Run provider matrices (SQL, document, edge and search)
         # Docker testcontainers are supported on Linux runners.
@@ -212,10 +228,11 @@ jobs:
           cargo test -p rullst-studio --no-default-features --features strict-mysql --test data_browser_mutation_mariadb -- --test-threads=1
           cargo test -p rullst-nexus --no-default-features --test tenant_audit -- --test-threads=1
           cargo test -p rullst-ai --features sql-memory --test sql_chat_memory_postgres --test sql_chat_memory_mysql --test sql_chat_memory_mariadb -- --test-threads=1
-          cargo test -p rullst-capital --features quota-sql --test quota_sql_postgres --test quota_sql_mysql --test quota_sql_mariadb -- --test-threads=1
+          cargo test -p rullst-capital --features quota-sql,webhook-sql --test quota_sql_postgres --test quota_sql_mysql --test quota_sql_mariadb -- --test-threads=1
 
   strict-database-features:
     name: ORM ${{ matrix.feature }}
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -236,9 +253,17 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           cache: false
+
+      - name: Prove standalone ORM driver isolation
+        env:
+          STRICT_DATABASE_FEATURE: ${{ matrix.feature }}
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target
+        run: python3 .github/check-orm-driver-consumer.py "$STRICT_DATABASE_FEATURE"
 
       - name: Compile ORM feature in isolation
         run: cargo check -p rullst-orm --all-targets --no-default-features --features ${{ matrix.feature }}
@@ -251,14 +276,20 @@ jobs:
             strict-postgres)
               cargo test -p rullst-orm --no-default-features \
                 --features strict-postgres --test matrix_postgres -- --test-threads=1
+              cargo test -p rullst-capital --features quota-sql,webhook-sql,rullst-orm/strict-postgres \
+                --test quota_sql_postgres --locked -- --test-threads=1
               ;;
             strict-mysql)
               cargo test -p rullst-orm --no-default-features \
                 --features strict-mysql --test matrix_mysql -- --test-threads=1
+              cargo test -p rullst-capital --features quota-sql,webhook-sql,rullst-orm/strict-mysql \
+                --test quota_sql_mysql --test quota_sql_mariadb --locked -- --test-threads=1
               ;;
             strict-sqlite)
               cargo test -p rullst-orm --no-default-features \
                 --features strict-sqlite --test matrix_sqlite -- --test-threads=1
+              RULLST_REQUIRE_SQLITE_INBOX=1 cargo test -p rullst-capital \
+                --features webhook-sql,rullst-orm/strict-sqlite --test stripe_inbox_sql --locked
               ;;
             *)
               echo "Unknown strict database feature: $STRICT_DATABASE_FEATURE"
@@ -268,6 +299,7 @@ jobs:
 
   redis-rate-limit:
     name: Redis live contracts
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     services:
@@ -291,8 +323,10 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           cache: false
 
       - name: Prove independent clients share one atomic budget
@@ -321,6 +355,7 @@ jobs:
 
   feature-boundaries:
     name: Public feature boundaries (${{ matrix.shard }}/4)
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -338,8 +373,10 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           cache: false
 
       - name: Compile all public minimal and isolated feature boundaries
@@ -347,6 +384,7 @@ jobs:
 
   threat-model-release-minimum:
     name: Threat-model release-negative minimum (${{ matrix.shard }}/4)
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -368,8 +406,10 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           cache: false
 
       - name: Run the explicit threat-model release-negative minimum
@@ -396,6 +436,7 @@ jobs:
 
   versioned-ai-evals:
     name: Versioned deterministic AI evals
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -409,8 +450,10 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           cache: false
 
       - name: Validate and run the versioned offline eval suite
@@ -418,6 +461,7 @@ jobs:
 
   generated-release-access:
     name: Generated release access boundaries
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -431,8 +475,10 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           cache: false
 
       - name: Prove Nexus never selects credential-free release access
@@ -443,6 +489,7 @@ jobs:
 
   facade-composition:
     name: Facade shared-local recovery composition
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -456,8 +503,10 @@ jobs:
           disable_annotations: true
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
         with:
+          rustflags: "-D warnings"
+          build-warnings: ""
           cache: false
 
       - name: Prove cross-domain restart and corruption isolation
@@ -465,6 +514,7 @@ jobs:
 
   msrv:
     name: Check MSRV (Rust 1.96.0)
+    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -486,6 +536,70 @@ jobs:
         # Use `cargo check` (no linking) to validate the MSRV without full build time.
         # If any crate uses a stabilized API newer than 1.96.0, this will fail.
         run: cargo check --workspace --all-features
+
+  native-cli-artifacts:
+    name: Native CLI distribution
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'all' && (inputs.shard == 'all' || inputs.shard == 'cli-standard')
+    uses: ./.github/workflows/cli-artifacts.yml
+    permissions:
+      contents: read
+
+  packaged-distribution:
+    name: Packaged distribution and installed CLI
+    # Exercise the actual archives before a tag or any registry publication.
+    # Diagnostic subsets and automatic development runs do not claim this proof.
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'all' && inputs.shard == 'all'
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      RULLST_DISABLE_UPDATE_CHECK: "true"
+    steps:
+      - name: Checkout source without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
+          cache: false
+
+      - name: Validate versions and topological package inventory
+        id: inventory
+        run: |
+          cargo metadata --locked --no-deps --format-version 1 > candidate-metadata.json
+          candidate_version="$(jq -er '.packages[] | select(.name == "cargo-rullst") | .version' candidate-metadata.json)"
+          jq --arg version "$candidate_version" \
+            --slurpfile release_order .github/release-order.json \
+            -f .github/release-preflight.jq candidate-metadata.json
+          printf 'version=%s\n' "$candidate_version" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch locked dependencies for the isolated offline consumer
+        run: cargo fetch --locked --target x86_64-unknown-linux-gnu
+
+      - name: Package and audit candidate archives without publication
+        env:
+          CANDIDATE_VERSION: ${{ steps.inventory.outputs.version }}
+        run: |
+          cargo package --workspace --exclude rullst-blog-example \
+            --all-features --locked --no-verify
+          bash .github/audit-packages.sh "$CANDIDATE_VERSION"
+
+      - name: Compile archive-only consumer and test the isolated installed CLI
+        env:
+          CANDIDATE_VERSION: ${{ steps.inventory.outputs.version }}
+        run: bash .github/test-packaged-distribution.sh "$CANDIDATE_VERSION"
 
   quality-scorecard:
     name: Evidence quality scorecard (observational)

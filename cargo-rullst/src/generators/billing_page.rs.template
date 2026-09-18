@@ -54,12 +54,8 @@ pub fn pricing_page(csrf_token: &str, csp_nonce: &str) -> Html<String> {
                 <div class="setup-banner">
                     <div class="setup-banner-icon">🚀</div>
                     <div class="setup-banner-content">
-                        <h4>Provider sandbox setup required</h4>
-                        <p>Configure Stripe or Lemon Squeezy test credentials before exercising checkout and signed webhook flows:</p>
-                        <pre><code>BILLING_PROVIDER=stripe
-BILLING_API_KEY=sk_test_...
-BILLING_WEBHOOK_SECRET=whsec_...
-BILLING_ALLOWED_PLAN_IDS=price_starter,price_pro</code></pre>
+                        <h4>Billing demonstration</h4>
+                        <p>These are example plans. Configure your products and prices before accepting payments.</p>
                     </div>
                 </div>
                 <div class="header">

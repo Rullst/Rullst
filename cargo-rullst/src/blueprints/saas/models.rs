@@ -1,5 +1,7 @@
 // cargo-rullst/src/blueprints/saas/models.rs — Database models and migrations for SaaS blueprint.
 
+use crate::generators::{ProjectOrmBackend, billing::render_billing_models};
+
 pub fn get_models_and_migrations() -> Vec<(&'static str, String)> {
     let mut manifest = Vec::new();
 
@@ -48,22 +50,12 @@ impl NexusModel for User {
 "##;
     manifest.push(("src/models/user.rs", user_model.to_string()));
 
-    let subscription_model = r##"use rullst::db::{Orm, FromRow};
+    // Share persistence methods with make:billing so placeholder dialects and
+    // ownership-model fixes cannot drift between the two generators.
+    let (mut subscription_model, billing_customer_model) =
+        render_billing_models("user_id", ProjectOrmBackend::Sqlx);
+    subscription_model.push_str(r##"
 use rullst::nexus::{NexusModel, FieldMeta, FieldKind};
-
-#[derive(Debug, Clone, FromRow, Orm)]
-#[orm(table = "subscriptions")]
-pub struct Subscription {
-    pub id: i32,
-    pub user_id: i32,
-    pub customer_id: String,
-    pub subscription_id: String,
-    pub plan_id: String,
-    pub status: String,
-    pub ends_at: Option<i64>,
-    pub created_at: String,
-    pub updated_at: String,
-}
 
 impl NexusModel for Subscription {
     fn nexus_table() -> &'static str { "subscriptions" }
@@ -83,46 +75,9 @@ impl NexusModel for Subscription {
         ]
     }
 }
-
-impl Subscription {
-    pub async fn find_by_subscription_id(subscription_id: &str) -> Result<Option<Self>, rullst_orm::error::RullstError> {
-        let pool = rullst::db::Orm::pool()?;
-        rullst::db::sqlx::query_as("SELECT * FROM subscriptions WHERE subscription_id = $1")
-            .bind(subscription_id)
-            .fetch_optional(pool)
-            .await
-            .map_err(Into::into)
-    }
-}
-"##;
-    manifest.push(("src/models/subscription.rs", subscription_model.to_string()));
-
-    let billing_customer_model = r##"use rullst::db::{Orm, FromRow};
-
-#[derive(Debug, Clone, FromRow, Orm)]
-#[orm(table = "billing_customers")]
-pub struct BillingCustomer {
-    pub id: i32,
-    pub user_id: i32,
-    pub email: String,
-    pub customer_id: Option<String>,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
-impl BillingCustomer {
-    pub async fn find_by_email(email: &str) -> Result<Option<Self>, rullst::orm::Error> {
-        Self::query()
-            .where_eq("email", email.to_string())
-            .first()
-            .await
-    }
-}
-"##;
-    manifest.push((
-        "src/models/billing_customer.rs",
-        billing_customer_model.to_string(),
-    ));
+"##);
+    manifest.push(("src/models/subscription.rs", subscription_model));
+    manifest.push(("src/models/billing_customer.rs", billing_customer_model));
 
     let models_mod = r##"pub mod user;
 pub mod subscription;
@@ -169,59 +124,13 @@ impl Migration for MigrationImpl {
         m1.to_string(),
     ));
 
-    let m3 = r##"use rullst::db::{Orm, sqlx};
-use rullst::db::schema::{Schema, Migration};
-use rullst::db::async_trait;
-
-pub struct MigrationImpl;
-
-#[async_trait]
-impl Migration for MigrationImpl {
-    fn name(&self) -> &'static str {
-        "m20260601000002_create_subscriptions_table"
-    }
-
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
-        Schema::create("billing_customers", |table| {
-            table.id();
-            table.integer("user_id").not_null();
-            table.string("email").not_null();
-            table.string("customer_id").nullable();
-            table.timestamps();
-        }).await?;
-        Schema::create("subscriptions", |table| {
-            table.id();
-            table.integer("user_id").not_null();
-            table.string("customer_id").not_null();
-            table.string("subscription_id").not_null();
-            table.string("plan_id").not_null();
-            table.string("status").not_null();
-            table.integer("ends_at").nullable();
-            table.timestamps();
-        }).await?;
-        let pool = Orm::pool()?;
-        sqlx::query(
-            "CREATE UNIQUE INDEX billing_customers_email_unique ON billing_customers(email)",
-        )
-        .execute(pool)
-        .await?;
-        sqlx::query(
-            "CREATE UNIQUE INDEX subscriptions_subscription_id_unique ON subscriptions(subscription_id)",
-        )
-        .execute(pool)
-        .await?;
-        Ok(())
-    }
-
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
-        Schema::drop_if_exists("subscriptions").await?;
-        Schema::drop_if_exists("billing_customers").await
-    }
-}
-"##;
     manifest.push((
         "src/migrations/m20260601000002_create_subscriptions_table.rs",
-        m3.to_string(),
+        crate::generators::billing::render_billing_migration(
+            "m20260601000002_create_subscriptions_table",
+            "user_id",
+            ProjectOrmBackend::Sqlx,
+        ),
     ));
 
     let migrations_mod = r##"// Generated by Rullst.

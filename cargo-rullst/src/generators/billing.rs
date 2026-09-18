@@ -18,12 +18,19 @@ const SQLX_CUSTOMER_MODEL: &str = include_str!("billing_customer_sqlx.rs.templat
 const TURSO_CUSTOMER_MODEL: &str = include_str!("billing_customer_turso.rs.template");
 const SQLX_MIGRATION: &str = include_str!("billing_migration_sqlx.rs.template");
 const TURSO_MIGRATION: &str = include_str!("billing_migration_turso.rs.template");
+const SQLX_PERSIST: &str = include_str!("billing_persist_sqlx.rs.template");
+const TURSO_PERSIST: &str = include_str!("billing_persist_turso.rs.template");
 
-const FIXED_OUTPUTS: [&str; 4] = [
+const FIXED_OUTPUTS: [&str; 9] = [
     "src/models/subscription.rs",
     "src/models/billing_customer.rs",
     "src/pages/billing.rs",
     "src/controllers/billing_controller.rs",
+    "src/controllers/billing_live.rs",
+    "src/controllers/billing_store.rs",
+    "src/controllers/billing_events.rs",
+    "BILLING.md",
+    "src/controllers/billing_gateway.rs",
 ];
 
 pub(crate) fn render_billing_controller(foreign_key: &str, backend: ProjectOrmBackend) -> String {
@@ -32,8 +39,65 @@ pub(crate) fn render_billing_controller(foreign_key: &str, backend: ProjectOrmBa
         ProjectOrmBackend::Turso => "i64",
     };
     BILLING_CONTROLLER_TEMPLATE
+        .replace(
+            "__PERSIST_BILLING_UPDATE__",
+            match backend {
+                ProjectOrmBackend::Sqlx => SQLX_PERSIST,
+                ProjectOrmBackend::Turso => TURSO_PERSIST,
+            },
+        )
         .replace("__FOREIGN_KEY__", foreign_key)
         .replace("__OWNER_ID_TYPE__", owner_id_type)
+}
+
+pub(crate) fn live_billing_files(
+    foreign_key: &str,
+    backend: ProjectOrmBackend,
+) -> Vec<(&'static str, String)> {
+    let store = match backend {
+        ProjectOrmBackend::Sqlx => include_str!("billing_store_sqlx.rs.template"),
+        ProjectOrmBackend::Turso => include_str!("billing_store_turso.rs.template"),
+    };
+    let owner_type = if backend == ProjectOrmBackend::Sqlx {
+        "i32"
+    } else {
+        "i64"
+    };
+    vec![
+        (
+            "src/controllers/billing_gateway.rs",
+            include_str!("billing_gateway.rs.template").into(),
+        ),
+        (
+            "src/controllers/billing_live.rs",
+            include_str!("billing_live.rs.template").replace(
+                "__OWNER_TO_I64__",
+                if backend == ProjectOrmBackend::Sqlx {
+                    "i64::from(identity.owner_id)"
+                } else {
+                    "identity.owner_id"
+                },
+            ),
+        ),
+        (
+            "src/controllers/billing_events.rs",
+            include_str!("billing_events.rs.template").into(),
+        ),
+        (
+            "src/controllers/billing_store.rs",
+            store
+                .replace("__FOREIGN_KEY__", foreign_key)
+                .replace("__OWNER_ID_TYPE__", owner_type)
+                .replace(
+                    "__OWNER_CAST__",
+                    "i32::try_from(next.owner).map_err(|_| UNAVAILABLE)?",
+                ),
+        ),
+        (
+            "BILLING.md",
+            include_str!("billing_readme.md.template").into(),
+        ),
+    ]
 }
 
 pub(crate) fn render_billing_models(
@@ -109,6 +173,9 @@ pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Er
     fs::write(FIXED_OUTPUTS[1], customer_model)?;
     fs::write(FIXED_OUTPUTS[2], include_str!("billing_page.rs.template"))?;
     fs::write(FIXED_OUTPUTS[3], controller)?;
+    for (path, contents) in live_billing_files(&foreign_key, backend) {
+        fs::write(path, contents)?;
+    }
     fs::write(&migration_path, migration)?;
     fs::write(manifest_path, updated_manifest)?;
 
@@ -132,8 +199,20 @@ pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Er
     );
     println!("👉 Mount authenticated checkout/portal routes and the exact signed webhook route.");
     println!("👉 BILLING_PROVIDER accepts stripe or lemonsqueezy.");
-    println!("👉 Configure BILLING_API_KEY, BILLING_WEBHOOK_SECRET, and BILLING_REDIRECT_URL.");
+    println!(
+        "👉 Stripe supports durable customer/checkout ownership and atomic webhook reconciliation."
+    );
+    println!(
+        "👉 Configure BILLING_ACCOUNT_ID, HTTPS redirect, credentials and plans; follow BILLING.md. Other generated providers remain fixtures."
+    );
+    println!("👉 Lemon Squeezy also requires BILLING_STORE_ID and numeric variant IDs.");
     println!("👉 Set BILLING_ALLOWED_PLAN_IDS to a comma-separated server-owned allowlist.");
+    println!(
+        "👉 Review CSP form-action on the pricing page: Stripe requires https://checkout.stripe.com; other providers require their exact reviewed checkout origin."
+    );
+    println!(
+        "👉 Validate returned checkout URLs on the server and test the POST/303 handoff in a real browser. Existing security policy is not rewritten."
+    );
     Ok(())
 }
 

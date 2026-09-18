@@ -1,0 +1,68 @@
+use super::{Receipt, Result, State, UNAVAILABLE};
+use rullst::orm::polyglot::{TursoOrm, TursoStatement, TursoValue, TursoQueryLimit};
+fn text(value: impl Into<String>) -> TursoValue { TursoValue::Text(value.into()) }
+fn statement(sql: &str, values: Vec<TursoValue>) -> Result<TursoStatement> {
+    TursoStatement::new(sql, values).map_err(|_| UNAVAILABLE)
+}
+async fn query(sql: &str, scope: &str, value: &str, column: &str) -> Result<Option<String>> {
+    let rows = TursoOrm::store().map_err(|_| UNAVAILABLE)?.query(
+        statement(sql, vec![text(scope), text(value)])?, TursoQueryLimit::new(1).map_err(|_| UNAVAILABLE)?
+    ).await.map_err(|_| UNAVAILABLE)?;
+    match rows.first().map(|row| row.get(column)) {
+        None => Ok(None), Some(Some(TursoValue::Text(text))) => Ok(Some(text.clone())), _ => Err(UNAVAILABLE),
+    }
+}
+pub(super) async fn owner(scope: &str, owner: i64) -> Result<Option<State>> {
+    let state = query("SELECT payload FROM billing_state WHERE scope = ? AND owner_id = ?", scope, &owner.to_string(), "payload")
+        .await?.map(|text| State::decode(&text)).transpose()?;
+    if state.as_ref().is_some_and(|state| state.scope != scope || state.owner != owner) { return Err(UNAVAILABLE); }
+    Ok(state)
+}
+pub(super) async fn reference(scope: &str, reference: &str) -> Result<Option<State>> {
+    let state = query("SELECT payload FROM billing_state WHERE scope = ? AND reference = ?", scope, reference, "payload")
+        .await?.map(|text| State::decode(&text)).transpose()?;
+    if state.as_ref().is_some_and(|state| state.scope != scope || state.reference != reference) { return Err(UNAVAILABLE); }
+    Ok(state)
+}
+pub(super) async fn receipt(scope: &str, id: &str) -> Result<Option<String>> {
+    query("SELECT digest FROM billing_events WHERE scope = ? AND event_id = ?", scope, id, "digest").await
+}
+pub(super) async fn insert(state: &State) -> Result<()> {
+    TursoOrm::store().map_err(|_| UNAVAILABLE)?.execute(statement(
+        "INSERT INTO billing_state (scope, owner_id, reference, revision, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT DO NOTHING",
+        vec![text(&state.scope), text(state.owner.to_string()), text(&state.reference), text(&state.revision), text(state.encode()?)],
+    )?).await.map_err(|_| UNAVAILABLE)?;
+    Ok(())
+}
+pub(super) async fn commit(old: &State, next: &State, receipt: Option<&Receipt>) -> Result<bool> {
+    if old.scope != next.scope || old.owner != next.owner || old.reference != next.reference
+        || old.revision == next.revision { return Err(UNAVAILABLE); }
+    let mut commands = vec![statement(
+        "UPDATE billing_state SET revision = ?, payload = ?, customer_id = ? WHERE scope = ? AND reference = ? AND revision = ?",
+        vec![text(&next.revision), text(next.encode()?), next.customer.as_ref().map(text).unwrap_or(TursoValue::Null),
+            text(&old.scope), text(&old.reference), text(&old.revision)],
+    )?];
+    if let Some(entitlement) = &next.entitlement {
+        let customer = next.customer.as_deref().ok_or(UNAVAILABLE)?;
+        // A conflicting subscription makes the entire transaction fail through
+        // the NOT NULL owner constraint, including the revision and event claim.
+        commands.push(statement(
+            "INSERT INTO subscriptions (__FOREIGN_KEY__, customer_id, subscription_id, plan_id, status, ends_at, created_at, updated_at)
+             SELECT ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now') FROM billing_state
+             WHERE scope = ? AND reference = ? AND revision = ?
+             ON CONFLICT(subscription_id) DO UPDATE SET
+               __FOREIGN_KEY__ = CASE WHEN subscriptions.__FOREIGN_KEY__ = excluded.__FOREIGN_KEY__ AND subscriptions.customer_id = excluded.customer_id THEN subscriptions.__FOREIGN_KEY__ ELSE NULL END,
+               plan_id = excluded.plan_id, status = excluded.status, ends_at = excluded.ends_at, updated_at = excluded.updated_at",
+            vec![TursoValue::Integer(next.owner), text(customer), text(&entitlement.subscription), text(&entitlement.price), text(&entitlement.status),
+                entitlement.ends_at.map(TursoValue::Integer).unwrap_or(TursoValue::Null), text(&next.scope), text(&next.reference), text(&next.revision)],
+        )?);
+    }
+    if let Some(receipt) = receipt {
+        commands.push(statement(
+            "INSERT INTO billing_events (scope, event_id, digest, reference) SELECT ?, ?, ?, ? FROM billing_state WHERE scope = ? AND reference = ? AND revision = ?",
+            vec![text(&next.scope), text(&receipt.id), text(&receipt.digest), text(&next.reference), text(&next.scope), text(&next.reference), text(&next.revision)],
+        )?);
+    }
+    let affected = TursoOrm::store().map_err(|_| UNAVAILABLE)?.transaction(commands).await.map_err(|_| UNAVAILABLE)?;
+    Ok(affected.first() == Some(&1))
+}

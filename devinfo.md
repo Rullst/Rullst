@@ -23,7 +23,20 @@ the stable v12 toolchain, install its exact version with
 ## Required local verification
 
 Do not run `cargo clean` as a routine pre-flight; it destroys reusable build
-artifacts and makes verification slower. The required commands are:
+artifacts and makes verification slower. Low disk space is an exception:
+check `df -h` before and during local builds, preserve at least **12 GiB
+available to your user**, and intervene at **15 GiB** rather than waiting for
+the reserve to run out. The predicted build peak must also fit above that
+reserve; otherwise use hosted CI. See the local disk policy in
+[`AGENTS.md`](AGENTS.md). Administrator-reserved filesystem blocks do not count
+as usable build space.
+
+When cleanup is necessary, stop users of the verified Cargo target first.
+Inspect `cargo clean --dry-run` from the correct project before cleaning.
+Generated build artifacts can be recreated; the first later build will be
+slower. Never clean arbitrary directories or reduce the OS filesystem reserve.
+
+The required verification commands are:
 
 ```bash
 cargo test --workspace --all-features

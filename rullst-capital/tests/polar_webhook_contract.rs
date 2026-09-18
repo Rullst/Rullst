@@ -90,3 +90,113 @@ fn polar_standard_headers_bind_body_id_time_and_documented_key_schemes() {
         );
     }
 }
+
+fn subscription_fixture() -> serde_json::Value {
+    serde_json::json!({"type":"subscription.updated","data":{
+        "id":"sub_1","customer_id":"cus_1","product_id":"prod_1","status":"active",
+        "current_period_end":"2027-01-01T00:00:00Z", "cancel_at_period_end":false,
+        "customer":{"id":"cus_1","email":"billing@example.test"}
+    }})
+}
+
+fn signed_event(value: &serde_json::Value) -> Result<rullst_capital::WebhookEvent, CapitalError> {
+    let body = serde_json::to_vec(value).unwrap();
+    let secret = "fixture-polar-lifecycle-secret";
+    PolarProvider::new("unused-fixture-key", secret).handle_webhook(
+        &body,
+        &headers(secret.as_bytes(), &body, chrono::Utc::now().timestamp()),
+    )
+}
+
+#[test]
+fn current_polar_periods_and_customer_contact_are_preserved_with_legacy_integer_support() {
+    let mut value = subscription_fixture();
+    let event = signed_event(&value).unwrap();
+    assert_eq!(event.ends_at, Some(1_798_761_600));
+    assert_eq!(event.customer_email, "billing@example.test");
+    value["data"]["current_period_end"] = serde_json::json!(1_798_761_600);
+    assert_eq!(signed_event(&value).unwrap().ends_at, event.ends_at);
+}
+
+#[test]
+fn signed_non_subscription_events_and_confused_subscription_objects_are_rejected() {
+    use serde_json::json;
+    for (pointer, replacement) in [
+        ("/type", json!("order.paid")),
+        ("/type", json!("customer.updated")),
+        ("/type", json!("subscription.future")),
+        ("/type", serde_json::Value::Null),
+        ("/data/id", json!("")),
+        ("/data/customer_id", json!("other")),
+        ("/data/customer_id", serde_json::Value::Null),
+        ("/data/product_id", json!("")),
+        ("/data/status", json!("paid")),
+        ("/data/current_period_end", json!("invalid")),
+        ("/data/current_period_end", json!(-1)),
+        ("/data/customer/email", json!("bad\ncontact")),
+    ] {
+        let mut value = subscription_fixture();
+        *value.pointer_mut(pointer).unwrap() = replacement;
+        assert!(signed_event(&value).is_err(), "accepted {pointer}");
+    }
+    let mut value = subscription_fixture();
+    value["data"]["user_id"] = json!("other");
+    assert!(signed_event(&value).is_err());
+}
+
+#[test]
+fn polar_scheduled_cancellation_and_final_revocation_are_distinct() {
+    use serde_json::json;
+    let mut value = subscription_fixture();
+    value["type"] = json!("subscription.canceled");
+    value["data"]["cancel_at_period_end"] = json!(true);
+    assert_eq!(
+        signed_event(&value).unwrap().status,
+        SubscriptionStatus::Active
+    );
+    value["type"] = json!("subscription.revoked");
+    assert!(signed_event(&value).is_err());
+    value["data"]["status"] = json!("canceled");
+    assert_eq!(
+        signed_event(&value).unwrap().status,
+        SubscriptionStatus::Canceled
+    );
+    value["type"] = json!("subscription.paused");
+    assert!(signed_event(&value).is_err());
+    value["data"]["status"] = json!("paused");
+    assert_eq!(
+        signed_event(&value).unwrap().status,
+        SubscriptionStatus::Paused
+    );
+}
+
+#[test]
+fn current_product_checkout_and_signed_external_customer_share_the_same_owner() {
+    let product = "1dbfc517-0bbf-4301-9ba8-555ca42b9737";
+    let request = rullst_capital::PolarCheckoutRequest::new(
+        product,
+        "owner_opaque",
+        "https://app.example/return",
+    )
+    .unwrap();
+    let secret = "fixture-polar-bound-owner-secret";
+    let provider = PolarProvider::new("fixture", secret);
+    let mut value = subscription_fixture();
+    value["data"]["product_id"] = serde_json::json!(product);
+    value["data"]["customer"]["external_id"] = serde_json::json!("owner_opaque");
+    value["data"]["customer"]["email"] = serde_json::Value::Null;
+    let verify = |value: &serde_json::Value| {
+        let body = serde_json::to_vec(value).unwrap();
+        provider.verify_checkout_subscription(
+            &request,
+            &body,
+            &headers(secret.as_bytes(), &body, chrono::Utc::now().timestamp()),
+        )
+    };
+    assert_eq!(verify(&value).unwrap().customer_id, "cus_1");
+    value["data"]["customer"]["external_id"] = serde_json::json!("other_owner");
+    assert!(verify(&value).is_err());
+    value["data"]["customer"]["external_id"] = serde_json::json!("owner_opaque");
+    value["data"]["product_id"] = serde_json::json!("other_product");
+    assert!(verify(&value).is_err());
+}

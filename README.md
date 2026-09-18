@@ -69,6 +69,12 @@ deployment recipes in [Rullst/examples](https://github.com/Rullst/examples):
 | 🎓 **LMS** — course catalog and learning-platform example | [Open LMS ↗](https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/) |
 | 💼 **Portfolio** — projects, skills and experience presentation | [Open Portfolio ↗](https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/) |
 
+> **The first visit may take longer.** These Azure Container Apps demos may
+> scale down to zero while idle. Your request can trigger a container startup
+> (a *cold start*); please allow it to finish and retry if necessary. That initial
+> wait includes hosting startup time and is not a Rullst request-performance
+> benchmark. [How Azure scaling works](https://learn.microsoft.com/en-us/azure/container-apps/scale-app).
+
 These are independently maintained demo snapshots and may lag the stable release.
 Showcase payment fixtures are **not live checkout**. Deployment availability,
 native downloads and provider approval are separate from framework test evidence;
@@ -216,7 +222,7 @@ Badges and test results are evidence for their stated scope, not a security
 certification of every application built with the framework.
 
 <details>
-<summary><strong>🛡️ Open the full v12 verification dashboard (37 workflows)</strong></summary>
+<summary><strong>🛡️ Open the full v12 verification dashboard (38 workflows)</strong></summary>
 
 <h3 align="center">🛡️ v12 Main Verification Dashboard</h3>
 
@@ -272,7 +278,7 @@ green main gates:
 Scheduled events use the repository's default branch, so scheduled and
 continuous v12 evidence now refer to `main`. The recommended required-check
 profile and the exact scope of all
-37 workflow definitions are documented in [WORKFLOWS.md](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).
+38 workflow definitions are documented in [WORKFLOWS.md](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).
 
 > 📖 **[Read the detailed breakdown of all CI/CD and security workflows](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).**
 >

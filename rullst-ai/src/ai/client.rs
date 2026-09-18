@@ -1,9 +1,9 @@
 //! Mandatory-guardrail high-level client and chat builder.
 
 use super::{
-    AiError, AiGuardrails, AiProvider, EgressFetcher, EgressResolver, FallbackProvider,
-    LocalImagePolicy, Message, ProviderCapabilities, StructuredOutputSchema,
-    guardrails::prepare_messages, structured::clean_json_markdown,
+    AiError, AiGuardrails, AiProvider, EgressFetcher, EgressResolver, LocalImagePolicy, Message,
+    ProviderCapabilities, StructuredOutputSchema, guardrails::prepare_messages,
+    structured::clean_json_markdown,
 };
 use std::path::Path;
 use std::sync::Arc;
@@ -69,38 +69,7 @@ impl AiClient {
 
     /// Selects configured providers, falling back to a deterministic offline provider.
     pub fn auto() -> Result<Self, AiError> {
-        let mut providers: Vec<Arc<dyn AiProvider>> = Vec::new();
-
-        if let Ok(key) = std::env::var("OPENAI_API_KEY") {
-            providers.push(Arc::new(super::providers::openai::OpenAiProvider::new(key)));
-        }
-        if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
-            providers.push(Arc::new(
-                super::providers::anthropic::AnthropicProvider::new(key),
-            ));
-        }
-        if let Ok(key) = std::env::var("GEMINI_API_KEY") {
-            providers.push(Arc::new(super::providers::gemini::GeminiProvider::new(key)));
-        }
-        if let Ok(key) = std::env::var("DEEPSEEK_API_KEY") {
-            providers.push(Arc::new(super::providers::deepseek::DeepSeekProvider::new(
-                key,
-            )));
-        }
-        if let Ok(host) = std::env::var("OLLAMA_HOST") {
-            let model = std::env::var("OLLAMA_MODEL").unwrap_or_else(|_| "llama3".to_string());
-            providers.push(Arc::new(super::providers::ollama::OllamaProvider::new(
-                host, model,
-            )));
-        }
-
-        if providers.is_empty() {
-            providers.push(Arc::new(super::providers::openai::OpenAiProvider::new(
-                "mock_auto",
-            )));
-        }
-
-        Ok(Self::new(FallbackProvider::new(providers)))
+        Ok(super::AutoAiConfig::from_env()?.into_client())
     }
 
     /// Applies mandatory guardrails and prompts the underlying model.

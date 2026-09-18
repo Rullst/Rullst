@@ -2,8 +2,50 @@
 
 use colored::*;
 use semver::Version;
+use std::io::{IsTerminal, Read};
+use std::sync::{
+    OnceLock,
+    atomic::{AtomicBool, Ordering},
+};
 
-fn enabled_env_flag(value: Option<&std::ffi::OsStr>) -> bool {
+pub(crate) const CATALOG_LIMIT: u64 = 256 * 1024;
+pub(crate) const CATALOG_URL: &str = "https://crates.io/api/v1/crates/cargo-rullst";
+// Notices are advisory, not installation authority. Do not trust the legacy
+// shared temporary file. Discovery keeps only a process-local validated result;
+// a persistent, cross-platform private cache needs its own reviewed contract.
+static AVAILABLE_UPDATE: OnceLock<Version> = OnceLock::new();
+static DISCOVERY_STARTED: AtomicBool = AtomicBool::new(false);
+
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum DiscoveryError {
+    #[error("release metadata exceeds the discovery limit")]
+    TooLarge,
+    #[error("could not read release metadata: {0}")]
+    Read(#[from] std::io::Error),
+    #[error("invalid release metadata: {0}")]
+    Json(#[from] serde_json::Error),
+    #[error("invalid installed CLI version: {0}")]
+    Version(#[from] semver::Error),
+    #[error("release metadata request failed: {0}")]
+    Http(#[from] reqwest::Error),
+    #[error("release discovery exceeded its total time limit")]
+    Timeout,
+}
+
+#[derive(serde::Deserialize)]
+struct Catalog {
+    versions: Vec<Release>,
+}
+
+#[derive(serde::Deserialize)]
+struct Release {
+    #[serde(rename = "crate")]
+    package: String,
+    num: String,
+    yanked: bool,
+}
+
+pub(crate) fn enabled_env_flag(value: Option<&std::ffi::OsStr>) -> bool {
     value
         .and_then(std::ffi::OsStr::to_str)
         .is_some_and(|value| {
@@ -17,90 +59,151 @@ fn enabled_env_flag(value: Option<&std::ffi::OsStr>) -> bool {
 fn update_check_disabled() -> bool {
     enabled_env_flag(std::env::var_os("RULLST_DISABLE_UPDATE_CHECK").as_deref())
         || enabled_env_flag(std::env::var_os("CARGO_NET_OFFLINE").as_deref())
+        || enabled_env_flag(std::env::var_os("CI").as_deref())
 }
 
-fn get_cache_path() -> std::path::PathBuf {
-    let mut dir = std::env::temp_dir();
-    dir.push("cargo_rullst_version_cache.txt");
-    dir
+fn eligible_update(current: &Version, latest: &Version) -> bool {
+    latest > current
+        && latest.major == current.major
+        && latest.pre.is_empty()
+        && latest.build.is_empty()
 }
 
-fn is_version_newer(current: &str, latest: &str) -> bool {
-    match (Version::parse(current), Version::parse(latest)) {
-        (Ok(current), Ok(latest)) => latest > current,
-        _ => false,
+fn select_update(reader: impl Read, current: &str) -> Result<Option<Version>, DiscoveryError> {
+    let mut body = Vec::new();
+    reader.take(CATALOG_LIMIT + 1).read_to_end(&mut body)?;
+    if body.len() as u64 > CATALOG_LIMIT {
+        return Err(DiscoveryError::TooLarge);
     }
+    let current = Version::parse(current)?;
+    let catalog: Catalog = serde_json::from_slice(&body)?;
+    Ok(catalog
+        .versions
+        .into_iter()
+        .filter(|release| {
+            release.package == "cargo-rullst" && !release.yanked && release.num.len() <= 64
+        })
+        .filter_map(|release| Version::parse(&release.num).ok())
+        .filter(|version| eligible_update(&current, version))
+        .max())
 }
 
+/// Read a completed advisory check without network or filesystem access.
+/// The result is only a newer non-yanked stable version in this CLI's major.
 pub fn check_update_available() -> Option<String> {
-    let cache_path = get_cache_path();
-    if cache_path.exists()
-        && let Ok(cached_version) = std::fs::read_to_string(&cache_path)
-    {
-        let cached_version = cached_version.trim().to_string();
-        let current_version = env!("CARGO_PKG_VERSION");
-        if is_version_newer(current_version, &cached_version) {
-            return Some(cached_version);
-        }
+    if update_check_disabled() {
+        return None;
     }
-    None
+    AVAILABLE_UPDATE.get().map(ToString::to_string)
 }
 
+pub(crate) fn discovery_client() -> reqwest::ClientBuilder {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(4))
+        .connect_timeout(std::time::Duration::from_secs(2))
+        .redirect(reqwest::redirect::Policy::none())
+        .https_only(true)
+        .user_agent(concat!(
+            "cargo-rullst-update-check/",
+            env!("CARGO_PKG_VERSION"),
+            " (https://github.com/Rullst/Rullst)"
+        ))
+}
+
+async fn fetch_update(
+    client: &reqwest::Client,
+    url: &str,
+    current: &str,
+) -> Result<Option<Version>, DiscoveryError> {
+    match fetch_catalog(client, url).await? {
+        Some(bytes) => select_update(bytes.as_slice(), current),
+        None => Ok(None),
+    }
+}
+
+pub(crate) async fn fetch_catalog(
+    client: &reqwest::Client,
+    url: &str,
+) -> Result<Option<Vec<u8>>, DiscoveryError> {
+    let mut response = client.get(url).send().await?.error_for_status()?;
+    // error_for_status does not reject redirection or empty success responses.
+    if response.status() != reqwest::StatusCode::OK {
+        return Ok(None);
+    }
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await? {
+        if chunk.len() > CATALOG_LIMIT as usize - bytes.len() {
+            return Err(DiscoveryError::TooLarge);
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    Ok(Some(bytes))
+}
+
+async fn bounded_discovery(
+    client: &reqwest::Client,
+    url: &str,
+    current: &str,
+    budget: std::time::Duration,
+) -> Result<Option<Version>, DiscoveryError> {
+    // One total deadline also covers a slow trickle of body chunks. A blocking
+    // Read timeout alone can restart for each read and is not a total deadline.
+    tokio::time::timeout(budget, fetch_update(client, url, current))
+        .await
+        .map_err(|_| DiscoveryError::Timeout)?
+}
+
+fn discover_update() -> Result<Option<Version>, DiscoveryError> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    runtime.block_on(async {
+        let client = discovery_client().build()?;
+        bounded_discovery(
+            &client,
+            CATALOG_URL,
+            env!("CARGO_PKG_VERSION"),
+            std::time::Duration::from_secs(4),
+        )
+        .await
+    })
+}
+
+/// Start at most one bounded advisory request in an interactive process.
+/// Failure is silent; this function never installs or changes project files.
 pub fn trigger_background_update_check() {
-    if update_check_disabled() {
+    if update_check_disabled()
+        || !std::io::stdin().is_terminal()
+        || !std::io::stdout().is_terminal()
+        || DISCOVERY_STARTED.swap(true, Ordering::AcqRel)
+    {
         return;
     }
 
-    std::thread::spawn(|| {
-        let cache_path = get_cache_path();
-        let needs_refresh = if cache_path.exists() {
-            if let Ok(metadata) = std::fs::metadata(&cache_path) {
-                if let Ok(modified) = metadata.modified() {
-                    if let Ok(elapsed) = modified.elapsed() {
-                        elapsed.as_secs() > 86400 // 24 hours
-                    } else {
-                        true
-                    }
-                } else {
-                    true
-                }
-            } else {
-                true
+    let started = std::thread::Builder::new()
+        .name("rullst-update-notice".into())
+        .spawn(|| {
+            if let Ok(Some(version)) = discover_update() {
+                let _ = AVAILABLE_UPDATE.set(version);
             }
-        } else {
-            true
-        };
-
-        if needs_refresh {
-            let client = reqwest::blocking::Client::builder()
-                .timeout(std::time::Duration::from_secs(4))
-                .build();
-            if let Ok(client) = client {
-                let response = client
-                    .get("https://crates.io/api/v1/crates/cargo-rullst")
-                    .header("User-Agent", "cargo-rullst-update-check/12")
-                    .send();
-                if let Ok(res) = response {
-                    #[derive(serde::Deserialize)]
-                    struct CrateInfo {
-                        max_version: String,
-                    }
-                    #[derive(serde::Deserialize)]
-                    struct CratesIoResponse {
-                        #[serde(rename = "crate")]
-                        krate: CrateInfo,
-                    }
-                    if let Ok(data) = res.json::<CratesIoResponse>() {
-                        let _ = std::fs::write(&cache_path, &data.krate.max_version);
-                    }
-                }
-            }
-        }
-    });
+        });
+    if started.is_err() {
+        DISCOVERY_STARTED.store(false, Ordering::Release);
+    }
 }
 
+/// Print a syntactically validated, same-major stable-version notice.
 pub fn print_update_banner(latest_version: &str) {
     let current_version = env!("CARGO_PKG_VERSION");
+    let (Ok(current), Ok(latest)) = (
+        Version::parse(current_version),
+        Version::parse(latest_version),
+    ) else {
+        return;
+    };
+    if !eligible_update(&current, &latest) {
+        return;
+    }
     println!();
     println!(
         "{}",
@@ -138,24 +241,5 @@ pub fn print_update_banner(latest_version: &str) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{enabled_env_flag, is_version_newer};
-    use std::ffi::OsStr;
-
-    #[test]
-    fn offline_flag_parser_is_explicit() {
-        assert!(enabled_env_flag(Some(OsStr::new("true"))));
-        assert!(enabled_env_flag(Some(OsStr::new("1"))));
-        assert!(enabled_env_flag(Some(OsStr::new("YES"))));
-        assert!(!enabled_env_flag(Some(OsStr::new("false"))));
-        assert!(!enabled_env_flag(None));
-    }
-
-    #[test]
-    fn update_comparison_supports_prereleases_without_accepting_invalid_versions() {
-        assert!(is_version_newer("12.0.0-rc.1", "12.0.0-rc.2"));
-        assert!(is_version_newer("12.0.0-rc.2", "12.0.0"));
-        assert!(!is_version_newer("12.0.0", "12.0.0-rc.2"));
-        assert!(!is_version_newer("12.0.0", "not-a-version"));
-    }
-}
+#[path = "update_check_tests.rs"]
+mod tests;

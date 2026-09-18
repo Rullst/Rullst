@@ -70,6 +70,7 @@ pub mod audit;
 pub mod collection;
 pub mod database;
 pub mod db;
+mod enum_codecs;
 pub mod error;
 pub mod intent;
 pub mod outbox;

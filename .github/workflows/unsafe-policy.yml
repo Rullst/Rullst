@@ -30,7 +30,10 @@ jobs:
           persist-credentials: false
 
       - name: Set up Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
 
       - name: Reject unreviewed unsafe production code
         env:
@@ -40,11 +43,14 @@ jobs:
       - name: Verify the reviewed exception allowlist
         run: |
           actual="$(
-            grep -rn -l '#\[allow(unsafe_code)\]' \
+            grep -Ern -l '#!?[[:space:]]*\[[[:space:]]*allow[[:space:]]*\([[:space:]]*unsafe_code[[:space:]]*\)' \
               rullst*/src cargo-rullst/src rullst/src 2>/dev/null |
-              sort
+              sort -u
           )"
           expected="$(printf '%s\n' \
+            'cargo-rullst/src/update/cache/windows_acl.rs' \
+            'cargo-rullst/src/update/project/permissions_unix.rs' \
+            'cargo-rullst/src/update/project/permissions_windows.rs' \
             'rullst-core/src/radar.rs' \
             'rullst-core/src/server/dylib_loader.rs' |
             sort)"
@@ -57,5 +63,8 @@ jobs:
       - name: Publish the audited unsafe inventory
         run: |
           grep -En -n 'unsafe\s*(\{|fn|impl|trait|extern)' \
+            cargo-rullst/src/update/cache/windows_acl.rs \
+            cargo-rullst/src/update/project/permissions_unix.rs \
+            cargo-rullst/src/update/project/permissions_windows.rs \
             rullst-core/src/radar.rs \
             rullst-core/src/server/dylib_loader.rs

@@ -144,12 +144,18 @@ pub fn scaffold_omni_system_with_options(
         has_desktop = true;
     }
     let _ = has_desktop;
+    if has_ios && explicit_platforms && !cfg!(target_os = "macos") {
+        return Err("explicit iOS initialization requires a macOS host with Xcode".into());
+    }
     let backend_url =
         validated_backend_url(options.backend_url.as_deref(), has_android || has_ios)?;
     let identity = resolve_identity(Path::new("."), &options, has_android || has_ios)?;
 
     // Create Directories
     let omni_dir = Path::new("omni-app");
+    if omni_dir.try_exists()? {
+        return Err("omni-app already exists; review its README to update icons/signing without overwriting application-owned files".into());
+    }
     let src_dir = omni_dir.join("src");
     let icons_dir = omni_dir.join("icons");
 
@@ -164,13 +170,12 @@ pub fn scaffold_omni_system_with_options(
 
     if has_android {
         init_mobile_target(omni_dir, "android")?;
+        super::signing::configure_android_signing(omni_dir)?;
     }
 
     if has_ios {
         if cfg!(target_os = "macos") {
             init_mobile_target(omni_dir, "ios")?;
-        } else if explicit_platforms {
-            return Err("explicit iOS initialization requires a macOS host with Xcode".into());
         } else {
             println!(
                 "{}",
@@ -179,6 +184,12 @@ pub fn scaffold_omni_system_with_options(
                     .bold()
             );
         }
+    }
+
+    // Native projects do not exist during the first icon pass. Generate again
+    // after init so mobile resources receive the application icon, not Tauri's.
+    if has_android || (has_ios && cfg!(target_os = "macos")) {
+        generate_platform_icons(omni_dir)?;
     }
 
     println!(

@@ -56,6 +56,38 @@ verification credit. Run `ci.yml` manually on a final `main` candidate to
 produce the exact-SHA release scorecard. Manual diagnostic runs may select one
 operating system and one test shard; those deliberately do not produce a
 full-matrix scorecard and do not replace final-candidate evidence.
+The manual `cli-updates` diagnostic selects discovery/cache/artifact tests,
+isolated project preparation/verification and legacy upgrade process fixtures.
+It does not replace the complete `cli-standard` shard in release matrices.
+Manual CLI-only shards also skip unrelated ORM/Redis/feature/threat/eval/facade
+and MSRV jobs, keeping correction runs bounded. Manual `workspace` and `all`
+selections, automatic runs and ready PRs retain those jobs. Strict workspace
+Clippy/format still runs for every diagnostic; release admission continues to
+require every job from the full `all`/`all` matrix.
+
+The manual `all`/`all` matrix additionally packages all sixteen public crates,
+audits their contents and uses the release pipeline's archive-only consumer
+and isolated CLI installation/blueprint checks. `Packaged distribution and
+installed CLI` is a required exact-SHA release-admission job. It runs without
+registry publication credentials and never uploads to crates.io. Automatic
+development runs and diagnostic subsets deliberately skip this expensive job;
+the tag pipeline still repeats its existing package verification.
+
+Manual all-platform `all` and `cli-standard` selections also call the native CLI
+artifact builder for Linux x64, Windows x64, macOS ARM64 and macOS x64. The
+committed target inventory selects explicit runner labels. Both executable entry
+points must run and report the candidate version before bounded files, digests
+and source/platform metadata are retained. These ordinary CI artifacts have no
+release tag and no installation or publisher-verification authority. Exact
+full-candidate admission requires all four native jobs; a diagnostic CLI shard
+still does not replace the full matrix.
+
+The tag-only release also calls this builder after exact-main admission.
+The separate attestation job verifies downloaded checksums and includes native
+executables/manifests in build provenance without executing source or binaries.
+The GitHub release job adds those assets only after attestation and registry
+publication succeed. This prepares distribution, not an installer; no new
+installation command or platform recovery claim is implied.
 
 The existing Linux `workspace` and `cli-saas-product` shards also require
 `RULLST_UI_BROWSER_TESTS=1` with Node 24 and Chromium. They feed HTML from the
@@ -75,8 +107,8 @@ Tag publication remains deliberately unavailable through a manual button.
 
 ## Manual and periodic execution map
 
-Every verification workflow except the PR-context-only `ai-sentinel-pr.yml`
-and tag-only `release.yml` can now be started from **Actions → select workflow
+Every verification workflow except the PR-context-only `ai-sentinel-pr.yml`,
+reusable `cli-artifacts.yml` and tag-only `release.yml` can be started from **Actions → select workflow
 → Run workflow**. A manual run checks the selected branch's current SHA; record
 that SHA and the run URL before treating it as release evidence. The release
 workflow intentionally has no button because its publication authority begins
@@ -283,8 +315,19 @@ targets, generated runtime templates, and the Wasm Core path. Tests are excluded
 where assertion panics are test semantics.
 
 `unsafe-policy.yml` compiles production libraries and binaries with
-`-Dunsafe-code`. The only reviewed file-level exceptions are the Radar OS probe
-and dynamic-library loader, and the workflow fails if that allowlist changes.
+`-Dunsafe-code`. The exact reviewed source allowlist contains the Radar OS probe,
+dynamic-library loader, the CLI's Windows cache/installation owner/DACL boundary,
+Windows project access-policy preservation and macOS extended-ACL inspection.
+Both inner and outer unsafe-lint attributes enter the source inventory.
+The macOS module borrows an open descriptor,
+inspects the first ACL entry and frees the returned allocation; it never edits
+an ACL. Its native regression adds an ACL and verifies that replacement rejects
+without discarding it. Windows descriptors are installed atomically and
+validated through owned handles. Each unsafe call documents pointer/handle
+ownership and lifetime; the workflow fails if the source allowlist changes.
+Windows ACL counts come from `GetAclInformation` into owned output structures;
+ACE pointers must be non-null before creating bounded borrowed views. SID lengths
+are checked before OS validation and no borrowed pointer outlives its descriptor.
 This is an enforced boundary, not a claim that all dependencies contain no
 unsafe Rust.
 
@@ -459,6 +502,29 @@ was removed because its composite action downloaded an unversioned `latest`
 binary without a repository-pinned checksum, which was unsuitable for a
 blocking supply-chain gate.
 
+### Reviewed Action updates on the v12 maintenance line
+
+Keep CodeQL `init`, `analyze`, and `upload-sarif` on one reviewed Action
+revision. Dependabot groups these sub-actions, and the local pin validator
+rejects mixed CodeQL revisions inside a workflow. Review the scanner bundle
+change as well as the wrapper SHA; the 4.38.0 update selects CodeQL 2.27.0.
+
+`setup-rust-toolchain` 2.0.0 changes warning enforcement from `RUSTFLAGS` to
+`CARGO_BUILD_WARNINGS` (Cargo 1.97+). The v12 migration explicitly retains
+`rustflags: "-D warnings"` and `build-warnings: ""`, preserving the previous
+compiler flags, strict warning behavior and compiler-cache inputs. This does
+not disable Clippy's explicit `-D warnings`. The MSRV job still uses a separate
+toolchain installer and Rust 1.96.0. Adopting the new Cargo warning mechanism
+is a separate measured migration, not an implicit side effect of updating an
+Action. See the [upstream migration notes](https://github.com/actions-rust-lang/setup-rust-toolchain/releases/tag/v2.0.0).
+
+TruffleHog's composite Action pin does not pin its default `latest` scanner
+image. The workflow therefore also specifies the reviewed 3.97.4 multi-platform
+image digest. Future scanner updates must review and change that digest;
+Dependabot updating the wrapper alone is insufficient. The scan's existing
+scope and verified-secret failure policy remain unchanged. These automation
+updates do not change published crate versions or constitute a v12.0.1 release.
+
 ## Workflow inventory (37 definitions)
 
 Durations are intentionally omitted because runner load, cache state, and the
@@ -472,6 +538,7 @@ dependency graph make static estimates unreliable.
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
 | [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) | main push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
 | [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main push and PR, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, eight-shard multi-OS tests including Cargo-aware doctests sourced from all 52 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
+| [`cli-artifacts.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cli-artifacts.yml) | reusable call from manual Rust CI or admitted tag release | Blocking caller job | Builds and runs both CLI entry points on four explicit native targets; stages bounded executables and source/version/platform/digest inventories. CI artifacts are diagnostic; only the tag pipeline adds separate provenance and release assets. No installation occurs. |
 | [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main push and PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check. |
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Validates the shared 40-target inventory and ten package lockfiles, restores each real target corpus, performs a bounded warm-up, minimizes it, uploads the result and warms the campaign's content-addressed compiler cache; individual target failures are retained but tolerated, while dependency-lock drift remains a hard failure. |
 | [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation with a pinned, zero-retry, bounded-concurrency nextest scheduler and retained JUnit inventory; a focused default-SQLite pass for ORM/Studio/Nexus/the facade; exact local 90% floors; and blocking OIDC-authenticated Codecov upload. Scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |
@@ -485,7 +552,7 @@ dependency graph make static estimates unreliable.
 | [`miri.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/miri.yml) | manual | Blocking v12 release scope; bounded evidence | Pinned nightly-only Miri executes 15 named pure-Rust/default-feature scopes with randomized layouts without changing Rullst's stable toolchain or MSRV. Native FFI/syscall/network paths, the umbrella re-export facade, and the Blog example are explicit boundaries; selected-scope failures fail the workflow. |
 | [`mutants.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/mutants.yml) | manual | Informational | A fail-fast exact-inventory preflight followed by eighty lossless pinned cargo-mutants 27.1.0 shards over the measured 14,391-mutant all-feature workspace scope, one validated production-file diagnostic, or policy-bound exact-SHA recovery of reviewed failed fragments. Successful immutable artifacts may be reused, but the content-addressed aggregate still requires every reviewed candidate exactly once and carries source/run/branch/tool/inventory provenance. Findings stay informational, while baseline/tool/invocation failures, missing artifacts, incomplete classification and reviewed-inventory drift fail the run. The completed v12 receipt is run `34761010296`: 14,391/14,391 classified and a conservative 70.57% caught. |
 | [`no_std-build.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/no_std-build.yml) | main push and PR, manual | Blocking | Builds `rullst-iot` for three bare-metal targets; this is compile evidence, not hardware execution. |
-| [`omni-android.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-android.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh deterministic Omni shell, initializes Android and compiles an unsigned aarch64 debug APK. It does not test a physical device, Play testing, signing, privacy declarations or store acceptance. |
+| [`omni-android.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-android.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh Omni shell and compiles an aarch64 debug APK. The 12.1 candidate additionally checks generated icon bytes, rejects missing release-signing inputs, builds a real release APK with an ephemeral CI-only key and verifies its certificate digest with apksigner. No production key, physical-device behavior, Play testing, privacy declarations or store acceptance is certified. |
 | [`omni-desktop.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-desktop.yml) | relevant main changes and PRs, manual | Blocking when triggered | Generates a fresh deterministic HTTPS-backed shell and checks its Tauri crate on Linux, macOS and Windows. It does not build/sign every installer or exercise a GUI/WebView session. |
 | [`omni-ios.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/omni-ios.yml) | relevant main changes, manual | Blocking | Generates a fresh deterministic Omni iOS shell on macOS and compiles it for the runner's simulator architecture. It does not test a physical device, signing, privacy declarations, TestFlight or App Store acceptance. |
 | [`pages.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/pages.yml) | main push, manual | Deploy | Validates and deploys the v12 landing page, local visual assets, mdBook and benchmark hub/dashboards to GitHub Pages while preserving history data fetched from `gh-pages`. |

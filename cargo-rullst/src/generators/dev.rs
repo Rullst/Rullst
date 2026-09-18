@@ -3,6 +3,8 @@ mod build;
 mod process;
 mod watcher;
 
+pub(crate) use process::{BuildChild, configure_group};
+
 use crate::ui::dash_tui::LogMsg;
 use std::{io, path::Path, process::ExitStatus, time::Duration};
 use tokio::sync::{mpsc, watch};

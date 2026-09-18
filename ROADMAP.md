@@ -355,6 +355,12 @@ just because they are listed here. The phased acceptance plan is in
 [WORKFLOWS.md](WORKFLOWS.md#verification-efficiency--v12-maintenance-and-v13).
 Application API changes still belong to the appropriate release line.
 
+Complete the compatible **12.1.0** update experience after the verification
+foundation and before concentrating new capability work on v13. The
+[maintenance checkpoint](docs/src/v12.md#1210-delivery-checkpoint-unreleased)
+distinguishes the working source from the published release and lists the
+remaining delivery gates.
+
 Begin by integrating the released v12 corrections into the existing v13 line
 through a reviewed merge. Preserve v13's separate Labs proposal and other
 planning commits. A development branch name alone does not mean its base
@@ -363,6 +369,7 @@ already includes the latest stable fixes.
 | Order | Outcome | Acceptance boundary |
 | :--- | :--- | :--- |
 | **P0 — verification efficiency** | Shorter local and hosted feedback, with measured cold/warm build and queue times | Compare test inventories; select affected crates and their consumers; preserve broad scheduled/release checks and a full-run fallback for unknown changes. Bind reusable evidence to source, dependencies, tools and policy. Prove that security, workflow, manifest and generator changes cannot silently skip required checks. |
+| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | Compatible opt-in 12.1.0 delivery first, carried into v13. Discovery, private caching and recovery hardening exist; native Windows cache contracts passed, while verified installation and isolated project acceptance remain release blockers. |
 | **P1 — Omni application delivery** | Predictable desktop/mobile builds, diagnostics and installation guidance | Detect SDK/toolchain/signing/identifier/version/ABI mistakes, distinguish unsigned build output from installable signed packages, and test lifecycle, navigation and interrupted networks. Device and store acceptance need their own evidence. |
 | **P1 — coherent application contracts** | One clear path for sessions, ownership, tenant context and typed client APIs | Consolidate existing Auth/Core/Security boundaries, complete selected session/passkey flows and validate API/SDK serialization. Preserve explicit configuration and negative authorization tests. |
 | **P2 — interactive learning products** | Server-authoritative progress, gamification and isolated programming exercises | Build on the current LMS scaffolds; version grading rules, persist idempotent results and prove tenant isolation. Follow the existing v13 `rullst-labs`/`rullst-labs-runner` proposal; untrusted execution stays outside the web process. |
@@ -375,6 +382,180 @@ over increasing the number of crates. The
 [workflow roadmap](WORKFLOWS.md#preserved-next-generation-roadmap) retains the
 assurance experiments; move a proposal into the implementation column only
 after its code and evidence exist.
+
+### Safe update experience
+
+**Status: working-source 12.1.0 implementation; final release acceptance pending.** The goal is
+the easiest practical update journey without hiding risk: one guided entry point, a clear
+plan, minimal repeated input, useful progress, verification and recoverable
+application of the approved changes. Ease and speed are acceptance criteria,
+not reasons to skip compatibility or security checks.
+
+The existing `cargo rullst upgrade` already provides workspace-aware plans,
+versioned migration rules, controlled file snapshots, compiler fixes and Cargo
+checks. It does **not** install the CLI or run the application's full acceptance
+suite. Extend this boundary in `cargo-rullst`; do not introduce another crate
+or count this proposal as completed work in the capability ledger.
+
+Implementation and acceptance order:
+
+Initial discovery hardening is in the working source, not a completed 12.1.0
+delivery: interactive-only, offline/CI-aware notices use bounded HTTPS metadata
+and reject redirects, yanked versions, prereleases and unsolicited major jumps.
+The legacy shared temporary cache is removed; the current result is deliberately
+process-local. Explicit `cargo rullst update check` now provides exact-target,
+MSRV/platform and versioned JSON discovery with separate major/prerelease
+opt-ins; it grants no installation or execution authority. Explicit discovery
+now reuses bounded, owner/permission-checked Unix metadata for six hours and
+supports offline reads, forced refresh and cache opt-out. A Windows implementation
+now creates a protected DACL atomically and checks owners, grants, ancestors and
+file handles; its native Windows contracts passed at the
+[maintenance checkpoint](docs/src/v12.md#1210-delivery-checkpoint-unreleased).
+The final acceptance below remains required. The existing published v12.0.0
+artifact provenance was exercised separately; it does not authenticate an
+unpublished 12.1.0 candidate.
+
+Working-source preparation now builds native CLI candidates on four explicit
+targets and binds their version, source, platform, sizes and digests in a
+bounded inventory. The admitted tag workflow separately attests the files and
+adds release assets; ordinary CI inventories have no release tag. Native and
+release evidence is still pending. Explicit `update stage` now rechecks a fresh
+registry selection, authenticates the manifest before executable downloads and
+bounds HTTPS redirects, sizes, time and hashes in private storage. It executes
+and installs nothing. Managed installation now revalidates eligibility, original
+manifest provenance, private root ownership and exact bytes under a destination-local
+lock. Explicit digest-approved application stages bounded version probes and
+backups before replacing entries; explicit recovery restores only the authenticated
+predecessor and rejects unrelated edits. Native installation/lock/interruption/
+executing-image tests passed on Linux, Windows and macOS at `ef0a8577` in
+[run 35296176849](https://github.com/Rullst/Rullst/actions/runs/35296176849).
+The explicit local `update verify` command now authenticates a private manifest
+snapshot with the caller-installed GitHub CLI and checks both native binary
+digests. It grants no installation authority or registry eligibility and does
+not download, execute or install candidates. Platform/release acceptance is
+still required; this is one verifier boundary in the unfinished flow below.
+
+Working-source `update project prepare` now retains Git working contents and
+the root lockfile in private before/candidate copies, reuses exact dependency
+editing and the versioned source catalog, and rejects ambiguous inputs and
+downgrades. Local process fixtures cover dirty/untracked/deleted source,
+virtual workspaces, ignored or absent lockfiles, bounded findings and unsafe
+files without compiling application code. Native preparation tests passed on
+Windows and macOS at `88ddabad`. Preparation grants no execution or application
+authority. Working-source verification now revalidates records/source under an
+operation lock, previews commands, and requires explicit trusted-code consent
+before resolving/checking/testing another private copy. Local process tests
+cover real acceptance, stale inputs, missing consent, contention, timeout,
+failed tests and unexpected source writes. Verification passed Linux/macOS and
+the corrected Windows path contract at the recorded maintenance checkpoints.
+Final release acceptance remains required. Explicit
+`update project review` now revalidates command logs and both source inventories
+and emits the bounded full dependency diff plus a review digest. It performs no
+builds or original-file edits; the digest does not grant application authority.
+Explicit digest-approved `project apply`/`recover` now revalidate evidence/access
+policies, stage reviewed manifest/lockfile replacements and persist an intent.
+They refuse divergent edits and preserve unrelated files. Source locks coordinate
+only the same configured cache. Native project acceptance passed on all three
+systems at `8b58cd12`; corrected Windows SDDL/Git path handling is included.
+Local child-kill, OS file-size-limit and injected replacement/recovery faults
+add bounded interruption proof, not power-loss or a complete disk-full matrix.
+
+Working-source `update guided --to VERSION` composes CLI/project/both flows
+through the same validators. It retains exact paths and separate review digests,
+shows complete reviews, defaults each approval to no and reports elapsed time
+per stage. Project code/network and original-file writes need separate consent.
+Noninteractive approval and unsupported project major jumps reject. A real
+terminal regression covers declined preparation/execution, failed application
+tests and approved application followed by exact recovery. Native checks of
+this final composition and full candidate release evidence remain required.
+
+1. **Discover and explain.** Make update notices useful without blocking normal
+   CLI startup. Respect offline/CI settings and explicit notification opt-out;
+   use bounded responses, timeouts and a private, path-safe cache. Default to
+   supported stable releases within the selected major, with exact target pins;
+   prereleases and major migrations require explicit selection. Show release
+   notes, MSRV/platform requirements and unsupported migration paths before
+   proposing changes. Metadata or a notification never grants installation
+   authority.
+2. **Update the CLI safely.** Offer verified prebuilt binaries for supported
+   OS/architecture pairs, with a pinned source-install fallback when appropriate.
+   Bind artifact identity/version/platform/digest to a trusted publisher identity
+   through signatures or verified provenance; a checksum from the same untrusted
+   download is insufficient. Respect package-manager ownership and permissions;
+   stage replacements with concurrency locks, interrupted-download recovery and
+   Windows executable-lock handling. Test rejected tampering, unexpected
+   redirects/archives, stale metadata and unauthorized downgrades. Keep an
+   explicit, verified known-good recovery path, not a silent downgrade.
+3. **Prepare and verify the project.** Reuse the versioned migration catalog in
+   an isolated working copy, preserving uncommitted user work. Show dependency,
+   lockfile and source diffs and the validation commands before execution; Cargo
+   build scripts, procedural macros and tests execute code, so preparation is
+   not a sandbox or permission to run an untrusted project. Resolve the chosen
+   target reproducibly and validate the candidate lockfile, supported feature
+   sets and application-owned tests before accepting changes. Unknown or breaking
+   migrations stop with actionable instructions instead of guessed rewrites.
+4. **Apply with consent and recover.** Make the interactive happy path concise;
+   expose structured reports and explicit non-interactive policy for automation.
+   Verify that reviewed inputs have not changed before applying. Preserve bounded
+   backups and prove cancellation, concurrent edits, disk-full recovery and
+   restoration on Linux, Windows and macOS. State exactly which files are
+   restored: file rollback does not undo arbitrary test side effects, database
+   changes or external services. Opening an application or running a build must
+   never silently replace its framework, migrate its database or deploy it.
+5. **Prove usability and speed.** Exercise published-package/generated-project
+   fixtures, pinned versions, offline operation, unsupported targets and failed
+   migrations. Measure cold/warm discovery, download, compilation and validation
+   separately. Reuse only correctly keyed caches and applicable test evidence.
+   A prebuilt CLI can avoid CLI compilation; updating a Rust application can
+   still require rebuilding, testing and a separate deployment. Do not promise
+   instant upgrades, zero downtime or automatic production readiness.
+
+The 12.1.0 delivery must preserve v12's public APIs, CLI/configuration behavior
+and opt-in boundaries. It prepares discovery and installation of a compatible
+migration CLI, not guesses about a future major's source changes. Actual
+v12-to-v13 automation requires v13's published migration catalog and tested
+application fixtures; the same-major restriction of the current `upgrade`
+command must not be silently removed. Reserve incompatible changes for v13.
+
+After this bounded minor is implemented, validated and released, concentrate
+new capability work on v13, with v12 maintenance by exception. The website
+redesign is a separate documentation delivery, not a reason to bump framework
+versions or postpone verification work. This plan neither bumps package
+versions nor authorizes publication, and it does not claim that any major
+application migration is already automatic.
+
+### API documentation quality
+
+**Status: planned for v13; improve documentation alongside each implemented
+contract, not only at release time.** Distinguish the Rust framework API
+(types, traits, functions and features) from guides for building HTTP/REST
+APIs. The existing REST quickstart intentionally covers one JSON endpoint;
+routing, authentication and Scalar/OpenAPI guidance live in separate chapters.
+More pages alone will not make those paths easier to discover or complete.
+The [v12 navigation index](https://github.com/Rullst/Rullst/blob/v13/docs/src/api-reference.md)
+now connects existing guides to exact-version crate references and identifies
+the remaining REST walkthrough gaps. This first navigation improvement is not
+completion of the reference and behavioral-example programme below.
+
+Use [Qt's reference navigation](https://doc.qt.io/qt-6/reference-overview.html)
+and [a concrete class reference](https://doc.qt.io/qt-6/qnetworkaccessmanager.html)
+as organizational inspiration, not as a reason to adopt Qt or copy its text.
+Adapt the pattern to Rust with a searchable crate/module/task index linking the
+book and version-pinned rustdoc pages. For prioritized public interfaces,
+document purpose, imports/Cargo features, arguments, results and typed errors,
+security/ownership/concurrency constraints, runnable examples, related APIs,
+version availability and migration notes. Start with the umbrella facade,
+Core/routing, Auth/Security and ORM; extend coverage with each v13 increment.
+
+Provide a coherent REST learning path covering typed input validation, error
+responses, CRUD and pagination, authentication, owner/tenant authorization,
+OpenAPI, tests and deployment boundaries. Validate examples against the
+documented release and feature set, including rejected input and access denial.
+Keep the existing book-doctest integration and add behavioral fixtures where
+compilation alone cannot prove the documented result. Check rendered book links
+as well as repository-local links. Record which API surfaces
+were reviewed; do not infer complete reference coverage from a green book build
+or label unimplemented v13 contracts as available in v12.
 
 ### Published and planned release lines
 

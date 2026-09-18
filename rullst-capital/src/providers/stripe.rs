@@ -1,7 +1,6 @@
 use super::{
-    BillingProvider, DEFAULT_WEBHOOK_TOLERANCE, SubscriptionStatus, WebhookEvent,
-    WebhookVerificationMode, ensure_fresh_timestamp, url_encode, verify_explicit_mock_signature,
-    webhook_mode_from_secret,
+    BillingProvider, DEFAULT_WEBHOOK_TOLERANCE, WebhookEvent, WebhookVerificationMode,
+    ensure_fresh_timestamp, url_encode, verify_explicit_mock_signature, webhook_mode_from_secret,
 };
 use crate::error::CapitalError;
 use crate::{ChargeReceipt, ChargeRequest};
@@ -66,28 +65,42 @@ impl StripeProvider {
             WebhookVerificationMode::Real => {}
         }
 
-        let mut timestamp = "";
-        let mut signature_hex = "";
+        if signature_header.len() > 4096 {
+            return Err(CapitalError::InvalidSignature(
+                "Stripe signature header is too large".into(),
+            ));
+        }
+        let mut timestamp = None;
+        let mut signatures = Vec::new();
 
         for part in signature_header.split(',') {
             let mut kv = part.splitn(2, '=');
             let k = kv.next().unwrap_or("").trim();
             let v = kv.next().unwrap_or("").trim();
             if k == "t" {
-                timestamp = v;
+                if timestamp.replace(v).is_some() {
+                    return Err(CapitalError::InvalidSignature(
+                        "Duplicate Stripe timestamp".into(),
+                    ));
+                }
             } else if k == "v1" {
-                signature_hex = v;
+                if signatures.len() >= 16 {
+                    return Err(CapitalError::InvalidSignature(
+                        "Too many Stripe signatures".into(),
+                    ));
+                }
+                signatures.push(v);
             }
         }
 
-        if timestamp.is_empty() || signature_hex.is_empty() {
+        let timestamp = timestamp.filter(|value| !value.is_empty()).ok_or_else(|| {
+            CapitalError::InvalidSignature("Invalid Stripe-Signature header format".into())
+        })?;
+        if signatures.is_empty() {
             return Err(CapitalError::InvalidSignature(
                 "Invalid Stripe-Signature header format".to_string(),
             ));
         }
-
-        let sig_bytes = hex::decode(signature_hex)
-            .map_err(|e| CapitalError::InvalidSignature(format!("Invalid hex signature: {}", e)))?;
 
         let key = hmac::Key::new(hmac::HMAC_SHA256, self.webhook_secret.as_bytes());
         let mut ctx = hmac::Context::with_key(&key);
@@ -96,7 +109,14 @@ impl StripeProvider {
         ctx.update(payload);
 
         let tag = ctx.sign();
-        if tag.as_ref().ct_eq(&sig_bytes).unwrap_u8() == 0 {
+        let mut matched = subtle::Choice::from(0);
+        for candidate in signatures {
+            let mut decoded = [0_u8; 32];
+            if candidate.len() == 64 && hex::decode_to_slice(candidate, &mut decoded).is_ok() {
+                matched |= tag.as_ref().ct_eq(&decoded);
+            }
+        }
+        if matched.unwrap_u8() == 0 {
             return Err(CapitalError::InvalidSignature(
                 "Stripe signature verification failed".to_string(),
             ));
@@ -195,51 +215,7 @@ impl BillingProvider for StripeProvider {
         })?;
         self.verify_signature(payload, sig_header)?;
 
-        let json: Value = serde_json::from_slice(payload)
-            .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
-
-        if let Some(event_type) = json["type"].as_str()
-            && !event_type.starts_with("customer.subscription.")
-        {
-            return Err(CapitalError::PayloadParseError(format!(
-                "Uninteresting event: {}",
-                event_type
-            )));
-        }
-
-        let data = &json["data"]["object"];
-        let subscription_id = data["id"].as_str().unwrap_or("").to_string();
-        let customer_id = data["customer"].as_str().unwrap_or("").to_string();
-        let customer_email = data["customer_email"]
-            .as_str()
-            .or_else(|| data["customer_details"]["email"].as_str())
-            .or_else(|| data["email"].as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let plan_id = data["lines"]["data"][0]["price"]["id"]
-            .as_str()
-            .or_else(|| data["items"]["data"][0]["price"]["id"].as_str())
-            .or_else(|| data["plan"]["id"].as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let status_str = data["status"]
-            .as_str()
-            .filter(|status| !status.trim().is_empty())
-            .ok_or_else(|| {
-                CapitalError::PayloadParseError("Webhook status is missing or invalid".into())
-            })?;
-        let ends_at = data["current_period_end"].as_i64();
-
-        Ok(WebhookEvent {
-            subscription_id,
-            customer_id,
-            customer_email,
-            plan_id,
-            status: SubscriptionStatus::parse_status(status_str),
-            ends_at,
-        })
+        super::stripe_webhook::parse(payload)
     }
 
     async fn create_customer_portal(

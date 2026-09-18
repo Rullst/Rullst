@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
-  echo "usage: $0 <workspace|cli-standard|cli-profiles-basic|cli-profiles-relational|cli-profiles-polyglot|cli-lms|cli-saas-foundation|cli-saas-product> [--release]" >&2
+  echo "usage: $0 <workspace|cli-standard|cli-updates|cli-profiles-basic|cli-profiles-relational|cli-profiles-polyglot|cli-lms|cli-saas-foundation|cli-saas-product> [--release]" >&2
   exit 2
 fi
 
@@ -32,6 +32,15 @@ case "$shard" in
   workspace)
     cargo test --workspace --exclude cargo-rullst \
       --all-features --no-fail-fast "${profile_args[@]}"
+    ;;
+  cli-updates)
+    # A bounded native diagnostic; cli-standard still owns every CLI assertion
+    # in full release matrices. This subset is never release admission evidence.
+    cargo test -p cargo-rullst -p rullst-core --all-features \
+      "${profile_args[@]}" --lib update::
+    cargo test -p cargo-rullst -p rullst-core --all-features --no-fail-fast \
+      "${profile_args[@]}" --test update_discovery_cli --test update_verification_cli \
+      --test update_project_cli --test upgrade_cli
     ;;
   cli-standard)
     test_targets=(--lib --bins --examples)

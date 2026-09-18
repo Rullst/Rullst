@@ -154,8 +154,13 @@ it snapshots workspace manifests, the root `Cargo.lock`, and Rust sources under
 reports use the `rullst.upgrade-plan.v1` schema and include version-selected
 source findings.
 
+In 12.1, managed requirements use exact `=VERSION` pins. The final
+`cargo check --workspace --all-targets --locked` validates the lockfile produced
+by `cargo fix` without resolving a different version. Broader dependency ranges
+remain an application decision after reviewing the update.
+
 Process-level fixtures select the rule catalog independently for documented v5,
-v6 and v11 origins, verify atomic restoration across multiple workspace
+v6 and v11 origins, verify restoration across multiple workspace
 members, retain a deliberately failed edit only with `--keep-on-failure`, and
 restore that retained snapshot on demand. Symlinked Rust sources are rejected
 before a transaction begins. This is recovery evidence for the bounded file and
@@ -167,6 +172,317 @@ run database migrations, modify secrets or authorization, validate live
 providers, or replace the project's test suite. Follow the
 [assisted upgrade tutorial](tutorials/36-assisted-framework-upgrades.md) and the
 relevant [v12 migration guide](migration-v12.md).
+
+### `cargo rullst update check` (12.1.0 working source; unreleased)
+
+Advisory release discovery; it does not install a CLI or migrate an application.
+
+```bash
+cargo rullst update check
+cargo rullst update check --to 12.0.0 --json
+cargo rullst update check --refresh
+cargo rullst update check --offline --json
+cargo rullst update check --no-cache
+```
+
+The default stays in the installed major's stable channel. Exact other-major
+targets require `--allow-major`; prereleases also require `--prerelease`.
+Downgrades, yanked targets and ambiguous metadata fail closed. The bounded
+HTTPS query reports the selected release's declared Rust minimum and the
+current platform; it does not prove compatibility or artifact authenticity.
+On Linux/macOS, explicit discovery caches validated metadata for up to six
+hours under `$XDG_CACHE_HOME/rullst-update-v1` or
+`$HOME/.cache/rullst-update-v1`. An unsafe owner, permissions, linked file,
+oversized body or invalid timestamp prevents reuse. The directory is private
+and writer contention does not block discovery; an unusable cache falls back
+to the registry only when online. Cache failures never authorize an install.
+
+`--offline` and `CARGO_NET_OFFLINE=true` use only a fresh cache and fail without
+network access if none is usable. `--refresh` bypasses cache reads;
+`--no-cache` disables both cache reads and writes. Neither bypasses the offline
+environment setting. Windows uses `%LOCALAPPDATA%/rullst-update-v1` with an
+atomically created protected user/SYSTEM/Administrators DACL. Handle-based
+checks reject foreign owners, unsafe grants, reparse points and hard links;
+UNC paths and alternate data streams are unsupported. Unsafe ACLs are not
+modified. Native cache acceptance is recorded in the
+[maintenance checkpoint](v12.md#1210-delivery-checkpoint-unreleased).
+Ordinary dashboard notices remain process-local and never write this cache.
+
+`--json` uses `rullst.update-discovery.v1`, includes metadata source/age and
+grants no installation, project or deployment authority. Cached metadata is
+not proof of current yank status or artifact authenticity. See the
+[upgrade guide](tutorials/36-assisted-framework-upgrades.md).
+
+### `cargo rullst update verify` (12.1.0 working source; unreleased)
+
+Authenticate a downloaded native CLI inventory and both executables:
+
+```bash
+cargo rullst update verify --to 12.1.0 --directory ./downloaded-cli --json
+```
+
+This requires the exact release's `cli-manifest-TARGET.json`,
+`cargo-rullst-VERSION-TARGET[.exe]` and `rullst-VERSION-TARGET[.exe]`.
+The directory may contain other downloads; only these fixed names are read.
+No archive is extracted and no downloaded executable is run. The prepared
+pipeline supports Linux x64 GNU, Windows x64 MSVC and macOS x64/ARM64; native
+artifact publication remains pending. Published 12.0.0 has no such inventory.
+
+The caller-installed GitHub CLI must be available through an absolute trusted
+PATH entry and support [attestation verification](https://cli.github.com/manual/gh_attestation_verify).
+The command checks a temporary private copy of the manifest against the exact
+official repository, release workflow, source tag/commit and GitHub issuer,
+rejects self-hosted attestations, and compares both binary sizes and SHA-256
+digests. Missing/failed/timed-out verification is an error, with no fallback
+to checksums. It requires network access; `--offline` and `CARGO_NET_OFFLINE`
+reject before filesystem/network I/O. Major/prerelease opt-ins match `check`.
+
+JSON uses `rullst.update-verification.v1`. Only `artifact_verified` is true;
+installation, execution, project writes and deployment remain unauthorized.
+The report covers the bytes read during this invocation, is not an installation
+token and does not recheck registry yank status. A later installer must validate
+current release eligibility and reread/reverify the candidate. Hostile same-user
+writers and a compromised verifier/PATH are outside this boundary.
+
+### `cargo rullst update stage` (12.1.0 working source; unreleased)
+
+```bash
+cargo rullst update stage --to 12.1.0 --json
+```
+
+This exact version must be published and non-yanked. Another major requires
+`--allow-major`; a prerelease separately requires `--prerelease`. `--offline`
+and `CARGO_NET_OFFLINE` reject before filesystem/network work. The command reads
+fresh registry metadata, downloads the official platform manifest, authenticates
+it with the caller-installed GitHub CLI, then downloads the two named binaries.
+Redirects stay on HTTPS GitHub/release-assets hosts, with at most two redirects.
+The manifest is limited to 16 KiB; each binary to its authenticated size and at
+most 128 MiB. Each request has a 120-second total timeout. Exact hashes and sizes
+must match. Ordinary failures remove the private stage. Forced termination can
+leave an incomplete private directory; subsequent stages never reuse its files.
+
+The `rullst.cli-staging.v1` report names the retained private directory and source
+identity. Files remain unexecuted and uninstalled. No project files change. This
+report grants no future installation authority: an installer must revalidate the
+release, provenance and file contents. Published 12.1.0 asset acceptance and native
+staging checks remain release requirements.
+
+### `cargo rullst update guided` (12.1.0 working source; unreleased)
+
+```bash
+cargo rullst update guided --to 12.1.0 --scope both \
+  --root "$HOME/.local/share/rullst-cli" --project ./my-app
+cargo rullst update guided --to 12.1.0 --scope project --project ./my-app --offline
+```
+
+This interactive entry point composes the same authenticated installation and
+isolated project commands described below. `--scope cli`, `project` or `both`
+selects the work; `both` is the default and requires an absolute `--root`.
+Each complete review appears before its own default-no confirmation. The flow
+reuses the exact version, directories and review digests without shell commands
+or manual copying. It reports elapsed milliseconds per executed stage, excluding
+time spent answering prompts. Declining stops before the next operation;
+completed steps and their recovery records remain available.
+
+CLI download/review uses the network. Project verification separately asks
+whether Cargo may use the network and requires explicit consent to execute
+trusted build scripts, macros and tests. `--offline` keeps project verification
+offline and rejects scopes containing CLI installation. Feature selection and
+command deadlines use the same `--all-features`, `--features`,
+`--no-default-features` and `--timeout-seconds` options as project verification.
+The running CLI cannot acquire another major's migration rules by installing
+it: use `--scope cli --allow-major` first, then explicitly invoke the new CLI's
+project flow. PATH, databases and deployments are not changed.
+
+Piped input/output rejects before I/O; use the explicit commands with JSON and
+review digests for automation. This flow does not make unpublished 12.1.0 assets
+available or bypass release eligibility, provenance, ownership or recovery checks.
+
+### `cargo rullst update install review` (12.1.0 working source; unreleased)
+
+```bash
+cargo rullst update install review --to 12.1.0 --directory STAGED_FILES \
+  --root "$HOME/.local/share/rullst-cli" --json
+```
+
+The absolute installation root must be new/empty or contain exactly the two
+updater-owned binaries and its bounded root-bound installation receipt. Its
+parent must already exist and pass owner/ancestor checks. An existing destination
+must be private (`0700` on Unix or a protected caller DACL on Windows). Unknown
+files and package-manager installations are refused. No permissions are repaired.
+The original attested manifest bytes and private single-link binaries must still
+match; review reauthenticates the prior manifest and uses the installed version
+to reject downgrades even when the reviewing CLI is older.
+
+Review fetches fresh registry eligibility, verifies official provenance and
+exact local binary hashes, then rechecks the destination. JSON binds source,
+version, native target, destination and exact prior receipt to `review_sha256`, lists the future
+version probes and supplies an exact Cargo source-install command for separately
+reviewed manager use. Offline mode rejects before I/O. The destination is not
+created and neither the probes nor fallback command run. The digest grants no
+writes until passed explicitly to `apply`.
+
+### `cargo rullst update install apply` / `recover` (12.1.0 working source; unreleased)
+
+```bash
+cargo rullst update install apply --to 12.1.0 --directory STAGED_FILES \
+  --root "$HOME/.local/share/rullst-cli" --approved-review REVIEW_SHA256 --json
+cargo rullst update install recover --root "$HOME/.local/share/rullst-cli" \
+  --approved-review REVIEW_SHA256 --json
+```
+
+Apply repeats registry, provenance, file and destination checks. It refuses a
+changed review. A destination-local lock coordinates installations even when
+callers use different advisory caches. Private copies on the destination
+filesystem must pass both approved `--version` checks (15 seconds and 4 KiB per
+output stream each) before any installed entry is replaced. The CLI retains
+verified predecessor bytes and a bounded intent, then replaces the two binary
+entries and receipt. A running older executable is moved aside, never truncated.
+The three replacements are individually performed; this is not an atomic swap
+or a power-loss durability guarantee.
+
+An interrupted replacement reports the same root and approval digest needed for
+recovery. Recovery authenticates the recorded manifests again, accepts only the
+recorded before/after states and restores the exact predecessor. For a first
+installation, it removes only its recorded new entries. Unrelated edits reject
+without being overwritten; repeated successful recovery is a no-op. Both
+commands reject offline mode before I/O. They never change PATH, compile source,
+migrate a project or deploy an application.
+
+Keep the private `.rullst-install-*` sibling: it holds the destination lock,
+receipt ownership record and recovery evidence. The selected operation remains
+recoverable. Later installs prune only verified older completed/recovered
+operations; at most eight operation directories may be retained. Unknown or
+incomplete historical evidence requires manual review. On Windows, closing an
+older running CLI may be necessary before its historical executable is pruned.
+Native fault and complete user-journey acceptance remain release requirements.
+
+### `cargo rullst update project prepare` (12.1.0 working source; unreleased)
+
+Prepare dependency edits in a private source copy for review:
+
+```bash
+cargo rullst update project prepare --project ./my-app --to 12.1.0 --json
+```
+
+The project must be a Git working directory containing `Cargo.toml`. The default
+target is this CLI's exact version, within its major train. Tracked and
+non-ignored untracked files are copied with their current contents, including
+uncommitted edits and tracked deletions. The root `Cargo.lock` is retained even
+when ignored by an older generator. Other ignored files are omitted; tracked
+secrets are still tracked inputs. The original files and Git index are not
+edited. Limits are 100,000 entries, 64 MiB/file and 512 MiB/source snapshot;
+the two copies can consume about 1 GiB before any build.
+
+The command rejects linked/special inputs, unsupported paths, unknown migration
+origins, ambiguous/unversioned managed dependencies and version/lockfile
+downgrades. Source rules support majors 5, 6, 11 and 12; findings remain review
+data, with a 10,000-entry ceiling. The exact-version editor preserves TOML
+comments. Offline, locked, dependency-free Cargo metadata enumerates workspace
+members inside the copy. Rustup auto-installation is disabled using its
+[documented environment setting](https://rust-lang.github.io/rustup/environment-variables.html);
+Git and Cargo must already be installed on absolute trusted PATH entries.
+
+The result points to `before/`, `candidate/` and `preparation.json` inside the
+private update cache. JSON uses `rullst.project-preparation-result.v1`, with a
+`rullst.project-preparation.v1` record of original file hashes and absences.
+Compare the two trees and inspect the plan. Failed preparation removes its own
+new staging directory. Successful preparations remain for review and can be
+deleted by the caller after use.
+
+Preparation executes no builds, procedural macros or tests, does not resolve a
+new candidate lockfile, and authorizes neither execution nor application. The
+copy is not a sandbox. Candidate verification is described below; application
+and recovery for this new flow remain unfinished. The existing `upgrade`
+command remains separate.
+
+### `cargo rullst update project verify` (12.1.0 working source; unreleased)
+
+Review the commands and then explicitly authorize trusted project execution:
+
+```bash
+cargo rullst update project verify --prepared PATH --dry-run --all-features
+cargo rullst update project verify --prepared PATH --allow-project-code --all-features --json
+```
+
+`PATH` is the private directory returned by preparation. The command validates
+its records, before/candidate copies and current original files under an
+exclusive operation lock. Unknown/stale inputs and unresolved migration findings
+fail before project code runs. Fix findings in the original and prepare again.
+Builds and tests use another fresh private copy, preserving the reviewed copy.
+
+The sequence probes `rustc --version --verbose` and `cargo --version`, resolves
+`Cargo.lock`, checks all workspace targets, and runs workspace tests with the
+resolved lockfile. Every managed Rullst package must resolve to the exact target.
+Default features apply unless `--all-features`, `--features names` or
+`--no-default-features` selects another policy. This verifies that policy only;
+application-specific service/browser/deployment tests remain separate.
+
+Cargo is offline by default. `--allow-network` permits dependency retrieval but
+cannot override `CARGO_NET_OFFLINE=true`. Rustup does not install missing
+toolchains. `--timeout-seconds` bounds each command (default 900, range 1–3,600);
+stdout/stderr are each capped at 8 MiB. Private logs retain failed Cargo output;
+failure, cancellation or timeout never records acceptance. Builds/tests inherit
+the caller's environment and can affect external files, databases or services:
+this copy and process cleanup are not a sandbox. Use trusted projects only.
+
+Success emits `rullst.project-verification.v1` and a private `verification.json`
+with commands, log hashes and final file digests. Its verified candidate has the
+resolved lockfile; original files are not edited. Source or baseline changes
+during verification and unexpected candidate writes are rejected. Review the
+complete diff and logs; compiler overrides/wrappers require separate review.
+The report is not a reusable apply token and grants no application/deployment
+authority. Final native application/recovery acceptance remains open.
+Retained source copies can consume up to about 2 GiB, plus build outputs/logs.
+
+### `cargo rullst update project review` (12.1.0 working source; unreleased)
+
+```bash
+cargo rullst update project review --verified PATH --json
+```
+
+Use `verified_directory` from the verification result. Review validates the
+stored command policy, successful statuses, bounded logs, original/prepared
+files and verified candidate again under operation locks. Changed evidence is
+rejected. Git produces the full dependency diff with external helpers, text
+conversion and paging disabled; output is bounded to 8 MiB. No build/test runs
+and original files remain untouched.
+
+JSON contains `rullst.project-review.v1`, before/after file hashes, the full
+`diff` and `review_sha256` binding its evidence and contents. The digest is not
+authorization to apply changes; review does not invoke the legacy in-place
+upgrade command. The digest also binds the source access policies.
+
+### `cargo rullst update project apply|recover` (12.1.0 working source; unreleased)
+
+```bash
+cargo rullst update project apply --verified PATH --approved-review SHA256 --json
+cargo rullst update project recover --verified PATH --approved-review SHA256 --json
+```
+
+After reviewing the complete diff and logs, supply that exact `review_sha256`.
+Stop editors/builds and other writers first. The CLI revalidates all evidence,
+locks the canonical source within the configured private cache, stages every
+replacement and persists an intent before changing any original. Only reviewed
+workspace manifests and the root lockfile can change. Original hardlink aliases
+are not truncated, and a newly created lockfile cannot overwrite a competing file.
+
+Recovery checks every target before restoring any file. A changed file must match
+this operation's before or after state and access policy; later conflicting edits
+are refused. Unrelated files remain untouched. A root lockfile originally absent
+is removed only if it still matches the recorded created file. Repeating recovery
+is supported. Keep both private source copies and `application.json` until finished.
+
+Replacement is atomic per file, not for the whole workspace. Partial failures
+retain recovery evidence and report progress. Unix mode/owner/group and Windows
+owner/group/DACL/integrity label are bound to the review (1 MiB total policy budget). Unix extended ACLs/xattrs and special
+mode bits, Windows read-only/special attributes, alternate streams, resource/central-access
+policies and policies that cannot be
+recreated exactly require manual handling. Other updater cache configurations and
+filesystem aliases do not share the lock. Forced termination during staging may
+leave sibling `.rullst-update-stage-*` files. Timestamp and Windows audit-policy preservation are not implemented;
+files that require them need manual handling. Native and process-interruption/power-loss acceptance remains pending.
+Recovery does not undo application-code effects, databases or deployments.
 
 ### `cargo rullst pkg <action> [name]`
 Manages third-party community packages and extensions conforming to the `RullstPackage` trait standard.
@@ -260,6 +576,27 @@ fallible typed migration registry.
 Scaffolds a SaaS billing starting point with subscription models, authenticated
 billing routes, and signed-webhook integration points. Provider credentials,
 tenant policy, and deployment behavior still require application configuration.
+
+Generated billing currently accepts only development fixtures with empty or
+`mock_*` credentials; real or mixed credentials return HTTP 503 until durable
+owner/attempt binding and atomic webhook processing are integrated.
+
+Hosted checkout also requires the submitting page's CSP to allow its exact
+reviewed destination in `form-action`. The SaaS starter selects Stripe and
+generates `form-action 'self' https://checkout.stripe.com` while retaining the
+rest of Core's strict policy. `make:billing` prints this requirement and leaves
+your existing policy for review. Changing to Lemon Squeezy or another provider
+requires its exact merchant/custom checkout origin; do not allow `https:` or
+wildcard domains. Keep a single `form-action` directive in `security.csp` and
+review proxy/CDN policies too: another restrictive CSP still applies.
+
+Independently validate each returned URL (HTTPS, exact host/port, no embedded
+credentials) and the session's owner, product and test/live mode before a 303.
+Test the form submission in a real browser: a successful HTTP redirect alone
+does not prove that CSP permits navigation. Before enabling live billing,
+resolve an owner's persisted open attempt before charging the new-session
+quota; resume only a retrieved, fully bound open session. Expired, completed
+and uncertain outcomes require separate handling and reconciliation.
 
 ### `cargo rullst make:mail <Name>`
 Scaffolds a registered transactional mailable. `--welcome`, `--reset`, `--otp`
@@ -558,6 +895,12 @@ migrations, data backup, external reachability check, or automatic rollback. It
 does not guarantee zero downtime and does not support IPv6 SCP targets.
 
 ### `cargo rullst omni`
+The unreleased 12.1.0 executable adds `cargo rullst omni android --release` for
+an explicit Android release build using application-owned signing inputs. It
+does not change the existing Rust `Commands::Omni` variant or start a backend.
+See [Android signing and icons](tutorials/49-omni-android-signing.md) for key
+setup, migration of existing shells and certificate/device verification.
+
 Runs the generated Tauri development client after `make:omni`. Android/iOS
 require their official SDK/toolchain and a reachable backend.
 * **Optional Arguments:** `<target>` specifies where to run (e.g., `desktop`, `android`, `ios`).

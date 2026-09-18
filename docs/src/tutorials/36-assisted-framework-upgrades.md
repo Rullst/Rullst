@@ -19,8 +19,14 @@ The automatic transaction owns only:
 - versioned Rullst dependencies in exact Cargo workspace manifests;
 - the root `Cargo.lock` produced by Cargo resolution;
 - Rust edits proposed by `cargo fix`;
-- a `cargo check --workspace --all-targets` gate using the application's
+- a `cargo check --workspace --all-targets --locked` gate using the application's
   selected features.
+
+The 12.1 updater writes managed requirements as `=VERSION`, preserving the
+explicitly selected release instead of allowing Cargo to choose a later patch
+or minor version. `cargo fix` resolves the candidate lockfile, and the final
+check must use that resolution unchanged. Review these pins before restoring
+any broader dependency-update policy in your application.
 
 It never runs migrations, changes secrets, invents tenant/ownership policy,
 opens Nexus or Studio, contacts application providers, or marks the result
@@ -116,6 +122,23 @@ Restore accepts only a path-validated snapshot inside the current project's
 normal version-control commit or copy a needed diagnostic report before
 cleaning.
 
+### Recovery boundaries and unreleased hardening
+
+Stop editors, watchers and other writers before restoring. File recovery does
+not undo build-script/test side effects or database/external-service changes.
+Keep an independent version-control backup; the directory under `target` is not
+a substitute for one. A filesystem error during application can leave some
+files restored and others unchanged, so always review the result.
+
+The working 12.1.0 implementation now preflights the entire backup, stages every
+replacement before writing originals, and rejects linked or malformed paths.
+It limits indexes to 8 MiB/100,000 entries, each snapshot to 64 MiB and the total
+to 512 MiB. Disk failure while staging leaves originals intact; failure during
+the later per-file apply reports progress and retains the backup. This is not
+an all-files atomic commit and does not defend against hostile concurrent
+filesystem changes. These improvements are **not in published 12.0.0** and still
+require the 12.1.0 cross-platform release checks.
+
 ## 4. Finish a v5 to v12 migration
 
 The v5 README used attribute-style routing and a server builder with no router
@@ -178,6 +201,86 @@ the supported source baselines, and add process-level fixtures for dry-run,
 machine-readable output, successful application and rollback. A v13 CLI can
 therefore reuse the transaction while owning v13-specific rules; a v12 CLI is
 not allowed to guess them.
+
+## Planned simpler update experience
+
+**Working 12.1.0 source only, not published 12.0.0:** advisory discovery is now
+available through these commands:
+
+```bash
+cargo rullst update check
+cargo rullst update check --to 12.0.0 --json
+cargo rullst update check --offline
+cargo rullst update check --refresh
+cargo rullst update check --no-cache
+```
+
+The default selects an eligible stable CLI in the installed major. An exact
+newer major needs `--allow-major`, and an exact prerelease also needs
+`--prerelease`. Neither flag authorizes migration or provides future-major
+rules. Unknown/yanked versions and downgrades are rejected. The report includes
+the exact version, declared Rust minimum, release-notes link and current
+OS/architecture; it does not certify compatibility. JSON uses
+`rullst.update-discovery.v1`; reject unknown schemas. Metadata checksums are
+not proof of publisher identity, and every authority field remains false.
+No CLI/project files change. Linux/macOS explicit checks reuse a private,
+owner/permission-checked catalog for six hours. `--offline` and
+`CARGO_NET_OFFLINE=true` read only a fresh cache and revalidate its metadata;
+missing, expired or invalid caches fail without network access or writes.
+`--refresh` forces online discovery and `--no-cache` disables persistence;
+neither overrides the offline environment setting. JSON includes source and
+age, never installation authority. The old shared cache is not trusted.
+Windows has a protected owner/DACL cache implementation, with native cache
+acceptance recorded in the [maintenance checkpoint](../v12.md#1210-delivery-checkpoint-unreleased).
+Online discovery can recover from an unavailable cache. See the
+[CLI reference](../cli_reference.md#cargo-rullst-update-check-1210-working-source-unreleased)
+for locations and boundaries.
+
+Working-source `cargo rullst update verify --to VERSION --directory PATH`
+also authenticates an already-downloaded native manifest through the installed
+GitHub CLI, then checks the matching executables' sizes and hashes. Its
+[separate verification contract](../cli_reference.md#cargo-rullst-update-verify-1210-working-source-unreleased)
+does not install or execute those files, replace project files, or establish
+current registry eligibility. Native release assets are still being prepared;
+this command is not proof that 12.1.0 artifacts have been published.
+
+Working-source `cargo rullst update project prepare --project PATH --json`
+now copies the Git working directory into private storage and edits only the
+candidate's versioned workspace dependencies. It preserves dirty and untracked
+source, tracked deletions and the root lockfile, including a legacy ignored
+lockfile. Compare `before/` and `candidate/` at the reported location and review
+`preparation.json`. Builds/tests are not executed and neither execution nor
+application is authorized. See the [preparation limits and exclusions](../cli_reference.md#cargo-rullst-update-project-prepare-1210-working-source-unreleased).
+Use `update project verify --prepared PATH --dry-run` to inspect its validation
+commands. Only after reviewing the trusted project, use `--allow-project-code`
+to authorize lockfile resolution, locked checks and tests in a fresh private
+copy. This is not a sandbox; tests inherit your environment and can have
+external effects. See the [verification options and limits](../cli_reference.md#cargo-rullst-update-project-verify-1210-working-source-unreleased).
+Then `update project review --verified PATH --json` revalidates the verification
+record and shows the full dependency diff with a review digest. Use the returned
+`verified_directory`; the digest grants no apply authority. Explicit
+`update project apply --verified PATH --approved-review SHA256` applies only
+the reviewed manifests/root lockfile. The matching `recover` command restores
+only that operation and refuses unrelated edits.
+
+The [safe-update priority](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience) proposes
+one guided flow for CLI installation, project preparation, validation and
+approved application. The working-source **12.1.0** CLI now composes those
+commands through `cargo rullst update guided --to 12.1.0 --scope both --root
+ABSOLUTE_PRIVATE_DIRECTORY --project PATH`. Each approval defaults to no and
+follows its complete review. Version, directories and digests are carried
+between steps; separate prompts govern download, CLI installation, trusted
+project execution/network and original-file application. `--scope project
+--offline` uses local project preparation/verification without CLI downloads.
+See the [guided command](../cli_reference.md#cargo-rullst-update-guided-1210-working-source-unreleased).
+Native/fault and complete user-journey acceptance remain release gates; these
+unpublished changes do not imply published 12.1.0 assets. File recovery
+does not replace database backups or application acceptance tests, and updating
+the CLI alone never updates a deployed application.
+
+Preparing the update mechanism in 12.1.0 does not implement unknown v13
+migrations. The future v13 CLI must still ship its own versioned rules and
+application acceptance fixtures before that major upgrade can be offered.
 
 ## Is this unique?
 

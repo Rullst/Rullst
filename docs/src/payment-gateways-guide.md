@@ -58,7 +58,9 @@ documentation and the concrete trait implementation before selecting an adapter.
 Reviewed live methods use a single bounded egress contract: five-second connect
 and twenty-second whole-request timeouts, no redirects, no ambient proxy
 variables, and at most one MiB of JSON. Checkout responses additionally require
-an absolute credential-free HTTPS URL without a fragment. These controls do not
+a bounded credential-free HTTPS URL and provider-specific origin/identity checks.
+Stripe hosted Checkout preserves its documented opaque fragment; payment pages
+for Paddle forbid fragments and bind the transaction query explicitly. These controls do not
 prove that a provider account, product, price, or operation is accepted live.
 
 `CapitalError::Provider` exposes only static provider/operation labels, a
@@ -87,108 +89,58 @@ handling are external contractual properties, not guarantees made by Rullst.
 
 ## 💻 Rust Code Integration Examples
 
-### 1. Initializing Your Preferred Gateway
+### 1. Choose the implemented operation
 
-In your `main.rs`:
+The [Capital capability matrix](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md#-supported-providers)
+separates all eleven adapters and their current operations. Stripe has a generated
+durable subscription integration. Polar uses product IDs and an external owner;
+Paddle uses a customer ID, recurring price and approved Paddle.js page. Lemon
+Squeezy needs an explicit store and variant. Other generated real billing paths
+remain unavailable. Wise is a payout adapter, not a checkout provider.
+
+### 2. Create an owner-bound Stripe checkout
 
 ```rust,no_run
-use rullst_capital::{
-    init_provider, StripeProvider, LemonSqueezyProvider, InfinitePayProvider,
-    PolarProvider, PaddleProvider, MercadoPagoProvider, CoinbaseCommerceProvider,
-    PicPayProvider, AlipayProvider, RazorpayProvider,
-};
+use rullst_capital::{CapitalError, StripeCheckoutRequest, StripeProvider};
 
-#[rullst::runtime::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Select your active provider:
-    
-    // Example A: InfinitePay for a configured Brazilian merchant account
-    init_provider(Box::new(InfinitePayProvider::new(
-        std::env::var("INFINITEPAY_API_KEY")?,
-        std::env::var("INFINITEPAY_WEBHOOK_SECRET")?,
-    )));
-
-    // Example B: Alipay for China & APAC Cross-Border E-Commerce
-    // init_provider(Box::new(AlipayProvider::new(
-    //     std::env::var("ALIPAY_APP_ID")?,
-    //     std::env::var("ALIPAY_PRIVATE_KEY")?,
-    //     std::env::var("ALIPAY_PUBLIC_KEY")?,
-    // )));
-
-    // Example C: Stripe for Global SaaS
-    // init_provider(Box::new(StripeProvider::new(
-    //     std::env::var("STRIPE_SECRET_KEY")?,
-    //     std::env::var("STRIPE_WEBHOOK_SECRET")?,
-    // )));
-
-    // Example D: Polar.sh for Open-Source Devs
-    // init_provider(Box::new(PolarProvider::new(
-    //     std::env::var("POLAR_ACCESS_TOKEN")?,
-    //     std::env::var("POLAR_WEBHOOK_SECRET")?,
-    // )));
-
+async fn checkout() -> Result<(), CapitalError> {
+    let provider = StripeProvider::new("mock_key", "mock_webhook");
+    // In the host: authorize this owner and persist the account/mode-scoped
+    // customer binding and immutable attempt before dispatch.
+    let attempt = StripeCheckoutRequest::new(
+        "cus_existing", "price_monthly", "owner_opaque", "attempt_unique",
+        "https://app.example/billing/success", "https://app.example/billing/cancel",
+    )?;
+    let session = provider.create_subscription_checkout(&attempt).await?;
+    let _ = session; // Persist its ID before a 303 handoff; never infer payment.
     Ok(())
 }
 ```
 
-### 2. Generating Checkout Sessions
-
-```rust
-use rullst_capital::provider;
-use axum::response::Redirect;
-use rullst_capital::CapitalError;
-
-pub async fn start_checkout(customer_email: String, plan_id: String) -> Result<Redirect, CapitalError> {
-    let p = provider().ok_or_else(|| CapitalError::ConfigurationError(
-        "No billing provider configured".to_string(),
-    ))?;
-
-    let checkout_url = p.create_checkout_session(
-        &customer_email,
-        &plan_id,
-        "https://myapp.com/billing/callback",
-    ).await?;
-
-    Ok(Redirect::to(&checkout_url))
-}
-```
+The account's recurring price allowlist is server-owned. A local user may never
+supply another customer's ID or choose a raw provider URL. For the complete
+SQLx/Turso application flow, use the new SaaS/`make:billing` modules and follow
+its generated `BILLING.md`; see [12.1 migration](migration-v12-1.md).
 
 ### 3. Cryptographically Verified Webhook Endpoint
 
-Rullst Capital provides Axum and Actix Web adapters for one canonical webhook
-verifier. It bounds the original payload, verifies the selected provider before
-dispatch, restores the exact signed bytes, and passes a strongly typed
-`WebhookEvent` into the handler. The production entry points reject empty and
-`mock_*` webhook configuration.
+Signature verification authenticates raw delivery bytes. It does not establish
+application ownership or settlement. Use the provider's typed verified envelope
+with the persisted owner/customer/checkout binding; do not grant or revoke access
+from `WebhookEvent.customer_email`, an event name alone or a browser return.
 
-```rust
-use axum::{Router, routing::post, Extension};
-use rullst_capital::{verify_webhook, WebhookEvent, SubscriptionStatus};
+For Stripe, the generated handlers verify signed Checkout/subscription events,
+read current provider state under a database revision fence and atomically
+commit the scoped event receipt with subscription state. Exact replays do not
+repeat changes; conflicting receipts, foreign customers and obsolete attempts
+are rejected. Unknown provisioning/checkout outcomes require bounded recovery.
+Paddle and Polar expose typed adapter contracts; the host supplies durable
+orchestration, atomic event processing and reconciliation for those integrations.
 
-async fn handle_billing_event(Extension(event): Extension<WebhookEvent>) {
-    match event.status {
-        SubscriptionStatus::Active => {
-            println!("🎉 Subscription activated for: {}", event.customer_email);
-            // Grant premium access in database
-        }
-        SubscriptionStatus::Canceled => {
-            println!("⚠️ Subscription canceled for: {}", event.customer_email);
-            // Revoke access or downgrade plan
-        }
-        SubscriptionStatus::PastDue => {
-            println!("🚨 Payment failed: {}", event.customer_email);
-            // Trigger automated dunning email
-        }
-        _ => {}
-    }
-}
-
-pub fn billing_routes() -> Router {
-    Router::new()
-        .route("/webhooks/capital", post(handle_billing_event))
-        .layer(axum::middleware::from_fn(verify_webhook))
-}
-```
+Rullst also supplies canonical Axum/Actix webhook middleware for supported
+normalized events. The production entry points reject empty/`mock_*` secrets.
+A normalized `WebhookEvent` is a lower-level input, not a complete entitlement
+decision; preserve raw verified event identity and scope where needed.
 
 #### Actix Web adapter
 
@@ -210,7 +162,9 @@ async fn handle_billing_event(request: HttpRequest) -> HttpResponse {
     let Some(event) = request.extensions().get::<WebhookEvent>().cloned() else {
         return HttpResponse::InternalServerError().finish();
     };
-    // Apply an idempotent subscription transition using `event`.
+    // This example only demonstrates middleware extraction. Before any domain
+    // mutation, bind verified identity and reconcile current state as above.
+    let _ = event;
     HttpResponse::NoContent().finish()
 }
 
@@ -310,19 +264,12 @@ The complete runnable shape and its outbox boundary are shown in
 
 ### 6. International Payouts with Wise
 
-```rust
-use rullst_capital::{CapitalError, WiseProvider};
-
-pub async fn disburse_affiliate_commission(
-    provider: &WiseProvider,
-    affiliate_email: &str,
-    amount_usd_cents: u64,
-) -> Result<String, CapitalError> {
-    provider
-        .send_payout(affiliate_email, amount_usd_cents, "USD", "affiliate commission")
-        .await
-}
-```
+Wise is an outgoing payout adapter. The legacy `send_payout`/`create_transfer`
+email-based operation remains an offline fixture and returns
+`UnsupportedOperation` with real credentials before network dispatch. A usable
+transfer needs a real recipient account, authenticated quote UUID and durable
+UUID idempotency identity; funding is a separate operation. The existing
+status/webhook foundation does not provide that missing transfer workflow.
 
 ---
 

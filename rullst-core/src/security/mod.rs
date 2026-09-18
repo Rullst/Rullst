@@ -13,6 +13,9 @@ mod waf;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod machine_client_tests;
+
 #[cfg(kani)]
 mod kani_proofs;
 

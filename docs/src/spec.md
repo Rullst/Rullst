@@ -632,6 +632,29 @@ while portability and semantic review remain the model author's responsibility.
   hosted-provider availability, backups, cluster failover, tenant
   authorization, eviction policy, ANN quality, or cross-store transactions.
 
+### ORM Driver Selection
+
+* ORM defaults retain SQLite, PostgreSQL and MySQL/MariaDB through the explicit
+  `drivers-all` convenience feature. A standalone consumer can disable defaults
+  and select `strict-postgres`, `strict-mysql` or `strict-sqlite`; each enables
+  only its own SQLx backend. The strict pool's existing precedence when multiple
+  strict features are unified remains PostgreSQL, then MySQL, then SQLite.
+* Features are additive. Another dependency enabling ORM defaults, a SQLite
+  queue, Turso's offline SQLite transport or another SQLx driver can broaden the
+  final graph. Studio/facade compositions are not covered by a standalone ORM
+  isolation claim. Turso explicitly enables SQLite for its offline contract.
+* A standalone consumer check must compile generated model/query/transaction
+  code and inspect its normal/build graph for unrelated SQLx driver packages.
+  Workspace all-feature or all-target checks cannot prove driver isolation.
+  Applications previously disabling defaults without selecting a driver must
+  choose a strict backend or explicitly restore `drivers-all`.
+* Native enum codecs follow the ORM's selected drivers, not identically named
+  features in the consuming application. ORM 12.1 opts its paired macro crate
+  into `runtime-driver-codecs` and exports hidden, driver-gated codec helpers.
+  The macro crate's default expansion remains compatible with the all-driver
+  12.0 runtime; the opt-in helper expansion requires the matching 12.1 runtime.
+  Standalone isolation checks include enum encoding/decoding as well as CRUD.
+
 ### 5.12. ORM Telemetry Contract
 
 * Generated model/query entrypoints, transaction-aware variants, raw ORM
@@ -673,8 +696,9 @@ public error. Rullst deliberately does not retry billing mutations: callers may
 retry a transient or rate-limited result only when that exact operation has a
 persisted provider-forwarded idempotency key and a reconciliation policy.
 Returned checkout locations are accepted only as bounded, absolute,
-credential-free HTTPS URLs without fragments; provider/account sandbox
-acceptance remains external evidence.
+credential-free HTTPS URLs. Stripe's documented opaque hosted-URL fragment is
+preserved; other adapters reject fragments. Provider/account sandbox acceptance
+remains external evidence.
 
 ### 6.1. Multi-Gateway Payment Architecture
 Billing adapters implement `BillingProvider`; the Wise payout adapter implements
@@ -723,6 +747,106 @@ receipt with the distinct non-success `Mock` status for exact retries. Rullst
 does not model raw payment credentials, prove that a stored method has a valid
 mandate, persist idempotency, grant an entitlement, reconcile webhooks or imply
 direct-charge parity across adapters.
+
+Paddle signature verification accepts any matching `h1` candidate under a
+4 KiB header and 16-candidate bound, with constant-time comparison for each
+decoded HMAC. Exactly one nonempty `ts` timestamp is required; malformed
+neighboring signatures cannot hide a valid one, and duplicate timestamps are
+rejected. The configured freshness window still applies to the exact raw body.
+This authenticates a delivery, not subscription ownership or settlement.
+
+`PaddleCustomerRequest` and `PaddleProvider::create_customer` bind explicit
+customer provisioning to an opaque owner and durable attempt. The typed
+`PaddleCheckoutRequest`/`create_transaction_checkout` replacement uses an
+existing customer, one server-owned recurring price, quantity one, automatic
+collection and an approved Paddle.js payment-link page. It verifies customer
+ownership before mutation and response identity, metadata, recurring price and
+the exact payment page plus transaction-bound `_ptxn` before returning a URL.
+The page is a checkout launcher, not an after-payment return URL. The account's
+default payment-link configuration and domain approval remain prerequisites.
+
+Paddle's sandbox is selected explicitly. Receipts distinguish offline mocks
+from real selected-environment evidence. No arbitrary provider idempotency key
+or automatic retry is promised: persist intent before dispatch and reconcile
+uncertain outcomes by independently recovered known customer/transaction IDs.
+Do not discover or claim ownership by contact email. Signed subscription events
+must match owner, attempt, customer and recurring price; initial creation also
+matches the persisted transaction ID, and later lifecycle events require its
+bound subscription ID. Current subscription reads preserve status and billing
+periods. Hosts retain account/environment scope, atomic inbox/domain commits,
+revision fencing and entitlement/settlement policy. Cancellation/pause use the
+selected API and accept only matching immediate or scheduled changes. Legacy
+email/price-only checkout remains unsupported because it cannot express these
+bindings. Generated durable billing integration remains Stripe-specific.
+
+`PolarCheckoutRequest` and `PolarProvider::create_product_checkout` implement
+POST `/v1/checkouts/` with one explicit product UUID, stable opaque external
+customer identity, HTTPS success URL and optional contact email. The response
+must bind product, external customer, metadata and redirect before a session is
+returned. `with_sandbox` selects Polar's isolated API; it never infers environment
+from a token. Client IP is optional and accepted only as a typed address supplied
+by the host's reviewed trusted-proxy boundary; raw forwarding headers are never
+read by the adapter. No undocumented idempotency guarantee or automatic retry is
+introduced. `verify_checkout_subscription` verifies Standard Webhooks and binds
+the nested customer's external identity and product to the persisted checkout
+request. Hosts retain account/environment scope and atomic event processing.
+The old email/price-only trait method cannot supply those bindings and remains
+explicitly unsupported for live use; its replacement is the typed product API.
+
+Polar's signed subscription normalizer accepts only its explicit lifecycle
+events and states, with bounded subscription/customer/product identities and
+consistent current/legacy customer references. RFC3339 billing periods and the
+current nested customer contact are preserved; positive integer periods and
+unambiguous legacy user/price references remain compatible. Scheduled
+cancellation can retain an active state until final revocation. Order/payment
+events, ambiguous identities and malformed present periods are rejected.
+The legacy normalized event does not retain provider account/mode, scheduled
+flags or ordering metadata; hosts must retain those from verified raw events
+and reconcile ownership/settlement before changing entitlements.
+
+#### Customer-bound Stripe Subscription Checkout
+
+`StripeCustomerRequest` and `StripeProvider::create_customer` supply the
+preceding provider-customer operation. The immutable input binds an opaque
+local owner reference, a persisted retry key and optional bounded contact
+email. The response must be an undeleted customer with matching metadata,
+valid ID/time and the credential's test/live mode when that mode is known.
+Mock receipts are separate from provider creation. Requests carry a versioned
+digest, explicit idempotency header and the pinned checkout API version.
+The host must persist provisioning intent before HTTP, bind the result to the
+authorized account/owner before checkout, and reconcile unknown outcomes;
+provider idempotency retention is not durable application state. Email is not
+used to find or establish ownership of an existing provider customer.
+
+The additive `StripeCheckoutRequest` binds an existing provider customer, one
+server-owned recurring price, an opaque local owner reference, explicit HTTPS
+success/cancel URLs and an application-persisted idempotency key. The dedicated
+Stripe method sends that key and reference with the customer ID; it does not
+create or discover a customer by email. A bounded response must match the
+customer, owner reference, requested price/quantity, subscription mode and
+redirects before a checkout session is returned. Request/receipt debug output
+omits identifiers, URLs and keys. Empty/`mock_*` credentials produce an explicit
+deterministic mock, never payment evidence.
+
+The application must commit customer/tenant ownership and an immutable attempt
+with its request digest before dispatch, retain account/test-live namespaces,
+and reconcile unknown outcomes. Provider idempotency has a finite retention
+window; repeating an expired key is not a durable deduplication guarantee.
+Session creation and return navigation never grant paid access. The legacy
+email-based trait method remains source-compatible; new generated Stripe flows
+use the dedicated customer-bound contract and durable persistence below.
+
+`StripeSubscriptionLookup` and `StripeProvider::retrieve_subscription` provide
+an explicit read for reconciliation. The request binds subscription, persisted
+customer/local reference, expected price and test/live mode; the pinned-version
+response must match every binding and the bounded single-item state contract.
+`StripeSubscriptionSnapshot` preserves the exact provider status and separates
+retrieved state from deterministic non-entitled mocks. A retrieved snapshot is
+neither an event claim nor invoice-settlement evidence. Hosts must serialize
+reconciliation with their database update so a delayed earlier read cannot
+overwrite a newer state; fetching before an unrelated transaction does not
+establish event order. Account credential custody and durable intent remain
+application responsibilities.
 
 #### Provider-Specific Metered Usage
 
@@ -818,6 +942,51 @@ instances must persist/claim the key and reconcile payment state durably before
 sending.
 
 ### 6.3. Webhook Signature Verification
+* InfinitePay's legacy body-only verifier has no reviewed authentication and
+  authoritative payment-lookup contract for the documented checkout callback.
+  Real-secret verification and normalization return `UnsupportedOperation`;
+  explicit mock-secret fixtures remain offline-only. A local HMAC fixture is
+  not evidence that the provider signs that protocol. Enabling live processing
+  requires order/merchant/amount binding and provider reconciliation first.
+* The additive `StripeProvider::verify_subscription_event` returns an immutable
+  `StripeSubscriptionEvent` after the existing signature/freshness check and
+  bounded subscription normalization. It retains event ID/type/API version,
+  creation time, matching event/subscription test-live mode, optional connected
+  account and opaque local owner reference, plus the original provider status.
+  A versioned mutation digest excludes contact email, delivery signature and
+  unrelated JSON fields; a separate digest binds the exact raw payload.
+  Neither digest is encryption or a persisted replay claim. Mock verification
+  is explicit in the result and `require_real` rejects it. The host must bind
+  the endpoint's provider account, mode, customer and owner, and atomically
+  commit the event claim with domain writes. Event creation time is not a
+  complete ordering/reconciliation protocol. The legacy `WebhookEvent` and
+  `BillingProvider` contracts are unchanged.
+* Stripe subscription normalization requires an explicit supported lifecycle
+  event and subscription object with bounded subscription/customer/price IDs.
+  Its single-price v12 contract rejects multiple or truncated item lists and
+  statuses outside Stripe's subscription vocabulary. `incomplete` and
+  `incomplete_expired` map to the legacy non-entitled `Unpaid` status; they must
+  not be interpreted as proof of an unpaid invoice. Billing-period end is read
+  from the single item for Basil payloads, or from the subscription on older
+  payloads; conflicting period values are rejected. Email remains optional
+  contact data. Event identity, ordering and atomic inbox processing remain
+  separate requirements; an active subscription is not settlement evidence.
+* Razorpay subscription normalization requires its own subscription/customer/
+  plan identities and agreement between the event and entity state. Authentication
+  and standalone payment/order events cannot establish an active subscription.
+  Email is optional contact data; durable owner binding, event ordering and
+  reconciliation remain application responsibilities. Lifecycle activation is
+  not a receipt proving settlement of an invoice.
+* Lemon Squeezy normalization accepts only explicit subscription lifecycle
+  events containing a `subscriptions` object, positive numeric identities and
+  a valid provider state. It binds the store when `with_store_id` is configured
+  and rejects conflicting test-mode fields. `on_trial` maps to `Trialing`;
+  `cancelled` and `expired` map to `Canceled` with a required valid `ends_at`.
+  Cancellation retains its grace-period timestamp; host policy decides access.
+  Invoice/payment/refund events require separate handling and cannot masquerade
+  as subscription snapshots. This legacy event does not retain account/mode or
+  causal identity, so durable owner/scope binding and reconciliation remain
+  application responsibilities.
 * The Axum and opt-in Actix middleware adapters call one canonical bounded
   verifier before dispatch. Built-in provider adapters use provider-appropriate
   cryptographic verification; equality checks for derived signatures are
@@ -837,6 +1006,61 @@ sending.
   `check_and_record_event_key_with_transaction` through the same relational
   transaction as the mutation. Cross-system effects still require an outbox,
   idempotent consumers, and reconciliation.
+* The additive `SqlStripeEventInbox` under `webhook-sql` owns the relational
+  transaction for a verified subscription event and its caller-supplied SQL
+  mutation. An immutable scope binds application namespace, configured Stripe
+  account, endpoint kind and test/live mode. Mock or mismatched events fail
+  before database access. A per-scope configuration lock serializes admission;
+  the stable event ID and versioned mutation digest distinguish an exact retry
+  from conflicting content. A committed retry returns the retained outcome
+  without invoking the mutation again. Domain errors and cancellation before
+  commit roll back both changes; uncertain commit requires replaying the same
+  event to discover the retained outcome. Capacity is immutable and bounded;
+  records are never automatically evicted. The host owns schema migration,
+  retention/reconciliation, account credential custody, authorized customer
+  binding, ordering and an outbox for external effects. No SQL transaction can
+  undo HTTP or other external effects performed by the callback. This API does
+  not migrate the generated handler or grant access from subscription status.
+* Generated SQLx and Turso billing persists an opaque authenticated-owner binding,
+  immutable customer/checkout intents and session IDs before redirect. Account
+  identity is checked through Stripe and test/live namespaces are separate.
+  Customer email never discovers or authorizes ownership. Real Stripe credentials
+  require an explicit account, HTTPS return URL, webhook secret and price allowlist;
+  mixed credentials and other generated live providers remain unavailable.
+  Customer and session creation reuse persisted keys for at most 23 hours. Older
+  unknown outcomes use bounded read-only recovery; absence never permits another
+  mutation. Completed and expired Checkout notifications and subscription lifecycle
+  events trigger ownership-bound provider reads. A random database revision is
+  committed before reading and compared atomically when committing the resulting
+  subscription projection and durable event receipt. Concurrent newer reads fence
+  earlier work; failed/uncertain commits remain retryable. An open checkout is
+  retrieved and reused, and rejected/repeated requests do not consume a newly
+  created-session quota. Existing subscriptions use an ID-bound customer portal.
+  Provider-portal price changes must remain in the application's allowed catalog.
+  The application owns entitlement/settlement policy, inbox retention and capacity
+  operations; a subscription state is not invoice settlement evidence.
+  Existing application-owned code requires merging the generated modules and an
+  additive migration; updating the package does not rewrite deployed controllers.
+* Hosted checkout forms require an explicit provider-specific CSP `form-action`
+  origin on the document that submits the form, including its HTTP 303 handoff.
+  The SaaS starter selects Stripe and adds only `https://checkout.stripe.com`
+  to its generated policy; Core's default remains `form-action 'self'`.
+  Changing providers requires reviewing that exact checkout origin, including
+  any merchant/custom domain. `make:billing` advises this integration without
+  overwriting an existing application's policy. This is a browser policy
+  boundary, not provider URL authentication: real flows must independently
+  validate HTTPS, exact host/port, absence of credentials and durable session,
+  customer, tenant, product and test/live bindings before emitting a redirect.
+  A real-browser POST/303 positive and disallowed-origin negative are required;
+  HTTP-client status checks alone cannot establish this behavior.
+* Before the future generated live flow creates a checkout, resolve the
+  authenticated owner's persisted attempt. Resume only a provider-retrieved
+  open session with all the bindings above; completed, expired and uncertain
+  attempts need distinct handling. A business new-session quota applies only
+  to new attempts, with a useful `Retry-After` on rejection; a separate request
+  abuse limit may still protect retrieval. Concurrent clicks must converge on
+  one durable intent/idempotency key. A disabled submit button is only feedback,
+  never the duplicate-payment or ownership boundary.
 
 ### 6.4. NFS-e Nacional Specification (`FiscalEngine`)
 * 🟢 **`[Implemented / Bounded]` DPS 1.01 Builder:** `NfseDpsV101` models an ordinary domestic-service subset, validates CPF/CNPJ/IBGE/identifier/text limits, keeps BRL values in integer cents and ISS rates in basis points, and emits an unsigned DPS in the official namespace. The legacy floating-point preview remains compatibility-only.
@@ -953,6 +1177,12 @@ sending.
 ## 🤖 9. AI Agent & LLM Orchestration (`rullst-ai`)
 
 ### 9.1. Guarded AI Client
+* `AiClient::auto()` and Nexus share `AutoAiConfig`. Resolution uses one
+  snapshot in OpenAI/custom, Anthropic, Gemini, DeepSeek, Groq, Ollama order.
+  Empty environment values are absent; explicit mocks remain offline. Groq
+  requires `GROQ_API_KEY` plus `GROQ_MODEL`; a custom `OPENAI_BASE_URL` requires
+  `OPENAI_API_KEY` plus `OPENAI_MODEL` and uses the HTTPS chat-only compatible
+  adapter. Configuration indicators do not attest network/account health.
 * Provider-agnostic interface for **Google Gemini, OpenAI, Anthropic Claude,
   DeepSeek, Ollama, and explicit OpenAI-compatible endpoints**. The compatible
   adapter is chat-only by default; applications declare optional request shapes
@@ -1153,19 +1383,264 @@ assistant, not a claim that compilation proves production compatibility.
   that CLI. Before writes, the command snapshots workspace manifests, the root
   lockfile and Rust sources under `target/rullst-upgrades`. It applies only
   dependency edits and compiler-provided `cargo fix` changes, then requires
-  `cargo check --workspace --all-targets` to pass. A failed gate restores the
+  `cargo check --workspace --all-targets --locked` to pass. Managed version
+  requirements are exact `=VERSION` pins, so an explicitly selected release
+  cannot silently resolve a later patch/minor release. `cargo fix` resolves
+  the candidate lockfile; the final check must use that same resolution.
+  A failed gate restores the
   snapshot by default; `--keep-on-failure` is explicit, and `--restore` can
   recover a persisted, path-validated snapshot after an interruption.
   Process fixtures independently select the v5, v6 and v11 rule sets, prove
-  atomic restoration across multiple workspace members, preserve a failed edit
+  restoration across multiple workspace members, preserve a failed edit
   only when explicitly requested, restore that persisted review state, and
   reject symlinked Rust sources before starting the transaction.
+  **Unreleased recovery hardening:** automatic and persisted restores validate
+  the complete bounded index and every snapshot/target before staging all file
+  replacements. Limits are 8 MiB/index, 100,000 entries, 64 MiB/file and
+  512 MiB/restore. Symlinks/reparse points, malformed or duplicate entries and
+  non-regular files are rejected. Per-file replacement does not truncate a
+  hardlinked destination. A later apply error may leave earlier files restored;
+  it reports progress and retains the backup. Stop other writers first: this is
+  neither an all-files atomic commit nor protection from hostile concurrent
+  filesystem changes. Platform acceptance remains a release gate.
 * 🟠 **`[Manual Application Boundary]`** the command never installs a CLI,
   changes secrets, executes database migrations, invents authorization or
   tenant policy, exposes Nexus/Studio, validates providers, or declares an
   application production-ready. Database restore/migration/rollback, the full
   test suite, authorization negatives and deployment smoke tests remain
   mandatory human-owned gates.
+
+  **Unreleased discovery hardening, not the complete updater:** the working
+  CLI checks for notices only on interactive dashboard startup, respects
+  explicit offline/CI/notification-disable flags, and retains at most one
+  validated result in process memory. It no longer reads or writes the legacy
+  shared temporary cache. Discovery uses a fixed HTTPS registry endpoint,
+  denies redirects, caps the response at 256 KiB and applies one four-second
+  network/body deadline. Notices select a newer, non-yanked stable version in
+  the installed major, not an arbitrary registry maximum. They authorize no
+  installation or project changes. The explicit `cargo rullst update check`
+  command now reports an exact eligible CLI release, its declared MSRV and the
+  current OS/architecture. `--to` pins selection; another major requires
+  `--allow-major`, and a prerelease separately requires `--prerelease`.
+  `--json` emits `rullst.update-discovery.v1` with every execution/write/artifact
+  authority false. It does not certify compiler/platform compatibility.
+  Explicit discovery now reuses a six-hour advisory cache on Unix platforms.
+  The caller-owned cache base and its ancestors are checked before using a
+  private `0700` directory; regular single-link `0600` files, bounded reads,
+  no-follow opens, a non-blocking writer lock and staged atomic replacement
+  protect the cache. Cached catalogs are parsed and selected again, never
+  accepted as artifact/installation authority. `--offline` never requests the
+  network or writes; missing, invalid, expired or future-dated caches fail.
+  `--refresh` skips cached reads; `--no-cache` disables persistence entirely.
+  Ordinary interactive notices remain process-local, not filesystem writers.
+  The Windows implementation uses `%LOCALAPPDATA%/rullst-update-v1`, a protected
+  DACL created atomically for the caller, SYSTEM and Administrators, handle-based
+  owner/access checks, no reparse points or multi-link files, bounded reads and
+  non-blocking staged replacement. Local-drive ancestors must exclude untrusted
+  replacement/control rights; UNC paths and alternate data streams are rejected.
+  ACLs are never repaired implicitly. Native Windows cache contracts passed at
+  the [documented maintenance checkpoint](v12.md#1210-delivery-checkpoint-unreleased).
+  A hostile same-user/root/administrator process
+  and authenticated release verification are outside this advisory cache's
+  contract. Verified CLI installation and the expanded project
+  acceptance transaction remain 12.1.0 release blockers requiring platform and
+  release evidence.
+
+  **Native CLI artifact preparation:** the candidate pipeline builds both CLI
+  entry points on the four targets in `.github/cli-artifact-targets.json` and
+  runs each executable's version check on its native host. A bounded
+  `rullst.cli-artifacts.v1` inventory binds file names, sizes and SHA-256 digests
+  to version, target, build runner, repository and source commit. Ordinary CI
+  inventories have no release tag and cannot be promoted to release artifacts.
+  These checks establish file integrity, not publisher authenticity. Trusted
+  tag-workflow provenance, client verification, staged installation, recovery
+  and application acceptance remain separate required boundaries; no build or
+  discovery command installs these files automatically.
+  The tag-only release pipeline now calls the same native builder after exact
+  protected-main admission. A separate job with signing authority checks the
+  downloaded checksums and attests executables, manifests and inventory files
+  without checking out source or executing downloaded binaries. GitHub release
+  assets include those files only after crate publication and attestation pass.
+  Client-side verification must pin the publisher, tag workflow, source tag and
+  commit and then compare the expected platform/version/file digest; metadata
+  and matching checksums by themselves remain insufficient authority. This
+  pipeline change is unaccepted until its native and release evidence passes.
+
+  **Explicit local artifact verification:** `cargo rullst update verify`
+  takes a caller-selected directory and exact `--to` version. It accepts only
+  the native supported target, a bounded release inventory and both standalone
+  binaries with matching sizes and SHA-256 digests. It authenticates a private
+  snapshot of the manifest through the caller-installed GitHub CLI, pinning
+  github.com, Rullst/Rullst, `.github/workflows/release.yml`, the exact source
+  tag/commit, GitHub's OIDC issuer and hosted runners. Failure, absence or timeout
+  of that verifier is a rejection; there is no checksum-only fallback. This
+  explicit operation can access attestation services and create a temporary
+  private manifest, but never executes candidate binaries or changes installed
+  files. Offline mode rejects before I/O. Its report describes only the bytes
+  just read, is not a reusable installation token, and does not establish
+  current registry eligibility or protect against hostile same-user writers.
+  Installation must independently revalidate the selected release and bytes.
+
+  **Authenticated download (working source; native acceptance pending):**
+  `update stage --to EXACT_VERSION` fetches a fresh non-yanked registry
+  selection and uses only the fixed official
+  release URL with at most two HTTPS redirects through GitHub/release-assets hosts,
+  authenticates the bounded manifest before requesting executable bytes, and
+  stages at most two 128 MiB binaries in fresh private caller-owned storage.
+  Exact sizes and hashes must match the authenticated manifest. Ordinary failures
+  discard the stage; forced termination can leave an incomplete private directory
+  that later stages never reuse. Success records source/version/target and grants no execution,
+  installation or project authority. Offline mode rejects before I/O; install
+  must independently revalidate eligibility, provenance and bytes.
+
+  **Managed CLI installation (working source; native acceptance pending):**
+  `update install review` authenticates a fresh eligible local candidate and
+  previews a new/empty or receipt-owned private destination, a root/source-bound digest,
+  proposed version smoke checks and the pinned Cargo source fallback. It does
+  not create the installation directory, execute binaries or install files.
+  An existing destination must contain exactly the two private single-link
+  executables and a bounded `rullst.cli-installation.v1` receipt binding the
+  canonical root to the original attested manifest bytes. Their hashes and the
+  prior manifest's provenance are revalidated; unknown/package-manager entries
+  and divergent files reject. Selection uses that installed version, so a stale
+  CLI cannot authorize its downgrade. The review digest binds the exact prior
+  receipt and rechecks local state after network verification.
+  `update install apply --approved-review SHA256` uses an explicit installation
+  root separate from the advisory cache and existing package-manager roots.
+  First installation accepts only a new/empty private caller-owned directory;
+  later updates require the updater's strict receipt and exact installed hashes.
+  Never take over unknown binaries or Cargo/Homebrew/system-manager records;
+  show the pinned manager/source-install command when that owner must update it.
+  A preview authenticates an exact eligible native candidate and binds its
+  source/files, destination and prior installed state to a review digest. Apply
+  requires the matching review digest, rechecks fresh registry/provenance/bytes, holds a
+  destination-local lock and copies candidates to private staging on that
+  filesystem before execution or replacement. Only the declared `--version`
+  probes run, with a 15-second deadline and 4 KiB per output stream per binary.
+  Both must report the selected version without stderr. Authenticated prior bytes
+  and a bounded intent are saved before replacing either entry point. Old entries
+  are moved aside instead of truncating executing images; per-file operations
+  are not an atomic two-binary swap and do not promise power-loss durability.
+  Windows in-use failures report the root and approval digest for recovery.
+  `update install recover --approved-review SHA256` accepts only the selected
+  operation's before/after states, rejects foreign edits and reauthenticates
+  both manifests before restoring the exact predecessor. Interrupted first
+  installation removes only the recorded new entries. Repeated recovery is
+  idempotent; an unrelated older version is never a recovery target.
+  The private destination-local sibling stores a root-bound owner marker, lock,
+  selected operation and at most eight operation directories, independently of
+  advisory cache settings. New operations prune only verified terminal older
+  evidence, retaining the selected recovery. Unknown files and incomplete
+  unselected operations require manual review. An in-use historical executable
+  can require closing the older CLI before pruning. PATH/shell configuration, source
+  compilation, project migration and deployment remain separate consent scopes.
+  Native concurrency, interruption, disk faults, executable-lock and complete
+  user-journey acceptance remain release gates.
+
+  **Guided update composition:** `update guided --to EXACT_VERSION` is an
+  opt-in interactive composition of the same checked commands. An explicit
+  `cli`, `project` or `both` scope reuses the selected version, directories and
+  review digests. Show each complete review before a default-no approval;
+  distinguish authenticated download, CLI probe/replacement, trusted project
+  execution/network access and original-file application. No blanket approval
+  or noninteractive implicit yes is accepted. Declining stops before the next
+  operation, preserving any already completed step and its recovery evidence.
+  The current CLI's versioned migration rules remain authoritative: installing
+  another major does not teach this running process that major's migrations.
+  Existing structured commands remain the automation interface. Report elapsed
+  time per executed stage, excluding user input; do not promise instant upgrades.
+
+  **Isolated project preparation (working source):** the opt-in
+  `update project prepare` command snapshots tracked and non-ignored untracked
+  files from the selected Git working directory into private caller-owned
+  storage, preserving uncommitted source contents and deletions. Links,
+  special files, unsupported paths and oversized inputs fail before migration.
+  The copy is bounded to 100,000 entries, 64 MiB per file and 512 MiB total.
+  Cargo metadata and dependency planning run only inside that copy, with
+  Cargo network access and Rustup auto-installation disabled. The existing exact-version manifest editor and
+  versioned source rules supply its review report; preparation executes no
+  build scripts, procedural macros or application tests and grants no apply
+  authority. Ignored files, including typical secret files and build outputs,
+  are not copied, except the root `Cargo.lock` (legacy generators ignored that
+  reproducibility input). Version requirements and existing locked Rullst
+  packages must not imply a downgrade; unsupported or ambiguous requirements
+  require manual review. Source reports stop above 10,000 findings. This is a
+  source snapshot, not a filesystem sandbox: later
+  verification must explicitly authorize trusted project execution. Bounded
+  reviewed application/recovery have separate explicit consent and acceptance gates.
+
+  **Candidate verification (working source; platform acceptance pending):**
+  `update project verify` reloads the private preparation, validates its
+  baseline/current source/candidate against bounded records and recomputed
+  migration plans, rejects stale inputs, and takes an exclusive operation lock.
+  `--dry-run` shows the selected commands without running builds/tests. Execution
+  requires `--allow-project-code` and uses another fresh private copy. Cargo
+  resolves the lockfile; every locked managed Rullst package must match the
+  exact target before checking all workspace targets and running workspace
+  tests with `--locked` and the selected feature policy. Default features are
+  the default policy, with explicit all/custom/no-default selection. Cargo is
+  offline unless separately authorized; an offline environment cannot be
+  overridden. Rustup auto-installation remains disabled.
+  Build outputs live outside the verified source tree. Each tool has a bounded
+  deadline (900 seconds by default, at most 3,600) and at most 8 MiB per output
+  stream. Execution reuses the supervised child/process-group cleanup and
+  responds to cancellation. This is best-effort process-tree cleanup, not
+  containment of hostile descendants. Private logs include Cargo/rustc version
+  probes, commands and their output digests. Configured compiler wrappers or
+  alternate toolchains still require operator review; probes are not toolchain
+  attestations. Original/prepared/baseline changes, unresolved migration
+  findings, failed commands and unexpected source writes reject acceptance.
+  Only the candidate root lockfile may change during verification.
+  `rullst.project-verification.v1` records successful commands, feature policy
+  and final file digests, grants no application/deployment authority, and is not
+  a reusable apply token. Native acceptance and complete application/recovery
+  remain release gates. Tests execute trusted project code with the caller's
+  environment: the copy is not a sandbox, and external effects cannot be
+  reversed through source-file recovery.
+
+  **Explicit candidate review (working source):** `update project review`
+  revalidates the private preparation, verified file inventory and bounded
+  successful command logs under both operation locks, then shows the complete
+  manifest/lockfile diff and a SHA-256 digest binding that review. Git external
+  diff/text-conversion helpers and paging are disabled; the diff is bounded to
+  8 MiB and no build/test or original-file edit occurs. The review digest grants
+  no application authority. Native acceptance remains required.
+
+  **Reviewed application/recovery (working source; native acceptance pending):**
+  `update project apply --verified PATH --approved-review SHA256` requires the
+  exact review digest and fresh source validation under both preparation locks
+  and a canonical-source lock in the configured private cache. Only the reviewed workspace
+  manifests and root lockfile are eligible. Stage all replacements before
+  changing originals, preserve original permissions and replace directory
+  entries without truncating hardlinks. Unix mode/owner/group and Windows
+  owner/group/DACL/integrity label enter the review digest, with a 1 MiB aggregate
+  serialized access-policy limit. Unix extended ACLs/xattrs and special
+  mode bits require manual updates; Windows read-only/special attributes, alternate
+  streams, resource/central-access policies and
+  access policies that cannot be recreated exactly fail before source writes.
+  Darwin extended ACLs are inspected through a narrowly scoped OS FFI module,
+  since they are separate from xattr names. It owns and frees the returned ACL
+  and never changes it; a native ACL regression and the exact unsafe-source
+  allowlist govern this exception. The API follows Apple's
+  [ACL entry contract](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/acl_get_entry.3.html).
+  Staging installs the access policy before writing candidate contents. Keep a
+  durable bounded intent record
+  and before/after digests for interruption recovery. Recovery must refuse
+  divergent user edits and may restore only files from that intent; absent
+  original root lockfiles may be removed. Per-file replacement is not a single
+  atomic workspace commit. `update project recover` with the same approval
+  accepts only the recorded before/after states and supports repeated recovery.
+  Locks coordinate this CLI under the same cache configuration, not editors,
+  other caches or filesystem aliases. Stop other writers first; hostile concurrent
+  renames, external test effects and databases remain outside file recovery.
+  Forced process termination during staging can leave disposable sibling temp
+  files; the private before/verified trees and intent must be retained. Timestamp,
+  Windows audit-policy preservation and power-loss fault
+  acceptance remain outside this current implementation; final release approval
+  still requires final platform/fault evidence. Local process tests cover a
+  killed per-file commit with a persisted intent and subsequent engine recovery,
+  plus real CLI staging terminated by Linux's file-size limit without changing
+  originals. They do not establish power-loss durability.
 
 ---
 
@@ -1195,6 +1670,16 @@ authoritative secrets into JavaScript or an untrusted client.
   real source-derived platform icons, and treats npm, icon generation or
   explicitly requested mobile initialization failures as command failures.
   Explicit iOS initialization requires macOS/Xcode.
+  **Unreleased 12.1.0:** new shells embed the existing Rullst logo as their
+  default square icon source and regenerate icons after all mobile init steps.
+  Existing shells are never regenerated in place. New Android shells bind the
+  release signing configuration to application-owned keystore/alias/password
+  environment inputs and fail release preparation when inputs are missing;
+  debug signing remains development-only. `omni android --release` checks
+  required inputs before invoking Tauri, without changing the public v12
+  command enum. No shared signing key, store publication or physical-device
+  evidence is implied. Existing/custom-flavor shells need reviewed migration;
+  see the [signing guide](tutorials/49-omni-android-signing.md).
 * 🟢 **`[Implemented / Bounded]` Remote-content Boundary:** the generated local
   bootstrap exposes no Tauri IPC API to the remote application. A native
   navigation callback permits only Tauri's packaged origin and the exact

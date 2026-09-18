@@ -1,0 +1,36 @@
+{
+  "source": "0f15d70ab8645f8d3e4593d4028af3488ed44864",
+  "result": "passed API and signed relay acceptance",
+  "checks": [
+    "credential/account binding",
+    "idempotent customer retry",
+    "bound customer read",
+    "idempotent checkout retry",
+    "bound open checkout read",
+    "foreign owner read rejected",
+    "sandbox browser handoff and return",
+    "provider-confirmed completed Checkout",
+    "Checkout test settlement matches amount/currency/customer",
+    "paid test invoice matches amount/currency/customer",
+    "provider-relayed signed Checkout completion",
+    "current subscription read: active",
+    "provider-relayed signed subscription creation",
+    "current canceled subscription read",
+    "provider-relayed signed subscription cancellation"
+  ],
+  "cleanup": {
+    "session": true,
+    "subscription": true,
+    "customer": true,
+    "price": true,
+    "product": true
+  },
+  "browser": {
+    "ok": true,
+    "submitted": true,
+    "returned": true
+  },
+  "date": "2026-09-18",
+  "environment": "Stripe test mode; staging account; isolated synthetic objects",
+  "scope": "Candidate adapter API, hosted Checkout in Chrome, Stripe CLI signed relay; deployed SaaS/database integration not exercised"
+}

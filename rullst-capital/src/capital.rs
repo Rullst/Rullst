@@ -284,18 +284,12 @@ mod tests {
         let mut headers = HashMap::new();
         let res = provider.handle_webhook(b"{}", &headers);
         assert!(res.is_err());
-        assert_eq!(
-            res.unwrap_err(),
-            CapitalError::InvalidSignature("Missing X-Signature header".to_string())
-        );
+        assert!(matches!(res, Err(CapitalError::UnsupportedOperation(_))));
 
         headers.insert("x-signature".to_string(), "deadbeef".to_string());
         let res2 = provider.handle_webhook(b"{}", &headers);
         assert!(res2.is_err());
-        assert_eq!(
-            res2.unwrap_err(),
-            CapitalError::InvalidSignature("InfinitePay signature verification failed".to_string())
-        );
+        assert!(matches!(res2, Err(CapitalError::UnsupportedOperation(_))));
     }
 
     #[test]

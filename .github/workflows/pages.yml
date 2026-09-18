@@ -32,11 +32,10 @@ jobs:
         with:
           node-version: 24
 
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@166cdcfd11aee3cb47222f9ddb555ce30ddb9659 # v1.17.0
-
       - name: Install mdBook
-        run: cargo install mdbook --version 0.5.4 --locked
+        uses: taiki-e/install-action@9534c84618278caac52cb373bb164ed464dbd8af # v2.87.11
+        with:
+          tool: mdbook@0.5.4
 
       - name: Build mdBook (Main Docs)
         run: mdbook build docs

@@ -1510,9 +1510,9 @@ dependencies = [
 
 [[package]]
 name = "jsonschema"
-version = "0.53.0"
+version = "0.56.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca2ea2207f8ccb34b6d4d041fe9deb08fff3cbc43750012caa2c3d1e860188e4"
+checksum = "b6a806f80c1f5560431009ce5ec29b59d38f950e0cd7db5f1b8925e6d8104e21"
 dependencies = [
  "ahash",
  "bytecount",
@@ -1538,18 +1538,18 @@ dependencies = [
 
 [[package]]
 name = "jsonschema-regex"
-version = "0.53.0"
+version = "0.56.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5426a01d944d044c9c5e459f603419d1b539358f5496b1041df45a7a86d2d38f"
+checksum = "cb862addfa7782108933abcf842fe25334523a9df5b89ea4d9620e3dd7b42181"
 dependencies = [
  "regex-syntax",
 ]
 
 [[package]]
 name = "jsonschema-value"
-version = "0.53.0"
+version = "0.56.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65b6ec7deaeaab6320efc3084d8a9e91d5b4985ee36ffffef45dbff9516ff7a8"
+checksum = "a05cd404c5ff6e2731dbbf7e290a27417750acfb59e329560a1d0af384c93fb0"
 dependencies = [
  "ahash",
  "bytecount",
@@ -2283,9 +2283,9 @@ dependencies = [
 
 [[package]]
 name = "referencing"
-version = "0.53.0"
+version = "0.56.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb406ba984c08d1b91781d7507d103296cf6dec3256c33c388b468957f4b43bb"
+checksum = "a3b4a92fac7e28c27de3ad26df2ecb9e652f227b258e845af034052e5b22c96c"
 dependencies = [
  "ahash",
  "fluent-uri",
@@ -2329,11 +2329,11 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "reqwest"
-version = "0.13.4"
+version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "219c5811de6525e5416c7d5d53bb656d3afdbc6c5af816e0802bcfa42dbdc1c3"
+checksum = "16a1cfa75cc186dd73d5818e510e042e40927bccc9c236b061cea97e1eb08029"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "bytes",
  "futures-core",
  "futures-util",
@@ -2393,7 +2393,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-ai"
-version = "12.0.0"
+version = "12.1.0"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -2412,7 +2412,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-auth"
-version = "12.0.0"
+version = "12.1.0"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -2437,7 +2437,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-core"
-version = "12.0.0"
+version = "12.1.0"
 dependencies = [
  "async-trait",
  "axum",
@@ -2480,7 +2480,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-macros"
-version = "12.0.0"
+version = "12.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2489,7 +2489,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-nexus"
-version = "12.0.0"
+version = "12.1.0"
 dependencies = [
  "ammonia",
  "axum",
@@ -2519,7 +2519,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm"
-version = "12.0.0"
+version = "12.1.0"
 dependencies = [
  "aes-gcm",
  "async-stream",
@@ -2543,7 +2543,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm-macros"
-version = "12.0.0"
+version = "12.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2552,7 +2552,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-security"
-version = "12.0.0"
+version = "12.1.0"
 dependencies = [
  "aes-gcm",
  "ammonia",
@@ -3408,9 +3408,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "1.1.5+spec-1.1.0"
+version = "1.1.6+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12c0ba9680044b4ce98d391a62094047eada0d64860b80166c39f4a6b5640785"
+checksum = "920602543f0911ab71da12c50d59701da54c196d1a2bf5cb4b75667f137a406a"
 dependencies = [
  "indexmap",
  "serde_core",
@@ -3688,9 +3688,9 @@ checksum = "b6c140620e7ffbb22c2dee59cafe6084a59b5ffc27a8859a5f0d494b5d52b6be"
 
 [[package]]
 name = "uuid"
-version = "1.26.0"
+version = "1.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5772d71c9be8a8a6ac2117d949c5b224c1b72241bb611d9a3012edcf8af7812"
+checksum = "2ef6dac1e96601b4fb3acccccff2139741fcb757cb9a36089bf5be91cfb285ce"
 dependencies = [
  "getrandom 0.4.3",
  "uuid-rng-internal",
@@ -3698,9 +3698,9 @@ dependencies = [
 
 [[package]]
 name = "uuid-rng-internal"
-version = "1.26.0"
+version = "1.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee9ad27c58031a66157ac3b5c93e65068357eeeaceaa658a6163d4e5befb4a06"
+checksum = "2c994a501354f95311ecd159c7e13fede645ce5d184dd576b7569a7478981383"
 dependencies = [
  "getrandom 0.4.3",
 ]

@@ -79,6 +79,104 @@ handler body remain the same.
 
 ---
 
+## Step 3: Send the CSRF token with browser forms
+
+Production/staging `Server` requests use the security baseline, including
+double-submit CSRF validation. A POST needs both the `rullst_csrf` cookie and
+its matching value in a form `_token` field or `X-CSRF-Token` header. This
+contract already exists in **12.0.0**; it is not a new 12.1 feature.
+
+Extract the request-scoped token on the page's GET handler. On a visitor's
+first request, this is the same token that the middleware will set in the
+response cookie; reading the incoming cookie alone would miss it.
+
+```rust
+use rullst::{html, response::Html, security::CsrfToken, server::Extension};
+
+pub async fn message_form(
+    Extension(csrf): Extension<CsrfToken>,
+) -> Html<String> {
+    Html(html! {
+        <form id="message-form" method="post" action="/messages"
+              hx-post="/messages" hx-target="#message-result" hx-swap="innerHTML">
+            <input type="hidden" name="_token" value={csrf.as_str()} />
+            <label for="message">"Message"</label>
+            <input id="message" name="message" required="true" maxlength="600" />
+            <button type="submit">"Send"</button>
+        </form>
+        <div id="message-result" role="status" aria-live="polite"></div>
+    })
+}
+```
+
+Mount GET and POST handlers in the protected application and serve the pinned
+HTMX asset from the same origin. This is a form-rendering snippet, not a full
+messaging service: `/messages` still needs a bounded validated DTO, application
+authorization and the intended domain operation. The hidden field works with
+both a normal URL-encoded form submission and HTMX; no global cookie-forwarding
+script is required. JSON requests instead need the matching header, while the
+browser still sends the cookie. Do not forward tokens to third-party URLs.
+
+The development server does not automatically apply the production CSRF/WAF
+stack. For this extractor in development, explicitly compose
+`rullst::server::from_fn(rullst::security::csrf_middleware)` on the application
+router, as the generated form-enabled starters do. Nested CSRF composition with
+the production server is request-idempotent. Do not make the extractor optional
+and silently render an empty token. Exercise the production baseline over HTTPS
+before deployment; do not remove `Secure` to accommodate a production HTTP URL.
+
+### Show failures instead of a silent spinner
+
+For the pinned HTMX 1.9.12 used by these examples, ordinary HTTP errors do not
+automatically replace the target content. Put the following in an
+application-owned, same-origin external script loaded with `defer`. This avoids
+requiring inline event handlers or weakening Content Security Policy:
+
+```javascript
+const form = document.getElementById('message-form');
+const status = document.getElementById('message-result');
+if (form && status) {
+    const showFailure = (event) => {
+        if (event.detail.elt !== form) return;
+        status.textContent = 'Message not sent. Reload the page and try again.';
+    };
+    for (const name of ['htmx:responseError', 'htmx:sendError', 'htmx:timeout']) {
+        form.addEventListener(name, showFailure);
+    }
+    form.addEventListener('htmx:afterRequest', (event) => {
+        if (event.detail.elt === form && event.detail.successful) {
+            const input = form.elements.namedItem('message');
+            if (input instanceof HTMLInputElement) input.value = '';
+        }
+    });
+}
+```
+
+Keep the message on failure so the visitor can retry. Never insert an arbitrary
+server error body using `innerHTML`. Resetting only after success is also clearer
+than relying on event-order assumptions. In HTMX 1.9.12, form values have already
+been collected before `htmx:beforeRequest`; clearing an input there alone does
+not establish that an empty message was transmitted.
+
+### Diagnose a 403 before changing security policy
+
+| Response | Inspect |
+| --- | --- |
+| `CSRF token cookie missing` | The POST's Cookie header: the cookie may be absent, duplicated or malformed. Check that the preceding GET set it, that the browser accepted it, and that scheme/host/path and credential settings match. A hidden field cannot replace the cookie. |
+| `Invalid or missing CSRF token` | The form's `_token` value and URL-encoded content type. Confirm the input belongs to the submitted form and matches the current cookie. |
+| `Invalid CSRF token` | The explicit header, which takes precedence over the form. Remove a stale custom header rather than expecting the valid form field to override it. |
+
+Do not log token values or session cookies. `HX-Request: true` is not a security
+exemption. Public browser chat endpoints retain CSRF and need separate abuse,
+rate and cost limits. The existing `csrf_signed_webhook_paths` configuration is
+only for exact POST paths authenticated by mandatory signed-webhook validation;
+it is not an AI-chat allowlist and does not verify signatures by itself.
+
+Core's `htmx_csrf_contract` regression tests exercise first-visit cookie/form
+agreement, ordinary and HTMX submissions, preservation of form data and
+rejection before handler execution. These in-process HTTP tests do not certify
+an Azure proxy, browser cookie policy, a live AI provider or application auth.
+
 ## Key takeaways
 
 - Validation is not sanitization and not authorization; enforce all three at

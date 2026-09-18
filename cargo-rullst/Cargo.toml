@@ -1,6 +1,6 @@
 [package]
 name = "cargo-rullst"
-version = "12.0.0"
+version = "12.1.0"
 authors = ["Rullst Core Team"]
 edition = "2024"
 rust-version = "1.96.0"
@@ -33,6 +33,7 @@ path = "src/bin/sync_badges.rs"
 doc = false
 
 [dependencies]
+base64 = { workspace = true }
 rullst-core = { workspace = true }
 clap = { version = "4.6.1", features = ["derive"] }
 colored = "3.1.1"
@@ -43,18 +44,21 @@ crossterm = "0.29.0"
 regex = "1.12.4"
 serde = { workspace = true }
 serde_json = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
 semver = "1.0.28"
-toml_edit = "0.25.13"
+toml_edit = "0.25.15"
 toml = { workspace = true }
 dotenvy = { workspace = true }
 thiserror = { workspace = true }
 walkdir = "2.5.0"
+tempfile = "3.27.0"
 axum = { workspace = true, features = ["ws"] }
 notify = { workspace = true }
-syn = { version = "3", features = ["full", "visit", "visit-mut"] }
+syn = { version = "3.0.5", features = ["full", "visit", "visit-mut"] }
 tokio = { workspace = true, features = ["full"] }
 brotli = "9.0.0"
-zstd = "0.13.3"
+zstd = "0.14.0"
 reqwest = { workspace = true, features = ["json", "rustls", "blocking"] }
 rand = { workspace = true }
 quote = "1.0.47"
@@ -62,12 +66,17 @@ proc-macro2 = "1.0.107"
 sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls", "sqlite", "postgres", "mysql", "any"] }
 uuid = { workspace = true }
 
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1.1.4", features = ["fs", "process"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
+
 [dev-dependencies]
 insta = { version = "1.41", features = ["yaml"] }
-tempfile = "3.27.0"
 # Keeps the generated Tera blueprint dependency locked and cached for the
 # packaged-distribution compile gate without adding it to the CLI runtime graph.
-tera = "2.2"
+tera = "2.4.0"
 tower = { workspace = true, features = ["util"] }
 tower-http = { workspace = true, features = ["cors"] }
 

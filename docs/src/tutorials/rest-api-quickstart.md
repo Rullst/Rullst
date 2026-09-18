@@ -2,7 +2,8 @@
 
 **Your result:** a typed JSON response you can verify from another terminal.
 Start here when your frontend is a separate app, mobile client or integration.
-[Explore all beginner paths](../start-here.md).
+[Explore all beginner paths](../start-here.md) or the
+[complete API learning-path index](../api-reference.md#httprest-a-connected-learning-path).
 
 This quickstart creates one runnable JSON endpoint without a database or an AI
 provider. It targets stable `12.0.0`. Production adoption still needs
@@ -14,13 +15,14 @@ make it supported again.
 ```bash
 cargo new first_rullst_api
 cd first_rullst_api
-cargo add rullst@12.0.0
+cargo add rullst@=12.0.0
 cargo add tokio --features macros,rt-multi-thread
 cargo add serde --features derive
 ```
 
-Keep the generated `Cargo.lock` so every checkout resolves the same framework
-commit.
+The exact requirement keeps this tutorial on v12.0.0. Commit the generated
+`Cargo.lock` so subsequent locked builds use the same resolved package versions;
+it does not pin an unrelated moving Git branch or automatically update the app.
 
 ## 2. Add a JSON route
 

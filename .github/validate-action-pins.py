@@ -111,6 +111,7 @@ def has_quoted_mapping_key(line: str) -> bool:
 def validate_text(source: str, display_name: str = "<memory>") -> list[str]:
     errors: list[str] = []
     block_indent: int | None = None
+    codeql_pins: set[str] = set()
 
     for line_number, raw_line in enumerate(source.splitlines(), start=1):
         if "\t" in raw_line[: len(raw_line) - len(raw_line.lstrip())]:
@@ -162,6 +163,8 @@ def validate_text(source: str, display_name: str = "<memory>") -> list[str]:
                     f"{display_name}:{line_number}: remote uses value must end in "
                     "exactly one 40-character commit SHA"
                 )
+            elif scalar.lower().startswith("github/codeql-action/"):
+                codeql_pins.add(scalar.rsplit("@", 1)[1].lower())
             continue
 
         if OTHER_USES_KEY.search(code) is not None:
@@ -174,6 +177,10 @@ def validate_text(source: str, display_name: str = "<memory>") -> list[str]:
         if BLOCK_SCALAR.fullmatch(code) is not None:
             block_indent = indentation
 
+    if len(codeql_pins) > 1:
+        errors.append(
+            f"{display_name}: CodeQL sub-actions must use the same commit SHA"
+        )
     return errors
 
 

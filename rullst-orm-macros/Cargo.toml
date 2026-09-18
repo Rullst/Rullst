@@ -1,6 +1,6 @@
 [package]
 name = "rullst-orm-macros"
-version = "12.0.0"
+version = "12.1.0"
 authors = ["Rullst Core Team"]
 edition = "2024"
 rust-version = "1.96.0"
@@ -17,18 +17,21 @@ categories = ["development-tools::procedural-macro-helpers", "database"]
 proc-macro = true
 
 [features]
+# Opted into by the matching 12.1 ORM runtime. Keep default expansion usable
+# with published 12.0 runtimes whose SQLx dependency includes every driver.
+runtime-driver-codecs = []
 strict-postgres = []
 strict-mysql = []
 strict-sqlite = []
 
 [dependencies]
-syn = { version = "3", features = ["full"] }
+syn = { version = "3.0.5", features = ["full"] }
 quote = "1"
 proc-macro2 = "1"
 
 [dev-dependencies]
 mutants = "0.0.4"
-trybuild = "1.0"
+trybuild = "1.0.121"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)'] }

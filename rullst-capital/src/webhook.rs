@@ -25,6 +25,13 @@ mod sql;
 #[cfg(feature = "webhook-sql")]
 pub use sql::{SqlWebhookBackend, SqlWebhookReplayStore};
 
+#[cfg(feature = "webhook-sql")]
+mod inbox;
+#[cfg(feature = "webhook-sql")]
+pub use inbox::{
+    SqlStripeEventInbox, StripeInboxError, StripeInboxOutcome, StripeInboxResult, StripeInboxScope,
+};
+
 pub(super) const MAX_WEBHOOK_PAYLOAD_BYTES: usize = 2 * 1024 * 1024;
 const DEFAULT_REPLAY_CAPACITY: usize = 10_000;
 const DEFAULT_REPLAY_TTL: Duration = Duration::from_secs(24 * 60 * 60);
@@ -601,9 +608,10 @@ mod tests {
         let stripe_payload = serde_json::to_vec(&serde_json::json!({
             "type": "customer.subscription.updated",
             "data": { "object": {
+                "object": "subscription",
                 "id": "sub_stripe",
                 "customer": "cus_stripe",
-                "items": { "data": [{ "price": { "id": "price_stripe" } }] },
+                "items": { "has_more": false, "data": [{ "price": { "id": "price_stripe" } }] },
                 "status": "active"
             }}
         }))
@@ -629,9 +637,12 @@ mod tests {
         let lemon_payload = serde_json::to_vec(&serde_json::json!({
             "meta": { "event_name": "subscription_updated" },
             "data": {
-                "id": "sub_lemon",
+                "type": "subscriptions",
+                "id": "123",
                 "attributes": {
                     "customer_id": 42,
+                    "store_id": 42,
+                    "test_mode": true,
                     "user_email": "lemon@example.com",
                     "variant_id": 7,
                     "status": "active"
@@ -650,7 +661,7 @@ mod tests {
             verify_payload(&lemon, &lemon_payload, &lemon_headers, &lemon_store, true)
                 .await
                 .expect("local mock signature must produce a normalized event");
-        assert_eq!(lemon_event.subscription_id, "sub_lemon");
+        assert_eq!(lemon_event.subscription_id, "123");
 
         assert!(matches!(
             verify_payload(
