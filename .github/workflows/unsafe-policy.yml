@@ -49,6 +49,7 @@ jobs:
           )"
           expected="$(printf '%s\n' \
             'cargo-rullst/src/update/cache/windows_acl.rs' \
+            'cargo-rullst/src/update/project/permissions_unix.rs' \
             'rullst-core/src/radar.rs' \
             'rullst-core/src/server/dylib_loader.rs' |
             sort)"
@@ -62,5 +63,6 @@ jobs:
         run: |
           grep -En -n 'unsafe\s*(\{|fn|impl|trait|extern)' \
             cargo-rullst/src/update/cache/windows_acl.rs \
+            cargo-rullst/src/update/project/permissions_unix.rs \
             rullst-core/src/radar.rs \
             rullst-core/src/server/dylib_loader.rs
