@@ -136,18 +136,29 @@ fn options() -> OpenOptions {
 }
 
 fn validate_file(file: &File) -> Result<(), CacheError> {
+    validate_private_file(file)?;
+    if file.metadata()?.len() > FILE_LIMIT {
+        return Err(CacheError::Invalid("catalog cache exceeds its size limit"));
+    }
+    Ok(())
+}
+
+fn validate_private_file(file: &File) -> Result<(), CacheError> {
     let metadata = file.metadata()?;
     if !metadata.is_file()
         || metadata.uid() != rustix::process::geteuid().as_raw()
         || metadata.mode() & 0o077 != 0
         || metadata.nlink() != 1
-        || metadata.len() > FILE_LIMIT
     {
         return Err(CacheError::Invalid(
-            "catalog cache has an unsafe owner, type, links, size or permissions",
+            "private file has an unsafe owner, type, links or permissions",
         ));
     }
     Ok(())
+}
+
+pub(super) fn installation_file(path: &Path) -> Result<(), CacheError> {
+    validate_private_file(&options().read(true).open(path)?)
 }
 
 fn load_at(base: &Path, now: u64) -> Result<CachedCatalog, CacheError> {

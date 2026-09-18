@@ -274,14 +274,19 @@ cargo rullst update install review --to 12.1.0 --directory STAGED_FILES \
   --root "$HOME/.local/share/rullst-cli" --json
 ```
 
-The absolute installation root must be new or empty; its parent must already
-exist and pass owner/ancestor checks. An existing destination must be private
-(`0700` on Unix or a protected caller DACL on Windows). Existing files and
-package-manager installations are refused. No permissions are repaired.
+The absolute installation root must be new/empty or contain exactly the two
+updater-owned binaries and its bounded root-bound installation receipt. Its
+parent must already exist and pass owner/ancestor checks. An existing destination
+must be private (`0700` on Unix or a protected caller DACL on Windows). Unknown
+files and package-manager installations are refused. No permissions are repaired.
+The original attested manifest bytes and private single-link binaries must still
+match; review reauthenticates the prior manifest and uses the installed version
+to reject downgrades even when the reviewing CLI is older. Receipt creation and
+actual replacement remain unfinished.
 
 Review fetches fresh registry eligibility, verifies official provenance and
 exact local binary hashes, then rechecks the destination. JSON binds source,
-version, native target and destination to `review_sha256`, lists the future
+version, native target, destination and exact prior receipt to `review_sha256`, lists the future
 version probes and supplies an exact Cargo source-install command for separately
 reviewed manager use. Offline mode rejects before I/O. The destination is not
 created and neither the probes nor fallback command run. Installation application

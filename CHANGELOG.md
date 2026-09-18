@@ -178,10 +178,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   private stages are discarded. Staging executes and installs nothing; native
   and published-release acceptance remain required.
 
-- Add authenticated installation preview for a new private destination, binding
+- Add authenticated installation preview for a new or receipt-owned private destination, binding
   exact source/files/root to a review digest and showing version probes and a
-  pinned Cargo fallback without executing either. Reject existing files and
-  unsafe ownership/permissions. CLI installation/recovery remains unfinished.
+  pinned Cargo fallback without executing either. Reauthenticate prior manifest
+  bytes, bind the prior receipt, reject altered/hardlinked/nonprivate binaries
+  and refuse unknown files/package-manager takeover. Use the installed version
+  to reject stale-CLI downgrades. CLI installation/recovery remains unfinished.
 
 - Add explicit candidate review with revalidated command logs, source/file
   digests, a bounded full dependency diff and a review digest, without executing

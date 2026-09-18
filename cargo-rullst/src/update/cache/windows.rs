@@ -288,3 +288,7 @@ pub(super) fn installation_root(requested: &Path) -> Result<PathBuf, CacheError>
     }
     Ok(root)
 }
+
+pub(super) fn installation_file(path: &Path) -> Result<(), CacheError> {
+    Identity::current()?.validate(&options(false).open(path)?, false, true, false)
+}
