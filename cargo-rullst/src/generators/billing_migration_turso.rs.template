@@ -4,6 +4,8 @@ pub fn migration() -> Result<TursoMigration, PolyglotError> {
     TursoMigration::new(
         "__MIGRATION_NAME__",
         vec![
+            TursoStatement::new("CREATE TABLE billing_state (scope VARCHAR(220) NOT NULL, owner_id VARCHAR(24) NOT NULL, reference VARCHAR(200) NOT NULL, revision VARCHAR(200) NOT NULL, customer_id VARCHAR(200), payload TEXT NOT NULL, PRIMARY KEY (scope, owner_id), UNIQUE (scope, reference), UNIQUE (scope, customer_id))", vec![])?,
+            TursoStatement::new("CREATE TABLE billing_events (scope VARCHAR(220) NOT NULL, event_id VARCHAR(255) NOT NULL, digest VARCHAR(64) NOT NULL, reference VARCHAR(200) NOT NULL, PRIMARY KEY (scope, event_id))", vec![])?,
             TursoStatement::new(
                 "CREATE TABLE billing_customers (id INTEGER PRIMARY KEY AUTOINCREMENT, __FOREIGN_KEY__ INTEGER NOT NULL, email TEXT NOT NULL, customer_id TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
                 vec![],
@@ -23,6 +25,8 @@ pub fn migration() -> Result<TursoMigration, PolyglotError> {
         ],
     )?
     .with_down(vec![
+        TursoStatement::new("DROP TABLE billing_events", vec![])?,
+        TursoStatement::new("DROP TABLE billing_state", vec![])?,
         TursoStatement::new("DROP TABLE subscriptions", vec![])?,
         TursoStatement::new("DROP TABLE billing_customers", vec![])?,
     ])

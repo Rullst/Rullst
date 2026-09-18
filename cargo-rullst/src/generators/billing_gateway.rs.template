@@ -1,0 +1,76 @@
+//! Static provider boundary; wire validation remains in rullst-capital.
+use super::{Result, UNAVAILABLE};
+use rullst::capital::{StripeProvider, StripeCheckoutRequest, StripeCustomerRequest, StripeSubscriptionLookup, WebhookEvent};
+use std::future::Future;
+
+pub(super) struct Customer { pub id: String, pub mode: bool }
+impl Customer {
+    pub fn id(&self) -> &str { &self.id }
+    pub fn livemode(&self) -> Option<bool> { Some(self.mode) }
+}
+pub(super) struct Created { pub id: String, pub url: String, pub mode: bool, pub digest: [u8; 32] }
+impl Created {
+    pub fn id(&self) -> &str { &self.id }
+    pub fn url(&self) -> &str { &self.url }
+    pub fn livemode(&self) -> Option<bool> { Some(self.mode) }
+    pub fn request_digest(&self) -> [u8; 32] { self.digest }
+}
+pub(super) struct Checkout {
+    pub id: String, pub status: String, pub url: Option<String>, pub subscription: Option<String>,
+}
+impl Checkout {
+    pub fn id(&self) -> &str { &self.id }
+    pub fn status(&self) -> &str { &self.status }
+    pub fn url(&self) -> Option<&str> { self.url.as_deref() }
+    pub fn subscription_id(&self) -> Option<&str> { self.subscription.as_deref() }
+    fn from(snapshot: rullst::capital::providers::StripeCheckoutSnapshot) -> Self {
+        Self { id: snapshot.id().into(), status: snapshot.status().into(), url: snapshot.url().map(str::to_owned),
+            subscription: snapshot.subscription_id().map(str::to_owned) }
+    }
+}
+pub(super) struct Subscription { pub event: WebhookEvent, pub status: String }
+impl Subscription {
+    pub fn subscription(&self) -> &WebhookEvent { &self.event }
+    pub fn provider_status(&self) -> &str { &self.status }
+}
+
+pub(super) trait Gateway: Sync {
+    fn verify_account(&self, account: &str, mode: bool) -> impl Future<Output = Result<()>> + Send;
+    fn create_customer(&self, request: &StripeCustomerRequest) -> impl Future<Output = Result<Customer>> + Send;
+    fn find_bound_customer(&self, request: &StripeCustomerRequest) -> impl Future<Output = Result<Option<Customer>>> + Send;
+    fn create_subscription_checkout(&self, request: &StripeCheckoutRequest) -> impl Future<Output = Result<Created>> + Send;
+    fn retrieve_checkout(&self, request: &StripeCheckoutRequest, id: &str, mode: bool) -> impl Future<Output = Result<Checkout>> + Send;
+    fn find_checkout(&self, request: &StripeCheckoutRequest, created: i64, subscription: Option<&str>, mode: bool)
+        -> impl Future<Output = Result<Option<Checkout>>> + Send;
+    fn retrieve_subscription(&self, request: &StripeSubscriptionLookup, prices: &std::collections::HashSet<String>) -> impl Future<Output = Result<Subscription>> + Send;
+}
+impl Gateway for StripeProvider {
+    async fn verify_account(&self, account: &str, mode: bool) -> Result<()> {
+        self.verify_account(account, mode).await.map_err(|_| UNAVAILABLE)
+    }
+    async fn create_customer(&self, request: &StripeCustomerRequest) -> Result<Customer> {
+        let receipt = self.create_customer(request).await.map_err(|_| UNAVAILABLE)?;
+        Ok(Customer { id: receipt.id().into(), mode: receipt.livemode().ok_or(UNAVAILABLE)? })
+    }
+    async fn find_bound_customer(&self, request: &StripeCustomerRequest) -> Result<Option<Customer>> {
+        self.find_bound_customer(request).await.map_err(|_| UNAVAILABLE)?.map(|receipt| {
+            Ok(Customer { id: receipt.id().into(), mode: receipt.livemode().ok_or(UNAVAILABLE)? })
+        }).transpose()
+    }
+    async fn create_subscription_checkout(&self, request: &StripeCheckoutRequest) -> Result<Created> {
+        let receipt = self.create_subscription_checkout(request).await.map_err(|_| UNAVAILABLE)?;
+        Ok(Created { id: receipt.id().into(), url: receipt.url().into(), mode: receipt.livemode().ok_or(UNAVAILABLE)?, digest: receipt.request_digest() })
+    }
+    async fn retrieve_checkout(&self, request: &StripeCheckoutRequest, id: &str, mode: bool) -> Result<Checkout> {
+        self.retrieve_checkout(request, id, mode).await.map(Checkout::from).map_err(|_| UNAVAILABLE)
+    }
+    async fn find_checkout(&self, request: &StripeCheckoutRequest, created: i64, subscription: Option<&str>, mode: bool) -> Result<Option<Checkout>> {
+        self.find_checkout(request, created, subscription, mode).await.map(|snapshot| snapshot.map(Checkout::from)).map_err(|_| UNAVAILABLE)
+    }
+    async fn retrieve_subscription(&self, request: &StripeSubscriptionLookup, prices: &std::collections::HashSet<String>) -> Result<Subscription> {
+        let prices = prices.iter().map(String::as_str).collect::<Vec<_>>();
+        let snapshot = self.retrieve_subscription_with_allowed_prices(request, &prices).await.map_err(|_| UNAVAILABLE)?;
+        snapshot.require_real().map_err(|_| UNAVAILABLE)?;
+        Ok(Subscription { event: snapshot.subscription().clone(), status: snapshot.provider_status().into() })
+    }
+}

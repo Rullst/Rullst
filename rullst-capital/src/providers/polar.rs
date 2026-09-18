@@ -10,8 +10,9 @@ use std::collections::HashMap;
 
 /// Billing provider implementation for Polar.sh (Developer-First MoR & Open Source).
 pub struct PolarProvider {
-    api_key: String,
+    pub(super) api_key: String,
     webhook_secret: String,
+    pub(super) sandbox: bool,
 }
 
 impl PolarProvider {
@@ -20,7 +21,14 @@ impl PolarProvider {
         Self {
             api_key: api_key.into(),
             webhook_secret: webhook_secret.into(),
+            sandbox: false,
         }
+    }
+
+    /// Selects Polar's isolated sandbox API; credentials must belong to that environment.
+    pub fn with_sandbox(mut self, sandbox: bool) -> Self {
+        self.sandbox = sandbox;
+        self
     }
 
     /// Offline compatibility helper. Live verification requires all Standard
@@ -142,7 +150,12 @@ impl BillingProvider for PolarProvider {
             crate::providers::send_http(
                 client
                     .delete(format!(
-                        "https://api.polar.sh/v1/subscriptions/{}",
+                        "{}/v1/subscriptions/{}",
+                        if self.sandbox {
+                            "https://sandbox-api.polar.sh"
+                        } else {
+                            "https://api.polar.sh"
+                        },
                         subscription_id
                     ))
                     .bearer_auth(&self.api_key),

@@ -27,6 +27,10 @@ pub fn file_manifest(
     ));
     manifest.extend(models::get_models_and_migrations());
     manifest.extend(billing::get_billing_pages());
+    manifest.extend(crate::generators::billing::live_billing_files(
+        "user_id",
+        ProjectOrmBackend::Sqlx,
+    ));
 
     // 1. Controllers
     let auth_controller_code = render_auth_controller(None);

@@ -1,0 +1,77 @@
+use super::{Receipt, Result, State, UNAVAILABLE};
+use rullst::db::{Orm, sqlx};
+
+fn dialect(sql: &str) -> Result<String> {
+    Ok(if Orm::driver().map_err(|_| UNAVAILABLE)? == "postgres" {
+        rullst::orm::replace_placeholders(sql)
+    } else { sql.into() })
+}
+async fn lookup(sql: &str, scope: &str, value: &str) -> Result<Option<State>> {
+    let sql = dialect(sql)?;
+    let payload = sqlx::query_scalar::<_, String>(sqlx::AssertSqlSafe(sql.as_str()))
+        .bind(scope).bind(value).fetch_optional(Orm::pool().map_err(|_| UNAVAILABLE)?)
+        .await.map_err(|_| UNAVAILABLE)?;
+    payload.map(|text| State::decode(&text)).transpose()
+}
+pub(super) async fn owner(scope: &str, owner: i64) -> Result<Option<State>> {
+    let state = lookup("SELECT payload FROM billing_state WHERE scope = ? AND owner_id = ?", scope, &owner.to_string()).await?;
+    if state.as_ref().is_some_and(|state| state.scope != scope || state.owner != owner) { return Err(UNAVAILABLE); }
+    Ok(state)
+}
+pub(super) async fn reference(scope: &str, reference: &str) -> Result<Option<State>> {
+    let state = lookup("SELECT payload FROM billing_state WHERE scope = ? AND reference = ?", scope, reference).await?;
+    if state.as_ref().is_some_and(|state| state.scope != scope || state.reference != reference) { return Err(UNAVAILABLE); }
+    Ok(state)
+}
+pub(super) async fn insert(state: &State) -> Result<()> {
+    let suffix = if Orm::driver().map_err(|_| UNAVAILABLE)? == "mysql" {
+        " ON DUPLICATE KEY UPDATE owner_id = owner_id"
+    } else { " ON CONFLICT DO NOTHING" };
+    let sql = dialect(&format!("INSERT INTO billing_state (scope, owner_id, reference, revision, payload) VALUES (?, ?, ?, ?, ?){suffix}"))?;
+    sqlx::query(sqlx::AssertSqlSafe(sql.as_str())).bind(&state.scope).bind(state.owner.to_string())
+        .bind(&state.reference).bind(&state.revision).bind(state.encode()?)
+        .execute(Orm::pool().map_err(|_| UNAVAILABLE)?).await.map_err(|_| UNAVAILABLE)?;
+    Ok(())
+}
+pub(super) async fn receipt(scope: &str, id: &str) -> Result<Option<String>> {
+    let sql = dialect("SELECT digest FROM billing_events WHERE scope = ? AND event_id = ?")?;
+    sqlx::query_scalar(sqlx::AssertSqlSafe(sql.as_str())).bind(scope).bind(id)
+        .fetch_optional(Orm::pool().map_err(|_| UNAVAILABLE)?).await.map_err(|_| UNAVAILABLE)
+}
+
+pub(super) async fn commit(old: &State, next: &State, receipt: Option<&Receipt>) -> Result<bool> {
+    if old.scope != next.scope || old.owner != next.owner || old.reference != next.reference
+        || old.revision == next.revision { return Err(UNAVAILABLE); }
+    let mut tx = Orm::begin_transaction().await.map_err(|_| UNAVAILABLE)?;
+    let update = dialect("UPDATE billing_state SET revision = ?, payload = ?, customer_id = ? WHERE scope = ? AND reference = ? AND revision = ?")?;
+    let changed = sqlx::query(sqlx::AssertSqlSafe(update.as_str())).bind(&next.revision)
+        .bind(next.encode()?).bind(&next.customer).bind(&old.scope).bind(&old.reference).bind(&old.revision)
+        .execute(&mut *tx).await.map_err(|_| UNAVAILABLE)?.rows_affected();
+    if changed != 1 { tx.rollback().await.map_err(|_| UNAVAILABLE)?; return Ok(false); }
+    if let Some(entitlement) = &next.entitlement {
+        let customer = next.customer.as_deref().ok_or(UNAVAILABLE)?;
+        let owner = __OWNER_CAST__;
+        let check = dialect("SELECT __FOREIGN_KEY__, customer_id FROM subscriptions WHERE subscription_id = ?")?;
+        let existing = sqlx::query_as::<_, (__OWNER_ID_TYPE__, String)>(sqlx::AssertSqlSafe(check.as_str()))
+            .bind(&entitlement.subscription).fetch_optional(&mut *tx).await.map_err(|_| UNAVAILABLE)?;
+        if existing.as_ref().is_some_and(|(id, known)| *id != owner || known != customer) { return Err(UNAVAILABLE); }
+        let clock = if Orm::driver().map_err(|_| UNAVAILABLE)? == "mysql" { "CAST(CURRENT_TIMESTAMP AS CHAR)" }
+            else { "CAST(CURRENT_TIMESTAMP AS TEXT)" };
+        let sql = if existing.is_some() {
+            format!("UPDATE subscriptions SET plan_id = ?, status = ?, ends_at = ?, updated_at = {clock} WHERE subscription_id = ? AND __FOREIGN_KEY__ = ? AND customer_id = ?")
+        } else {
+            format!("INSERT INTO subscriptions (plan_id, status, ends_at, subscription_id, __FOREIGN_KEY__, customer_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, {clock}, {clock})")
+        };
+        let sql = dialect(&sql)?;
+        sqlx::query(sqlx::AssertSqlSafe(sql.as_str())).bind(&entitlement.price).bind(&entitlement.status)
+            .bind(entitlement.ends_at).bind(&entitlement.subscription).bind(owner).bind(customer)
+            .execute(&mut *tx).await.map_err(|_| UNAVAILABLE)?;
+    }
+    if let Some(receipt) = receipt {
+        let sql = dialect("INSERT INTO billing_events (scope, event_id, digest, reference) VALUES (?, ?, ?, ?)")?;
+        sqlx::query(sqlx::AssertSqlSafe(sql.as_str())).bind(&next.scope).bind(&receipt.id)
+            .bind(&receipt.digest).bind(&next.reference).execute(&mut *tx).await.map_err(|_| UNAVAILABLE)?;
+    }
+    tx.commit().await.map_err(|_| UNAVAILABLE)?;
+    Ok(true)
+}

@@ -785,6 +785,20 @@ neighboring signatures cannot hide a valid one, and duplicate timestamps are
 rejected. The configured freshness window still applies to the exact raw body.
 This authenticates a delivery, not subscription ownership or settlement.
 
+`PolarCheckoutRequest` and `PolarProvider::create_product_checkout` implement
+POST `/v1/checkouts/` with one explicit product UUID, stable opaque external
+customer identity, HTTPS success URL and optional contact email. The response
+must bind product, external customer, metadata and redirect before a session is
+returned. `with_sandbox` selects Polar's isolated API; it never infers environment
+from a token. Client IP is optional and accepted only as a typed address supplied
+by the host's reviewed trusted-proxy boundary; raw forwarding headers are never
+read by the adapter. No undocumented idempotency guarantee or automatic retry is
+introduced. `verify_checkout_subscription` verifies Standard Webhooks and binds
+the nested customer's external identity and product to the persisted checkout
+request. Hosts retain account/environment scope and atomic event processing.
+The old email/price-only trait method cannot supply those bindings and remains
+explicitly unsupported for live use; its replacement is the typed product API.
+
 Polar's signed subscription normalizer accepts only its explicit lifecycle
 events and states, with bounded subscription/customer/product identities and
 consistent current/legacy customer references. RFC3339 billing periods and the
@@ -825,8 +839,8 @@ with its request digest before dispatch, retain account/test-live namespaces,
 and reconcile unknown outcomes. Provider idempotency has a finite retention
 window; repeating an expired key is not a durable deduplication guarantee.
 Session creation and return navigation never grant paid access. The legacy
-email-based trait method remains source-compatible; generated persistence and
-atomic webhook processing are separate maintenance work.
+email-based trait method remains source-compatible; new generated Stripe flows
+use the dedicated customer-bound contract and durable persistence below.
 
 `StripeSubscriptionLookup` and `StripeProvider::retrieve_subscription` provide
 an explicit read for reconciliation. The request binds subscription, persisted
@@ -1013,19 +1027,26 @@ sending.
   binding, ordering and an outbox for external effects. No SQL transaction can
   undo HTTP or other external effects performed by the callback. This API does
   not migrate the generated handler or grant access from subscription status.
-* Generated SQLx and Turso billing handlers commit the customer binding and
-  subscription row in one transaction. Conditional writes refuse to replace
-  an existing customer binding. Materialized SQLite and offline Turso tests
-  inject failures in both tables, require rollback, and retry successfully.
-  This only establishes atomicity for the two domain rows: the generated
-  email lookup, provider namespace, event ordering and middleware preclaim
-  still require replacement by the durable identity/inbox flow above.
-  Until that integration is implemented, newly generated checkout, portal and
-  webhook paths are restricted to development fixtures with empty/`mock_*`
-  credentials. Any real API or webhook credential returns HTTP 503 before
-  provider dispatch, replay claims or domain writes, including mixed real/mock
-  configuration. Pricing pages disclose the demonstration boundary. Existing
-  application-owned code is not rewritten by updating the framework package.
+* Generated SQLx and Turso billing persists an opaque authenticated-owner binding,
+  immutable customer/checkout intents and session IDs before redirect. Account
+  identity is checked through Stripe and test/live namespaces are separate.
+  Customer email never discovers or authorizes ownership. Real Stripe credentials
+  require an explicit account, HTTPS return URL, webhook secret and price allowlist;
+  mixed credentials and other generated live providers remain unavailable.
+  Customer and session creation reuse persisted keys for at most 23 hours. Older
+  unknown outcomes use bounded read-only recovery; absence never permits another
+  mutation. Completed and expired Checkout notifications and subscription lifecycle
+  events trigger ownership-bound provider reads. A random database revision is
+  committed before reading and compared atomically when committing the resulting
+  subscription projection and durable event receipt. Concurrent newer reads fence
+  earlier work; failed/uncertain commits remain retryable. An open checkout is
+  retrieved and reused, and rejected/repeated requests do not consume a newly
+  created-session quota. Existing subscriptions use an ID-bound customer portal.
+  Provider-portal price changes must remain in the application's allowed catalog.
+  The application owns entitlement/settlement policy, inbox retention and capacity
+  operations; a subscription state is not invoice settlement evidence.
+  Existing application-owned code requires merging the generated modules and an
+  additive migration; updating the package does not rewrite deployed controllers.
 * Hosted checkout forms require an explicit provider-specific CSP `form-action`
   origin on the document that submits the form, including its HTTP 303 handoff.
   The SaaS starter selects Stripe and adds only `https://checkout.stripe.com`

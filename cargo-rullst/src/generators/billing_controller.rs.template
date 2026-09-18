@@ -1,3 +1,5 @@
+#[path = "billing_live.rs"]
+mod live;
 use crate::models::{billing_customer::BillingCustomer, subscription::Subscription};
 use crate::pages::billing;
 use rullst::capital::{BillingProvider, LemonSqueezyProvider, StripeProvider, WebhookEvent};
@@ -141,9 +143,8 @@ fn lemon_provider(config: &BillingConfig) -> Result<LemonSqueezyProvider, rullst
     }
 }
 
-// This scaffold's email lookup and replay preclaim are development fixtures.
-// Real billing needs durable scoped ownership/attempts and atomic inbox/domain
-// processing. Do not turn this guard into an environment-variable bypass.
+// Email-based mock fixtures are isolated from the durable Stripe implementation.
+// Mixed credentials and unsupported live providers fail closed in live::scope.
 fn local_billing_fixture(config: &BillingConfig) -> bool {
     !is_production()
         && (config.api_key.is_empty() || config.api_key.starts_with("mock_"))
@@ -170,7 +171,7 @@ pub async fn verify_billing_webhook(
 ) -> Result<Response, StatusCode> {
     let config = billing_config().map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
     if !local_billing_fixture(&config) {
-        return Err(StatusCode::SERVICE_UNAVAILABLE);
+        return live::webhook(&config, request).await;
     }
     if let Err(error) = initialize_billing_provider() {
         eprintln!("Billing webhook configuration error: {error}");
@@ -260,7 +261,7 @@ pub async fn checkout_redirect(
         return (StatusCode::BAD_REQUEST, "Plan is not enabled").into_response();
     }
     if !local_billing_fixture(&config) {
-        return (StatusCode::SERVICE_UNAVAILABLE, "Billing is unavailable").into_response();
+        return live::checkout(&config, &identity, &form.plan).await;
     }
     let customer = match billing_customer(&identity).await {
         Ok(customer) => customer,
@@ -297,7 +298,7 @@ pub async fn portal_redirect(Extension(identity): Extension<BillingIdentity>) ->
         }
     };
     if !local_billing_fixture(&config) {
-        return (StatusCode::SERVICE_UNAVAILABLE, "Customer portal is unavailable for this configuration").into_response();
+        return live::portal(&config, &identity).await;
     }
     let customer = match billing_customer(&identity).await {
         Ok(customer) => customer,
@@ -410,3 +411,10 @@ pub async fn webhook_handler(Extension(event): Extension<WebhookEvent>) -> Respo
 }
 
 __PERSIST_BILLING_UPDATE__
+
+/// Explicit server-side operator recovery; never mounted automatically. Resolve
+/// and authorize the local owner before supplying the independently found ID.
+pub async fn recover_stripe_customer(identity: &BillingIdentity, customer_id: &str) -> Result<(), StatusCode> {
+    let config = billing_config().map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    live::recover_customer(&config, identity, customer_id).await
+}

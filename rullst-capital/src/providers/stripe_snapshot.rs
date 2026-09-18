@@ -8,6 +8,49 @@ use serde_json::Value;
 const OPERATION: &str = "retrieve bound subscription";
 
 impl super::StripeProvider {
+    /// Reconciles a subscription whose price may have changed through the
+    /// provider portal. Every other ownership binding remains mandatory; the
+    /// current single recurring price must belong to the server-owned catalog.
+    pub async fn retrieve_subscription_with_allowed_prices(
+        &self,
+        request: &StripeSubscriptionLookup,
+        allowed_prices: &[&str],
+    ) -> Result<StripeSubscriptionSnapshot, CapitalError> {
+        if allowed_prices.is_empty()
+            || allowed_prices.len() > 64
+            || allowed_prices
+                .iter()
+                .any(|price| !stripe_contract::valid_reference(price, "price_", 200))
+        {
+            return Err(mismatch());
+        }
+        let api_key = self.usage_api_key();
+        if api_key.is_empty() || api_key.starts_with("mock_") {
+            return self.retrieve_subscription(request).await;
+        }
+        let response = execute_http(
+            build_request(http_client()?, api_key, request)?,
+            "stripe",
+            OPERATION,
+        )
+        .await?;
+        let body: Value = read_http_json(response, "stripe", OPERATION).await?;
+        let price = body["items"]["data"][0]["price"]["id"]
+            .as_str()
+            .ok_or_else(mismatch)?;
+        if !allowed_prices.contains(&price) {
+            return Err(mismatch());
+        }
+        let current = StripeSubscriptionLookup::new(
+            request.subscription_id(),
+            request.customer_id(),
+            request.owner_reference(),
+            price,
+            request.livemode(),
+        )?;
+        parse_response(&current, &body)
+    }
+
     /// Reads bounded provider state for an already authorized persisted binding.
     ///
     /// Serialize this read with the subsequent domain update; two reads made

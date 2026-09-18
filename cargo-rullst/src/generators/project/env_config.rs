@@ -187,6 +187,8 @@ RULLST_ENV=development
         let billing_template = r#"
 # ── Billing (required in production) ──
 BILLING_PROVIDER=stripe
+# Stripe platform account ID; complete setup is documented in BILLING.md.
+BILLING_ACCOUNT_ID=
 # When changing providers, review Rullst.toml security.csp form-action too.
 # Lemon Squeezy needs your exact reviewed store/custom checkout origin, no wildcard.
 # Required for live Lemon Squeezy checkout; use your merchant's numeric store ID.
