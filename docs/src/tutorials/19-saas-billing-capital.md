@@ -13,61 +13,62 @@ The command detects a relational SQLx or Turso-primary project, adds the exact
 `orm` and `capital` facade features once, generates a reversible matching
 migration, registers the models/controller/page modules, and refuses to
 overwrite an earlier billing scaffold. The generated runtime supports the
-selected `stripe` or `lemonsqueezy` adapter. It deliberately does not imply
-support for every Capital adapter or mount application routes without review.
+selected Stripe live integration or explicit offline fixtures. Other generated
+providers remain fixtures; adapter capabilities do not imply an integrated
+application journey for every gateway.
 
-**Unreleased 12.1 safety boundary:** newly generated billing is a local
-development fixture. Checkout, portal and webhook paths return HTTP 503 with
-real or mixed credentials, including provider sandbox keys. Durable customer
-and attempt identity, account/mode scope and atomic inbox processing must be
-integrated before enabling real calls. There is no environment flag to bypass
-this guard. Existing controllers are application-owned and need a reviewed
-migration; changing a dependency version does not replace them.
+**Unreleased 12.1 integration:** the Stripe flow persists an opaque local owner,
+account/test-live scope, immutable customer and checkout intents, session IDs,
+and event receipts. Signed Checkout/subscription notifications reconcile current
+provider state. Database revision fencing prevents delayed reads from replacing
+newer state, and event completion shares the subscription transaction.
 
-Set `BILLING_ALLOWED_PLAN_IDS` to the exact comma-separated provider price or
-variant IDs the server may accept. Production startup rejects a missing
-allowlist; a query-string plan outside it is denied before creating a billing
-customer.
+Configure `BILLING_PROVIDER=stripe`, `BILLING_ACCOUNT_ID`, `BILLING_API_KEY`,
+`BILLING_WEBHOOK_SECRET`, an HTTPS `BILLING_REDIRECT_URL`, and the explicit
+`BILLING_ALLOWED_PLAN_IDS` recurring-price allowlist. Follow the generated
+`BILLING.md` for webhook event selection, pinned API version, CSP, recovery and
+migration details. Keep credentials outside source control. Test and live keys
+use separate persisted namespaces; mixed real/mock credentials fail closed.
 
-Use the exact environment names emitted by the generated files and keep live
-credentials outside source control. Credentials beginning with `mock_` select a
-documented deterministic offline path; they are not accepted by the
-production-safe webhook middleware.
+Existing controllers are application-owned: merge the generated modules and
+add the billing-state/event tables through a new migration. Updating a dependency
+does not rewrite existing controllers or safely backfill legacy customer ownership.
 
 ## 2. Create a checkout session
 
-This legacy adapter example explains the API; it is not the generated
-production flow. Prefer the bound Stripe request and inbox APIs described in
-the [Capital README](https://github.com/Rullst/Rullst/tree/main/rullst-capital)
-when implementing durable ownership and reconciliation.
+Mount the generated authenticated checkout POST behind session/tenant ownership
+and CSRF verification. The form supplies only an allowlisted plan. The generated
+handler persists the intent before dispatch and the session ID before its HTTP
+303 redirect. Repeated requests retrieve and reuse an open session. Older unknown
+outcomes use read-only recovery rather than new keys after provider retention.
+
+When calling the low-level adapter directly, persist and authorize the same
+customer/attempt boundary explicitly:
 
 ```rust,no_run
-use rullst_capital::{init_provider, provider, StripeProvider};
+use rullst_capital::{CapitalError, StripeCheckoutRequest, StripeProvider};
 
-async fn checkout_url() -> Result<String, String> {
-    let api_key = std::env::var("STRIPE_SECRET_KEY")
-        .map_err(|error| format!("missing Stripe key: {error}"))?;
-    let webhook_secret = std::env::var("STRIPE_WEBHOOK_SECRET")
-        .map_err(|error| format!("missing webhook secret: {error}"))?;
-
-    init_provider(Box::new(StripeProvider::new(api_key, webhook_secret)));
-    let selected = provider().ok_or_else(|| "billing provider is not configured".to_string())?;
-    selected
-        .create_checkout_session(
-            "customer@example.com",
-            "price_pro_monthly",
-            "https://app.example/billing/success",
-        )
-        .await
-        .map_err(|error| error.to_string())
+async fn checkout_url(
+    stripe: &StripeProvider,
+    persisted_attempt: &StripeCheckoutRequest,
+) -> Result<String, CapitalError> {
+    let session = stripe.create_subscription_checkout(persisted_attempt).await?;
+    // Persist session.id() and its digest before returning the URL to the browser.
+    Ok(session.url().to_owned())
 }
 ```
 
-The scaffold requires an authenticated `BillingIdentity` for checkout/portal,
-enforces that server-owned plan allowlist, and rejects subscription reuse across
-owners. The application still owns the identity middleware, correct plan
-configuration, return-URL policy, durable provider-event
-idempotency/reconciliation, and provider sandbox validation.
+Email is optional contact data, never the webhook owner key. The ID-bound portal
+uses the same persisted customer. The application supplies authentication and
+membership, configured products/prices, retention, entitlement/settlement policy,
+and actual provider-account sandbox acceptance. Navigation and session creation
+never grant paid access.
+
+Polar callers use the additive `PolarCheckoutRequest` and
+`create_product_checkout` API with a product UUID and opaque external customer.
+The legacy email/price-only method cannot supply those bindings. See the
+[Capital README](https://github.com/Rullst/Rullst/tree/main/rullst-capital)
+for sandbox selection, trusted client IP and signed subscription binding.
 
 ### 2.1 Handle provider failure without blindly repeating a charge
 
