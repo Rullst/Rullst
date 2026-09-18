@@ -1,10 +1,10 @@
 # SaaS findings: v12.1 maintenance and v13 contracts
 
 **Status: SAAS-002, SAAS-003 and SAAS-004 have typed replacements in maintenance
-source. Stripe sandbox API and CLI-relayed signed events passed at `a4c07bfa`.
-The additional Paddle source still requires final candidate CI; its no-default
-test build needed an explicit development server dependency. Hosted Checkout
-completion, other provider accounts, publication and deployment remain unverified.**
+source. Stripe test-mode API, hosted Checkout and CLI-relayed signed events
+passed at `0f15d70a`. Final candidate CI remains in progress after correcting a
+test-only dependency in the no-default build. Other provider accounts,
+publication and candidate deployment remain unverified.**
 
 The input is the two reports from `Rullst/examples`, branch
 `feat/saas-staging-ai-fixes`, pinned to commit
@@ -120,11 +120,21 @@ test events were not locally fabricated or resigned. All synthetic customers,
 sessions, subscriptions and catalog objects were deleted, closed or archived.
 No credentials, contact data or hosted checkout URLs are retained in this book.
 
-This proves the listed adapter operations against Stripe test mode. It does not
-prove hosted payment completion, delivery to the deployed application's webhook,
-or an end-to-end generated application database transaction. SQLx/Turso domain
-integration has separate materialized tests. Polar/Paddle account acceptance
-also remains separate; no credentials for those providers were available here.
+The subsequent browser run at `0f15d70a` also completed hosted Checkout in
+Chrome using Stripe's official test card. Provider reads confirmed a paid test
+Checkout and invoice matching the expected BRL 100 minor units, customer and
+subscription. The candidate verified the actual signed Checkout completion and
+subscription creation/deletion deliveries, read active state, canceled the test
+subscription and confirmed canceled state. Customer deletion, terminal session
+state and archived catalog responses were checked. See the
+[redacted acceptance record](evidence/v12-1-stripe-sandbox.json).
+
+This proves the listed adapter operations against Stripe test mode, including
+simulated payment completion. It does not prove delivery to the deployed
+application's webhook or an end-to-end generated application database
+transaction. SQLx/Turso domain integration has separate materialized tests.
+Polar/Paddle account acceptance also remains separate; no credentials for those
+providers were available here. The 12.0 application deployment was unchanged.
 
 Use the [12.1 migration guide](migration-v12-1.md) and the Capital provider matrix
 for current behavior; the chronological containment notes below are historical.
