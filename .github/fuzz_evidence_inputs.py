@@ -12,12 +12,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ".github/workflows/fuzzing.yml"
 INVENTORY = ".github/fuzz-targets.json"
+DOC_REVIEW = ".github/fuzz-reviewed-publication-docs.json"
 SHA = re.compile(r"[0-9a-f]{40}")
 
 # Reviewed non-inputs, not a glob-based exclusion of all tests or documentation.
 # The fuzz crates are separate workspaces with their own retained Cargo.lock.
 # Admission/control code is trusted reviewed policy, never execution evidence.
 NON_INPUTS = frozenset({
+    DOC_REVIEW,
     "Cargo.lock", "WORKFLOWS.md", "docs/src/fuzz-evidence.md",
     ".github/mobile-ui-browser-smoke.mjs", ".github/billing-csp-browser-smoke.mjs",
     "rullst-mail/tests/feedback.rs",
@@ -35,6 +37,24 @@ def git(*args: str, root: Path = ROOT) -> bytes:
 
 def digest(value: object) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def reviewed_document_blobs() -> dict[str, list[str]]:
+    """Read trusted policy for one reviewed docs patch, never ignore future edits."""
+    review = json.loads((ROOT / DOC_REVIEW).read_text())
+    if (set(review) != {"schema_version", "before_commit", "after_commit", "blobs"}
+            or review["schema_version"] != 1
+            or any(not isinstance(review[key], str) or SHA.fullmatch(review[key]) is None
+                   for key in ("before_commit", "after_commit"))
+            or not isinstance(review["blobs"], dict)):
+        raise ValueError("invalid publication documentation review")
+    for path, blobs in review["blobs"].items():
+        if (not isinstance(path, str) or not path or path.startswith("/")
+                or ".." in path.split("/") or not isinstance(blobs, list) or len(blobs) != 2
+                or any(not isinstance(oid, str) or SHA.fullmatch(oid) is None for oid in blobs)
+                or blobs[0] == blobs[1]):
+            raise ValueError("invalid reviewed document blob identity")
+    return review["blobs"]
 
 
 def execution_contract(workflow: str) -> str:
@@ -131,9 +151,14 @@ class Snapshot:
                         source = source.replace(b'#[path = "../../../rullst-orm-macros/src/parser.rs"]', b"")
                     if re.search(rb"include|\bpath\s*=|\b(?:fs|env|process)\s*::|\b(?:File|Command)\s*::", source):
                         isolated = False
+        reviewed_docs = reviewed_document_blobs()
         for path, (mode, oid) in sorted(self.files.items()):
             if path in NON_INPUTS or path == WORKFLOW:
                 continue
+            # Only the two explicitly reviewed contents are equivalent. Keep
+            # path/mode/deletion in the identity; any third blob is a new input.
+            if path in reviewed_docs and mode == "100644" and oid in reviewed_docs[path]:
+                oid = reviewed_docs[path][0]
             package = next((directory for directory in self.directories
                             if path.startswith(directory + "/")), None)
             if path == "rullst-mail/Cargo.toml":

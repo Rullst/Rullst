@@ -6,7 +6,7 @@ Start here when your frontend is a separate app, mobile client or integration.
 [complete API learning-path index](../api-reference.md#httprest-a-connected-learning-path).
 
 This quickstart creates one runnable JSON endpoint without a database or an AI
-provider. It targets stable `12.0.0`. Production adoption still needs
+provider. It targets `12.1.0`; check [publication status](../v12.md). Production adoption still needs
 application review and immutable artifacts; pinning end-of-life v5 does not
 make it supported again.
 
@@ -15,12 +15,12 @@ make it supported again.
 ```bash
 cargo new first_rullst_api
 cd first_rullst_api
-cargo add rullst@=12.0.0
+cargo add rullst@=12.1.0
 cargo add tokio --features macros,rt-multi-thread
 cargo add serde --features derive
 ```
 
-The exact requirement keeps this tutorial on v12.0.0. Commit the generated
+The exact requirement keeps this tutorial on v12.1.0. Commit the generated
 `Cargo.lock` so subsequent locked builds use the same resolved package versions;
 it does not pin an unrelated moving Git branch or automatically update the app.
 

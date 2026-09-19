@@ -32,9 +32,9 @@
   <a href="https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md"><strong>Contribute</strong></a>
 </p>
 
-> **v12.0.0 is published.** Install the stable package below. `main` receives
-> v12 maintenance; next-major work lives on `v13`. The legacy `v5` line is
-> no longer maintained. [Release record](https://rullst.github.io/Rullst/book/v12.html)
+> **Rullst v12.** The crates.io badge above shows the latest published version.
+> `main` receives v12 maintenance; next-major work lives on `v13`. The legacy
+> `v5` line is no longer maintained. [Release record](https://rullst.github.io/Rullst/book/v12.html)
 > · [Compatibility policy](https://rullst.github.io/Rullst/book/compatibility-policy.html).
 
 ## 🚀 Start building
@@ -42,7 +42,8 @@
 Generate a project, choose a blueprint and database, then start the development loop:
 
 ```bash
-cargo install cargo-rullst --version 12.0.0 --locked
+cargo install cargo-rullst --version '^12' --locked
+cargo rullst --version
 cargo rullst new my_app
 cd my_app
 cargo rullst dev
@@ -50,6 +51,10 @@ cargo rullst dev
 
 Choose **Blank / API, Blog, SaaS, LMS, Portfolio or ERP**. Generated projects
 contain ordinary Rust you can inspect and change.
+
+The selector installs the latest published stable v12 CLI. To reproduce a
+particular release, use its full version, such as `--version 12.1.0`, after
+confirming its availability on [crates.io](https://crates.io/crates/cargo-rullst).
 
 [Installation and prerequisites](https://rullst.github.io/Rullst/book/1-getting-started.html)
 · [Zero-to-Hero tutorial](https://rullst.github.io/Rullst/book/tutorials/01-hello-world.html)
@@ -69,12 +74,10 @@ deployment recipes in [Rullst/examples](https://github.com/Rullst/examples):
 | 🎓 **LMS** — course catalog and learning-platform example | [Open LMS ↗](https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/) |
 | 💼 **Portfolio** — projects, skills and experience presentation | [Open Portfolio ↗](https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/) |
 | 🛒 **SaaS production** — real purchases with the founding-member certificate offer | [Open SaaS ↗](https://saas.rullst.win/) |
-| 🧪 **SaaS staging** — Stripe sandbox, with no real charges | [Open SaaS staging ↗](https://saas-staging.rullst.win/) |
 
 > **The SaaS production checkout charges real money.** The founding-member
 > certificate is part of the published customer offer; review its terms and
-> availability on the site before purchasing. Use **SaaS staging** for test
-> payments. Production and staging have separate payment credentials and data.
+> availability on the site before purchasing.
 
 > **The first visit may take longer.** These Azure Container Apps demos may
 > scale down to zero while idle. Your request can trigger a container startup

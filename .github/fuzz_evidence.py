@@ -13,7 +13,7 @@ import sys
 import urllib.parse
 import urllib.request
 
-from fuzz_evidence_inputs import ROOT, SHA, Snapshot, digest
+from fuzz_evidence_inputs import DOC_REVIEW, ROOT, SHA, Snapshot, digest
 
 SECONDS = 19_800
 MAX_AGE = timedelta(days=7)
@@ -169,8 +169,9 @@ def plan(candidate: Snapshot, github: GitHub, now: datetime | None = None,
             "execution_sha256": candidate.contract, "global_input_sha256": candidate.global_hash,
             "selected": selected, "reused": [reused[key] for key in sorted(reused)],
             "considered": considered, "blocked_by_newer_run": sorted(blocked),
-            "policy_sha256": digest({name: (ROOT / ".github" / name).read_text()
-                                      for name in ("fuzz_evidence.py", "fuzz_evidence_inputs.py")})}
+            "policy_sha256": digest({name: (ROOT / name).read_text() for name in
+                                      (".github/fuzz_evidence.py", ".github/fuzz_evidence_inputs.py",
+                                       DOC_REVIEW)})}
 
 
 def write_report(report: dict, path: Path) -> None:

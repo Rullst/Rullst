@@ -85,7 +85,7 @@ Enable the feature and point it at an OTLP/HTTP collector:
 
 ```toml
 [dependencies]
-rullst-core = { version = "12.0.0", features = ["telemetry"] }
+rullst-core = { version = "12.1.0", features = ["telemetry"] }
 ```
 
 ```env

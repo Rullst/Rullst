@@ -454,13 +454,13 @@ Add `rullst-capital` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rullst-capital = "12.0.0"
+rullst-capital = "12.1.0"
 ```
 
 The heavier NFS-e schema/signature boundary is opt-in:
 
 ```toml
-rullst-capital = { version = "12.0.0", features = ["nfse"] }
+rullst-capital = { version = "12.1.0", features = ["nfse"] }
 ```
 
 Native invoice PDF is independently opt-in. One-call Mail delivery uses the
@@ -468,21 +468,21 @@ downstream `rullst-mail/capital-invoice` feature, or `rullst/capital-mail` when
 using the umbrella crate:
 
 ```toml
-rullst = { version = "12.0.0", features = ["capital-mail"] }
+rullst = { version = "12.1.0", features = ["capital-mail"] }
 ```
 
 Durable relational quota accounting is separately opt-in:
 
 ```toml
-rullst = { version = "12.0.0", features = ["capital-quota-sql"] }
-# Or directly: rullst-capital = { version = "12.0.0", features = ["quota-sql"] }
+rullst = { version = "12.1.0", features = ["capital-quota-sql"] }
+# Or directly: rullst-capital = { version = "12.1.0", features = ["quota-sql"] }
 ```
 
 Durable cross-process webhook replay claims are independently opt-in:
 
 ```toml
-rullst = { version = "12.0.0", features = ["capital-webhook-sql"] }
-# Or directly: rullst-capital = { version = "12.0.0", features = ["webhook-sql"] }
+rullst = { version = "12.1.0", features = ["capital-webhook-sql"] }
+# Or directly: rullst-capital = { version = "12.1.0", features = ["webhook-sql"] }
 ```
 
 Applications using the umbrella crate can derive the bounded billing facade on
@@ -788,7 +788,7 @@ Enable the crate's `nfse` feature (or umbrella `rullst/capital-nfse`) for the
 XSD, XMLDSig, protocol codec, and mTLS preparation APIs. The strict DPS builder
 and unmistakable offline mock remain available through the base Capital crate.
 
-The runnable [`nfse_v101_preview`](https://github.com/Rullst/Rullst/blob/v12.0.0/rullst-capital/examples/nfse_v101_preview.rs) example emits
+The runnable [`nfse_v101_preview`](https://github.com/Rullst/Rullst/blob/v12.1.0/rullst-capital/examples/nfse_v101_preview.rs) example emits
 the unsigned bounded DPS. When `RULLST_NFSE_XSD_DIR` points to an extracted
 official production package whose files match the pinned hashes, it validates
 the document before writing it:

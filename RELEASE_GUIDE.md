@@ -128,6 +128,12 @@ Before releasing, make sure:
   - `rullst-ai`, `rullst-capital`, `rullst-connect`, `rullst-messaging`, `rullst-iot`, `rullst-mail`
   - `rullst-studio`, `rullst-nexus`
   - `cargo-rullst`, `rullst`
+- [ ] Review the README extracted from each `.crate`, installation examples and
+  public demo links before creating the tag. The facade and CLI package the root
+  README. Run both `rullst --version` and `cargo rullst --version` from the staged
+  native artifacts and check a generated project's framework dependency version.
+  A crate version already uploaded to crates.io cannot be overwritten to correct
+  its packaged documentation.
 
 ---
 

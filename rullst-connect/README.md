@@ -127,20 +127,20 @@ extractor.
 
 Install the exact stable version with:
 ```bash
-cargo add rullst-connect@12.0.0
+cargo add rullst-connect@12.1.0
 ```
 
 For the recommended Axum flow:
 
 ```toml
-rullst-connect = { version = "12.0.0", features = ["axum-session"] }
+rullst-connect = { version = "12.1.0", features = ["axum-session"] }
 tower-sessions = "0.15"
 ```
 
 Or manually add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-rullst-connect = "12.0.0"
+rullst-connect = "12.1.0"
 tokio = { version = "1.52", features = ["full"] }
 ```
 
@@ -175,7 +175,7 @@ a working authentication bypass.
 
 ```toml
 [dev-dependencies]
-rullst-connect = { version = "12.0.0", features = ["mock"] }
+rullst-connect = { version = "12.1.0", features = ["mock"] }
 ```
 
 Mock-mode redirects use the reserved `example.invalid` domain and mock profiles use the
@@ -362,7 +362,7 @@ does not provide a database transaction or distributed refresh lock. Enable
 `sqlite` for the bounded shared-local store:
 
 ```toml
-rullst-connect = { version = "12.0.0", features = ["sqlite"] }
+rullst-connect = { version = "12.1.0", features = ["sqlite"] }
 ```
 
 ```rust,no_run
