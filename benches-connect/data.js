@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789788092677,
+  "lastUpdate": 1789834846708,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -6949,6 +6949,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 554,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "44902312228a1a72240d9a6efdd33cdd2b6a4eb3",
+          "message": "ci(fuzz): merge verified evidence reuse and scanning fixes\n\nci(fuzz): reuse verified evidence and fix scanning fixtures",
+          "timestamp": "2026-09-19T13:02:15-03:00",
+          "tree_id": "f0980991957d7ff9528e7315ca97edcda58d6ae5",
+          "url": "https://github.com/Rullst/Rullst/commit/44902312228a1a72240d9a6efdd33cdd2b6a4eb3"
+        },
+        "date": 1789834846166,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 555,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
