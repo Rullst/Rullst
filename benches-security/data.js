@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789757698811,
+  "lastUpdate": 1789788217432,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -10231,6 +10231,60 @@ window.BENCHMARK_DATA = {
             "name": "html_sanitizer/sanitize_text_escape",
             "value": 664,
             "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 26,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "af9f7cf420b9c011c8eef0d31d9dc2d614f106ae",
+          "message": "feat(saas): merge account recovery mail and audit fixes\n\nMerge validated v12.1 maintenance changes from PR #214.",
+          "timestamp": "2026-09-19T00:02:25-03:00",
+          "tree_id": "be8eae3a0a4739a8d65621fa6b71288617346f84",
+          "url": "https://github.com/Rullst/Rullst/commit/af9f7cf420b9c011c8eef0d31d9dc2d614f106ae"
+        },
+        "date": 1789788217010,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5947,
+            "range": "± 41",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 649,
+            "range": "± 24",
             "unit": "ns/iter"
           },
           {
