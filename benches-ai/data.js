@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789835087500,
+  "lastUpdate": 1789857019119,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -9157,6 +9157,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 693,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b62390b4fc61e5ac06d24eb31bb7c10d370d679d",
+          "message": "docs(release): align v12.1 publication and retain verified fuzz evidence",
+          "timestamp": "2026-09-19T19:09:23-03:00",
+          "tree_id": "c6215b19496ce4d35e02f9ddc15e2e4bf1d960b9",
+          "url": "https://github.com/Rullst/Rullst/commit/b62390b4fc61e5ac06d24eb31bb7c10d370d679d"
+        },
+        "date": 1789857018320,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1017,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 180,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 450,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
