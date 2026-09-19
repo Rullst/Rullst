@@ -7,14 +7,14 @@ use rullst_mail::{
 use serde_json::json;
 use sha2::Sha256;
 
-fn sign(payload: &[u8], id: &str, now: u64) -> String {
-    let mut mac = Hmac::<Sha256>::new_from_slice(&[7; 32]).unwrap();
+fn sign(key: &[u8], payload: &[u8], id: &str, now: u64) -> String {
+    let mut mac = Hmac::<Sha256>::new_from_slice(key).unwrap();
     mac.update(format!("{id}.{now}.").as_bytes());
     mac.update(payload);
     format!("v1,{}", STANDARD.encode(mac.finalize().into_bytes()))
 }
-fn verifier() -> ResendFeedbackVerifier {
-    ResendFeedbackVerifier::new(format!("whsec_{}", STANDARD.encode([7; 32]))).unwrap()
+fn verifier(key: &[u8]) -> ResendFeedbackVerifier {
+    ResendFeedbackVerifier::new(format!("whsec_{}", STANDARD.encode(key))).unwrap()
 }
 fn body(kind: &str, bounce: &str) -> Vec<u8> {
     serde_json::to_vec(&json!({"type":kind,"created_at":chrono::Utc::now().to_rfc3339(),
@@ -23,14 +23,15 @@ fn body(kind: &str, bounce: &str) -> Vec<u8> {
 
 #[tokio::test]
 async fn authenticated_permanent_feedback_is_replay_bound_and_suppresses() {
+    let key: [u8; 32] = rand::random();
     let now = chrono::Utc::now().timestamp() as u64;
     let payload = body("email.bounced", "Permanent");
-    let verified = verifier()
+    let verified = verifier(&key)
         .verify(
             &payload,
             "msg_event1",
             &now.to_string(),
-            &sign(&payload, "msg_event1", now),
+            &sign(&key, &payload, "msg_event1", now),
             now,
         )
         .unwrap();
@@ -54,12 +55,12 @@ async fn authenticated_permanent_feedback_is_replay_bound_and_suppresses() {
         SuppressionReason::HardBounce
     );
     let payload = body("email.complained", "");
-    let complaint = verifier()
+    let complaint = verifier(&key)
         .verify(
             &payload,
             "msg_complaint",
             &now.to_string(),
-            &sign(&payload, "msg_complaint", now),
+            &sign(&key, &payload, "msg_complaint", now),
             now,
         )
         .unwrap();
@@ -83,12 +84,12 @@ async fn authenticated_permanent_feedback_is_replay_bound_and_suppresses() {
         ("email.failed", "", MailFeedbackKind::Failed),
     ] {
         let payload = body(kind, bounce);
-        let event = verifier()
+        let event = verifier(&key)
             .verify(
                 &payload,
                 "msg_event2",
                 &now.to_string(),
-                &sign(&payload, "msg_event2", now),
+                &sign(&key, &payload, "msg_event2", now),
                 now,
             )
             .unwrap();
@@ -99,6 +100,7 @@ async fn authenticated_permanent_feedback_is_replay_bound_and_suppresses() {
 
 #[test]
 fn valid_signature_does_not_authorize_malformed_provider_feedback() {
+    let key: [u8; 32] = rand::random();
     let now = chrono::Utc::now().timestamp() as u64;
     let original: serde_json::Value = serde_json::from_slice(&body("email.delivered", "")).unwrap();
     for (pointer, invalid) in [
@@ -118,11 +120,11 @@ fn valid_signature_does_not_authorize_malformed_provider_feedback() {
         let mut value = original.clone();
         *value.pointer_mut(pointer).unwrap() = invalid;
         let payload = serde_json::to_vec(&value).unwrap();
-        let result = verifier().verify(
+        let result = verifier(&key).verify(
             &payload,
             "msg_contract",
             &now.to_string(),
-            &sign(&payload, "msg_contract", now),
+            &sign(&key, &payload, "msg_contract", now),
             now,
         );
         let error = result.unwrap_err();
@@ -130,12 +132,15 @@ fn valid_signature_does_not_authorize_malformed_provider_feedback() {
         assert!(!error.to_string().contains("private@example.com"));
     }
     assert!(matches!(
-        verifier().verify(b"", "msg_contract", &now.to_string(), "", now),
+        verifier(&key).verify(b"", "msg_contract", &now.to_string(), "", now),
         Err(MailFeedbackError::InvalidPayload)
     ));
     for size in [1, 129] {
         assert!(matches!(
-            ResendFeedbackVerifier::new(format!("whsec_{}", STANDARD.encode(vec![7; size]))),
+            ResendFeedbackVerifier::new(format!(
+                "whsec_{}",
+                STANDARD.encode((0..size).map(|_| rand::random::<u8>()).collect::<Vec<_>>())
+            )),
             Err(MailFeedbackError::Configuration)
         ));
     }
@@ -143,10 +148,17 @@ fn valid_signature_does_not_authorize_malformed_provider_feedback() {
 
 #[test]
 fn signatures_bind_raw_body_identity_and_freshness() {
+    let key: [u8; 32] = rand::random();
     let now = chrono::Utc::now().timestamp() as u64;
     let payload = body("email.complained", "");
-    let signature = sign(&payload, "msg_event", now);
-    let verifier = verifier();
+    let signature = sign(&key, &payload, "msg_event", now);
+    let mut other_key = key;
+    other_key[0] ^= 1;
+    assert!(matches!(
+        verifier(&other_key).verify(&payload, "msg_event", &now.to_string(), &signature, now),
+        Err(MailFeedbackError::InvalidSignature)
+    ));
+    let verifier = verifier(&key);
     assert!(
         verifier
             .verify(
