@@ -6890,6 +6890,7 @@ dependencies = [
  "chrono",
  "hmac",
  "lettre",
+ "rand 0.10.2",
  "reqwest",
  "rullst-capital",
  "rullst-core",

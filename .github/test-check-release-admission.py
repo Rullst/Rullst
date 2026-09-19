@@ -4,9 +4,12 @@
 from __future__ import annotations
 
 import importlib.util
+import contextlib
+import io
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 SCRIPT = Path(__file__).with_name("check-release-admission.py")
@@ -22,6 +25,55 @@ SHA = "0123456789abcdef0123456789abcdef01234567"
 
 
 class ReleaseAdmissionTests(unittest.TestCase):
+    def exercise_candidate(self, reusable, missing_workflow=None, missing_boundary=False):
+        policy = MODULE.load_object(SCRIPT.with_name("release-required-workflows.json"))
+        _, requirements = MODULE.validate_policy(policy)
+        by_id = {index: requirement for index, requirement in enumerate(requirements, 1)}
+        by_name = {requirement.workflow: index for index, requirement in by_id.items()}
+
+        def runs(api, repository, workflow, sha, branch, event, token):
+            return {"workflow_runs": [{"id": by_name[workflow], "head_sha":
+                    "f" * 40 if workflow == missing_workflow else sha,
+                    "head_branch": branch, "event": event, "status": "completed",
+                    "conclusion": "success"}]}
+
+        def jobs(api, repository, run_id, token):
+            requirement = by_id[run_id]
+            names = requirement.required_jobs
+            if requirement.workflow == "fuzzing.yml":
+                names = () if missing_boundary else ("Fuzz campaign evidence boundary",)
+            return {"total_count": len(names), "jobs": [
+                {"name": name, "conclusion": "success"} for name in names]}
+
+        with (patch.object(sys, "argv", [str(SCRIPT), "--repository", "Rullst/Rullst",
+                                         "--sha", SHA, "--token", "fixture"]),
+              patch.object(MODULE, "fetch_runs", side_effect=runs),
+              patch.object(MODULE, "fetch_jobs", side_effect=jobs),
+              patch.object(MODULE, "equivalent_fuzz_jobs", return_value=reusable) as verifier,
+              contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO())):
+            result = MODULE.main()
+        return result, verifier
+
+    def test_equivalent_fuzz_jobs_require_an_independent_verifier(self):
+        result, verifier = self.exercise_candidate(True)
+        self.assertEqual(result, 0)
+        verifier.assert_called_once()
+        self.assertEqual(verifier.call_args.args[:4], ("Rullst/Rullst", SHA, "fixture", "https://api.github.com"))
+        self.assertEqual(len(verifier.call_args.args[4]), 41)
+        result, _ = self.exercise_candidate(False)
+        self.assertEqual(result, 1)
+
+    def test_reuse_never_bypasses_current_fuzz_workflow_or_boundary(self):
+        for options in ({"missing_workflow": "fuzzing.yml"}, {"missing_boundary": True}):
+            result, verifier = self.exercise_candidate(True, **options)
+            self.assertEqual(result, 1)
+            verifier.assert_not_called()
+
+    def test_other_workflows_still_require_success_on_the_exact_candidate(self):
+        for workflow in ("ci.yml", "miri.yml", "kani.yml", "codeql.yml"):
+            result, _ = self.exercise_candidate(True, missing_workflow=workflow)
+            self.assertEqual(result, 1, workflow)
+
     def test_accepts_only_completed_success_for_exact_sha_and_event(self) -> None:
         payload = {
             "workflow_runs": [
