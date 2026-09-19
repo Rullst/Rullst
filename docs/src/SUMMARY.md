@@ -126,6 +126,7 @@
 - [rullst-connect](crates/connect.md)
 - [rullst-messaging](crates/messaging.md)
 - [rullst-mail](crates/mail.md)
+  - [12.1 account mail](account-mail-v12-1.md)
 - [rullst-auth](crates/auth.md)
 - [rullst-core](crates/core.md)
 - [rullst-capital](crates/capital.md)

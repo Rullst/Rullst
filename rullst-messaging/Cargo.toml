@@ -22,7 +22,7 @@ orm-outbox = ["dep:rullst-orm", "dep:serde_json"]
 aes-gcm = { version = "0.11.0", features = ["zeroize"], optional = true }
 serde = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"], optional = true }
-rullst-orm = { workspace = true, optional = true }
+rullst-orm = { workspace = true, default-features = true, optional = true }
 sha2 = { workspace = true }
 sqlx = { workspace = true, features = ["runtime-tokio", "sqlite"], optional = true }
 thiserror = { workspace = true }

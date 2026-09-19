@@ -350,6 +350,19 @@ where
             .send_for_tenant(tenant_id, prepared.message())
             .await
     }
+
+    async fn send_with_delivery_id(
+        &self,
+        message: &Message,
+        delivery_id: &str,
+    ) -> Result<(), MailError> {
+        crate::drivers::traits::validate_delivery_id(delivery_id)?;
+        let prepared = DeliveryPipeline::prepare(message)?;
+        self.enforce(&prepared.message().to).await?;
+        self.driver
+            .send_with_delivery_id(prepared.message(), delivery_id)
+            .await
+    }
 }
 
 pub(crate) fn normalize_recipient(recipient: &str) -> Result<String, SuppressionError> {

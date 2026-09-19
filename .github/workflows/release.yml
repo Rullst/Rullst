@@ -153,6 +153,7 @@ jobs:
           TESTCONTAINERS_RYUK_DISABLED: "true"
           RULLST_REQUIRE_TESTCONTAINERS: "true"
         run: |
+          python3 .github/check-auth-recovery-postgres.py
           cargo test -p rullst-orm --test matrix_postgres --test matrix_mysql --test matrix_mariadb -- --test-threads=1
           cargo test -p rullst-orm --no-default-features --features mongodb --test matrix_mongodb
           cargo test -p rullst-orm --no-default-features --features surrealdb --test matrix_surrealdb

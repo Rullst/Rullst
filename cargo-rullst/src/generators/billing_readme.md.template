@@ -14,6 +14,13 @@ and Checkout Sessions. The generated integration uses platform accounts, not
 Stripe Connect impersonation. Configure the webhook endpoint with Stripe API
 version `2025-03-31.basil` (see the capital adapter's pinned version).
 
+Live keys alone do not activate real charges. After reviewing the deployed
+offer, merchant settings, webhook, reconciliation and sandbox evidence, set
+`BILLING_LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_REAL_CHARGES`. Without that exact
+value the generated live path remains unavailable. Test credentials do not
+require this acknowledgement. This operational switch does not certify the
+merchant's legal obligations or the deployment's readiness.
+
 Before enabling `/billing/portal`, save an active default customer-portal
 configuration in the Stripe account for the selected test/live mode. Review its
 allowed plan changes, cancellation and payment-method settings; API credentials

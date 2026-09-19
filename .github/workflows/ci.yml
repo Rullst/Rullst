@@ -274,6 +274,7 @@ jobs:
         run: |
           case "$STRICT_DATABASE_FEATURE" in
             strict-postgres)
+              python3 .github/check-auth-recovery-postgres.py
               cargo test -p rullst-orm --no-default-features \
                 --features strict-postgres --test matrix_postgres -- --test-threads=1
               cargo test -p rullst-capital --features quota-sql,webhook-sql,rullst-orm/strict-postgres \

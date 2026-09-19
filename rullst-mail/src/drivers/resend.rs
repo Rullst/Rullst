@@ -41,6 +41,25 @@ impl ResendDriver {
 #[async_trait]
 impl MailDriver for ResendDriver {
     async fn send(&self, message: &Message) -> Result<(), MailError> {
+        self.send_request(message, None).await
+    }
+
+    async fn send_with_delivery_id(
+        &self,
+        message: &Message,
+        delivery_id: &str,
+    ) -> Result<(), MailError> {
+        super::traits::validate_delivery_id(delivery_id)?;
+        self.send_request(message, Some(delivery_id)).await
+    }
+}
+
+impl ResendDriver {
+    async fn send_request(
+        &self,
+        message: &Message,
+        delivery_id: Option<&str>,
+    ) -> Result<(), MailError> {
         validate_credential("Resend API key", &self.api_key)?;
         let prepared = DeliveryPipeline::prepare(message)?;
         let message = prepared.message();
@@ -94,10 +113,14 @@ impl MailDriver for ResendDriver {
             body["headers"] = headers_obj;
         }
 
-        let res = client
+        let mut request = client
             .post("https://api.resend.com/emails")
             .bearer_auth(&self.api_key)
-            .json(&body)
+            .json(&body);
+        if let Some(delivery_id) = delivery_id {
+            request = request.header("Idempotency-Key", delivery_id);
+        }
+        let res = request
             .send()
             .await
             .map_err(|_| MailError::transport("resend", "request failed before response"))?;

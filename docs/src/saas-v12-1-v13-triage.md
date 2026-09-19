@@ -1,5 +1,31 @@
 # SaaS findings: v12.1 maintenance and v13 contracts
 
+## 2026-09-18 account-mail and follow-up candidate
+
+The latest examples account-lifecycle proposal adds MAIL-001/RULLST-005.
+The current change set fixes reset-link preparation and CLI plain-text output,
+adds localized typed lifecycle templates, an opt-in PostgreSQL/SQLite account
+registry with atomic reset/session revocation and encrypted outbox, a facade
+worker, native Resend idempotency/verified feedback and ACS Managed Identity.
+See [the exact adoption and remaining proposal scope](account-mail-v12-1.md).
+Redis recovery, other identity-action transactions, marketing consent and an
+audited administrative resend interface remain separate work; they are not
+silently counted as implemented by the mail template fix.
+
+RULLST-004 now has exact authenticated machine-route CSRF exceptions while
+retaining browser CSRF, WAF and headers. SAAS-013 now checks fifteen isolated
+ORM/Core/Studio/Nexus/facade driver graphs. SAAS-014 has an additive one-time
+Stripe SDK contract with price/ownership/amount/mode binding, reconciled
+paid/refunded/disputed receipts and verified notification hints. Generated
+subscription code stays recurring; one-time application persistence and new
+provider sandbox acceptance are still required. Production SaaS sales are
+identified as real money in the README, separately from staging.
+
+These are candidate-source changes. Historical mainline CI and sandbox records
+below do not certify this revision. Full workspace all-feature testing, strict
+Clippy, formatting and release admission must pass on the candidate commit.
+
+
 **Status: SAAS-002, SAAS-003 and SAAS-004 have typed replacements in maintenance
 source. Stripe test-mode API, hosted Checkout and CLI-relayed signed events
 passed at `0f15d70a`; generated SQLite controller/webhook persistence passed at

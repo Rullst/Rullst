@@ -35,3 +35,7 @@ MoR = "MoR"
 MOR = "MOR"
 erros = "erros"
 Curso = "Curso"
+
+[type.rust.extend-words]
+# Portuguese imperative used by the localized account templates.
+Confirme = "Confirme"

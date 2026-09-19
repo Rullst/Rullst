@@ -369,6 +369,30 @@ fn verify_backend(database: &str) {
         );
     }
 
+    for acknowledgement in [None, Some("yes"), Some("I_UNDERSTAND_REAL_CHARGES")] {
+        let mut command = Command::new("cargo");
+        command
+            .current_dir(&project)
+            .args([
+                "test",
+                "--quiet",
+                "--bin",
+                "billing_contract",
+                "real_money_activation_requires_explicit_acknowledgement",
+            ])
+            .env("BILLING_ACCOUNT_ID", "acct_contract")
+            .env_remove("BILLING_LIVE_ACKNOWLEDGEMENT")
+            .env("CARGO_TARGET_DIR", target_directory(workspace))
+            .env("CARGO_NET_OFFLINE", "true");
+        if let Some(value) = acknowledgement {
+            command.env("BILLING_LIVE_ACKNOWLEDGEMENT", value);
+        }
+        assert_success(
+            &run(&mut command, "validate real-money activation gate"),
+            "real-money activation gate",
+        );
+    }
+
     let runtime = run(
         Command::new("cargo")
             .current_dir(&project)
