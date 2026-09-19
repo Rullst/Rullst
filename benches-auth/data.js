@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789788019535,
+  "lastUpdate": 1789834772617,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -11221,6 +11221,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4134,
             "range": "± 33",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "44902312228a1a72240d9a6efdd33cdd2b6a4eb3",
+          "message": "ci(fuzz): merge verified evidence reuse and scanning fixes\n\nci(fuzz): reuse verified evidence and fix scanning fixtures",
+          "timestamp": "2026-09-19T13:02:15-03:00",
+          "tree_id": "f0980991957d7ff9528e7315ca97edcda58d6ae5",
+          "url": "https://github.com/Rullst/Rullst/commit/44902312228a1a72240d9a6efdd33cdd2b6a4eb3"
+        },
+        "date": 1789834772077,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1081,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 831,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1951,
+            "range": "± 41",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4159,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
