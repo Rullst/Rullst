@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789788420074,
+  "lastUpdate": 1789835180209,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -7909,6 +7909,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/af9f7cf420b9c011c8eef0d31d9dc2d614f106ae"
         },
         "date": 1789788419675,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "44902312228a1a72240d9a6efdd33cdd2b6a4eb3",
+          "message": "ci(fuzz): merge verified evidence reuse and scanning fixes\n\nci(fuzz): reuse verified evidence and fix scanning fixtures",
+          "timestamp": "2026-09-19T13:02:15-03:00",
+          "tree_id": "f0980991957d7ff9528e7315ca97edcda58d6ae5",
+          "url": "https://github.com/Rullst/Rullst/commit/44902312228a1a72240d9a6efdd33cdd2b6a4eb3"
+        },
+        "date": 1789835179666,
         "tool": "cargo",
         "benches": [
           {
