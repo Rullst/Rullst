@@ -2,7 +2,7 @@
 
 use rullst::{
     account_mail::{AccountMailConfig, AccountMailOutcome, deliver_next_account_mail},
-    auth::recovery::{RecoverySecrets, SqlRecoveryStore},
+    auth::recovery::{RecoveryError, RecoverySecrets, SqlRecoveryStore},
     mail::{DeliveryPipeline, MailDriver, MailError, MailLocale, Message},
 };
 
@@ -40,7 +40,12 @@ async fn welcome_reset_and_change_notices_complete_the_real_pipeline() {
     let driver = Capture::default();
     let now = chrono::Utc::now().timestamp() as u64;
     store
-        .register_account("learner", "learner@example.com", "OriginalPassword12!", now)
+        .register_account(
+            "learner",
+            "learner@example.com",
+            uuid::Uuid::new_v4().to_string(),
+            now,
+        )
         .await
         .unwrap();
     assert_eq!(
@@ -77,7 +82,7 @@ async fn welcome_reset_and_change_notices_complete_the_real_pipeline() {
     store
         .complete_password_reset(
             token,
-            "ReplacementPassword34!",
+            uuid::Uuid::new_v4().to_string(),
             chrono::Utc::now().timestamp() as u64,
         )
         .await
@@ -113,7 +118,7 @@ async fn provider_failure_keeps_the_encrypted_notice_for_retry() {
         .register_account(
             "learner",
             "learner@example.com",
-            "OriginalPassword12!",
+            uuid::Uuid::new_v4().to_string(),
             chrono::Utc::now().timestamp() as u64,
         )
         .await
@@ -135,4 +140,98 @@ async fn provider_failure_keeps_the_encrypted_notice_for_retry() {
     let snapshot = store.outbox_snapshot().await.unwrap();
     assert_eq!(snapshot.pending, 1);
     assert_eq!(snapshot.delivered, 0);
+}
+
+struct Suppressed;
+#[async_trait::async_trait]
+impl MailDriver for Suppressed {
+    async fn send(&self, _: &Message) -> Result<(), MailError> {
+        Err(MailError::SuppressedRecipient {
+            reason: "complaint",
+        })
+    }
+}
+
+#[tokio::test]
+async fn permanent_rejection_is_terminal_and_idle_does_not_call_the_transport() {
+    let store = SqlRecoveryStore::connect(
+        "sqlite::memory:",
+        RecoverySecrets::new([4; 32], [8; 32]).unwrap(),
+    )
+    .await
+    .unwrap();
+    store.migrate().await.unwrap();
+    let config = AccountMailConfig::new(
+        "https://app.example",
+        "https://app.example/reset",
+        "App",
+        "accounts@example.com",
+        MailLocale::En,
+    )
+    .unwrap();
+    let capture = Capture::default();
+    assert_eq!(
+        deliver_next_account_mail(&store, &capture, &config)
+            .await
+            .unwrap(),
+        AccountMailOutcome::Idle
+    );
+    assert!(capture.0.lock().await.is_empty());
+    store
+        .register_account(
+            "learner",
+            "learner@example.com",
+            uuid::Uuid::new_v4().to_string(),
+            chrono::Utc::now().timestamp() as u64,
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        deliver_next_account_mail(&store, &Suppressed, &config)
+            .await
+            .unwrap(),
+        AccountMailOutcome::Failed
+    );
+    let snapshot = store.outbox_snapshot().await.unwrap();
+    assert_eq!(snapshot.failed, 1);
+    assert_eq!(snapshot.pending, 0);
+    assert_eq!(
+        deliver_next_account_mail(&store, &capture, &config)
+            .await
+            .unwrap(),
+        AccountMailOutcome::Idle
+    );
+    assert!(capture.0.lock().await.is_empty());
+    store.close().await;
+}
+
+#[test]
+fn account_mail_rejects_unsafe_delivery_configuration() {
+    for (endpoint, application, sender) in [
+        ("https://other.example/reset", "App", "accounts@example.com"),
+        ("http://app.example/reset", "App", "accounts@example.com"),
+        (
+            "https://app.example/reset?token=preset",
+            "App",
+            "accounts@example.com",
+        ),
+        (
+            "https://app.example/reset#fragment",
+            "App",
+            "accounts@example.com",
+        ),
+        ("https://app.example/reset", "", "accounts@example.com"),
+        ("https://app.example/reset", "App", "invalid-address"),
+    ] {
+        assert!(matches!(
+            AccountMailConfig::new(
+                "https://app.example",
+                endpoint,
+                application,
+                sender,
+                MailLocale::En
+            ),
+            Err(RecoveryError::Configuration)
+        ));
+    }
 }

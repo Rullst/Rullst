@@ -4,7 +4,9 @@ use rullst_auth::recovery::{RecoveryError, RecoverySecrets, SqlRecoveryStore};
 use std::collections::HashSet;
 
 const EMAIL: &str = "sessions@example.com";
-const PASSWORD: &str = "FixturePassword987!";
+fn fixture_password() -> String {
+    format!("Fixture_{:032x}", rand::random::<u128>())
+}
 
 async fn store() -> SqlRecoveryStore {
     let store = SqlRecoveryStore::connect(
@@ -19,12 +21,17 @@ async fn store() -> SqlRecoveryStore {
 
 #[tokio::test]
 async fn logout_capacity_expiry_and_instance_binding_are_authoritative() {
+    let password = fixture_password();
     let store = store().await;
     store
-        .register_account("member", EMAIL, PASSWORD, 1000)
+        .register_account("member", EMAIL, password.as_str(), 1000)
         .await
         .unwrap();
-    let account = store.authenticate(EMAIL, PASSWORD).await.unwrap().unwrap();
+    let account = store
+        .authenticate(EMAIL, password.as_str())
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(account.subject(), "member");
     assert!(!format!("{account:?}").contains("member"));
 
@@ -116,15 +123,16 @@ async fn logout_capacity_expiry_and_instance_binding_are_authoritative() {
 
 #[tokio::test]
 async fn invalid_registration_cannot_create_accounts_or_welcome_deliveries() {
+    let password = fixture_password();
     let store = store().await;
     for (subject, email, password) in [
-        ("../member", EMAIL, PASSWORD),
-        ("member", "invalid", PASSWORD),
-        ("member", "a@@example.com", PASSWORD),
-        ("member", "a@localhost", PASSWORD),
-        ("member", "a\r\n@example.com", PASSWORD),
-        ("member", "á@example.com", PASSWORD),
-        ("member", EMAIL, "short"),
+        ("../member", EMAIL, password.as_str()),
+        ("member", "invalid", password.as_str()),
+        ("member", "a@@example.com", password.as_str()),
+        ("member", "a@localhost", password.as_str()),
+        ("member", "a\r\n@example.com", password.as_str()),
+        ("member", "á@example.com", password.as_str()),
+        ("member", EMAIL, &password[..5]),
     ] {
         assert_eq!(
             store.register_account(subject, email, password, 1000).await,
@@ -133,31 +141,43 @@ async fn invalid_registration_cannot_create_accounts_or_welcome_deliveries() {
     }
     assert_eq!(
         store
-            .register_account("member", EMAIL, "x".repeat(1025), 1000)
+            .register_account("member", EMAIL, password.repeat(40), 1000)
             .await,
         Err(RecoveryError::InvalidInput)
     );
     assert_eq!(
         store
-            .register_account("member", EMAIL, PASSWORD, u64::MAX)
+            .register_account("member", EMAIL, password.as_str(), u64::MAX)
             .await,
         Err(RecoveryError::InvalidInput)
     );
     assert_eq!(store.outbox_snapshot().await.unwrap().pending, 0);
-    assert!(store.authenticate(EMAIL, PASSWORD).await.unwrap().is_none());
+    assert!(
+        store
+            .authenticate(EMAIL, password.as_str())
+            .await
+            .unwrap()
+            .is_none()
+    );
     assert!(matches!(
-        store.authenticate(EMAIL, "x".repeat(1025)).await,
+        store.authenticate(EMAIL, password.repeat(40)).await,
         Err(RecoveryError::InvalidInput)
     ));
 
     store
-        .register_account("member", " Sessions@Example.com ", PASSWORD, 1000)
+        .register_account("member", " Sessions@Example.com ", password.as_str(), 1000)
         .await
         .unwrap();
-    assert!(store.authenticate(EMAIL, PASSWORD).await.unwrap().is_some());
     assert!(
         store
-            .authenticate(EMAIL, "WrongPassword987!")
+            .authenticate(EMAIL, password.as_str())
+            .await
+            .unwrap()
+            .is_some()
+    );
+    assert!(
+        store
+            .authenticate(EMAIL, format!("wrong-{password}"))
             .await
             .unwrap()
             .is_none()
@@ -165,7 +185,7 @@ async fn invalid_registration_cannot_create_accounts_or_welcome_deliveries() {
     assert_eq!(store.outbox_snapshot().await.unwrap().pending, 1);
     assert!(
         store
-            .register_account("duplicate", EMAIL, PASSWORD, 1001)
+            .register_account("duplicate", EMAIL, password.as_str(), 1001)
             .await
             .is_err()
     );

@@ -6,8 +6,9 @@ use rullst_auth::recovery::RecoveryDeliveryFailure;
 use rullst_auth::recovery::{RecoveryError, RecoveryNoticeKind, RecoverySecrets, SqlRecoveryStore};
 
 const EMAIL: &str = "recovery@example.com";
-const OLD: &str = "OldPassword987!";
-const NEW: &str = "NewPassword456!";
+fn fixture_password() -> String {
+    format!("Fixture_{:032x}", rand::random::<u128>())
+}
 
 fn keys() -> RecoverySecrets {
     RecoverySecrets::new([3; 32], [9; 32]).unwrap()
@@ -47,15 +48,21 @@ async fn consume_welcome(store: &SqlRecoveryStore, now: u64) {
 }
 
 async fn recovery_contract(url: &str) {
+    let old = fixture_password();
+    let new = fixture_password();
     let now = 1_800_000_000;
     let store = SqlRecoveryStore::connect(url, keys()).await.unwrap();
     store.migrate().await.unwrap();
     store
-        .register_account("member-one", EMAIL, OLD, now)
+        .register_account("member-one", EMAIL, old.as_str(), now)
         .await
         .unwrap();
     consume_welcome(&store, now).await;
-    let account = store.authenticate(EMAIL, OLD).await.unwrap().unwrap();
+    let account = store
+        .authenticate(EMAIL, old.as_str())
+        .await
+        .unwrap()
+        .unwrap();
     let session = store.create_session(&account, now, 86400).await.unwrap();
     assert_eq!(
         store
@@ -86,7 +93,9 @@ async fn recovery_contract(url: &str) {
 
     store.request_password_reset(EMAIL, now + 6).await.unwrap();
     assert_eq!(
-        store.complete_password_reset(&obsolete, NEW, now + 7).await,
+        store
+            .complete_password_reset(&obsolete, new.as_str(), now + 7)
+            .await,
         Err(RecoveryError::InvalidAction)
     );
     let second = store.claim_notice(now + 7).await.unwrap().unwrap();
@@ -95,7 +104,7 @@ async fn recovery_contract(url: &str) {
     store.complete_notice(&second, now + 8).await.unwrap();
     assert!(
         store
-            .complete_password_reset(session.expose(), NEW, now + 9)
+            .complete_password_reset(session.expose(), new.as_str(), now + 9)
             .await
             .is_err()
     );
@@ -103,8 +112,8 @@ async fn recovery_contract(url: &str) {
     let first_worker = store.clone();
     let second_worker = store.clone();
     let (one, two) = tokio::join!(
-        first_worker.complete_password_reset(&token, NEW, now + 10),
-        second_worker.complete_password_reset(&token, NEW, now + 10),
+        first_worker.complete_password_reset(&token, new.as_str(), now + 10),
+        second_worker.complete_password_reset(&token, new.as_str(), now + 10),
     );
     assert_eq!(usize::from(one.is_ok()) + usize::from(two.is_ok()), 1);
     assert_eq!(
@@ -120,10 +129,24 @@ async fn recovery_contract(url: &str) {
             .await
             .is_err()
     );
-    assert!(store.authenticate(EMAIL, OLD).await.unwrap().is_none());
-    assert!(store.authenticate(EMAIL, NEW).await.unwrap().is_some());
+    assert!(
+        store
+            .authenticate(EMAIL, old.as_str())
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        store
+            .authenticate(EMAIL, new.as_str())
+            .await
+            .unwrap()
+            .is_some()
+    );
     assert_eq!(
-        store.complete_password_reset(&token, NEW, now + 11).await,
+        store
+            .complete_password_reset(&token, new.as_str(), now + 11)
+            .await,
         Err(RecoveryError::InvalidAction)
     );
     let changed = store.claim_notice(now + 12).await.unwrap().unwrap();
@@ -143,7 +166,7 @@ async fn recovery_contract(url: &str) {
     assert!(store.claim_notice(now + 18).await.unwrap().is_none());
     assert_eq!(
         store
-            .complete_password_reset(&expired_token, NEW, now + 1214)
+            .complete_password_reset(&expired_token, new.as_str(), now + 1214)
             .await,
         Err(RecoveryError::InvalidAction)
     );
@@ -168,13 +191,14 @@ async fn postgres_recovery_contract() {
 #[cfg(feature = "recovery-sqlite")]
 #[tokio::test]
 async fn outbox_survives_restart_encrypts_payloads_and_fences_workers() {
+    let old = fixture_password();
     let path =
         std::env::temp_dir().join(format!("rullst-recovery 100%#{}.db", rand::random::<u64>()));
     let url = database_url(&path);
     let store = SqlRecoveryStore::connect(&url, keys()).await.unwrap();
     store.migrate().await.unwrap();
     store
-        .register_account("durable", EMAIL, OLD, 1000)
+        .register_account("durable", EMAIL, old.as_str(), 1000)
         .await
         .unwrap();
     consume_welcome(&store, 1000).await;
@@ -183,7 +207,7 @@ async fn outbox_survives_restart_encrypts_payloads_and_fences_workers() {
     let token = first.notice().token().unwrap().expose().to_owned();
     assert!(store.claim_notice(1012).await.unwrap().is_none());
     let raw = std::fs::read(&path).unwrap();
-    for secret in [EMAIL, OLD, token.as_str()] {
+    for secret in [EMAIL, old.as_str(), token.as_str()] {
         assert!(
             !raw.windows(secret.len())
                 .any(|window| window == secret.as_bytes())
@@ -218,7 +242,7 @@ async fn outbox_survives_restart_encrypts_payloads_and_fences_workers() {
     assert!(wrong.migrate().await.is_err());
     assert!(
         wrong
-            .register_account("injected", "other@example.com", OLD, 2001)
+            .register_account("injected", "other@example.com", old.as_str(), 2001)
             .await
             .is_err()
     );
@@ -230,6 +254,8 @@ async fn outbox_survives_restart_encrypts_payloads_and_fences_workers() {
 #[cfg(feature = "recovery-sqlite")]
 #[tokio::test]
 async fn outbox_insert_failure_rolls_back_password_token_and_session_changes() {
+    let old = fixture_password();
+    let new = fixture_password();
     let path = std::env::temp_dir().join(format!(
         "rullst-recovery-rollback-{}.db",
         rand::random::<u64>()
@@ -238,11 +264,15 @@ async fn outbox_insert_failure_rolls_back_password_token_and_session_changes() {
     let store = SqlRecoveryStore::connect(&url, keys()).await.unwrap();
     store.migrate().await.unwrap();
     store
-        .register_account("rollback", EMAIL, OLD, 1000)
+        .register_account("rollback", EMAIL, old.as_str(), 1000)
         .await
         .unwrap();
     consume_welcome(&store, 1000).await;
-    let account = store.authenticate(EMAIL, OLD).await.unwrap().unwrap();
+    let account = store
+        .authenticate(EMAIL, old.as_str())
+        .await
+        .unwrap()
+        .unwrap();
     let session = store.create_session(&account, 1001, 3600).await.unwrap();
     store.request_password_reset(EMAIL, 1002).await.unwrap();
     let claim = store.claim_notice(1003).await.unwrap().unwrap();
@@ -252,11 +282,25 @@ async fn outbox_insert_failure_rolls_back_password_token_and_session_changes() {
     sqlx::query("CREATE TRIGGER reject_changed BEFORE INSERT ON rullst_recovery_outbox WHEN NEW.kind = 'changed' BEGIN SELECT RAISE(ABORT, 'injected test failure'); END")
         .execute(&pool).await.unwrap();
     assert_eq!(
-        store.complete_password_reset(&token, NEW, 1005).await,
+        store
+            .complete_password_reset(&token, new.as_str(), 1005)
+            .await,
         Err(RecoveryError::Storage)
     );
-    assert!(store.authenticate(EMAIL, OLD).await.unwrap().is_some());
-    assert!(store.authenticate(EMAIL, NEW).await.unwrap().is_none());
+    assert!(
+        store
+            .authenticate(EMAIL, old.as_str())
+            .await
+            .unwrap()
+            .is_some()
+    );
+    assert!(
+        store
+            .authenticate(EMAIL, new.as_str())
+            .await
+            .unwrap()
+            .is_none()
+    );
     assert_eq!(
         store
             .verify_session(session.expose(), 1006)
@@ -270,7 +314,7 @@ async fn outbox_insert_failure_rolls_back_password_token_and_session_changes() {
         .await
         .unwrap();
     store
-        .complete_password_reset(&token, NEW, 1007)
+        .complete_password_reset(&token, new.as_str(), 1007)
         .await
         .unwrap();
     assert!(
