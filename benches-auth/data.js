@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789757500206,
+  "lastUpdate": 1789788019535,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -11173,6 +11173,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4048,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "af9f7cf420b9c011c8eef0d31d9dc2d614f106ae",
+          "message": "feat(saas): merge account recovery mail and audit fixes\n\nMerge validated v12.1 maintenance changes from PR #214.",
+          "timestamp": "2026-09-19T00:02:25-03:00",
+          "tree_id": "be8eae3a0a4739a8d65621fa6b71288617346f84",
+          "url": "https://github.com/Rullst/Rullst/commit/af9f7cf420b9c011c8eef0d31d9dc2d614f106ae"
+        },
+        "date": 1789788019124,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1065,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 840,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1941,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4134,
+            "range": "± 33",
             "unit": "ns/iter"
           }
         ]
