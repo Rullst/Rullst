@@ -762,6 +762,7 @@ These ideas remain valuable, but are not current guarantees:
 
 | Idea | Status and recommendation |
 | :--- | :--- |
+| Verus proofs for selected production contracts | **Planned v13 pilot; no workflow or proofs implemented.** Start with age-policy decisions, then evaluate Auth authorization and Capital integer money calculations. Use a pinned isolated verifier and manual workflow; reviewed assumptions, negative controls, consumer compatibility, reproducible exact-commit evidence and measured cost precede required checks for affected code/contracts/dependencies/tooling. See the [pilot plan](docs/src/verus-roadmap.md). No additional v12.1 gate. |
 | Loom and Shuttle concurrency exploration | **Not implemented — worth implementing** for the small shared-state primitives that have explicit concurrency invariants. Do not apply them indiscriminately to the whole workspace. |
 | `cargo-vet` dependency review | **Not implemented — worth implementing** once review ownership and audit criteria are defined; an empty policy file would add ceremony without assurance. |
 | `cargo-careful` and zero-allocation assertions | **Not implemented — worth targeted experiments.** Allocation claims need stable benchmarks and explicit hot paths before becoming gates. |

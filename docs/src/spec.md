@@ -98,6 +98,17 @@ the remaining consent, rights, retention, provider and jurisdiction work.
 The separate [SaaS triage](saas-v12-1-v13-triage.md) assigns the examples' reported
 defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidence.
 
+### v13 formal-verification pilot boundary
+
+The [Verus pilot](verus-roadmap.md) is planned work, beginning with production
+age-policy decisions and subsequently evaluating Auth authorization predicates
+and Capital integer money calculations. Specifications must remain linked to
+the executable implementation, with explicit trusted assumptions and external
+contracts. No dedicated public crate is proposed. A pinned, isolated verifier
+and manual workflow precede any required v13 check; compatibility, reproducible
+proofs, negative controls and measured CI cost are promotion criteria. This
+plan adds no v12.1 release gate or framework-wide correctness claim.
+
 ### v12 audit correction invariants
 
 The current [release audit](v12-release-audit.md) reopens earlier readiness

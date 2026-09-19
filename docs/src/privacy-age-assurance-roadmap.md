@@ -223,3 +223,9 @@ monitoring and speculative integration features. Existing v12.1 maintenance and
 verification-efficiency work remain separately deliverable. See the
 [SaaS maintenance triage](saas-v12-1-v13-triage.md) for the payment work already
 required before enabling affected live operations.
+
+The planned [v13 Verus pilot](verus-roadmap.md) starts with this crate's method,
+threshold and evidence-decision contracts. Its proofs must follow the actual
+production functions and state their clock, issuer and replay-store assumptions.
+They supplement the acceptance evidence above; facial accuracy, guardianship,
+live provider behavior and legal applicability require their own review.

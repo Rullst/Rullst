@@ -350,6 +350,14 @@ contains the more detailed evidence and acceptance boundaries.
 
 ### v13 execution priorities
 
+The [Verus verification pilot](docs/src/verus-roadmap.md) is planned supporting
+work for the privacy, authentication and payment contracts in M41, M9 and M11.
+Begin with a small production age-policy scope, then evaluate Auth and Capital;
+keep proofs beside their modules and start with a pinned manual workflow.
+Reproducibility, reviewed assumptions, negative controls, consumer compatibility
+and measured CI cost precede mandatory checks on affected v13 changes. This
+does not add a public crate or a v12.1 release requirement.
+
 **Execution order: verification efficiency, then the compatible 12.1.0 update
 experience, then concentrated v13 product development.** The published v12
 packages remain immutable; important maintenance fixes remain independently
