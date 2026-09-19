@@ -367,7 +367,7 @@ Enable the opt-in official SDK transport:
 
 ```toml
 [dependencies]
-rullst-mail = { version = "12.0.0", features = ["aws-ses"] }
+rullst-mail = { version = "12.1.0", features = ["aws-ses"] }
 aws-config = "1.11"
 ```
 

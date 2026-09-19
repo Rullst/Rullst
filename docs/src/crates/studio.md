@@ -1,8 +1,8 @@
 # Rullst Studio 📊
 
 > [!IMPORTANT]
-> This page documents stable `12.0.0`. Use that exact registry version, or a
-> path dependency only when intentionally reviewing checkout-local changes.
+> This page targets `12.1.0`. Check the [release record](../v12.md) for
+> publication status; use a path dependency only for checkout-local review.
 
 `rullst-studio` is the built-in, local-first administration and monitoring
 dashboard for Rullst. It exposes bounded database, queue, cache and telemetry
@@ -42,7 +42,7 @@ views from the sources explicitly supplied by the application.
 ## 🚀 Quickstart
 
 Install the exact stable train with
-`cargo add rullst-studio@12.0.0`.
+`cargo add rullst-studio@12.1.0`.
 
 ### Launching the Studio
 

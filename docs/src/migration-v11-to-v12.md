@@ -24,7 +24,7 @@ Example explicit selection:
 ```toml
 [dependencies]
 rullst = {
-    version = "12.0.0",
+    version = "12.1.0",
     default-features = false,
     features = ["orm", "queue-sqlite", "auth", "oauth", "security"]
 }

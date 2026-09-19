@@ -42,7 +42,7 @@ telemetry views from the sources explicitly supplied by the application.
 Add `rullst-studio` to your project:
 
 Install the exact stable train with
-`cargo add rullst-studio@12.0.0`.
+`cargo add rullst-studio@12.1.0`.
 
 ### Launching the Studio
 

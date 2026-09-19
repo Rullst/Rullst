@@ -172,7 +172,7 @@ try {
       "https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/",
     ], "Demo buttons must retain the independently hosted application URLs");
     assert(await evaluate("[...document.images].filter(i => i.loading !== 'lazy').every(i => i.complete && i.naturalWidth > 0)"), "Hero image failed");
-    assert(await evaluate("document.body.innerText.includes('Rullst v12.0.0 stable')"));
+    assert(await evaluate("document.body.innerText.includes('Rullst v12 stable')"));
     assert.equal(await evaluate("window.__oldSiteScript === true"), false, "A cached old script must not run with new HTML");
     assert.deepEqual(await evaluate(`Array.from(document.querySelectorAll('.engine-module'), element => {
       const style = getComputedStyle(element);
