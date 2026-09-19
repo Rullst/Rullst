@@ -109,7 +109,7 @@ Add `rullst-security` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rullst-security = "12.0.0"
+rullst-security = "12.1.0"
 ```
 
 ---

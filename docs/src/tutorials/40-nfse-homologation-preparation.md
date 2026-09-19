@@ -1,9 +1,9 @@
 # Preparing a National NFS-e 1.01 homologation candidate
 
 > [!IMPORTANT]
-> Dependency examples use stable `12.0.0`. Pin that exact version for
-> reproducible v12 builds; use path dependencies only when intentionally
-> testing checkout-local changes.
+> Dependency examples target `12.1.0`. Check the [release record](../v12.md)
+> for publication status and commit Cargo.lock for reproducible builds.
+> Use path dependencies only when intentionally testing checkout-local changes.
 
 This guide exercises the part of the Brazilian National NFS-e pipeline that can
 be proved safely without sending a fiscal document. It builds a bounded DPS,
@@ -19,10 +19,10 @@ Enable the isolated dependency boundary before following the signing steps:
 
 ```toml
 [dependencies]
-rullst-capital = { version = "12.0.0", features = ["nfse"] }
+rullst-capital = { version = "12.1.0", features = ["nfse"] }
 ```
 
-Umbrella applications can select `rullst = { version = "12.0.0", features =
+Umbrella applications can select `rullst = { version = "12.1.0", features =
 ["capital-nfse"] }`. The feature adds local schema/signature/codec dependencies;
 it does not enable a live network path.
 

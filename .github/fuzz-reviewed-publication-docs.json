@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "before_commit": "44902312228a1a72240d9a6efdd33cdd2b6a4eb3",
+  "after_commit": "c34171358dab84868bf226320e6bf4172726a2e0",
+  "blobs": {
+    ".github/site-browser-smoke.mjs": [
+      "497fbbf5c3dffa185396f7eacb7b031c1bc35db2",
+      "ed2eeb4b5b86bce81180e821ce0e3d4dae143223"
+    ],
+    ".github/validate-site.py": [
+      "229aa103200961741d8eb3eab18a3dbdf10e80b5",
+      "fca871bd24b47d4f3671cef7b2e98f0b00de0d83"
+    ],
+    "README.md": [
+      "99ecce851a1848f541c2a326fc4e21227c820a74",
+      "de66d1161d7b5d9f8b32cb4d61feb602c6dcc168"
+    ],
+    "RELEASE_GUIDE.md": [
+      "172cd88b2571c407c49068b14374e05511b9e3b1",
+      "066523ac55ee0abb208b2c31b4bca828611e7161"
+    ],
+    "docs/home_template.html": [
+      "eba013b5e9a761e63912a6d6b27d1e6e521404e1",
+      "083e877825585cf6e14c30c07c75735f69c1dbbc"
+    ],
+    "docs/src/1-getting-started.md": [
+      "629f47ffb3493426796bf8bb23c74074c1d1105d",
+      "b53d958a5c4c05779faa7e63f221b3ba56c3629f"
+    ],
+    "docs/src/6-ai-integration-tutorial.md": [
+      "b128244b97603239099b363b47e0679a152f5c8f",
+      "3ac1b77b69f20cfc4765c2290363ef0a4510aedc"
+    ],
+    "docs/src/api-reference.md": [
+      "06ad0250735cdb44400592bb29065c7aececfa6f",
+      "f41ab24e368c3ab0223dfb4ca67cf799fd538e54"
+    ],
+    "docs/src/cli_reference.md": [
+      "dc605baf6729ee611715334cd3393f4c511149da",
+      "bca9395cc55573b8afcd6472eb6f0573f33ec9cb"
+    ],
+    "docs/src/crates/connect.md": [
+      "b28ee8a2bc2b4eb14db94862e0c93b8c0dd0ec56",
+      "264faceab36c9ed4a049eacb7a9e6d4b5f9655d8"
+    ],
+    "docs/src/crates/iot.md": [
+      "9ec8bd79f247d97d25d907a0a54caca23c5a54f4",
+      "bdaebb8cc44c92f6da383fea1a0fa75aae11da8d"
+    ],
+    "docs/src/crates/mail.md": [
+      "3c48ef1e571998934d1b85c5c80e8fcbb10e0305",
+      "914be948dda3f94333df6b7a25b5e2b977cc1e3f"
+    ],
+    "docs/src/crates/orm.md": [
+      "51d49591c4cf03ef844dfa79a163f6d15e20ea55",
+      "5df45ade6f7603611e45662d2338cf1194a638de"
+    ],
+    "docs/src/crates/studio.md": [
+      "ed5e8c4e810de87e4d0098bf375ad231c96895b0",
+      "88edb263ae629c00efacf7c3159f2554032ab8d5"
+    ],
+    "docs/src/feature-matrix.md": [
+      "59c3eefc1c01487b3fd9cdccda5ef8864054a52f",
+      "432fb867c5708de76a34532d6f0ddf2ae9bb3a4d"
+    ],
+    "docs/src/migration-v11-to-v12.md": [
+      "68fa8903605a2f8f1f6feeca760f012b9078472a",
+      "33b2a73ae0ce250b9da2427e714986afc2206764"
+    ],
+    "docs/src/migration-v12.md": [
+      "6f7dd5cafefeefdb284114ebd308b9e0d11c9f8f",
+      "d75de07048d3e3f3a2c7eb29f12ac6d0f50973a4"
+    ],
+    "docs/src/migration-v5-to-v12.md": [
+      "8a184bbe0ca80e9ba23c68326dc744b85389ee3e",
+      "3cff69827a66f7a562feeccdb83beaf1828828d7"
+    ],
+    "docs/src/migration-v6-to-v12.md": [
+      "7ebcf1519abb2c6c4a70c20075f4e8b33534ba22",
+      "0ef4ee74a8ce08b2bfeec31946e81ef60991d95a"
+    ],
+    "docs/src/polyglot-persistence.md": [
+      "2a5cbc5f62e6a4a50fc571753d3c950f4b233eeb",
+      "d7f77f0369ea276730150e2c9180a55ce2ee2020"
+    ],
+    "docs/src/redis-guide.md": [
+      "31ede08f762f37e4e25ea421e49e8ae4fcbfd77a",
+      "7e0a5886e9238cec6189ce6802764203c63c5aae"
+    ],
+    "docs/src/start-here.md": [
+      "e9f71427eafcf677f1d090aa05c46f9c968f8382",
+      "588081591251d97866f9573a1f194d3b8c8fce84"
+    ],
+    "docs/src/telemetry-guide.md": [
+      "e92ff574dff881a2deabaae3707d16b4779550e4",
+      "5f930b68b3adcaf305a85a98f1d4daaa21dd400c"
+    ],
+    "docs/src/tutorials/01-hello-world.md": [
+      "9abbc5bba699f963c42c1eb22aaf3e36188836b5",
+      "f8a8256ca5df8d529011ea62ba891c1933e8d288"
+    ],
+    "docs/src/tutorials/22-rag-vector-search.md": [
+      "c38f55b1741bd8b04f1c15efeb2801c8a7440202",
+      "95ffa0196e58c992352ae7fb02cc60afa832c3c0"
+    ],
+    "docs/src/tutorials/31-end-to-end-saas-aws-gcp.md": [
+      "7ca83c85834a7ac2adf8f6960d36b3398af58e06",
+      "50f9578dbea5602a9d3caa203cbd0775379fc9d1"
+    ],
+    "docs/src/tutorials/36-assisted-framework-upgrades.md": [
+      "85760d35a9b0c1ec5e2c67e7c0cfa71867098d7e",
+      "4d6cefc9b80a327fab3ff410fa822a7bae7bf19e"
+    ],
+    "docs/src/tutorials/39-scout-search.md": [
+      "102d170b0167cdeaca66d2f8d2f71837da63fbd4",
+      "1413ff0b832c07e34b3fe0d150b474a6fcc242d1"
+    ],
+    "docs/src/tutorials/40-nfse-homologation-preparation.md": [
+      "e089dc746b2b29c06cf0948ea878692452bf5b55",
+      "92d9fb8d6576536561f82727aa97644e37787090"
+    ],
+    "docs/src/tutorials/41-tenant-bound-rag.md": [
+      "346d96075bfe63c3a026f3bdfe94c4f3d92cae2a",
+      "b6004e85848f2e84f9049eec53de870b385a6ebe"
+    ],
+    "docs/src/tutorials/42-server-bound-oauth-sessions.md": [
+      "9e4a9ebf97bce11c1aa03f40783120e4a26bc752",
+      "8f292d9fd536f8b5f5b8201a16822ee379bc4efe"
+    ],
+    "docs/src/tutorials/44-omni-offline-sync.md": [
+      "196212e457b8b1b6a55c8e85e8bec4394f84c893",
+      "e70e43fa940e5dd34934b1ad6636dd4f7f476de6"
+    ],
+    "docs/src/tutorials/48-local-oidc-testing.md": [
+      "8a509d9f2c70a5bf1b7a4ff6c7a9180d2a19601b",
+      "cb71ce920c443b05c8080646372749ed62073562"
+    ],
+    "docs/src/tutorials/49-brokered-messaging.md": [
+      "3ab6181c39885564b6f4f7c7cd750c2436efdfe0",
+      "53aa716ac0064baecfa82b7f458233272e2e70de"
+    ],
+    "docs/src/tutorials/rest-api-quickstart.md": [
+      "575ea3e9ad71bf8171c6a6174bb18b4995112e04",
+      "c8729ee8680b69b2b490b9401b62293f53c973a6"
+    ],
+    "docs/src/v12.md": [
+      "4d23563007281226979da62bde8fafdfc6c4031c",
+      "fd33297487b11ed2e52f737db3c46a8fba81d5b7"
+    ],
+    "docs/src/why-Rullst.md": [
+      "cca592d502823ed153252d8dd65b56ed0f72a738",
+      "242b06094f3469cec34dfacee15a8305bb2aaaa6"
+    ],
+    "docs/theme/release-status.js": [
+      "8c88d82210cb1eb6d07a25b16b845785a48c935e",
+      "2742a0f69db7750272129a935cfb263ec732c971"
+    ],
+    "rullst-capital/README.md": [
+      "13411dc64ed8e71a337c6c3df77627ade642bf08",
+      "ecd24c415ae572748a206589f76e5842c779461f"
+    ],
+    "rullst-connect/README.md": [
+      "0acbd74a8b555a2e634adc541aaaf39e0b1285d0",
+      "e9f0bc26a487abb9f1272effe4d24e131582e17c"
+    ],
+    "rullst-core/README.md": [
+      "e48e20bac47a74aa4b2fafcdbbf16f005efa01ef",
+      "3740f57a83179b0a8b781edf5d094e67be8d4aa0"
+    ],
+    "rullst-iot/README.md": [
+      "b904e7ee641e8c8501fc7d463b88607dc15565ba",
+      "d7af970a8db98969fc314080b83bfc521e832480"
+    ],
+    "rullst-mail/README.md": [
+      "403327839a2b646754980c105ecfb491201160ab",
+      "1aabc3149aa2196cf9a9bab07283c5f2b5936add"
+    ],
+    "rullst-messaging/README.md": [
+      "5303fa545c0a6339145f5001f39547212d65ba9b",
+      "5bad4ff6178d304555a73f44067b569e33b31940"
+    ],
+    "rullst-orm-macros/README.md": [
+      "0d95b8853d9842d234e14054203ffc7a69db14fd",
+      "a1dad7a51d096be4d94e31f081bf26f1f4f5b262"
+    ],
+    "rullst-orm/README.md": [
+      "f8160b49893bbaf7962d3accda2ccf9bbfb7004b",
+      "70f60fa7bcb38efcc737f0ca8b4bb417e4358c7b"
+    ],
+    "rullst-security/README.md": [
+      "7a5a7e6ec2cfee0604f1c37f1e85e075094caaba",
+      "af69e7aa1b0c51ee5346c3c6dcb7d15576149cd4"
+    ],
+    "rullst-studio/README.md": [
+      "575672041c857b2cf5e1620fb3825093a95ccb86",
+      "f8c96df056ed2676b37f7857c9f58299e3c7b146"
+    ]
+  }
+}

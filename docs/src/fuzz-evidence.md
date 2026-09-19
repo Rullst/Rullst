@@ -37,6 +37,29 @@ The regular locked-resolution, all-feature CI and CodeQL checks still run on
 the changed candidate. New exclusions require a reviewed policy change and
 negative tests; they are not inferred from filenames.
 
+### Reviewed v12.1 publication documentation
+
+The publication review in commit `c3417135` changes 48 README, book and public
+site files relative to `44902312`, without changing runtime source, build
+scripts, dependency manifests, fuzz harnesses, locks or execution commands.
+`.github/fuzz-reviewed-publication-docs.json` records the exact old/new Git blob
+IDs by path. Only those two contents, with their original regular-file mode,
+share an input identity; a third blob, removal, rename, mode change or new
+document remains an input change. This is not a documentation-directory
+exclusion. The review table itself is trusted policy included in the receipt's
+policy digest.
+
+The changed README files are Cargo package metadata, not runtime inclusions.
+The book's Rust snippets are included only by `#[cfg(doctest)]`; fuzz binaries
+do not compile or execute these doctests. The site template, release banner
+and two site validators run in the separate documentation/browser checks.
+The Core error-console test mentions `README.md` to reject an unsupported
+source-file extension; it does not feed README contents to a fuzz harness.
+The exact changed contents were reviewed against these consumers. A new
+production consumer changes shared source and invalidates all targets.
+Package/readme audits, browser checks and doctests still validate the changed
+candidate; this exception only concerns the bounded fuzz campaign.
+
 ## Which results qualify
 
 The planner examines at most 30 recent runs and credits only original jobs:

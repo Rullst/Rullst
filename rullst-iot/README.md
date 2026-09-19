@@ -141,7 +141,7 @@ The `experimental-simulators` feature exposes deterministic fixtures named
 `SimulatedMqttPayloadFormatter`. They are useful only in tests and demos:
 
 ```toml
-rullst-iot = { version = "12.0.0", features = ["experimental-simulators"] }
+rullst-iot = { version = "12.1.0", features = ["experimental-simulators"] }
 ```
 
 They do **not** provide hardware-backed keys, signatures, ML-KEM/Kyber,
@@ -159,5 +159,5 @@ a packet helper. There are intentionally no aliases named `HsmDevice`,
   a concrete persistent anti-rollback storage implementation.
 - Bidirectional Digital Twin transport or Studio/Nexus device synchronization.
 
-See the [crate roadmap](https://github.com/Rullst/Rullst/blob/v12.0.0/rullst-iot/ROADMAP.md)
+See the [crate roadmap](https://github.com/Rullst/Rullst/blob/v12.1.0/rullst-iot/ROADMAP.md)
 for the remaining integration work.

@@ -4,8 +4,9 @@ Rullst v12 introduces a bounded upgrade transaction for existing applications.
 The goal is to make the safe, repeatable part a single command while refusing
 to guess about application data or security policy.
 
-> This guide targets stable `12.0.0`. Install the exact release and complete
-> the application-specific validation below before any production rollout.
+> This guide targets `12.1.0`; check [publication status](../v12.md). Install
+> the exact release and complete the application-specific validation below
+> before any production rollout.
 
 ## What the command can guarantee
 
@@ -41,7 +42,7 @@ changing the framework.
 Install the exact CLI from the same release train as the target framework:
 
 ```bash
-cargo install cargo-rullst --version 12.0.0 --locked --force
+cargo install cargo-rullst --version 12.1.0 --locked --force
 ```
 
 The framework command does not update its own executable. This matters for v5:
@@ -74,7 +75,7 @@ unknown schema version rather than silently interpreting it as v1.
 Use an explicit target to make the selected published version visible:
 
 ```bash
-cargo rullst upgrade --to 12.0.0 --dry-run
+cargo rullst upgrade --to 12.1.0 --dry-run
 ```
 
 Other targets must exist in the registry and belong to the installed CLI's
@@ -209,7 +210,7 @@ available through these commands:
 
 ```bash
 cargo rullst update check
-cargo rullst update check --to 12.0.0 --json
+cargo rullst update check --to 12.1.0 --json
 cargo rullst update check --offline
 cargo rullst update check --refresh
 cargo rullst update check --no-cache

@@ -6,8 +6,9 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from fuzz_evidence_inputs import ROOT, Snapshot, execution_contract
+from fuzz_evidence_inputs import ROOT, Snapshot, execution_contract, reviewed_document_blobs
 
 
 class InputTests(unittest.TestCase):
@@ -58,6 +59,53 @@ class InputTests(unittest.TestCase):
         with (self.root / "rullst-mail/Cargo.toml").open("a") as output:
             output.write('[dev-dependencies]\nrand={workspace=true}\n')
         self.assertEqual(self.changed(), set())
+
+    def document_review_fixture(self):
+        # Exercise every reviewed path against real blobs in the fixture's Git
+        # history. Stub only the trusted review table, not source discovery.
+        review = {}
+        for path in reviewed_document_blobs():
+            self.write(path, "original documentation\n")
+            before = self.run_git("hash-object", path)
+            self.write(path, "reviewed publication documentation\n")
+            after = self.run_git("hash-object", path)
+            self.write(path, "original documentation\n")
+            review[path] = [before, after]
+        policy = patch("fuzz_evidence_inputs.reviewed_document_blobs", return_value=review)
+        policy.start()
+        self.addCleanup(policy.stop)
+        self.base = Snapshot(self.commit(), self.root)
+        return review
+
+    def test_exact_reviewed_document_contents_preserve_all_package_inputs(self):
+        for path in self.document_review_fixture():
+            self.write(path, "reviewed publication documentation\n")
+        self.assertEqual(self.changed(), set())
+
+    def test_third_document_blob_new_path_mode_and_deletion_invalidate_all(self):
+        review = self.document_review_fixture()
+        for path in review:
+            with self.subTest(path=path):
+                self.run_git("reset", "--hard", self.base.sha)
+                self.write(path, "unreviewed later document contents\n")
+                self.assertEqual(self.changed(), self.base.directories)
+        for operation in ("delete", "executable", "new-path"):
+            with self.subTest(operation=operation):
+                self.run_git("reset", "--hard", self.base.sha)
+                target = self.root / "README.md"
+                if operation == "delete":
+                    target.unlink()
+                elif operation == "executable":
+                    target.chmod(0o755)
+                else:
+                    self.write("docs/src/unreviewed.md", "reviewed publication documentation\n")
+                self.assertEqual(self.changed(), self.base.directories)
+
+    def test_new_runtime_document_consumer_invalidates_reviewed_equivalence(self):
+        self.document_review_fixture()
+        self.write("rullst-core/src/lib.rs", 'pub const TEXT: &str = include_str!("../../README.md");')
+        self.write("README.md", "reviewed publication documentation\n")
+        self.assertEqual(self.changed(), self.base.directories)
 
     def test_every_package_harness_and_lock_invalidates_its_entire_package(self):
         for directory in self.base.directories:
