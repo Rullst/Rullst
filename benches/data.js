@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789756795615,
+  "lastUpdate": 1789787310795,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -19483,6 +19483,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2233,
             "range": "± 65",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "af9f7cf420b9c011c8eef0d31d9dc2d614f106ae",
+          "message": "feat(saas): merge account recovery mail and audit fixes\n\nMerge validated v12.1 maintenance changes from PR #214.",
+          "timestamp": "2026-09-19T00:02:25-03:00",
+          "tree_id": "be8eae3a0a4739a8d65621fa6b71288617346f84",
+          "url": "https://github.com/Rullst/Rullst/commit/af9f7cf420b9c011c8eef0d31d9dc2d614f106ae"
+        },
+        "date": 1789787309381,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 738,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 994,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 665,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2234,
+            "range": "± 62",
             "unit": "ns/iter"
           }
         ]
