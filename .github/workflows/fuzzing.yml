@@ -4,7 +4,7 @@ on:
   workflow_dispatch: # STRICTLY MANUAL TRIGGER ONLY
     inputs:
       mode:
-        description: Full v12 RC campaign or a short single-target diagnostic
+        description: Full coverage with verified reuse, or a short single-target diagnostic
         required: true
         default: release
         type: choice
@@ -15,6 +15,11 @@ on:
         description: Exact target name (required only for diagnostic mode)
         required: false
         type: string
+      force_full:
+        description: Execute every release target even when equivalent evidence exists
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -39,16 +44,31 @@ jobs:
   targets:
     name: Validate fuzz target inventory
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
       directories: ${{ steps.matrix.outputs.directories }}
       campaign_seconds: ${{ steps.matrix.outputs.campaign_seconds }}
       mode: ${{ steps.matrix.outputs.mode }}
       target_count: ${{ steps.matrix.outputs.target_count }}
+      selected_count: ${{ steps.matrix.outputs.selected_count }}
+      reused_count: ${{ steps.matrix.outputs.reused_count }}
+      evidence: ${{ steps.matrix.outputs.evidence }}
     steps:
       - name: Checkout monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Test fuzz evidence policy
+        run: |
+          python3 .github/test-fuzz-evidence-inputs.py
+          python3 .github/test-fuzz-evidence.py
 
       - name: Validate and export matrix
         id: matrix
@@ -56,16 +76,27 @@ jobs:
         env:
           CAMPAIGN_MODE: ${{ inputs.mode }}
           REQUESTED_TARGET: ${{ inputs.target }}
+          FORCE_FULL: ${{ inputs.force_full }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           python3 .github/validate-fuzz-targets.py
 
+          reused_count=0
+          evidence='{}'
           case "$CAMPAIGN_MODE" in
             release)
               if [ -n "$REQUESTED_TARGET" ]; then
                 echo "Release mode always covers the complete inventory; leave target empty." >&2
                 exit 2
               fi
-              selected="$(jq -c '.' .github/fuzz-targets.json)"
+              args=()
+              if [ "$FORCE_FULL" = "true" ]; then
+                args+=(--force-full)
+              fi
+              python3 .github/fuzz_evidence.py "${args[@]}" --output "$RUNNER_TEMP/fuzz-plan.json"
+              selected="$(jq -c '.selected' "$RUNNER_TEMP/fuzz-plan.json")"
+              reused_count="$(jq '.reused | length' "$RUNNER_TEMP/fuzz-plan.json")"
+              evidence="$(jq -c '.' "$RUNNER_TEMP/fuzz-plan.json")"
               campaign_seconds=19800
               ;;
             diagnostic)
@@ -94,10 +125,15 @@ jobs:
             echo "directories=$directories"
             echo "campaign_seconds=$campaign_seconds"
             echo "mode=$CAMPAIGN_MODE"
-            echo "target_count=$(jq 'length' <<<"$selected")"
+            selected_count="$(jq 'length' <<<"$selected")"
+            echo "selected_count=$selected_count"
+            echo "reused_count=$reused_count"
+            echo "target_count=$((selected_count + reused_count))"
+            echo "evidence=$evidence"
           } >> "$GITHUB_OUTPUT"
 
   preflight:
+    if: needs.targets.outputs.selected_count != '0'
     name: Compile fuzz package ${{ matrix.dir }}
     needs: targets
     runs-on: ubuntu-latest
@@ -174,6 +210,7 @@ jobs:
         run: git diff --exit-code -- Cargo.lock
 
   fuzz:
+    if: needs.targets.outputs.selected_count != '0'
     name: Fuzz ${{ matrix.target }}
     needs: [targets, preflight]
     runs-on: ubuntu-latest
@@ -275,6 +312,9 @@ jobs:
         env:
           CAMPAIGN_MODE: ${{ needs.targets.outputs.mode }}
           TARGET_COUNT: ${{ needs.targets.outputs.target_count }}
+          SELECTED_COUNT: ${{ needs.targets.outputs.selected_count }}
+          REUSED_COUNT: ${{ needs.targets.outputs.reused_count }}
+          TARGETS_RESULT: ${{ needs.targets.result }}
           PREFLIGHT_RESULT: ${{ needs.preflight.result }}
           FUZZ_RESULT: ${{ needs.fuzz.result }}
         run: |
@@ -285,16 +325,50 @@ jobs:
             echo "Compile preflight: \`$PREFLIGHT_RESULT\`; campaign: \`$FUZZ_RESULT\`."
             echo
             if [ "$CAMPAIGN_MODE" = "release" ]; then
-              echo "This run is eligible for v12 RC evidence only when all 40 targets and both result fields succeed."
+              echo "All 40 targets require a new successful campaign or independently verified equivalent evidence."
             else
               echo "This short single-target diagnostic is strict, but is not v12 RC release evidence."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
-          if [ "$PREFLIGHT_RESULT" != "success" ] || [ "$FUZZ_RESULT" != "success" ]; then
+          if [ "$TARGETS_RESULT" != "success" ]; then
+            exit 1
+          fi
+          expected=success
+          if [ "$SELECTED_COUNT" -eq 0 ]; then
+            expected=skipped
+          fi
+          if [ "$PREFLIGHT_RESULT" != "$expected" ] || [ "$FUZZ_RESULT" != "$expected" ]; then
+            exit 1
+          fi
+          if [ "$((SELECTED_COUNT + REUSED_COUNT))" -ne "$TARGET_COUNT" ]; then
             exit 1
           fi
           if [ "$CAMPAIGN_MODE" = "release" ] && [ "$TARGET_COUNT" -ne 40 ]; then
             echo "Release fuzz evidence must cover exactly 40 validated targets." >&2
             exit 1
           fi
+
+      - name: Retain source evidence and execution receipt
+        if: success() && needs.targets.outputs.mode == 'release'
+        env:
+          EVIDENCE_PLAN: ${{ needs.targets.outputs.evidence }}
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, pathlib
+          report = json.loads(os.environ["EVIDENCE_PLAN"])
+          if report["candidate_sha"] != os.environ["GITHUB_SHA"] or report["total_targets"] != 40:
+              raise SystemExit("Fuzz evidence plan does not match this candidate")
+          report["execution_run_id"] = int(os.environ["GITHUB_RUN_ID"])
+          report["execution_run_attempt"] = int(os.environ["GITHUB_RUN_ATTEMPT"])
+          pathlib.Path("fuzz-evidence.json").write_text(json.dumps(report, indent=2) + "\n")
+          PYTHON
+
+      - name: Upload fuzz evidence receipt
+        if: success() && needs.targets.outputs.mode == 'release'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fuzz-evidence-${{ github.sha }}-${{ github.run_attempt }}
+          path: fuzz-evidence.json
+          if-no-files-found: error
+          retention-days: 30
