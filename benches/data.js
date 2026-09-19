@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789834083304,
+  "lastUpdate": 1789856097907,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -19591,6 +19591,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2280,
             "range": "± 112",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b62390b4fc61e5ac06d24eb31bb7c10d370d679d",
+          "message": "docs(release): align v12.1 publication and retain verified fuzz evidence",
+          "timestamp": "2026-09-19T19:09:23-03:00",
+          "tree_id": "c6215b19496ce4d35e02f9ddc15e2e4bf1d960b9",
+          "url": "https://github.com/Rullst/Rullst/commit/b62390b4fc61e5ac06d24eb31bb7c10d370d679d"
+        },
+        "date": 1789856095715,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 431,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 621,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 449,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1198,
+            "range": "± 102",
             "unit": "ns/iter"
           }
         ]
