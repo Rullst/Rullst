@@ -142,6 +142,11 @@ impl AgeChallenge {
         if policy.threshold(self.0.method)? != self.0.threshold || now < self.0.issued_at {
             return Err(AgeError::InvalidChallenge);
         }
+        if self.0.issued_at < 0
+            || self.0.issued_at.checked_add(policy.lifetime()) != Some(self.0.expires_at)
+        {
+            return Err(AgeError::InvalidChallenge);
+        }
         if now >= self.0.expires_at {
             return Err(AgeError::Expired);
         }

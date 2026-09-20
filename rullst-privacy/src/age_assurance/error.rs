@@ -7,6 +7,8 @@ pub enum AgeError {
     MethodNotAllowed,
     #[error("invalid age-assurance challenge or clock")]
     InvalidChallenge,
+    #[error("invalid, unsupported or unauthenticated age challenge token")]
+    InvalidChallengeToken,
     #[error("age-assurance challenge expired")]
     Expired,
     #[error("age evidence does not match the current policy or authenticated context")]

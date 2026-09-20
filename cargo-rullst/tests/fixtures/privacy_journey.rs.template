@@ -1,0 +1,144 @@
+use privacy_consumer::router;
+use http_body_util::BodyExt;
+use rullst::server::{Body, Request, Response, StatusCode};
+use tower::ServiceExt;
+
+async fn request(app: &rullst::Router, uri: &str, session: Option<&str>, csrf: Option<&str>, school: Option<&str>, form: Option<String>) -> Response {
+    let mut builder = Request::builder().uri(uri);
+    let mut cookies = Vec::new();
+    if let Some(session) = session { cookies.push(format!("rullst_session={session}")); }
+    if let Some(csrf) = csrf { cookies.push(format!("rullst_csrf={csrf}")); }
+    if !cookies.is_empty() { builder = builder.header("cookie", cookies.join("; ")); }
+    if let Some(school) = school { builder = builder.header("x-school-id", school); }
+    let body = if let Some(form) = form { builder = builder.method("POST").header("content-type", "application/x-www-form-urlencoded"); Body::from(form) } else { Body::empty() };
+    app.as_axum().clone().oneshot(builder.body(body).unwrap()).await.unwrap()
+}
+
+async fn text(response: Response) -> String {
+    String::from_utf8(response.into_body().collect().await.unwrap().to_bytes().to_vec()).unwrap()
+}
+
+fn value(html: &str, name: &str) -> String {
+    html.split_once(&format!("name=\"{name}\" value=\"")).unwrap().1.split('"').next().unwrap().to_owned()
+}
+
+fn answer(html: &str, choice: &str) -> (String, String) {
+    let fields = ["_token", "purpose", "version", "revision", "issued_at", "proof"].map(|key| format!("{key}={}", value(html,key))).join("&");
+    (value(html, "_token"), format!("{fields}&choice={choice}"))
+}
+
+fn expired_form(html: &str, session: &str, tenant: &str) -> String {
+    let issued = value(html, "issued_at").parse::<i64>().unwrap() - 301;
+    let revision = value(html, "revision").parse::<u64>().unwrap();
+    let purpose = value(html, "purpose"); let version = value(html, "version");
+    let mut message = b"rullst.optional-consent-form.v1\0".to_vec();
+    for field in [b"1".as_slice(), tenant.as_bytes(), session.as_bytes(), purpose.as_bytes(), version.as_bytes(), &revision.to_be_bytes(), &issued.to_be_bytes()] {
+        message.extend_from_slice(&(field.len() as u64).to_be_bytes()); message.extend_from_slice(field);
+    }
+    let secret = hex::decode(std::env::var("RULLST_PRIVACY_FORM_KEY_HEX").unwrap()).unwrap();
+    let signature = ring::hmac::sign(&ring::hmac::Key::new(ring::hmac::HMAC_SHA256, &secret), &message);
+    answer(html,"grant").1.replace(&format!("issued_at={}",value(html,"issued_at")),&format!("issued_at={issued}")).replace(&value(html,"proof"),&hex::encode(signature.as_ref()))
+}
+
+#[tokio::test]
+async fn authenticated_optional_processing_and_own_account_export() {
+    let lms = std::env::var("RULLST_PRIVACY_TEST_BLUEPRINT").unwrap() == "lms";
+    rullst_orm::Orm::init("sqlite::memory:").await.unwrap();
+    let pool = rullst_orm::Orm::pool().unwrap();
+    sqlx::query("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT, oauth_provider TEXT, oauth_id TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)").execute(pool).await.unwrap();
+    for id in [1,2] {
+        sqlx::query("INSERT INTO users (id,name,email,password_hash,created_at,updated_at) VALUES (?,?,?,?,?,?)")
+            .bind(id).bind(format!("Member <{id}>")).bind(format!("member-{id}@example.test")).bind("credential-must-not-be-exported").bind("2026-09-20").bind("2026-09-20").execute(pool).await.unwrap();
+    }
+    if lms {
+        for statement in [
+            "CREATE TABLE schools (id INTEGER PRIMARY KEY,tenant_key TEXT NOT NULL,status TEXT NOT NULL)",
+            "CREATE TABLE school_memberships (school_id INTEGER NOT NULL,user_id INTEGER NOT NULL,status TEXT NOT NULL,is_default INTEGER NOT NULL,valid_from_epoch INTEGER NOT NULL,expires_at_epoch INTEGER NOT NULL)",
+            "CREATE TABLE role_assignments (school_id INTEGER NOT NULL,user_id INTEGER NOT NULL,role TEXT NOT NULL,status TEXT NOT NULL,valid_from_epoch INTEGER NOT NULL,expires_at_epoch INTEGER NOT NULL)",
+        ] { sqlx::query(sqlx::AssertSqlSafe(statement)).execute(pool).await.unwrap(); }
+        for id in [1,2] { sqlx::query("INSERT INTO schools (id,tenant_key,status) VALUES (?,?,?)").bind(id).bind(format!("school-{id}")).bind("active").execute(pool).await.unwrap(); }
+        for (user,school) in [(1,1),(1,2),(2,2)] { sqlx::query("INSERT INTO school_memberships (school_id,user_id,status,is_default,valid_from_epoch,expires_at_epoch) VALUES (?,?,?,?,?,?)").bind(school).bind(user).bind("active").bind(0).bind(1).bind(0).execute(pool).await.unwrap(); }
+    }
+    let uri = |path: &str| if lms { format!("{path}?school=school-1") } else { path.to_owned() };
+    let key = rullst::auth::get_app_key().unwrap();
+    let first = rullst::auth::encrypt_session(1,&key).unwrap();
+    let second = rullst::auth::encrypt_session(2,&key).unwrap();
+    let rotated = rullst::auth::encrypt_session(1,&key).unwrap();
+    let mut app = router().unwrap();
+    *app.as_axum_mut() = rullst::security::apply_security_baseline(app.as_axum().clone(),rullst::config::SecurityConfig::default(),rullst::config::Environment::Production).unwrap();
+    assert_eq!(request(&app,&uri("/privacy"),None,None,None,None).await.status(),StatusCode::SEE_OTHER);
+    assert_eq!(request(&app,&uri("/privacy/export"),Some("forged"),None,None,None).await.status(),StatusCode::SEE_OTHER);
+    let exported = request(&app,&uri("/privacy/export"),Some(&first),None,None,None).await;
+    assert_eq!(exported.status(),StatusCode::OK);
+    assert_eq!(exported.headers()["cache-control"],"no-store");
+    assert_eq!(exported.headers()["referrer-policy"],"no-referrer");
+    assert_eq!(exported.headers()["content-disposition"],"attachment; filename=\"account-profile.json\"");
+    let export = text(exported).await;
+    let parsed: serde_json::Value = serde_json::from_str(&export).unwrap();
+    assert_eq!(parsed["scope"],"account_profile");
+    assert_eq!(parsed["account"],serde_json::json!({"id":1,"name":"Member <1>","email":"member-1@example.test"}));
+    assert!(!export.contains("credential")); assert!(!export.contains(&first)); assert!(!export.contains("member-2"));
+    let other_uri = if lms { "/privacy/export?school=school-2" } else { "/privacy/export" };
+    let other: serde_json::Value = serde_json::from_str(&text(request(&app,other_uri,Some(&second),None,None,None).await).await).unwrap();
+    assert_eq!(other["account"]["id"],2);
+    assert_eq!(request(&app,"/privacy/export?user_id=2",Some(&first),None,None,None).await.status(),StatusCode::FORBIDDEN);
+    if std::env::var("RULLST_PRIVACY_TEST_CONFIGURATION").unwrap() != "valid" {
+        assert_eq!(request(&app,&uri("/privacy"),Some(&first),None,None,None).await.status(),StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(request(&app,&uri("/privacy/personalization"),Some(&first),None,None,None).await.status(),StatusCode::SERVICE_UNAVAILABLE);
+        return;
+    }
+    if lms {
+        assert_eq!(request(&app,"/privacy",Some(&first),None,None,None).await.status(),StatusCode::FORBIDDEN);
+        for path in ["/privacy?school=missing","/privacy?school=school-1&school=school-2","/privacy?school=%0A"] {
+            assert_eq!(request(&app,path,Some(&first),None,None,None).await.status(),StatusCode::FORBIDDEN);
+        }
+        assert_eq!(request(&app,"/privacy?school=school-1",Some(&first),None,Some("school-2"),None).await.status(),StatusCode::FORBIDDEN);
+        assert_eq!(request(&app,"/privacy/export?school=school-1",Some(&second),None,None,None).await.status(),StatusCode::FORBIDDEN);
+    }
+    let initial = text(request(&app,&uri("/privacy/personalization"),Some(&first),None,None,None).await).await;
+    assert!(initial.contains("Welcome!")); assert!(!initial.contains("Member"));
+    let shown = request(&app,"/privacy",Some(&first),None,if lms {Some("school-1")} else {None},None).await;
+    assert_eq!(shown.status(),StatusCode::OK);
+    let html = text(shown).await;
+    assert!(!html.contains("checked")); assert!(!html.contains(&first)); assert!(!html.contains("member-1@example.test"));
+    if lms { assert!(html.contains("action=\"/privacy?school=school-1\"")); }
+    let (csrf, granted) = answer(&html,"grant");
+    assert_eq!(request(&app,&uri("/privacy"),Some(&first),None,None,Some(granted.clone())).await.status(),StatusCode::FORBIDDEN);
+    let other_scope = if lms { "/privacy?school=school-2" } else { "/privacy" };
+    for session in [&second,&rotated] {
+        assert_eq!(request(&app,other_scope,Some(session),Some(&csrf),None,Some(granted.clone())).await.status(),StatusCode::FORBIDDEN);
+    }
+    if lms { assert_eq!(request(&app,other_scope,Some(&first),Some(&csrf),None,Some(granted.clone())).await.status(),StatusCode::FORBIDDEN); }
+    for changed in [format!("{granted}&subject=2"),granted.replace("choice=grant","choice=unknown"),granted.replace("greeting-v1","greeting-v2"),granted.replace(&value(&html,"proof"),&"a".repeat(64)),granted.replace("&choice=grant", "")] {
+        assert!(request(&app,&uri("/privacy"),Some(&first),Some(&csrf),None,Some(changed)).await.status().is_client_error());
+    }
+    let expired = expired_form(&html,&first,if lms {"school-1"} else {"tenant-alpha"});
+    assert_eq!(request(&app,&uri("/privacy"),Some(&first),Some(&csrf),None,Some(expired)).await.status(),StatusCode::FORBIDDEN);
+    assert_eq!(request(&app,&uri("/privacy"),Some(&first),Some(&csrf),None,Some(granted.clone())).await.status(),StatusCode::SEE_OTHER);
+    let personalized = text(request(&app,&uri("/privacy/personalization"),Some(&first),None,None,None).await).await;
+    assert!(personalized.contains("Member &lt;1&gt;")); assert!(!personalized.contains("Member <1>"));
+    assert_eq!(request(&app,&uri("/privacy"),Some(&first),Some(&csrf),None,Some(granted)).await.status(),StatusCode::CONFLICT);
+    let current = text(request(&app,&uri("/privacy"),Some(&first),None,None,None).await).await;
+    let (csrf, stale_positive) = answer(&current,"grant");
+    let (_, withdrawal) = answer(&current,"withdraw");
+    assert_eq!(request(&app,&uri("/privacy"),Some(&first),Some(&csrf),None,Some(withdrawal)).await.status(),StatusCode::SEE_OTHER);
+    assert_eq!(request(&app,&uri("/privacy"),Some(&first),Some(&csrf),None,Some(stale_positive)).await.status(),StatusCode::CONFLICT);
+    let generic = text(request(&app,&uri("/privacy/personalization"),Some(&first),None,None,None).await).await;
+    assert!(generic.contains("Welcome!")); assert!(!generic.contains("Member"));
+    let current = text(request(&app,&uri("/privacy"),Some(&first),None,None,None).await).await;
+    let (csrf, decline) = answer(&current,"decline");
+    assert_eq!(request(&app,&uri("/privacy"),Some(&first),Some(&csrf),None,Some(decline)).await.status(),StatusCode::SEE_OTHER);
+    let oversized = format!("_token={csrf}&proof={}","x".repeat(20_000));
+    assert_eq!(request(&app,&uri("/privacy"),Some(&first),Some(&csrf),None,Some(oversized)).await.status(),StatusCode::PAYLOAD_TOO_LARGE);
+    let db = std::env::var("RULLST_PRIVACY_DATABASE").unwrap();
+    let raw = sqlx::SqlitePool::connect_with(sqlx::sqlite::SqliteConnectOptions::new().filename(db)).await.unwrap();
+    sqlx::query("DROP TABLE rullst_consent_meta").execute(&raw).await.unwrap();
+    assert_eq!(request(&app,&uri("/privacy/personalization"),Some(&first),None,None,None).await.status(),StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(request(&app,&uri("/privacy/export"),Some(&first),None,None,None).await.status(),StatusCode::OK);
+    raw.close().await;
+    if lms {
+        sqlx::query("UPDATE school_memberships SET status = ? WHERE user_id = ? AND school_id = ?").bind("revoked").bind(1).bind(1).execute(pool).await.unwrap();
+        assert_eq!(request(&app,&uri("/privacy/export"),Some(&first),None,None,None).await.status(),StatusCode::FORBIDDEN);
+        assert_eq!(request(&app,&uri("/privacy"),Some(&first),Some(&csrf),None,Some(answer(&current,"withdraw").1)).await.status(),StatusCode::FORBIDDEN);
+    }
+}

@@ -26,7 +26,9 @@ pub use baseline::{
     SecurityBaselineError, apply_security_baseline, apply_security_baseline_with_machine_endpoints,
 };
 pub use csrf::{CsrfToken, csrf_middleware, generate_csrf_token};
-pub use headers::{CspNonce, DEFAULT_CSP_TEMPLATE, headers_middleware, render_csp_policy};
+pub use headers::{
+    CspNonce, DEFAULT_CSP_TEMPLATE, apply_referrer_policy, headers_middleware, render_csp_policy,
+};
 pub use machine::{
     MachineAuthentication, MachineEndpoint, MachineEndpointError, MachineEndpointPolicy,
     MachineRequestVerifier,

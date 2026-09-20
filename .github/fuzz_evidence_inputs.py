@@ -9,13 +9,17 @@ import subprocess
 import tomllib
 from pathlib import Path
 
-from release_line import policy_line
+from release_line import FUZZ_TARGET_COUNTS, policy_line
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ".github/workflows/fuzzing.yml"
 INVENTORY = ".github/fuzz-targets.json"
 DOC_REVIEW = ".github/fuzz-reviewed-publication-docs.json"
 SHA = re.compile(r"[0-9a-f]{40}")
+
+
+class FuzzSurfaceChanged(ValueError):
+    """A historical inventory cannot certify the current release surface."""
 
 # Reviewed non-inputs, not a glob-based exclusion of all tests or documentation.
 # The fuzz crates are separate workspaces with their own retained Cargo.lock.
@@ -101,7 +105,7 @@ class Snapshot:
         if SHA.fullmatch(sha) is None:
             raise ValueError("source must be a full lowercase commit SHA")
         self.sha, self.root = sha, root
-        self.release_branch = policy_line(json.loads(self.read(".github/release-required-workflows.json")))[1]
+        major, self.release_branch = policy_line(json.loads(self.read(".github/release-required-workflows.json")))
         self.files: dict[str, tuple[str, str]] = {}
         for entry in git("ls-tree", "-rz", sha, root=root).split(b"\0"):
             if not entry:
@@ -112,8 +116,11 @@ class Snapshot:
                 raise ValueError("submodules/symlinks require a fresh campaign and policy review")
             self.files[path.decode()] = (mode, oid)
         self.inventory = json.loads(self.read(INVENTORY))
-        if not isinstance(self.inventory, list) or len(self.inventory) != 40:
-            raise ValueError("fuzz inventory must contain exactly 40 targets")
+        count = FUZZ_TARGET_COUNTS[major]
+        if not isinstance(self.inventory, list):
+            raise ValueError("fuzz inventory must be an array")
+        if len(self.inventory) != count:
+            raise FuzzSurfaceChanged(f"v{major} fuzz inventory must contain exactly {count} targets")
         seen = set()
         for item in self.inventory:
             if (not isinstance(item, dict) or set(item) != {"dir", "target"}

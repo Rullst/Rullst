@@ -6,6 +6,8 @@ import re
 
 
 BRANCHES = {12: "main", 13: "v13"}
+# Reviewed release surfaces. Expanding one line never reinterprets old tags.
+FUZZ_TARGET_COUNTS = {12: 40, 13: 42}
 VERSION = re.compile(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?")
 
 

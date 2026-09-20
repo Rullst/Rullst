@@ -67,6 +67,15 @@ its scoped consumer/state/API and release admission criteria pass.
 - The integration candidate carries that exact published runtime source into
   v13, preserving the unpublished privacy crate and Labs/Verus plans. The
   combined source needs fresh CI; the v12.1.0 results do not certify v13.
+- [PR #218](https://github.com/Rullst/Rullst/pull/218) admitted the integration
+  and SQLite/PostgreSQL replay foundation into `v13` at `7f48d882` on
+  20 September UTC. Its reviewed head `03601566` passed 85 hosted checks with
+  four declared skips, including workspace tests, strict Clippy and the exact
+  coverage floors. Three remaining review threads referred to the already
+  individually reviewed test-only alerts 327–329 and were resolved after
+  rechecking those fixtures and their existing dispositions. The later native
+  declaration, challenge transport and generated consumers require their own
+  hosted campaign; this admission does not certify those subsequent changes.
 - The initial privacy foundation passed 16 integration tests and one doctest.
   The persistence change adds asynchronous verification, trusted clock rechecks
   and optional shared-local SQLite claims. Its 29 local integration tests cover
@@ -77,6 +86,22 @@ its scoped consumer/state/API and release admission criteria pass.
   runtime-role, multi-pool replay/quota, expiry during lock wait, schema/durability
   drift, cancellation and server-restart checks. CI and coverage explicitly run
   that disposable-database contract; combined candidate evidence is still required.
+- The next local increment adds native declarations and authenticated challenge
+  transport, plus an opt-in generated SaaS dashboard journey. Local checks passed
+  42 privacy integration tests, one unit test and five doctests; the disposable
+  PostgreSQL lifecycle and restart contract also passed explicitly. A generated
+  SaaS executes real session/user lookup, production browser middleware, explicit
+  choice and durable replay denial; a second process verifies missing-key denial,
+  and the PostgreSQL consumer profile compiles. Installer tests cover formatted
+  source, changed authentication, source selection, preserved edits and rollback
+  after a write failure. Strict local CLI Clippy and book/link checks passed.
+  The follow-up LMS consumer also passes a generated SQLite journey: bounded
+  school selection, real membership/role resolution, header selection carried
+  into a browser form, cross-school/user denial, replay and revoked membership.
+  Its declaration writes no subject-age or guardian-consent row and does not
+  install age-state middleware around other learning routes.
+  Hosted admission and broader purpose/rights workflows remain
+  outstanding; these checks do not establish deployed browser/provider acceptance.
 - The initial CodeQL scan's 26 age-replay alerts were individually reviewed:
   23 intentional integration-test identifiers, two policy-field data-flow
   conflations and one unmodeled OS-random buffer overwrite. The
@@ -94,6 +119,40 @@ its scoped consumer/state/API and release admission criteria pass.
   readiness, with security-relevant corrections carried to each affected line.
 
 ## Release priorities and acceptance
+
+The next local increment adds two privacy fuzz targets to the v13 release
+inventory (42 total; v12 remains 40). Two five-minute ASan diagnostics completed
+without a reproducer: 1,442,644 challenge-token inputs and 929,346 attestation
+inputs. These are local diagnostics, not the complete hosted release campaign.
+The independent `consent`/`consent-sqlite` foundation now provides explicit
+purpose/notice choices, revision-bound grants, unconditional withdrawal,
+default denial and per-action checks. Its shared-local adapter retains bounded
+state and clock metadata, refuses implicit initialization/repair and preserves
+withdrawal across pools and processes. Local contracts cover stale forms,
+version/tenant/subject boundaries, capacity, clock/expiry, cancellation and
+faulty adapters. The opt-in `make:privacy` consumer now supplies authenticated
+preferences, an optional name-based greeting and a direct own-account profile
+export through a concrete parameterized SQL adapter. Local generated SaaS/full
+LMS HTTP fixtures passed both age/privacy installation orders, explicit choices,
+withdrawal and stale grants, CSRF, account/session/school changes, expiry, unknown
+and oversized inputs, and missing/failed consent state. The profile export stays
+independent of optional-consent storage and form keys and never claims to export
+other application records or complete queued rights requests. A normal
+PostgreSQL-primary SaaS profile also compiles; live primary-database isolation
+and deployed browser acceptance are separate from that compile check.
+
+These HTTP fixtures found a Core header composition defect: the outer layer
+replaced an endpoint's `no-referrer`. Core and both Security header layers now
+share a narrow preservation rule; 36 local composition cases cover layer order,
+configured defaults, weaker handler policies and duplicate values. The prior
+PR #219 campaign finished with 84 successful checks, four skips and one macOS
+unit-fixture failure caused by the system temporary-directory symlink. Its
+fixture now resolves the same root as the CLI, with an explicit child-symlink
+rejection regression. Four new CodeQL policy-threshold conflations were
+individually reviewed and dismissed; the
+[declaration review receipt](evidence/v13-codeql-declaration-review.json)
+binds those decisions to the old analyzed source. No query was disabled.
+Combined hosted acceptance for the subsequent changes remains pending.
 
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |

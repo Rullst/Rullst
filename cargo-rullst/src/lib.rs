@@ -35,6 +35,8 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
         // Commands enum, which downstream Rust callers may exhaustively match.
         let matches = <cli::Cli as clap::CommandFactory>::command()
             .subcommand(update::command())
+            .subcommand(generators::age_gate::command())
+            .subcommand(generators::privacy::command())
             // Extend executable syntax without changing the published v12 enum.
             .mut_subcommand("omni", |command| {
                 command.arg(
@@ -45,7 +47,11 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
                 )
             })
             .get_matches_from(args);
-        if let Some(update) = matches.subcommand_matches("update") {
+        if let Some(privacy) = matches.subcommand_matches("make:privacy") {
+            generators::privacy::run(privacy)?;
+        } else if let Some(age_gate) = matches.subcommand_matches("make:age-gate") {
+            generators::age_gate::run(age_gate)?;
+        } else if let Some(update) = matches.subcommand_matches("update") {
             update::run(update)?;
         } else if let Some(omni) = matches
             .subcommand_matches("omni")

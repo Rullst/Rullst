@@ -1,0 +1,12 @@
+//! Explicit one-time local consent-store initialization. No web server is started.
+use rullst_privacy::consent::{ConsentError, SqliteConsentStore};
+
+#[rullst::runtime::main]
+async fn main() -> Result<(), ConsentError> {
+    let database = std::env::var_os("RULLST_PRIVACY_DATABASE")
+        .filter(|value| !value.is_empty()).ok_or(ConsentError::InvalidConfiguration)?;
+    let store = SqliteConsentStore::initialize(std::path::Path::new(&database), 10_000).await?;
+    store.close().await;
+    println!("Initialized the private local consent store. Keep all application processes on this same file.");
+    Ok(())
+}

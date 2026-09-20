@@ -133,7 +133,16 @@ impl<S: ReplayStore> AgeVerifier<S> {
         let now = clock.now()?;
         challenge.validate(policy, binding, now)?;
         let outcome = self.issuer.verify(challenge, payload, signature)?;
-        self.finish(challenge, outcome, false, now, clock).await
+        finish_assessment(
+            &self.store,
+            self.development,
+            challenge,
+            outcome,
+            false,
+            now,
+            clock,
+        )
+        .await
     }
 
     pub async fn verify_mock(
@@ -160,61 +169,69 @@ impl<S: ReplayStore> AgeVerifier<S> {
         }
         let now = clock.now()?;
         challenge.validate(policy, binding, now)?;
-        self.finish(challenge, provider.outcome, true, now, clock)
-            .await
+        finish_assessment(
+            &self.store,
+            self.development,
+            challenge,
+            provider.outcome,
+            true,
+            now,
+            clock,
+        )
+        .await
     }
+}
 
-    async fn finish(
-        &self,
-        challenge: &AgeChallenge,
-        outcome: AgeOutcome,
-        mock: bool,
-        now: i64,
-        clock: &impl AgeClock,
-    ) -> Result<AgeAssessment, AgeError> {
-        // Recheck because an application adapter may change availability/mode.
-        if !self.development && self.store.durability() != ReplayDurability::SharedDurable {
-            return Err(AgeError::DurableReplayRequired);
-        }
-        if !self
-            .store
-            .claim(challenge.0.nonce, challenge.expires_at(), now)
-            .await?
-        {
-            return Err(AgeError::Replay);
-        }
-        // The nonce stays consumed even when time or the final check fails.
-        let completed_at = clock.now()?;
-        if completed_at < now {
-            return Err(AgeError::ClockRollback);
-        }
-        if completed_at >= challenge.expires_at() {
-            return Err(AgeError::Expired);
-        }
-        let method = challenge.method();
-        let decision = match outcome {
-            AgeOutcome::MeetsThreshold => AgeDecision::Allowed,
-            AgeOutcome::BelowThreshold if method == AgeMethod::FacialEstimation => {
-                AgeDecision::AlternativeRequired
-            }
-            AgeOutcome::BelowThreshold => AgeDecision::BelowMinimumAge,
-            AgeOutcome::Inconclusive => AgeDecision::AlternativeRequired,
-            AgeOutcome::Unavailable => AgeDecision::Unavailable,
-        };
-        let assurance = if mock {
-            Assurance::OfflineMock
-        } else {
-            match method {
-                AgeMethod::SelfDeclaration => Assurance::Declared,
-                AgeMethod::FacialEstimation => Assurance::Estimated,
-                AgeMethod::VerifiedAttribute => Assurance::VerifiedAttribute,
-            }
-        };
-        Ok(AgeAssessment {
-            decision,
-            assurance,
-            policy_version: challenge.0.policy.version().to_owned(),
-            expires_at: challenge.expires_at(),
-        })
+pub(super) async fn finish_assessment<S: ReplayStore>(
+    store: &S,
+    development: bool,
+    challenge: &AgeChallenge,
+    outcome: AgeOutcome,
+    mock: bool,
+    now: i64,
+    clock: &impl AgeClock,
+) -> Result<AgeAssessment, AgeError> {
+    // Recheck because an application adapter may change availability/mode.
+    if !development && store.durability() != ReplayDurability::SharedDurable {
+        return Err(AgeError::DurableReplayRequired);
     }
+    if !store
+        .claim(challenge.0.nonce, challenge.expires_at(), now)
+        .await?
+    {
+        return Err(AgeError::Replay);
+    }
+    // The nonce stays consumed even when time or the final check fails.
+    let completed_at = clock.now()?;
+    if completed_at < now {
+        return Err(AgeError::ClockRollback);
+    }
+    if completed_at >= challenge.expires_at() {
+        return Err(AgeError::Expired);
+    }
+    let method = challenge.method();
+    let decision = match outcome {
+        AgeOutcome::MeetsThreshold => AgeDecision::Allowed,
+        AgeOutcome::BelowThreshold if method == AgeMethod::FacialEstimation => {
+            AgeDecision::AlternativeRequired
+        }
+        AgeOutcome::BelowThreshold => AgeDecision::BelowMinimumAge,
+        AgeOutcome::Inconclusive => AgeDecision::AlternativeRequired,
+        AgeOutcome::Unavailable => AgeDecision::Unavailable,
+    };
+    let assurance = if mock {
+        Assurance::OfflineMock
+    } else {
+        match method {
+            AgeMethod::SelfDeclaration => Assurance::Declared,
+            AgeMethod::FacialEstimation => Assurance::Estimated,
+            AgeMethod::VerifiedAttribute => Assurance::VerifiedAttribute,
+        }
+    };
+    Ok(AgeAssessment {
+        decision,
+        assurance,
+        policy_version: challenge.0.policy.version().to_owned(),
+        expires_at: challenge.expires_at(),
+    })
 }

@@ -99,6 +99,9 @@ jobs:
           if [ "$FUZZ_TARGET" = "fuzz_parser" ]; then
             args+=(-max_len=2048 -rss_limit_mb=4096)
           fi
+          if [[ "$FUZZ_TARGET" == fuzz_age_* ]]; then
+            args+=(-max_len=9000 -timeout=10 -rss_limit_mb=2048)
+          fi
           cargo +nightly-2026-08-21 fuzz run \
             --target "$FUZZ_BUILD_TARGET" "$FUZZ_TARGET" -- "${args[@]}"
           cargo +nightly-2026-08-21 fuzz cmin \

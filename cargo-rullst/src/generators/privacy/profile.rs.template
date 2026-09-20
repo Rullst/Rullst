@@ -1,0 +1,41 @@
+//! Explicit own-account projection. This never completes broader queued rights
+//! requests or claims to export enrollment, payments, messages or processor data.
+use rullst::db::{Orm, sqlx};
+use serde::Serialize;
+
+pub(super) enum ExportError { Unavailable, NotFound, TooLarge }
+
+#[derive(Serialize)]
+pub(super) struct AccountProfile {
+    pub(super) id: i32,
+    pub(super) name: String,
+    pub(super) email: String,
+}
+
+pub(super) struct AccountProfileAdapter;
+impl AccountProfileAdapter {
+    /// The ID comes only from authenticated middleware, never a route/form field.
+    pub(super) async fn export(user_id: i32) -> Result<AccountProfile, ExportError> {
+        if user_id <= 0 { return Err(ExportError::NotFound); }
+        let pool = Orm::pool().map_err(|_| ExportError::Unavailable)?;
+        let mut query = sqlx::QueryBuilder::new("SELECT name, email FROM users WHERE id = ");
+        query.push_bind(user_id).push(" AND LENGTH(name) <= 512 AND LENGTH(email) <= 512");
+        let row: Option<(String, String)> = query.build_query_as().fetch_optional(pool).await.map_err(|_| ExportError::Unavailable)?;
+        let Some((name, email)) = row else { return Err(ExportError::NotFound); };
+        if name.len() > 512 || email.len() > 512 { return Err(ExportError::TooLarge); }
+        Ok(AccountProfile { id: user_id, name, email })
+    }
+
+    /// Only the optional greeting needs this field; callers must check consent
+    /// immediately before this query. Authentication remains a separate purpose.
+    pub(super) async fn greeting_name(user_id: i32) -> Result<String, ExportError> {
+        if user_id <= 0 { return Err(ExportError::NotFound); }
+        let pool = Orm::pool().map_err(|_| ExportError::Unavailable)?;
+        let mut query = sqlx::QueryBuilder::new("SELECT name FROM users WHERE id = ");
+        query.push_bind(user_id).push(" AND LENGTH(name) <= 512");
+        let row: Option<(String,)> = query.build_query_as().fetch_optional(pool).await.map_err(|_| ExportError::Unavailable)?;
+        let Some((name,)) = row else { return Err(ExportError::NotFound); };
+        if name.len() > 512 { return Err(ExportError::TooLarge); }
+        Ok(name)
+    }
+}

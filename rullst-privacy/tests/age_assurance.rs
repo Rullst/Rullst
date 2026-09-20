@@ -61,10 +61,15 @@ fn verifier() -> AgeVerifier<MemoryReplayStore> {
     AgeVerifier::for_development(issuer(), MemoryReplayStore::new(100).unwrap())
 }
 
+#[cfg(feature = "challenge-tokens")]
+#[path = "age_assurance/challenge_tokens.rs"]
+mod challenge_tokens;
 #[path = "age_assurance/clock.rs"]
 mod clock;
 #[path = "age_assurance/contracts.rs"]
 mod contracts;
+#[path = "age_assurance/declaration.rs"]
+mod declaration;
 #[cfg(feature = "postgres")]
 #[path = "age_assurance/postgres/mod.rs"]
 mod postgres;

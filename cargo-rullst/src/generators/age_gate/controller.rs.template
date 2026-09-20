@@ -1,0 +1,120 @@
+//! Explicit declaration for this dashboard visit; never verified age.
+use rullst::server::{Extension, Form, HeaderMap, IntoResponse, Next, Request, Response, StatusCode};
+use rullst_privacy::age_assurance::{AgeChallenge, AgeClock, AgeDecision, AgeDeclaration, AgeError, AgeMethod, SystemAgeClock};
+use serde::Deserialize;
+use std::{sync::Arc, time::Duration};
+
+#[path = "age_gate/config.rs"]
+mod config;
+#[path = "age_gate/page.rs"]
+mod page;
+#[path = "age_gate/selection.rs"]
+mod selection;
+pub use selection::select_school;
+pub use config::AgeGateState;
+
+static STATE: tokio::sync::OnceCell<Arc<AgeGateState>> = tokio::sync::OnceCell::const_new();
+
+pub async fn initialize() -> Result<(), AgeError> {
+    state().await.map(|_| ())
+}
+
+async fn state() -> Result<Arc<AgeGateState>, AgeError> {
+    let loaded = tokio::time::timeout(Duration::from_secs(8), STATE.get_or_try_init(|| async {
+        AgeGateState::from_env().await.map(Arc::new)
+    })).await.map_err(|_| AgeError::StoreUnavailable)??;
+    Ok(Arc::clone(loaded))
+}
+
+/// Mounted inside authentication. Hot-reloaded libraries initialize their own
+/// pool against the same configured durable store and key epoch.
+pub async fn with_age_gate(mut request: Request, next: Next) -> Response {
+    let state = match state().await {
+        Ok(state) => state,
+        Err(_) => return unavailable(),
+    };
+    request.extensions_mut().insert(state);
+    no_store(next.run(request).await)
+}
+
+pub async fn show(
+    Extension(state): Extension<Arc<AgeGateState>>,
+    Extension(user_id): Extension<i32>,
+    school: Option<Extension<rullst::security::TenantContext>>,
+    Extension(csrf): Extension<rullst::security::CsrfToken>,
+    headers: HeaderMap,
+) -> Response {
+    let school = school.as_ref().map(|Extension(school)| school);
+    let binding = match state.binding(user_id, &headers, school) {
+        Ok(binding) => binding,
+        Err(_) => return denied(),
+    };
+    let action = match state.form_action(school) {
+        Ok(action) => action,
+        Err(_) => return denied(),
+    };
+    let issued = SystemAgeClock.now().and_then(|now| {
+        AgeChallenge::issue(&state.policy, binding, AgeMethod::SelfDeclaration, now)
+    });
+    let challenge = match issued {
+        Ok(challenge) => challenge,
+        Err(AgeError::MethodNotAllowed) => return denied(),
+        Err(_) => return unavailable(),
+    };
+    match state.tokens.seal(&challenge) {
+        Ok(token) => no_store(page::declaration(challenge.threshold(), &token, csrf.as_str(), &action).into_response()),
+        Err(_) => unavailable(),
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DeclarationForm {
+    challenge: String,
+    answer: AgeDeclaration,
+    // CSRF middleware validates the cookie/form pair before this handler.
+    _token: String,
+}
+
+pub async fn submit(
+    Extension(state): Extension<Arc<AgeGateState>>,
+    Extension(user_id): Extension<i32>,
+    school: Option<Extension<rullst::security::TenantContext>>,
+    csrf: Option<Extension<rullst::security::CsrfToken>>,
+    nonce: Option<Extension<rullst::security::CspNonce>>,
+    headers: HeaderMap,
+    Form(form): Form<DeclarationForm>,
+) -> Response {
+    let binding = match state.binding(user_id, &headers, school.as_ref().map(|Extension(school)| school)) {
+        Ok(binding) => binding,
+        Err(_) => return denied(),
+    };
+    let challenge = match state.tokens.open(&form.challenge, &state.policy, &binding) {
+        Ok(challenge) => challenge,
+        Err(_) => return denied(),
+    };
+    let assessment = tokio::time::timeout(Duration::from_secs(8), state.gate.assess(
+        &state.policy, &binding, &challenge, form.answer,
+    )).await;
+    match assessment {
+        Ok(Ok(result)) if result.decision() == AgeDecision::Allowed => {
+            no_store(super::auth_controller::dashboard(Extension(user_id), csrf, nonce).await)
+        }
+        Ok(Err(AgeError::StoreUnavailable | AgeError::StoreCapacity | AgeError::StoreConfiguration)) | Err(_) => unavailable(),
+        _ => denied(),
+    }
+}
+
+fn denied() -> Response {
+    no_store((StatusCode::FORBIDDEN, "This declaration cannot allow this visit. Return to the dashboard to start again, or contact the service for an appropriate alternative.").into_response())
+}
+
+fn unavailable() -> Response {
+    no_store((StatusCode::SERVICE_UNAVAILABLE, "Age declaration is temporarily unavailable. Please try again later.").into_response())
+}
+
+fn no_store(mut response: Response) -> Response {
+    response.headers_mut().insert(rullst::server::header::CACHE_CONTROL, rullst::server::HeaderValue::from_static("no-store"));
+    response.headers_mut().insert(rullst::server::header::REFERRER_POLICY, rullst::server::HeaderValue::from_static("no-referrer"));
+    response
+}

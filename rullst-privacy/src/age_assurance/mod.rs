@@ -4,7 +4,10 @@
 
 mod attestation;
 mod challenge;
+#[cfg(feature = "challenge-tokens")]
+mod challenge_tokens;
 mod clock;
+mod declaration;
 mod error;
 mod policy;
 #[cfg(feature = "postgres")]
@@ -16,7 +19,10 @@ mod verifier;
 
 pub use attestation::{AgeOutcome, TrustedIssuer, encode_attestation, signing_message};
 pub use challenge::{AgeChallenge, SubjectBinding};
+#[cfg(feature = "challenge-tokens")]
+pub use challenge_tokens::ChallengeTokens;
 pub use clock::{AgeClock, SystemAgeClock};
+pub use declaration::{AgeDeclaration, DeclarationGate};
 pub use error::AgeError;
 pub use policy::{AgeMethod, AgePolicy, RiskLevel};
 #[cfg(feature = "postgres")]

@@ -56,6 +56,7 @@ async fn shared_replay_contract() {
     lifecycle::bootstrap_and_runtime_role(&url, &mut database).await;
     lifecycle::signed_proof_concurrency_and_reopen(&url, &mut database).await;
     lifecycle::quota_expiry_and_clock(&url, &mut database).await;
+    lifecycle::native_and_signed_declarations(&url, &mut database).await;
     clock_wait::recheck_after_locked_storage(&url, &mut database).await;
     failures::schema_and_metadata_drift(&url, &mut database).await;
     failures::atomic_failure_and_cancellation(&url, &mut database).await;

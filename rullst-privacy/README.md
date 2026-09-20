@@ -1,18 +1,103 @@
 # rullst-privacy
 
-Unpublished v13 foundation for proportional age assurance. This package is a
+Unpublished v13 foundation for proportional age assurance and optional consent. This package is a
 workspace member with `publish = false`; it is not part of the v12 release
 inventory or the default `rullst` dependency graph.
 
-Enable `age-assurance` to use the current contract. No feature is enabled by
-default. Broader consent, rights-request, retention and regional-policy support
+Enable `age-assurance` for age checks or `consent` for independent purpose-bound
+choices. No feature is enabled by default. Broader rights-request, retention and regional-policy support
 is tracked in the [privacy roadmap](../docs/src/privacy-age-assurance-roadmap.md).
+
+## Optional-processing consent
+
+The v13 CLI's explicit
+[`make:privacy` consumer](../docs/src/cli_reference.md#cargo-rullst-makeprivacy-unpublished-v13-preview)
+composes these controls with the recognized SaaS/full LMS authentication and
+school membership. It supplies preferences, an optional personalized greeting,
+and an independent direct JSON export of only the current account's ID, name
+and email. It is a preview requiring the matching unpublished source path;
+the generated `PRIVACY.md` specifies setup and remaining application duties.
+
+The independent `consent` feature provides typed purpose/notice versions,
+authenticated subject/tenant bindings, explicit grant/refusal/withdrawal and a
+static-dispatch store contract. It has no age, crypto, database or Core dependency.
+This is an engineering control for optional processing, not a selection of its
+lawful basis, guardian authority or a certificate of worldwide compliance.
+
+- No record, refusal, withdrawal, expiry or a different notice version denies
+  processing. The operator must not reuse retired notice versions.
+- `ConsentSubmission` carries the purpose/version actually displayed and the
+  revision shown in that form. A new notice requires a new explicit choice even
+  when the stored revision has not changed.
+- `choose` compares that revision atomically. `withdraw` advances it without a
+  stale-form precondition and covers the same purpose across versions. A delayed
+  affirmative response cannot undo an acknowledged withdrawal. A fresh explicit
+  choice can grant again.
+- `allows` reads authoritative state for each processing action. Deferred jobs
+  must check again at execution; a queued job is not lasting permission. The
+  check linearizes at the store read and cannot cancel an already-started external
+  effect. Stronger atomicity between consent and domain effects belongs to the
+  application's transaction/processor contract.
+- Grant expiry is an explicit server choice, bounded to at most 365 days as an
+  engineering limit. It is not a legal retention period or a default grant.
+  Clock checks reject rollback and expiry during storage; stores retain a clock
+  high-water mark. Records and debug output do not expose application profiles.
+
+`ConsentGate::new` requires shared durable state. `MemoryConsentStore` is bounded
+development-only storage, accepted by `for_development`. The `consent-sqlite`
+feature supplies `SqliteConsentStore` without enabling age assurance. Deployment
+initializes a **new** file once with `initialize`; application startup uses
+`open`, which never creates or repairs missing state. It uses a private bounded
+pool, WAL/full synchronization, serialized reads/revision updates, an immutable
+quota and persistent clock checks. All application processes must use the same
+trusted local file. The stored scope digest remains pseudonymous personal data.
+
+Withdrawals and expired records are not evicted to make space. Choose capacity
+for the number of subject/tenant/purpose combinations. The operator owns a
+trusted directory, permissions, synchronized time, storage durability and an
+application-level timeout. Remote filesystems and multi-host replication are
+unsupported. A stale backup can restore old grants: stop optional processing,
+restore/reconcile withdrawals and move every active purpose to a fresh notice
+version before resuming. No automatic erasure or backup rollback detection is
+claimed. A failed/cancelled bootstrap may leave a partial file for explicit
+operator recovery; normal startup must not remove it.
+
+```rust,no_run
+# #[cfg(feature = "consent-sqlite")]
+# async fn example() -> Result<(), rullst_privacy::consent::ConsentError> {
+use rullst_privacy::consent::*;
+let store = SqliteConsentStore::open("private/consent.sqlite3", 10_000).await?;
+let gate = ConsentGate::new(store)?;
+// Resolve these opaque references from authenticated server state.
+let subject = ConsentSubject::new("account-ref", "tenant-ref")?;
+let purpose = ConsentPurpose::new("optional-digest", "notice-v1")?;
+// Render the exact notice and current revision before accepting an explicit
+// response. Enforce authentication/CSRF and read the displayed version from it.
+let current = gate.current(&subject, &purpose).await?;
+let response = ConsentSubmission::new(purpose.clone(), current.revision(), ConsentChoice::Granted)?;
+let expiry = SystemConsentClock.now()?.checked_add(3600).ok_or(ConsentError::InvalidConfiguration)?;
+gate.choose(&subject, &purpose, &response, expiry).await?;
+if gate.allows(&subject, &purpose).await? {
+    // Perform this one optional action under ordinary authorization too.
+}
+gate.withdraw(&subject, &purpose).await?;
+# Ok(())
+# }
+```
+
+The crate-level contracts and local storage tests do not yet constitute an
+authenticated generated preferences/rights journey or deployed acceptance.
 
 ## Current boundary
 
 - Server-owned risk policies, age thresholds and method-specific challenges.
+- Native first-party declarations through `DeclarationGate`, without an external
+  issuer; an affirmative answer remains `Assurance::Declared` and cannot satisfy
+  a stronger method or policy.
 - Random, expiring challenges bound to opaque subject, tenant, session, audience
   and action references, including the complete policy configuration.
+- Opt-in authenticated challenge transport with bounded HMAC-SHA256 keys and
+  explicit rotation, for restoring challenges on another application instance.
 - At-most-4-KiB versioned JSON attestations, Ed25519 signatures, explicit issuer
   capabilities and up to eight pinned keys for rotation.
 - Declared, estimated, verified-attribute and offline-mock assurance remain
@@ -75,6 +160,101 @@ instances, retain claims until expiry, reject uncertain commits and prevent
 rollback from resurrecting consumed claims. The durability enum is an adapter
 contract, not an automatic assessment of its implementation. No production
 provider deployment evidence is claimed for this crate yet.
+
+## Native first-party declarations
+
+`DeclarationGate` processes an explicit authenticated `AgeDeclaration` when the
+server's policy allows `SelfDeclaration`. It needs no external issuer or signing
+key for that answer. Retain the server-issued challenge and resolve the current
+authenticated binding again on submission; never substitute client JSON for
+either. The host must protect the endpoint with CSRF and request limits.
+
+```rust,no_run
+# #[cfg(feature = "sqlite")]
+# async fn declared_age(
+#     policy: &rullst_privacy::age_assurance::AgePolicy,
+#     binding: &rullst_privacy::age_assurance::SubjectBinding,
+#     retained: &rullst_privacy::age_assurance::AgeChallenge,
+#     answer: rullst_privacy::age_assurance::AgeDeclaration,
+# ) -> Result<(), rullst_privacy::age_assurance::AgeError> {
+use rullst_privacy::age_assurance::{AgeDecision, DeclarationGate, SqliteReplayStore};
+
+let store = SqliteReplayStore::open("/private/app/age-replay.sqlite", 10_000).await?;
+let gate = DeclarationGate::new(store)?;
+let assessment = gate.assess(policy, binding, retained, answer).await?;
+if assessment.decision() == AgeDecision::Allowed {
+    // Execute only the action authorized by this current authenticated context.
+}
+# Ok(())
+# }
+```
+
+Create and reuse the store/gate at application startup. The example accepts the
+policy, binding and retained challenge from trusted server state, and the answer
+from an explicit user choice. `MeetsThreshold` may allow the action;
+`BelowThreshold` denies it; `Declined` requires an appropriate alternative.
+Every accepted answer consumes the challenge, including negative or declined
+answers. Missing or unknown values are not affirmative declarations.
+
+Production rejects process-local replay state; both SQLite and PostgreSQL can
+be used within their documented deployment boundaries. Signed and native paths
+share the same replay namespace. Changing paths cannot consume one challenge
+twice. The result is always `Assurance::Declared`, never estimated or verified
+age. Stronger-method challenges are rejected even if the browser sends an
+affirmative declaration. The gate alone does not supply an authenticated web
+journey; optional challenge transport is described below.
+
+## Authenticated challenge transport
+
+Enable `challenge-tokens` to return a server-issued challenge through a browser
+form or between trusted application instances. `ChallengeTokens` authenticates
+the version, key identifier and exact payload with HMAC-SHA256 before decoding
+JSON, then validates the current policy, authenticated binding and server clock.
+It rejects unknown keys, extra fields, changed lifetime and oversized tokens.
+The token limit is 8 KiB and the decoded challenge limit is 4 KiB.
+
+```rust,no_run
+# #[cfg(feature = "challenge-tokens")]
+# fn transport(
+#     secret_from_key_manager: &[u8],
+#     policy: &rullst_privacy::age_assurance::AgePolicy,
+#     authenticated_binding: &rullst_privacy::age_assurance::SubjectBinding,
+#     challenge: &rullst_privacy::age_assurance::AgeChallenge,
+# ) -> Result<(), rullst_privacy::age_assurance::AgeError> {
+use rullst_privacy::age_assurance::ChallengeTokens;
+
+let tokens = ChallengeTokens::new("epoch-2", secret_from_key_manager)?;
+let form_token = tokens.seal(challenge)?;
+// On submission, resolve the current authenticated binding again on the server.
+let retained = tokens.open(&form_token, policy, authenticated_binding)?;
+// Pass retained to DeclarationGate::assess or AgeVerifier::verify and await it.
+# let _ = retained;
+# Ok(())
+# }
+```
+
+Provision an independent high-entropy 32-byte secret shared only by trusted
+application instances. `with_previous_key` accepts at most seven historical
+verification keys alongside the active key; omit retired keys from the next
+configuration. There is no default secret, online discovery or client-selected
+algorithm. Opening a token neither consumes its nonce nor grants permission.
+The gate/verifier must still consume it through the shared durable replay store.
+
+Tokens are authenticated, **not encrypted**. Use opaque pairwise references;
+never include raw cookies, email addresses or document numbers. Protect the
+form with authentication, CSRF, TLS, request limits and no-store responses, and
+keep tokens out of URLs and logs. A changed policy or session invalidates the
+old challenge. No external age provider is required for this transport.
+
+The v13 CLI preview supplies an optional
+[`make:age-gate` SaaS/LMS consumers](../docs/src/cli_reference.md#cargo-rullst-makeage-gate-unpublished-v13-preview).
+It mounts a declaration before the existing authenticated dashboard rendering,
+with explicit server policy, CSRF and durable one-use consumption. It requires
+this unpublished source until package admission. The LMS profile binds the
+school resolved by current authenticated membership; changing school invalidates
+the challenge, and a declaration changes no guardian or subject-age record.
+Other app actions and stronger
+assurance methods retain their own authorization/integration requirements.
 
 ## Shared-local replay storage
 

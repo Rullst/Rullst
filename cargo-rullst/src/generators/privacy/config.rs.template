@@ -1,0 +1,37 @@
+use rullst_privacy::consent::{ConsentError, ConsentGate, ConsentPurpose, ConsentSubject, SqliteConsentStore};
+use super::proof::ProofKey;
+
+pub(super) const FIXED_TENANT: Option<&str> = __TENANT_CONFIG__;
+pub(super) const PURPOSE_ID: &str = "personalized-greeting";
+pub(super) const NOTICE_VERSION: &str = __NOTICE_VERSION__;
+pub(super) const VALIDITY_SECONDS: i64 = __VALIDITY_SECONDS__;
+
+pub struct PrivacyState {
+    pub(super) gate: ConsentGate<SqliteConsentStore>,
+    pub(super) purpose: ConsentPurpose,
+    pub(super) proof: ProofKey,
+}
+
+impl PrivacyState {
+    pub(super) async fn from_env() -> Result<Self, ConsentError> {
+        let proof = ProofKey::from_env()?;
+        let database = std::env::var_os("RULLST_PRIVACY_DATABASE")
+            .filter(|value| !value.is_empty()).ok_or(ConsentError::InvalidConfiguration)?;
+        let store = SqliteConsentStore::open(std::path::Path::new(&database), 10_000).await?;
+        Ok(Self { gate: ConsentGate::new(store)?, purpose: ConsentPurpose::new(PURPOSE_ID, NOTICE_VERSION)?, proof })
+    }
+}
+
+pub(super) fn subject(user_id: i32, school: Option<&rullst::security::TenantContext>) -> Result<ConsentSubject, ConsentError> {
+    if user_id <= 0 { return Err(ConsentError::BindingMismatch); }
+    let tenant = match (FIXED_TENANT, school) {
+        (Some(tenant), None) => tenant,
+        (None, Some(school)) => &school.tenant_id,
+        _ => return Err(ConsentError::BindingMismatch),
+    };
+    ConsentSubject::new(user_id.to_string(), tenant)
+}
+
+pub(super) fn url(path: &str, subject: &ConsentSubject) -> String {
+    if FIXED_TENANT.is_some() { path.to_owned() } else { format!("{path}?school={}", subject.tenant_ref()) }
+}

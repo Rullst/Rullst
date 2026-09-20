@@ -81,6 +81,13 @@ uses Rullst identity, challenge, score and receipt contracts.
 
 ### v13 privacy and age-assurance boundary
 
+Core and Security header layers share `apply_referrer_policy`: a response that
+explicitly supplies a canonical `no-referrer` value retains that restriction
+through composition, normalized to one header even if duplicate values exist.
+Other values are replaced by the layer's configured policy; missing/invalid
+optional Security configuration retains its existing behavior. This narrow rule
+does not attempt to order every Referrer-Policy value or weaken other headers.
+
 `rullst-privacy` is an opt-in, unpublished v13 package. Its initial
 `age-assurance` feature owns bounded risk policies, server-issued challenges,
 minimal signed age attestations, explicit decisions and replay-store contracts.
@@ -139,6 +146,120 @@ follow-up work. Neither an absent provider nor a failed check may downgrade the
 required assurance or make a declaration authorize a stronger-policy action.
 Publication of the privacy package still requires explicit acceptance of its
 advertised API, durable state, consumer behavior and release configuration.
+
+The native `DeclarationGate` contract processes an authenticated first-party
+`AgeDeclaration` without requiring an external issuer or a signing key for the
+declaration itself. It accepts only a retained server-issued `SelfDeclaration`
+challenge under the exact current policy and tenant/subject/session/action
+binding. It shares the signed verifier's durable one-use claim and post-storage
+expiry/clock checks. An affirmative answer can return only `Assurance::Declared`;
+negative or declined answers deny the operation. An estimated/verified method
+or stronger policy cannot be downgraded through this entry point. The host owns
+authentication, CSRF protection, explicit user choice and trusted challenge
+retention/transport. This contract is not a determination of the person's age.
+
+The optional `challenge-tokens` transport uses a bounded, versioned,
+HMAC-SHA256-authenticated server challenge with an explicit active key and at
+most seven previous verification keys. It authenticates the version, key ID and
+exact encoded payload before decoding challenge JSON. Opening revalidates the
+current policy, authenticated binding, clock and exact configured lifetime.
+There is no client-supplied algorithm or key discovery. Tokens contain only the
+existing opaque challenge references and are authenticated, not encrypted;
+applications must not put cookies, email addresses or document numbers into
+those references. A token restores a server-issued challenge, never an age
+decision or an authorization grant. Production still consumes its nonce in the
+shared durable replay store. The host owns independent secret provisioning,
+rotation/retirement, TLS, CSRF and endpoint limits; no external age provider is
+needed for this transport.
+
+The v13 `make:age-gate` consumer is an explicit opt-in for recognized SaaS and full
+LMS starters. It protects the existing dashboard action with an authenticated GET
+challenge and POST declaration; it never sets a reusable age-verified account
+flag. Both routes retain the starter's authentication, CSRF, headers and Server
+baseline. Policy version and threshold are chosen explicitly at generation time;
+the SaaS profile also requires its fixed application tenant. Low-assurance
+declarations are identified as such. Opaque
+binding references are domain-separated keyed digests of server-resolved user,
+tenant and authenticated session, never request-supplied identities. Application
+keys and replay storage are mandatory; initialization, timeout, stale context or
+unknown/negative answers cannot grant access. SQLite and PostgreSQL are explicit
+profiles with their existing deployment obligations. Generation refuses unknown
+or already-modified route shapes before writing. Until privacy release admission,
+this command requires an explicitly supplied matching unpublished privacy source;
+it must not emit an unavailable registry dependency. Other blueprint adapters,
+provider flows, persistent age permissions and deployed browser acceptance remain
+separate work.
+
+The extension of this same generator to the full LMS starter uses
+the authenticated `TenantContext` produced by active school-membership resolution.
+For the dashboard only, a bounded `school` query value may act as a selection
+hint before the existing authentication middleware. It is never authorization:
+unknown/conflicting selections, inactive membership and ambiguous selection fail
+closed. The existing policy may select an explicitly stored default school.
+The form action carries the already-resolved school selection, allowing
+ordinary browser submission without a custom header. The challenge binds the
+resolved school, user and session again on POST. The declaration does not update
+the existing subject age band or guardian-consent records, and the age-state
+middleware is not mounted around unrelated learning actions. The generated local
+contract exercises cross-school/user denial, selector ambiguity/conflicts,
+ordinary form submission, replay and membership revocation between issuance and
+submission. Hosted and deployed-browser acceptance remain separate.
+
+The v13 fuzz inventory adds two isolated privacy targets for authenticated
+challenge transport and signed attestations. Deterministic fuzz-only keys permit
+mutation beyond signature validation; assertions bind accepted results to the
+current context, assurance and one-use replay contract. These targets enable no
+database or network integration. They expand v13's required inventory to 42;
+the immutable v12 release line retains 40. Short diagnostics are not full release
+evidence, and the durable database lifecycle keeps its separate acceptance gates.
+
+The unpublished `consent` contract is independent of age assurance and concerns only
+optional processing that the operator has assigned to an explicit purpose and
+notice version. Absence, refusal, withdrawal, version mismatch and expiry deny
+processing. An affirmative choice uses the exact observed revision; withdrawal
+atomically advances that revision even when its form is stale, preventing an
+earlier affirmative form from undoing it. The authenticated subject and tenant
+are server-owned inputs, never browser identity fields. The explicit submission
+also binds the displayed purpose/notice version to current server configuration,
+so a policy change cannot borrow an old form's unchanged revision. A bounded store must
+serialize reads/updates against a persisted clock high-water mark and preserve
+withdrawal tombstones; production rejects process-local state. Permission must
+be checked immediately before each processing action, including deferred jobs.
+Already-started external effects are not cancelled retroactively by a later
+withdrawal, and consent does not authorize essential processing or establish
+age/guardian authority. The optional `consent-sqlite` adapter initializes a new
+local file explicitly; ordinary opening never creates or repairs missing state.
+It serializes reads/updates with `BEGIN IMMEDIATE`, WAL/full synchronization,
+a bounded private pool, immutable quota and persisted clock metadata. It retains
+scope digests, latest choices/versions/revisions and timestamps, without raw
+subject IDs. Those digests are pseudonymous data. Expired records and withdrawal
+tombstones are never evicted to create capacity. All processes must use that same
+trusted local file; multi-host replication is unsupported. Restoring stale state
+requires quiesced processing, reconciled withdrawals and fresh purpose versions.
+Deployment retention/restore review and hosted acceptance remain required
+before release admission.
+
+The opt-in `make:privacy` consumer mounts authenticated preferences,
+an explicitly optional personalized greeting and an own-account JSON export
+inside the starter's existing CSRF/header/security boundary. It composes
+with the age consumer while preserving both consumers' dependency features.
+Choice forms bind the displayed notice/version and current revision, with a
+bounded expiring HMAC proof tied to the authenticated account, tenant and session;
+an old tab cannot apply a choice after switching accounts or sessions. Identity
+comes only from the authenticated user and, for LMS, active school membership.
+The export projects only account ID, name and email with explicit output bounds;
+it exposes no credential fields, produces no public artifact and does not mark
+broader queued rights requests as fulfilled. Its direct private response needs no
+retained export file and remains independent of optional-consent storage
+availability. Refusal/withdrawal changes the next greeting to generic content.
+Local materialized SaaS/full LMS fixtures cover both age/privacy installation
+orders, real authenticated profile queries, explicit choices, withdrawal/stale
+forms, session/account/school changes, CSRF, expiry, bounded input and missing or
+failed state. A normal SaaS using PostgreSQL as its primary database compiles;
+this is not live PostgreSQL consumer or browser/deployment acceptance. Bootstrap
+explicitly initializes a new private consent file; ordinary opening never
+recreates it. The generated consent profile remains shared-local SQLite only.
+
 The separate [SaaS triage](saas-v12-1-v13-triage.md) assigns the examples' reported
 defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidence.
 

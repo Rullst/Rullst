@@ -73,6 +73,8 @@
         "Fuzz campaign evidence boundary",
         "Fuzz config_parser",
         "Fuzz default_target",
+        "Fuzz fuzz_age_attestation",
+        "Fuzz fuzz_age_challenge_token",
         "Fuzz fuzz_ai_tools",
         "Fuzz fuzz_anomaly",
         "Fuzz fuzz_audit",

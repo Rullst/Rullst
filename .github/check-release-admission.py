@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, NoReturn
 
-from release_line import policy_line
+from release_line import FUZZ_TARGET_COUNTS, policy_line
 
 
 SHA = re.compile(r"[0-9A-Fa-f]{40}")
@@ -61,7 +61,7 @@ def load_object(path: Path) -> dict[str, Any]:
 
 def validate_policy(policy: dict[str, Any]) -> tuple[str, list[WorkflowRequirement]]:
     try:
-        _, branch = policy_line(policy)
+        major, branch = policy_line(policy)
     except ValueError as error:
         fail(str(error))
     workflows = policy.get("workflows")
@@ -105,11 +105,11 @@ def validate_policy(policy: dict[str, Any]) -> tuple[str, list[WorkflowRequireme
                 if job.startswith("Fuzz ") and job != evidence_job
             ]
             if (
-                len(fuzz_jobs) != 40
+                len(fuzz_jobs) != FUZZ_TARGET_COUNTS[major]
                 or evidence_job not in required_jobs
             ):
                 fail(
-                    "fuzzing.yml must require all 40 target jobs and the evidence boundary"
+                    f"fuzzing.yml must require all {FUZZ_TARGET_COUNTS[major]} target jobs and the evidence boundary"
                 )
         seen.add(workflow)
         requirements.append(

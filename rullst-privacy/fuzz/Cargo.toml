@@ -1,0 +1,30 @@
+[package]
+name = "rullst-privacy-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+members = ["."]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+rullst-privacy = { path = "..", features = ["challenge-tokens"] }
+base64 = "0.23.1"
+ring = "0.17.14"
+serde_json = "1.0"
+
+[[bin]]
+name = "fuzz_age_challenge_token"
+path = "fuzz_targets/fuzz_age_challenge_token.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_age_attestation"
+path = "fuzz_targets/fuzz_age_attestation.rs"
+test = false
+doc = false

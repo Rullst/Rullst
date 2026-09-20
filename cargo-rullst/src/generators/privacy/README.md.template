@@ -1,0 +1,86 @@
+# Authenticated privacy consumer — v13 preview
+
+This opt-in consumer adds `/privacy` preferences, `/privacy/personalization`
+and `/privacy/export`. It supports the recognized SaaS or full LMS starter and
+composes with `make:age-gate` in either installation order. Custom authentication,
+unknown privacy dependencies, ambiguous routes and existing output files need
+manual review. Until publication admission, the dependency uses the matching
+unpublished source path supplied explicitly to the generator.
+
+## Configure and initialize
+
+Provision `RULLST_PRIVACY_FORM_KEY_HEX` as an independent random 32-byte secret
+encoded as 64 hexadecimal characters, shared only by trusted app processes.
+Do not reuse a session, age or provider key. Rotating this secret invalidates
+open forms; it does not change recorded choices. Never commit real secrets.
+
+Set `RULLST_PRIVACY_DATABASE` to a new file in an existing private local directory.
+All app processes must use that same file. Initialize it once from the project,
+with the variable exported into the process environment:
+
+```sh
+cargo run --bin privacy-init
+```
+
+Initialization refuses existing files; application startup never repairs or
+recreates consent state. A failed/cancelled bootstrap may leave a partial file
+for explicit operator inspection. Ordinary `cargo run` still selects the main
+application binary. The generated store has a 10,000 subject/tenant/purpose quota;
+plan capacity explicitly before deployment. Expired choices and withdrawals are
+not evicted automatically. This shared-local SQLite profile is not multi-host
+replication and must not use a network filesystem.
+
+Preferences and personalization fail closed when their state or form key is
+unavailable. The authenticated account export does not depend on either one.
+Each operation has a bounded wait. Keep the starter's authentication, CSRF,
+security headers and production Server baseline, and deploy behind HTTPS.
+
+## Meaning of the choice
+
+The only purpose installed here is `personalized-greeting`: allowing this page
+to use the account name for its optional greeting. It defaults to generic text.
+This is not email marketing, analytics or permission for another processing
+purpose. The operator selects the displayed notice version and grant lifetime
+explicitly; the engineering lifetime cap is 365 days, not a legal retention rule.
+
+The form binds its notice/version, revision, authenticated account, tenant and
+session with an expiring HMAC proof. A switched account/session, changed school,
+tampered or expired form cannot apply an old choice. The LMS school selector is
+only a hint; current active membership is checked again before every request.
+Use `/privacy?school=...` when membership requires explicit selection. Form and
+download links retain the school selection for ordinary browser navigation.
+
+Refusal/withdrawal makes the next greeting generic. A stale positive form cannot
+undo a completed withdrawal, and a new notice requires a new explicit choice.
+The check reads authoritative state before this optional action. Any deferred
+integration you add must check again when its job executes. In-flight external
+effects are not cancelled retroactively; stronger domain atomicity needs an
+application transaction/processor contract. Authentication itself remains a
+separate processing purpose and uses the starter's existing account lookup.
+
+## Account-profile export
+
+The concrete SQL adapter projects only the authenticated account's ID, name and
+email. It has no caller-selected account ID and never returns credential fields.
+Fields and JSON output are bounded. The response is a private JSON attachment,
+with no-store/no-referrer headers; no public or retained export file is created.
+The framework cannot remove a file after the user downloads it.
+
+This is an **account-profile-only** export. It does not export learning progress,
+subscriptions, billing, messages, guardian records, backups or processor copies,
+and it never marks an existing queued privacy request as fulfilled. Add explicit
+authorized adapters for those scopes before claiming a broader rights workflow.
+
+## Operations and remaining responsibilities
+
+Add a clearly visible link to preferences and the export in your application
+navigation. Complete the operator's data inventory, lawful-basis assessment,
+notices, retention/hold policy, broader rights adapters and support channel.
+This consumer does not certify automatic worldwide compliance or age/guardianship.
+
+Scope digests in the consent store are pseudonymous personal data. The operator
+owns file permissions, synchronized clocks, durable storage and backup policy.
+Before restoring older state, stop optional processing, reconcile withdrawals
+and move all active purposes to fresh notice versions; old grants must not
+silently resume. Never reuse retired versions. This consumer does not claim
+automatic backup rollback detection or erasure of historical copies.

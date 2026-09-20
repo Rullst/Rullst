@@ -6,7 +6,7 @@ use axum::{
     http::{HeaderMap, HeaderName, HeaderValue, Request, Response, header},
 };
 pub use rullst_core::security::CspNonce;
-use rullst_core::security::render_csp_policy;
+use rullst_core::security::{apply_referrer_policy, render_csp_policy};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -168,11 +168,11 @@ where
                 header::X_CONTENT_TYPE_OPTIONS,
                 config.content_type_options.as_ref(),
             );
-            insert_configured_header(
-                headers,
-                header::REFERRER_POLICY,
-                config.referrer_policy.as_ref(),
-            );
+            if let Some(value) = config.referrer_policy.as_ref()
+                && let Ok(value) = HeaderValue::from_str(value)
+            {
+                apply_referrer_policy(headers, value);
+            }
             insert_configured_header(
                 headers,
                 HeaderName::from_static("permissions-policy"),

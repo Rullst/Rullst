@@ -1,0 +1,38 @@
+//! A school selector is only a hint; the existing middleware authorizes membership.
+use rullst::server::{HeaderValue, Next, Query, Request, Response};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SchoolSelection { school: Option<String> }
+
+pub(super) fn valid_school(value: &str) -> bool {
+    !value.is_empty() && value.len() <= 128 && value.bytes().all(|byte| {
+        byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':')
+    })
+}
+
+/// Used only on the LMS dashboard, outside the existing authentication layer.
+pub async fn select_school(mut request: Request, next: Next) -> Response {
+    if request.uri().query().is_some_and(|query| query.len() > 512) {
+        return super::denied();
+    }
+    let Ok(Query(selection)) = Query::<SchoolSelection>::try_from_uri(request.uri()) else {
+        return super::denied();
+    };
+    if request.headers().get_all("x-school-id").iter().count() > 1 {
+        return super::denied();
+    }
+    if let Some(school) = selection.school {
+        if !valid_school(&school) { return super::denied(); }
+        if let Some(existing) = request.headers().get("x-school-id")
+            && existing.to_str().ok() != Some(school.as_str()) {
+            return super::denied();
+        }
+        let Ok(header) = HeaderValue::from_str(&school) else { return super::denied(); };
+        request.headers_mut().insert("x-school-id", header);
+    }
+    // This never creates a UserContext or TenantContext. The next middleware
+    // resolves the active authenticated membership before issuing either one.
+    next.run(request).await
+}

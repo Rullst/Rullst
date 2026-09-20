@@ -59,7 +59,7 @@ class ReleaseAdmissionTests(unittest.TestCase):
         self.assertEqual(result, 0)
         verifier.assert_called_once()
         self.assertEqual(verifier.call_args.args[:4], ("Rullst/Rullst", SHA, "fixture", "https://api.github.com"))
-        self.assertEqual(len(verifier.call_args.args[4]), 41)
+        self.assertEqual(len(verifier.call_args.args[4]), 43)
         result, _ = self.exercise_candidate(False)
         self.assertEqual(result, 1)
 
@@ -236,6 +236,17 @@ class ReleaseAdmissionTests(unittest.TestCase):
                 ["audit.yml", *(item["workflow"] for item in manual_gates)]
             ),
         )
+
+    def test_v13_policy_requires_both_additional_privacy_targets(self):
+        policy = MODULE.load_object(SCRIPT.parent / "release-required-workflows.json")
+        branch, _ = MODULE.validate_policy(policy)
+        self.assertEqual(branch, "v13")
+        fuzz = next(item for item in policy["workflows"] if item["workflow"] == "fuzzing.yml")
+        for target in ("Fuzz fuzz_age_challenge_token", "Fuzz fuzz_age_attestation"):
+            fuzz["required_jobs"].remove(target)
+            with self.assertRaisesRegex(SystemExit, "all 42 target jobs"):
+                MODULE.validate_policy(policy)
+            fuzz["required_jobs"].append(target)
 
 
 if __name__ == "__main__":

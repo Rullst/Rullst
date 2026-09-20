@@ -147,3 +147,42 @@ pub(super) async fn quota_expiry_and_clock(url: &str, database: &mut PgConnectio
     );
     reopened.close().await;
 }
+
+pub(super) async fn native_and_signed_declarations(url: &str, database: &mut PgConnection) {
+    reset(database).await;
+    let first = PostgresReplayStore::initialize(url, 10).await.unwrap();
+    let second = PostgresReplayStore::connect(url, 10).await.unwrap();
+    let policy = AgePolicy::new("native-declaration", RiskLevel::Low, 18).unwrap();
+    let challenge =
+        AgeChallenge::issue(&policy, binding(), AgeMethod::SelfDeclaration, 1000).unwrap();
+    let gate = DeclarationGate::new(first.clone()).unwrap();
+    let assessment = gate
+        .assess_with_clock(
+            &policy,
+            &binding(),
+            &challenge,
+            AgeDeclaration::MeetsThreshold,
+            &FixedClock(1001),
+        )
+        .await
+        .unwrap();
+    assert_eq!(assessment.assurance(), Assurance::Declared);
+    assert_eq!(assessment.decision(), AgeDecision::Allowed);
+    let verifier = AgeVerifier::new(issuer(), second.clone()).unwrap();
+    let (payload, signature) = signed(&challenge, AgeOutcome::MeetsThreshold);
+    assert_eq!(
+        verifier
+            .verify_with_clock(
+                &policy,
+                &binding(),
+                &challenge,
+                &payload,
+                &signature,
+                &FixedClock(1001)
+            )
+            .await,
+        Err(AgeError::Replay)
+    );
+    first.close().await;
+    second.close().await;
+}
