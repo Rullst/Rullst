@@ -13,10 +13,17 @@ provider-independent privacy foundation, optional external integrations, and a
 local facial engine as follow-up work. This does not make declarations into
 verified attributes or permit incomplete higher-assurance checks in production.
 
-The next implementation sequence is:
+The privacy decision sets the first required product journey. The broader
+execution queue below was reconciled with the master roadmap on 20 September
+after the owner asked for more of the planned v13 capabilities. Privacy,
+migration and release preparation are the minimum priorities, not a ceiling
+on useful implementation during the active sessions.
 
-1. Admit the v12.1 closeout and v13 integration after their existing hosted checks
-   pass; retain applicable stable corrections and keep mutation findings visible.
+The prioritized implementation sequence is:
+
+1. Retain the admitted v12.1 closeout and admit the v13 integration after its
+   existing hosted checks pass; carry applicable stable corrections and keep
+   mutation findings visible.
 2. Add optional PostgreSQL replay storage for multiple application hosts, with
    real-database concurrency, quota, expiry, unavailable-state and rollback tests.
    Keep SQLite's shared-local boundary explicit.
@@ -27,9 +34,16 @@ The next implementation sequence is:
 4. Implement purpose/version choices, effective withdrawal of optional processing
    and one scoped rights workflow that actually exports or erases application
    data. Test ownership, cross-tenant denial, retention and restore boundaries.
-5. Inventory the actual 12.1-to-13 compatibility changes, implement the supported
-   migration rules and exercise generated consumers, stale inputs and recovery.
-6. Improve the documentation and bounded generated project context for the
+5. Extend the product queue with server-side SaaS plan entitlements, a typed API
+   contract with its first TypeScript consumer, and CLI verification of signed
+   Android artifacts. Their bounded acceptance requirements appear below.
+   Resolve their SST/API decisions before implementation; none is shipped merely
+   by appearing in this plan. Independent work can advance while hosted checks
+   run, without launching duplicate campaigns for unchanged inputs.
+6. Inventory the actual 12.1-to-13 compatibility changes as each feature lands,
+   implement the supported migration rules and exercise generated consumers,
+   stale inputs and recovery.
+7. Improve the documentation and bounded generated project context for the
    delivered scope. Attempt the small production-linked Verus pilot only after
    the mandatory feature work is ready for its verification campaign.
 
@@ -44,6 +58,11 @@ its scoped consumer/state/API and release admission criteria pass.
 
 - All sixteen v12.1.0 packages are published from `b62390b4`; the
   [release record](v12.md#1210-published-maintenance-release) retains their receipt.
+- The post-release closeout in
+  [PR #217](https://github.com/Rullst/Rullst/pull/217) merged into `main` at
+  `184bc1f7` on 20 September UTC, after 84 successful checks and three skips.
+  It records publication, repairs mutation discovery and corrects the SemVer
+  baseline resolver; the published source and artifacts remain unchanged.
 - The integration candidate carries that exact published runtime source into
   v13, preserving the unpublished privacy crate and Labs/Verus plans. The
   combined source needs fresh CI; the v12.1.0 results do not certify v13.
@@ -73,6 +92,9 @@ its scoped consumer/state/API and release admission criteria pass.
 | P0 | Usable proportional age-assurance boundary | SQLite shared-local and PostgreSQL multi-host replay protection, authenticated tenant/session/action binding, a first-party declaration journey only where policy permits it, explicit method strength and fail-closed outage/expiry/replay behavior. Production must reject mocks, process-local state and unsupported stronger methods. |
 | P0 | First complete privacy journey in a generated consumer | Explicit purpose/version choices, withdrawal enforced on subsequent optional processing, one authorized rights workflow with actual adapter effects, tenant isolation and documented retention/restore boundaries. Do not count a request row as completed export or erasure. |
 | P0 | Safe 12.1→13 adoption | Inventory actual compatibility changes, implement only supported migration rules, run generated SaaS/LMS consumer fixtures and prove review, stale-input rejection and recovery. A major-version flag alone is not a migration. |
+| P1 | Server-side SaaS plan entitlements | A typed authorization gate bound to authenticated tenant, subject, feature and validity, consumed by a generated SaaS route. Deny expired/revoked or cross-tenant grants. Payment redirects, mock results and unverified events must never grant access. Keep subscription reconciliation explicit. |
+| P1 | Typed API and first TypeScript consumer | One explicit schema source for a bounded supported set of request/response shapes, parameters and errors; compile and execute a generated consumer against its server fixture. Prove nullability, serialization, error handling and denied access; reject unsupported schema shapes rather than emitting guessed types. |
+| P1 | Android artifact verification through the CLI | Select the intended release output, run signature verification and bind the signer to the application-owned certificate. Reject missing, ambiguous, stale, unsigned or wrong-key artifacts; test process failures and redaction. Validate a real generated APK in hosted Android CI; device/store acceptance remains separate. |
 | P1 | Better application context for maintainers and assistants | Accurate generated `AGENTS.md`, a bounded deterministic project map, configuration key names without values, explicit file/secret exclusions, freshness information and executable regression fixtures. |
 | P1 | Focused Verus pilot | One production age-policy property with checked linkage, pinned tooling, negative controls and measured cost. No framework-wide verification claim or automatic expansion to every crate. |
 
@@ -80,6 +102,43 @@ P0 items have precedence over new integrations, cosmetic rewrites and expanding
 the number of crates. Each implementation should remain a small reviewable
 change with its own tests and migration/documentation updates. The acceptance
 column is a requirement, not a description of code already present.
+
+## Coverage of the wider roadmap
+
+The master roadmap contains 41 umbrella milestones, including the separately
+governed M31 programme. Its 40 framework rows currently label five bounded
+implementations, 25 partial foundations and ten unimplemented ambitions.
+These unequal units cannot tell us whether this release adds "10% of all future
+work". Nor does finishing one increment close its entire parent milestone.
+The wider v13/v13+ programme remains available for subsequent minor releases.
+
+This queue deliberately builds on existing code instead of restarting those
+capabilities. Within P1, a small independent increment can precede a larger one
+when its dependencies and verification capacity are ready.
+
+| Roadmap area | Starting point and next bounded increment | Scheduling boundary |
+| :--- | :--- | :--- |
+| M41 — privacy and age | Policy, signed attestations and shared-local SQLite exist in the unpublished candidate. Add PostgreSQL, an authenticated declaration path and enforceable purpose/rights effects in a consumer. | First product priority; provider availability does not block independent work. |
+| M11/M33 — SaaS entitlements | LMS already has application-owned course entitlements. Add a reusable typed plan gate and one generated SaaS enforcement journey; a public attribute macro needs its own design and compile tests. | Active P1 queue; do not imply that the entire billing programme is complete. |
+| M5/M29/M34 — API/SDK contracts | Scalar and the route-scanning OpenAPI generator exist, but scanning currently emits placeholder responses. Add a schema-backed supported API profile and one TypeScript target. | Active P1 queue; React, Dart and Swift targets follow the proven schema contract. |
+| M21 — Omni/Android | Version 12.1 configures application-owned signing; hosted Android CI already verifies signatures and the expected certificate. Bring that verification into the public CLI with exact artifact handling. | Active P1 queue; this closes a CLI gap, not physical-device or store acceptance. |
+| M9 — Auth/session consistency | Durable account recovery and revocation exist. Evaluate one shared passkey-ceremony lifecycle with atomic single use, expiry and tenant/session binding. | Next extension after the active product increments; choose the storage/API boundary before promising implementation. |
+| M15 — remote messaging | Wire contracts, local durable state and the ORM outbox exist. Evaluate one remote broker adapter with real restart, redelivery and lease/idempotency evidence. | Conditional extension; select a broker and supported semantics first. Seven adapter names are not seven functioning integrations. |
+| M40 — Labs | The threat model and separate web-contract/runner roadmap are retained. The first candidate is a bounded job/grading/receipt contract with a deterministic local protocol fixture. | Conditional extension; contracts alone do not deliver code execution. A usable runner requires its own isolated deployment and adversarial acceptance. |
+| M1/M3/M7/M12 — adoption and assurance | Carry the compatible updater forward, add actual major-version migrations, improve generated guidance and connect new code to the relevant verification inventory. | Required adoption/security work plus bounded maintainer tooling; Verus begins with one production-linked pilot. |
+
+Gateway/load-balancer implementation, fiscal homologation, physical IoT/Embassy,
+PQC protocols, local facial inference and broad database replication retain
+their dedicated roadmap scope. They are not counted as completed by a proposal,
+an empty crate or a mock. Reconsider them through their own dependency and
+acceptance evidence instead of promising the whole long-term programme by the
+26th.
+
+At each implementation checkpoint, record the delivered behavior, source,
+focused checks, pending hosted checks and next useful increment. The decision
+to start the next item uses remaining integration/test capacity as well as
+coding time. Preserve working increments and report unfinished acceptance
+explicitly; do not inflate a feature count by splitting contracts into crates.
 
 ## Age and privacy design decisions to close first
 
@@ -156,8 +215,8 @@ checks are ready; slow external acceptance reduces scope, never test quality.
 | Date | Checkpoint |
 | :--- | :--- |
 | 20 September | Close v12.1 documentation, admit the integration baseline, settle privacy/storage API decisions and prepare the v13 release/branch policy. |
-| 21–22 September | Implement and test the prioritized PostgreSQL/age/privacy consumer journey and migration boundaries. Decide any optional provider inclusion by the end of the 22nd based on available sandbox evidence. |
-| 23 September | Complete bounded maintainer tooling and documentation; evaluate the small Verus pilot only after P0 work. Freeze feature scope by the evening. |
+| 21–22 September | Implement and test PostgreSQL/age/privacy consumers; advance the active SaaS/API/Omni increments as dependencies and verification capacity permit. Maintain migration fixtures with each API change. Decide any optional provider inclusion by the end of the 22nd based on available sandbox evidence. |
+| 23 September | Close accepted product increments, generated guidance and documentation; evaluate Auth/broker/Labs extensions and the small Verus pilot against remaining acceptance capacity. Freeze feature scope by the evening. |
 | 24 September | Run the complete candidate verification campaign, including required native matrices, fuzzing, Miri, Kani and sanitizers. Preserve explicit evidence boundaries and start long jobs early. |
 | 25 September | Repair findings, invalidate and repeat affected evidence, test packaged consumers and rehearse the complete publication transaction. |
 | 26 September | Buffer for final failures, review and protected publication. Publish stable only with all mandatory criteria satisfied; otherwise report the exact blockers and an honestly scoped candidate. |
