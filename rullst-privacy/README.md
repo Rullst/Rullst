@@ -17,12 +17,15 @@ is tracked in the [privacy roadmap](../docs/src/privacy-age-assurance-roadmap.md
   capabilities and up to eight pinned keys for rotation.
 - Declared, estimated, verified-attribute and offline-mock assurance remain
   distinct. Below-margin facial results require an alternative method.
-- One-use consumption through a static-dispatch replay store; production rejects
+- Asynchronous one-use consumption through a static-dispatch replay store; production rejects
   process-local stores and mocks. The supplied memory store is bounded and
   refuses capacity exhaustion rather than evicting valid claims.
+- Opt-in shared-local SQLite claims with persisted quota, clock rollback checks,
+  atomic expiry/consumption and minimized nonce digests. No database is enabled
+  by the base or `age-assurance` feature.
 
 There is no facial model, image capture, live vendor SDK, document recognition,
-guardian verification or concrete production replay backend here. An issuer
+guardian verification or multi-host replay backend here. An issuer
 signature establishes authenticity of its assertion; it does not establish the
 quality of the age determination. Signing an untrusted browser result does not
 turn it into verified evidence.
@@ -58,14 +61,56 @@ fifteen. A threshold comparison cannot replace guardian authorization.
    from `request_json()`. Never sign a client-provided outcome without checking it.
 5. `AgeVerifier::new(issuer, shared_store)` verifies the exact payload bytes,
    retained challenge, current policy, authenticated binding and trusted server
-   time, then atomically consumes the nonce. Gate the specific action only on
+   time, then asynchronously consumes the nonce. Await `verify(...)`; it samples
+   the server clock again after storage and rejects intervening expiry or clock
+   rollback. `verify_with_clock(...)` supports an explicit trusted clock, never
+   a client timestamp. Gate the specific action only on
    `AgeDecision::Allowed`. Every error denies the gated operation.
 
 `ReplayStore` implementations must share durable atomic nonce claims across
 instances, retain claims until expiry, reject uncertain commits and prevent
 rollback from resurrecting consumed claims. The durability enum is an adapter
 contract, not an automatic assessment of its implementation. No production
-storage evidence is claimed for this crate yet.
+provider deployment evidence is claimed for this crate yet.
+
+## Shared-local replay storage
+
+Enable `sqlite` for `SqliteReplayStore`. It uses a private file-backed SQLx pool,
+WAL/full synchronization and serialized write transactions. All verifiers on
+one host must open the same operator-owned local file with the same capacity
+(1..=100,000 live claims). It persists schema, quota and the greatest accepted
+claim time; unexpired claims are never evicted to admit another proof.
+
+```rust,no_run
+# #[cfg(feature = "sqlite")]
+# async fn setup(issuer: rullst_privacy::age_assurance::TrustedIssuer) -> Result<(), rullst_privacy::age_assurance::AgeError> {
+use rullst_privacy::age_assurance::{AgeVerifier, SqliteReplayStore};
+
+let store = SqliteReplayStore::open("/private/app/age-replay.sqlite", 10_000).await?;
+let verifier = AgeVerifier::new(issuer, store)?;
+# let _ = verifier;
+# Ok(())
+# }
+```
+
+The parent directory must already exist. Database URLs, memory-only stores,
+existing symlinks and non-regular targets are rejected. The host must prevent
+untrusted directory/file replacement; checking the final path does not defeat
+a hostile filesystem race. Capacity bounds rows, not total filesystem use.
+Logical expiry deletion is not physical erasure of WAL pages or backups.
+
+Cancelled or uncertain writes grant no access and may have consumed the proof.
+Request fresh evidence after an uncertain outcome. Clock rollback fails closed;
+out-of-order requests or skewed processes may need a retry with current server
+time. Do not lower the persisted clock or clear state to work around this error.
+Network filesystems, cross-host replication and PostgreSQL are outside this
+adapter's scope. Storage hardware must honor SQLite's durability guarantees.
+
+Restoring an old backup can resurrect claims. Before resuming after a restore,
+quiesce all verifiers, discard outstanding challenges and enforce a new policy
+version everywhere (or retire all old signing keys). Merely adding a key while
+retaining the old key does not invalidate its proofs. Backup rollback cannot
+be detected reliably from that same database alone.
 
 The host owns clock synchronization, challenge storage/quotas, request limits,
 timeouts/cancellation for external capture, endpoint CSRF/authorization,
@@ -104,8 +149,11 @@ and must not enter ordinary logs. Debug output redacts subject/challenge data.
 Provider capture, temporary storage, erasure, training restrictions and legal
 basis require their own review. This library cannot certify worldwide compliance.
 
-Run `cargo test -p rullst-privacy --features age-assurance` and
+Run `cargo test -p rullst-privacy --all-features` and
 `cargo clippy -p rullst-privacy --all-features --all-targets -- -D warnings`.
 The suite covers policy strength, method capability, signatures, context/policy
-swaps, expiry, concurrent replay, capacity, failure and mock separation. It does
-not establish a real provider's accuracy or a durable backend's correctness.
+swaps, expiry before/after storage, cancellation, clock rollback, independent
+SQLite pools, a fresh-process replay check, reopen, concurrent quota, schema drift, failed inserts, lost commit
+acknowledgements and mock separation. These are local executable contracts;
+they do not establish power-loss recovery on a deployment's hardware, arbitrary
+backup rollback detection or a real provider's accuracy.

@@ -13,10 +13,12 @@ No deadline waives a security or publication gate.
 - The integration candidate carries that exact published runtime source into
   v13, preserving the unpublished privacy crate and Labs/Verus plans. The
   combined source needs fresh CI; the v12.1.0 results do not certify v13.
-- `rullst-privacy` currently provides policy, challenge, signed-attestation and
-  replay interfaces. It has no production replay backend or live age provider.
-  Its 16 integration tests and one documentation test passed during integration;
-  this is foundation evidence, not end-to-end production acceptance.
+- The initial privacy foundation passed 16 integration tests and one doctest.
+  The persistence change adds asynchronous verification, trusted clock rechecks
+  and optional shared-local SQLite claims. Its 29 local integration tests cover
+  independent pools, a fresh process, reopen, concurrency, quota, cancellation and failure paths.
+  Hosted candidate validation and a live age provider remain outstanding; this
+  is foundation evidence, not end-to-end production acceptance.
 - The initial review found main-only release admission/security filters and an
   unprotected `v13` branch. The preparation change binds each major to its
   release branch and enables the missing automatic checks. On 20 September UTC,
@@ -51,14 +53,16 @@ Keep age assurance and reusable privacy contracts in the existing optional
 `rullst-privacy` package. Do not add a second age crate or make cameras, a vision
 runtime, a database or a provider a default Core dependency.
 
-The present synchronous `ReplayStore::claim` interface must be reviewed before
-adding asynchronous database adapters. Prefer a static-dispatch asynchronous
-boundary over blocking the HTTP runtime. The first persistence work must test
-independent verifier instances, restart, simultaneous claims, capacity, expiry,
-cancelled/uncertain writes and unavailable storage. SQLite's shared-local
-boundary must be distinct from PostgreSQL multi-instance operation; neither
-may claim that restoring an old backup preserves replay protection without a
-reviewed restore/key-epoch procedure.
+The unpublished `ReplayStore::claim` interface now returns a statically
+dispatched `Send` future. Verification samples a trusted clock before validation
+and after storage, denying expiry or rollback during the wait. The initial
+SQLite adapter uses serialized durable transactions, persisted quota/clock
+metadata and hashed nonces. Local tests cover independent verifier pools, reopen,
+simultaneous claims, capacity, expiry, cancellation, uncertain acknowledgement
+and unavailable storage. Native hosted evidence remains pending. Its
+shared-local boundary is distinct from planned PostgreSQL multi-host operation;
+restoring an old backup requires quiescing verification and invalidating all
+outstanding challenges through a newly enforced policy or retired signing keys.
 
 Use the current server-owned policy and signed threshold result rather than
 storing photos or full birth dates in the framework. Provider authenticity,

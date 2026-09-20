@@ -91,6 +91,20 @@ enabled implicitly. Production must reject offline mock evidence and
 process-local replay protection. The host owns authentication, tenant/subject
 binding, risk/legal assessment and durable shared state.
 
+The v13 persistence contract uses static-dispatch asynchronous nonce claims.
+Verification samples a trusted server clock before validation and after the
+claim; expiry or clock rollback during storage cannot return permission.
+The optional `sqlite` adapter is shared-local only: a private file-backed pool,
+WAL with full synchronization, serialized quota/expiry/claim transactions and
+persisted configuration/clock high-water state. It stores only domain-separated
+nonce digests and expiry. No unexpired claim may be evicted. Cancellation or an
+uncertain commit returns no assessment; the host must request fresh evidence
+when consumption is uncertain. File custody, clock synchronization and storage
+durability are deployment obligations. Restoring an older database requires
+quiescing verification and invalidating all outstanding challenges through a
+new policy/key epoch; SQLite cannot detect arbitrary backup rollback. Network
+filesystems and multi-host replication are outside this adapter's boundary.
+
 This first contract does not implement a facial model, vendor transport,
 guardian verification or global privacy compliance. The
 [privacy and age-assurance roadmap](privacy-age-assurance-roadmap.md) defines

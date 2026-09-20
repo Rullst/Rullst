@@ -56,6 +56,7 @@ jobs:
             -p rullst-capital \
             -p rullst-studio \
             -p rullst-iot \
+            -p rullst-privacy \
             --lib --all-features \
             -- \
             -D clippy::unwrap_used \

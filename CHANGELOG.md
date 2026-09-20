@@ -9,6 +9,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Unpublished v13 privacy foundation
+
+- Make age verification and replay claims asynchronous, with trusted server-clock
+  checks before and after storage. Deny expiry, rollback, cancellation and
+  uncertain storage outcomes; production still rejects mocks and local memory.
+- Add optional shared-local SQLite replay state with serialized claim/quota/expiry
+  transactions, persisted configuration and clock metadata, and nonce digests.
+  Retain no photos or birth dates. Live providers, multi-host storage and global
+  privacy compliance remain outside this foundation; the crate stays unpublished.
+
 ### CI tooling
 
 - Prepare the v13 release line with explicit major/branch/tag/package binding,

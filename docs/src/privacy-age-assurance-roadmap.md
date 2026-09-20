@@ -1,10 +1,13 @@
 # Privacy and age assurance roadmap
 
 **Status: v13 P0, initial unpublished age-assurance foundation, reviewed
-17 September 2026.** The [crate](../../rullst-privacy/README.md) implements
+17 September 2026; persistence engineering updated 20 September 2026.** The [crate](../../rullst-privacy/README.md) implements
 risk policies, bound challenges, signed threshold attestations, explicit
-outcomes and replay-store contracts. Broader privacy workflows, concrete live
-age providers and production replay storage remain unimplemented.
+outcomes and asynchronous replay-store contracts. The optional shared-local
+SQLite adapter adds atomic persisted consumption, quota and clock rollback
+checks, with local cancellation/failure/reopen evidence. Broader privacy
+workflows, concrete live age providers and multi-host replay storage remain
+unimplemented. This engineering update does not revalidate the legal sources.
 
 Rullst should generate applications with privacy-preserving defaults and
 reusable, testable controls. It must not advertise automatic worldwide legal

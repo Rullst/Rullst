@@ -119,6 +119,11 @@ rullst-auth|sqlite
 rullst-auth|recovery-sqlite
 rullst-auth|recovery-postgres
 
+# Unpublished v13 privacy foundation: preserve the database-free base graph.
+rullst-privacy|
+rullst-privacy|age-assurance
+rullst-privacy|sqlite
+
 # Umbrella boundaries exposed to generated applications.
 rullst|orm
 rullst|orm-mongodb

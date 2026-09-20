@@ -1,6 +1,6 @@
 use super::{
-    AgeChallenge, AgeError, AgeMethod, AgeOutcome, AgePolicy, ReplayDurability, ReplayStore,
-    SubjectBinding, TrustedIssuer,
+    AgeChallenge, AgeClock, AgeError, AgeMethod, AgeOutcome, AgePolicy, ReplayDurability,
+    ReplayStore, SubjectBinding, SystemAgeClock, TrustedIssuer,
 };
 
 /// The assertion's method, not a certification of the provider or application.
@@ -100,41 +100,77 @@ impl<S: ReplayStore> AgeVerifier<S> {
     /// Verify exact signed bytes against the retained challenge and current
     /// authenticated context. Uses server time; claims the nonce before returning
     /// any decision. The caller must enforce `Allowed` only for this action.
-    pub fn verify(
+    pub async fn verify(
         &self,
         policy: &AgePolicy,
         binding: &SubjectBinding,
         challenge: &AgeChallenge,
         payload: &[u8],
         signature: &[u8],
-        now: i64,
     ) -> Result<AgeAssessment, AgeError> {
-        challenge.validate(policy, binding, now)?;
-        let outcome = self.issuer.verify(challenge, payload, signature)?;
-        self.finish(challenge, outcome, false, now)
+        self.verify_with_clock(
+            policy,
+            binding,
+            challenge,
+            payload,
+            signature,
+            &SystemAgeClock,
+        )
+        .await
     }
 
-    pub fn verify_mock(
+    /// Explicit trusted-clock integration. Samples before validation and after
+    /// asynchronous storage; expiry or rollback while waiting grants no access.
+    pub async fn verify_with_clock(
+        &self,
+        policy: &AgePolicy,
+        binding: &SubjectBinding,
+        challenge: &AgeChallenge,
+        payload: &[u8],
+        signature: &[u8],
+        clock: &impl AgeClock,
+    ) -> Result<AgeAssessment, AgeError> {
+        let now = clock.now()?;
+        challenge.validate(policy, binding, now)?;
+        let outcome = self.issuer.verify(challenge, payload, signature)?;
+        self.finish(challenge, outcome, false, now, clock).await
+    }
+
+    pub async fn verify_mock(
         &self,
         policy: &AgePolicy,
         binding: &SubjectBinding,
         challenge: &AgeChallenge,
         provider: &MockAgeProvider,
-        now: i64,
+    ) -> Result<AgeAssessment, AgeError> {
+        self.verify_mock_with_clock(policy, binding, challenge, provider, &SystemAgeClock)
+            .await
+    }
+
+    pub async fn verify_mock_with_clock(
+        &self,
+        policy: &AgePolicy,
+        binding: &SubjectBinding,
+        challenge: &AgeChallenge,
+        provider: &MockAgeProvider,
+        clock: &impl AgeClock,
     ) -> Result<AgeAssessment, AgeError> {
         if !self.development {
             return Err(AgeError::MockInProduction);
         }
+        let now = clock.now()?;
         challenge.validate(policy, binding, now)?;
-        self.finish(challenge, provider.outcome, true, now)
+        self.finish(challenge, provider.outcome, true, now, clock)
+            .await
     }
 
-    fn finish(
+    async fn finish(
         &self,
         challenge: &AgeChallenge,
         outcome: AgeOutcome,
         mock: bool,
         now: i64,
+        clock: &impl AgeClock,
     ) -> Result<AgeAssessment, AgeError> {
         // Recheck because an application adapter may change availability/mode.
         if !self.development && self.store.durability() != ReplayDurability::SharedDurable {
@@ -142,9 +178,18 @@ impl<S: ReplayStore> AgeVerifier<S> {
         }
         if !self
             .store
-            .claim(challenge.0.nonce, challenge.expires_at(), now)?
+            .claim(challenge.0.nonce, challenge.expires_at(), now)
+            .await?
         {
             return Err(AgeError::Replay);
+        }
+        // The nonce stays consumed even when time or the final check fails.
+        let completed_at = clock.now()?;
+        if completed_at < now {
+            return Err(AgeError::ClockRollback);
+        }
+        if completed_at >= challenge.expires_at() {
+            return Err(AgeError::Expired);
         }
         let method = challenge.method();
         let decision = match outcome {
