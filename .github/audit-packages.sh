@@ -1,11 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="${1:?usage: audit-packages.sh VERSION [PACKAGE_DIR]}"
+version="${1:?usage: audit-packages.sh VERSION [PACKAGE_DIR] [--supervision-candidate]}"
 package_dir="${2:-target/package}"
 max_archive_bytes=$((10 * 1024 * 1024))
 
 mapfile -t crates < <(jq -r '.[]' .github/release-order.json)
+case "${3:-}" in
+  "") ;;
+  --supervision-candidate)
+    if jq -e 'index("rullst-supervision") != null' .github/release-order.json > /dev/null; then
+      echo "Remove candidate mode after supervision enters the release inventory." >&2
+      exit 1
+    fi
+    crates+=(rullst-supervision)
+    ;;
+  *) echo "Unknown package-audit mode." >&2; exit 1 ;;
+esac
+if [ "$#" -gt 3 ]; then echo "Too many package-audit arguments." >&2; exit 1; fi
+
 mapfile -t archives < <(
   find "$package_dir" -maxdepth 1 -type f -name '*.crate' -printf '%f\n' |
     sort
