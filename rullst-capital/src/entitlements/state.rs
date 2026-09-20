@@ -3,6 +3,7 @@ use crate::BillingSubject;
 
 /// Authenticated tenant and subscription owner; neither is taken from a form.
 #[derive(Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct EntitlementScope {
     pub(super) tenant: String,
     pub(super) subject: BillingSubject,
@@ -61,6 +62,7 @@ pub enum EntitlementStatus {
 /// subscription-period end, not an arbitrary cache TTL. Neither implies invoice
 /// settlement. This value intentionally has no serialization implementation.
 #[derive(Clone)]
+#[non_exhaustive]
 pub struct EntitlementSnapshot {
     pub(super) scope: EntitlementScope,
     pub(super) plan: String,

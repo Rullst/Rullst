@@ -309,7 +309,7 @@ fn configuration_bounds_are_validated_and_private_identity_is_redacted() {
 
 #[tokio::test]
 async fn normal_gate_uses_system_time_and_rejects_expired_state() {
-    assert!(SystemEntitlementClock.unix_seconds().unwrap() > 0);
+    assert!(SystemEntitlementClock::default().unix_seconds().unwrap() > 0);
     let scope = scope("tenant", "owner");
     assert_eq!(
         EntitlementGate::new(policy(EntitlementMode::Live))

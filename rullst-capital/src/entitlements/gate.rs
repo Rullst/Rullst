@@ -5,6 +5,7 @@ use super::{
 
 /// Server-owned feature policy; duplicate/empty/oversized plan lists are invalid.
 #[derive(Clone)]
+#[non_exhaustive]
 pub struct EntitlementPolicy {
     feature: String,
     plans: Vec<String>,
@@ -68,6 +69,7 @@ pub trait EntitlementClock: Sync {
 }
 
 #[derive(Debug, Default, Clone, Copy)]
+#[non_exhaustive]
 pub struct SystemEntitlementClock;
 
 impl EntitlementClock for SystemEntitlementClock {
@@ -81,6 +83,7 @@ impl EntitlementClock for SystemEntitlementClock {
 
 /// Per-action read authorization. Success is deliberately not a reusable token.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct EntitlementGate {
     policy: EntitlementPolicy,
 }
