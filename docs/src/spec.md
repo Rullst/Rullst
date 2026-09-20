@@ -161,9 +161,9 @@ evidence that the current revision satisfies these contracts.
 These describe required behavior, not a declaration that every final release
 gate has passed. The audit records the current evidence and remaining work.
 
-### Studio browser composition invariant (12.1.0, unreleased)
+### Studio browser composition invariant (12.1.0)
 
-Studio browser composition in the unreleased 12.1.0 maintenance train preserves
+Studio browser composition in the published 12.1.0 maintenance release preserves
 both root and `/studio`-nested same-origin asset routes. A raw browser without
 a supplied cache renders an explicit unavailable state and exposes no cache
 mutation endpoints. The full local builder installs the configured cache once
@@ -171,9 +171,9 @@ and retains its verified-loopback/same-origin protection. Assets and navigation
 fixes do not constitute a shared-production authentication mode; existing
 application-level workaround routes must be removed before upgrading.
 
-### Mobile presentation invariant (12.1.0 and v13, unreleased)
+### Mobile presentation invariant (12.1.0, carried forward to v13)
 
-The unreleased 12.1.0/v13 mobile maintenance contract keeps Nexus navigation
+The published 12.1.0 mobile maintenance contract keeps Nexus navigation
 dismissible by close control, backdrop, Escape and links, with keyboard focus
 containment/return and visible no-JavaScript navigation. Portfolio scaffolds
 must reflow at phone widths and wrap long content instead of hiding overflow.
@@ -1457,7 +1457,7 @@ assistant, not a claim that compilation proves production compatibility.
   restoration across multiple workspace members, preserve a failed edit
   only when explicitly requested, restore that persisted review state, and
   reject symlinked Rust sources before starting the transaction.
-  **Unreleased recovery hardening:** automatic and persisted restores validate
+  **12.1.0 recovery hardening:** automatic and persisted restores validate
   the complete bounded index and every snapshot/target before staging all file
   replacements. Limits are 8 MiB/index, 100,000 entries, 64 MiB/file and
   512 MiB/restore. Symlinks/reparse points, malformed or duplicate entries and
@@ -1465,7 +1465,8 @@ assistant, not a claim that compilation proves production compatibility.
   hardlinked destination. A later apply error may leave earlier files restored;
   it reports progress and retains the backup. Stop other writers first: this is
   neither an all-files atomic commit nor protection from hostile concurrent
-  filesystem changes. Platform acceptance remains a release gate.
+  filesystem changes. Platform acceptance is scoped to the
+  [published release evidence](v12.md#1210-published-maintenance-release).
 * 🟠 **`[Manual Application Boundary]`** the command never installs a CLI,
   changes secrets, executes database migrations, invents authorization or
   tenant policy, exposes Nexus/Studio, validates providers, or declares an
@@ -1473,7 +1474,7 @@ assistant, not a claim that compilation proves production compatibility.
   test suite, authorization negatives and deployment smoke tests remain
   mandatory human-owned gates.
 
-  **Unreleased discovery hardening, not the complete updater:** the working
+  **12.1.0 advisory discovery:** the
   CLI checks for notices only on interactive dashboard startup, respects
   explicit offline/CI/notification-disable flags, and retains at most one
   validated result in process memory. It no longer reads or writes the legacy
@@ -1505,9 +1506,9 @@ assistant, not a claim that compilation proves production compatibility.
   the [documented maintenance checkpoint](v12.md#1210-delivery-checkpoint-unreleased).
   A hostile same-user/root/administrator process
   and authenticated release verification are outside this advisory cache's
-  contract. Verified CLI installation and the expanded project
-  acceptance transaction remain 12.1.0 release blockers requiring platform and
-  release evidence.
+  contract. Verified CLI installation and the expanded project acceptance
+  transaction passed their declared platform and release gates in the
+  [12.1.0 publication](v12.md#1210-published-maintenance-release).
 
   **Native CLI artifact preparation:** the candidate pipeline builds both CLI
   entry points on the four targets in `.github/cli-artifact-targets.json` and
@@ -1544,7 +1545,7 @@ assistant, not a claim that compilation proves production compatibility.
   current registry eligibility or protect against hostile same-user writers.
   Installation must independently revalidate the selected release and bytes.
 
-  **Authenticated download (working source; native acceptance pending):**
+  **Authenticated download (12.1.0):**
   `update stage --to EXACT_VERSION` fetches a fresh non-yanked registry
   selection and uses only the fixed official
   release URL with at most two HTTPS redirects through GitHub/release-assets hosts,
@@ -1556,7 +1557,7 @@ assistant, not a claim that compilation proves production compatibility.
   installation or project authority. Offline mode rejects before I/O; install
   must independently revalidate eligibility, provenance and bytes.
 
-  **Managed CLI installation (working source; native acceptance pending):**
+  **Managed CLI installation (12.1.0):**
   `update install review` authenticates a fresh eligible local candidate and
   previews a new/empty or receipt-owned private destination, a root/source-bound digest,
   proposed version smoke checks and the pinned Cargo source fallback. It does
@@ -1632,7 +1633,7 @@ assistant, not a claim that compilation proves production compatibility.
   verification must explicitly authorize trusted project execution. Bounded
   reviewed application/recovery have separate explicit consent and acceptance gates.
 
-  **Candidate verification (working source; platform acceptance pending):**
+  **Candidate verification (12.1.0):**
   `update project verify` reloads the private preparation, validates its
   baseline/current source/candidate against bounded records and recomputed
   migration plans, rejects stale inputs, and takes an exclusive operation lock.
@@ -1669,7 +1670,7 @@ assistant, not a claim that compilation proves production compatibility.
   8 MiB and no build/test or original-file edit occurs. The review digest grants
   no application authority. Native acceptance remains required.
 
-  **Reviewed application/recovery (working source; native acceptance pending):**
+  **Reviewed application/recovery (12.1.0):**
   `update project apply --verified PATH --approved-review SHA256` requires the
   exact review digest and fresh source validation under both preparation locks
   and a canonical-source lock in the configured private cache. Only the reviewed workspace
@@ -1699,8 +1700,8 @@ assistant, not a claim that compilation proves production compatibility.
   Forced process termination during staging can leave disposable sibling temp
   files; the private before/verified trees and intent must be retained. Timestamp,
   Windows audit-policy preservation and power-loss fault
-  acceptance remain outside this current implementation; final release approval
-  still requires final platform/fault evidence. Local process tests cover a
+  acceptance remain outside this implementation. Published acceptance covers
+  only the declared platform and fault scenarios. Local process tests cover a
   killed per-file commit with a persisted intent and subsequent engine recovery,
   plus real CLI staging terminated by Linux's file-size limit without changing
   originals. They do not establish power-loss durability.
@@ -1733,7 +1734,7 @@ authoritative secrets into JavaScript or an untrusted client.
   real source-derived platform icons, and treats npm, icon generation or
   explicitly requested mobile initialization failures as command failures.
   Explicit iOS initialization requires macOS/Xcode.
-  **Unreleased 12.1.0:** new shells embed the existing Rullst logo as their
+  **12.1.0:** new shells embed the existing Rullst logo as their
   default square icon source and regenerate icons after all mobile init steps.
   Existing shells are never regenerated in place. New Android shells bind the
   release signing configuration to application-owned keystore/alias/password
