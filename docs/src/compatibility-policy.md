@@ -1,7 +1,9 @@
 # Compatibility, MSRV, deprecation, and support policy
 
-This policy applies to the 16 publishable Rullst packages. They are released as
-one synchronized release train even when a user depends on only one crate. The
+This policy applies to the packages in the [release inventory](../../.github/release-order.json):
+16 published packages in v12.1 and 17 candidates in the unpublished v13 train,
+including `rullst-privacy`. They are released as one synchronized release train
+even when a user depends on only one crate. The
 current supported-version table in [`SECURITY.md`](../../SECURITY.md) remains
 authoritative for releases that are actually available; a version in the
 workspace is not a supported release merely because its manifest exists.

@@ -31,6 +31,31 @@ The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that h
 not adopted the 12.1 account, payment and deployment changes. Skipping directly
 to 13 does not perform those application/database migrations.
 
+## Why the candidate uses a new major
+
+Adding optional privacy APIs, a new crate or more features does not by itself
+require a major version. A fully compatible increment would belong in a minor
+release under the [compatibility policy](compatibility-policy.md).
+
+The current candidate does change a supported CLI/configuration contract:
+in 12.1, the Android release command and `build_android_release()` accept the
+four signing variables without requiring the two verification paths. The new
+implementation rejects that invocation until the expected public certificate
+and trusted verifier are supplied. Keeping the Rust function signature does
+not preserve that behavior. This intentional change supports retaining v13
+for the synchronized release train; it does not mean every application's Rust
+code needs rewriting. The signing guide above documents the required setup.
+
+A green version-aware SemVer job alone cannot establish that this candidate
+could be renamed to 12.2. The current command derives the release type from the
+manifest; the 12.1-to-13 comparison permits major changes. The hosted comparison
+at `4773171a` reported **0 executed checks and 254 skipped checks** for compared
+libraries. Treat that as no Rust API compatibility result, not as proof that
+breaking changes are absent. Any reconsideration as a minor release requires
+an explicit minor-level API comparison plus review and regression tests for
+CLI, configuration, serialized contracts and generated consumers. Resolve the
+known Android compatibility change before making that claim.
+
 ## Use the target-major CLI
 
 A v12 CLI cannot learn v13 migration rules just by downloading another binary.

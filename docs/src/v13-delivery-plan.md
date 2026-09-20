@@ -349,6 +349,13 @@ These unequal units cannot tell us whether this release adds "10% of all future
 work". Nor does finishing one increment close its entire parent milestone.
 The wider v13/v13+ programme remains available for subsequent minor releases.
 
+Items deferred beyond the September 26 target do not automatically become v14
+work. Compatible additions can ship in 13.1, 13.2 and later minor releases;
+breaking changes belong in a future major under the
+[compatibility policy](compatibility-policy.md). The current major's concrete
+CLI/configuration change and the limits of its SemVer evidence are recorded in
+the [migration inventory](migration-v13.md#why-the-candidate-uses-a-new-major).
+
 This queue deliberately builds on existing code instead of restarting those
 capabilities. Within P1, a small independent increment can precede a larger one
 when its dependencies and verification capacity are ready.

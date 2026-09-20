@@ -301,6 +301,14 @@ from generated SaaS/LMS consumers compiled against actual framework source.
 Release-time inventory and package checks must revisit this boundary as more
 v13 changes land.
 
+The current candidate intentionally tightens the Android release command's
+configuration contract: the expected public certificate and trusted verifier
+paths are now required in addition to the existing signing inputs. An unchanged
+Rust helper signature does not make that behavior minor-compatible. Retain this
+break in the migration inventory. The major-aware SemVer job is not evidence
+that the candidate could instead be released as 12.2; that question requires a
+minor-level comparison and review of the full documented compatibility surface.
+
 ### v13 formal-verification pilot boundary
 
 The [Verus pilot](verus-roadmap.md) has a locally verified candidate for production
