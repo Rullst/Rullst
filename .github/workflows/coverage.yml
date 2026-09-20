@@ -116,8 +116,10 @@ jobs:
             --test data_browser_mutation_mysql \
             --test data_browser_mutation_mariadb -- --test-threads=1
 
-      - name: Measure PostgreSQL age replay and server restart contracts
-        run: python3 .github/check-privacy-postgres.py --coverage
+      - name: Measure PostgreSQL age/passkey state and server restart contracts
+        run: |
+          python3 .github/check-privacy-postgres.py --coverage
+          python3 .github/check-passkey-postgres.py --coverage
 
       - name: Generate merged coverage report
         run: |

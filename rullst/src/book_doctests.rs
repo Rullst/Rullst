@@ -250,6 +250,10 @@ tutorial!(
     "../../docs/src/polyglot-persistence.md"
 );
 tutorial!(redis_guide, "../../docs/src/redis-guide.md");
+tutorial!(
+    shared_passkey_ceremonies,
+    "../../docs/src/shared-passkey-ceremonies.md"
+);
 tutorial!(framework_spec, "../../docs/src/spec.md");
 tutorial!(telemetry_guide, "../../docs/src/telemetry-guide.md");
 tutorial!(crate_ai, "../../docs/src/crates/ai.md");

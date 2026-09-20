@@ -41,7 +41,8 @@ pub struct RelyingPartyInfo {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 /// Identifies the user account being registered to the authenticator.
 pub struct UserInfo {
-    /// Base64url-encoded unique user identifier (16-byte buffer).
+    /// Base64url-encoded RP-scoped user handle. The legacy API encodes 16 bytes;
+    /// shared ceremonies accept an application-owned opaque handle of 1–64 bytes.
     pub id: String,
     /// Machine-readable username (e.g. `"alice"`).
     pub name: String,

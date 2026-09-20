@@ -54,6 +54,7 @@ rullst = { version = "12.1.0", default-features = false }
 | `auth` | no | Authentication, sessions, passkeys, and RBAC helpers from `rullst-auth` |
 | `auth-jwt` | no | `auth` plus the strict application-issued JWT policy |
 | `auth-sqlite` | no | `auth-jwt` plus bounded shared SQLite JWT revocation and passkey device lifecycle state |
+| `auth-passkey-postgres` | no | Optional v13 account/session-bound PostgreSQL passkey ceremony candidate; host credential-counter CAS remains required |
 | `mail` | no | `rullst-mail` with HTTP/offline transports and no SMTP dependency |
 | `mail-sqlite` | no | `mail` plus bounded shared-local SQLite recipient suppression and provider-event replay evidence |
 | `mail-smtp` | no | `mail` plus the optional SMTP transport |

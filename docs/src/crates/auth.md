@@ -58,7 +58,9 @@ ceremony and atomically advances the stored counter; a stale concurrent update
 fails. Revoked records remain in inventory and continue to consume quota.
 
 Challenge state remains process-local inside `PasskeyAuth`, so a multi-instance
-deployment needs sticky ceremony routing or a custom shared challenge layer.
+deployment using that API needs sticky ceremony routing or a custom shared challenge layer.
+The optional v13 `passkey-postgres` candidate adds a separately bound shared manager
+with real PostgreSQL/browser evidence; see [shared passkey ceremonies](../shared-passkey-ceremonies.md).
 The adapter does not establish normative WebAuthn conformance, encrypt or
 replicate the database, or replace application device-ownership policy.
 
