@@ -65,9 +65,10 @@ Every denied, inconclusive or unavailable result needs an explicit product
 outcome; an alternative path must meet the same policy instead of bypassing it.
 
 A live adapter requires an available authorized sandbox, a reviewed native
-protocol, failure tests and appropriate provider/capture evidence. No provider
-environment has been confirmed for this delivery window. Prioritize work that
-can be validated locally while that dependency is resolved. If it remains
+protocol, failure tests and appropriate provider/capture evidence. The release
+owner confirmed that no provider environment is available and directed work on
+the foundation and local tests first. Prioritize that independently testable
+scope while the external dependency is unresolved. If it remains
 unavailable, do not label a simulated flow as live verification or mark the
 provider milestone complete. Reassess the publishable privacy package boundary
 explicitly at the feature freeze; do not quietly weaken its existing admission
