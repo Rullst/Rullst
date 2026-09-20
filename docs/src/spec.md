@@ -296,6 +296,34 @@ and manual workflow precede any required v13 check; compatibility, reproducible
 proofs, negative controls and measured CI cost are promotion criteria. This
 plan adds no v12.1 release gate or framework-wide correctness claim.
 
+### Conditional v13 supervision crate
+
+The owner requested transparent learner/exam supervision and parental controls
+as the first additional priority after the required v13 deliveries have been
+implemented and validated. The proposed package name is `rullst-supervision`;
+this is a design reservation, not an existing or publishable package.
+
+Keep supervision policy/session/event and reviewer-access contracts separate
+from `rullst-privacy` age and consent primitives. Exam supervision and parental
+controls need distinct modules and authorization policies. The initial candidate
+must deliver one real generated LMS journey, visible session status, explicit
+permissions, revocation, bounded collection/retention and actual application-side
+enforcement, with cross-school/subject and unauthorized-reviewer negatives.
+Parental time/content restrictions initially concern this application only.
+The host must establish guardian/reviewer authority independently; age results,
+account ownership, a checkbox or a claimed family relationship do not prove it.
+
+Browser observations are untrusted client reports, never proof of misconduct,
+identity or an automatic reason to change grades or impose a penalty. Collect
+only the documented minimal events with visible active/paused/ended state;
+do not add covert camera/microphone/location capture or unrelated browsing data.
+Native device-wide controls, camera inference and managed operating-system agents
+need separate platform integration and acceptance. Global legal compliance is
+not inferred from these controls. The exact API/storage boundary and its threat
+model must be specified before scaffolding the crate. Empty contracts or a mock
+alone do not meet its admission criteria, and it must not delay required release
+gates; retain it for a subsequent v13 release if capacity is insufficient.
+
 ### Versioned release-branch boundary
 
 The v13 preparation policy binds major 13 to `v13`; major 12 remains bound to

@@ -47,6 +47,13 @@ The prioritized implementation sequence is:
 7. Improve the documentation and bounded generated project context for the
    delivered scope. Attempt the small production-linked Verus pilot only after
    the mandatory feature work is ready for its verification campaign.
+8. **First additional priority, explicitly requested on 20 September:** evaluate
+   `rullst-supervision` for transparent exam/learner supervision and parental
+   rules within the application, ahead of other conditional extensions. Start
+   after the required deliveries are implemented and validated, leaving time
+   for combined acceptance and publication. The preliminary engineering estimate
+   is one to two days for a bounded first journey and its tests, plus hosted CI;
+   it is not a commitment to complete device-wide controls by 26 September.
 
 A provider adapter may enter this release only if its environment, protocol and
 acceptance evidence are ready in time. Its absence does not suspend independent
@@ -204,6 +211,7 @@ No source path, query or fuzz target was disabled.
 | P1 | Android artifact verification through the CLI | Select the intended release output, run signature verification and bind the signer to the application-owned certificate. Reject missing, ambiguous, stale, unsigned or wrong-key artifacts; test process failures and redaction. Validate a real generated APK in hosted Android CI; device/store acceptance remains separate. |
 | P1 | Better application context for maintainers and assistants | Accurate generated `AGENTS.md`, a bounded deterministic project map, configuration key names without values, explicit file/secret exclusions, freshness information and executable regression fixtures. |
 | P1 | Focused Verus pilot | One production age-policy property with checked linkage, pinned tooling, negative controls and measured cost. No framework-wide verification claim or automatic expansion to every crate. |
+| First conditional extension | `rullst-supervision` candidate | One generated LMS journey with visible sessions, explicit permissions, independently established guardian/reviewer authority, effective revocation, bounded events/retention and tested application-side restrictions. Prove cross-school/subject/reviewer denial and browser behavior. Client observations cannot prove misconduct or automatically change grades. Device-wide control, camera inference and a mock-only package do not satisfy this scope. |
 
 P0 items have precedence over new integrations, cosmetic rewrites and expanding
 the number of crates. Each implementation should remain a small reviewable
@@ -230,6 +238,7 @@ when its dependencies and verification capacity are ready.
 | M5/M29/M34 — API/SDK contracts | Scalar and the route-scanning OpenAPI generator exist, but scanning currently emits placeholder responses. Add a schema-backed supported API profile and one TypeScript target. | Active P1 queue; React, Dart and Swift targets follow the proven schema contract. |
 | M21 — Omni/Android | Version 12.1 configures application-owned signing; hosted Android CI already verifies signatures and the expected certificate. Bring that verification into the public CLI with exact artifact handling. | Active P1 queue; this closes a CLI gap, not physical-device or store acceptance. |
 | M9 — Auth/session consistency | Durable account recovery and revocation exist. Evaluate one shared passkey-ceremony lifecycle with atomic single use, expiry and tenant/session binding. | Next extension after the active product increments; choose the storage/API boundary before promising implementation. |
+| Transparent supervision | The owner has selected the proposed `rullst-supervision` as the first additional priority. Keep parental and exam policies distinct and reuse privacy primitives through explicit composition. | First conditional extension after required deliveries; a usable generated journey and browser/authorization tests precede package admission. Device-wide control remains separate. |
 | M15 — remote messaging | Wire contracts, local durable state and the ORM outbox exist. Evaluate one remote broker adapter with real restart, redelivery and lease/idempotency evidence. | Conditional extension; select a broker and supported semantics first. Seven adapter names are not seven functioning integrations. |
 | M40 — Labs | The threat model and separate web-contract/runner roadmap are retained. The first candidate is a bounded job/grading/receipt contract with a deterministic local protocol fixture. | Conditional extension; contracts alone do not deliver code execution. A usable runner requires its own isolated deployment and adversarial acceptance. |
 | M1/M3/M7/M12 — adoption and assurance | Carry the compatible updater forward, add actual major-version migrations, improve generated guidance and connect new code to the relevant verification inventory. | Required adoption/security work plus bounded maintainer tooling; Verus begins with one production-linked pilot. |
