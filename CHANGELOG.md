@@ -96,6 +96,12 @@ publication or admit a stable v13 release. See the
   No facial engine, live age provider or automatic global legal-compliance claim.
 - Track transparent learner/exam/parental supervision as the first conditional
   extension. This checkpoint does not introduce a supervision crate.
+- Gate generated SaaS billing reports on current reconciled subscription state,
+  authenticated ownership and explicit paid plans. Reject mock, stale, expired,
+  revoked or mismatched state; retain application-owned billing reconciliation.
+- Replace copied project source with a bounded deterministic context inventory,
+  key names without values and a read-only freshness check. Preserve existing
+  `AGENTS.md` instructions and generate the inventory for all six blueprints.
 
 ## [12.1.0] - 2026-09-20
 

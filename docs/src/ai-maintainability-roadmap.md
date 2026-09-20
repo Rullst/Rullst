@@ -23,8 +23,9 @@ The repository already provides useful controls:
   from engineering evidence.
 - `cargo rullst make:*` emits conventional, inspectable Rust source instead of
   hiding application behavior behind runtime reflection.
-- `cargo rullst generate:ai-context` emits `.llms.txt` with selected application
-  source and dependency context.
+- The v13 `generate:ai-context` candidate emits a bounded metadata inventory,
+  a freshness check and preserved project instructions; see
+  [the implemented candidate scope](project-context.md).
 - Generated-project tests, compile-fail tests, deterministic provider mocks and
   the workspace validation gates catch classes of mistakes independently of the
   assistant that proposed a change.
@@ -35,11 +36,11 @@ at a defined quality level.
 
 ## Known limitations
 
-The current AI context generator primarily concatenates `Cargo.toml` and Rust
-files from selected conventional directories. That format can become noisy,
-does not rank information by task relevance and does not provide a complete
-project contract for routes, configuration, migrations, tests, authorization
-or operational commands.
+The published v12.1 context generator concatenates manifest/source content.
+The v13 candidate replaces that with a bounded metadata inventory and preserved
+application instructions. It still does not infer a complete semantic contract
+for routes, configuration behavior, model relationships, tests or authorization.
+Task-ranked semantic views remain follow-up work.
 
 The framework documentation is extensive. Breadth helps difficult work, but a
 model with weaker retrieval or reasoning can select an obsolete example, miss a
@@ -55,8 +56,9 @@ require stronger review and broader gates than ordinary application CRUD.
 
 ### 1. Project-specific agent instructions
 
-Generate a concise `AGENTS.md` for each new application, derived from the
-selected blueprint and feature set. It must describe:
+The first v13 candidate creates concise common application instructions and
+points to the fresh file/dependency inventory; existing instructions remain
+maintainer-owned. Future blueprint-specific semantic profiles should describe:
 
 - the chosen database, rendering mode and enabled Rullst subsystems;
 - the canonical locations for routes, models, controllers, policies,
@@ -73,9 +75,10 @@ optional integration is active merely because its crate is available.
 
 ### 2. Structured and bounded AI context
 
-Evolve `generate:ai-context` from a source concatenator into a deterministic,
-versioned project map. The output should present summaries and file paths before
-including bounded source excerpts. It should cover:
+The v13 candidate now supplies deterministic bounded file/dependency/key
+metadata, freshness checks and project instructions. It deliberately excludes
+source excerpts and does not infer domain semantics. Broader future maps should
+add explicitly tested contracts for:
 
 - dependency and feature selections;
 - routes and their authentication/ownership policies;

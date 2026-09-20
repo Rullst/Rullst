@@ -1732,6 +1732,41 @@ sending.
 
 ---
 
+### 11.1. Generated Project Context (v13 candidate)
+
+`generate:ai-context` retains its existing helper signature but replaces raw
+source/configuration embedding with the `rullst.project-context.v1` inventory.
+It writes a readable `.llms.txt` and machine-readable `.rullst/context-map.json`,
+and creates a project `AGENTS.md` only when no user instructions already exist.
+New project generation installs the same instructions and inventory. Existing
+`AGENTS.md` files are never rewritten by regeneration or automatic scaffold hooks.
+
+The map contains bounded project/dependency/feature names, validated dependency
+version requirements, configuration key
+names, source paths and roles, file sizes and one deterministic input fingerprint.
+It contains no source bodies, configuration values, dependency URLs or absolute
+workstation paths. Only bounded `Cargo.toml`, optional `Rullst.toml` and
+`.env.example`, and regular `.rs` files beneath `src` are inspected. Secrets,
+databases, VCS metadata, build output, dependency directories, hidden descendants
+and symlinks are excluded or rejected explicitly. Directory depth, entries,
+individual files, aggregate reads and output size all have hard limits; errors
+must not echo configuration values. Generated instructions identify the map as
+an inventory, not evidence that a feature, deployment or test has passed.
+The dotenv inventory accepts single-line declarations and rejects multiline
+values before they can be mistaken for key names; it performs no interpolation.
+The selected root's `src` is explicit: external workspace members are not scanned.
+
+`--check` recomputes and compares the generated inventory without writing files;
+stale, missing or altered output fails. Normal regeneration uses preflighted
+atomic replacement/rollback, refuses links and unrecognized output, and retains
+the legacy generated `.llms.txt` migration boundary explicitly. The fingerprint
+detects changed Rust source and inventoried metadata, excluding configuration
+values and dependency URLs; it is not a signature or an authorization claim. The
+workspace directory is trusted against concurrent adversarial filesystem edits.
+
+Local unit and real CLI/new-project contracts passed for the bounded inventory;
+combined hosted admission remains pending.
+
 ## 🔄 12. Assisted Framework Upgrade Contract
 
 `cargo rullst upgrade` is the canonical application-upgrade boundary. It is an

@@ -847,10 +847,12 @@ or replacing application models.
 * **Optional Flags:**
   * `--output`: Where to save the generated structs (Default: `src/models`).
 
-### `cargo rullst generate:ai-context`
-Creates `.llms.txt`, a compact summary of project structure, conventions, and
-dependencies for coding assistants. It is context, not a guarantee that a model
-will understand or modify the project correctly.
+### `cargo rullst generate:ai-context [--check]`
+The v13 candidate writes a bounded `.llms.txt` and `.rullst/context-map.json`
+with dependency metadata, configuration key names and source paths. It creates
+`AGENTS.md` only when absent and preserves existing project instructions.
+`--check` detects missing, altered or stale inventory without writing files.
+See [project context](project-context.md) for limits, exclusions and legacy migration.
 
 ### `cargo rullst audit [--ai] [--compliance] [--idor]`
 Runs bounded source/configuration checks and can invoke installed dependency

@@ -192,8 +192,11 @@ process fixtures exercise success, explicit selection, wrong certificates,
 missing/stale/oversized/changed files, verifier/build failures and output/time
 bounds. The hosted Android workflow now exercises this CLI against a real
 signed release and independently checks its certificate and receipt. That new
-hosted result remains pending; protocol fixture success does not certify SDK
-interoperability or devices/stores.
+hosted SDK job passed on PR #220 head `52657955`: it compiled and verified a
+signed release APK through the CLI and the independent SDK check
+([run 35497371156](https://github.com/Rullst/Rullst/actions/runs/35497371156)).
+The rest of the combined campaign remains pending. This is SDK interoperability
+evidence; device/store acceptance remains separate.
 
 The PR #219 follow-up CodeQL analysis reported one additional threshold-to-nonce
 conflation in the isolated privacy fuzz helper. Alert 338 was individually
@@ -205,7 +208,10 @@ No source path, query or fuzz target was disabled.
 
 [PR #220](https://github.com/Rullst/Rullst/pull/220) now carries the adoption,
 Android and conditional supervision-planning changes, synchronized with the
-admitted privacy head. Its own combined CI and real SDK evidence remain pending.
+admitted privacy head. Its real SDK job passed; the remaining combined CI is
+pending. The initial campaign caught a missing changelog section for the new
+source version; the current head includes dated, explicitly unpublished
+`13.0.0-alpha.1` development notes and retains the release-note validation.
 
 The entitlement candidate adds a typed current-state gate in Capital and an
 authenticated SaaS billing report. It requires an exact server plan allowlist,
@@ -223,6 +229,15 @@ all-target Clippy, CLI all-feature/all-target Clippy, production panic checks,
 353 CLI unit tests (one parent-owned child fixture ignored by the outer harness),
 20 command/scaffold contracts and book/local links. Combined hosted acceptance
 remains outstanding.
+
+The project-context candidate replaces raw source concatenation with a bounded,
+versioned file/dependency/configuration-key inventory. It creates common project
+instructions only when absent, preserves user `AGENTS.md`, supports non-writing
+freshness checks and records source scope/exclusions explicitly. Local contracts
+cover private-value omission, links, size/depth/count budgets, stale inputs,
+legacy migration, conflicting output and all six generated blueprints. Semantic
+route/authorization inference and task-specific context shards remain follow-up
+work; the [guide](project-context.md) states the exact candidate boundary.
 
 On 20 September at 07:31 UTC, the first four v12 mutation shards had hit their
 330-minute execution budget; their partial artifacts were retained. For example,
