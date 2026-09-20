@@ -198,6 +198,40 @@ contract exercises cross-school/user denial, selector ambiguity/conflicts,
 ordinary form submission, replay and membership revocation between issuance and
 submission. Hosted and deployed-browser acceptance remain separate.
 
+The v13 fuzz inventory adds two isolated privacy targets for authenticated
+challenge transport and signed attestations. Deterministic fuzz-only keys permit
+mutation beyond signature validation; assertions bind accepted results to the
+current context, assurance and one-use replay contract. These targets enable no
+database or network integration. They expand v13's required inventory to 42;
+the immutable v12 release line retains 40. Short diagnostics are not full release
+evidence, and the durable database lifecycle keeps its separate acceptance gates.
+
+The unpublished `consent` contract is independent of age assurance and concerns only
+optional processing that the operator has assigned to an explicit purpose and
+notice version. Absence, refusal, withdrawal, version mismatch and expiry deny
+processing. An affirmative choice uses the exact observed revision; withdrawal
+atomically advances that revision even when its form is stale, preventing an
+earlier affirmative form from undoing it. The authenticated subject and tenant
+are server-owned inputs, never browser identity fields. The explicit submission
+also binds the displayed purpose/notice version to current server configuration,
+so a policy change cannot borrow an old form's unchanged revision. A bounded store must
+serialize reads/updates against a persisted clock high-water mark and preserve
+withdrawal tombstones; production rejects process-local state. Permission must
+be checked immediately before each processing action, including deferred jobs.
+Already-started external effects are not cancelled retroactively by a later
+withdrawal, and consent does not authorize essential processing or establish
+age/guardian authority. The optional `consent-sqlite` adapter initializes a new
+local file explicitly; ordinary opening never creates or repairs missing state.
+It serializes reads/updates with `BEGIN IMMEDIATE`, WAL/full synchronization,
+a bounded private pool, immutable quota and persisted clock metadata. It retains
+scope digests, latest choices/versions/revisions and timestamps, without raw
+subject IDs. Those digests are pseudonymous data. Expired records and withdrawal
+tombstones are never evicted to create capacity. All processes must use that same
+trusted local file; multi-host replication is unsupported. Restoring stale state
+requires quiesced processing, reconciled withdrawals and fresh purpose versions.
+Authenticated consumer effects, retention/restore review and hosted acceptance
+remain required before release admission.
+
 The separate [SaaS triage](saas-v12-1-v13-triage.md) assigns the examples' reported
 defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidence.
 

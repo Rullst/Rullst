@@ -8,3 +8,6 @@
 
 #[cfg(feature = "age-assurance")]
 pub mod age_assurance;
+
+#[cfg(feature = "consent")]
+pub mod consent;

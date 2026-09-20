@@ -120,6 +120,20 @@ its scoped consumer/state/API and release admission criteria pass.
 
 ## Release priorities and acceptance
 
+The next local increment adds two privacy fuzz targets to the v13 release
+inventory (42 total; v12 remains 40). Two five-minute ASan diagnostics completed
+without a reproducer: 1,442,644 challenge-token inputs and 929,346 attestation
+inputs. These are local diagnostics, not the complete hosted release campaign.
+The independent `consent`/`consent-sqlite` foundation now provides explicit
+purpose/notice choices, revision-bound grants, unconditional withdrawal,
+default denial and per-action checks. Its shared-local adapter retains bounded
+state and clock metadata, refuses implicit initialization/repair and preserves
+withdrawal across pools and processes. Local contracts cover stale forms,
+version/tenant/subject boundaries, capacity, clock/expiry, cancellation and
+faulty adapters. An authenticated generated preferences/rights consumer is still
+the next P0 increment; this foundation alone does not close that acceptance row.
+Combined hosted acceptance for this increment remains pending.
+
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |
 | P0 | Published v12.1.0 corrections integrated without losing v13 work | Review conflicts; retain the stable runtime changes; pass the combined workspace tests, strict Clippy, format and feature/consumer checks. |

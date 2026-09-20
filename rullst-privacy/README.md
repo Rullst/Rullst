@@ -1,12 +1,84 @@
 # rullst-privacy
 
-Unpublished v13 foundation for proportional age assurance. This package is a
+Unpublished v13 foundation for proportional age assurance and optional consent. This package is a
 workspace member with `publish = false`; it is not part of the v12 release
 inventory or the default `rullst` dependency graph.
 
-Enable `age-assurance` to use the current contract. No feature is enabled by
-default. Broader consent, rights-request, retention and regional-policy support
+Enable `age-assurance` for age checks or `consent` for independent purpose-bound
+choices. No feature is enabled by default. Broader rights-request, retention and regional-policy support
 is tracked in the [privacy roadmap](../docs/src/privacy-age-assurance-roadmap.md).
+
+## Optional-processing consent
+
+The independent `consent` feature provides typed purpose/notice versions,
+authenticated subject/tenant bindings, explicit grant/refusal/withdrawal and a
+static-dispatch store contract. It has no age, crypto, database or Core dependency.
+This is an engineering control for optional processing, not a selection of its
+lawful basis, guardian authority or a certificate of worldwide compliance.
+
+- No record, refusal, withdrawal, expiry or a different notice version denies
+  processing. The operator must not reuse retired notice versions.
+- `ConsentSubmission` carries the purpose/version actually displayed and the
+  revision shown in that form. A new notice requires a new explicit choice even
+  when the stored revision has not changed.
+- `choose` compares that revision atomically. `withdraw` advances it without a
+  stale-form precondition and covers the same purpose across versions. A delayed
+  affirmative response cannot undo an acknowledged withdrawal. A fresh explicit
+  choice can grant again.
+- `allows` reads authoritative state for each processing action. Deferred jobs
+  must check again at execution; a queued job is not lasting permission. The
+  check linearizes at the store read and cannot cancel an already-started external
+  effect. Stronger atomicity between consent and domain effects belongs to the
+  application's transaction/processor contract.
+- Grant expiry is an explicit server choice, bounded to at most 365 days as an
+  engineering limit. It is not a legal retention period or a default grant.
+  Clock checks reject rollback and expiry during storage; stores retain a clock
+  high-water mark. Records and debug output do not expose application profiles.
+
+`ConsentGate::new` requires shared durable state. `MemoryConsentStore` is bounded
+development-only storage, accepted by `for_development`. The `consent-sqlite`
+feature supplies `SqliteConsentStore` without enabling age assurance. Deployment
+initializes a **new** file once with `initialize`; application startup uses
+`open`, which never creates or repairs missing state. It uses a private bounded
+pool, WAL/full synchronization, serialized reads/revision updates, an immutable
+quota and persistent clock checks. All application processes must use the same
+trusted local file. The stored scope digest remains pseudonymous personal data.
+
+Withdrawals and expired records are not evicted to make space. Choose capacity
+for the number of subject/tenant/purpose combinations. The operator owns a
+trusted directory, permissions, synchronized time, storage durability and an
+application-level timeout. Remote filesystems and multi-host replication are
+unsupported. A stale backup can restore old grants: stop optional processing,
+restore/reconcile withdrawals and move every active purpose to a fresh notice
+version before resuming. No automatic erasure or backup rollback detection is
+claimed. A failed/cancelled bootstrap may leave a partial file for explicit
+operator recovery; normal startup must not remove it.
+
+```rust,no_run
+# #[cfg(feature = "consent-sqlite")]
+# async fn example() -> Result<(), rullst_privacy::consent::ConsentError> {
+use rullst_privacy::consent::*;
+let store = SqliteConsentStore::open("private/consent.sqlite3", 10_000).await?;
+let gate = ConsentGate::new(store)?;
+// Resolve these opaque references from authenticated server state.
+let subject = ConsentSubject::new("account-ref", "tenant-ref")?;
+let purpose = ConsentPurpose::new("optional-digest", "notice-v1")?;
+// Render the exact notice and current revision before accepting an explicit
+// response. Enforce authentication/CSRF and read the displayed version from it.
+let current = gate.current(&subject, &purpose).await?;
+let response = ConsentSubmission::new(purpose.clone(), current.revision(), ConsentChoice::Granted)?;
+let expiry = SystemConsentClock.now()?.checked_add(3600).ok_or(ConsentError::InvalidConfiguration)?;
+gate.choose(&subject, &purpose, &response, expiry).await?;
+if gate.allows(&subject, &purpose).await? {
+    // Perform this one optional action under ordinary authorization too.
+}
+gate.withdraw(&subject, &purpose).await?;
+# Ok(())
+# }
+```
+
+The crate-level contracts and local storage tests do not yet constitute an
+authenticated generated preferences/rights journey or deployed acceptance.
 
 ## Current boundary
 
