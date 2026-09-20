@@ -85,6 +85,76 @@ fn cargo(root: &Path, workspace: &Path) -> Command {
 }
 
 #[test]
+fn default_cli_project_composes_age_privacy_then_supervision() {
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let cli = env!("CARGO_BIN_EXE_rullst");
+    success(
+        Command::new(cli)
+            .current_dir(temp.path())
+            .env("RULLST_DISABLE_UPDATE_CHECK", "true")
+            .args([
+                "new",
+                "packaged-lms",
+                "--default",
+                "--blueprint",
+                "lms",
+                "--skip-initial-migration",
+            ])
+            .output()
+            .unwrap(),
+    );
+    let root = temp.path().join("packaged-lms");
+    for args in [
+        vec![
+            "make:age-gate",
+            "--blueprint",
+            "lms",
+            "--minimum-age",
+            "18",
+            "--policy-version",
+            "archive-v1",
+            "--replay-store",
+            "sqlite",
+        ],
+        vec![
+            "make:privacy",
+            "--blueprint",
+            "lms",
+            "--purpose-version",
+            "archive-v1",
+            "--validity-seconds",
+            "3600",
+        ],
+    ] {
+        success(
+            Command::new(cli)
+                .current_dir(&root)
+                .args(args)
+                .output()
+                .unwrap(),
+        );
+    }
+    success(install(&root, workspace));
+    assert!(root.join("SUPERVISION.md").is_file());
+    let main = fs::read_to_string(root.join("src/main.rs")).unwrap();
+    for name in [
+        "age_controller",
+        "privacy_controller",
+        "supervision_controller",
+    ] {
+        assert!(main.contains(name));
+    }
+    success(
+        Command::new(cli)
+            .current_dir(&root)
+            .args(["generate:ai-context", "--check"])
+            .output()
+            .unwrap(),
+    );
+}
+
+#[test]
 fn supervision_refuses_custom_authorization_outputs_and_other_backends() {
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let temp = tempfile::tempdir().unwrap();

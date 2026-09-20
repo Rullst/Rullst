@@ -136,6 +136,16 @@ pub(super) fn protect(source: &str) -> Result<String, Box<dyn std::error::Error>
     let prefix = source
         .get(initializer.start..removed.start)
         .ok_or_else(|| io::Error::other("invalid LMS source prefix"))?;
+    // Removing a whole route must not leave its indentation on an empty line.
+    // Only this AST-bounded gap is whitespace; never trim application literals.
+    let prefix = if prefix
+        .rsplit_once('\n')
+        .is_some_and(|(_, tail)| tail.chars().all(|c| c == ' ' || c == '\t'))
+    {
+        prefix.trim_end_matches([' ', '\t'])
+    } else {
+        prefix
+    };
     let suffix = source
         .get(removed.end..initializer.end)
         .ok_or_else(|| io::Error::other("invalid LMS source suffix"))?;
@@ -171,6 +181,11 @@ fn router() {{
             !protected.contains("get(\"/dashboard\" => controllers::auth_controller::dashboard)")
         );
         assert!(protected.contains(DASHBOARD));
+        assert!(
+            !protected
+                .lines()
+                .any(|line| !line.is_empty() && line.trim().is_empty())
+        );
         assert!(
             protect(&source.replace("auth_middleware::auth_middleware", "auth_middleware::other"))
                 .is_err()
