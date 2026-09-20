@@ -7,6 +7,8 @@ mod challenge;
 mod clock;
 mod error;
 mod policy;
+#[cfg(feature = "postgres")]
+mod postgres;
 mod replay;
 #[cfg(feature = "sqlite")]
 mod sqlite;
@@ -17,6 +19,8 @@ pub use challenge::{AgeChallenge, SubjectBinding};
 pub use clock::{AgeClock, SystemAgeClock};
 pub use error::AgeError;
 pub use policy::{AgeMethod, AgePolicy, RiskLevel};
+#[cfg(feature = "postgres")]
+pub use postgres::PostgresReplayStore;
 pub use replay::{MemoryReplayStore, ReplayDurability, ReplayStore};
 #[cfg(feature = "sqlite")]
 pub use sqlite::SqliteReplayStore;

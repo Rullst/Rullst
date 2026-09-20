@@ -24,9 +24,10 @@ The prioritized implementation sequence is:
 1. Retain the admitted v12.1 closeout and admit the v13 integration after its
    existing hosted checks pass; carry applicable stable corrections and keep
    mutation findings visible.
-2. Add optional PostgreSQL replay storage for multiple application hosts, with
-   real-database concurrency, quota, expiry, unavailable-state and rollback tests.
-   Keep SQLite's shared-local boundary explicit.
+2. Admit the optional PostgreSQL replay candidate after its hosted checks. Its
+   real-database tests cover concurrency, quota, expiry, failures, cancellation,
+   clock rollback and server restart. Keep SQLite's shared-local boundary and
+   PostgreSQL's operator-owned replication/failover obligations explicit.
 3. Build an authenticated first-party declaration journey, with server-owned
    policy, tenant/session/action binding and rejection when stronger assurance
    is required. Exercise the supported SaaS/LMS consumer shapes without a paid
@@ -72,6 +73,15 @@ its scoped consumer/state/API and release admission criteria pass.
   independent pools, a fresh process, reopen, concurrency, quota, cancellation and failure paths.
   Hosted candidate validation and a live age provider remain outstanding; this
   is foundation evidence, not end-to-end production acceptance.
+- The PostgreSQL candidate passed focused real-database bootstrap, restricted
+  runtime-role, multi-pool replay/quota, expiry during lock wait, schema/durability
+  drift, cancellation and server-restart checks. CI and coverage explicitly run
+  that disposable-database contract; combined candidate evidence is still required.
+- The initial CodeQL scan's 26 age-replay alerts were individually reviewed:
+  23 intentional integration-test identifiers, two policy-field data-flow
+  conflations and one unmodeled OS-random buffer overwrite. The
+  [review receipt](evidence/v13-codeql-age-review.json) binds those dispositions
+  to the analyzed source. No query, workflow or source/test path was excluded.
 - The initial review found main-only release admission/security filters and an
   unprotected `v13` branch. The preparation change binds each major to its
   release branch and enables the missing automatic checks. On 20 September UTC,
@@ -118,7 +128,7 @@ when its dependencies and verification capacity are ready.
 
 | Roadmap area | Starting point and next bounded increment | Scheduling boundary |
 | :--- | :--- | :--- |
-| M41 — privacy and age | Policy, signed attestations and shared-local SQLite exist in the unpublished candidate. Add PostgreSQL, an authenticated declaration path and enforceable purpose/rights effects in a consumer. | First product priority; provider availability does not block independent work. |
+| M41 — privacy and age | Policy, signed attestations, SQLite and PostgreSQL replay adapters exist in the unpublished candidate. Admit their hosted evidence, then add an authenticated declaration path and enforceable purpose/rights effects in a consumer. | First product priority; provider availability does not block independent work. |
 | M11/M33 — SaaS entitlements | LMS already has application-owned course entitlements. Add a reusable typed plan gate and one generated SaaS enforcement journey; a public attribute macro needs its own design and compile tests. | Active P1 queue; do not imply that the entire billing programme is complete. |
 | M5/M29/M34 — API/SDK contracts | Scalar and the route-scanning OpenAPI generator exist, but scanning currently emits placeholder responses. Add a schema-backed supported API profile and one TypeScript target. | Active P1 queue; React, Dart and Swift targets follow the proven schema contract. |
 | M21 — Omni/Android | Version 12.1 configures application-owned signing; hosted Android CI already verifies signatures and the expected certificate. Bring that verification into the public CLI with exact artifact handling. | Active P1 queue; this closes a CLI gap, not physical-device or store acceptance. |
@@ -153,7 +163,7 @@ SQLite adapter uses serialized durable transactions, persisted quota/clock
 metadata and hashed nonces. Local tests cover independent verifier pools, reopen,
 simultaneous claims, capacity, expiry, cancellation, uncertain acknowledgement
 and unavailable storage. Native hosted evidence remains pending. Its
-shared-local boundary is distinct from planned PostgreSQL multi-host operation;
+shared-local boundary is distinct from the PostgreSQL adapter's multi-host operation;
 restoring an old backup requires quiescing verification and invalidating all
 outstanding challenges through a newly enforced policy or retired signing keys.
 

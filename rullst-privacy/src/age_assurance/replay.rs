@@ -36,6 +36,14 @@ pub(super) fn validate_claim(expires_at: i64, now: i64) -> Result<(), AgeError> 
     Ok(())
 }
 
+#[cfg(any(feature = "sqlite", feature = "postgres"))]
+pub(super) fn nonce_digest(nonce: &[u8; 32]) -> ring::digest::Digest {
+    let mut hash = ring::digest::Context::new(&ring::digest::SHA256);
+    hash.update(b"rullst.age-replay.v1\0");
+    hash.update(nonce);
+    hash.finish()
+}
+
 #[derive(Default)]
 struct MemoryState {
     claims: BTreeMap<[u8; 32], i64>,

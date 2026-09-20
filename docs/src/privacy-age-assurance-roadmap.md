@@ -5,9 +5,11 @@
 risk policies, bound challenges, signed threshold attestations, explicit
 outcomes and asynchronous replay-store contracts. The optional shared-local
 SQLite adapter adds atomic persisted consumption, quota and clock rollback
-checks, with local cancellation/failure/reopen evidence. Broader privacy
-workflows, concrete live age providers and multi-host replay storage remain
-unimplemented. This engineering update does not revalidate the legal sources.
+checks. The optional PostgreSQL candidate adds shared claims across application
+hosts with explicit initialization and real-database concurrency, cancellation,
+expiry, configuration, restricted-role and server-restart tests. Combined hosted
+acceptance, broader privacy workflows and concrete live age providers remain
+open. This engineering update does not revalidate the legal sources.
 
 Rullst should generate applications with privacy-preserving defaults and
 reusable, testable controls. It must not advertise automatic worldwide legal

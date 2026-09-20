@@ -65,6 +65,9 @@ fn verifier() -> AgeVerifier<MemoryReplayStore> {
 mod clock;
 #[path = "age_assurance/contracts.rs"]
 mod contracts;
+#[cfg(feature = "postgres")]
+#[path = "age_assurance/postgres/mod.rs"]
+mod postgres;
 #[path = "age_assurance/replay.rs"]
 mod replay;
 #[cfg(feature = "sqlite")]

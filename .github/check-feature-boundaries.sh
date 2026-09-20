@@ -123,6 +123,7 @@ rullst-auth|recovery-postgres
 rullst-privacy|
 rullst-privacy|age-assurance
 rullst-privacy|sqlite
+rullst-privacy|postgres
 
 # Umbrella boundaries exposed to generated applications.
 rullst|orm

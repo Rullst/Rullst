@@ -105,6 +105,28 @@ quiescing verification and invalidating all outstanding challenges through a
 new policy/key epoch; SQLite cannot detect arbitrary backup rollback. Network
 filesystems and multi-host replication are outside this adapter's boundary.
 
+The v13 PostgreSQL adapter uses a separately enabled `postgres` feature and a
+private bounded pool against one authoritative writable database. Explicit
+deployment initialization creates the fixed `rullst_age_replay` schema; normal
+connection never creates or repairs missing state. Transactional startup locking
+and a metadata row lock serialize schema initialization and quota/expiry/nonce
+claims across application hosts. Metadata persists the schema version, capacity
+and accepted clock high-water mark. Tables must be permanent and WAL-logged;
+`fsync`, full-page writes and synchronous commit are required. Claims store only
+the same domain-separated nonce digest and expiry as SQLite. Remote connections
+require certificate/hostname-verified TLS; loopback and local sockets support
+disposable development databases. Errors must not expose connection credentials.
+Bounded pool acquisition, statement/lock waits and idle transactions prevent
+unbounded database waits; the caller still owns an overall request deadline.
+All verifiers must use that same authoritative database and synchronized trusted
+clocks. Replication configuration, failover fencing, durable hardware and backup
+restore remain operator obligations; asynchronous replica promotion or database
+rollback cannot be advertised as preserving consumed proofs automatically.
+The adapter's focused real-database tests cover concurrent initialization and
+claims, a restricted runtime role, quota, schema/durability drift, cancellation,
+clock changes during a row-lock wait and server restart. Combined hosted
+acceptance and deployment-specific failover/TLS evidence remain separate.
+
 This first contract does not implement a facial model, vendor transport,
 guardian verification or global privacy compliance. The
 [privacy and age-assurance roadmap](privacy-age-assurance-roadmap.md) defines

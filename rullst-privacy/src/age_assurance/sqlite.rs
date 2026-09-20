@@ -1,7 +1,9 @@
 //! Bounded replay state for processes sharing one trusted local database file.
 
-use super::{AgeError, ReplayDurability, ReplayStore, replay::validate_claim};
-use ring::digest::{Context, SHA256};
+use super::{
+    AgeError, ReplayDurability, ReplayStore,
+    replay::{nonce_digest, validate_claim},
+};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous};
 use sqlx::{SqliteConnection, SqlitePool};
 use std::{path::Path, time::Duration};
@@ -167,10 +169,7 @@ impl SqliteReplayStore {
             .execute(&mut *connection)
             .await
             .map_err(|_| AgeError::StoreUnavailable)?;
-        let mut hash = Context::new(&SHA256);
-        hash.update(b"rullst.age-replay.v1\0");
-        hash.update(&nonce);
-        let digest = hash.finish();
+        let digest = nonce_digest(&nonce);
         let exists: bool = sqlx::query_scalar(
             "SELECT EXISTS(SELECT 1 FROM rullst_age_replay_claims WHERE nonce_digest = ?)",
         )
