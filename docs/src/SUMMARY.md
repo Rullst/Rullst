@@ -7,6 +7,7 @@
 - [Simple Capability Status](capability-status.md)
 - [Per-Commit Quality Scorecard](quality-scorecard.md)
 - [v12 Stable Release Audit](v12-release-audit.md)
+- [v13 Delivery Plan through 26 September](v13-delivery-plan.md)
 - [Website Maintenance & Privacy Boundaries](website-maintenance.md)
 - [Rullst Academy Product Programme](rullst-academy.md)
 - [💡 The Rullst Philosophy](philosophy.md)

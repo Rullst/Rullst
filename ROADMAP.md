@@ -385,6 +385,11 @@ age-assurance package and v13 Labs/privacy/Verus plans remain separate.
 Integration requires its own CI evidence; stable-release results do not certify
 the combined v13 source.
 
+The [delivery plan through 26 September 2026](docs/src/v13-delivery-plan.md)
+selects the bounded release priorities, acceptance criteria and feature-freeze
+dates. It preserves this wider roadmap and does not turn planned capabilities
+into shipped claims.
+
 | Order | Outcome | Acceptance boundary |
 | :--- | :--- | :--- |
 | **P0 — verification efficiency** | Shorter local and hosted feedback, with measured cold/warm build and queue times | Compare test inventories; select affected crates and their consumers; preserve broad scheduled/release checks and a full-run fallback for unknown changes. Bind reusable evidence to source, dependencies, tools and policy. Prove that security, workflow, manifest and generator changes cannot silently skip required checks. |
