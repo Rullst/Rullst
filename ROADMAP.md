@@ -355,11 +355,11 @@ just because they are listed here. The phased acceptance plan is in
 [WORKFLOWS.md](WORKFLOWS.md#verification-efficiency--v12-maintenance-and-v13).
 Application API changes still belong to the appropriate release line.
 
-Complete the compatible **12.1.0** update experience after the verification
-foundation and before concentrating new capability work on v13. The
-[maintenance checkpoint](docs/src/v12.md#1210-delivery-checkpoint-unreleased)
-distinguishes the working source from the published release and lists the
-remaining delivery gates.
+The compatible **12.1.0** update experience is published. The
+[publication record](docs/src/v12.md#1210-published-maintenance-release)
+links its immutable source and successful release evidence. New capability
+work now belongs to v13; compatible security fixes remain eligible for v12
+maintenance.
 
 Begin by integrating the released v12 corrections into the existing v13 line
 through a reviewed merge. Preserve v13's separate Labs proposal and other
@@ -369,7 +369,7 @@ already includes the latest stable fixes.
 | Order | Outcome | Acceptance boundary |
 | :--- | :--- | :--- |
 | **P0 — verification efficiency** | Shorter local and hosted feedback, with measured cold/warm build and queue times | Compare test inventories; select affected crates and their consumers; preserve broad scheduled/release checks and a full-run fallback for unknown changes. Bind reusable evidence to source, dependencies, tools and policy. Prove that security, workflow, manifest and generator changes cannot silently skip required checks. |
-| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | Compatible opt-in 12.1.0 delivery first, carried into v13. Discovery, private caching and recovery hardening exist; native Windows cache contracts passed, while verified installation and isolated project acceptance remain release blockers. |
+| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | The compatible opt-in 12.1.0 flow is published with declared native installation and isolated project acceptance. Carry it into v13 and add explicit major-version migration rules and consumer acceptance; publication of 12.1.0 does not establish 12→13 compatibility. |
 | **P1 — Omni application delivery** | Predictable desktop/mobile builds, diagnostics and installation guidance | Detect SDK/toolchain/signing/identifier/version/ABI mistakes, distinguish unsigned build output from installable signed packages, and test lifecycle, navigation and interrupted networks. Device and store acceptance need their own evidence. |
 | **P1 — coherent application contracts** | One clear path for sessions, ownership, tenant context and typed client APIs | Consolidate existing Auth/Core/Security boundaries, complete selected session/passkey flows and validate API/SDK serialization. Preserve explicit configuration and negative authorization tests. |
 | **P2 — interactive learning products** | Server-authoritative progress, gamification and isolated programming exercises | Build on the current LMS scaffolds; version grading rules, persist idempotent results and prove tenant isolation. Follow the existing v13 `rullst-labs`/`rullst-labs-runner` proposal; untrusted execution stays outside the web process. |
@@ -385,7 +385,7 @@ after its code and evidence exist.
 
 ### Safe update experience
 
-**Status: working-source 12.1.0 implementation; final release acceptance pending.** The goal is
+**Status: published in 12.1.0 for the documented compatible-update scope.** The goal is
 the easiest practical update journey without hiding risk: one guided entry point, a clear
 plan, minimal repeated input, useful progress, verification and recoverable
 application of the approved changes. Ease and speed are acceptance criteria,
@@ -399,9 +399,9 @@ or count this proposal as completed work in the capability ledger.
 
 Implementation and acceptance order:
 
-Initial discovery hardening is in the working source, not a completed 12.1.0
-delivery: interactive-only, offline/CI-aware notices use bounded HTTPS metadata
-and reject redirects, yanked versions, prereleases and unsolicited major jumps.
+Published 12.1.0 discovery uses interactive-only, offline/CI-aware notices and
+bounded HTTPS metadata. It rejects redirects, yanked versions, prereleases and
+unsolicited major jumps.
 The legacy shared temporary cache is removed; the current result is deliberately
 process-local. Explicit `cargo rullst update check` now provides exact-target,
 MSRV/platform and versioned JSON discovery with separate major/prerelease
@@ -411,15 +411,15 @@ supports offline reads, forced refresh and cache opt-out. A Windows implementati
 now creates a protected DACL atomically and checks owners, grants, ancestors and
 file handles; its native Windows contracts passed at the
 [maintenance checkpoint](docs/src/v12.md#1210-delivery-checkpoint-unreleased).
-The final acceptance below remains required. The existing published v12.0.0
-artifact provenance was exercised separately; it does not authenticate an
-unpublished 12.1.0 candidate.
+The [12.1.0 publication record](docs/src/v12.md#1210-published-maintenance-release)
+records final acceptance. Earlier v12.0.0 provenance exercises remain historical
+evidence for their own artifacts.
 
-Working-source preparation now builds native CLI candidates on four explicit
+Published preparation builds native CLI candidates on four explicit
 targets and binds their version, source, platform, sizes and digests in a
 bounded inventory. The admitted tag workflow separately attests the files and
-adds release assets; ordinary CI inventories have no release tag. Native and
-release evidence is still pending. Explicit `update stage` now rechecks a fresh
+adds release assets; ordinary CI inventories have no release tag. The admitted
+12.1.0 release completed this native and publication evidence. Explicit `update stage` rechecks a fresh
 registry selection, authenticates the manifest before executable downloads and
 bounds HTTPS redirects, sizes, time and hashes in private storage. It executes
 and installs nothing. Managed installation now revalidates eligibility, original
@@ -432,8 +432,8 @@ executing-image tests passed on Linux, Windows and macOS at `ef0a8577` in
 The explicit local `update verify` command now authenticates a private manifest
 snapshot with the caller-installed GitHub CLI and checks both native binary
 digests. It grants no installation authority or registry eligibility and does
-not download, execute or install candidates. Platform/release acceptance is
-still required; this is one verifier boundary in the unfinished flow below.
+not download, execute or install candidates. Its declared platform/release
+acceptance is recorded with the published 12.1.0 flow below.
 
 Working-source `update project prepare` now retains Git working contents and
 the root lockfile in private before/candidate copies, reuses exact dependency

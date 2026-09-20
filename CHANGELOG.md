@@ -9,7 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
-## [12.1.0] - 2026-09-18
+## [12.1.0] - 2026-09-20
+
+Published on September 20 UTC (September 19 in Brasília); see the
+[publication record](docs/src/v12.md#1210-published-maintenance-release).
 
 This compatible maintenance release corrects billing contracts, generated
 application behavior and CLI update/recovery flows. Existing applications must
@@ -341,8 +344,8 @@ Privacy, age assurance and untrusted exercise execution remain v13 roadmap work.
   Add production-baseline HTTP regressions for valid submissions, preserved
   form data and denials before the handler. Keep the simple read-only HTMX search
   on GET instead of demonstrating a POST without its required token.
-- Record the unreleased 12.1.0 delivery boundaries and remaining updater/release
-  blockers without presenting advisory discovery as installation or migration.
+- Record the 12.1.0 delivery boundaries and updater/release acceptance evidence
+  without presenting advisory discovery as installation or migration.
 - Replace the completed v12 development program with a concise English release
   record and immutable publication receipts. Retire the CLI handoff and preserve
   older audits through archive links.

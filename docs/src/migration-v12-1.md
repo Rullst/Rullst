@@ -1,7 +1,7 @@
 # Migrating from 12.0 to 12.1
 
-12.1 is a maintenance candidate until its admitted tag is published. Updating
-dependencies or the CLI does not rewrite generated application files, migrate
+Version [12.1.0 is published](v12.md#1210-published-maintenance-release).
+Updating dependencies or the CLI does not rewrite generated application files, migrate
 databases or redeploy the Azure examples. Keep the existing application and
 lockfile, generate a separate comparison project, and review the changes below.
 
