@@ -164,6 +164,24 @@ decision or an authorization grant. Production still consumes its nonce in the
 shared durable replay store. The host owns independent secret provisioning,
 rotation/retirement, TLS, CSRF and endpoint limits; no external age provider is
 needed for this transport.
+
+The v13 `make:age-gate` consumer is an explicit opt-in for the recognized SaaS
+starter. It protects the existing dashboard action with an authenticated GET
+challenge and POST declaration; it never sets a reusable age-verified account
+flag. Both routes retain the starter's authentication, CSRF, headers and Server
+baseline. Policy version, threshold and application tenant are chosen explicitly
+at generation time, with low-assurance declarations identified as such. Opaque
+binding references are domain-separated keyed digests of server-resolved user,
+tenant and authenticated session, never request-supplied identities. Application
+keys and replay storage are mandatory; initialization, timeout, stale context or
+unknown/negative answers cannot grant access. SQLite and PostgreSQL are explicit
+profiles with their existing deployment obligations. Generation refuses unknown
+or already-modified route shapes before writing. Until privacy release admission,
+this command requires an explicitly supplied matching unpublished privacy source;
+it must not emit an unavailable registry dependency. Other blueprint adapters,
+provider flows, persistent age permissions and deployed browser acceptance remain
+separate work.
+
 The separate [SaaS triage](saas-v12-1-v13-triage.md) assigns the examples' reported
 defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidence.
 

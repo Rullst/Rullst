@@ -77,6 +77,17 @@ its scoped consumer/state/API and release admission criteria pass.
   runtime-role, multi-pool replay/quota, expiry during lock wait, schema/durability
   drift, cancellation and server-restart checks. CI and coverage explicitly run
   that disposable-database contract; combined candidate evidence is still required.
+- The next local increment adds native declarations and authenticated challenge
+  transport, plus an opt-in generated SaaS dashboard journey. Local checks passed
+  42 privacy integration tests, one unit test and five doctests; the disposable
+  PostgreSQL lifecycle and restart contract also passed explicitly. A generated
+  SaaS executes real session/user lookup, production browser middleware, explicit
+  choice and durable replay denial; a second process verifies missing-key denial,
+  and the PostgreSQL consumer profile compiles. Installer tests cover formatted
+  source, changed authentication, source selection, preserved edits and rollback
+  after a write failure. Strict local CLI Clippy and book/link checks passed.
+  Hosted admission, the LMS consumer and broader purpose/rights workflows remain
+  outstanding; these checks do not establish deployed browser/provider acceptance.
 - The initial CodeQL scan's 26 age-replay alerts were individually reviewed:
   23 intentional integration-test identifiers, two policy-field data-flow
   conflations and one unmodeled OS-random buffer overwrite. The

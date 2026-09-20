@@ -623,6 +623,33 @@ responsible for calculating the due state, scheduling delivery, enforcing its
 disclosed billing policy, and reconciling payment. The generated build path
 runs the mandatory pre-flight and rejects dangerous links.
 
+### `cargo rullst make:age-gate` (unpublished v13 preview)
+
+Adds an explicit first-party declaration before each visit to the recognized
+SaaS starter's `/dashboard`. Generation requires a server-owned policy version,
+threshold and single-tenant deployment reference; it never chooses a universal
+legal minimum age. The existing authentication and CSRF layers protect both
+GET and POST. A successful answer remains declared, and authorizes only that
+dashboard rendering after durable one-use consumption.
+
+```bash
+cargo rullst make:age-gate \
+  --privacy-source /path/to/Rullst/rullst-privacy \
+  --minimum-age 18 \
+  --policy-version dashboard-v1 \
+  --tenant-ref application-tenant-ref \
+  --replay-store sqlite
+```
+
+The threshold above is an example for an application-assessed low-assurance
+policy. Select `postgres` explicitly for a shared database across hosts.
+Configure the required private key and replay database as described by the
+generated `AGE_GATE.md`; missing state or configuration denies access. The
+preview requires the explicit unpublished privacy source, and refuses existing
+privacy integrations or unrecognized authentication/route shapes before writing.
+Review the generated diff before deployment. It does not install facial models,
+verified guardianship, reusable age flags, an LMS adapter or global compliance.
+
 ### `cargo rullst make:jwt`
 Injects a pre-configured boilerplate Middleware into your project for strict JWT Authentication (verifying Bearer tokens in the `Authorization` header).
 

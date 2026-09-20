@@ -24,7 +24,7 @@ pub use server_middleware::{inject_hmr_script, zstd_static_middleware};
 // ─── Dependency Shielding cascades (Roadmap Milestone 8) ────────────────────
 pub use axum::{
     body::{Body, Bytes},
-    extract::{Extension, Form, Json, Path, Query, Request, State},
+    extract::{DefaultBodyLimit, Extension, Form, Json, Path, Query, Request, State},
     http::{HeaderMap, HeaderValue, Method, StatusCode, Uri, header},
     middleware::{self, Next, from_fn},
     response::{Html, IntoResponse, Redirect, Response},

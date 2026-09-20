@@ -1,0 +1,45 @@
+# Optional dashboard age declaration
+
+This generated v13 preview asks for an explicit declaration before each dashboard
+visit. It does not verify age, capture a photo, request a birth date or establish
+guardianship. Use it only when the service's assessed policy permits declarations.
+Other actions, including billing, retain their own authorization requirements.
+
+Both dashboard routes run the existing session/user lookup and CSRF middleware.
+GET presents the server-owned threshold; POST consumes the challenge before
+rendering the existing dashboard. No reusable account flag, cookie or bearer
+permission is created. A denied, missing, expired, altered or already-used
+declaration never reveals the dashboard. Storage uncertainty may consume a
+challenge; retry with a fresh one. The one-use age claim and application action
+are not a distributed transaction.
+
+Configure these server-only variables through the deployment secret manager:
+
+- `RULLST_AGE_KEY_HEX`: an independent random 32-byte key encoded as 64 hex
+  characters. Do not reuse APP_KEY, commit it or send it to the browser.
+- `RULLST_AGE_KEY_ID`: a non-secret key epoch. Rotate key and ID together on all
+  instances; this scaffold invalidates outstanding challenges during rotation.
+- `RULLST_AGE_REPLAY_DATABASE`: the private SQLite file path or PostgreSQL
+  connection URL matching the generated `__PROFILE__` profile. All instances
+  share the same authoritative store and fixed 10,000-live-claim capacity.
+
+Initialize PostgreSQL once in a deployment step with
+`PostgresReplayStore::initialize(url, 10_000)`; application startup uses `connect`
+and does not create/repair state. SQLite creates its file in an existing private
+directory and is supported only on one host, never on a network filesystem.
+Remote PostgreSQL verifies TLS; replication/failover, clocks, permissions,
+backups and durable hardware remain operator responsibilities. A restored old
+database requires quiescing verification and rotating the policy/key epoch.
+
+The policy version, minimum age and single application tenant reference live in
+`src/controllers/age_gate/config.rs`. Resolve actual tenant membership from
+authoritative application state before adapting this single-tenant starter to
+a multi-tenant service. Do not accept tenant, user or policy values from a form.
+The challenge contains keyed opaque references, is authenticated but not
+encrypted, and must stay out of URLs/logs/analytics. TLS, request limits and the
+Server security baseline remain mandatory. Responses are marked `no-store`.
+
+This preview uses an explicitly selected unpublished local privacy package.
+Review and remove that source path only after the corresponding v13 package is
+admitted and published. There is no automatic global-law compliance claim or
+implemented stronger-verification fallback in this generated journey.

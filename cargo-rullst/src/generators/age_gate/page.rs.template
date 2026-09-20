@@ -1,0 +1,21 @@
+use rullst::response::Html;
+
+pub(super) fn declaration(minimum_age: u8, token: &str, csrf: &str) -> Html<String> {
+    Html(format!(r#"<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Age declaration</title></head><body><main>
+<h1>Age declaration</h1>
+<p>This service asks you to declare whether you are at least {minimum_age} years old for this dashboard visit. Your answer is a declaration; it does not verify your age.</p>
+<p>No photo, identity document or date of birth is requested. The temporary challenge is single use.</p>
+<form method="post" action="/dashboard">
+<input type="hidden" name="_token" value="{}">
+<input type="hidden" name="challenge" value="{}">
+<fieldset><legend>Are you at least {minimum_age} years old?</legend>
+<label><input type="radio" name="answer" value="meets_threshold" required="true"> Yes</label>
+<label><input type="radio" name="answer" value="below_threshold" required="true"> No</label>
+<label><input type="radio" name="answer" value="declined" required="true"> I prefer not to answer</label>
+</fieldset><button type="submit">Continue</button></form>
+<p>If you cannot use this method, contact the service for an appropriate alternative.</p>
+<a href="/">Return to the service</a></main></body></html>"#,
+        rullst::html::escape_str(csrf), rullst::html::escape_str(token)))
+}

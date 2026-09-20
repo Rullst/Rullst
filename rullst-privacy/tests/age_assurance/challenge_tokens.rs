@@ -122,6 +122,30 @@ impl AgeClock for ObservedClock {
 }
 
 #[test]
+fn every_single_bit_change_in_a_transport_token_is_rejected() {
+    let codec = ChallengeTokens::new("active", &secret()).unwrap();
+    let token = codec
+        .seal(&challenge(AgeMethod::VerifiedAttribute))
+        .unwrap();
+    let original = token.as_bytes();
+    let clock = ObservedClock(AtomicUsize::new(0));
+    for offset in 0..original.len() {
+        for bit in 0..7 {
+            let mut changed = original.to_vec();
+            changed[offset] ^= 1 << bit;
+            let changed = String::from_utf8(changed).unwrap();
+            assert!(
+                codec
+                    .open_with_clock(&changed, &policy(), &binding(), &clock)
+                    .is_err(),
+                "accepted a changed token byte at {offset}, bit {bit}"
+            );
+        }
+    }
+    assert_eq!(clock.0.load(Ordering::SeqCst), 0);
+}
+
+#[test]
 fn malformed_or_unauthenticated_tokens_are_rejected_before_interpreting_the_challenge() {
     let key = secret();
     let codec = ChallengeTokens::new("active", &key).unwrap();

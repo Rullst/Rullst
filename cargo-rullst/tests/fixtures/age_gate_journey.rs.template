@@ -1,0 +1,90 @@
+use age_gate_consumer::router;
+use rullst::server::{Body, Request, Response, StatusCode};
+use http_body_util::BodyExt;
+use tower::ServiceExt;
+
+async fn request(app: &rullst::Router, session: Option<&str>, csrf: Option<&str>, form: Option<String>) -> Response {
+    let mut builder = Request::builder().uri("/dashboard");
+    let mut cookies = Vec::new();
+    if let Some(session) = session { cookies.push(format!("rullst_session={session}")); }
+    if let Some(csrf) = csrf { cookies.push(format!("rullst_csrf={csrf}")); }
+    if !cookies.is_empty() { builder = builder.header("cookie", cookies.join("; ")); }
+    let body = if let Some(form) = form {
+        builder = builder.method("POST").header("content-type", "application/x-www-form-urlencoded");
+        Body::from(form)
+    } else { Body::empty() };
+    app.as_axum().clone().oneshot(builder.body(body).unwrap()).await.unwrap()
+}
+
+async fn text(response: Response) -> String {
+    String::from_utf8(response.into_body().collect().await.unwrap().to_bytes().to_vec()).unwrap()
+}
+
+fn value(html: &str, name: &str) -> String {
+    html.split_once(&format!("name=\"{name}\" value=\"")).unwrap().1.split('"').next().unwrap().to_owned()
+}
+
+#[tokio::test]
+async fn authenticated_declaration_journey() {
+    rullst_orm::Orm::init("sqlite::memory:").await.unwrap();
+    let pool = rullst_orm::Orm::pool().unwrap();
+    sqlx::query("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT, oauth_provider TEXT, oauth_id TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)").execute(pool).await.unwrap();
+    for id in [1, 2] {
+        sqlx::query("INSERT INTO users (id, name, email, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
+            .bind(id).bind(format!("member-{id}")).bind(format!("member-{id}@example.test")).bind("2026-09-20").bind("2026-09-20").execute(pool).await.unwrap();
+    }
+    let key = rullst::auth::get_app_key().unwrap();
+    let first = rullst::auth::encrypt_session(1, &key).unwrap();
+    let second = rullst::auth::encrypt_session(2, &key).unwrap();
+    let rotated = rullst::auth::encrypt_session(1, &key).unwrap();
+    let mut app = router().unwrap();
+    let secure = rullst::security::apply_security_baseline(app.as_axum().clone(), rullst::config::SecurityConfig::default(), rullst::config::Environment::Production).unwrap();
+    *app.as_axum_mut() = secure;
+    let anonymous = request(&app, None, None, None).await;
+    assert_eq!(anonymous.status(), StatusCode::SEE_OTHER);
+    assert_eq!(anonymous.headers()["location"], "/login");
+    assert_eq!(request(&app, Some("forged"), None, None).await.status(), StatusCode::SEE_OTHER);
+    if std::env::var("RULLST_AGE_TEST_CONFIGURATION").unwrap() == "missing" {
+        assert_eq!(request(&app, Some(&first), None, None).await.status(), StatusCode::SERVICE_UNAVAILABLE);
+        return;
+    }
+    let shown = request(&app, Some(&first), None, None).await;
+    assert_eq!(shown.status(), StatusCode::OK);
+    assert_eq!(shown.headers()["cache-control"], "no-store");
+    let html = text(shown).await;
+    assert!(html.contains("does not verify your age"));
+    assert!(!html.contains("checked"));
+    assert!(!html.contains(&first));
+    assert!(!html.contains("member-1@example.test"));
+    let token = value(&html, "challenge");
+    let csrf = value(&html, "_token");
+    let answer = |choice: &str| format!("_token={csrf}&challenge={token}&answer={choice}");
+    assert_eq!(request(&app, Some(&first), None, Some(answer("meets_threshold"))).await.status(), StatusCode::FORBIDDEN);
+    for session in [&second, &rotated] {
+        assert_eq!(request(&app, Some(session), Some(&csrf), Some(answer("meets_threshold"))).await.status(), StatusCode::FORBIDDEN);
+    }
+    for body in [format!("_token={csrf}&challenge={token}"), answer("unknown"), format!("{}&tenant=other", answer("meets_threshold"))] {
+        assert!(request(&app, Some(&first), Some(&csrf), Some(body)).await.status().is_client_error());
+    }
+    let malformed = format!("_token={csrf}&challenge={token}x&answer=meets_threshold");
+    assert_eq!(request(&app, Some(&first), Some(&csrf), Some(malformed)).await.status(), StatusCode::FORBIDDEN);
+    let allowed = request(&app, Some(&first), Some(&csrf), Some(answer("meets_threshold"))).await;
+    assert_eq!(allowed.status(), StatusCode::OK);
+    assert_eq!(allowed.headers()["cache-control"], "no-store");
+    assert!(!allowed.headers().get_all("set-cookie").iter().any(|h| h.to_str().unwrap().contains("age")));
+    assert!(text(allowed).await.contains("member-1"));
+    assert_eq!(request(&app, Some(&first), Some(&csrf), Some(answer("meets_threshold"))).await.status(), StatusCode::FORBIDDEN);
+    for answer in ["below_threshold", "declined"] {
+        let html = text(request(&app, Some(&first), None, None).await).await;
+        let token = value(&html, "challenge");
+        let csrf = value(&html, "_token");
+        let form = format!("_token={csrf}&challenge={token}&answer={answer}");
+        let denied = request(&app, Some(&first), Some(&csrf), Some(form)).await;
+        assert_eq!(denied.status(), StatusCode::FORBIDDEN);
+        assert!(!text(denied).await.contains("member-1"));
+        let retry = format!("_token={csrf}&challenge={token}&answer=meets_threshold");
+        assert_eq!(request(&app, Some(&first), Some(&csrf), Some(retry)).await.status(), StatusCode::FORBIDDEN);
+    }
+    let oversized = format!("_token={csrf}&challenge={}&answer=meets_threshold", "x".repeat(20_000));
+    assert_eq!(request(&app, Some(&first), Some(&csrf), Some(oversized)).await.status(), StatusCode::PAYLOAD_TOO_LARGE);
+}
