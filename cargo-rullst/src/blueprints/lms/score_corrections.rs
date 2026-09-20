@@ -70,6 +70,7 @@ fn valid_key(value: &str, maximum: usize) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b':' | b'.'))
 }
 
+#[expect(clippy::too_many_arguments, reason = "Preserve the generated LMS API used by existing applications.")]
 pub async fn correct_score(
     context: &UserContext,
     correction_key: &str,
