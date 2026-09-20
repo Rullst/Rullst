@@ -6,6 +6,40 @@ historical roadmap fits the remaining week. The [SST](spec.md) governs APIs and
 architecture; the [roadmap](roadmap.md) retains work outside this release window.
 No deadline waives a security or publication gate.
 
+## Approved delivery sequence
+
+The release owner approved this scope on 20 September 2026 UTC: a first-party,
+provider-independent privacy foundation, optional external integrations, and a
+local facial engine as follow-up work. This does not make declarations into
+verified attributes or permit incomplete higher-assurance checks in production.
+
+The next implementation sequence is:
+
+1. Admit the v12.1 closeout and v13 integration after their existing hosted checks
+   pass; retain applicable stable corrections and keep mutation findings visible.
+2. Add optional PostgreSQL replay storage for multiple application hosts, with
+   real-database concurrency, quota, expiry, unavailable-state and rollback tests.
+   Keep SQLite's shared-local boundary explicit.
+3. Build an authenticated first-party declaration journey, with server-owned
+   policy, tenant/session/action binding and rejection when stronger assurance
+   is required. Exercise the supported SaaS/LMS consumer shapes without a paid
+   provider, fake age determination or mandatory camera capture.
+4. Implement purpose/version choices, effective withdrawal of optional processing
+   and one scoped rights workflow that actually exports or erases application
+   data. Test ownership, cross-tenant denial, retention and restore boundaries.
+5. Inventory the actual 12.1-to-13 compatibility changes, implement the supported
+   migration rules and exercise generated consumers, stale inputs and recovery.
+6. Improve the documentation and bounded generated project context for the
+   delivered scope. Attempt the small production-linked Verus pilot only after
+   the mandatory feature work is ready for its verification campaign.
+
+A provider adapter may enter this release only if its environment, protocol and
+acceptance evidence are ready in time. Its absence does not suspend independent
+framework work. The final privacy package scope must accurately identify every
+supported method; unimplemented facial or provider methods cannot be advertised
+as functioning production verification. The package remains unpublished until
+its scoped consumer/state/API and release admission criteria pass.
+
 ## Starting evidence
 
 - All sixteen v12.1.0 packages are published from `b62390b4`; the
@@ -36,7 +70,7 @@ No deadline waives a security or publication gate.
 | :--- | :--- | :--- |
 | P0 | Published v12.1.0 corrections integrated without losing v13 work | Review conflicts; retain the stable runtime changes; pass the combined workspace tests, strict Clippy, format and feature/consumer checks. |
 | P0 | Protected v13 verification and publication path | Explicit major-version/branch policy, protection equivalent to the stable line, complete required workflow/job inventory, negative wrong-branch/tag/evidence tests and an unpublished package rehearsal. Keep v12 maintenance independently releasable. |
-| P0 | Usable proportional age-assurance boundary | Durable atomic replay protection, authenticated tenant/session/action binding, explicit method strength, fail-closed outage/expiry/replay behavior and a bounded application integration. Production must reject mocks and process-local state. |
+| P0 | Usable proportional age-assurance boundary | SQLite shared-local and PostgreSQL multi-host replay protection, authenticated tenant/session/action binding, a first-party declaration journey only where policy permits it, explicit method strength and fail-closed outage/expiry/replay behavior. Production must reject mocks, process-local state and unsupported stronger methods. |
 | P0 | First complete privacy journey in a generated consumer | Explicit purpose/version choices, withdrawal enforced on subsequent optional processing, one authorized rights workflow with actual adapter effects, tenant isolation and documented retention/restore boundaries. Do not count a request row as completed export or erasure. |
 | P0 | Safe 12.1→13 adoption | Inventory actual compatibility changes, implement only supported migration rules, run generated SaaS/LMS consumer fixtures and prove review, stale-input rejection and recovery. A major-version flag alone is not a migration. |
 | P1 | Better application context for maintainers and assistants | Accurate generated `AGENTS.md`, a bounded deterministic project map, configuration key names without values, explicit file/secret exclusions, freshness information and executable regression fixtures. |
@@ -77,9 +111,10 @@ owner confirmed that no provider environment is available and directed work on
 the foundation and local tests first. Prioritize that independently testable
 scope while the external dependency is unresolved. If it remains
 unavailable, do not label a simulated flow as live verification or mark the
-provider milestone complete. Reassess the publishable privacy package boundary
-explicitly at the feature freeze; do not quietly weaken its existing admission
-criteria to meet the date.
+provider milestone complete. The approved independent foundation has its own
+consumer/state/API acceptance; any live adapter additionally needs its provider
+acceptance. Review this precise publishable package boundary at feature freeze,
+preserving the security guarantees of every advertised method.
 
 For broader privacy, implement reusable processing controls and one real
 consumer journey before claiming coverage across every blueprint. Keep policy
@@ -121,7 +156,7 @@ checks are ready; slow external acceptance reduces scope, never test quality.
 | Date | Checkpoint |
 | :--- | :--- |
 | 20 September | Close v12.1 documentation, admit the integration baseline, settle privacy/storage API decisions and prepare the v13 release/branch policy. |
-| 21–22 September | Implement and test the prioritized age/privacy consumer journey and migration boundaries. Establish any live provider environment by the end of the 22nd. |
+| 21–22 September | Implement and test the prioritized PostgreSQL/age/privacy consumer journey and migration boundaries. Decide any optional provider inclusion by the end of the 22nd based on available sandbox evidence. |
 | 23 September | Complete bounded maintainer tooling and documentation; evaluate the small Verus pilot only after P0 work. Freeze feature scope by the evening. |
 | 24 September | Run the complete candidate verification campaign, including required native matrices, fuzzing, Miri, Kani and sanitizers. Preserve explicit evidence boundaries and start long jobs early. |
 | 25 September | Repair findings, invalidate and repeat affected evidence, test packaged consumers and rehearse the complete publication transaction. |

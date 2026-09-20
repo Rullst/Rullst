@@ -109,6 +109,14 @@ This first contract does not implement a facial model, vendor transport,
 guardian verification or global privacy compliance. The
 [privacy and age-assurance roadmap](privacy-age-assurance-roadmap.md) defines
 the remaining consent, rights, retention, provider and jurisdiction work.
+The owner-approved 13.0.0 delivery scope prioritizes the independent foundation
+and an authenticated first-party declaration journey for policies that permit
+that assurance. An external provider is optional and requires separate native
+protocol and sandbox acceptance before any live claim. A local facial engine is
+follow-up work. Neither an absent provider nor a failed check may downgrade the
+required assurance or make a declaration authorize a stronger-policy action.
+Publication of the privacy package still requires explicit acceptance of its
+advertised API, durable state, consumer behavior and release configuration.
 The separate [SaaS triage](saas-v12-1-v13-triage.md) assigns the examples' reported
 defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidence.
 
