@@ -88,7 +88,7 @@ Other values are replaced by the layer's configured policy; missing/invalid
 optional Security configuration retains its existing behavior. This narrow rule
 does not attempt to order every Referrer-Policy value or weaken other headers.
 
-`rullst-privacy` is an opt-in, unpublished v13 package. Its initial
+`rullst-privacy` is an opt-in, unpublished v13 release candidate. Its initial
 `age-assurance` feature owns bounded risk policies, server-issued challenges,
 minimal signed age attestations, explicit decisions and replay-store contracts.
 Low-risk declarations, facial estimates and verified age attributes have
@@ -147,6 +147,21 @@ required assurance or make a declaration authorize a stronger-policy action.
 Publication of the privacy package still requires explicit acceptance of its
 advertised API, durable state, consumer behavior and release configuration.
 
+The packaging candidate adds this independent package to the seventeen-package
+release inventory before the umbrella. The facade exposes only explicit
+`privacy-*` features and `rullst::privacy`; default builds acquire no privacy,
+age, consent or database dependency from this addition. CLI age/privacy consumers
+select the matching registry version by default, with an explicit matching local
+source override for development. Existing dependency sources, versions and
+features must be checked before composing two consumers; no silent source switch
+is permitted. Both commands refresh the bounded project context after scaffolding,
+reporting a refresh failure without concealing the completed source edits.
+Archive-only acceptance must install the packaged CLI and compile
+generated SaaS/LMS consumers with both opt-ins and no workspace source paths.
+This is packaging eligibility, not a published version or registration claim.
+The stable publisher still refuses an unregistered crate; initial registration,
+reviewed ownership and Trusted Publishing configuration are separate prerequisites.
+
 The native `DeclarationGate` contract processes an authenticated first-party
 `AgeDeclaration` without requiring an external issuer or a signing key for the
 declaration itself. It accepts only a retained server-issued `SelfDeclaration`
@@ -184,9 +199,10 @@ tenant and authenticated session, never request-supplied identities. Application
 keys and replay storage are mandatory; initialization, timeout, stale context or
 unknown/negative answers cannot grant access. SQLite and PostgreSQL are explicit
 profiles with their existing deployment obligations. Generation refuses unknown
-or already-modified route shapes before writing. Until privacy release admission,
-this command requires an explicitly supplied matching unpublished privacy source;
-it must not emit an unavailable registry dependency. Other blueprint adapters,
+or already-modified route shapes before writing. This command selects the matching
+registry dependency unless the caller explicitly supplies a matching local source.
+Before that version is published, development consumers must use the explicit
+source override or a reviewed archive-only registry patch. Other blueprint adapters,
 provider flows, persistent age permissions and deployed browser acceptance remain
 separate work.
 
@@ -268,8 +284,8 @@ defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidenc
 The development train uses `13.0.0-alpha.1` consistently for the existing
 publishable packages and their internal requirements. This prepares the CLI's
 actual major-version behavior; it is not a publication or stable-release claim.
-The privacy package retains its unpublished admission boundary and explicit
-local-source consumers until its release configuration is accepted.
+The privacy package joins the candidate inventory with explicit optional facade
+features; registry publication remains subject to package and ownership admission.
 
 The `rullst-upgrade-rules-v2` migration catalog recognizes source major 13 as
 well as 5, 6, 11 and 12, keeps exact target-major CLI selection and rejects

@@ -109,6 +109,21 @@ export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$work_dir/target}"
   --offline \
   --all-targets
 
+# Run only the optional privacy composition here. The full-feature consumer
+# above retains all-target compilation without linking every native adapter
+# again merely to execute a SQLite facade contract.
+privacy_dir="$work_dir/privacy-consumer"
+mkdir -p "$privacy_dir/tests"
+{
+  printf '[package]\nname = "rullst-packaged-privacy"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["privacy-challenge-tokens", "privacy-sqlite", "privacy-consent-sqlite"] }\n' "$version"
+  printf '\n[dev-dependencies]\ntempfile = "3"\n'
+} > "$privacy_dir/Cargo.toml"
+cp "$repository_root/.github/fixtures/privacy-facade.rs" "$privacy_dir/tests/privacy_facade.rs"
+append_package_patches "$privacy_dir/Cargo.toml"
+"$cargo_bin" test --manifest-path "$privacy_dir/Cargo.toml" --offline \
+  --test privacy_facade
+
 cli_package="$packages_dir/cargo-rullst-${version}"
 if [ ! -f "$cli_package/Cargo.lock" ]; then
   echo "The packaged cargo-rullst archive must include Cargo.lock."
@@ -155,6 +170,31 @@ for blueprint in "${blueprints[@]}"; do
   if ! grep -Fq "rullst = { version = \"$version\"" "$manifest"; then
     echo "Generated $blueprint manifest does not use packaged version $version."
     exit 1
+  fi
+
+  if [[ "$blueprint" == saas || "$blueprint" == lms ]]; then
+    (
+      cd "$projects_dir/$app_name"
+      # Require registry-only output from the installed CLI; the archive patch
+      # below is the sole source substitution in this unpublished rehearsal.
+      tenant_args=()
+      if [[ "$blueprint" == saas ]]; then tenant_args=(--tenant-ref archive-tenant); fi
+      "$rullst_bin" make:age-gate --blueprint "$blueprint" "${tenant_args[@]}" \
+        --minimum-age 18 --policy-version archive-v1 --replay-store sqlite
+      "$rullst_bin" make:privacy --blueprint "$blueprint" "${tenant_args[@]}" \
+        --purpose-version archive-v1 --validity-seconds 3600
+      "$rullst_bin" generate:ai-context --check
+    )
+    python3 - "$manifest" "$version" <<'PY'
+import sys, tomllib
+from pathlib import Path
+manifest = tomllib.loads(Path(sys.argv[1]).read_text())
+dependency = manifest['dependencies']['rullst-privacy']
+assert set(dependency) == {'version', 'default-features', 'features'}, dependency
+assert dependency['version'] == '=' + sys.argv[2]
+assert dependency['default-features'] is False
+assert set(dependency['features']) == {'challenge-tokens', 'sqlite', 'consent-sqlite'}
+PY
   fi
 
   append_package_patches "$manifest"

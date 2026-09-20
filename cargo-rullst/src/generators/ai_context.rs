@@ -86,6 +86,12 @@ pub fn generate_ai_context(base_path: Option<&Path>) -> Result<(), Box<dyn std::
     Ok(())
 }
 
+pub(crate) fn refresh_after_scaffold() {
+    if let Err(error) = generate_ai_context(None) {
+        eprintln!("Scaffold completed, but project context was not refreshed: {error}");
+    }
+}
+
 /// Verifies current input identity and both output representations without writes.
 pub fn check_ai_context(base_path: Option<&Path>) -> Result<(), ContextError> {
     let root = fs::canonicalize(base_path.unwrap_or_else(|| Path::new(".")))?;

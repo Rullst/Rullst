@@ -2,8 +2,9 @@
 
 **The current source is `13.0.0-alpha.1`, not a published stable v13 release.**
 Stable v12.1.0 remains on `main`. The development packages use the same v13
-version and internal requirements, while `rullst-privacy` retains `publish =
-false` until its separate release admission. Do not request v13 artifacts from
+version and internal requirements. `rullst-privacy` joins the candidate package
+inventory with explicit `privacy-*` umbrella features; ownership, packaged
+consumer acceptance and publication remain prerequisites for registry use. Do not request v13 artifacts from
 the stable updater before those artifacts have actually been published.
 
 This inventory covers the development source through the native age and

@@ -90,7 +90,10 @@ publication or admit a stable v13 release. See the
 - Require a public application certificate and trusted SDK verifier for Android
   release builds. Reject stale, ambiguous, changed or incorrectly signed APKs;
   emit a bounded digest receipt and withhold signing-tool diagnostics/secrets.
-- Keep `rullst-privacy` separately unpublished: native proportional declarations,
+- Prepare the seventeenth package, `rullst-privacy`, for the unpublished candidate:
+  explicit optional facade features, registry/local CLI consumers, archive-only
+  acceptance and coordinated upgrade inventory. Its runtime scope includes native
+  proportional declarations,
   authenticated challenge transport, SQLite/PostgreSQL replay state, optional
   versioned consent/withdrawal, and opt-in generated SaaS/LMS profile journeys.
   No facial engine, live age provider or automatic global legal-compliance claim.

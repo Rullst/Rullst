@@ -37,6 +37,15 @@ fn materialize(root: &Path, workspace: &Path, blueprint: &str, hot: bool, databa
     )
     .unwrap();
     manifest.push_str("\n[dev-dependencies]\ntower = { version = \"0.5\", features = [\"util\"] }\nhttp-body-util = \"0.1\"\n\n[profile.test]\ndebug = 0\nincremental = false\n");
+    if blueprint == "lms" {
+        // Exercise registry-shaped generator output before publication using
+        // an explicit test-only patch. The installed-archive job replaces this
+        // source patch with the extracted release archive.
+        manifest.push_str(&format!(
+            "\n[patch.crates-io]\nrullst-privacy = {{ path = {} }}\n",
+            toml_edit::value(workspace.join("rullst-privacy").to_str().unwrap())
+        ));
+    }
     fs::write(root.join("Cargo.toml"), manifest).unwrap();
     fs::copy(workspace.join("Cargo.lock"), root.join("Cargo.lock")).unwrap();
     blueprints::apply(
@@ -63,10 +72,10 @@ fn materialize(root: &Path, workspace: &Path, blueprint: &str, hot: bool, databa
 fn install(root: &Path, workspace: &Path, blueprint: &str, command: &str) -> Output {
     let mut cli = Command::new(env!("CARGO_BIN_EXE_rullst"));
     cli.current_dir(root)
-        .args([command, "--blueprint", blueprint, "--privacy-source"])
-        .arg(workspace.join("rullst-privacy"));
+        .args([command, "--blueprint", blueprint]);
     if blueprint == "saas" {
-        cli.args(["--tenant-ref", "tenant-alpha"]);
+        cli.args(["--tenant-ref", "tenant-alpha", "--privacy-source"])
+            .arg(workspace.join("rullst-privacy"));
     }
     if command == "make:privacy" {
         cli.args([
@@ -96,6 +105,35 @@ fn cargo(root: &Path, workspace: &Path) -> Command {
         .env("CARGO_NET_OFFLINE", "true")
         .env("CARGO_PROFILE_DEV_DEBUG", "0");
     cargo
+}
+
+#[test]
+fn privacy_commands_refresh_context_with_both_dependency_sources() {
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    for blueprint in ["saas", "lms"] {
+        let project = temp.path().join(blueprint);
+        materialize(&project, workspace, blueprint, true, "Sqlite");
+        fs::write(
+            project.join("AGENTS.md"),
+            "Keep these application instructions.\n",
+        )
+        .unwrap();
+        for command in ["make:age-gate", "make:privacy"] {
+            success(install(&project, workspace, blueprint, command));
+            success(
+                Command::new(env!("CARGO_BIN_EXE_rullst"))
+                    .current_dir(&project)
+                    .args(["generate:ai-context", "--check"])
+                    .output()
+                    .unwrap(),
+            );
+            assert_eq!(
+                fs::read_to_string(project.join("AGENTS.md")).unwrap(),
+                "Keep these application instructions.\n"
+            );
+        }
+    }
 }
 
 #[test]

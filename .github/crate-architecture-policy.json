@@ -13,6 +13,7 @@
     { "from": "rullst", "to": "rullst-messaging", "optional": true },
     { "from": "rullst", "to": "rullst-nexus", "optional": true },
     { "from": "rullst", "to": "rullst-orm", "optional": true },
+    { "from": "rullst", "to": "rullst-privacy", "optional": true },
     { "from": "rullst", "to": "rullst-security", "optional": true },
     { "from": "rullst", "to": "rullst-studio", "optional": true },
     { "from": "rullst-ai", "to": "rullst-core", "optional": false },

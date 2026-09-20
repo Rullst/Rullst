@@ -889,9 +889,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         | Commands::MakeBilling { .. }
         | Commands::MakeCors
         | Commands::MakeJwt => {
-            if let Err(error) = crate::generators::ai_context::generate_ai_context(None) {
-                eprintln!("Scaffold completed, but project context was not refreshed: {error}");
-            }
+            crate::generators::ai_context::refresh_after_scaffold();
             crate::generators::diagram::generate_mermaid_diagram(None).ok();
         }
         _ => {}

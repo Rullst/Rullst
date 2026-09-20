@@ -48,8 +48,10 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             generators::ai_context::run(context)?;
         } else if let Some(privacy) = matches.subcommand_matches("make:privacy") {
             generators::privacy::run(privacy)?;
+            generators::ai_context::refresh_after_scaffold();
         } else if let Some(age_gate) = matches.subcommand_matches("make:age-gate") {
             generators::age_gate::run(age_gate)?;
+            generators::ai_context::refresh_after_scaffold();
         } else if let Some(update) = matches.subcommand_matches("update") {
             update::run(update)?;
         } else if let Some(omni) = matches

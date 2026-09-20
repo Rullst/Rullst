@@ -18,9 +18,8 @@ pub(crate) fn command() -> Command {
         .arg(
             Arg::new("privacy-source")
                 .long("privacy-source")
-                .required(true)
                 .value_parser(clap::value_parser!(PathBuf))
-                .help("Path to the unpublished v13 rullst-privacy package"),
+                .help("Explicit local privacy source matching this CLI; defaults to the matching registry version"),
         )
         .arg(
             Arg::new("minimum-age")
@@ -51,7 +50,7 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>
     let root = std::env::current_dir()?;
     let source = matches
         .get_one::<PathBuf>("privacy-source")
-        .ok_or_else(|| invalid("privacy source is required"))?;
+        .map(PathBuf::as_path);
     let minimum = *matches
         .get_one::<u8>("minimum-age")
         .ok_or_else(|| invalid("minimum age is required"))?;
@@ -80,7 +79,7 @@ fn invalid(message: &str) -> io::Error {
 
 fn plan(
     root: &Path,
-    source: &Path,
+    source: Option<&Path>,
     minimum: u8,
     version: &str,
     tenant: Option<&str>,
@@ -199,7 +198,7 @@ fn plan(
     consumer_support::privacy_dependency(
         root,
         &mut parsed,
-        &source,
+        source.as_deref(),
         &["challenge-tokens", profile],
     )?;
     for (name, version) in [("ring", "0.17"), ("hex", "0.4")] {

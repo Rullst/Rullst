@@ -22,8 +22,8 @@ pub(crate) fn command() -> Command {
         .arg(
             Arg::new("privacy-source")
                 .long("privacy-source")
-                .required(true)
-                .value_parser(clap::value_parser!(PathBuf)),
+                .value_parser(clap::value_parser!(PathBuf))
+                .help("Explicit local privacy source matching this CLI; defaults to the matching registry version"),
         )
         .arg(
             Arg::new("purpose-version")
@@ -51,7 +51,7 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>
     let root = std::env::current_dir()?;
     let source = matches
         .get_one::<PathBuf>("privacy-source")
-        .ok_or_else(|| invalid("privacy source is required"))?;
+        .map(PathBuf::as_path);
     let consumer = matches
         .get_one::<String>("blueprint")
         .ok_or_else(|| invalid("blueprint is required"))?;
@@ -72,7 +72,7 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>
 
 fn plan(
     root: &Path,
-    source: &Path,
+    source: Option<&Path>,
     consumer: &str,
     version: &str,
     lifetime: u32,
@@ -102,7 +102,12 @@ fn plan(
     let manifest_path = root.join("Cargo.toml");
     let original = files::read(&manifest_path)?;
     let mut manifest: DocumentMut = original.parse()?;
-    consumer_support::privacy_dependency(root, &mut manifest, &source, &["consent-sqlite"])?;
+    consumer_support::privacy_dependency(
+        root,
+        &mut manifest,
+        source.as_deref(),
+        &["consent-sqlite"],
+    )?;
     for (name, version) in [("ring", "0.17"), ("hex", "0.4")] {
         if manifest["dependencies"].get(name).is_none() {
             manifest["dependencies"][name] = toml_edit::value(version);

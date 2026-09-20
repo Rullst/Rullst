@@ -81,9 +81,12 @@ pub(super) fn recognized_auth(
 }
 
 pub(super) fn privacy_source(
-    source: &Path,
+    source: Option<&Path>,
     module: &str,
-) -> Result<PathBuf, Box<dyn std::error::Error>> {
+) -> Result<Option<PathBuf>, Box<dyn std::error::Error>> {
+    let Some(source) = source else {
+        return Ok(None);
+    };
     let source = source.canonicalize()?;
     let privacy: toml::Value = toml::from_str(&fs::read_to_string(source.join("Cargo.toml"))?)?;
     let package = privacy
@@ -91,21 +94,20 @@ pub(super) fn privacy_source(
         .and_then(toml::Value::as_table)
         .ok_or_else(|| invalid("privacy source has no package table"))?;
     if package.get("name").and_then(toml::Value::as_str) != Some("rullst-privacy")
-        || package.get("version").and_then(toml::Value::as_str) != Some("13.0.0-alpha.1")
-        || package.get("publish").and_then(toml::Value::as_bool) != Some(false)
+        || package.get("version").and_then(toml::Value::as_str) != Some(env!("CARGO_PKG_VERSION"))
         || !source.join(module).is_file()
     {
-        return Err(invalid("source must be the matching unpublished v13 privacy package").into());
+        return Err(invalid("source must be the privacy package matching this CLI version").into());
     }
-    Ok(source)
+    Ok(Some(source))
 }
 
-/// Compose only the known local preview dependency emitted by these consumers.
+/// Compose only the known registry or explicit local dependency from these consumers.
 /// Unknown source/version/defaults/keys require manual review, never replacement.
 pub(super) fn privacy_dependency(
     root: &Path,
     manifest: &mut DocumentMut,
-    source: &Path,
+    source: Option<&Path>,
     extra: &[&str],
 ) -> Result<(), Box<dyn std::error::Error>> {
     if manifest
@@ -130,19 +132,25 @@ pub(super) fn privacy_dependency(
         let table = existing
             .as_inline_table()
             .ok_or_else(|| invalid("existing privacy dependency requires manual review"))?;
-        let path = table
-            .get("path")
-            .and_then(Value::as_str)
-            .ok_or_else(|| invalid("existing privacy source is not explicit"))?;
-        if root.join(path).canonicalize()? != source
-            || table.get("version").and_then(Value::as_str) != Some("=13.0.0-alpha.1")
+        let matching_source = match (table.get("path"), source) {
+            (None, None) => true,
+            (Some(path), Some(expected)) => path
+                .as_str()
+                .map(|path| root.join(path).canonicalize().map(|path| path == expected))
+                .transpose()?
+                .unwrap_or(false),
+            _ => false,
+        };
+        let exact_version = format!("={}", env!("CARGO_PKG_VERSION"));
+        if !matching_source
+            || table.get("version").and_then(Value::as_str) != Some(exact_version.as_str())
             || table.get("default-features").and_then(Value::as_bool) != Some(false)
             || table
                 .iter()
                 .any(|(key, _)| !["path", "version", "default-features", "features"].contains(&key))
         {
             return Err(invalid(
-                "existing privacy dependency differs from the recognized local preview",
+                "existing privacy dependency differs from the selected source/version; review it manually",
             )
             .into());
         }
@@ -169,15 +177,20 @@ pub(super) fn privacy_dependency(
         }
     }
     let mut dependency = InlineTable::new();
+    if let Some(source) = source {
+        dependency.insert(
+            "path",
+            Value::from(
+                source
+                    .to_str()
+                    .ok_or_else(|| invalid("privacy source path must be UTF-8"))?,
+            ),
+        );
+    }
     dependency.insert(
-        "path",
-        Value::from(
-            source
-                .to_str()
-                .ok_or_else(|| invalid("privacy source path must be UTF-8"))?,
-        ),
+        "version",
+        Value::from(format!("={}", env!("CARGO_PKG_VERSION"))),
     );
-    dependency.insert("version", Value::from("=13.0.0-alpha.1"));
     dependency.insert("default-features", Value::from(false));
     dependency.insert(
         "features",
@@ -203,11 +216,17 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let source = root.path().canonicalize().unwrap();
         let mut manifest: DocumentMut = "[dependencies]\nrullst = \"12.1.0\"\n".parse().unwrap();
-        privacy_dependency(root.path(), &mut manifest, &source, &["consent-sqlite"]).unwrap();
         privacy_dependency(
             root.path(),
             &mut manifest,
-            &source,
+            Some(&source),
+            &["consent-sqlite"],
+        )
+        .unwrap();
+        privacy_dependency(
+            root.path(),
+            &mut manifest,
+            Some(&source),
             &["challenge-tokens", "sqlite"],
         )
         .unwrap();
@@ -216,16 +235,62 @@ mod tests {
             assert!(combined.contains(name));
         }
         let other = tempfile::tempdir().unwrap();
-        assert!(privacy_dependency(root.path(), &mut manifest, other.path(), &["sqlite"]).is_err());
+        assert!(
+            privacy_dependency(root.path(), &mut manifest, Some(other.path()), &["sqlite"])
+                .is_err()
+        );
+        assert!(privacy_dependency(root.path(), &mut manifest, None, &["sqlite"]).is_err());
         assert_eq!(manifest.to_string(), combined);
         for change in [
             combined.replace("false", "true"),
-            combined.replace("=13.0.0-alpha.1", "13"),
+            combined.replace(&format!("={}", env!("CARGO_PKG_VERSION")), "13"),
             combined.replace("consent-sqlite", "unknown"),
         ] {
             let mut altered = change.parse().unwrap();
-            assert!(privacy_dependency(root.path(), &mut altered, &source, &["sqlite"]).is_err());
+            assert!(
+                privacy_dependency(root.path(), &mut altered, Some(&source), &["sqlite"]).is_err()
+            );
             assert_eq!(altered.to_string(), change);
+        }
+    }
+
+    #[test]
+    fn registry_consumers_preserve_exact_version_features_and_source() {
+        let root = tempfile::tempdir().unwrap();
+        let mut manifest: DocumentMut = "[dependencies]\nrullst = \"13\"\n".parse().unwrap();
+        privacy_dependency(root.path(), &mut manifest, None, &["consent-sqlite"]).unwrap();
+        privacy_dependency(
+            root.path(),
+            &mut manifest,
+            None,
+            &["challenge-tokens", "postgres"],
+        )
+        .unwrap();
+        let original = manifest.to_string();
+        let table = manifest["dependencies"]["rullst-privacy"]
+            .as_inline_table()
+            .unwrap();
+        assert!(table.get("path").is_none());
+        assert_eq!(
+            table["version"].as_str().unwrap(),
+            format!("={}", env!("CARGO_PKG_VERSION"))
+        );
+        assert_eq!(table["features"].as_array().unwrap().len(), 3);
+        assert!(
+            privacy_dependency(root.path(), &mut manifest, Some(root.path()), &["sqlite"]).is_err()
+        );
+        assert_eq!(original, manifest.to_string());
+        for extra in [
+            "git = 'https://example.invalid/repo'",
+            "registry = 'other'",
+            "optional = true",
+            "package = 'other'",
+        ] {
+            let changed =
+                original.replace("default-features", &format!("{extra}, default-features"));
+            let mut manifest = changed.parse().unwrap();
+            assert!(privacy_dependency(root.path(), &mut manifest, None, &["sqlite"]).is_err());
+            assert_eq!(manifest.to_string(), changed);
         }
     }
 }

@@ -645,9 +645,11 @@ The threshold above is an example for an application-assessed low-assurance
 policy. Select `postgres` explicitly for a shared database across hosts.
 Configure the required private key and replay database as described by the
 generated `AGE_GATE.md`; missing state or configuration denies access. The
-preview requires the explicit unpublished privacy source, and refuses unknown
+candidate defaults to the registry version matching this CLI. The source
+override shown above is required for development before that version is published,
+unless an explicit archive-only patch is configured. Generation refuses unknown
 privacy dependencies or unrecognized authentication/route shapes before writing.
-It composes with `make:privacy` when both use the same recognized source path;
+It composes with `make:privacy` when both use the same registry/local source;
 both consumers' explicit dependency features are preserved.
 Review the generated diff before deployment. It does not install facial models,
 verified guardianship, reusable age flags or global compliance.
@@ -679,6 +681,8 @@ of 365 days is not a legal retention rule. Select `--blueprint lms` and omit
 `--tenant-ref` for the full LMS starter. Its current school membership determines
 the tenant; a bounded `school` query value only selects among authorized schools.
 The generated consumer composes with `make:age-gate` in either installation order.
+Omitting `--privacy-source` selects this CLI's matching registry version; before
+publication use the explicit local override shown above or a reviewed archive patch.
 Unknown authentication, dependencies, routes or existing output files require
 manual integration rather than overwriting application code.
 

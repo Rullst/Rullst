@@ -269,6 +269,33 @@ is separate from release admission; clean hosted evidence and any promotion
 remain pending. See the [proof boundary](verus-roadmap.md); this does not prove
 age evidence, expiry, replay state or application authorization.
 
+The next packaging candidate adds `rullst-privacy` as the seventeenth package,
+with its license, a bounded source archive, opt-in `rullst::privacy` features,
+coordinated upgrade inventory and registry-shaped age/privacy generators.
+The local seventeen-archive packaging/content audit and the durable facade
+reopen test passed. Both generated SaaS/LMS privacy journeys passed, including
+the registry-shaped LMS dependency and the existing local-source SaaS profile.
+Context freshness for both new commands, 372 CLI unit tests (one parent-owned
+child fixture ignored), strict CLI Clippy and the minimal facade panic gate also
+passed. A separate consumer compiled only the extracted framework archives and
+passed that durable facade test. All 42 fuzz targets' eleven locked dependency
+graphs resolved offline without running a new fuzz campaign.
+Combined hosted acceptance remains in progress; the initial local
+packaging used an explicitly dirty candidate and is not a release receipt. The archive-only hosted test now compiles the installed CLI's
+SaaS/LMS opt-ins and executes the same durable facade contract from extracted
+packages. A crates.io read on 20 September returned 404 for `rullst-privacy`;
+initial registration and Trusted Publishing configuration remain required.
+The stable publisher continues to reject an unregistered package.
+The ownership-policy validator now checks each proposed bootstrap name against
+the inventory, with unknown/duplicate/malformed-name negatives; the empty
+bootstrap allowlist and the stable publisher's refusal remain in force.
+
+PR 220's Linux terminal fixture also needed an explicit prerelease dependency
+requirement and `--prerelease` when exercising the alpha CLI. All four local
+terminal scenarios passed after that correction: decline copying, decline
+execution, apply/recover, and a failing application. Its new head must complete
+its own hosted checks; the previous Android/macOS passes are not substituted.
+
 On 20 September at 07:31 UTC, the first four v12 mutation shards had hit their
 330-minute execution budget; their partial artifacts were retained. For example,
 shard 2 had executed 72 of 220 scheduled mutations (40 caught, 30 surviving,

@@ -61,7 +61,7 @@ while IFS='|' read -r package features; do
   printf 'Checking %-20s features=%s\n' "$package" "${features:-<none>}"
   "${command[@]}"
 done <<'MATRIX'
-# All 16 publishable packages without default features.
+# Release inventory without default features (privacy also has a row below).
 rullst-macros|
 rullst-orm-macros|
 rullst-orm|
@@ -119,7 +119,7 @@ rullst-auth|sqlite
 rullst-auth|recovery-sqlite
 rullst-auth|recovery-postgres
 
-# Unpublished v13 privacy foundation: preserve the database-free base graph.
+# Privacy candidate: preserve the database-free base graph.
 rullst-privacy|
 rullst-privacy|consent
 rullst-privacy|consent-sqlite
@@ -153,6 +153,13 @@ rullst|mail-sqlite
 rullst|messaging
 rullst|messaging-sqlite
 rullst|messaging-orm-outbox
+rullst|privacy
+rullst|privacy-age
+rullst|privacy-challenge-tokens
+rullst|privacy-sqlite
+rullst|privacy-postgres
+rullst|privacy-consent
+rullst|privacy-consent-sqlite
 rullst|auth-jwt
 rullst|auth-sqlite
 rullst|account-mail-sqlite

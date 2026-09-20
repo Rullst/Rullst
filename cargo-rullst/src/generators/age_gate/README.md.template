@@ -46,7 +46,8 @@ The challenge contains keyed opaque references, is authenticated but not
 encrypted, and must stay out of URLs/logs/analytics. TLS, request limits and the
 Server security baseline remain mandatory. Responses are marked `no-store`.
 
-This preview uses an explicitly selected unpublished local privacy package.
-Review and remove that source path only after the corresponding v13 package is
-admitted and published. There is no automatic global-law compliance claim or
+The dependency uses the registry version matching this CLI, unless generation
+explicitly selected `--privacy-source` for local development. Before that version
+is published, use the matching local source or an explicitly configured archive
+patch. Review local overrides before deployment. There is no automatic global-law compliance claim or
 implemented stronger-verification fallback in this generated journey.
