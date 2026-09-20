@@ -24,7 +24,7 @@ impl Edit {
         if path.try_exists()? {
             return Err(io::Error::new(
                 io::ErrorKind::AlreadyExists,
-                "age-gate output already exists",
+                "consumer scaffold output already exists",
             ));
         }
         Ok(Self {
@@ -46,7 +46,7 @@ fn reject_links(path: &Path) -> io::Result<()> {
             Ok(metadata) if metadata.is_symlink() => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
-                    "age-gate application paths must not contain symlinks",
+                    "consumer scaffold application paths must not contain symlinks",
                 ));
             }
             Ok(_) => {}
@@ -60,7 +60,10 @@ fn reject_links(path: &Path) -> io::Result<()> {
 fn replace(path: &Path, content: &str, create: bool) -> io::Result<()> {
     reject_links(path)?;
     let parent = path.parent().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::InvalidInput, "age-gate output has no parent")
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "consumer scaffold output has no parent",
+        )
     })?;
     fs::create_dir_all(parent)?;
     let mut file = tempfile::NamedTempFile::new_in(parent)?;
@@ -86,7 +89,7 @@ fn unchanged(edit: &Edit) -> io::Result<()> {
     };
     if current != edit.old {
         return Err(io::Error::other(
-            "age-gate input changed since the plan was prepared",
+            "consumer scaffold input changed since the plan was prepared",
         ));
     }
     Ok(())
@@ -123,7 +126,7 @@ fn apply_with(
                 error
             } else {
                 io::Error::other(
-                    "age-gate write failed; concurrent changes or a rollback error require reviewing the application diff",
+                    "consumer scaffold write failed; concurrent changes or a rollback error require reviewing the application diff",
                 )
             });
         }
@@ -138,7 +141,10 @@ mod tests {
     #[test]
     fn changed_inputs_are_preserved_and_late_io_failure_restores_prior_edits() {
         let directory = tempfile::tempdir().unwrap();
-        let path = directory.path().join("main.rs");
+        // macOS's temporary-directory spelling may traverse /var -> /private/var.
+        // Exercise the same resolved root that the CLI obtains from current_dir.
+        let root = directory.path().canonicalize().unwrap();
+        let path = root.join("main.rs");
         fs::write(&path, "original").unwrap();
         let plan = vec![Edit::replace(
             path.clone(),
@@ -151,7 +157,7 @@ mod tests {
 
         fs::write(&path, "original").unwrap();
         let mut plan = plan;
-        let generated = directory.path().join("generated.rs");
+        let generated = root.join("generated.rs");
         plan.push(Edit::create(generated.clone(), "content".into()).unwrap());
         let mut calls = 0;
         assert!(
@@ -168,5 +174,18 @@ mod tests {
         assert_eq!(calls, 2);
         assert_eq!(read(&path).unwrap(), "original");
         assert!(!generated.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn project_symlinks_still_refuse_writes_after_resolving_the_root() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().canonicalize().unwrap();
+        let real = root.join("real");
+        fs::create_dir(&real).unwrap();
+        let link = root.join("link");
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+        assert!(Edit::create(link.join("generated.rs"), "content".into()).is_err());
+        assert!(!real.join("generated.rs").exists());
     }
 }

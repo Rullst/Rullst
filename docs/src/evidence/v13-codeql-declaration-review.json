@@ -1,0 +1,17 @@
+{
+  "reviewed_head": "f06359aa1f7a469ec81f712a8378b20a63920195",
+  "analyzed_merge": "3dc0002514f983ba69e086dbcc0f4470d97fff49",
+  "analysis_id": 1806115324,
+  "sarif_sha256": "0f421186a9b333da0b22bcc8802c8901bb8b681d5e63bd8b5421054cdb6bdde9",
+  "rule": "rust/hard-coded-cryptographic-value",
+  "scope": "Only these four individually reviewed policy-threshold instances; all queries and source/test analysis remain enabled. Reassess on implementation changes.",
+  "date_utc": "2026-09-20",
+  "disposition": "false positive",
+  "reason": "f06359aa / SARIF 1806115324: 18 is the minimum age, not a nonce. Flow conflates policy.threshold() via Result/TryExpr with ChallengeWire.nonce. Production nonce uses fallible ring SystemRandom; token opening authenticates restored bytes. Keep query enabled.",
+  "alert_numbers": [
+    334,
+    335,
+    336,
+    337
+  ]
+}

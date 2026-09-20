@@ -2,7 +2,7 @@
 
 use axum::{
     extract::Request,
-    http::{HeaderValue, header},
+    http::{HeaderMap, HeaderValue, header},
     middleware::Next,
     response::Response,
 };
@@ -68,6 +68,22 @@ pub fn render_csp_policy(template: Option<&str>, nonce: Option<&CspNonce>) -> St
     }
 }
 
+/// Applies a configured policy without weakening an endpoint's explicit
+/// `no-referrer`. Normalizes that restriction to one value even when other
+/// header values were appended. Other policies retain the layer's precedence.
+pub fn apply_referrer_policy(headers: &mut HeaderMap, configured: HeaderValue) {
+    let policy = if headers
+        .get_all(header::REFERRER_POLICY)
+        .iter()
+        .any(|value| value == "no-referrer")
+    {
+        HeaderValue::from_static("no-referrer")
+    } else {
+        configured
+    };
+    headers.insert(header::REFERRER_POLICY, policy);
+}
+
 /// Middleware that injects strict security headers and exposes a matching CSP nonce to handlers.
 pub async fn headers_middleware(mut req: Request, next: Next) -> Response {
     let configured_csp = req
@@ -100,8 +116,8 @@ pub async fn headers_middleware(mut req: Request, next: Next) -> Response {
     );
     // The legacy XSS auditor has caused response mutation vulnerabilities in old browsers.
     headers.insert("x-xss-protection", HeaderValue::from_static("0"));
-    headers.insert(
-        header::REFERRER_POLICY,
+    apply_referrer_policy(
+        headers,
         HeaderValue::from_static("strict-origin-when-cross-origin"),
     );
     headers.insert(

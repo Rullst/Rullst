@@ -1,0 +1,164 @@
+//! Authenticated optional choices and a bounded, explicit own-account export.
+use rullst::server::{Extension, Form, HeaderMap, IntoResponse, Next, Redirect, Request, Response, StatusCode};
+use rullst_privacy::consent::{ConsentChoice, ConsentClock, ConsentError, ConsentSubmission, SystemConsentClock};
+use serde::Deserialize;
+use std::{sync::Arc, time::Duration};
+
+#[path = "privacy/config.rs"] mod config;
+#[path = "privacy/page.rs"] mod page;
+#[path = "privacy/profile.rs"] mod profile;
+#[path = "privacy/proof.rs"] mod proof;
+#[path = "privacy/selection.rs"] mod selection;
+pub use config::PrivacyState;
+use profile::{AccountProfileAdapter, ExportError};
+
+static STATE: tokio::sync::OnceCell<Arc<PrivacyState>> = tokio::sync::OnceCell::const_new();
+
+pub fn routes() -> rullst::Router {
+    rullst::Router::new()
+        .route("/privacy", rullst::routing::get(show).post(submit)
+            .layer(rullst::server::from_fn(with_state)))
+        .route("/privacy/personalization", rullst::routing::get(personalized)
+            .layer(rullst::server::from_fn(with_state)))
+        // Export must remain independent of optional-consent storage and form keys.
+        .route("/privacy/export", rullst::routing::get(export))
+        .layer(rullst::server::DefaultBodyLimit::max(16 * 1024))
+        .layer(rullst::server::from_fn(crate::middlewares::auth_middleware::auth_middleware))
+        .layer(rullst::server::from_fn(selection::select_school))
+        .layer(rullst::server::from_fn(private_response))
+}
+
+async fn private_response(request: Request, next: Next) -> Response {
+    no_store(next.run(request).await)
+}
+
+async fn with_state(mut request: Request, next: Next) -> Response {
+    let state = tokio::time::timeout(Duration::from_secs(8), STATE.get_or_try_init(|| async {
+        PrivacyState::from_env().await.map(Arc::new)
+    })).await;
+    let Ok(Ok(state)) = state else { return unavailable(); };
+    request.extensions_mut().insert(Arc::clone(state));
+    match tokio::time::timeout(Duration::from_secs(8), next.run(request)).await {
+        Ok(response) => response,
+        Err(_) => unavailable(),
+    }
+}
+
+async fn show(
+    Extension(state): Extension<Arc<PrivacyState>>,
+    Extension(user_id): Extension<i32>,
+    school: Option<Extension<rullst::security::TenantContext>>,
+    Extension(csrf): Extension<rullst::security::CsrfToken>,
+    headers: HeaderMap,
+) -> Response {
+    let subject = match config::subject(user_id, school.as_ref().map(|Extension(school)| school)) {
+        Ok(subject) => subject, Err(_) => return denied(),
+    };
+    let record = match state.gate.current(&subject, &state.purpose).await {
+        Ok(record) => record, Err(_) => return unavailable(),
+    };
+    let issued_at = match SystemConsentClock.now() { Ok(now) => now, Err(_) => return unavailable() };
+    let proof = match state.proof.seal(&subject, &state.purpose, record.revision(), issued_at, &headers) {
+        Ok(proof) => proof, Err(_) => return denied(),
+    };
+    page::preferences(&subject, &record, csrf.as_str(), &proof, issued_at).into_response()
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum FormChoice { Grant, Decline, Withdraw }
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ChoiceForm {
+    purpose: String, version: String, revision: u64, issued_at: i64, proof: String,
+    choice: FormChoice,
+    _token: String,
+}
+
+async fn submit(
+    Extension(state): Extension<Arc<PrivacyState>>,
+    Extension(user_id): Extension<i32>,
+    school: Option<Extension<rullst::security::TenantContext>>,
+    headers: HeaderMap,
+    Form(form): Form<ChoiceForm>,
+) -> Response {
+    let subject = match config::subject(user_id, school.as_ref().map(|Extension(school)| school)) {
+        Ok(subject) => subject, Err(_) => return denied(),
+    };
+    let now = match SystemConsentClock.now() { Ok(now) => now, Err(_) => return unavailable() };
+    let displayed = match state.proof.verify(&subject, &headers, &form, now) {
+        Ok(purpose) => purpose, Err(_) => return denied(),
+    };
+    let result = match form.choice {
+        FormChoice::Withdraw => state.gate.withdraw(&subject, &displayed).await,
+        choice => {
+            let choice = if matches!(choice, FormChoice::Grant) { ConsentChoice::Granted } else { ConsentChoice::Declined };
+            let response = match ConsentSubmission::new(displayed, form.revision, choice) {
+                Ok(response) => response, Err(_) => return denied(),
+            };
+            let expiry = if choice == ConsentChoice::Granted {
+                match now.checked_add(config::VALIDITY_SECONDS) { Some(expiry) => expiry, None => return unavailable() }
+            } else { 0 };
+            state.gate.choose(&subject, &state.purpose, &response, expiry).await
+        }
+    };
+    match result {
+        Ok(_) => Redirect::to(&config::url("/privacy", &subject)).into_response(),
+        Err(ConsentError::RevisionConflict) => (StatusCode::CONFLICT, "Your choice changed in another request. Open privacy choices again before saving.").into_response(),
+        Err(ConsentError::BindingMismatch | ConsentError::InvalidConfiguration) => denied(),
+        Err(_) => unavailable(),
+    }
+}
+
+async fn personalized(
+    Extension(state): Extension<Arc<PrivacyState>>,
+    Extension(user_id): Extension<i32>,
+    school: Option<Extension<rullst::security::TenantContext>>,
+) -> Response {
+    let subject = match config::subject(user_id, school.as_ref().map(|Extension(school)| school)) {
+        Ok(subject) => subject, Err(_) => return denied(),
+    };
+    match state.gate.allows(&subject, &state.purpose).await {
+        Ok(false) => page::greeting(None, &subject).into_response(),
+        Ok(true) => match AccountProfileAdapter::greeting_name(user_id).await {
+            Ok(name) => page::greeting(Some(&name), &subject).into_response(),
+            Err(error) => export_error(error),
+        },
+        Err(_) => unavailable(),
+    }
+}
+
+async fn export(
+    Extension(user_id): Extension<i32>,
+    school: Option<Extension<rullst::security::TenantContext>>,
+) -> Response {
+    if config::subject(user_id, school.as_ref().map(|Extension(school)| school)).is_err() { return denied(); }
+    let result = tokio::time::timeout(Duration::from_secs(8), AccountProfileAdapter::export(user_id)).await;
+    let profile = match result { Ok(Ok(profile)) => profile, Ok(Err(error)) => return export_error(error), Err(_) => return unavailable() };
+    let payload = serde_json::to_vec(&serde_json::json!({ "schema_version": 1, "scope": "account_profile", "account": profile }));
+    let payload = match payload { Ok(payload) if payload.len() <= 16 * 1024 => payload, _ => return unavailable() };
+    ([(rullst::server::header::CONTENT_TYPE, "application/json"), (rullst::server::header::CONTENT_DISPOSITION, "attachment; filename=\"account-profile.json\"")], payload).into_response()
+}
+
+fn export_error(error: ExportError) -> Response {
+    match error {
+        ExportError::Unavailable => unavailable(),
+        ExportError::NotFound => (StatusCode::NOT_FOUND, "The account profile is unavailable. Contact the service for assistance.").into_response(),
+        ExportError::TooLarge => (StatusCode::PAYLOAD_TOO_LARGE, "This profile needs a larger export. Contact the service for assistance.").into_response(),
+    }
+}
+
+fn denied() -> Response {
+    (StatusCode::FORBIDDEN, "This form expired or your account context changed. Open privacy choices again.").into_response()
+}
+
+fn unavailable() -> Response {
+    (StatusCode::SERVICE_UNAVAILABLE, "This privacy function is temporarily unavailable. Please try again later.").into_response()
+}
+
+fn no_store(mut response: Response) -> Response {
+    response.headers_mut().insert(rullst::server::header::CACHE_CONTROL, rullst::server::HeaderValue::from_static("no-store"));
+    response.headers_mut().insert(rullst::server::header::REFERRER_POLICY, rullst::server::HeaderValue::from_static("no-referrer"));
+    response
+}

@@ -1,52 +1,10 @@
 //! Replace only the recognized dashboard method router, preserving other source.
 use quote::ToTokens;
-use std::{
-    io::{self, Write},
-    ops::Range,
-    process::{Command, Stdio},
-};
+use std::{io, ops::Range};
 use syn::{Expr, ExprMethodCall, Lit, spanned::Spanned, visit::Visit};
 
 const ORIGINAL: &str = "rullst::routing::get(controllers::auth_controller::dashboard).layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware))";
 const REPLACEMENT: &str = "rullst::routing::get(controllers::age_controller::show)\n        .post(controllers::age_controller::submit)\n        .layer(rullst::server::DefaultBodyLimit::max(16 * 1024))\n        .layer(rullst::server::from_fn(controllers::age_controller::with_age_gate))\n        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware))";
-
-pub(super) fn equivalent(left: &str, right: &str) -> Result<bool, Box<dyn std::error::Error>> {
-    let left = syn::parse_file(left)?.into_token_stream().to_string();
-    let right = syn::parse_file(right)?.into_token_stream().to_string();
-    if left == right {
-        return Ok(true);
-    }
-    // Rustfmt may add trailing punctuation. Normalize both parsed token streams
-    // with the same installed formatter instead of ignoring semantic AST nodes.
-    Ok(formatted(&left)? == formatted(&right)?)
-}
-
-pub(super) fn formatted(source: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let mut child = Command::new("rustfmt")
-        .args([
-            "--edition",
-            "2024",
-            "--emit",
-            "stdout",
-            "--config",
-            "skip_children=true",
-        ])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()?;
-    let write = child
-        .stdin
-        .take()
-        .ok_or_else(|| io::Error::other("rustfmt stdin unavailable"))?
-        .write_all(source.as_bytes());
-    let output = child.wait_with_output()?;
-    write?;
-    if !output.status.success() {
-        return Err(io::Error::other("rustfmt could not normalize the SaaS source").into());
-    }
-    Ok(String::from_utf8(output.stdout)?)
-}
 
 struct CallPunctuation;
 impl syn::visit_mut::VisitMut for CallPunctuation {
@@ -145,8 +103,6 @@ mod tests {
         let protected = protect(&spaced).unwrap();
         assert!(protected.starts_with("// Declaração — keep this comment"));
         assert!(protected.contains(REPLACEMENT));
-        assert!(equivalent("// comment\nfn one() {}", "fn one ( ) { }").unwrap());
-        assert!(!equivalent("fn one() {}", "fn two() {}").unwrap());
         assert!(
             protect(&source.replace(
                 ".layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware))",

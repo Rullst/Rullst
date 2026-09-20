@@ -645,8 +645,10 @@ The threshold above is an example for an application-assessed low-assurance
 policy. Select `postgres` explicitly for a shared database across hosts.
 Configure the required private key and replay database as described by the
 generated `AGE_GATE.md`; missing state or configuration denies access. The
-preview requires the explicit unpublished privacy source, and refuses existing
-privacy integrations or unrecognized authentication/route shapes before writing.
+preview requires the explicit unpublished privacy source, and refuses unknown
+privacy dependencies or unrecognized authentication/route shapes before writing.
+It composes with `make:privacy` when both use the same recognized source path;
+both consumers' explicit dependency features are preserved.
 Review the generated diff before deployment. It does not install facial models,
 verified guardianship, reusable age flags or global compliance.
 
@@ -655,6 +657,47 @@ The server resolves the school through its existing active-membership policy;
 the form preserves that selection for an ordinary browser POST. A school query
 parameter is only a selection hint, and cannot grant membership or move an age
 challenge between schools. Other learning routes keep their existing policies.
+
+### `cargo rullst make:privacy` (unpublished v13 preview)
+
+Adds authenticated preferences at `/privacy`, an optional personalized greeting
+at `/privacy/personalization`, and a private own-account JSON download at
+`/privacy/export`. The concrete export projects only the authenticated account's
+ID, name and email; it does not complete broader queued privacy requests or
+export subscription, learning, guardian, backup or processor records.
+
+```bash
+cargo rullst make:privacy \
+  --privacy-source /path/to/Rullst/rullst-privacy \
+  --purpose-version greeting-v1 \
+  --validity-seconds 86400 \
+  --tenant-ref application-tenant-ref
+```
+
+The version and lifetime are explicit application choices; the engineering cap
+of 365 days is not a legal retention rule. Select `--blueprint lms` and omit
+`--tenant-ref` for the full LMS starter. Its current school membership determines
+the tenant; a bounded `school` query value only selects among authorized schools.
+The generated consumer composes with `make:age-gate` in either installation order.
+Unknown authentication, dependencies, routes or existing output files require
+manual integration rather than overwriting application code.
+
+Follow generated `PRIVACY.md`: provision an independent random
+`RULLST_PRIVACY_FORM_KEY_HEX` and initialize a new private local consent file with
+`cargo run --bin privacy-init`, with `RULLST_PRIVACY_DATABASE` exported into that
+process environment. Ordinary opening never creates or repairs missing state.
+The generated 10,000-record SQLite store requires one trusted shared local file;
+it does not provide multi-host replication. Preferences and personalization deny
+unavailable state, while the authenticated export remains independent of that
+store and form key.
+
+Choices are initially unselected. Refusal and withdrawal produce a generic
+greeting; an earlier positive form cannot undo a completed withdrawal. Forms
+bind the displayed notice, revision, account, tenant and session and expire after
+five minutes. The server checks current permission before the optional name
+query. Add visible application navigation and review the documented backup,
+retention and broader rights obligations before deployment. This bounded
+consumer does not establish worldwide legal compliance or verify age.
 
 ### `cargo rullst make:jwt`
 Injects a pre-configured boilerplate Middleware into your project for strict JWT Authentication (verifying Bearer tokens in the `Authorization` header).

@@ -81,6 +81,13 @@ uses Rullst identity, challenge, score and receipt contracts.
 
 ### v13 privacy and age-assurance boundary
 
+Core and Security header layers share `apply_referrer_policy`: a response that
+explicitly supplies a canonical `no-referrer` value retains that restriction
+through composition, normalized to one header even if duplicate values exist.
+Other values are replaced by the layer's configured policy; missing/invalid
+optional Security configuration retains its existing behavior. This narrow rule
+does not attempt to order every Referrer-Policy value or weaken other headers.
+
 `rullst-privacy` is an opt-in, unpublished v13 package. Its initial
 `age-assurance` feature owns bounded risk policies, server-issued challenges,
 minimal signed age attestations, explicit decisions and replay-store contracts.
@@ -229,8 +236,29 @@ subject IDs. Those digests are pseudonymous data. Expired records and withdrawal
 tombstones are never evicted to create capacity. All processes must use that same
 trusted local file; multi-host replication is unsupported. Restoring stale state
 requires quiesced processing, reconciled withdrawals and fresh purpose versions.
-Authenticated consumer effects, retention/restore review and hosted acceptance
-remain required before release admission.
+Deployment retention/restore review and hosted acceptance remain required
+before release admission.
+
+The opt-in `make:privacy` consumer mounts authenticated preferences,
+an explicitly optional personalized greeting and an own-account JSON export
+inside the starter's existing CSRF/header/security boundary. It composes
+with the age consumer while preserving both consumers' dependency features.
+Choice forms bind the displayed notice/version and current revision, with a
+bounded expiring HMAC proof tied to the authenticated account, tenant and session;
+an old tab cannot apply a choice after switching accounts or sessions. Identity
+comes only from the authenticated user and, for LMS, active school membership.
+The export projects only account ID, name and email with explicit output bounds;
+it exposes no credential fields, produces no public artifact and does not mark
+broader queued rights requests as fulfilled. Its direct private response needs no
+retained export file and remains independent of optional-consent storage
+availability. Refusal/withdrawal changes the next greeting to generic content.
+Local materialized SaaS/full LMS fixtures cover both age/privacy installation
+orders, real authenticated profile queries, explicit choices, withdrawal/stale
+forms, session/account/school changes, CSRF, expiry, bounded input and missing or
+failed state. A normal SaaS using PostgreSQL as its primary database compiles;
+this is not live PostgreSQL consumer or browser/deployment acceptance. Bootstrap
+explicitly initializes a new private consent file; ordinary opening never
+recreates it. The generated consent profile remains shared-local SQLite only.
 
 The separate [SaaS triage](saas-v12-1-v13-triage.md) assigns the examples' reported
 defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidence.

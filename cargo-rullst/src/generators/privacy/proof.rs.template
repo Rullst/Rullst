@@ -1,0 +1,46 @@
+//! Short-lived form integrity, never a permission to process personal data.
+use ring::hmac;
+use rullst::server::HeaderMap;
+use rullst_privacy::consent::{ConsentError, ConsentPurpose, ConsentSubject};
+
+pub(super) struct ProofKey(hmac::Key);
+
+impl ProofKey {
+    pub(super) fn from_env() -> Result<Self, ConsentError> {
+        let encoded = std::env::var("RULLST_PRIVACY_FORM_KEY_HEX").map_err(|_| ConsentError::InvalidConfiguration)?;
+        if encoded.len() != 64 { return Err(ConsentError::InvalidConfiguration); }
+        let bytes = hex::decode(encoded).map_err(|_| ConsentError::InvalidConfiguration)?;
+        if bytes.len() != 32 || bytes.iter().all(|byte| *byte == 0) { return Err(ConsentError::InvalidConfiguration); }
+        Ok(Self(hmac::Key::new(hmac::HMAC_SHA256, &bytes)))
+    }
+
+    pub(super) fn seal(&self, subject: &ConsentSubject, purpose: &ConsentPurpose, revision: u64, issued_at: i64, headers: &HeaderMap) -> Result<String, ConsentError> {
+        let message = message(subject, purpose, revision, issued_at, headers)?;
+        Ok(hex::encode(hmac::sign(&self.0, &message).as_ref()))
+    }
+
+    pub(super) fn verify(&self, subject: &ConsentSubject, headers: &HeaderMap, form: &super::ChoiceForm, now: i64) -> Result<ConsentPurpose, ConsentError> {
+        if form.proof.len() != 64 || form.issued_at < 0 || form.revision > i64::MAX as u64
+            || !now.checked_sub(form.issued_at).is_some_and(|age| (0..300).contains(&age)) {
+            return Err(ConsentError::BindingMismatch);
+        }
+        let purpose = ConsentPurpose::new(&form.purpose, &form.version)?;
+        // An older notice may withdraw this purpose, but never another purpose.
+        if purpose.id() != super::config::PURPOSE_ID { return Err(ConsentError::BindingMismatch); }
+        let tag = hex::decode(&form.proof).map_err(|_| ConsentError::BindingMismatch)?;
+        let message = message(subject, &purpose, form.revision, form.issued_at, headers)?;
+        hmac::verify(&self.0, &message, &tag).map_err(|_| ConsentError::BindingMismatch)?;
+        Ok(purpose)
+    }
+}
+
+fn message(subject: &ConsentSubject, purpose: &ConsentPurpose, revision: u64, issued_at: i64, headers: &HeaderMap) -> Result<Vec<u8>, ConsentError> {
+    let session = rullst::auth::extract_session_cookie(headers).ok_or(ConsentError::BindingMismatch)?;
+    if session.is_empty() || session.len() > 4096 || issued_at < 0 || revision > i64::MAX as u64 { return Err(ConsentError::BindingMismatch); }
+    let mut message = b"rullst.optional-consent-form.v1\0".to_vec();
+    for field in [subject.subject_ref().as_bytes(), subject.tenant_ref().as_bytes(), session.as_bytes(), purpose.id().as_bytes(), purpose.version().as_bytes(), &revision.to_be_bytes(), &issued_at.to_be_bytes()] {
+        message.extend_from_slice(&(field.len() as u64).to_be_bytes());
+        message.extend_from_slice(field);
+    }
+    Ok(message)
+}

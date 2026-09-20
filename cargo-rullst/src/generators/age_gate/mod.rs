@@ -1,14 +1,14 @@
 //! Opt-in v13 declaration consumer for the recognized authenticated SaaS starter.
+use super::{consumer_files as writes, consumer_support};
 use clap::{Arg, ArgMatches, Command};
 use std::{
-    fs, io,
+    io,
     path::{Path, PathBuf},
 };
-use toml_edit::{Array, DocumentMut, InlineTable, Item, Value};
+use toml_edit::DocumentMut;
 
 mod lms_routing;
 mod routing;
-mod writes;
 use writes::Edit;
 
 pub(crate) fn command() -> Command {
@@ -103,56 +103,11 @@ fn plan(
             .into());
         }
     }
-    let source = source.canonicalize()?;
-    let privacy: toml::Value = toml::from_str(&fs::read_to_string(source.join("Cargo.toml"))?)?;
-    let package = privacy
-        .get("package")
-        .and_then(toml::Value::as_table)
-        .ok_or_else(|| invalid("privacy source has no package table"))?;
-    if package.get("name").and_then(toml::Value::as_str) != Some("rullst-privacy")
-        || package.get("version").and_then(toml::Value::as_str) != Some("13.0.0-alpha.1")
-        || package.get("publish").and_then(toml::Value::as_bool) != Some(false)
-        || !source
-            .join("src/age_assurance/challenge_tokens.rs")
-            .is_file()
-    {
-        return Err(invalid(
-            "source must be the unpublished v13 privacy package with challenge transport",
-        )
-        .into());
-    }
+    let source = consumer_support::privacy_source(source, "src/age_assurance/challenge_tokens.rs")?;
     let manifest_path = root.join("Cargo.toml");
     let manifest = writes::read(&manifest_path)?;
     let mut parsed = manifest.parse::<DocumentMut>()?;
-    if parsed
-        .get("dependencies")
-        .and_then(|deps| deps.get("rullst"))
-        .is_none()
-    {
-        return Err(invalid("run make:age-gate inside a generated SaaS project").into());
-    }
-    if parsed["dependencies"].get("rullst-privacy").is_some() {
-        return Err(
-            invalid("an existing privacy dependency requires a manual integration review").into(),
-        );
-    }
-    let baseline = if consumer == "saas" {
-        crate::blueprints::saas::file_manifest("unused", false, "Active Record", "Zero-Bundle HTMX")
-    } else {
-        crate::blueprints::lms::file_manifest("unused", false, "Active Record", "Zero-Bundle HTMX")
-    };
-    for name in [
-        "src/middlewares/auth_middleware.rs",
-        "src/controllers/auth_controller.rs",
-    ] {
-        let expected = baseline
-            .iter()
-            .find(|(path, _)| *path == name)
-            .ok_or_else(|| invalid("SaaS template is missing"))?;
-        if !routing::equivalent(&writes::read(&root.join(name))?, &expected.1)? {
-            return Err(invalid("this generator requires the recognized SaaS authentication controller and middleware; review custom authentication separately").into());
-        }
-    }
+    consumer_support::recognized_auth(root, consumer)?;
     let mut edits = Vec::new();
     let main_path = root.join("src/main.rs");
     let main = writes::read(&main_path)?;
@@ -238,23 +193,15 @@ fn plan(
         syn::parse_file(&content)?;
         edits.push(Edit::create(
             root.join(name),
-            routing::formatted(&content)?,
+            consumer_support::formatted(&content)?,
         )?);
     }
-    let mut dependency = InlineTable::new();
-    dependency.insert(
-        "path",
-        Value::from(
-            source
-                .to_str()
-                .ok_or_else(|| invalid("privacy source path must be UTF-8"))?,
-        ),
-    );
-    dependency.insert("version", Value::from("=13.0.0-alpha.1"));
-    dependency.insert("default-features", Value::from(false));
-    let features: Array = ["challenge-tokens", profile].into_iter().collect();
-    dependency.insert("features", Value::Array(features));
-    parsed["dependencies"]["rullst-privacy"] = Item::Value(Value::InlineTable(dependency));
+    consumer_support::privacy_dependency(
+        root,
+        &mut parsed,
+        &source,
+        &["challenge-tokens", profile],
+    )?;
     for (name, version) in [("ring", "0.17"), ("hex", "0.4")] {
         if parsed["dependencies"].get(name).is_none() {
             parsed["dependencies"][name] = toml_edit::value(version);

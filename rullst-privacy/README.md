@@ -10,6 +10,14 @@ is tracked in the [privacy roadmap](../docs/src/privacy-age-assurance-roadmap.md
 
 ## Optional-processing consent
 
+The v13 CLI's explicit
+[`make:privacy` consumer](../docs/src/cli_reference.md#cargo-rullst-makeprivacy-unpublished-v13-preview)
+composes these controls with the recognized SaaS/full LMS authentication and
+school membership. It supplies preferences, an optional personalized greeting,
+and an independent direct JSON export of only the current account's ID, name
+and email. It is a preview requiring the matching unpublished source path;
+the generated `PRIVACY.md` specifies setup and remaining application duties.
+
 The independent `consent` feature provides typed purpose/notice versions,
 authenticated subject/tenant bindings, explicit grant/refusal/withdrawal and a
 static-dispatch store contract. It has no age, crypto, database or Core dependency.

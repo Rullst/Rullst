@@ -130,9 +130,29 @@ default denial and per-action checks. Its shared-local adapter retains bounded
 state and clock metadata, refuses implicit initialization/repair and preserves
 withdrawal across pools and processes. Local contracts cover stale forms,
 version/tenant/subject boundaries, capacity, clock/expiry, cancellation and
-faulty adapters. An authenticated generated preferences/rights consumer is still
-the next P0 increment; this foundation alone does not close that acceptance row.
-Combined hosted acceptance for this increment remains pending.
+faulty adapters. The opt-in `make:privacy` consumer now supplies authenticated
+preferences, an optional name-based greeting and a direct own-account profile
+export through a concrete parameterized SQL adapter. Local generated SaaS/full
+LMS HTTP fixtures passed both age/privacy installation orders, explicit choices,
+withdrawal and stale grants, CSRF, account/session/school changes, expiry, unknown
+and oversized inputs, and missing/failed consent state. The profile export stays
+independent of optional-consent storage and form keys and never claims to export
+other application records or complete queued rights requests. A normal
+PostgreSQL-primary SaaS profile also compiles; live primary-database isolation
+and deployed browser acceptance are separate from that compile check.
+
+These HTTP fixtures found a Core header composition defect: the outer layer
+replaced an endpoint's `no-referrer`. Core and both Security header layers now
+share a narrow preservation rule; 36 local composition cases cover layer order,
+configured defaults, weaker handler policies and duplicate values. The prior
+PR #219 campaign finished with 84 successful checks, four skips and one macOS
+unit-fixture failure caused by the system temporary-directory symlink. Its
+fixture now resolves the same root as the CLI, with an explicit child-symlink
+rejection regression. Four new CodeQL policy-threshold conflations were
+individually reviewed and dismissed; the
+[declaration review receipt](evidence/v13-codeql-declaration-review.json)
+binds those decisions to the old analyzed source. No query was disabled.
+Combined hosted acceptance for the subsequent changes remains pending.
 
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |
