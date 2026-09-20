@@ -1,0 +1,52 @@
+use super::{failure, page, proof::{Binding, Proof}, selection::Selection, service};
+use rullst::server::{Extension, Form, HeaderMap, IntoResponse, Redirect, Response};
+use rullst::security::CsrfToken;
+use rullst_security::UserContext;
+use rullst_supervision::{Context, Revision, Scope, SupervisionError as Error, parental::CoursePolicy};
+use serde::Deserialize;
+
+async fn context(user_id: i32, user: &UserContext, selection: &Selection) -> Result<(Context, Scope), Error> {
+    if selection.lesson.is_some() || selection.session.is_some() || selection.after.is_some() { return Err(Error::InvalidInput); }
+    let actor = service::actor(user_id, user).await?;
+    let scope = service::subject_scope(&actor, selection.subject.unwrap_or(user_id), "learning").await?;
+    Ok((actor, scope))
+}
+fn url(scope: &Scope) -> String { format!("/supervision/parental?school={}&subject={}", scope.tenant().as_str(), scope.subject().as_str()) }
+
+pub(super) async fn show(Extension(user_id): Extension<i32>, Extension(user): Extension<UserContext>, Extension(selection): Extension<Selection>, Extension(csrf): Extension<CsrfToken>, headers: HeaderMap) -> Response {
+    async fn render(user_id: i32, user: &UserContext, selection: &Selection, csrf: &str, headers: &HeaderMap) -> Result<Response, Error> {
+        let (actor, scope) = context(user_id, user, selection).await?;
+        let managed = service::store().await?.parental(&actor, &scope).await?;
+        let proof = Binding { actor: &actor, scope: &scope, session: "", kind: "parental" }.issue(headers, managed.as_ref().map(|m| m.revision().value()).unwrap_or(0))?;
+        // Learner can inspect restrictions, but receives no manager form.
+        Ok(page::parental(&scope, managed.as_ref(), actor.actor() != scope.subject(), &url(&scope), csrf, &proof).into_response())
+    }
+    match render(user_id, &user, &selection, csrf.as_str(), &headers).await { Ok(response) => response, Err(error) => failure(error) }
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct PolicyForm { revision: i64, issued_at: i64, proof: String, _token: String, courses: String, not_before: String, expires_at: String }
+pub(super) async fn submit(Extension(user_id): Extension<i32>, Extension(user): Extension<UserContext>, Extension(selection): Extension<Selection>, headers: HeaderMap, Form(form): Form<PolicyForm>) -> Response {
+    async fn apply(user_id: i32, user: &UserContext, selection: &Selection, headers: &HeaderMap, form: PolicyForm) -> Result<Response, Error> {
+        let (actor, scope) = context(user_id, user, selection).await?;
+        if actor.actor() == scope.subject() || form.courses.len() > 704 { return Err(Error::Forbidden); }
+        Binding { actor: &actor, scope: &scope, session: "", kind: "parental" }.verify(headers, &Proof { revision: form.revision, issued_at: form.issued_at, proof: form.proof })?;
+        let mut courses = Vec::new();
+        for value in form.courses.split_whitespace() {
+            if courses.len() >= 64 { return Err(Error::InvalidInput); }
+            let id = value.parse::<i32>().ok().filter(|id| *id > 0).ok_or(Error::InvalidInput)?;
+            // This resolves the course's current school binding, never enrollment.
+            crate::services::school_service::authorize_course(user, id).await.map_err(|_| Error::Forbidden)?;
+            courses.push(id.to_string());
+        }
+        let policy = CoursePolicy::new(courses, utc(&form.not_before)?, utc(&form.expires_at)?)?;
+        service::store().await?.set_course_policy(&actor, &scope, Revision::new(form.revision)?, &policy).await?;
+        Ok(Redirect::to(&url(&scope)).into_response())
+    }
+    match apply(user_id, &user, &selection, &headers, form).await { Ok(response) => response, Err(error) => failure(error) }
+}
+
+fn utc(value: &str) -> Result<i64, Error> {
+    if value.len() != 16 { return Err(Error::InvalidInput); }
+    chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M").map(|v| v.and_utc().timestamp()).map_err(|_| Error::InvalidInput)
+}

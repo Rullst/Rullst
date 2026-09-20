@@ -361,8 +361,16 @@ crate, bounded domain contracts and shared-local SQLite state. Its focused local
 tests cover explicit acknowledgement, scoped/revocable authority, session
 transitions, event bounds, parental course windows, retention, fresh-process
 reopen, concurrent revisions, lock-wait expiry, cancellation and corrupt rows.
-The generated LMS enforcement and browser journey are still being implemented;
-these local results do not admit the package for publication.
+An explicit full-SQLite-LMS generator now installs the original learning-service
+gate, signed/scoped SSR forms, local operator provisioning and a bounded visibility
+collector. Three local CLI integration tests pass, including both privacy/age
+composition orders, public-profile compilation, the real HTTP lifecycle and
+Chromium keyboard/no-JavaScript/visibility controls. A start form is bound to the
+last retained session revision so an old acknowledgement cannot silently start a
+new session after end. The generated application passes all fourteen original
+LMS library tests and strict production Clippy/zero-panic checks, and all 376 CLI
+library tests pass. These local results do not admit the package: full workspace
+regression, installed archives and hosted acceptance remain outstanding.
 
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |

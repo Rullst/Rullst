@@ -477,3 +477,5 @@ rullst-orm = { version = "12", features = ["turso"] }
         );
     }
 }
+
+pub(crate) mod supervision;

@@ -12,5 +12,6 @@ screen, browsing-history or device-wide control is implemented. Visibility
 reports never prove misconduct or affect grades.
 
 The [design and acceptance boundary](../docs/src/supervision.md) records the
-supported scope and remaining consumer, browser and release requirements.
+supported scope, local generated-LMS/Chromium evidence and remaining archive,
+full-workspace and hosted release requirements.
 This package is not yet admitted for publication or production use.

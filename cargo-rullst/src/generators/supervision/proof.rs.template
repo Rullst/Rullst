@@ -1,0 +1,44 @@
+//! Bind a short-lived form to authenticated session, actor, tenant and resource.
+use ring::hmac;
+use rullst::server::HeaderMap;
+use rullst_supervision::{Clock, Context, Scope, SupervisionError as Error, SystemClock};
+use serde::Deserialize;
+
+pub(super) struct Key(hmac::Key);
+static KEY: std::sync::OnceLock<Key> = std::sync::OnceLock::new();
+pub(super) fn key() -> Result<&'static Key, Error> {
+    if let Some(key) = KEY.get() { return Ok(key); }
+    let value = std::env::var("RULLST_SUPERVISION_FORM_KEY_HEX").map_err(|_| Error::Configuration)?;
+    if value.len() != 64 { return Err(Error::Configuration); }
+    let bytes = hex::decode(value).map_err(|_| Error::Configuration)?;
+    if bytes.len() != 32 || bytes.iter().all(|b| *b == 0) { return Err(Error::Configuration); }
+    let _ = KEY.set(Key(hmac::Key::new(hmac::HMAC_SHA256, &bytes)));
+    KEY.get().ok_or(Error::Configuration)
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct Proof { pub revision: i64, pub issued_at: i64, pub proof: String }
+
+pub(super) struct Binding<'a> { pub actor: &'a Context, pub scope: &'a Scope, pub session: &'a str, pub kind: &'a str }
+impl Binding<'_> {
+    pub fn issue(&self, headers: &HeaderMap, revision: i64) -> Result<Proof, Error> {
+        let issued_at = SystemClock.now()?;
+        let tag = hmac::sign(&key()?.0, &self.message(headers, revision, issued_at)?);
+        Ok(Proof { revision, issued_at, proof: hex::encode(tag.as_ref()) })
+    }
+    pub fn verify(&self, headers: &HeaderMap, proof: &Proof) -> Result<(), Error> {
+        if proof.proof.len() != 64 || !SystemClock.now()?.checked_sub(proof.issued_at).is_some_and(|age| (0..300).contains(&age)) { return Err(Error::Forbidden); }
+        let tag = hex::decode(&proof.proof).map_err(|_| Error::Forbidden)?;
+        hmac::verify(&key()?.0, &self.message(headers, proof.revision, proof.issued_at)?, &tag).map_err(|_| Error::Forbidden)
+    }
+    fn message(&self, headers: &HeaderMap, revision: i64, issued_at: i64) -> Result<Vec<u8>, Error> {
+        let cookie = rullst::auth::extract_session_cookie(headers).ok_or(Error::Forbidden)?;
+        if cookie.is_empty() || cookie.len() > 4096 || revision < 0 || issued_at < 0 { return Err(Error::Forbidden); }
+        let mut bytes = b"rullst.supervision-form.v1\0".to_vec();
+        for value in [self.actor.actor().as_str().as_bytes(), self.scope.tenant().as_str().as_bytes(), self.scope.subject().as_str().as_bytes(), self.scope.resource().as_str().as_bytes(), self.session.as_bytes(), self.kind.as_bytes(), cookie.as_bytes(), super::service::config::POLICY.as_bytes(), super::service::config::NOTICE.as_bytes(), &revision.to_be_bytes(), &issued_at.to_be_bytes()] {
+            bytes.extend_from_slice(&(value.len() as u64).to_be_bytes()); bytes.extend_from_slice(value);
+        }
+        Ok(bytes)
+    }
+}

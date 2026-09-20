@@ -42,7 +42,9 @@ The learner explicitly starts collection for a server-selected resource and
 acknowledges exact policy/notice versions. Session IDs are random. The learner
 can pause, resume with fresh acknowledgement or end collection. End is terminal;
 every transition uses the displayed revision, and lifetime is at most eight
-hours. Session access is tenant/subject bound; existing course/assessment access
+hours. Starting also compares the last retained session revision atomically;
+a form from before a pause/end cannot silently start a new session. Generated
+forms expire well before the minimum session retention. Session access is tenant/subject bound; existing course/assessment access
 must still be checked by the application.
 
 Only `PageVisible` and `PageHidden` events are accepted. Each binds a session,
@@ -69,7 +71,10 @@ retain the existing learning authorization. These restrictions cannot grant
 enrollment, unpublished lessons or assessment permissions.
 
 The generated integration must enforce policy on the original lesson-play and
-progress paths. A new dashboard alone is insufficient. The learner can inspect
+progress paths. A new dashboard alone is insufficient. Existing independently
+authorized cross-subject administrator corrections remain administrative work,
+not learner access. They retain role, actor/subject membership and original
+course checks; they confer no reviewer or parental-manager authority. The learner can inspect
 the applicable window/policy. Already delivered content cannot be recalled.
 There is no operating-system control, recurring timezone schedule or daily
 screen-time accounting in this increment.
@@ -114,3 +119,58 @@ resuming. No automatic rollback or failover claim is made.
 - Full workspace, strict Clippy, formatting, feature/panic boundaries and an
   installed-archive consumer before registry inclusion. Phase completion means
   the named behavior and tests exist; no mock-only package admission.
+
+## Generated preview being validated
+
+The explicit command is available only with the matching local unpublished source:
+
+```bash
+cargo rullst make:supervision --supervision-source /path/to/rullst-supervision \
+  --policy-version exam-v1 --notice-version notice-v1 \
+  --retention-seconds 3600 --session-seconds 3600
+```
+
+It recognizes the complete SQLite LMS authentication and learning service before
+planning atomic file changes. Custom authorization, other backends, existing
+outputs or ambiguous CSRF routing require manual integration. It adds a shared
+learning-service gate, scoped SSR controls, a local `supervision-admin` binary and
+`SUPERVISION.md`; neither startup nor a browser can provision its own authority.
+A separate nonzero form key binds authenticated cookie, actor, school, learner,
+resource, policy/notice and revision. Forms expire after five minutes, shorter
+than retained session metadata. An active/paused session is recovered when the
+learner reopens its start page, rather than replaced by another session.
+
+The browser collector sends only visibility changes, without automatic renewal
+or heartbeats. It stops locally on pause/end submission, page exit, form/session
+expiry or a failed report. Other open pages learn of revocation through rejection;
+server state prevents acceptance after a completed pause/end. Own pause/end and
+state reads remain possible after learning restrictions change, provided school
+membership and lesson binding remain valid. New starts/resumes/reports require
+current learning access.
+
+Focused local acceptance now passes the real CLI/operator process, authenticated
+HTTP journey and Chromium. The browser exercises keyboard start/pause/end with
+JavaScript disabled, then real tab visibility, minimal request fields,
+pause/resume/end and absence of capture or external page requests. HTTP negatives
+cover missing CSRF, changed cookie, cross-subject/school access, duplicate/unknown
+query fields, unknown/oversized bodies, stale session/policy forms, independent
+authority/revocation and corrupted-store denial on original learning routes.
+The public directly linked LMS compiles with privacy/age/supervision together;
+both installation orders preserve application guidance and refreshed AI context.
+The generated application also passes all fourteen original LMS library tests
+and strict production Clippy, including the zero-panic lints. The added gate
+preserves already-authorized administrative progress corrections while denying
+restricted learner progress writes. All 376 CLI library tests pass locally.
+Twenty-one crate tests pass locally. A focused mutation run of the changed
+start/latest-session paths catches all six executable mutations; three attempted
+`Default` replacements do not compile because sessions deliberately have no
+`Default`. The earlier scoped-authority run caught twenty mutations with one
+non-compiling replacement. These bounded samples are not a whole-crate mutation
+score. Full workspace regression, the installed-archive rehearsal and hosted
+release gates remain outstanding.
+
+The distribution diagnostic audits and extracts the unpublished supervision
+archive explicitly and feeds that extracted source to the installed CLI. Normal
+release packaging now selects exactly `.github/release-order.json`, rather than
+all workspace members. Candidate mode does not add supervision to publication
+and must be removed when the package is admitted to that inventory.

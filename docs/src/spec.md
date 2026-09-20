@@ -339,7 +339,8 @@ The owner requested transparent learner/exam supervision and parental controls
 as the first additional priority after the required v13 deliveries have been
 implemented and validated. `rullst-supervision` is now an unpublished implementation
 candidate with bounded domain contracts and shared-local SQLite state. Its
-consumer/browser/hosted acceptance remains pending; `publish = false` is retained.
+local generated-consumer and Chromium journeys now pass. Full workspace regression, installed-archive and hosted acceptance remain pending;
+`publish = false` is retained.
 
 Keep supervision policy/session/event and reviewer-access contracts separate
 from `rullst-privacy` age and consent primitives. Exam supervision and parental
