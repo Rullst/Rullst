@@ -5,6 +5,7 @@
 mod attestation;
 mod challenge;
 mod clock;
+mod declaration;
 mod error;
 mod policy;
 #[cfg(feature = "postgres")]
@@ -17,6 +18,7 @@ mod verifier;
 pub use attestation::{AgeOutcome, TrustedIssuer, encode_attestation, signing_message};
 pub use challenge::{AgeChallenge, SubjectBinding};
 pub use clock::{AgeClock, SystemAgeClock};
+pub use declaration::{AgeDeclaration, DeclarationGate};
 pub use error::AgeError;
 pub use policy::{AgeMethod, AgePolicy, RiskLevel};
 #[cfg(feature = "postgres")]

@@ -11,6 +11,9 @@ is tracked in the [privacy roadmap](../docs/src/privacy-age-assurance-roadmap.md
 ## Current boundary
 
 - Server-owned risk policies, age thresholds and method-specific challenges.
+- Native first-party declarations through `DeclarationGate`, without an external
+  issuer; an affirmative answer remains `Assurance::Declared` and cannot satisfy
+  a stronger method or policy.
 - Random, expiring challenges bound to opaque subject, tenant, session, audience
   and action references, including the complete policy configuration.
 - At-most-4-KiB versioned JSON attestations, Ed25519 signatures, explicit issuer
@@ -75,6 +78,49 @@ instances, retain claims until expiry, reject uncertain commits and prevent
 rollback from resurrecting consumed claims. The durability enum is an adapter
 contract, not an automatic assessment of its implementation. No production
 provider deployment evidence is claimed for this crate yet.
+
+## Native first-party declarations
+
+`DeclarationGate` processes an explicit authenticated `AgeDeclaration` when the
+server's policy allows `SelfDeclaration`. It needs no external issuer or signing
+key for that answer. Retain the server-issued challenge and resolve the current
+authenticated binding again on submission; never substitute client JSON for
+either. The host must protect the endpoint with CSRF and request limits.
+
+```rust,no_run
+# #[cfg(feature = "sqlite")]
+# async fn declared_age(
+#     policy: &rullst_privacy::age_assurance::AgePolicy,
+#     binding: &rullst_privacy::age_assurance::SubjectBinding,
+#     retained: &rullst_privacy::age_assurance::AgeChallenge,
+#     answer: rullst_privacy::age_assurance::AgeDeclaration,
+# ) -> Result<(), rullst_privacy::age_assurance::AgeError> {
+use rullst_privacy::age_assurance::{AgeDecision, DeclarationGate, SqliteReplayStore};
+
+let store = SqliteReplayStore::open("/private/app/age-replay.sqlite", 10_000).await?;
+let gate = DeclarationGate::new(store)?;
+let assessment = gate.assess(policy, binding, retained, answer).await?;
+if assessment.decision() == AgeDecision::Allowed {
+    // Execute only the action authorized by this current authenticated context.
+}
+# Ok(())
+# }
+```
+
+Create and reuse the store/gate at application startup. The example accepts the
+policy, binding and retained challenge from trusted server state, and the answer
+from an explicit user choice. `MeetsThreshold` may allow the action;
+`BelowThreshold` denies it; `Declined` requires an appropriate alternative.
+Every accepted answer consumes the challenge, including negative or declined
+answers. Missing or unknown values are not affirmative declarations.
+
+Production rejects process-local replay state; both SQLite and PostgreSQL can
+be used within their documented deployment boundaries. Signed and native paths
+share the same replay namespace. Changing paths cannot consume one challenge
+twice. The result is always `Assurance::Declared`, never estimated or verified
+age. Stronger-method challenges are rejected even if the browser sends an
+affirmative declaration. This API does not supply a complete authenticated web
+journey or challenge storage/transport by itself.
 
 ## Shared-local replay storage
 

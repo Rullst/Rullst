@@ -139,6 +139,17 @@ follow-up work. Neither an absent provider nor a failed check may downgrade the
 required assurance or make a declaration authorize a stronger-policy action.
 Publication of the privacy package still requires explicit acceptance of its
 advertised API, durable state, consumer behavior and release configuration.
+
+The native `DeclarationGate` contract processes an authenticated first-party
+`AgeDeclaration` without requiring an external issuer or a signing key for the
+declaration itself. It accepts only a retained server-issued `SelfDeclaration`
+challenge under the exact current policy and tenant/subject/session/action
+binding. It shares the signed verifier's durable one-use claim and post-storage
+expiry/clock checks. An affirmative answer can return only `Assurance::Declared`;
+negative or declined answers deny the operation. An estimated/verified method
+or stronger policy cannot be downgraded through this entry point. The host owns
+authentication, CSRF protection, explicit user choice and trusted challenge
+retention/transport. This contract is not a determination of the person's age.
 The separate [SaaS triage](saas-v12-1-v13-triage.md) assigns the examples' reported
 defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidence.
 
