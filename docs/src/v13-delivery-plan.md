@@ -159,7 +159,11 @@ rejection regression. Four new CodeQL policy-threshold conflations were
 individually reviewed and dismissed; the
 [declaration review receipt](evidence/v13-codeql-declaration-review.json)
 binds those decisions to the old analyzed source. No query was disabled.
-Combined hosted acceptance for the subsequent changes remains pending.
+PR #219's corrected head `d783f3b7` subsequently passed 85 hosted checks with
+four declared skips, including all-feature workspace tests, strict Clippy,
+coverage floors and the generated privacy consumers. It merged into `v13` at
+`df589770` on 20 September UTC. This admits that privacy increment; it does not
+certify the later adoption, Android or entitlement changes.
 
 The next adoption increment gives the existing sixteen release packages and
 their internal requirements the explicit development version `13.0.0-alpha.1`.
@@ -198,6 +202,35 @@ reviewed against SARIF 1806278303 and dismissed; the
 the exact source and reasoning. The policy literal is 18; the fuzz-only nonce
 is a separate deterministic fixture, and production issuance retains OS entropy.
 No source path, query or fuzz target was disabled.
+
+[PR #220](https://github.com/Rullst/Rullst/pull/220) now carries the adoption,
+Android and conditional supervision-planning changes, synchronized with the
+admitted privacy head. Its own combined CI and real SDK evidence remain pending.
+
+The entitlement candidate adds a typed current-state gate in Capital and an
+authenticated SaaS billing report. It requires an exact server plan allowlist,
+fresh revision-fenced Stripe reads, a matching live/sandbox mode and an active,
+unexpired subscription. The six focused local contracts passed tenant/owner,
+status/mode, revocation, expiry, stale/future clock and adapter-failure cases.
+The existing generated SQLite/Turso billing contract also passed. The additional
+generated SaaS HTTP/reconciliation fixture passed all four configuration profiles,
+including real session/owner checks, a delayed active read losing to revocation,
+the 20-second provider deadline and strict generated all-target Clippy. Its
+test-only provider boundary is explicit; it is not a live Stripe acceptance run.
+CMS projections and offline billing fixtures cannot grant the new report.
+Local validation also passed the public doctest, strict Capital default-feature
+all-target Clippy, CLI all-feature/all-target Clippy, production panic checks,
+353 CLI unit tests (one parent-owned child fixture ignored by the outer harness),
+20 command/scaffold contracts and book/local links. Combined hosted acceptance
+remains outstanding.
+
+On 20 September at 07:31 UTC, the first four v12 mutation shards had hit their
+330-minute execution budget; their partial artifacts were retained. For example,
+shard 2 had executed 72 of 220 scheduled mutations (40 caught, 30 surviving,
+two unviable), so it is explicitly incomplete. Surviving mutations require
+individual review and are not automatically confirmed runtime defects. The
+remaining campaign continues; partial results must not be reported as a complete
+mutation pass, and any later continuation must preserve source/inventory identity.
 
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |

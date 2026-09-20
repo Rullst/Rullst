@@ -1226,6 +1226,43 @@ before retry, serialize conflicting changes, reconcile signed webhooks and
 evaluate provider-specific billing-cycle effects. Live-account acceptance is
 release evidence, not inferred from protocol fixtures.
 
+#### Server-side Plan Entitlements (v13 candidate)
+
+The candidate `rullst-capital::entitlements` module supplies a read-time gate,
+separate from usage quotas. `EntitlementScope` binds an authenticated tenant to
+an existing `BillingSubject`; `EntitlementPolicy` binds one server-selected
+feature to at most 64 exact plan IDs, an explicit live/sandbox mode and a
+1–300 second maximum reconciliation age. Only active subscriptions qualify;
+trial, past-due, canceled, unknown and mock states deny access. Validity has an
+exclusive end, and both future observations and clock rollback during a read
+are rejected. No serialized snapshot or browser field is an authorization token.
+
+`EntitlementStore` is a static-dispatch trusted adapter contract. Every gate
+call reads it again and checks the returned tenant/subject binding, provenance,
+plan, status, expiration and trusted clock before and after the read. Store
+failures deny access. Hosts must supply authoritative current state and serialize
+reconciliation/revocation; this read gate does not make subsequent domain writes
+atomic or revoke an operation already authorized. Custom adapters and database
+backup/restore remain explicit application obligations.
+
+The generated SaaS candidate consumes this gate at an authenticated billing
+report route. Its single-tenant scope is the configured Stripe account/mode
+inside the application's database, never a request header or submitted owner.
+The existing durable billing intent and revision fence precede an actual
+ownership-bound provider refresh; the state is committed before authorization.
+It performs this refresh on every report, with a bounded deadline and no cached
+grant. The exact report-plan allowlist is separately configured on the server.
+Production requires live state; local sandbox state requires the explicit test
+profile, and offline credentials produce deterministic denial. Mutable CMS
+subscription projections, checkout redirects and unverified events cannot grant
+report access. Other providers need reviewed reconciliation adapters before this
+consumer can enable them. Existing profile/rights exports remain independent.
+
+The local implementation and generated HTTP/database contracts exercise current
+state, account/owner isolation, revocation races, expiry, provider/store failures,
+mock denial and cancellation at the request deadline. Combined hosted admission
+is pending; protocol fixtures do not establish live provider-account acceptance.
+
 #### Shared Team and Workspace Quotas
 
 `BillingSubject` identifies one authoritative user, team, workspace or trusted

@@ -28,6 +28,11 @@ provider sandbox.
 - **Shared team/workspace quotas:** Bounded subject identities, idempotent
   reservations, replay-safe execution and an opt-in transactional SQL store for
   SQLite, PostgreSQL, MySQL and MariaDB.
+- **v13 plan-gate candidate:** `entitlements` checks current tenant/subject-bound
+  subscription state against an explicit feature/plan policy on every action.
+  It rejects mocks, mismatched modes, non-active status, expiry and stale reads.
+  Trusted storage/reconciliation adapters remain application-owned; success is
+  a read-time decision, not a reusable payment or authorization token.
 - **Coupons and relative trials:** A bounded/redacted coupon value, current
   Stripe discount binding, and 1–730-day trial updates for Stripe/Lemon Squeezy
   with explicit-clock retries and fail-closed provider capability boundaries.

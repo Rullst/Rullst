@@ -42,6 +42,8 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
 
     Ok(router.route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
+    .route("/reports/billing", rullst::routing::get(controllers::billing_controller::billing_report)
+        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .route("/billing/checkout", rullst::routing::post(controllers::billing_controller::checkout_redirect)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .route("/billing/portal", rullst::routing::post(controllers::billing_controller::portal_redirect)
@@ -147,6 +149,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {{
     ];
 
     let router = router.route("/dashboard", rullst::routing::get(controllers::auth_controller::dashboard)
+        .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
+    .route("/reports/billing", rullst::routing::get(controllers::billing_controller::billing_report)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))
     .route("/billing/checkout", rullst::routing::post(controllers::billing_controller::checkout_redirect)
         .layer(rullst::server::from_fn(middlewares::auth_middleware::auth_middleware)))

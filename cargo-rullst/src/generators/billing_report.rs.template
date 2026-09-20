@@ -1,0 +1,110 @@
+//! A real per-request reconciliation; editable CMS projections never authorize.
+use super::{BillingConfig, BillingIdentity, Gateway, Result, State, UNAVAILABLE, commit,
+    fence, now, provider, refresh_subscription, scope, store, valid_identity};
+use rullst::capital::{BillingSubject, entitlements::{EntitlementError, EntitlementGate,
+    EntitlementMode, EntitlementPolicy, EntitlementScope, EntitlementSnapshot,
+    EntitlementStatus, EntitlementStore}};
+use rullst::server::{IntoResponse, Response, StatusCode};
+use serde::Serialize;
+use std::sync::OnceLock;
+
+#[derive(Serialize)]
+struct Report {
+    feature: &'static str,
+    plan: String,
+    status: String,
+    valid_until: i64,
+    observed_at: i64,
+}
+struct ReportStore<'a, G> {
+    config: &'a BillingConfig,
+    identity: &'a BillingIdentity,
+    gateway: &'a G,
+    report: OnceLock<Report>,
+}
+
+fn bound_scope(namespace: &str, identity: &BillingIdentity) -> Result<EntitlementScope> {
+    let subject = BillingSubject::try_new("__SUBJECT_KIND__", identity.owner_id.to_string())
+        .map_err(|_| UNAVAILABLE)?;
+    EntitlementScope::new(namespace.replace(':', "."), subject).map_err(|_| UNAVAILABLE)
+}
+fn policy(config: &BillingConfig) -> Result<EntitlementPolicy> {
+    let plans = std::env::var("BILLING_REPORT_PLAN_IDS").map_err(|_| UNAVAILABLE)?;
+    if plans.len() > 12864 { return Err(UNAVAILABLE); }
+    let plans = plans.split(',').map(str::trim).collect::<Vec<_>>();
+    if plans.iter().any(|plan| !config.allowed_plan_ids.contains(*plan)) {
+        return Err(UNAVAILABLE);
+    }
+    // Production cannot silently accept a configured Stripe test key.
+    let mode = if super::super::is_production() { EntitlementMode::Live } else { EntitlementMode::Sandbox };
+    EntitlementPolicy::new("reports.billing", plans, mode, 30).map_err(|_| UNAVAILABLE)
+}
+
+impl<G: Gateway> EntitlementStore for ReportStore<'_, G> {
+    async fn current(&self, requested: &EntitlementScope) -> std::result::Result<Option<EntitlementSnapshot>, EntitlementError> {
+        let (namespace, account, mode) = scope(self.config).map_err(|_| EntitlementError::Unavailable)?;
+        let bound = bound_scope(&namespace, self.identity).map_err(|_| EntitlementError::Unavailable)?;
+        if requested != &bound { return Err(EntitlementError::Denied); }
+        let identity = self.identity;
+        let owner = __OWNER_TO_I64__;
+        let Some(state) = store::owner(&namespace, owner).await.map_err(|_| EntitlementError::Unavailable)? else {
+            return Ok(None);
+        };
+        if !state.attempt.as_ref().is_some_and(|attempt| attempt.subscription.is_some()) {
+            return Ok(None); // A completed redirect alone does not establish a subscription.
+        }
+        let state = fence(&state).await.map_err(|_| EntitlementError::Unavailable)?;
+        let observed_at = now().map_err(|_| EntitlementError::Clock)?;
+        self.gateway.verify_account(&account, mode).await.map_err(|_| EntitlementError::Unavailable)?;
+        let mut next: State = state.clone();
+        refresh_subscription(self.config, self.gateway, mode, &mut next).await
+            .map_err(|_| EntitlementError::Unavailable)?;
+        let next = commit(&state, next, None).await.map_err(|_| EntitlementError::Unavailable)?;
+        let entitlement = next.entitlement.as_ref().ok_or(EntitlementError::Denied)?;
+        let status = match entitlement.status.as_str() {
+            "active" => EntitlementStatus::Active,
+            "trialing" => EntitlementStatus::Trial,
+            "past_due" => EntitlementStatus::PastDue,
+            "canceled" | "incomplete_expired" | "unpaid" => EntitlementStatus::Revoked,
+            _ => EntitlementStatus::Other,
+        };
+        let valid_until = entitlement.ends_at.ok_or(EntitlementError::Denied)?;
+        let snapshot = EntitlementSnapshot::from_reconciled(bound, &entitlement.price, status,
+            if mode { EntitlementMode::Live } else { EntitlementMode::Sandbox }, observed_at, valid_until)?;
+        self.report.set(Report { feature: "reports.billing", plan: entitlement.price.clone(),
+            status: entitlement.status.clone(), valid_until, observed_at })
+            .map_err(|_| EntitlementError::Unavailable)?;
+        Ok(Some(snapshot))
+    }
+}
+
+pub(in super::super) async fn report(config: &BillingConfig, identity: &BillingIdentity) -> Response {
+    match report_with(config, identity, &provider(config)).await {
+        Ok(response) => response,
+        Err(status) => protected(status.into_response()),
+    }
+}
+
+pub(super) async fn report_with(config: &BillingConfig, identity: &BillingIdentity, gateway: &impl Gateway) -> Result<Response> {
+    tokio::time::timeout(std::time::Duration::from_secs(20), report_inner(config, identity, gateway))
+        .await.map_err(|_| UNAVAILABLE)?
+}
+
+async fn report_inner(config: &BillingConfig, identity: &BillingIdentity, gateway: &impl Gateway) -> Result<Response> {
+    if !valid_identity(identity) { return Err(StatusCode::UNAUTHORIZED); }
+    let (namespace, _, _) = scope(config)?;
+    let bound = bound_scope(&namespace, identity)?;
+    let store = ReportStore { config, identity, gateway, report: OnceLock::new() };
+    EntitlementGate::new(policy(config)?).authorize(&bound, &store).await.map_err(|error| match error {
+        EntitlementError::Denied => StatusCode::FORBIDDEN,
+        _ => UNAVAILABLE,
+    })?;
+    let report = store.report.into_inner().ok_or(UNAVAILABLE)?;
+    Ok(protected(rullst::server::Json(report).into_response()))
+}
+
+fn protected(mut response: Response) -> Response {
+    response.headers_mut().insert("cache-control", rullst::server::HeaderValue::from_static("no-store"));
+    response.headers_mut().insert("referrer-policy", rullst::server::HeaderValue::from_static("no-referrer"));
+    response
+}

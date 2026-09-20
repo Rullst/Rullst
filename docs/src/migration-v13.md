@@ -7,7 +7,7 @@ false` until its separate release admission. Do not request v13 artifacts from
 the stable updater before those artifacts have actually been published.
 
 This inventory covers the development source through the native age and
-optional-consent consumers and the Android artifact-verification candidate. Revisit it as the remaining
+optional-consent consumers, plan-gated billing reports and the Android artifact-verification candidate. Revisit it as the remaining
 [delivery priorities](v13-delivery-plan.md) land. It does not promise that every
 existing application, provider account or deployment works without review.
 
@@ -21,7 +21,8 @@ existing application, provider account or deployment works without review.
 | Age assurance | Optional `rullst-privacy` APIs and `make:age-gate` add an authenticated native declaration journey. Existing apps acquire no age policy, verified age, guardian relationship, replay storage or camera capture by upgrading a dependency. |
 | Optional consent and export | `make:privacy` adds explicit versioned choices, effective withdrawal of the demonstrated optional greeting and an authenticated own-account name/email export. It requires reviewed application installation and explicit consent-store initialization. It is not a complete export of all application data or automatic worldwide legal compliance. |
 | CLI migration catalog | `rullst-upgrade-rules-v2` recognizes source majors 5, 6, 11, 12 and 13. The installed CLI must belong to the exact target major. Preparations from the earlier catalog must be prepared and verified again. Downgrades still fail. |
-| Application templates | The existing blueprint and project-generator source is unchanged from published commit `b62390b4fc61e5ac06d24eb31bb7c10d370d679d` at this inventory checkpoint. The new privacy generators are explicit additions. Updating a dependency does not replace generated controllers or application customizations. |
+| SaaS plan gates | The generated `/reports/billing` route uses authenticated identity, fresh revision-fenced Stripe reconciliation and an explicit `BILLING_REPORT_PLAN_IDS` allowlist. Production requires live state; offline fixtures cannot grant access. The additive `rullst-capital::entitlements` API supports other trusted adapters. Existing applications must review/install the generated module and route; no new billing schema is needed. |
+| Application templates | SaaS and `make:billing` add the report module; privacy generators remain explicit additions. Updating a dependency does not replace generated controllers or application customizations. |
 
 The [12.0→12.1 guide](migration-v12-1.md) still applies to applications that have
 not adopted the 12.1 account, payment and deployment changes. Skipping directly

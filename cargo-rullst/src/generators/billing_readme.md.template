@@ -47,9 +47,42 @@ pricing page's CSP `form-action`; retain server validation and browser testing.
 Session creation/navigation never grants an entitlement. Signed events trigger
 current provider-state reads. Revision fencing prevents delayed reads from
 replacing a newer committed state, and receipt/subscription writes commit together.
-The application's access policy must use persisted subscription status and period;
+The application's access policy must use reconciled subscription status and period;
 `active` is subscription state, not proof of invoice settlement. Require separate
 invoice evidence for application features that specifically depend on settlement.
+
+## Plan-gated billing report (v13)
+
+The SaaS blueprint mounts authenticated `GET /reports/billing`. `make:billing`
+also generates `billing_controller::billing_report`; applications mounting it
+must supply their existing authenticated `BillingIdentity`, CSRF/WAF and secure
+headers. Configure `BILLING_REPORT_PLAN_IDS` as a nonempty, duplicate-free subset
+of `BILLING_ALLOWED_PLAN_IDS`. Missing/invalid configuration returns 503.
+
+Each request loads the durable owner binding, establishes a revision fence,
+reads the account/subscription from Stripe, and commits the reconciliation before
+checking `rullst-capital::entitlements`. Only `active` subscriptions in an exact
+allowed plan with a future period end qualify. Trials, past-due/canceled state,
+missing state and expired periods deny access. Reads older than 30 seconds deny
+access; the request has a 20-second deadline and never falls back to stale state.
+Expect provider latency and read costs; apply authenticated rate limits for the
+deployment's budget. Responses contain the current plan/status/period, use
+`no-store` and expose no provider customer or subscription identifiers.
+
+`RULLST_ENV=production` requires live evidence and the existing real-charge
+acknowledgement. Development uses Stripe sandbox evidence; offline credentials
+remain deterministic denial, even if editable CMS subscription rows say active.
+The scope is the configured Stripe account/mode within this application's
+database, and the owner comes from the authenticated session. This starter does
+not resolve arbitrary tenant headers or add shared workspace membership.
+Multi-tenant applications must supply their own authoritative scoped adapter.
+
+Authorization takes effect at the read/commit boundary; a later cancellation
+cannot retract an already generated response. Sensitive writes need a domain
+transaction or another explicit concurrency strategy. Updating a dependency
+does not replace existing generated modules. Review the new report module and
+route before installing them in an existing application; no new billing schema
+is required. The independent profile/rights export is never gated by a paid plan.
 
 Retry a failed checkout POST to resume the same persisted attempt. An existing
 open session is retrieved and reused. Provider mutation retries reuse the exact

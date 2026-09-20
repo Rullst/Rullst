@@ -21,7 +21,7 @@ const TURSO_MIGRATION: &str = include_str!("billing_migration_turso.rs.template"
 const SQLX_PERSIST: &str = include_str!("billing_persist_sqlx.rs.template");
 const TURSO_PERSIST: &str = include_str!("billing_persist_turso.rs.template");
 
-const FIXED_OUTPUTS: [&str; 9] = [
+const FIXED_OUTPUTS: [&str; 10] = [
     "src/models/subscription.rs",
     "src/models/billing_customer.rs",
     "src/pages/billing.rs",
@@ -31,6 +31,7 @@ const FIXED_OUTPUTS: [&str; 9] = [
     "src/controllers/billing_events.rs",
     "BILLING.md",
     "src/controllers/billing_gateway.rs",
+    "src/controllers/billing_report.rs",
 ];
 
 pub(crate) fn render_billing_controller(foreign_key: &str, backend: ProjectOrmBackend) -> String {
@@ -64,6 +65,22 @@ pub(crate) fn live_billing_files(
         "i64"
     };
     vec![
+        (
+            "src/controllers/billing_report.rs",
+            include_str!("billing_report.rs.template")
+                .replace(
+                    "__SUBJECT_KIND__",
+                    foreign_key.strip_suffix("_id").unwrap_or(foreign_key),
+                )
+                .replace(
+                    "__OWNER_TO_I64__",
+                    if backend == ProjectOrmBackend::Sqlx {
+                        "i64::from(identity.owner_id)"
+                    } else {
+                        "identity.owner_id"
+                    },
+                ),
+        ),
         (
             "src/controllers/billing_gateway.rs",
             include_str!("billing_gateway.rs.template").into(),
