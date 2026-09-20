@@ -263,6 +263,28 @@ recreates it. The generated consent profile remains shared-local SQLite only.
 The separate [SaaS triage](saas-v12-1-v13-triage.md) assigns the examples' reported
 defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidence.
 
+### v13 source-train and adoption preparation
+
+The development train uses `13.0.0-alpha.1` consistently for the existing
+publishable packages and their internal requirements. This prepares the CLI's
+actual major-version behavior; it is not a publication or stable-release claim.
+The privacy package retains its unpublished admission boundary and explicit
+local-source consumers until its release configuration is accepted.
+
+The `rullst-upgrade-rules-v2` migration catalog recognizes source major 13 as
+well as 5, 6, 11 and 12, keeps exact target-major CLI selection and rejects
+downgrades. Preparations from the previous catalog require fresh preparation
+and verification. The [12.1-to-13 source inventory](migration-v13.md) adds opt-in privacy APIs,
+consumer generators and security header composition, without a known required
+replacement of existing application APIs. Automatic preparation is therefore
+limited to supported dependency manifests and the existing compiler/check/test
+workflow; it must not invent code rewrites, enable age or consent policies,
+bootstrap privacy state, replace authentication or deploy an application.
+Migration evidence must distinguish small offline updater protocol fixtures
+from generated SaaS/LMS consumers compiled against actual framework source.
+Release-time inventory and package checks must revisit this boundary as more
+v13 changes land.
+
 ### v13 formal-verification pilot boundary
 
 The [Verus pilot](verus-roadmap.md) is planned work, beginning with production

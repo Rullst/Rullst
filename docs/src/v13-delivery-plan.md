@@ -154,6 +154,18 @@ individually reviewed and dismissed; the
 binds those decisions to the old analyzed source. No query was disabled.
 Combined hosted acceptance for the subsequent changes remains pending.
 
+The next adoption increment gives the existing sixteen release packages and
+their internal requirements the explicit development version `13.0.0-alpha.1`.
+Privacy remains unpublished. Migration catalog v2 admits source major 13,
+retains target-major selection and downgrade rejection, and invalidates old
+preparations. Local updater contracts exercise a distinct 12.1.0→13 resolution,
+review, stale-input rejection, application and recovery. Both executable names
+report the actual source version; prerelease tests keep the explicit opt-in.
+The [adoption guide](migration-v13.md) inventories the current additive changes
+and distinguishes tiny updater protocol packages from actual generated
+framework consumers. Combined hosted acceptance and an unpublished package
+rehearsal remain outstanding.
+
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |
 | P0 | Published v12.1.0 corrections integrated without losing v13 work | Review conflicts; retain the stable runtime changes; pass the combined workspace tests, strict Clippy, format and feature/consumer checks. |

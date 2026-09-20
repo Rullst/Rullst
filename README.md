@@ -40,6 +40,10 @@
 > · [v12 release record](https://rullst.github.io/Rullst/book/v12.html)
 > · [Compatibility policy](https://rullst.github.io/Rullst/book/compatibility-policy.html).
 
+The development manifests and CLI now identify `13.0.0-alpha.1`. See the
+[v13 adoption guide](docs/src/migration-v13.md) for the current compatibility
+inventory, explicit source evaluation and reviewed application updates.
+
 ## 🚀 Start building
 
 Generate a project, choose a blueprint and database, then start the development loop:

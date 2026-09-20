@@ -11,14 +11,14 @@ use std::{
     process::{Command, Output},
 };
 
-fn digest(fixture: &Fixture, stage: &Path) -> String {
+pub(super) fn digest(fixture: &Fixture, stage: &Path) -> String {
     let output = review(fixture, stage);
     assert!(output.status.success(), "{}", text(&output));
     let report: Value = serde_json::from_slice(&output.stdout).unwrap();
     report["review_sha256"].as_str().unwrap().into()
 }
 
-fn invoke(fixture: &Fixture, operation: &str, stage: &Path, digest: &str) -> Output {
+pub(super) fn invoke(fixture: &Fixture, operation: &str, stage: &Path, digest: &str) -> Output {
     Command::new(env!("CARGO_BIN_EXE_cargo-rullst"))
         .args(["update", "project", operation, "--verified"])
         .arg(stage)

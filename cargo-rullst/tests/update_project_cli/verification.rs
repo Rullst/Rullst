@@ -7,7 +7,7 @@ use std::{
 };
 
 pub(super) fn fixture(source: &str) -> Fixture {
-    let fixture = Fixture::new("12", env!("CARGO_PKG_VERSION"));
+    let fixture = Fixture::current();
     fs::write(
         fixture.app.join("build.rs"),
         r#"fn main() {
@@ -122,6 +122,13 @@ fn stale_source_candidate_and_baseline_are_rejected_before_project_code() {
     }
     let record = stage.join("preparation.json");
     let mut value: Value = serde_json::from_slice(&fs::read(&record).unwrap()).unwrap();
+    let mut previous_catalog = value.clone();
+    previous_catalog["plan"]["rule_catalog"] = "rullst-upgrade-rules-v1".into();
+    fs::write(&record, serde_json::to_vec(&previous_catalog).unwrap()).unwrap();
+    let rejected = verify(&fixture, &stage, &["--allow-project-code"]);
+    assert!(!rejected.status.success(), "{}", text(&rejected));
+    assert!(text(&rejected).contains("current migration catalog"));
+    assert!(!fixture.base.join("build-executed").exists());
     value["execution_authorized"] = true.into();
     fs::write(record, serde_json::to_vec(&value).unwrap()).unwrap();
     assert!(

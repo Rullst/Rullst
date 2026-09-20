@@ -19,18 +19,27 @@ impl Ui for Scripted {
 }
 
 fn options(scope: &str) -> Options {
+    let prerelease = (!semver::Version::parse(env!("CARGO_PKG_VERSION"))
+        .unwrap()
+        .pre
+        .is_empty())
+    .then_some("--prerelease");
     let matches = command()
-        .try_get_matches_from([
-            "guided",
-            "--to",
-            env!("CARGO_PKG_VERSION"),
-            "--scope",
-            scope,
-            "--root",
-            "/private/cli with spaces",
-            "--project",
-            "project with 'quotes' $(literal)",
-        ])
+        .try_get_matches_from(
+            [
+                "guided",
+                "--to",
+                env!("CARGO_PKG_VERSION"),
+                "--scope",
+                scope,
+                "--root",
+                "/private/cli with spaces",
+                "--project",
+                "project with 'quotes' $(literal)",
+            ]
+            .into_iter()
+            .chain(prerelease),
+        )
         .unwrap();
     Options::parse(&matches).unwrap()
 }

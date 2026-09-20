@@ -57,7 +57,7 @@ fn review_binds_complete_dependency_diff_without_reexecuting_or_applying() {
     assert_eq!(report["review"]["changes"].as_array().unwrap().len(), 1);
     let diff = report["diff"].as_str().unwrap();
     assert!(diff.contains(&format!("version = \"={}\"", env!("CARGO_PKG_VERSION"))));
-    assert!(diff.contains("version = \"12\""));
+    assert!(diff.contains(&format!("version = \"{}\"", env!("CARGO_PKG_VERSION"))));
     assert!(
         !diff.contains("tool.sh"),
         "permission normalization must not invent a source edit"
