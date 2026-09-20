@@ -166,6 +166,32 @@ and distinguishes tiny updater protocol packages from actual generated
 framework consumers. Combined hosted acceptance and an unpublished package
 rehearsal remain outstanding.
 
+The development train passed 348 local CLI unit tests, 46 updater process
+contracts, 32 command/scaffold contracts and the generated foundation matrix
+(Blank/API, SaaS and full LMS, including LMS authorization negatives). Release
+preflight still identifies sixteen publishable packages with a consistent
+version and topological order; it does not admit the unpublished privacy package.
+Strict CLI all-feature/all-target Clippy and production panic checks passed.
+These are local checks, not the outstanding combined hosted/package campaign.
+
+The Android candidate now binds one fresh bounded APK to the application's
+expected certificate through the SDK verifier, checks its final bytes, rejects
+stale/ambiguous outputs and withholds captured signing-tool diagnostics. Native
+process fixtures exercise success, explicit selection, wrong certificates,
+missing/stale/oversized/changed files, verifier/build failures and output/time
+bounds. The hosted Android workflow now exercises this CLI against a real
+signed release and independently checks its certificate and receipt. That new
+hosted result remains pending; protocol fixture success does not certify SDK
+interoperability or devices/stores.
+
+The PR #219 follow-up CodeQL analysis reported one additional threshold-to-nonce
+conflation in the isolated privacy fuzz helper. Alert 338 was individually
+reviewed against SARIF 1806278303 and dismissed; the
+[fuzz-policy review receipt](evidence/v13-codeql-fuzz-policy-review.json) records
+the exact source and reasoning. The policy literal is 18; the fuzz-only nonce
+is a separate deterministic fixture, and production issuance retains OS entropy.
+No source path, query or fuzz target was disabled.
+
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |
 | P0 | Published v12.1.0 corrections integrated without losing v13 work | Review conflicts; retain the stable runtime changes; pass the combined workspace tests, strict Clippy, format and feature/consumer checks. |

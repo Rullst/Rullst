@@ -1,7 +1,9 @@
 # Android signing and application icons
 
-> Planned for **12.1.0**, not included in the published 12.0.0 CLI. Native
-> compilation/signature verification in CI is not physical-device or store approval.
+> Application-owned signing shipped in **12.1.0**. The current **v13 development
+> source** additionally requires CLI artifact/certificate verification as
+> described below; its hosted acceptance is pending. Native compilation and
+> signature verification do not establish physical-device or store approval.
 
 ## Generate once, customize deliberately
 
@@ -50,6 +52,27 @@ Supply these variables through your secret manager/CI or a private shell:
 | `RULLST_ANDROID_KEY_ALIAS` | Alias selected when creating the key |
 | `RULLST_ANDROID_STORE_PASSWORD` | Keystore password |
 | `RULLST_ANDROID_KEY_PASSWORD` | Private-key password |
+| `RULLST_ANDROID_SIGNING_CERTIFICATE` (v13) | Absolute public DER certificate exported from the intended signing identity |
+| `RULLST_ANDROID_APKSIGNER_JAR` (v13) | Absolute trusted SDK Build Tools `lib/apksigner.jar` |
+
+For v13, export the public certificate once using the selected alias and
+keystore. With the signing environment already set, run:
+
+```bash
+keytool -exportcert -keystore "$RULLST_ANDROID_KEYSTORE" \
+  -alias "$RULLST_ANDROID_KEY_ALIAS" \
+  -storepass:env RULLST_ANDROID_STORE_PASSWORD \
+  -file /private/path/my-app-certificate.der
+export RULLST_ANDROID_SIGNING_CERTIFICATE=/private/path/my-app-certificate.der
+export RULLST_ANDROID_APKSIGNER_JAR=/path/to/reviewed-sdk/build-tools/VERSION/lib/apksigner.jar
+```
+
+Replace the illustrative paths and SDK version with your reviewed installation.
+The certificate is public; keep its expected identity under application change
+control. Java must be installed on an absolute trusted `PATH` entry. The
+`--signing-certificate` and `--apksigner-jar` options override their respective
+environment paths. Verification does not infer the expected certificate from
+the APK it is checking.
 
 Example for **Bash**, without storing passwords in history:
 
@@ -63,15 +86,47 @@ cargo rullst omni android --release
 unset RULLST_ANDROID_STORE_PASSWORD RULLST_ANDROID_KEY_PASSWORD
 ```
 
-Run this from the application root. It checks required inputs before invoking
-the locally installed Tauri CLI. The generated Gradle release configuration
+Run this from the application root (on v13, set the two verification paths
+above as well). It checks required inputs before invoking the locally installed
+Tauri CLI. The generated Gradle release configuration
 uses those inputs and rejects missing credentials even if you invoke Tauri
 directly. Wrong passwords or aliases fail the native signing task. The command
 does not launch a backend, upload an APK, publish to a store or modify secrets.
 
-For a faster build targeting only ARM64 devices, run from `omni-app` with the
-same environment: `npm run tauri -- android build --target aarch64 --apk --ci`.
-This narrows supported device architectures; it is not a universal APK.
+For a v13 ARM64 build, use `cargo rullst omni android --release --android-arch
+aarch64`. On 12.1, run from `omni-app` with the same signing environment:
+`npm run tauri -- android build --target aarch64 --apk --ci`. Restricting native
+architectures also restricts the devices that can run that artifact.
+
+## v13 output and certificate verification
+
+The CLI inventories release APKs below
+`omni-app/gen/android/app/build/outputs/apk` before and after the build. It
+requires one fresh output; `--apk arm64/release/app-arm64-release.apk` is an
+illustrative explicit relative selection when the build creates multiple
+variants. Use the actual output path of your generated shell. Parent traversal,
+linked outputs, absent/unchanged files and ambiguous fresh selections fail.
+For a rebuild where Gradle would reuse an unchanged cached APK, move that
+previous APK aside before rebuilding; the CLI does not delete it for you.
+Filesystem timestamps must reflect writes during this invocation.
+
+Discovery is bounded to 4,096 entries, depth eight, at most sixteen matching
+APKs and 512 MiB of matching APK bytes. Each APK is nonempty and at most 512 MiB.
+The expected certificate is at most 64 KiB. The CLI copies the selected APK to
+a private temporary location, runs the trusted JDK/SDK verifier against those
+exact bytes with SDK warnings treated as errors, requires one signer and matches the signing certificate's SHA-256.
+It rechecks the original and snapshot before emitting a
+`rullst.android-release.v1` JSON receipt with the path, length, APK digest and
+certificate digest. A file changed afterwards is not covered by that receipt.
+
+The verifier receives none of the four signing environment inputs. Captured
+tool output is bounded and withheld on failure; errors do not replay build logs
+that might contain credentials. The native build has a 45-minute limit and the
+signature verifier a 90-second limit. Cancellation/errors perform best-effort
+owned-process cleanup and remove the temporary snapshot. Trusted build tools,
+SDK/JDK installation, filesystem custody and protection from other same-user
+processes remain operator responsibilities. Multiple signers, signing-key
+rotation lineages, AABs and custom output layouts need separate reviewed flows.
 
 Do not share Gradle caches/build scans or run verbose/debug build logging with
 production credentials. Native build tools inherit the signing environment;
@@ -115,6 +170,9 @@ application. Commit/back up the existing shell and review the following changes:
    with an existing signing setup may retain their native Tauri build command;
    the convenience CLI checks for the Rullst guard instead of silently changing it.
 
-The repository tests process ordering and failure propagation with controlled
-tool fixtures. The hosted Android job separately builds a real release with a
-disposable key and verifies its certificate. Those are distinct evidence levels.
+The repository tests process ordering, stale/ambiguous output, wrong certificates,
+byte changes, time/output bounds and failure redaction with controlled tools.
+The hosted Android job is configured to build a real release through this CLI
+with a disposable key, check its receipt and independently verify the signer
+again through the SDK wrapper. Its v13 result remains required before admission;
+local protocol fixtures do not establish SDK interoperability.

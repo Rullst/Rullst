@@ -971,9 +971,15 @@ migrations, data backup, external reachability check, or automatic rollback. It
 does not guarantee zero downtime and does not support IPv6 SCP targets.
 
 ### `cargo rullst omni`
-The unreleased 12.1.0 executable adds `cargo rullst omni android --release` for
+The 12.1.0 executable added `cargo rullst omni android --release` for
 an explicit Android release build using application-owned signing inputs. It
 does not change the existing Rust `Commands::Omni` variant or start a backend.
+The v13 development CLI additionally requires `--signing-certificate` and
+`--apksigner-jar` (or their documented environment variables), verifies one
+fresh release APK against that certificate and reports its SHA-256. Use
+`--apk` to select a relative output when variants are ambiguous and
+`--android-arch` to restrict the native build. Neither a successful build alone
+nor a previous unchanged artifact is accepted as fresh verified output.
 See [Android signing and icons](tutorials/49-omni-android-signing.md) for key
 setup, migration of existing shells and certificate/device verification.
 

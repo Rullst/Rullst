@@ -7,7 +7,7 @@ false` until its separate release admission. Do not request v13 artifacts from
 the stable updater before those artifacts have actually been published.
 
 This inventory covers the development source through the native age and
-optional-consent consumers. Revisit it as the remaining
+optional-consent consumers and the Android artifact-verification candidate. Revisit it as the remaining
 [delivery priorities](v13-delivery-plan.md) land. It does not promise that every
 existing application, provider account or deployment works without review.
 
@@ -17,6 +17,7 @@ existing application, provider account or deployment works without review.
 | :--- | :--- |
 | Existing runtime APIs | No required replacement of an existing application API was identified in this increment. Source preparation changes supported dependency requirements; it invents no Rust rewrites. |
 | Security headers | Core and both Security header layers preserve an endpoint's exact `Referrer-Policy: no-referrer`, including when it occurs among duplicate values. Other endpoint values still yield to the configured baseline. Review handlers that intentionally set this more restrictive policy. |
+| Android release command | `omni android --release` now requires the expected public DER certificate and trusted SDK `apksigner.jar` path, and rejects missing, unchanged, ambiguous or incorrectly signed output. Configure `RULLST_ANDROID_SIGNING_CERTIFICATE` / `RULLST_ANDROID_APKSIGNER_JAR` or the corresponding CLI options. See the [signing guide](tutorials/49-omni-android-signing.md). The old Rust helper signature remains; its environment contract is stricter. |
 | Age assurance | Optional `rullst-privacy` APIs and `make:age-gate` add an authenticated native declaration journey. Existing apps acquire no age policy, verified age, guardian relationship, replay storage or camera capture by upgrading a dependency. |
 | Optional consent and export | `make:privacy` adds explicit versioned choices, effective withdrawal of the demonstrated optional greeting and an authenticated own-account name/email export. It requires reviewed application installation and explicit consent-store initialization. It is not a complete export of all application data or automatic worldwide legal compliance. |
 | CLI migration catalog | `rullst-upgrade-rules-v2` recognizes source majors 5, 6, 11, 12 and 13. The installed CLI must belong to the exact target major. Preparations from the earlier catalog must be prepared and verified again. Downgrades still fail. |

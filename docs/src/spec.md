@@ -1985,6 +1985,25 @@ authoritative secrets into JavaScript or an untrusted client.
   command enum. No shared signing key, store publication or physical-device
   evidence is implied. Existing/custom-flavor shells need reviewed migration;
   see the [signing guide](tutorials/49-omni-android-signing.md).
+* 🟠 **`[v13 candidate / hosted acceptance pending]` Verified Android release output:** the
+  CLI binds a successful build to one fresh release APK under the generated
+  Android output directory. An explicit relative APK selection may disambiguate
+  variants; absent, unchanged, ambiguous, linked or oversized outputs fail.
+  Reproducible bytes may be accepted only when the output's filesystem timestamp
+  changed during this build; a cached unchanged artifact is not fresh evidence.
+  An application-owned DER certificate and a trusted absolute SDK
+  `apksigner.jar` path are required in addition to signing inputs. Invoke the
+  jar through Java from an absolute trusted PATH entry, with bounded output,
+  deadlines and process cleanup. The verifier receives no keystore or password
+  environment inputs. It requires cryptographic verification of a private bounded APK
+  snapshot with SDK warnings treated as errors, report exactly one supported signer and match the expected
+  certificate SHA-256. Verify that the original bytes still match before
+  reporting the APK digest. Tool failures expose fixed diagnostics, not captured
+  logs or signing secrets. Local protocol fixtures are not real APK acceptance;
+  hosted Android CI must build and verify a generated signed APK through this
+  CLI. Multiple signers/key rotation, arbitrary output layouts, AAB/store/device
+  acceptance and protection from hostile build tools or same-user writers remain
+  separate contracts.
 * 🟢 **`[Implemented / Bounded]` Remote-content Boundary:** the generated local
   bootstrap exposes no Tauri IPC API to the remote application. A native
   navigation callback permits only Tauri's packaged origin and the exact

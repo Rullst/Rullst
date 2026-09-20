@@ -162,32 +162,29 @@ exit 0
     }
 
     #[test]
-    fn release_build_is_explicit_and_propagates_tool_failure() {
+    fn release_requires_verification_inputs_before_executing_tauri() {
         let fixture = Fixture::new();
         assert!(fixture.scaffold().output().unwrap().status.success());
         let key = fixture.temp.path().join("fixture-key.jks");
         fs::write(&key, "tool fixture, not a signing key").unwrap();
-        for exit in ["0", "9"] {
-            let output = fixture
-                .command()
-                .args(["omni", "android", "--release"])
-                .env(SIGNING_ENV[0], key.canonicalize().unwrap())
-                .env(SIGNING_ENV[1], "fixture-alias")
-                .env(SIGNING_ENV[2], "never-print-this-secret")
-                .env(SIGNING_ENV[3], "never-print-this-secret")
-                .env("BUILD_EXIT", exit)
-                .output()
-                .unwrap();
-            assert_eq!(
-                output.status.success(),
-                exit == "0",
-                "{}",
-                output_text(&output)
-            );
-            assert!(!output_text(&output).contains("never-print-this-secret"));
-        }
-        let log = fs::read_to_string(fixture.temp.path().join("commands.log")).unwrap();
-        assert!(log.ends_with("exec --offline -- tauri android build --apk --ci\n"));
-        assert!(!log.contains("never-print-this-secret"));
+        let before = fs::read(fixture.temp.path().join("commands.log")).unwrap();
+        let output = fixture
+            .command()
+            .args(["omni", "android", "--release"])
+            .env(SIGNING_ENV[0], key.canonicalize().unwrap())
+            .env(SIGNING_ENV[1], "fixture-alias")
+            .env(SIGNING_ENV[2], "never-print-this-secret")
+            .env(SIGNING_ENV[3], "never-print-this-secret")
+            .env_remove("RULLST_ANDROID_SIGNING_CERTIFICATE")
+            .env_remove("RULLST_ANDROID_APKSIGNER_JAR")
+            .output()
+            .unwrap();
+        assert!(!output.status.success(), "{}", output_text(&output));
+        assert!(output_text(&output).contains("RULLST_ANDROID_SIGNING_CERTIFICATE"));
+        assert!(!output_text(&output).contains("never-print-this-secret"));
+        assert_eq!(
+            before,
+            fs::read(fixture.temp.path().join("commands.log")).unwrap()
+        );
     }
 }
