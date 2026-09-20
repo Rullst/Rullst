@@ -2091,6 +2091,10 @@ authoritative secrets into JavaScript or an untrusted client.
   variants; absent, unchanged, ambiguous, linked or oversized outputs fail.
   Reproducible bytes may be accepted only when the output's filesystem timestamp
   changed during this build; a cached unchanged artifact is not fresh evidence.
+  Compare artifact time with a temporary filesystem timestamp anchor created
+  before the build, so filesystem clock granularity cannot invalidate a fresh
+  fast build merely by lagging the wall clock. The before/after artifact identity
+  comparison remains mandatory.
   An application-owned DER certificate and a trusted absolute SDK
   `apksigner.jar` path are required in addition to signing inputs. Invoke the
   jar through Java from an absolute trusted PATH entry, with bounded output,

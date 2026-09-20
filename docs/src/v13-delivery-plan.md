@@ -206,6 +206,12 @@ the exact source and reasoning. The policy literal is 18; the fuzz-only nonce
 is a separate deterministic fixture, and production issuance retains OS entropy.
 No source path, query or fuzz target was disabled.
 
+PR #220 head `52657955` passed the real SDK signed-APK job, but its coverage
+and macOS CLI campaign exposed two Android fixture/build-timing issues. The
+follow-up preserves OS process helpers in the fixture PATH and compares artifact
+timestamps against a temporary filesystem anchor. Local native selection and
+redaction scenarios passed after correction; a fresh combined campaign is required.
+
 [PR #220](https://github.com/Rullst/Rullst/pull/220) now carries the adoption,
 Android and conditional supervision-planning changes, synchronized with the
 admitted privacy head. Its real SDK job passed; the remaining combined CI is

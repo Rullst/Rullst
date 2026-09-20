@@ -7,7 +7,7 @@ use sha2::{Digest, Sha256};
 use std::{
     path::{Path, PathBuf},
     process::Command,
-    time::{Duration, SystemTime},
+    time::Duration,
 };
 
 const SIGNING_ENV: [&str; 4] = [
@@ -201,7 +201,13 @@ fn build(options: &AndroidReleaseOptions) -> Result<AndroidReleaseEvidence, Rele
     if let Some(architecture) = &options.architecture {
         command.args(["--target", architecture]);
     }
-    let start = SystemTime::now();
+    // Compare filesystem timestamps with an anchor on the application filesystem.
+    // A freshly written inode can precede SystemTime::now() by one timestamp
+    // quantum, so mixing those clocks falsely rejects fast genuine builds.
+    let anchor = tempfile::Builder::new()
+        .prefix(".rullst-android-build-start-")
+        .tempfile_in(&root)?;
+    let start = anchor.as_file().metadata()?.modified()?;
     process::capture(command, Duration::from_secs(2700), 16 * 1024 * 1024)?;
     let after = files::inventory(&root)?;
     let relative = files::select(&before, &after, options.apk.as_deref(), start)?;
