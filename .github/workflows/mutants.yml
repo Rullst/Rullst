@@ -17,6 +17,10 @@ on:
         description: Repository-relative .rs file (required only for targeted mode)
         required: false
         type: string
+      source_sha:
+        description: Optional full-mode ancestor commit to measure with this workflow
+        required: false
+        type: string
       resume_run_id:
         description: Failed full-campaign run ID (required only for resume mode)
         required: false
@@ -69,9 +73,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Test exact-run recovery policy
-        run: python3 .github/test-plan-mutation-resume.py
+        run: |
+          python3 .github/test-plan-mutation-resume.py
+          python3 .github/test-resolve-mutation-source.py
 
       - name: Export strict mutation scope
         id: plan
@@ -80,12 +87,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           MUTATION_MODE: ${{ inputs.mode }}
           MUTATION_FILE: ${{ inputs.file }}
+          REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
           RESUME_RUN_ID: ${{ inputs.resume_run_id }}
           RESUME_SHARDS: ${{ inputs.resume_shards }}
         run: |
           resume_run_id=""
           resume_shards=""
-          source_sha="$GITHUB_SHA"
+          source_sha=$(python3 .github/resolve-mutation-source.py \
+            "$MUTATION_MODE" "$REQUESTED_SOURCE_SHA" "$GITHUB_SHA")
           artifact_count=1
           expected_inventory_sha256=""
           secondary_resume_run_id=""
@@ -98,12 +107,14 @@ jobs:
             --argjson run_id "$GITHUB_RUN_ID" \
             --argjson run_attempt "$GITHUB_RUN_ATTEMPT" \
             --arg head_branch "$GITHUB_REF_NAME" \
-            --arg source_sha "$GITHUB_SHA" \
+            --arg source_sha "$source_sha" \
+            --arg workflow_source_sha "$GITHUB_SHA" \
             --arg mode "$MUTATION_MODE" \
             --arg cargo_mutants_version "27.1.0" \
             '{schema: 1, repository: $repository, workflow_path: $workflow_path,
               run_id: $run_id, run_attempt: $run_attempt,
               head_branch: $head_branch, source_sha: $source_sha, mode: $mode,
+              workflow_source_sha: $workflow_source_sha,
               cargo_mutants_version: $cargo_mutants_version}')
           case "$MUTATION_MODE" in
             full)
@@ -111,11 +122,9 @@ jobs:
                 echo "Full mode covers the workspace; leave file and resume inputs empty." >&2
                 exit 2
               fi
-              # The measured v12 inventory contains 14,391 mutants. A 16-way
-              # split left the slowest CLI/ORM jobs with projected runtimes of
-              # 11-17 hours, beyond the existing 5h30 infrastructure bound.
-              # Eighty shards retain the exact inventory while bounding each
-              # job to at most about 180 candidates.
+              # Discover this source's complete inventory before execution.
+              # Retain the 80-way partition, with only four concurrent jobs,
+              # so informational work does not occupy the whole CI queue.
               shard_count=80
               matrix=$(jq -cn --argjson count "$shard_count" \
                 '{include: [range(0; $count) | {index: ., count: $count, artifact: tostring}]}')
@@ -240,6 +249,7 @@ jobs:
     timeout-minutes: 10
     outputs:
       inventory_sha256: ${{ steps.inventory.outputs.inventory_sha256 }}
+      inventory_count: ${{ steps.inventory.outputs.inventory_count }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -263,7 +273,6 @@ jobs:
         env:
           MUTATION_MODE: ${{ needs.plan.outputs.mode }}
           MUTATION_FILE: ${{ needs.plan.outputs.file }}
-          EXPECTED_FULL_INVENTORY: "14391"
           EXPECTED_INVENTORY_SHA256: ${{ needs.plan.outputs.expected_inventory_sha256 }}
         run: |
           command=(cargo mutants --workspace --all-features --list --json)
@@ -279,11 +288,6 @@ jobs:
             ([.[].name] | unique | length) == length
           ' mutation-inventory.json >/dev/null
           inventory_count=$(jq 'length' mutation-inventory.json)
-          if [ "$MUTATION_MODE" = "full" ] \
-            && [ "$inventory_count" -ne "$EXPECTED_FULL_INVENTORY" ]; then
-            echo "Full mutation inventory drifted before execution: observed=$inventory_count expected=$EXPECTED_FULL_INVENTORY." >&2
-            exit 1
-          fi
           inventory_sha256=$(sha256sum mutation-inventory.json | awk '{print $1}')
           if [ -n "$EXPECTED_INVENTORY_SHA256" ] \
             && [ "$inventory_sha256" != "$EXPECTED_INVENTORY_SHA256" ]; then
@@ -291,6 +295,7 @@ jobs:
             exit 1
           fi
           echo "inventory_sha256=$inventory_sha256" >> "$GITHUB_OUTPUT"
+          echo "inventory_count=$inventory_count" >> "$GITHUB_OUTPUT"
           echo "Validated $inventory_count unique mutation candidates before execution."
 
       - name: Upload reviewed mutation inventory
@@ -310,6 +315,7 @@ jobs:
     timeout-minutes: 330
     strategy:
       fail-fast: false
+      max-parallel: 4
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - name: Checkout code
@@ -467,7 +473,7 @@ jobs:
         env:
           MUTATION_MODE: ${{ needs.plan.outputs.mode }}
           ARTIFACT_COUNT: ${{ needs.plan.outputs.artifact_count }}
-          EXPECTED_FULL_INVENTORY: "14391"
+          EXPECTED_FULL_INVENTORY: ${{ needs.inventory.outputs.inventory_count }}
           CAMPAIGN_PROVENANCE: ${{ needs.plan.outputs.provenance }}
           INVENTORY_SHA256: ${{ needs.inventory.outputs.inventory_sha256 }}
         run: |

@@ -61,10 +61,14 @@ jobs:
           python3 .github/render-release-notes.py "$release_version" "$RUNNER_TEMP/release-notes.md"
 
       - name: Validate mutation artifact aggregation
-        run: bash .github/test-summarize-mutation-artifacts.sh
+        run: |
+          python3 .github/test-mutation-inventory.py
+          bash .github/test-summarize-mutation-artifacts.sh
 
       - name: Validate exact-run mutation recovery planning
-        run: python3 .github/test-plan-mutation-resume.py
+        run: |
+          python3 .github/test-plan-mutation-resume.py
+          python3 .github/test-resolve-mutation-source.py
 
       - name: Run actionlint 1.7.7
         run: |
