@@ -16,6 +16,8 @@ is tracked in the [privacy roadmap](../docs/src/privacy-age-assurance-roadmap.md
   a stronger method or policy.
 - Random, expiring challenges bound to opaque subject, tenant, session, audience
   and action references, including the complete policy configuration.
+- Opt-in authenticated challenge transport with bounded HMAC-SHA256 keys and
+  explicit rotation, for restoring challenges on another application instance.
 - At-most-4-KiB versioned JSON attestations, Ed25519 signatures, explicit issuer
   capabilities and up to eight pinned keys for rotation.
 - Declared, estimated, verified-attribute and offline-mock assurance remain
@@ -119,8 +121,50 @@ be used within their documented deployment boundaries. Signed and native paths
 share the same replay namespace. Changing paths cannot consume one challenge
 twice. The result is always `Assurance::Declared`, never estimated or verified
 age. Stronger-method challenges are rejected even if the browser sends an
-affirmative declaration. This API does not supply a complete authenticated web
-journey or challenge storage/transport by itself.
+affirmative declaration. The gate alone does not supply an authenticated web
+journey; optional challenge transport is described below.
+
+## Authenticated challenge transport
+
+Enable `challenge-tokens` to return a server-issued challenge through a browser
+form or between trusted application instances. `ChallengeTokens` authenticates
+the version, key identifier and exact payload with HMAC-SHA256 before decoding
+JSON, then validates the current policy, authenticated binding and server clock.
+It rejects unknown keys, extra fields, changed lifetime and oversized tokens.
+The token limit is 8 KiB and the decoded challenge limit is 4 KiB.
+
+```rust,no_run
+# #[cfg(feature = "challenge-tokens")]
+# fn transport(
+#     secret_from_key_manager: &[u8],
+#     policy: &rullst_privacy::age_assurance::AgePolicy,
+#     authenticated_binding: &rullst_privacy::age_assurance::SubjectBinding,
+#     challenge: &rullst_privacy::age_assurance::AgeChallenge,
+# ) -> Result<(), rullst_privacy::age_assurance::AgeError> {
+use rullst_privacy::age_assurance::ChallengeTokens;
+
+let tokens = ChallengeTokens::new("epoch-2", secret_from_key_manager)?;
+let form_token = tokens.seal(challenge)?;
+// On submission, resolve the current authenticated binding again on the server.
+let retained = tokens.open(&form_token, policy, authenticated_binding)?;
+// Pass retained to DeclarationGate::assess or AgeVerifier::verify and await it.
+# let _ = retained;
+# Ok(())
+# }
+```
+
+Provision an independent high-entropy 32-byte secret shared only by trusted
+application instances. `with_previous_key` accepts at most seven historical
+verification keys alongside the active key; omit retired keys from the next
+configuration. There is no default secret, online discovery or client-selected
+algorithm. Opening a token neither consumes its nonce nor grants permission.
+The gate/verifier must still consume it through the shared durable replay store.
+
+Tokens are authenticated, **not encrypted**. Use opaque pairwise references;
+never include raw cookies, email addresses or document numbers. Protect the
+form with authentication, CSRF, TLS, request limits and no-store responses, and
+keep tokens out of URLs and logs. A changed policy or session invalidates the
+old challenge. No external age provider is required for this transport.
 
 ## Shared-local replay storage
 

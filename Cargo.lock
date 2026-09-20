@@ -7000,6 +7000,7 @@ dependencies = [
 name = "rullst-privacy"
 version = "13.0.0-alpha.1"
 dependencies = [
+ "base64 0.23.1",
  "ring",
  "serde",
  "serde_json",

@@ -14,10 +14,12 @@ publish = false
 [features]
 default = []
 age-assurance = ["dep:ring", "dep:serde", "dep:serde_json", "dep:thiserror"]
+challenge-tokens = ["age-assurance", "dep:base64"]
 sqlite = ["age-assurance", "dep:sqlx", "sqlx/sqlite"]
 postgres = ["age-assurance", "dep:sqlx", "dep:url", "sqlx/postgres", "sqlx/tls-rustls-ring"]
 
 [dependencies]
+base64 = { workspace = true, optional = true }
 ring = { workspace = true, features = ["std"], optional = true }
 serde = { workspace = true, features = ["std"], optional = true }
 serde_json = { workspace = true, features = ["std"], optional = true }

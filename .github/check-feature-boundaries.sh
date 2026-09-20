@@ -122,6 +122,7 @@ rullst-auth|recovery-postgres
 # Unpublished v13 privacy foundation: preserve the database-free base graph.
 rullst-privacy|
 rullst-privacy|age-assurance
+rullst-privacy|challenge-tokens
 rullst-privacy|sqlite
 rullst-privacy|postgres
 

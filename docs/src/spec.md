@@ -150,6 +150,20 @@ negative or declined answers deny the operation. An estimated/verified method
 or stronger policy cannot be downgraded through this entry point. The host owns
 authentication, CSRF protection, explicit user choice and trusted challenge
 retention/transport. This contract is not a determination of the person's age.
+
+The optional `challenge-tokens` transport uses a bounded, versioned,
+HMAC-SHA256-authenticated server challenge with an explicit active key and at
+most seven previous verification keys. It authenticates the version, key ID and
+exact encoded payload before decoding challenge JSON. Opening revalidates the
+current policy, authenticated binding, clock and exact configured lifetime.
+There is no client-supplied algorithm or key discovery. Tokens contain only the
+existing opaque challenge references and are authenticated, not encrypted;
+applications must not put cookies, email addresses or document numbers into
+those references. A token restores a server-issued challenge, never an age
+decision or an authorization grant. Production still consumes its nonce in the
+shared durable replay store. The host owns independent secret provisioning,
+rotation/retirement, TLS, CSRF and endpoint limits; no external age provider is
+needed for this transport.
 The separate [SaaS triage](saas-v12-1-v13-triage.md) assigns the examples' reported
 defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidence.
 
