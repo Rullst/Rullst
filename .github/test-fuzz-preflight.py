@@ -45,10 +45,10 @@ raise SystemExit(int(os.environ.get("RULLST_FUZZ_EXIT", "0")))
                                 cwd=self.root, env=env, capture_output=True, text=True, timeout=10)
         return result, json.loads(log.read_text()) if log.exists() else None
 
-    def test_release_builds_all_targets_in_each_of_the_ten_packages(self):
+    def test_release_builds_all_targets_in_each_reviewed_package(self):
         directories = sorted({item["dir"] for item in INVENTORY})
-        self.assertEqual(len(directories), 10)
-        self.assertEqual(len(INVENTORY), 40)
+        self.assertEqual(len(directories), 11)
+        self.assertEqual(len(INVENTORY), 42)
         for directory in directories:
             result, call = self.run_preflight("release", directory)
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -90,8 +90,8 @@ raise SystemExit(int(os.environ.get("RULLST_FUZZ_EXIT", "0")))
         self.assertEqual(result.returncode, 101)
         self.assertIn("campaign_seconds=19800", WORKFLOW)
         self.assertIn("campaign_seconds=300", WORKFLOW)
-        self.assertIn('"$TARGET_COUNT" -ne 40', WORKFLOW)
-        self.assertIn("is not v12 RC release evidence", WORKFLOW)
+        self.assertIn('"$TARGET_COUNT" -ne 42', WORKFLOW)
+        self.assertIn("is not release evidence", WORKFLOW)
         self.assertIn("CAMPAIGN_MODE: ${{ needs.targets.outputs.mode }}", STEP)
         self.assertIn("REQUESTED_TARGET: ${{ inputs.target }}", STEP)
         self.assertIn("FUZZ_DIRECTORY: ${{ matrix.dir }}", STEP)

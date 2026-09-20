@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plan and independently verify fresh or equivalent 40-target fuzz evidence."""
+"""Plan and independently verify fresh or equivalent complete fuzz evidence."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import sys
 import urllib.parse
 import urllib.request
 
-from fuzz_evidence_inputs import DOC_REVIEW, ROOT, SHA, Snapshot, digest
+from fuzz_evidence_inputs import DOC_REVIEW, ROOT, SHA, FuzzSurfaceChanged, Snapshot, digest
 from release_line import BRANCHES
 
 SECONDS = 19_800
@@ -134,7 +134,12 @@ def plan(candidate: Snapshot, github: GitHub, now: datetime | None = None,
     # Newest evidence wins; never hide a newer matching failure behind an older pass.
     runs.sort(key=lambda run: (timestamp(run.get("run_started_at", run["created_at"])), run["id"]), reverse=True)
     for run in runs[:MAX_RUNS]:
-        source = Snapshot(run["head_sha"], candidate.root)
+        try:
+            source = Snapshot(run["head_sha"], candidate.root)
+        except FuzzSurfaceChanged:
+            # A pre-expansion campaign certifies none of the new surface. The
+            # candidate itself is still required to have the exact reviewed count.
+            continue
         if (source.release_branch != candidate.release_branch
                 or not source.ancestor_of(candidate) or source.contract != candidate.contract):
             continue
@@ -213,7 +218,7 @@ def main() -> int:
         github = GitHub(args.repository, os.environ.get("GITHUB_TOKEN", ""), branch=candidate.release_branch)
         report = plan(candidate, github, force_full=args.force_full)
         write_report(report, args.output)
-        print(f"Fuzz evidence: {len(report['reused'])}/40 reusable; {len(report['selected'])} require execution.")
+        print(f"Fuzz evidence: {len(report['reused'])}/{report['total_targets']} reusable; {len(report['selected'])} require execution.")
         if args.require_complete and report["selected"]:
             return 1
         return 0

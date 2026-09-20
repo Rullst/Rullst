@@ -38,5 +38,7 @@
   { "dir": "rullst-mail/fuzz", "target": "fuzz_mail" },
   { "dir": "rullst-mail/fuzz", "target": "fuzz_email_validator" },
   { "dir": "rullst-mail/fuzz", "target": "fuzz_email_tracking" },
-  { "dir": "rullst-mail/fuzz", "target": "fuzz_email_security" }
+  { "dir": "rullst-mail/fuzz", "target": "fuzz_email_security" },
+  { "dir": "rullst-privacy/fuzz", "target": "fuzz_age_challenge_token" },
+  { "dir": "rullst-privacy/fuzz", "target": "fuzz_age_attestation" }
 ]
