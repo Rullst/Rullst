@@ -11,7 +11,7 @@ pub(crate) fn valid_reference(value: &str, prefix: &str, limit: usize) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
 }
 
-pub(super) fn credential_mode(api_key: &str) -> Option<bool> {
+pub(crate) fn credential_mode(api_key: &str) -> Option<bool> {
     if api_key.starts_with("sk_live_") || api_key.starts_with("rk_live_") {
         Some(true)
     } else if api_key.starts_with("sk_test_") || api_key.starts_with("rk_test_") {

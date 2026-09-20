@@ -5,16 +5,19 @@
 //! - **Automatic Plain-Text Fallback** derivation
 //! - **In-Memory MailTrap & Fluent Assertions**
 //! - **Outbound DLP Secret Scanner** (AWS keys, passwords, bearer tokens)
-//! - Multiple delivery drivers (**SMTP**, **Resend**, **SendGrid**, **Postmark**, **AWS SES**, **Log**, **Memory**, **Failover**)
+//! - Multiple delivery drivers (**SMTP**, **Resend**, **SendGrid**, **Postmark**, **AWS SES**, **ACS**, **SendPulse**, **Mailjet**, **Mailtrap**, **Log**, **Memory**, **Failover**)
 //! - **Dynamic Multi-Tenancy Resolver** (`TenantMailResolver`)
 //! - **Resilient Circuit Breaker & Automatic Failover** (`FailoverDriver`)
 //! - Opt-in attachment inspection, recipient suppression, and minimized observations
 
+pub mod account;
+pub mod action;
 pub mod attachment;
 pub mod drivers;
 pub mod error;
 pub mod facade;
 pub mod factory;
+pub mod feedback;
 pub mod inspection;
 pub mod message;
 pub mod observability;
@@ -32,11 +35,16 @@ pub mod worker;
 #[cfg(feature = "aws-ses")]
 pub use aws_sdk_sesv2 as aws_ses_sdk;
 
+pub use account::{AccountEvent, AccountMail, MailLocale, MailPurpose};
+pub use action::ActionLink;
 pub use attachment::*;
 pub use drivers::*;
 pub use error::*;
 pub use facade::*;
 pub use factory::*;
+pub use feedback::{
+    MailFeedbackError, MailFeedbackKind, ResendFeedbackVerifier, VerifiedMailFeedback,
+};
 pub use inspection::*;
 pub use message::*;
 pub use observability::*;

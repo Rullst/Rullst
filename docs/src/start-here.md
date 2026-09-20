@@ -4,10 +4,9 @@ You do not need to understand every Rullst crate before writing your first
 application. Start small, make one thing work, and learn what each layer does
 as your product needs it.
 
-> **This guide targets Rullst v12.0.0 stable.** Install the exact CLI and
-> framework version instead of relying on an unversioned command. The
-> [stable release record](v12.md) and [release audit](v12-release-audit.md) describe
-> its evidence and remaining application-specific production boundaries.
+> **This guide targets Rullst 12.1.0.** Check [publication status](v12.md)
+> before installing the matching CLI and framework packages. Review the
+> [12.1 migration guide](migration-v12-1.md) when upgrading an existing application.
 
 ## Pick your starting line
 

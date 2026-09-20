@@ -123,15 +123,18 @@ fn circuit_unavailable() -> MailError {
     MailError::ConfigError("mail failover circuit state is unavailable".to_string())
 }
 
-#[async_trait]
-impl MailDriver for FailoverDriver {
-    async fn send(&self, message: &Message) -> Result<(), MailError> {
+impl FailoverDriver {
+    async fn dispatch(
+        &self,
+        message: &Message,
+        delivery_id: Option<&str>,
+    ) -> Result<(), MailError> {
         let prepared = DeliveryPipeline::prepare(message)?;
         let message = prepared.message();
         let tripped = self.is_tripped()?;
 
         let primary_error = if !tripped {
-            match self.primary.send(message).await {
+            match dispatch_to(self.primary.as_ref(), message, delivery_id).await {
                 Ok(()) => {
                     if self.failure_count()? > 0 {
                         tracing::info!(
@@ -179,7 +182,7 @@ impl MailDriver for FailoverDriver {
         }
 
         for (idx, fallback) in self.fallbacks.iter().enumerate() {
-            match fallback.send(message).await {
+            match dispatch_to(fallback.as_ref(), message, delivery_id).await {
                 Ok(()) => {
                     tracing::info!(
                         event = "mail.failover.fallback_succeeded",
@@ -203,6 +206,35 @@ impl MailDriver for FailoverDriver {
             "failover",
             "All mail drivers in failover chain failed",
         ))
+    }
+}
+
+async fn dispatch_to(
+    driver: &dyn MailDriver,
+    message: &Message,
+    delivery_id: Option<&str>,
+) -> Result<(), MailError> {
+    match delivery_id {
+        Some(id) => driver.send_with_delivery_id(message, id).await,
+        None => driver.send(message).await,
+    }
+}
+
+#[async_trait]
+impl MailDriver for FailoverDriver {
+    async fn send(&self, message: &Message) -> Result<(), MailError> {
+        self.dispatch(message, None).await
+    }
+
+    // Identities are scoped by each provider. Switching providers after an
+    // ambiguous acceptance still has at-least-once semantics.
+    async fn send_with_delivery_id(
+        &self,
+        message: &Message,
+        delivery_id: &str,
+    ) -> Result<(), MailError> {
+        super::traits::validate_delivery_id(delivery_id)?;
+        self.dispatch(message, Some(delivery_id)).await
     }
 }
 

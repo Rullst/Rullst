@@ -177,6 +177,25 @@ fn registry_unavailable() -> MailError {
 
 #[async_trait]
 impl MailDriver for TenantMailResolver {
+    async fn send_with_delivery_id(
+        &self,
+        message: &Message,
+        delivery_id: &str,
+    ) -> Result<(), MailError> {
+        crate::drivers::traits::validate_delivery_id(delivery_id)?;
+        let prepared = DeliveryPipeline::prepare(message)?;
+        match &self.default_driver {
+            Some(driver) => {
+                driver
+                    .send_with_delivery_id(prepared.message(), delivery_id)
+                    .await
+            }
+            None => Err(MailError::ConfigError(
+                "No default mail driver configured".into(),
+            )),
+        }
+    }
+
     async fn send(&self, message: &Message) -> Result<(), MailError> {
         let prepared = DeliveryPipeline::prepare(message)?;
         let message = prepared.message();

@@ -5,11 +5,13 @@
 Rullst adopts Semantic Versioning for each published crate. This policy is
 written for the v12 stable release line; crates.io remains authoritative for
 whether an exact package version has been published. Source in a branch or an
-unpublished tag is not a distributed release by itself.
+unpublished tag is not a distributed release by itself. The current published
+maintenance release is [12.1.0](https://github.com/Rullst/Rullst/releases/tag/v12.1.0).
 
 | Version | Supported | Status |
 | :--- | :---: | :--- |
-| **12.x** | :white_check_mark: | Current supported stable line. Confirm the exact package/version exists on crates.io. |
+| **12.x** | :white_check_mark: | Current supported stable line; latest maintenance release: 12.1.0. |
+| **13.x development** | :x: | Unreleased development work; no stable security-support commitment yet. |
 | **12.0.0-rc.1** | :x: | Immutable evaluation prerelease; migrate to the corresponding supported stable v12 line. |
 | **5.0.0** | :x: | Frozen legacy release; no routine maintenance. |
 | < 5.0.0 | :x: | End of life. |
@@ -25,12 +27,15 @@ replacing an already published archive.
 
 If you discover a potential security vulnerability within the Rullst framework, CLI tools, or runtime libraries, please **DO NOT open a public GitHub issue or pull request**.
 
-Please send an encrypted or direct disclosure report to the Rullst Core Security Team at:
+Please send a private disclosure report to the Rullst Core Security Team at:
 👉 **`officialrullst@gmail.com`**
+
+If an encrypted channel is needed, first request and verify the team's key or
+agreed channel through that contact. This policy does not publish an encryption key.
 
 ### What to Include in Your Report:
 1. **Vulnerability Type**: (e.g., Remote Code Execution, SQL Injection, Authentication Bypass, IDOR/BOLA, CSWSH, Memory Safety violation).
-2. **Affected Crate & Version**: (e.g., `rullst-security v12.0.0`, `rullst-auth v12.0.0`, `cargo-rullst v12.0.0`).
+2. **Affected Crate & Version**: (e.g., `rullst-security v12.1.0`, `rullst-auth v12.1.0`, `cargo-rullst v12.1.0`).
 3. **Proof of Concept (PoC)**: Minimal reproducible example or step-by-step reproduction instructions.
 4. **Estimated Impact**: Criticality assessment, attack vector preconditions, and potential blast radius.
 
@@ -44,7 +49,7 @@ recorded in [Security advisory exceptions](docs/src/security-advisory-exceptions
 
 ---
 
-## 🏛️ Rullst Security Architecture Matrix (v12.0.0)
+## 🏛️ Rullst Security Architecture Matrix (v12.1.0)
 
 Rullst provides composable defense-in-depth controls for a zero-trust
 application architecture. The matrix below is an implementation inventory, not
@@ -72,8 +77,8 @@ or deployment.
 * **HTTP Response DLP Interceptor (`rullst-security::dlp`)**: Detects and redacts a bounded set of private-key, AWS-key, and database-URL patterns. It reduces accidental disclosure risk but cannot guarantee zero leakage.
 * **RASP Request Inspector (`rullst-security::rasp`)**: Bounded heuristic inspection of supported URI, header, textual, and JSON inputs for selected SQLi, traversal, SSRF, RCE, and JNDI signatures. It does not replace typed parsing, parameterized SQL, authorization, or egress allowlists.
 * **CLI IDOR / BOLA Static Scanner (`cargo rullst audit --idor`)**: Heuristic source scanner that flags parameterized routes lacking recognized ownership or role guards. Findings require review, and absence of a finding is not proof of authorization.
-* **Compliance Evidence Exporter (`cargo rullst audit --compliance`)**: Generates `SECURITY_COMPLIANCE.md` with explicit `PASS`, `FAIL`, `SKIPPED`, and `NOT_EVALUATED` results. It maps evidence to controls but does not confer SOC 2, ISO 27001, OWASP, or TLS certification.
-* **CycloneDX SBOM Exporter (`cargo rullst audit --sbom`)**: Automated Software Bill of Materials generation in CycloneDX 1.5 JSON format with package SHA-256 hashes.
+* **Compliance Evidence Exporter (`cargo rullst audit --compliance`)**: Generates `SECURITY_COMPLIANCE.md` with `NO FINDINGS`, `NO FINDINGS OUTSIDE EXCEPTIONS`, `FINDINGS`, `GENERATED`, `OBSERVED`, `NOT CHECKED`, or `ERROR` observations. Control families outside the command's evidence remain `NOT EVALUATED`. These bounded observations do not confer SOC 2, ISO 27001, OWASP, or TLS certification.
+* **CycloneDX SBOM Exporter (`cargo rullst audit --sbom`)**: Generates CycloneDX 1.5 JSON and includes valid SHA-256 package checksums when recorded in `Cargo.lock`. Workspace/path packages without a recorded checksum are not assigned an invented hash.
 * **Local Network Surface Scanner (`cargo rullst audit --network`)**: Bounded local port/bind inspection that helps identify unintended listeners; it cannot prove the absence of network exposure outside the scanned host and target set.
 * **DevSecOps Git Pre-Commit Hook (`cargo rullst hook:install`)**: Optional local gate running rustfmt, strict Clippy (`-D warnings`), and static audits. Protected CI remains authoritative because local hooks can be bypassed.
 
@@ -90,6 +95,7 @@ tool proves the whole framework secure.
 | **Bounded model checking** | Explicit state/ledger harnesses only | **Kani; inspect the harness list and result for the commit** |
 | **Memory safety & UB** | Selected compatible targets | **Miri; unsupported dependencies/features are reported, not silently counted** |
 | **Dynamic sanitizers** | Declared Linux targets | **Nightly ThreadSanitizer and AddressSanitizer jobs where configured** |
-| **Fuzzing** | Named parsers and protocol inputs | **libFuzzer/AFL corpora and workflows; OSS-Fuzz enrollment is not currently established** |
+| **Fuzzing** | Named parsers and protocol inputs | **`cargo-fuzz` / libFuzzer corpora and workflows; OSS-Fuzz enrollment is not currently established** |
+| **Mutation testing** | Source-bound full campaigns or explicitly selected files | **Manual `cargo-mutants` campaigns; survivors and timeouts remain informational findings, and incomplete artifacts cannot establish full coverage** |
 | **Supply chain** | Dependency advisories, policy, SBOM, provenance | **`cargo-audit`, `cargo-deny`, CycloneDX and GitHub attestations; no SLSA level is claimed** |
 | **TLS & cryptography** | Feature-specific transport inventory | **Rustls-preferred first-party paths; no universal zero-C/OpenSSL claim across all optional/transitive features** |

@@ -98,7 +98,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install pinned documentation builder
-        uses: taiki-e/install-action@9534c84618278caac52cb373bb164ed464dbd8af # v2.87.11
+        uses: taiki-e/install-action@26e9283f268b880168bdbd2c545dfcd60ec2c6ab # v2.87.13
         with:
           tool: mdbook@0.5.4
       - name: Set up browser-test runtime
@@ -332,6 +332,7 @@ jobs:
         run: |
           case "$STRICT_DATABASE_FEATURE" in
             strict-postgres)
+              python3 .github/check-auth-recovery-postgres.py
               cargo test -p rullst-orm --no-default-features \
                 --features strict-postgres --test matrix_postgres -- --test-threads=1
               cargo test -p rullst-capital --features quota-sql,webhook-sql,rullst-orm/strict-postgres \

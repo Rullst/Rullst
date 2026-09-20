@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Require successful release workflows and job matrices for one exact SHA."""
+"""Require candidate workflows; independently verify equivalent fuzz inputs."""
 
 from __future__ import annotations
 
@@ -225,6 +225,22 @@ def required_jobs_succeeded(payload: dict[str, Any], required_jobs: tuple[str, .
     return all(observed.get(name) == ["success"] for name in required_jobs)
 
 
+def equivalent_fuzz_jobs(repository: str, sha: str, token: str, api_url: str,
+                         required_jobs: tuple[str, ...]) -> bool:
+    # A current successful fuzz workflow/boundary is still mandatory. This
+    # recomputes coverage from original Git objects and attempt-specific jobs,
+    # never from a caller-supplied report or a chain of reuse receipts.
+    from fuzz_evidence import GitHub, Snapshot, plan, write_report
+
+    candidate = Snapshot(sha)
+    expected = {"Fuzz campaign evidence boundary", *(f"Fuzz {item['target']}" for item in candidate.inventory)}
+    if set(required_jobs) != expected:
+        raise ValueError("release policy does not match the complete fuzz inventory")
+    report = plan(candidate, GitHub(repository, token, api_url))
+    write_report(report, Path("release-fuzz-evidence.json"))
+    return not report["selected"]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repository", default=os.environ.get("GITHUB_REPOSITORY", ""))
@@ -289,6 +305,16 @@ def main() -> int:
             if required_jobs_succeeded(jobs_payload, requirement.required_jobs):
                 has_complete_jobs = True
                 break
+            if (workflow == "fuzzing.yml" and args.fixture_dir is None
+                    and required_jobs_succeeded(jobs_payload, ("Fuzz campaign evidence boundary",))):
+                try:
+                    has_complete_jobs = equivalent_fuzz_jobs(
+                        args.repository, args.sha, args.token, args.api_url, requirement.required_jobs
+                    )
+                except (ValueError, KeyError, IndexError, OSError) as error:
+                    fail(f"cannot verify equivalent fuzz evidence: {error}")
+                if has_complete_jobs:
+                    break
         if not has_complete_jobs:
             missing.append(f"{workflow} (required job matrix incomplete)")
 

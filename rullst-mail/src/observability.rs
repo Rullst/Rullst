@@ -249,6 +249,36 @@ where
     D: MailDriver,
     O: MailDeliveryObserver,
 {
+    async fn send_with_delivery_id(
+        &self,
+        message: &Message,
+        delivery_id: &str,
+    ) -> Result<(), MailError> {
+        crate::drivers::traits::validate_delivery_id(delivery_id)?;
+        let started = Instant::now();
+        let prepared = match DeliveryPipeline::prepare(message) {
+            Ok(prepared) => prepared,
+            Err(error) => {
+                self.observe(
+                    started,
+                    message,
+                    false,
+                    MailDeliveryOutcome::PreflightRejected,
+                );
+                return Err(error);
+            }
+        };
+        let result = self
+            .driver
+            .send_with_delivery_id(prepared.message(), delivery_id)
+            .await;
+        let outcome = result
+            .as_ref()
+            .map_or_else(Self::outcome, |_| MailDeliveryOutcome::Delivered);
+        self.observe(started, prepared.message(), false, outcome);
+        result
+    }
+
     async fn send(&self, message: &Message) -> Result<(), MailError> {
         let started = Instant::now();
         let prepared = match DeliveryPipeline::prepare(message) {

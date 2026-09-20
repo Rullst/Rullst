@@ -18,7 +18,7 @@ serde_json = { workspace = true }
 ignored = ["async-trait", "serde_json", "rullst-security", "rullst-auth", "rullst-capital", "rullst-ai", "rullst-studio", "rullst-nexus"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-rullst-orm = { workspace = true }
+rullst-orm = { workspace = true, default-features = true }
 rullst-security = { workspace = true }
 rullst-auth = { workspace = true }
 rullst-capital = { workspace = true }

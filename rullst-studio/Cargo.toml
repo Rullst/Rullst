@@ -17,13 +17,15 @@ categories = ["development-tools", "web-programming"]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 
 [features]
-default = []
+default = ["drivers-all", "queue-sqlite"]
+drivers-all = ["rullst-core/drivers-all", "rullst-orm/drivers-all"]
+queue-sqlite = ["rullst-core/queue-sqlite"]
 strict-sqlite = ["rullst-core/strict-sqlite", "rullst-orm/strict-sqlite"]
 strict-postgres = ["rullst-core/strict-postgres", "rullst-orm/strict-postgres"]
 strict-mysql = ["rullst-core/strict-mysql", "rullst-orm/strict-mysql"]
 
 [dependencies]
-rullst-core = { workspace = true, features = ["orm", "queue-sqlite"] }
+rullst-core = { workspace = true, features = ["orm"] }
 rullst-orm = { workspace = true }
 rullst-capital = { workspace = true }
 rullst-macros = { workspace = true }
@@ -36,7 +38,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 utoipa = "5"
 utoipa-swagger-ui = { version = "9", default-features = false, features = ["axum", "vendored"] }
-sqlx = { workspace = true, features = ["sqlite", "postgres", "mysql", "runtime-tokio", "tls-rustls"] }
+sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls"] }
 urlencoding = { workspace = true }
 chrono = { workspace = true }
 tokio-stream = { version = "0.1.19", features = ["sync"] }
@@ -47,6 +49,8 @@ rand = { workspace = true }
 sha2 = { workspace = true }
 
 [dev-dependencies]
+rullst-orm = { workspace = true, features = ["drivers-all"] }
+rullst-core = { workspace = true, features = ["queue-sqlite"] }
 testcontainers = "0.27.3"
 testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql", "mariadb"] }
 

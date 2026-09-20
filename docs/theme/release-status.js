@@ -11,7 +11,7 @@
 
     const title = document.createElement("strong");
     title.className = "rullst-release-status__title";
-    title.textContent = "Rullst v12.0.0 stable";
+    title.textContent = "Rullst v12";
 
     const mainLink = document.createElement("a");
     mainLink.href = "https://github.com/Rullst/Rullst/tree/main";
@@ -33,8 +33,8 @@
     summary.textContent = "Release reproducibility & legacy versions";
     const legacy = document.createElement("p");
     legacy.append(
-      "Use the exact v12.0.0 crates.io packages or immutable tag to reproduce " +
-        "the release, rather than a moving branch. The frozen ",
+      "Use the exact crates.io version and matching immutable tag to reproduce " +
+        "a published v12 release. Source documentation may describe newer maintenance work. The frozen ",
       v5Link,
       " branch preserves historical source without ongoing maintenance."
     );

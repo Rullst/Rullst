@@ -161,6 +161,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let reset = PasswordReset::new("user@example.com", hostile, hostile_url, 15);
     assert_escaped(reset.build().body_html.as_deref().expect("reset HTML"));
 
+    let action_url = "https://example.com/reset?token=opaque_1234567890";
+    let valid_reset = PasswordReset::new("user@example.com", "Member", action_url, 20).build();
+    let prepared = rullst::mail::DeliveryPipeline::prepare(&valid_reset)?;
+    assert!(prepared.message().body_html.as_deref().unwrap().contains(action_url));
+    assert!(prepared.message().body_text.as_deref().unwrap().contains(action_url));
+
     let otp = OtpVerification::new("user@example.com", hostile, 5);
     assert_escaped(otp.build().body_html.as_deref().expect("OTP HTML"));
 

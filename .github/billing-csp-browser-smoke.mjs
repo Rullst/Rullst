@@ -85,7 +85,9 @@ try {
       clearTimeout(operation.timer);
       if (message.error) operation.reject(new Error(JSON.stringify(message.error)));
       else operation.accept(message.result);
-    } else events.get(message.method)?.(message.params);
+    } else if (message.method === "Fetch.requestPaused") {
+      events.get("Fetch.requestPaused")?.(message.params);
+    }
   });
   const call = (method, params = {}, sessionId) => new Promise((accept, reject) => {
     const id = ++sequence;

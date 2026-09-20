@@ -63,7 +63,10 @@ A prepared version section does not establish that its tag or crates exist.
 - Correct the nextest scope: coverage uses nextest, while ordinary CI's existing
   eight shards still use Cargo's test runner.
 
-## [12.1.0] - 2026-09-18
+## [12.1.0] - 2026-09-20
+
+Published on September 20 UTC (September 19 in Brasília); see the
+[publication record](docs/src/v12.md#1210-published-maintenance-release).
 
 This compatible maintenance release corrects billing contracts, generated
 application behavior and CLI update/recovery flows. Existing applications must
@@ -75,7 +78,34 @@ generated SQLite persistence. Other provider adapters retain the explicit
 capabilities and account-acceptance requirements in the Capital provider matrix.
 Privacy, age assurance and untrusted exercise execution remain v13 roadmap work.
 
+### Account mail
+
+- Add native SendPulse, Mailjet and Mailtrap transports with explicit Mailjet
+  validation/Mailtrap sandbox selection, offline credentials and protocol tests.
+  Omit provider error bodies while preserving status and retry metadata.
+
+- Fix MAIL-001/RULLST-005: preserve safe opaque reset links through mandatory
+  secret sanitization and generated HTML/plain-text messages; minimize Debug and
+  log output. Add deterministic English/Portuguese/Spanish lifecycle templates.
+- Add opt-in PostgreSQL/SQLite authoritative recovery with 20-minute single-use
+  digested tokens, atomic password/session invalidation and encrypted outbox.
+  Compose Auth/Mail through facade features with bounded leased delivery retries.
+- Propagate delivery identities through transport wrappers; add Resend native
+  idempotency and signed Svix feedback for suppression, plus a bounded ACS Email
+  Managed Identity driver. Provider acceptance and application migration remain
+  explicit; see the [account-mail guide](docs/src/account-mail-v12-1.md).
+- Identify the production SaaS founding-member certificate offer as a real-money
+  purchase in the README and keep the staging link separate. Generated live
+  billing additionally requires an explicit real-charge acknowledgement.
+
 ### SaaS maintenance
+
+- Add exact authenticated machine endpoints retaining the browser CSRF/WAF/header
+  baseline; propagate strict backend choices through Core, Studio, Nexus and the
+  facade, with separate standalone dependency-graph checks.
+- Add a separate fixed-price Stripe one-time checkout/receipt/event contract.
+  This SDK foundation requires application-owned durable entitlements and new
+  sandbox acceptance; existing generated billing remains subscription-only.
 
 - Add the exact Stripe hosted-checkout origin to the SaaS starter's CSP so its
   POST/303 handoff works in Chromium. Preserve Core's strict default; document
@@ -368,8 +398,8 @@ Privacy, age assurance and untrusted exercise execution remain v13 roadmap work.
   Add production-baseline HTTP regressions for valid submissions, preserved
   form data and denials before the handler. Keep the simple read-only HTMX search
   on GET instead of demonstrating a POST without its required token.
-- Record the unreleased 12.1.0 delivery boundaries and remaining updater/release
-  blockers without presenting advisory discovery as installation or migration.
+- Record the 12.1.0 delivery boundaries and updater/release acceptance evidence
+  without presenting advisory discovery as installation or migration.
 - Replace the completed v12 development program with a concise English release
   record and immutable publication receipts. Retire the CLI handoff and preserve
   older audits through archive links.

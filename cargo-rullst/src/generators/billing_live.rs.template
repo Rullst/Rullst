@@ -67,6 +67,9 @@ fn scope(config: &BillingConfig) -> Result<(String, String, bool)> {
     let mode = if config.api_key.starts_with("sk_test_") || config.api_key.starts_with("rk_test_") { false }
         else if config.api_key.starts_with("sk_live_") || config.api_key.starts_with("rk_live_") { true }
         else { return Err(UNAVAILABLE); };
+    if mode && std::env::var("BILLING_LIVE_ACKNOWLEDGEMENT").as_deref() != Ok("I_UNDERSTAND_REAL_CHARGES") {
+        return Err(UNAVAILABLE);
+    }
     if config.provider != "stripe" || !super::strong_webhook_secret(&config.webhook_secret)
         || !account.starts_with("acct_") || !super::valid_plan_id(&account)
         || !config.redirect_url.starts_with("https://")

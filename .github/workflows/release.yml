@@ -51,13 +51,25 @@ jobs:
             exit 1
           fi
 
-      - name: Test exact-SHA admission policy
-        run: python3 .github/test-check-release-admission.py
+      - name: Test candidate and equivalent-input admission policy
+        run: |
+          python3 .github/test-check-release-admission.py
+          python3 .github/test-fuzz-evidence-inputs.py
+          python3 .github/test-fuzz-evidence.py
 
       - name: Require successful automatic and manual gates for the exact SHA
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: python3 .github/check-release-admission.py
+
+      - name: Retain independently verified fuzz evidence
+        if: hashFiles('release-fuzz-evidence.json') != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-fuzz-evidence-${{ github.sha }}
+          path: release-fuzz-evidence.json
+          if-no-files-found: error
+          retention-days: 30
 
   cli-artifacts:
     name: Build admitted native CLI artifacts
@@ -153,6 +165,7 @@ jobs:
           TESTCONTAINERS_RYUK_DISABLED: "true"
           RULLST_REQUIRE_TESTCONTAINERS: "true"
         run: |
+          python3 .github/check-auth-recovery-postgres.py
           cargo test -p rullst-orm --test matrix_postgres --test matrix_mysql --test matrix_mariadb -- --test-threads=1
           cargo test -p rullst-orm --no-default-features --features mongodb --test matrix_mongodb
           cargo test -p rullst-orm --no-default-features --features surrealdb --test matrix_surrealdb

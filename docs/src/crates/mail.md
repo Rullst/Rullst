@@ -1,8 +1,8 @@
 # Rullst Mail 📬
 
 > [!IMPORTANT]
-> This page documents stable `12.0.0`. Use that exact registry version, or a
-> path dependency only when intentionally reviewing checkout-local changes.
+> This page targets `12.1.0`. Check the [release record](../v12.md) for
+> publication status; use a path dependency only for checkout-local review.
 
 > **Vision preserved:** additional providers and air-gapped/zero-leak ambitions
 > were not silently removed; see their status and recommendation in the
@@ -11,6 +11,30 @@
 `rullst-mail` is Rullst's transactional email and mailables engine. Official dispatch paths pass through a pre-flight pipeline for CRLF protection, recipient checks, content security scanning, and DLP sanitization before queueing or transport delivery.
 
 ---
+
+
+## 12.1 candidate: additional delivery providers
+
+Native SendPulse, Mailjet and Mailtrap adapters are available in candidate
+source, alongside ACS. Set `MAIL_DRIVER=sendpulse` with `SENDPULSE_API_KEY`,
+`mailjet` with `MAILJET_API_KEY`/`MAILJET_SECRET_KEY`, or `mailtrap` with
+`MAILTRAP_API_TOKEN`. All require an explicit verified sender for real delivery.
+`mailjet-sandbox` performs remote validation without sending;
+`mailtrap-sandbox` captures in the required positive `MAILTRAP_SANDBOX_ID`.
+The local `MailTrap` helper remains separate from the hosted provider.
+
+The [crate guide](https://github.com/Rullst/Rullst/tree/main/rullst-mail#native-providers-added-in-121)
+details authentication, attachment/inline limits, tracking configuration,
+unsubscribe headers and at-least-once retries. No extra feature is needed beyond
+Mail. Native provider acceptance still requires the configured account/domain.
+
+## 12.1 candidate: welcome and password recovery
+
+The [12.1 account-mail guide](../account-mail-v12-1.md) documents the opt-in
+PostgreSQL/SQLite account transaction, durable delivery bridge, action-link fix,
+localized lifecycle templates, signed feedback and Azure Managed Identity
+transport. These additions are checkout-local until the release record confirms
+publication. Existing applications must adopt the new store/worker explicitly.
 
 ## ✨ Features
 
@@ -375,7 +399,7 @@ Enable the opt-in official SDK transport:
 
 ```toml
 [dependencies]
-rullst-mail = { version = "12.0.0", features = ["aws-ses"] }
+rullst-mail = { version = "12.1.0", features = ["aws-ses"] }
 aws-config = "1.11"
 ```
 

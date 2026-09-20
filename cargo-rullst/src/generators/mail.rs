@@ -113,7 +113,7 @@ pub(crate) fn create_new_mailable(
 use rullst::mail::{escape_html, Mail, MailError, Message};
 
 /// Welcome email sent to newly registered users with email verification CTA.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 #[non_exhaustive]
 pub struct __NAME__ {
     pub to: String,
@@ -175,6 +175,7 @@ impl __NAME__ {
         Message::new()
             .to(&self.to)
             .subject("Welcome to Rullst! Confirm your email")
+            .text(format!("Welcome, {}! Confirm your email: {}", self.user_name, self.verification_url))
             .html(html_content)
             .unsubscribe_url(&self.unsubscribe_url)
             .sanitize_secrets()
@@ -191,7 +192,7 @@ impl __NAME__ {
 use rullst::mail::{escape_html, Mail, MailError, Message};
 
 /// Secure password reset email with expiration indicator.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 #[non_exhaustive]
 pub struct __NAME__ {
     pub to: String,
@@ -248,6 +249,7 @@ impl __NAME__ {
         Message::new()
             .to(&self.to)
             .subject("Reset your password")
+            .text(format!("Reset your password: {}\nExpires in {} minutes.", self.reset_url, self.expires_in_minutes))
             .html(html_content)
             .sanitize_secrets()
     }

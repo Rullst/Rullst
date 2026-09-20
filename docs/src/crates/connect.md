@@ -1,8 +1,8 @@
 # Rullst Connect 🦀
 
 > [!IMPORTANT]
-> This page documents stable `12.0.0`. Use that exact registry version, or a
-> path dependency only when intentionally reviewing checkout-local changes.
+> This page targets `12.1.0`. Check the [release record](../v12.md) for
+> publication status; use a path dependency only for checkout-local review.
 
 > **Vision preserved:** message brokers, additional queue transports, remote
 > storage, and media work are retained with explicit status and recommendations in
@@ -107,7 +107,7 @@ For a reproducible stable application, install the exact registry train instead.
 
 Stable release command:
 ```bash
-cargo add rullst-connect@12.0.0
+cargo add rullst-connect@12.1.0
 cargo add secrecy
 ```
 
@@ -115,14 +115,14 @@ For the recommended Axum session transaction, enable `axum-session` and add a
 `tower-sessions` store:
 
 ```toml
-rullst-connect = { version = "12.0.0", features = ["axum-session"] }
+rullst-connect = { version = "12.1.0", features = ["axum-session"] }
 tower-sessions = "0.15"
 ```
 
 Or manually add it to your `Cargo.toml`:
 ```toml
 [dependencies]
-rullst-connect = "12.0.0"
+rullst-connect = "12.1.0"
 secrecy = "0.10"
 tokio = { version = "1.52", features = ["full"] }
 ```

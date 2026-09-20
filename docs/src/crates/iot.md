@@ -2,9 +2,9 @@
 ### *"Embedded Sensor Protocols, Ed25519 OTA Gate & Edge Computing for Rust"*
 
 > [!IMPORTANT]
-> The dependency example uses stable `12.0.0`. Pin that exact version for a
-> reproducible v12 build; use a path dependency only when intentionally testing
-> checkout-local changes.
+> The dependency example targets `12.1.0`. Check the [release record](../v12.md)
+> for publication status and commit Cargo.lock for reproducible builds.
+> Use a path dependency only when intentionally testing checkout-local changes.
 
 `rullst-iot` provides high-assurance telemetry models, bare-metal `#![no_std]`
 data structures and packet encoders, and a cryptographically verified
@@ -158,7 +158,7 @@ For local integration tests without physical hardware attached, enable the simul
 
 ```toml
 [dependencies]
-rullst-iot = { version = "12.0.0", features = ["experimental-simulators"] }
+rullst-iot = { version = "12.1.0", features = ["experimental-simulators"] }
 ```
 
 This exposes `SimulatedMqttPayloadFormatter`, `SimulatedHsmDevice`, and `SimulatedPqcFixture` for deterministic sandbox execution.

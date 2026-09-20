@@ -23,10 +23,11 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 Download and run `rustup-init.exe` from the website.
 
 Next, install the **Rullst CLI** from the same release train as the framework.
-The exact version selector avoids accidentally installing a different release:
+The exact version selector avoids accidentally installing a different release.
+Check [publication status](v12.md) before requesting 12.1.0:
 
 ```bash
-cargo install cargo-rullst --version 12.0.0 --locked
+cargo install cargo-rullst --version 12.1.0 --locked
 ```
 
 Source reviewers who intentionally need checkout-local changes can instead
@@ -44,7 +45,7 @@ from which it was compiled, even when project creation is invoked from another
 directory, provided that checkout has not been moved or deleted. Generated
 manifests therefore contain absolute path dependencies and are not portable.
 Running from the repository root remains an explicit fallback. Prefer stable
-`12.0.0` and its matching registry packages for ordinary applications.
+published v12 releases and their matching registry packages for ordinary applications.
 
 ## 2. Creating Your First Project
 
