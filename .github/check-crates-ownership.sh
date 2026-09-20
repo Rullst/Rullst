@@ -9,10 +9,8 @@ response_path="$(mktemp)"
 rows_path="$(mktemp)"
 trap 'rm -f -- "$response_path" "$rows_path"' EXIT
 
-jq -e --slurpfile order "$release_order_path" '
-  (.bootstrap_unregistered | length) == (.bootstrap_unregistered | unique | length)
-  and all(.bootstrap_unregistered[]; $order[0] | index(.) != null)
-' "$policy_path" >/dev/null || {
+jq -e --slurpfile order "$release_order_path" \
+  -f .github/crates-ownership-policy.jq "$policy_path" >/dev/null || {
   echo "The crates.io bootstrap policy contains duplicates or unknown package names."
   exit 1
 }
