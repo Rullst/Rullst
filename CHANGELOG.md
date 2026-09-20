@@ -75,6 +75,28 @@ A prepared version section does not establish that its tag or crates exist.
 - Correct the nextest scope: coverage uses nextest, while ordinary CI's existing
   eight shards still use Cargo's test runner.
 
+## [13.0.0-alpha.1] - 2026-09-20 (unpublished development checkpoint)
+
+This section describes the v13 source train. It does not announce a crates.io
+publication or admit a stable v13 release. See the
+[delivery plan](docs/src/v13-delivery-plan.md) and
+[adoption guide](docs/src/migration-v13.md) for current evidence and boundaries.
+
+- Set the existing sixteen release packages and internal requirements to the
+  explicit development version. Migration catalog v2 admits reviewed 12.1→13
+  dependency preparation, rejects stale inputs and retains apply/recovery checks.
+- Preserve an endpoint's explicit `Referrer-Policy: no-referrer` through Core and
+  Security header composition, with duplicate-header and layer-order regressions.
+- Require a public application certificate and trusted SDK verifier for Android
+  release builds. Reject stale, ambiguous, changed or incorrectly signed APKs;
+  emit a bounded digest receipt and withhold signing-tool diagnostics/secrets.
+- Keep `rullst-privacy` separately unpublished: native proportional declarations,
+  authenticated challenge transport, SQLite/PostgreSQL replay state, optional
+  versioned consent/withdrawal, and opt-in generated SaaS/LMS profile journeys.
+  No facial engine, live age provider or automatic global legal-compliance claim.
+- Track transparent learner/exam/parental supervision as the first conditional
+  extension. This checkpoint does not introduce a supervision crate.
+
 ## [12.1.0] - 2026-09-20
 
 Published on September 20 UTC (September 19 in Brasília); see the
