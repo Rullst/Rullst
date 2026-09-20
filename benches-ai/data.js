@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789857019119,
+  "lastUpdate": 1789875183788,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -9205,6 +9205,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 450,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "184bc1f7456b4a8761fa622dfd1ae66597237706",
+          "message": "fix(ci): close v12.1 publication and restore mutation verification\n\nRecord immutable v12.1 publication, correct mutation inventory discovery and repair the SemVer baseline resolver.",
+          "timestamp": "2026-09-20T00:04:33-03:00",
+          "tree_id": "9a18fcec1b9a5b129e34c0e457b63d9f6177a92e",
+          "url": "https://github.com/Rullst/Rullst/commit/184bc1f7456b4a8761fa622dfd1ae66597237706"
+        },
+        "date": 1789875183109,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1002,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 193,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 428,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
