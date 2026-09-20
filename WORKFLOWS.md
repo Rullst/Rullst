@@ -71,13 +71,17 @@ selections, automatic runs and ready PRs retain those jobs. Strict workspace
 Clippy/format still runs for every diagnostic; release admission continues to
 require every job from the full `all`/`all` matrix.
 
-The manual `all`/`all` matrix additionally packages all sixteen public crates,
+The manual `all`/`all` matrix additionally packages all seventeen candidate crates,
 audits their contents and uses the release pipeline's archive-only consumer
 and isolated CLI installation/blueprint checks. `Packaged distribution and
 installed CLI` is a required exact-SHA release-admission job. It runs without
 registry publication credentials and never uploads to crates.io. Automatic
-development runs and diagnostic subsets deliberately skip this expensive job;
-the tag pipeline still repeats its existing package verification.
+development runs and other diagnostic subsets deliberately skip this expensive
+job. The explicit `platform=all`, `shard=packaged-distribution` diagnostic runs
+this same archive/installed-CLI check and workspace Clippy/format, without
+repeating the OS test matrix or native artifact builds. It emits no full-matrix
+scorecard and cannot satisfy complete release admission; the final `all`/`all`
+and tag pipelines retain their existing package verification.
 
 Manual all-platform `all` and `cli-standard` selections also call the native CLI
 artifact builder for Linux x64, Windows x64, macOS ARM64 and macOS x64. The

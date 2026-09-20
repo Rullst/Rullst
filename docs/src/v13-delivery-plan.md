@@ -311,6 +311,16 @@ individual review and are not automatically confirmed runtime defects. The
 remaining campaign continues; partial results must not be reported as a complete
 mutation pass, and any later continuation must preserve source/inventory identity.
 
+The first combined [PR #221](https://github.com/Rullst/Rullst/pull/221) campaign
+at `4773171a` passed 85 checks, including the OS/workspace and generated consumer
+matrix, strict Clippy, coverage, feature boundaries and MSRV. Two inventory checks
+failed: the README omitted the added Verus workflow, and the observational
+scorecard omitted the seventeenth package. The correction retains both checks,
+adds a conservative unpublished privacy ceiling and preserves its planning floor.
+The corrected head requires its own hosted admission. A new explicit package-only
+diagnostic runs the existing archive/installed-CLI acceptance without repeating
+the OS matrix; a regression proves that this subset cannot admit a release.
+
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |
 | P0 | Published v12.1.0 corrections integrated without losing v13 work | Review conflicts; retain the stable runtime changes; pass the combined workspace tests, strict Clippy, format and feature/consumer checks. |

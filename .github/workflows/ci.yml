@@ -28,6 +28,7 @@ on:
           - workspace
           - cli-standard
           - cli-updates
+          - packaged-distribution
           - cli-profiles-basic
           - cli-profiles-relational
           - cli-profiles-polyglot
@@ -160,6 +161,7 @@ jobs:
     # expensive cross-platform suite starts when the PR is ready for review.
     if: >-
       !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard != 'packaged-distribution') &&
       (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     runs-on: ${{ matrix.os }}
     # Generated CLI applications are real independent Cargo workspaces. Keep
@@ -633,8 +635,9 @@ jobs:
   packaged-distribution:
     name: Packaged distribution and installed CLI
     # Exercise the actual archives before a tag or any registry publication.
-    # Diagnostic subsets and automatic development runs do not claim this proof.
-    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'all' && inputs.shard == 'all'
+    # An explicit package diagnostic exercises the same archives without the OS
+    # test/native matrix; it cannot satisfy complete release admission.
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'all' && (inputs.shard == 'all' || inputs.shard == 'packaged-distribution')
     needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 180
