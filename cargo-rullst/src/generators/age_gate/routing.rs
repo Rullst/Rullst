@@ -21,7 +21,7 @@ pub(super) fn equivalent(left: &str, right: &str) -> Result<bool, Box<dyn std::e
     Ok(formatted(&left)? == formatted(&right)?)
 }
 
-fn formatted(source: &str) -> Result<String, Box<dyn std::error::Error>> {
+pub(super) fn formatted(source: &str) -> Result<String, Box<dyn std::error::Error>> {
     let mut child = Command::new("rustfmt")
         .args([
             "--edition",
@@ -60,7 +60,7 @@ impl syn::visit_mut::VisitMut for CallPunctuation {
     }
 }
 
-fn call_tokens(expression: &Expr) -> String {
+pub(super) fn call_tokens(expression: &Expr) -> String {
     use syn::visit_mut::VisitMut;
     let mut expression = expression.clone();
     CallPunctuation.visit_expr_mut(&mut expression);

@@ -167,10 +167,13 @@ keep tokens out of URLs and logs. A changed policy or session invalidates the
 old challenge. No external age provider is required for this transport.
 
 The v13 CLI preview supplies an optional
-[`make:age-gate` SaaS consumer](../docs/src/cli_reference.md#cargo-rullst-makeage-gate-unpublished-v13-preview).
+[`make:age-gate` SaaS/LMS consumers](../docs/src/cli_reference.md#cargo-rullst-makeage-gate-unpublished-v13-preview).
 It mounts a declaration before the existing authenticated dashboard rendering,
 with explicit server policy, CSRF and durable one-use consumption. It requires
-this unpublished source until package admission. Other app actions and stronger
+this unpublished source until package admission. The LMS profile binds the
+school resolved by current authenticated membership; changing school invalidates
+the challenge, and a declaration changes no guardian or subject-age record.
+Other app actions and stronger
 assurance methods retain their own authorization/integration requirements.
 
 ## Shared-local replay storage

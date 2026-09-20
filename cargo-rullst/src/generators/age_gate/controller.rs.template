@@ -8,6 +8,9 @@ use std::{sync::Arc, time::Duration};
 mod config;
 #[path = "age_gate/page.rs"]
 mod page;
+#[path = "age_gate/selection.rs"]
+mod selection;
+pub use selection::select_school;
 pub use config::AgeGateState;
 
 static STATE: tokio::sync::OnceCell<Arc<AgeGateState>> = tokio::sync::OnceCell::const_new();
@@ -37,11 +40,17 @@ pub async fn with_age_gate(mut request: Request, next: Next) -> Response {
 pub async fn show(
     Extension(state): Extension<Arc<AgeGateState>>,
     Extension(user_id): Extension<i32>,
+    school: Option<Extension<rullst::security::TenantContext>>,
     Extension(csrf): Extension<rullst::security::CsrfToken>,
     headers: HeaderMap,
 ) -> Response {
-    let binding = match state.binding(user_id, &headers) {
+    let school = school.as_ref().map(|Extension(school)| school);
+    let binding = match state.binding(user_id, &headers, school) {
         Ok(binding) => binding,
+        Err(_) => return denied(),
+    };
+    let action = match state.form_action(school) {
+        Ok(action) => action,
         Err(_) => return denied(),
     };
     let issued = SystemAgeClock.now().and_then(|now| {
@@ -53,7 +62,7 @@ pub async fn show(
         Err(_) => return unavailable(),
     };
     match state.tokens.seal(&challenge) {
-        Ok(token) => no_store(page::declaration(challenge.threshold(), &token, csrf.as_str()).into_response()),
+        Ok(token) => no_store(page::declaration(challenge.threshold(), &token, csrf.as_str(), &action).into_response()),
         Err(_) => unavailable(),
     }
 }
@@ -70,12 +79,13 @@ pub struct DeclarationForm {
 pub async fn submit(
     Extension(state): Extension<Arc<AgeGateState>>,
     Extension(user_id): Extension<i32>,
+    school: Option<Extension<rullst::security::TenantContext>>,
     csrf: Option<Extension<rullst::security::CsrfToken>>,
     nonce: Option<Extension<rullst::security::CspNonce>>,
     headers: HeaderMap,
     Form(form): Form<DeclarationForm>,
 ) -> Response {
-    let binding = match state.binding(user_id, &headers) {
+    let binding = match state.binding(user_id, &headers, school.as_ref().map(|Extension(school)| school)) {
         Ok(binding) => binding,
         Err(_) => return denied(),
     };

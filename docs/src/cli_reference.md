@@ -648,7 +648,13 @@ generated `AGE_GATE.md`; missing state or configuration denies access. The
 preview requires the explicit unpublished privacy source, and refuses existing
 privacy integrations or unrecognized authentication/route shapes before writing.
 Review the generated diff before deployment. It does not install facial models,
-verified guardianship, reusable age flags, an LMS adapter or global compliance.
+verified guardianship, reusable age flags or global compliance.
+
+For the full LMS starter, select `--blueprint lms` and omit `--tenant-ref`.
+The server resolves the school through its existing active-membership policy;
+the form preserves that selection for an ordinary browser POST. A school query
+parameter is only a selection hint, and cannot grant membership or move an age
+challenge between schools. Other learning routes keep their existing policies.
 
 ### `cargo rullst make:jwt`
 Injects a pre-configured boilerplate Middleware into your project for strict JWT Authentication (verifying Bearer tokens in the `Authorization` header).

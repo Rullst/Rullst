@@ -165,12 +165,13 @@ shared durable replay store. The host owns independent secret provisioning,
 rotation/retirement, TLS, CSRF and endpoint limits; no external age provider is
 needed for this transport.
 
-The v13 `make:age-gate` consumer is an explicit opt-in for the recognized SaaS
-starter. It protects the existing dashboard action with an authenticated GET
+The v13 `make:age-gate` consumer is an explicit opt-in for recognized SaaS and full
+LMS starters. It protects the existing dashboard action with an authenticated GET
 challenge and POST declaration; it never sets a reusable age-verified account
 flag. Both routes retain the starter's authentication, CSRF, headers and Server
-baseline. Policy version, threshold and application tenant are chosen explicitly
-at generation time, with low-assurance declarations identified as such. Opaque
+baseline. Policy version and threshold are chosen explicitly at generation time;
+the SaaS profile also requires its fixed application tenant. Low-assurance
+declarations are identified as such. Opaque
 binding references are domain-separated keyed digests of server-resolved user,
 tenant and authenticated session, never request-supplied identities. Application
 keys and replay storage are mandatory; initialization, timeout, stale context or
@@ -181,6 +182,21 @@ this command requires an explicitly supplied matching unpublished privacy source
 it must not emit an unavailable registry dependency. Other blueprint adapters,
 provider flows, persistent age permissions and deployed browser acceptance remain
 separate work.
+
+The extension of this same generator to the full LMS starter uses
+the authenticated `TenantContext` produced by active school-membership resolution.
+For the dashboard only, a bounded `school` query value may act as a selection
+hint before the existing authentication middleware. It is never authorization:
+unknown/conflicting selections, inactive membership and ambiguous selection fail
+closed. The existing policy may select an explicitly stored default school.
+The form action carries the already-resolved school selection, allowing
+ordinary browser submission without a custom header. The challenge binds the
+resolved school, user and session again on POST. The declaration does not update
+the existing subject age band or guardian-consent records, and the age-state
+middleware is not mounted around unrelated learning actions. The generated local
+contract exercises cross-school/user denial, selector ambiguity/conflicts,
+ordinary form submission, replay and membership revocation between issuance and
+submission. Hosted and deployed-browser acceptance remain separate.
 
 The separate [SaaS triage](saas-v12-1-v13-triage.md) assigns the examples' reported
 defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidence.

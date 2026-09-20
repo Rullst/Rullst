@@ -6,13 +6,15 @@ use std::{
 };
 use toml_edit::{Array, DocumentMut, InlineTable, Item, Value};
 
+mod lms_routing;
 mod routing;
 mod writes;
 use writes::Edit;
 
 pub(crate) fn command() -> Command {
     Command::new("make:age-gate")
-        .about("Add an explicit first-party age declaration to the SaaS dashboard (v13 preview)")
+        .about("Add an explicit first-party age declaration to a SaaS/LMS dashboard (v13 preview)")
+        .arg(Arg::new("blueprint").long("blueprint").default_value("saas").value_parser(["saas", "lms"]))
         .arg(
             Arg::new("privacy-source")
                 .long("privacy-source")
@@ -34,8 +36,8 @@ pub(crate) fn command() -> Command {
         .arg(
             Arg::new("tenant-ref")
                 .long("tenant-ref")
-                .required(true)
-                .help("Server-owned opaque reference for this single-tenant SaaS deployment"),
+                .required_if_eq("blueprint", "saas")
+                .help("Server-owned SaaS tenant; the LMS profile uses authenticated school membership"),
         )
         .arg(
             Arg::new("replay-store")
@@ -54,9 +56,10 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>
         .get_one::<u8>("minimum-age")
         .ok_or_else(|| invalid("minimum age is required"))?;
     let version = argument(matches, "policy-version")?;
-    let tenant = argument(matches, "tenant-ref")?;
+    let tenant = matches.get_one::<String>("tenant-ref").map(String::as_str);
+    let consumer = argument(matches, "blueprint")?;
     let profile = argument(matches, "replay-store")?;
-    let edits = plan(&root, source, minimum, version, tenant, profile)?;
+    let edits = plan(&root, source, minimum, version, tenant, profile, consumer)?;
     writes::apply(&edits)?;
     println!(
         "Age declaration installed for /dashboard. Configure the required private key and replay store in AGE_GATE.md before starting the app. Answers remain declared, not verified."
@@ -80,10 +83,14 @@ fn plan(
     source: &Path,
     minimum: u8,
     version: &str,
-    tenant: &str,
+    tenant: Option<&str>,
     profile: &str,
+    consumer: &str,
 ) -> Result<Vec<Edit>, Box<dyn std::error::Error>> {
-    for token in [version, tenant] {
+    if !matches!((consumer, tenant), ("saas", Some(_)) | ("lms", None)) {
+        return Err(invalid("SaaS requires --tenant-ref; LMS resolves its school from authenticated membership and rejects a fixed tenant").into());
+    }
+    for token in std::iter::once(version).chain(tenant) {
         if token.is_empty()
             || token.len() > 128
             || !token
@@ -129,12 +136,11 @@ fn plan(
             invalid("an existing privacy dependency requires a manual integration review").into(),
         );
     }
-    let baseline = crate::blueprints::saas::file_manifest(
-        "unused",
-        false,
-        "Active Record",
-        "Zero-Bundle HTMX",
-    );
+    let baseline = if consumer == "saas" {
+        crate::blueprints::saas::file_manifest("unused", false, "Active Record", "Zero-Bundle HTMX")
+    } else {
+        crate::blueprints::lms::file_manifest("unused", false, "Active Record", "Zero-Bundle HTMX")
+    };
     for name in [
         "src/middlewares/auth_middleware.rs",
         "src/controllers/auth_controller.rs",
@@ -165,7 +171,11 @@ fn plan(
     } else {
         (main_path.clone(), main_updated.clone())
     };
-    let updated_router = routing::protect(&router)?;
+    let updated_router = if consumer == "saas" {
+        routing::protect(&router)?
+    } else {
+        lms_routing::protect(&router)?
+    };
     if router_path == main_path {
         main_updated = updated_router;
     } else {
@@ -195,7 +205,20 @@ fn plan(
         .replace("__STORE_TYPE__", store_type)
         .replace("__STORE_OPEN__", store_open)
         .replace("__POLICY_VERSION__", &format!("{version:?}"))
-        .replace("__TENANT_REF__", &format!("{tenant:?}"))
+        .replace(
+            "__TENANT_CONFIG__",
+            &tenant
+                .map(|tenant| format!("Some({tenant:?}.to_owned())"))
+                .unwrap_or_else(|| "None".to_owned()),
+        )
+        .replace(
+            "__AUDIENCE__",
+            if consumer == "saas" {
+                "\"saas-dashboard\""
+            } else {
+                "\"lms-dashboard\""
+            },
+        )
         .replace("__MINIMUM_AGE__", &minimum.to_string());
     for (name, content) in [
         (
@@ -207,9 +230,16 @@ fn plan(
             "src/controllers/age_gate/page.rs",
             include_str!("page.rs.template").to_owned(),
         ),
+        (
+            "src/controllers/age_gate/selection.rs",
+            include_str!("selection.rs.template").to_owned(),
+        ),
     ] {
         syn::parse_file(&content)?;
-        edits.push(Edit::create(root.join(name), content)?);
+        edits.push(Edit::create(
+            root.join(name),
+            routing::formatted(&content)?,
+        )?);
     }
     let mut dependency = InlineTable::new();
     dependency.insert(

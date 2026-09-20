@@ -67,6 +67,15 @@ its scoped consumer/state/API and release admission criteria pass.
 - The integration candidate carries that exact published runtime source into
   v13, preserving the unpublished privacy crate and Labs/Verus plans. The
   combined source needs fresh CI; the v12.1.0 results do not certify v13.
+- [PR #218](https://github.com/Rullst/Rullst/pull/218) admitted the integration
+  and SQLite/PostgreSQL replay foundation into `v13` at `7f48d882` on
+  20 September UTC. Its reviewed head `03601566` passed 85 hosted checks with
+  four declared skips, including workspace tests, strict Clippy and the exact
+  coverage floors. Three remaining review threads referred to the already
+  individually reviewed test-only alerts 327–329 and were resolved after
+  rechecking those fixtures and their existing dispositions. The later native
+  declaration, challenge transport and generated consumers require their own
+  hosted campaign; this admission does not certify those subsequent changes.
 - The initial privacy foundation passed 16 integration tests and one doctest.
   The persistence change adds asynchronous verification, trusted clock rechecks
   and optional shared-local SQLite claims. Its 29 local integration tests cover
@@ -86,7 +95,12 @@ its scoped consumer/state/API and release admission criteria pass.
   and the PostgreSQL consumer profile compiles. Installer tests cover formatted
   source, changed authentication, source selection, preserved edits and rollback
   after a write failure. Strict local CLI Clippy and book/link checks passed.
-  Hosted admission, the LMS consumer and broader purpose/rights workflows remain
+  The follow-up LMS consumer also passes a generated SQLite journey: bounded
+  school selection, real membership/role resolution, header selection carried
+  into a browser form, cross-school/user denial, replay and revoked membership.
+  Its declaration writes no subject-age or guardian-consent row and does not
+  install age-state middleware around other learning routes.
+  Hosted admission and broader purpose/rights workflows remain
   outstanding; these checks do not establish deployed browser/provider acceptance.
 - The initial CodeQL scan's 26 age-replay alerts were individually reviewed:
   23 intentional integration-test identifiers, two policy-field data-flow

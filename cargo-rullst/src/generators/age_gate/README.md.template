@@ -31,10 +31,17 @@ Remote PostgreSQL verifies TLS; replication/failover, clocks, permissions,
 backups and durable hardware remain operator responsibilities. A restored old
 database requires quiescing verification and rotating the policy/key epoch.
 
-The policy version, minimum age and single application tenant reference live in
-`src/controllers/age_gate/config.rs`. Resolve actual tenant membership from
-authoritative application state before adapting this single-tenant starter to
-a multi-tenant service. Do not accept tenant, user or policy values from a form.
+The policy version and minimum age live in `src/controllers/age_gate/config.rs`.
+The SaaS profile requires a fixed application tenant reference. The full LMS
+profile instead requires the authenticated school context and rechecks active
+membership on every request. Its dashboard accepts `school` in the query only
+as a selection hint; the generated form carries the resolved school in its action
+URL. Conflicting header/query values, unknown/duplicate fields, inactive
+membership or ambiguous selection deny access. Existing explicit default-school
+membership rules still apply when no selection is supplied. The selection creates
+no authenticated context itself. Other learning routes retain their original
+authorization, and no subject age band or guardian-consent row is changed.
+Do not accept user identity or policy values from a form.
 The challenge contains keyed opaque references, is authenticated but not
 encrypted, and must stay out of URLs/logs/analytics. TLS, request limits and the
 Server security baseline remain mandatory. Responses are marked `no-store`.

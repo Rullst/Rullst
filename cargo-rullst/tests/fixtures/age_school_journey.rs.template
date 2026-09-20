@@ -1,0 +1,85 @@
+use age_gate_consumer::router;
+use http_body_util::BodyExt;
+use rullst::server::{Body, Request, Response, StatusCode};
+use tower::ServiceExt;
+
+async fn request(app: &rullst::Router, uri: &str, session: &str, csrf: Option<&str>, school_header: Option<&str>, form: Option<String>) -> Response {
+    let mut builder = Request::builder().uri(uri);
+    let mut cookies = format!("rullst_session={session}");
+    if let Some(csrf) = csrf { cookies.push_str(&format!("; rullst_csrf={csrf}")); }
+    builder = builder.header("cookie", cookies);
+    if let Some(school) = school_header { builder = builder.header("x-school-id", school); }
+    let body = if let Some(form) = form {
+        builder = builder.method("POST").header("content-type", "application/x-www-form-urlencoded");
+        Body::from(form)
+    } else { Body::empty() };
+    app.as_axum().clone().oneshot(builder.body(body).unwrap()).await.unwrap()
+}
+
+async fn text(response: Response) -> String {
+    String::from_utf8(response.into_body().collect().await.unwrap().to_bytes().to_vec()).unwrap()
+}
+
+fn value(html: &str, name: &str) -> String {
+    html.split_once(&format!("name=\"{name}\" value=\"")).unwrap().1.split('"').next().unwrap().to_owned()
+}
+
+#[tokio::test]
+async fn school_selection_is_reauthorized_and_the_declaration_never_crosses_schools() {
+    rullst_orm::Orm::init("sqlite::memory:").await.unwrap();
+    let pool = rullst_orm::Orm::pool().unwrap();
+    sqlx::query("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT, oauth_provider TEXT, oauth_id TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)").execute(pool).await.unwrap();
+    sqlx::query("CREATE TABLE schools (id INTEGER PRIMARY KEY, tenant_key TEXT NOT NULL, status TEXT NOT NULL)").execute(pool).await.unwrap();
+    sqlx::query("CREATE TABLE school_memberships (school_id INTEGER NOT NULL, user_id INTEGER NOT NULL, status TEXT NOT NULL, is_default INTEGER NOT NULL, valid_from_epoch INTEGER NOT NULL, expires_at_epoch INTEGER NOT NULL)").execute(pool).await.unwrap();
+    sqlx::query("CREATE TABLE role_assignments (school_id INTEGER NOT NULL, user_id INTEGER NOT NULL, role TEXT NOT NULL, status TEXT NOT NULL, valid_from_epoch INTEGER NOT NULL, expires_at_epoch INTEGER NOT NULL)").execute(pool).await.unwrap();
+    for id in [1, 2] {
+        sqlx::query("INSERT INTO users (id, name, email, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
+            .bind(id).bind(format!("learner-{id}")).bind(format!("learner-{id}@example.test")).bind("2026-09-20").bind("2026-09-20").execute(pool).await.unwrap();
+        sqlx::query("INSERT INTO schools (id, tenant_key, status) VALUES (?, ?, ?)").bind(id).bind(format!("school-{id}")).bind("active").execute(pool).await.unwrap();
+    }
+    for (user, school) in [(1, 1), (1, 2), (2, 2)] {
+        sqlx::query("INSERT INTO school_memberships (school_id, user_id, status, is_default, valid_from_epoch, expires_at_epoch) VALUES (?, ?, ?, ?, ?, ?)")
+            .bind(school).bind(user).bind("active").bind(0).bind(1).bind(0).execute(pool).await.unwrap();
+    }
+    let key = rullst::auth::get_app_key().unwrap();
+    let session = rullst::auth::encrypt_session(1, &key).unwrap();
+    let other = rullst::auth::encrypt_session(2, &key).unwrap();
+    let mut app = router().unwrap();
+    *app.as_axum_mut() = rullst::security::apply_security_baseline(app.as_axum().clone(), rullst::config::SecurityConfig::default(), rullst::config::Environment::Production).unwrap();
+    assert_eq!(request(&app, "/dashboard", &session, None, None, None).await.status(), StatusCode::FORBIDDEN);
+    for uri in ["/dashboard?school=missing", "/dashboard?school=school-1&school=school-2", "/dashboard?school=school-1&user_id=1", "/dashboard?school=%0A"] {
+        assert_eq!(request(&app, uri, &session, None, None, None).await.status(), StatusCode::FORBIDDEN);
+    }
+    assert_eq!(request(&app, "/dashboard?school=school-1", &session, None, Some("school-2"), None).await.status(), StatusCode::FORBIDDEN);
+    assert_eq!(request(&app, "/dashboard?school=school-1", &other, None, None, None).await.status(), StatusCode::FORBIDDEN);
+
+    // A header-based initial selection is carried into an ordinary HTML form URL.
+    let shown = request(&app, "/dashboard", &session, None, Some("school-1"), None).await;
+    assert_eq!(shown.status(), StatusCode::OK);
+    assert_eq!(shown.headers()["cache-control"], "no-store");
+    let html = text(shown).await;
+    assert!(html.contains("action=\"/dashboard?school=school-1\""));
+    assert!(!html.contains(&session));
+    let token = value(&html, "challenge");
+    let csrf = value(&html, "_token");
+    let form = format!("_token={csrf}&challenge={token}&answer=meets_threshold");
+    assert_eq!(request(&app, "/dashboard?school=school-2", &session, Some(&csrf), None, Some(form.clone())).await.status(), StatusCode::FORBIDDEN);
+    let allowed = request(&app, "/dashboard?school=school-1", &session, Some(&csrf), None, Some(form.clone())).await;
+    assert_eq!(allowed.status(), StatusCode::OK);
+    assert!(text(allowed).await.contains("learner-1"));
+    assert_eq!(request(&app, "/dashboard?school=school-1", &session, Some(&csrf), None, Some(form)).await.status(), StatusCode::FORBIDDEN);
+
+    let shown = request(&app, "/dashboard?school=school-1", &session, None, None, None).await;
+    assert_eq!(shown.status(), StatusCode::OK);
+    let html = text(shown).await;
+    let token = value(&html, "challenge");
+    let csrf = value(&html, "_token");
+    sqlx::query("UPDATE school_memberships SET status = ? WHERE user_id = ? AND school_id = ?").bind("revoked").bind(1).bind(1).execute(pool).await.unwrap();
+    let form = format!("_token={csrf}&challenge={token}&answer=meets_threshold");
+    let denied = request(&app, "/dashboard?school=school-1", &session, Some(&csrf), None, Some(form)).await;
+    assert_eq!(denied.status(), StatusCode::FORBIDDEN);
+    assert!(!text(denied).await.contains("learner-1"));
+    // This complete journey works without creating privacy-subject/guardian rows.
+    let privacy_tables: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sqlite_master WHERE name IN ('privacy_subject_policies', 'guardian_consents')").fetch_one(pool).await.unwrap();
+    assert_eq!(privacy_tables, 0);
+}
