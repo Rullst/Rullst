@@ -325,6 +325,13 @@ contains the more detailed evidence and acceptance boundaries.
   policy, WebAuthn conformance, content-aware DLP/PII, signed-webhook composition,
   trusted proxies, tenant isolation, CSWSH, bounded workers, scheduler shutdown,
   and the production-path zero-panic policy.
+- Extend M10/M27 with cloud/VPS application-protection evidence using the existing
+  Security/Core/CLI boundaries: one trusted-proxy and shared-rate-limit deployment
+  profile, bounded resource policies and read-only diagnostics that redact secrets.
+  Keep host/network administration external. This is a conditional v13 increment
+  after supervision and shared passkey state, ahead of a new gateway; see the
+  [delivery plan](docs/src/v13-delivery-plan.md). It is not implemented merely by
+  appearing here, and it adds no separate milestone or crate.
 
 ### Phase 2 — product integrity and scaffolding
 

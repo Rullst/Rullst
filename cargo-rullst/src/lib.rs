@@ -37,6 +37,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             .subcommand(update::command())
             .subcommand(generators::age_gate::command())
             .subcommand(generators::privacy::command())
+            .subcommand(generators::supervision::command())
             .subcommand(generators::api_contract::command())
             // Extend executable syntax without changing the published v12 enum.
             .mut_subcommand("omni", generators::desktop::release_command)
@@ -46,6 +47,9 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             generators::api_contract::run(api)?;
         } else if let Some(context) = matches.subcommand_matches("generate:ai-context") {
             generators::ai_context::run(context)?;
+        } else if let Some(supervision) = matches.subcommand_matches("make:supervision") {
+            generators::supervision::run(supervision)?;
+            generators::ai_context::refresh_after_scaffold();
         } else if let Some(privacy) = matches.subcommand_matches("make:privacy") {
             generators::privacy::run(privacy)?;
             generators::ai_context::refresh_after_scaffold();

@@ -62,6 +62,29 @@ supported method; unimplemented facial or provider methods cannot be advertised
 as functioning production verification. The package remains unpublished until
 its scoped consumer/state/API and release admission criteria pass.
 
+## Blueprint scope and automated acceptance
+
+On September 20 the owner prioritized implementation and testing over extending
+every new feature to every blueprint. Keep existing working integrations and
+their regression tests. For new work, choose the smallest real consumer that
+exercises the capability: supervision in LMS, billing entitlements in SaaS,
+and a focused server/client fixture for an API contract. A public generator must
+still test each supported output shape; do not advertise an untested shape.
+Additional blueprint coverage belongs in the release only when it demonstrates
+a different supported contract or provides clear product value. Opt-in features
+must remain opt-in, and source/manifest, authentication, persistence and packaged
+installation checks cannot be replaced with mock-only examples.
+
+Human exploratory testing is not assumed to be available during this delivery
+window. Use automated unit, integration, real-database, HTTP/browser and failure
+tests appropriate to each supported feature. Record environmental and usability
+limits explicitly; neither AI authorship nor a passing suite proves every
+deployment. Missing provider/device/isolation evidence stays missing and limits
+the supported scope. Defer optional scope and non-critical improvements when
+needed, but fix known authorization, privacy or data-integrity failures before
+admission. The possibility of a later patch does not turn a failing contract into
+an accepted release.
+
 ## Starting evidence
 
 - All sixteen v12.1.0 packages are published from `b62390b4`; the
@@ -287,9 +310,13 @@ were subsequently generated from clean commit `30e2f753`; their source identity,
 licenses and excluded secret/database paths were audited. The archive-only
 privacy consumer and privacy publication dry run passed without uploading a
 version. These are local rehearsals, not final release receipts.
-The archive-only hosted test now compiles the installed CLI's
-SaaS/LMS opt-ins and executes the same durable facade contract from extracted
-packages. A crates.io read on 20 September returned 404 for `rullst-privacy`;
+The archive-only hosted test compiles the installed CLI's SaaS/LMS opt-ins and
+executes the same durable facade contract from extracted packages. It passed at
+`365d2252` in [run 35520146394](https://github.com/Rullst/Rullst/actions/runs/35520146394)
+on September 20: seventeen package archives were audited, the durable facade
+test passed and all six installed-CLI blueprints compiled. This diagnostic does
+not replace the final full/native release campaign or publication authorization.
+A crates.io read on 20 September returned 404 for `rullst-privacy`;
 initial registration and Trusted Publishing configuration remain required.
 The stable publisher continues to reject an unregistered package.
 The ownership-policy validator now checks each proposed bootstrap name against
@@ -321,6 +348,30 @@ The corrected head requires its own hosted admission. A new explicit package-onl
 diagnostic runs the existing archive/installed-CLI acceptance without repeating
 the OS matrix; a regression proves that this subset cannot admit a release.
 
+The corrected `365d2252` head subsequently passed **87 hosted checks**, with four
+declared skips and no unresolved review threads. PR #221 merged normally into
+`v13` at `48a6ee51` on September 20 at 17:23 UTC, with all 43 required checks and
+administrator enforcement preserved. Its seventeen-archive/installed-CLI
+diagnostic passed separately as recorded above. This admits the combined
+application/privacy candidate; the final full/native/security release campaign
+and initial new-package registration remain outstanding.
+
+The first conditional supervision implementation now has a separate unpublished
+crate, bounded domain contracts and shared-local SQLite state. Its focused local
+tests cover explicit acknowledgement, scoped/revocable authority, session
+transitions, event bounds, parental course windows, retention, fresh-process
+reopen, concurrent revisions, lock-wait expiry, cancellation and corrupt rows.
+An explicit full-SQLite-LMS generator now installs the original learning-service
+gate, signed/scoped SSR forms, local operator provisioning and a bounded visibility
+collector. Three local CLI integration tests pass, including both privacy/age
+composition orders, public-profile compilation, the real HTTP lifecycle and
+Chromium keyboard/no-JavaScript/visibility controls. A start form is bound to the
+last retained session revision so an old acknowledgement cannot silently start a
+new session after end. The generated application passes all fourteen original
+LMS library tests and strict production Clippy/zero-panic checks, and all 376 CLI
+library tests pass. These local results do not admit the package: full workspace
+regression, installed archives and hosted acceptance remain outstanding.
+
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |
 | P0 | Published v12.1.0 corrections integrated without losing v13 work | Review conflicts; retain the stable runtime changes; pass the combined workspace tests, strict Clippy, format and feature/consumer checks. |
@@ -349,6 +400,14 @@ These unequal units cannot tell us whether this release adds "10% of all future
 work". Nor does finishing one increment close its entire parent milestone.
 The wider v13/v13+ programme remains available for subsequent minor releases.
 
+Items deferred beyond the September 26 target do not automatically become v14
+work. Compatible additions can ship in 13.1, 13.2 and later minor releases;
+breaking changes belong in a future major under the
+[compatibility policy](compatibility-policy.md). The current major's concrete
+CLI/configuration change and the limits of its SemVer evidence are recorded in
+the [migration inventory](migration-v13.md#why-the-candidate-uses-a-new-major).
+The owner explicitly confirmed retaining the v13 release train on September 20.
+
 This queue deliberately builds on existing code instead of restarting those
 capabilities. Within P1, a small independent increment can precede a larger one
 when its dependencies and verification capacity are ready.
@@ -361,8 +420,11 @@ when its dependencies and verification capacity are ready.
 | M21 — Omni/Android | Version 12.1 configures application-owned signing; hosted Android CI already verifies signatures and the expected certificate. Bring that verification into the public CLI with exact artifact handling. | Active P1 queue; this closes a CLI gap, not physical-device or store acceptance. |
 | M9 — Auth/session consistency | Durable account recovery and revocation exist. Evaluate one shared passkey-ceremony lifecycle with atomic single use, expiry and tenant/session binding. | Next extension after the active product increments; choose the storage/API boundary before promising implementation. |
 | Transparent supervision | The owner has selected the proposed `rullst-supervision` as the first additional priority. Keep parental and exam policies distinct and reuse privacy primitives through explicit composition. | First conditional extension after required deliveries; a usable generated journey and browser/authorization tests precede package admission. Device-wide control remains separate. |
+| M27 — deployment acceptance with an existing proxy | Core exposes readiness/drain contracts and Foundry generates a Caddy configuration with one upstream. Evaluate one local two-replica deployment fixture with a pinned existing proxy: startup exclusion, unhealthy replica removal, bounded in-flight shutdown, explicit forwarded-header trust and WebSocket behavior. | Recommended after supervision and shared passkey state, before a new remote integration. This is conditional deployment evidence, not an existing multi-replica Foundry feature, a new crate or a zero-downtime guarantee. Keep state-store topology and retry/idempotency requirements explicit. |
+| M10/M27 — cloud and VPS application protection | Reuse Security/Core controls and CLI diagnostics for a reviewed deployment profile. Extend the proxy fixture with forged-forwarding-header negatives, explicit Redis shared-budget enforcement, request/resource limits and security-header/session behavior; evaluate read-only local configuration diagnostics with secret-minimized output. | Part of the conditional deployment increment, ahead of a first-party gateway. No new security crate is needed. Add new diagnostics only with a bounded input contract and executable negative fixtures; no automatic firewall/SSH/cloud-account changes, host antivirus or volumetric DDoS guarantee. See the [deployment boundary](security-architecture.md#cloud-and-vps-deployments). |
 | M15 — remote messaging | Wire contracts, local durable state and the ORM outbox exist. Evaluate one remote broker adapter with real restart, redelivery and lease/idempotency evidence. | Conditional extension; select a broker and supported semantics first. Seven adapter names are not seven functioning integrations. |
 | M40 — Labs | The threat model and separate web-contract/runner roadmap are retained. The first candidate is a bounded job/grading/receipt contract with a deterministic local protocol fixture. | Conditional extension; contracts alone do not deliver code execution. A usable runner requires its own isolated deployment and adversarial acceptance. |
+| M39 — optional Rullst Gateway | No `rullst-gateway` crate or executable exists. Keep the separate opt-in proxy/load-balancer design from the master roadmap; readiness helpers and deployment templates do not implement it. | Lower priority than supervision, shared passkey state, deployment acceptance, one remote broker and bounded Labs work. Reconsider when a concrete self-hosted need justifies implementation and operations; no September 26 delivery commitment. |
 | M1/M3/M7/M12 — adoption and assurance | Carry the compatible updater forward, add actual major-version migrations, improve generated guidance and connect new code to the relevant verification inventory. | Required adoption/security work plus bounded maintainer tooling; Verus begins with one production-linked pilot. |
 
 Gateway/load-balancer implementation, fiscal homologation, physical IoT/Embassy,

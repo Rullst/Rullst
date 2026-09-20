@@ -1,0 +1,15 @@
+use rullst_supervision::{Limits, StoreConfig, SupervisionError as Error};
+use std::path::PathBuf;
+pub const POLICY: &str = __POLICY__;
+pub const NOTICE: &str = __NOTICE__;
+pub const RETENTION_SECONDS: u32 = __RETENTION__;
+pub const SESSION_SECONDS: u32 = __LIFETIME__;
+
+pub fn settings() -> Result<(PathBuf, StoreConfig), Error> {
+    let path = std::env::var_os("RULLST_SUPERVISION_DATABASE").filter(|v| !v.is_empty()).ok_or(Error::Configuration)?;
+    let epoch = std::env::var("RULLST_SUPERVISION_EPOCH").map_err(|_| Error::Configuration)?;
+    let limits = Limits::new(1024, 256, 8192, 512)?.event_budget(256, 1)?;
+    let path = PathBuf::from(path);
+    if !path.is_absolute() { return Err(Error::Configuration); }
+    Ok((path, StoreConfig::new(epoch, limits, RETENTION_SECONDS, SESSION_SECONDS)?))
+}

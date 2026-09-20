@@ -1,0 +1,42 @@
+use rullst::server::{IntoResponse, Next, Request, Response, StatusCode};
+use rullst_supervision::SupervisionError as Error;
+use crate::services::supervision_service as service;
+#[path = "supervision/selection.rs"] mod selection;
+#[path = "supervision/exam.rs"] mod exam;
+#[path = "supervision/parental.rs"] mod parental;
+#[path = "supervision/page.rs"] mod page;
+#[path = "supervision/proof.rs"] mod proof;
+
+pub fn initialize() -> Result<(), Error> { proof::key().map(|_| ()) }
+
+pub fn routes() -> rullst::Router {
+    rullst::Router::new()
+        .route("/supervision/exam", rullst::routing::get(exam::show).post(exam::submit))
+        .route("/supervision/event", rullst::routing::post(exam::event))
+        .route("/supervision/review", rullst::routing::get(exam::review))
+        .route("/supervision/parental", rullst::routing::get(parental::show).post(parental::submit))
+        .layer(rullst::server::DefaultBodyLimit::max(16 * 1024))
+        .layer(rullst::server::from_fn(crate::middlewares::auth_middleware::auth_middleware))
+        .layer(rullst::server::from_fn(selection::select_school))
+        .layer(rullst::server::from_fn(private_response))
+}
+
+async fn private_response(request: Request, next: Next) -> Response {
+    let mut response = match tokio::time::timeout(std::time::Duration::from_secs(12), next.run(request)).await {
+        Ok(response) => response,
+        Err(_) => failure(Error::UncertainCommit),
+    };
+    response.headers_mut().insert(rullst::server::header::CACHE_CONTROL, rullst::server::HeaderValue::from_static("no-store"));
+    response.headers_mut().insert(rullst::server::header::REFERRER_POLICY, rullst::server::HeaderValue::from_static("no-referrer"));
+    response
+}
+fn denied() -> Response { failure(Error::Forbidden) }
+fn failure(error: Error) -> Response {
+    let (status, message) = match error {
+        Error::Forbidden | Error::InvalidInput => (StatusCode::FORBIDDEN, "This supervision operation is not permitted. Reload the page to check your current access."),
+        Error::Conflict | Error::Sequence | Error::Expired => (StatusCode::CONFLICT, "The supervision state changed or expired. Reload before continuing."),
+        Error::RateLimited | Error::Capacity => (StatusCode::TOO_MANY_REQUESTS, "The supervision limit was reached. Collection stopped; reload before continuing."),
+        _ => (StatusCode::SERVICE_UNAVAILABLE, "Supervision is unavailable. The operation may not have completed; reload before retrying."),
+    };
+    (status, message).into_response()
+}

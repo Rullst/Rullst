@@ -1,0 +1,28 @@
+use rullst::server::{HeaderValue, Next, Query, Request, Response};
+use rullst_supervision::OpaqueId;
+use serde::Deserialize;
+
+#[derive(Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct Selection {
+    pub school: Option<String>, pub lesson: Option<i32>, pub subject: Option<i32>,
+    pub session: Option<String>, pub after: Option<i64>,
+}
+
+pub(super) async fn select_school(mut request: Request, next: Next) -> Response {
+    if request.uri().query().is_some_and(|q| q.len() > 1024) { return super::denied(); }
+    let Ok(Query(selection)) = Query::<Selection>::try_from_uri(request.uri()) else { return super::denied(); };
+    if selection.lesson.is_some_and(|id| id <= 0) || selection.subject.is_some_and(|id| id <= 0)
+        || selection.after.is_some_and(|id| id < 0)
+        || selection.session.as_ref().is_some_and(|id| OpaqueId::new(id).is_err())
+        || request.headers().get_all("x-school-id").iter().count() > 1 { return super::denied(); }
+    if let Some(school) = &selection.school {
+        if OpaqueId::new(school).is_err() { return super::denied(); }
+        if let Some(existing) = request.headers().get("x-school-id") && existing.to_str().ok() != Some(school.as_str()) { return super::denied(); }
+        let Ok(header) = HeaderValue::from_str(school) else { return super::denied(); };
+        request.headers_mut().insert("x-school-id", header);
+    }
+    request.extensions_mut().insert(selection);
+    // Existing authentication resolves school membership; this only supplies a hint.
+    next.run(request).await
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="${1:?usage: test-packaged-distribution.sh VERSION [PACKAGE_DIR]}"
+version="${1:?usage: test-packaged-distribution.sh VERSION [PACKAGE_DIR] [--supervision-candidate]}"
 package_dir="${2:-target/package}"
 cargo_bin="${CARGO:-cargo}"
 
@@ -34,11 +34,28 @@ cleanup() {
 }
 trap cleanup EXIT
 
+candidate=false
+case "${3:-}" in
+  "") ;;
+  --supervision-candidate)
+    if jq -e 'index("rullst-supervision") != null' "$repository_root/.github/release-order.json" > /dev/null; then
+      echo "Remove candidate mode after supervision enters the release inventory." >&2
+      exit 1
+    fi
+    candidate=true
+    ;;
+  *) echo "Unknown packaged-distribution mode." >&2; exit 1 ;;
+esac
+if [ "$#" -gt 3 ]; then echo "Too many packaged-distribution arguments." >&2; exit 1; fi
+
 packages_dir="$work_dir/packages"
 consumer_dir="$work_dir/consumer"
 install_root="$work_dir/install"
 projects_dir="$work_dir/projects"
 mkdir -p "$packages_dir" "$consumer_dir/src" "$install_root" "$projects_dir"
+export CARGO_NET_OFFLINE=true
+export RULLST_DISABLE_UPDATE_CHECK=true
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$work_dir/target}"
 
 for crate in "${crates[@]}"; do
   archive="$package_dir/${crate}-${version}.crate"
@@ -48,6 +65,22 @@ for crate in "${crates[@]}"; do
   fi
   tar -xzf "$archive" -C "$packages_dir"
 done
+
+if [ "$candidate" = true ]; then
+  candidate_archive="$package_dir/rullst-supervision-${version}.crate"
+  # The caller must audit the complete archive set before extraction.
+  tar -xzf "$candidate_archive" -C "$packages_dir"
+  candidate_source="$packages_dir/rullst-supervision-${version}"
+  python3 - "$candidate_source/Cargo.toml" "$version" <<'PYVERIFY'
+import sys, tomllib
+from pathlib import Path
+package = tomllib.loads(Path(sys.argv[1]).read_text())["package"]
+assert package["name"] == "rullst-supervision"
+assert package["version"] == sys.argv[2]
+assert package["publish"] is False, "candidate rehearsal must remain unpublished"
+PYVERIFY
+  "$cargo_bin" test --manifest-path "$candidate_source/Cargo.toml" --offline --locked --all-features
+fi
 
 toml_path() {
   local path="$1"
@@ -99,10 +132,6 @@ PY
 } > "$consumer_dir/Cargo.toml"
 printf 'fn main() {}\n' > "$consumer_dir/src/main.rs"
 append_package_patches "$consumer_dir/Cargo.toml"
-
-export CARGO_NET_OFFLINE=true
-export RULLST_DISABLE_UPDATE_CHECK=true
-export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$work_dir/target}"
 
 "$cargo_bin" check \
   --manifest-path "$consumer_dir/Cargo.toml" \
@@ -183,6 +212,9 @@ for blueprint in "${blueprints[@]}"; do
         --minimum-age 18 --policy-version archive-v1 --replay-store sqlite
       "$rullst_bin" make:privacy --blueprint "$blueprint" "${tenant_args[@]}" \
         --purpose-version archive-v1 --validity-seconds 3600
+      if [[ "$blueprint" == lms && "$candidate" == true ]]; then
+        "$rullst_bin" make:supervision --supervision-source "$candidate_source" --policy-version archive-v1 --notice-version archive-v1 --retention-seconds 3600 --session-seconds 600
+      fi
       "$rullst_bin" generate:ai-context --check
     )
     python3 - "$manifest" "$version" <<'PY'

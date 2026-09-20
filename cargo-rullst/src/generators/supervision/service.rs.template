@@ -1,0 +1,52 @@
+//! Host identity/membership and the additional gate shared by existing learning routes.
+use rullst_security::UserContext;
+use rullst_supervision::sqlite::SqliteSupervision;
+use rullst_supervision::{Clock, Context, Scope, SupervisionError as Error, SystemClock};
+use crate::services::school_service;
+#[path = "supervision/config.rs"] pub mod config;
+static STORE: tokio::sync::OnceCell<SqliteSupervision> = tokio::sync::OnceCell::const_new();
+
+pub async fn store() -> Result<&'static SqliteSupervision, Error> {
+    match tokio::time::timeout(std::time::Duration::from_secs(8), STORE.get_or_try_init(|| async {
+        let (path, config) = config::settings()?;
+        SqliteSupervision::open(path, config, SystemClock).await
+    })).await { Ok(result) => result, Err(_) => Err(Error::Storage) }
+}
+
+pub async fn initialize() -> Result<(), Error> {
+    store().await?;
+    crate::controllers::supervision_controller::initialize()?;
+    Ok(())
+}
+
+pub async fn actor(user_id: i32, user: &UserContext) -> Result<Context, Error> {
+    if user_id <= 0 || user.user_id != user_id.to_string() { return Err(Error::Forbidden); }
+    let tenant = user.tenant_id().ok_or(Error::Forbidden)?;
+    let school = school_service::resolve_membership_at(user_id, Some(tenant), SystemClock.now()?).await.map_err(|_| Error::Forbidden)?;
+    if school.tenant_key != tenant { return Err(Error::Forbidden); }
+    Context::new(tenant, user_id.to_string())
+}
+
+pub async fn subject_scope(actor: &Context, subject: i32, resource: &str) -> Result<Scope, Error> {
+    if subject <= 0 { return Err(Error::Forbidden); }
+    let school = school_service::resolve_membership_at(subject, Some(actor.tenant().as_str()), SystemClock.now()?).await.map_err(|_| Error::Forbidden)?;
+    if school.tenant_key != actor.tenant().as_str() { return Err(Error::Forbidden); }
+    Scope::new(actor.tenant().as_str(), subject.to_string(), resource)
+}
+
+pub async fn authorize_learning(user_id: i32, user: &UserContext, course: i32) -> Result<(), Error> {
+    if course <= 0 { return Err(Error::Forbidden); }
+    let authenticated_id = user.user_id.parse::<i32>().map_err(|_| Error::Forbidden)?;
+    let actor = actor(authenticated_id, user).await?;
+    if authenticated_id != user_id {
+        // Preserve already-authorized administrative maintenance (for example
+        // progress corrections). This never grants supervision/reviewer access.
+        // Original learning authorization ran before this additional gate.
+        if !user.has_role("admin") { return Err(Error::Forbidden); }
+        subject_scope(&actor, user_id, "learning").await?;
+        return Ok(());
+    }
+    // Fixed server resource: a client must never select an unmanaged policy namespace.
+    let scope = Scope::new(actor.tenant().as_str(), actor.actor().as_str(), "learning")?;
+    if store().await?.learning_access(&actor, &scope, &rullst_supervision::OpaqueId::new(course.to_string())?).await?.permits_learning() { Ok(()) } else { Err(Error::Forbidden) }
+}

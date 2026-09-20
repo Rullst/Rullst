@@ -219,11 +219,7 @@ jobs:
               --arg version "$release_version" \
               -f .github/release-preflight.jq
 
-          cargo package \
-            --workspace \
-            --exclude rullst-blog-example \
-            --all-features \
-            --locked
+          bash .github/package-release.sh
 
       - name: Inspect packaged crate contents
         env:
@@ -393,12 +389,7 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           release_version="${RELEASE_TAG#v}"
-          cargo package \
-            --workspace \
-            --exclude rullst-blog-example \
-            --all-features \
-            --locked \
-            --no-verify
+          bash .github/package-release.sh --no-verify
           bash .github/audit-packages.sh "$release_version"
 
           while IFS= read -r crate; do

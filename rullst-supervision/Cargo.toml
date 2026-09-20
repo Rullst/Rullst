@@ -1,0 +1,26 @@
+[package]
+name = "rullst-supervision"
+version = "13.0.0-alpha.1"
+edition = "2024"
+rust-version = "1.96.0"
+authors = ["Rullst Core Team"]
+description = "Bounded transparent exam and parental supervision for Rullst"
+license = "MIT"
+repository = "https://github.com/Rullst/Rullst"
+readme = "README.md"
+publish = false
+
+[features]
+default = []
+exam = []
+parental = []
+sqlite = ["exam", "parental", "dep:ring", "dep:sqlx"]
+
+[dependencies]
+thiserror = { workspace = true }
+ring = { workspace = true, features = ["std"], optional = true }
+sqlx = { workspace = true, features = ["runtime-tokio", "sqlite"], optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
+tempfile = "3"

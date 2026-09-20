@@ -1,0 +1,70 @@
+use rullst::{html::escape_str as escape, response::Html};
+use rullst_supervision::{Scope, exam::{Session, SessionState, EventReceipt, VisibilityEvent}, parental::ManagedLearner};
+use super::{proof::Proof, service::config};
+
+fn shell(title: &str, body: &str) -> Html<String> {
+    Html(format!(r##"<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{title}</title></head><body><a href="#main">Skip to content</a><main id="main"><h1>{title}</h1>{body}<p><a href="/">Return to learning</a></p></main></body></html>"##))
+}
+fn fields(csrf: &str, proof: &Proof) -> String {
+    format!(r##"<input type="hidden" name="_token" value="{}"><input type="hidden" name="revision" value="{}"><input type="hidden" name="issued_at" value="{}"><input type="hidden" name="proof" value="{}">"##, escape(csrf), proof.revision, proof.issued_at, escape(&proof.proof))
+}
+fn acknowledgement() -> String {
+    format!(r##"<input type="hidden" name="policy" value="{}"><input type="hidden" name="notice" value="{}"><label><input type="checkbox" name="acknowledge" value="yes" required="true"> I have read this notice and agree to start these page visibility reports.</label>"##, escape(config::POLICY), escape(config::NOTICE))
+}
+fn state(session: &Session) -> &'static str {
+    match session.state() { SessionState::Active => "Active", SessionState::Paused => "Paused", SessionState::Ended => "Ended", SessionState::Expired => "Expired", _ => "Unavailable" }
+}
+fn date(epoch: i64) -> String {
+    chrono::DateTime::from_timestamp(epoch, 0).map(|v| v.format("%Y-%m-%d %H:%M:%S UTC").to_string()).unwrap_or_else(|| "Unavailable".to_owned())
+}
+
+pub(super) fn exam(scope: &Scope, session: Option<&Session>, url: &str, csrf: &str, nonce: &str, proof: &Proof) -> Html<String> {
+    let hidden = fields(csrf, proof); let action = escape(url);
+    let mut body = format!(r##"<p>This optional session reports only whether this page is visible or hidden. It does not record your camera, microphone, screen, keys, other pages or location. Reports can be missing or inaccurate and do not determine grades, attendance or misconduct.</p><p>Reports are available only to you and separately authorized reviewers. Each report expires after {} seconds. Collection stops after at most {} seconds. You can pause or end it below; learning access does not require starting collection.</p><p>Policy: {}. Notice: {}.</p><noscript><p>JavaScript is disabled: page visibility is not reported. The session controls below still work.</p></noscript>"##, config::RETENTION_SECONDS, config::SESSION_SECONDS, escape(config::POLICY), escape(config::NOTICE));
+    if let Some(session) = session {
+        body.push_str(&format!(r##"<p>Session: <span id="session-state">{}</span>. Expires: {}.</p><p id="collection-status" role="status" aria-live="polite">No observations are sent until this page's visibility changes.</p><p>Accepted observations: {}.</p>"##, state(session), date(session.expires_at()), session.accepted_event_count()));
+        if matches!(session.state(), SessionState::Active | SessionState::Paused) {
+            let control = if session.state() == SessionState::Active { "pause" } else { "resume" };
+            let label = if control == "pause" { "Pause collection" } else { "Resume collection" };
+            let ack = if control == "resume" { acknowledgement() } else { String::new() };
+            body.push_str(&format!(r##"<form data-session-control="true" method="post" action="{action}">{hidden}{ack}<button name="action" value="{control}" type="submit">{label}</button></form><form data-session-control="true" method="post" action="{action}">{hidden}<button name="action" value="end" type="submit">End collection</button></form>"##));
+        }
+        if session.state() == SessionState::Active && session.policy().as_str() == config::POLICY && session.notice().as_str() == config::NOTICE {
+            let event_url = url.replacen("/supervision/exam", "/supervision/event", 1);
+            body.push_str(&format!(r##"<form id="visibility-report" hidden="true" data-expires="{}" action="{}">{hidden}<input type="hidden" name="sequence" value="{}"></form><script nonce="{}">{}</script>"##, session.expires_at(), escape(&event_url), session.last_sequence(), escape(nonce), include_str!("visibility.js")));
+        } else { body.push_str("<p>Page visibility collection is stopped on this page.</p>"); }
+    } else {
+        body.push_str(&format!(r##"<form method="post" action="{action}">{hidden}{}<button name="action" value="start" type="submit">Start optional collection</button></form>"##, acknowledgement()));
+    }
+    let lesson = scope.resource().as_str().strip_prefix("lesson:").unwrap_or("");
+    body.push_str(&format!(r##"<p>School: {}. Lesson: {}.</p><p><a href="/lessons/{lesson}/play">Open lesson</a> (uses your current school selection).</p>"##, escape(scope.tenant().as_str()), escape(lesson)));
+    shell("Transparent supervision", &body)
+}
+
+pub(super) fn parental(scope: &Scope, managed: Option<&ManagedLearner>, manager: bool, url: &str, csrf: &str, proof: &Proof) -> Html<String> {
+    let mut body = format!("<p>Learning restrictions for learner {} in school {}. These controls apply to this application only; they never grant enrollment or access to unpublished content.</p>", escape(scope.subject().as_str()), escape(scope.tenant().as_str()));
+    if let Some(managed) = managed {
+        if let Some(policy) = managed.policy() {
+            let courses = policy.courses().iter().map(|id| escape(id.as_str())).collect::<Vec<_>>().join(", ");
+            body.push_str(&format!("<p>Allowed course numbers: {}. Access window: {} through {}. Access is denied outside this window.</p>", if courses.is_empty() {"None"} else {&courses}, date(policy.not_before()), date(policy.expires_at())));
+        } else { body.push_str("<p>Learning is restricted until an authorized manager saves a valid policy.</p>"); }
+        if manager {
+            body.push_str(&format!(r##"<form method="post" action="{}">{}<label>Allowed course numbers, separated by spaces (blank denies all)<input name="courses" maxlength="704" autocomplete="off"></label><label>Access starts (UTC)<input type="datetime-local" name="not_before" required="true"></label><label>Access ends (UTC, within 30 days of the start)<input type="datetime-local" name="expires_at" required="true"></label><button type="submit">Replace learning restrictions</button></form><p>Saving replaces the entire allowed list and window. Existing restrictions remain if your management permission is revoked.</p>"##, escape(url), fields(csrf,proof)));
+        }
+    } else { body.push_str("<p>No parental learning restrictions are enrolled. Ordinary course authorization still applies.</p>"); }
+    shell("Learning restrictions", &body)
+}
+
+pub(super) fn review(scope: &Scope, session: &Session, events: &[EventReceipt]) -> Html<String> {
+    let mut body = format!("<p>Learner {}. Session {}. These untrusted reports never establish misconduct, attendance or identity.</p><table><caption>Reported page visibility</caption><thead><tr><th>Sequence</th><th>Report</th><th>Received (UTC)</th></tr></thead><tbody>", escape(scope.subject().as_str()), state(session));
+    for event in events {
+        let report = match event.event() { VisibilityEvent::PageVisible => "Page visible", VisibilityEvent::PageHidden => "Page hidden", _ => "Unknown" };
+        body.push_str(&format!("<tr><td>{}</td><td>{report}</td><td>{}</td></tr>", event.sequence(), date(event.received_at())));
+    }
+    body.push_str("</tbody></table>");
+    if events.len() == 50 && let Some(last) = events.last() {
+        let lesson = scope.resource().as_str().strip_prefix("lesson:").unwrap_or("");
+        body.push_str(&format!(r##"<a href="/supervision/review?school={}&amp;subject={}&amp;lesson={lesson}&amp;session={}&amp;after={}">Next observations</a>"##, escape(scope.tenant().as_str()), escape(scope.subject().as_str()), escape(session.id().as_str()), last.sequence()));
+    }
+    shell("Authorized session review", &body)
+}

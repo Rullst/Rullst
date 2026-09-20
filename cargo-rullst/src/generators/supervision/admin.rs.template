@@ -1,0 +1,93 @@
+//! Local trusted operator only. Never expose this executable through an HTTP route.
+use rullst_supervision::sqlite::SqliteSupervision;
+use rullst_supervision::{AuthorityAction, AuthorityKey, Context, OpaqueId, Operator, Revision, Scope, SupervisionError as Error, SystemClock};
+use serde::Deserialize;
+use std::io::Read;
+#[path = "../services/supervision/config.rs"] mod config;
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Request { tenant: String, operator: String, evidence: String, command: Command }
+#[derive(Deserialize)]
+#[serde(tag = "operation", rename_all = "snake_case", deny_unknown_fields)]
+enum Command {
+    Initialize,
+    Enroll { subject: i32 },
+    Remove { subject: i32, revision: i64 },
+    Grant { subject: i32, delegate: i32, action: Action, lesson: Option<i32>, revision: Option<i64>, expires_at: i64 },
+    Revoke { subject: i32, delegate: i32, action: Action, lesson: Option<i32>, revision: i64 },
+    InspectGrant { subject: i32, delegate: i32, action: Action, lesson: Option<i32> },
+    Purge { limit: u32 },
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum Action { ExamReview, ParentalManage }
+fn scope(tenant: &str, subject: i32, resource: &str) -> Result<Scope, Error> {
+    if subject <= 0 { return Err(Error::InvalidInput); }
+    Scope::new(tenant, subject.to_string(), resource)
+}
+fn authority(tenant: &str, subject: i32, delegate: i32, action: Action, lesson: Option<i32>) -> Result<AuthorityKey, Error> {
+    if delegate <= 0 || delegate == subject { return Err(Error::InvalidInput); }
+    let (action, resource) = match (action, lesson) {
+        (Action::ExamReview, Some(id)) if id > 0 => (AuthorityAction::ExamReview, format!("lesson:{id}")),
+        (Action::ParentalManage, None) => (AuthorityAction::ParentalManage, "learning".to_owned()),
+        _ => return Err(Error::InvalidInput),
+    };
+    AuthorityKey::new(scope(tenant, subject, &resource)?, delegate.to_string(), action)
+}
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut arguments = std::env::args_os().skip(1);
+    let path = arguments.next().ok_or("usage: supervision-admin <private-command.json>")?;
+    if arguments.next().is_some() { return Err("exactly one command file is required".into()); }
+    let mut bytes = Vec::new();
+    let file = std::fs::File::open(path)?;
+    let metadata = file.metadata()?;
+    if !metadata.is_file() || metadata.len() > 16 * 1024 { return Err("command must be a regular file of at most 16 KiB".into()); }
+    file.take(16 * 1024 + 1).read_to_end(&mut bytes)?;
+    if bytes.len() > 16 * 1024 { return Err("command exceeds 16 KiB".into()); }
+    let request: Request = serde_json::from_slice(&bytes)?;
+    let operator = Operator::new(Context::new(&request.tenant, request.operator)?, request.evidence)?;
+    // Configuration identifiers are validated for the web and operator binaries alike.
+    OpaqueId::new(config::POLICY)?; OpaqueId::new(config::NOTICE)?;
+    let (path, settings) = config::settings()?;
+    if matches!(request.command, Command::Initialize) {
+        let store = SqliteSupervision::initialize(path, settings, SystemClock).await?;
+        store.close().await;
+        println!("Initialized private supervision state. No authority or management was provisioned.");
+        return Ok(());
+    }
+    let store = SqliteSupervision::open(path, settings, SystemClock).await?;
+    match request.command {
+        Command::Initialize => return Err("initialization cannot reopen existing state".into()),
+        Command::Enroll { subject } => {
+            let record = store.enroll_parental(&operator, &scope(&request.tenant, subject, "learning")?).await?;
+            println!("Enrolled with access denied by default; revision={}", record.revision().value());
+        },
+        Command::Remove { subject, revision } => {
+            store.remove_parental(&operator, &scope(&request.tenant, subject, "learning")?, Revision::new(revision)?).await?;
+            println!("Management removed explicitly. Ordinary application authorization still applies.");
+        },
+        Command::Grant { subject, delegate, action, lesson, revision, expires_at } => {
+            let key = authority(&request.tenant, subject, delegate, action, lesson)?;
+            let grant = store.provision_authority(&operator, &key, revision.map(Revision::new).transpose()?, expires_at).await?;
+            println!("Authority installed; revision={}; expires_at={}", grant.revision().value(), grant.expires_at());
+        },
+        Command::Revoke { subject, delegate, action, lesson, revision } => {
+            let key = authority(&request.tenant, subject, delegate, action, lesson)?;
+            let grant = store.revoke_authority(&operator, &key, Revision::new(revision)?).await?;
+            println!("Authority revoked; revision={}. Existing learning restrictions remain.", grant.revision().value());
+        },
+        Command::InspectGrant { subject, delegate, action, lesson } => {
+            let key = authority(&request.tenant, subject, delegate, action, lesson)?;
+            if let Some(grant) = store.authority(&operator, &key).await? { println!("revision={}; expires_at={}; revoked={}", grant.revision().value(), grant.expires_at(), grant.is_revoked()); }
+            else { println!("No grant exists."); }
+        },
+        Command::Purge { limit } => {
+            let receipt = store.purge_expired(&operator, limit).await?;
+            println!("Expired logical rows removed: events={}, sessions={}, grants={}", receipt.events, receipt.sessions, receipt.grants);
+        },
+    }
+    store.close().await;
+    Ok(())
+}

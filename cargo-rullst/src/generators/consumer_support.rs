@@ -40,7 +40,7 @@ pub(super) fn formatted(source: &str) -> Result<String, Box<dyn std::error::Erro
     Ok(String::from_utf8(output.stdout)?)
 }
 
-fn equivalent(left: &str, right: &str) -> Result<bool, Box<dyn std::error::Error>> {
+pub(super) fn equivalent(left: &str, right: &str) -> Result<bool, Box<dyn std::error::Error>> {
     let left = syn::parse_file(left)?.into_token_stream().to_string();
     let right = syn::parse_file(right)?.into_token_stream().to_string();
     Ok(left == right || formatted(&left)? == formatted(&right)?)
