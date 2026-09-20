@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use walkdir::{DirEntry, WalkDir};
 
-pub(super) const RULE_CATALOG_VERSION: &str = "rullst-upgrade-rules-v1";
+pub(super) const RULE_CATALOG_VERSION: &str = "rullst-upgrade-rules-v2";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]

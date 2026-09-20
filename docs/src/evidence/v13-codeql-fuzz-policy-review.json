@@ -1,0 +1,13 @@
+{
+  "reviewed_head": "d783f3b74c2e4ca5d7796fe00f54fff2f50b7edb",
+  "analyzed_merge": "70c391f733ccf4218cf1df6cd88b7a9781a95a06",
+  "analysis_id": 1806278303,
+  "sarif_sha256": "deba33c8b7a81d90bf4f0df8e79b94c2ad6ce513d618cad72fbe05caf44a8953",
+  "rule": "rust/hard-coded-cryptographic-value",
+  "date_utc": "2026-09-20",
+  "disposition": "false positive",
+  "alert_numbers": [338],
+  "location": "rullst-privacy/fuzz/src/lib.rs:19",
+  "reason": "The reported literal 18 is the policy minimum age. SARIF conflates the threshold validation Result/TryExpr with the entire returned AgeChallenge and subsequently its nonce. The isolated publish=false fuzz workspace deliberately authenticates deterministic fixture bytes, including a separate [9;32] nonce; it supplies no production defaults. Production issuance uses fallible ring SystemRandom and token decoding authenticates all bytes before interpretation.",
+  "scope": "Only this individually inspected instance. No query, path or fuzz target is excluded. Reassess on implementation changes. This disposition does not establish combined hosted or release acceptance."
+}

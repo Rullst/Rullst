@@ -33,6 +33,7 @@ The Rullst framework is organized into decoupled, high-performance crates:
 | **`rullst-macros`** | Procedural macros (`html!`, `rullst::model`, `rullst::runtime::main`). |
 | **`cargo-rullst`** | Developer CLI scaffold generator (`make:*` commands), AST IDOR scanner, and 1-Click cloud deployer. |
 | **`rullst-labs`** *(v13 roadmap)* | Planned trusted contracts and orchestration for bounded programming exercises and graders; it must never execute learner code. |
+| **`rullst-supervision`** *(first conditional v13 extension)* | Proposed separate exam/learner and parental supervision modules with visible sessions, independent guardian/reviewer authorization, minimal events and application-side restrictions. No crate exists yet; browser/device acceptance and its precise SST contract precede admission. |
 | **`rullst-labs-runner`** *(v13 roadmap)* | Planned separately deployed untrusted-code executor; it must not run in the web process or receive application secrets/control sockets. |
 
 ---

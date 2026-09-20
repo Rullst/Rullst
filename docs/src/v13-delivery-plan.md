@@ -47,6 +47,13 @@ The prioritized implementation sequence is:
 7. Improve the documentation and bounded generated project context for the
    delivered scope. Attempt the small production-linked Verus pilot only after
    the mandatory feature work is ready for its verification campaign.
+8. **First additional priority, explicitly requested on 20 September:** evaluate
+   `rullst-supervision` for transparent exam/learner supervision and parental
+   rules within the application, ahead of other conditional extensions. Start
+   after the required deliveries are implemented and validated, leaving time
+   for combined acceptance and publication. The preliminary engineering estimate
+   is one to two days for a bounded first journey and its tests, plus hosted CI;
+   it is not a commitment to complete device-wide controls by 26 September.
 
 A provider adapter may enter this release only if its environment, protocol and
 acceptance evidence are ready in time. Its absence does not suspend independent
@@ -154,6 +161,50 @@ individually reviewed and dismissed; the
 binds those decisions to the old analyzed source. No query was disabled.
 Combined hosted acceptance for the subsequent changes remains pending.
 
+The next adoption increment gives the existing sixteen release packages and
+their internal requirements the explicit development version `13.0.0-alpha.1`.
+Privacy remains unpublished. Migration catalog v2 admits source major 13,
+retains target-major selection and downgrade rejection, and invalidates old
+preparations. Local updater contracts exercise a distinct 12.1.0→13 resolution,
+review, stale-input rejection, application and recovery. Both executable names
+report the actual source version; prerelease tests keep the explicit opt-in.
+The [adoption guide](migration-v13.md) inventories the current additive changes
+and distinguishes tiny updater protocol packages from actual generated
+framework consumers. Combined hosted acceptance and an unpublished package
+rehearsal remain outstanding.
+
+The development train passed 348 local CLI unit tests, 46 updater process
+contracts, 32 command/scaffold contracts and the generated foundation matrix
+(Blank/API, SaaS and full LMS, including LMS authorization negatives). Release
+preflight still identifies sixteen publishable packages with a consistent
+version and topological order; it does not admit the unpublished privacy package.
+Strict CLI all-feature/all-target Clippy and production panic checks passed.
+These are local checks, not the outstanding combined hosted/package campaign.
+
+The Android candidate now binds one fresh bounded APK to the application's
+expected certificate through the SDK verifier, checks its final bytes, rejects
+stale/ambiguous outputs and withholds captured signing-tool diagnostics. Native
+process fixtures exercise success, explicit selection, wrong certificates,
+missing/stale/oversized/changed files, verifier/build failures and output/time
+bounds. The hosted Android workflow now exercises this CLI against a real
+signed release and independently checks its certificate and receipt. That new
+hosted result remains pending; protocol fixture success does not certify SDK
+interoperability or devices/stores.
+
+The PR #219 follow-up CodeQL analysis reported one additional threshold-to-nonce
+conflation in the isolated privacy fuzz helper. Alert 338 was individually
+reviewed against SARIF 1806278303 and dismissed; the
+[fuzz-policy review receipt](evidence/v13-codeql-fuzz-policy-review.json) records
+the exact source and reasoning. The policy literal is 18; the fuzz-only nonce
+is a separate deterministic fixture, and production issuance retains OS entropy.
+No source path, query or fuzz target was disabled.
+
+PR #220 head `52657955` passed the real SDK signed-APK job, but its coverage
+and macOS CLI campaign exposed two Android fixture/build-timing issues. The
+follow-up preserves OS process helpers in the fixture PATH and compares artifact
+timestamps against a temporary filesystem anchor. Local native selection and
+redaction scenarios passed after correction; a fresh combined campaign is required.
+
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |
 | P0 | Published v12.1.0 corrections integrated without losing v13 work | Review conflicts; retain the stable runtime changes; pass the combined workspace tests, strict Clippy, format and feature/consumer checks. |
@@ -166,6 +217,7 @@ Combined hosted acceptance for the subsequent changes remains pending.
 | P1 | Android artifact verification through the CLI | Select the intended release output, run signature verification and bind the signer to the application-owned certificate. Reject missing, ambiguous, stale, unsigned or wrong-key artifacts; test process failures and redaction. Validate a real generated APK in hosted Android CI; device/store acceptance remains separate. |
 | P1 | Better application context for maintainers and assistants | Accurate generated `AGENTS.md`, a bounded deterministic project map, configuration key names without values, explicit file/secret exclusions, freshness information and executable regression fixtures. |
 | P1 | Focused Verus pilot | One production age-policy property with checked linkage, pinned tooling, negative controls and measured cost. No framework-wide verification claim or automatic expansion to every crate. |
+| First conditional extension | `rullst-supervision` candidate | One generated LMS journey with visible sessions, explicit permissions, independently established guardian/reviewer authority, effective revocation, bounded events/retention and tested application-side restrictions. Prove cross-school/subject/reviewer denial and browser behavior. Client observations cannot prove misconduct or automatically change grades. Device-wide control, camera inference and a mock-only package do not satisfy this scope. |
 
 P0 items have precedence over new integrations, cosmetic rewrites and expanding
 the number of crates. Each implementation should remain a small reviewable
@@ -192,6 +244,7 @@ when its dependencies and verification capacity are ready.
 | M5/M29/M34 — API/SDK contracts | Scalar and the route-scanning OpenAPI generator exist, but scanning currently emits placeholder responses. Add a schema-backed supported API profile and one TypeScript target. | Active P1 queue; React, Dart and Swift targets follow the proven schema contract. |
 | M21 — Omni/Android | Version 12.1 configures application-owned signing; hosted Android CI already verifies signatures and the expected certificate. Bring that verification into the public CLI with exact artifact handling. | Active P1 queue; this closes a CLI gap, not physical-device or store acceptance. |
 | M9 — Auth/session consistency | Durable account recovery and revocation exist. Evaluate one shared passkey-ceremony lifecycle with atomic single use, expiry and tenant/session binding. | Next extension after the active product increments; choose the storage/API boundary before promising implementation. |
+| Transparent supervision | The owner has selected the proposed `rullst-supervision` as the first additional priority. Keep parental and exam policies distinct and reuse privacy primitives through explicit composition. | First conditional extension after required deliveries; a usable generated journey and browser/authorization tests precede package admission. Device-wide control remains separate. |
 | M15 — remote messaging | Wire contracts, local durable state and the ORM outbox exist. Evaluate one remote broker adapter with real restart, redelivery and lease/idempotency evidence. | Conditional extension; select a broker and supported semantics first. Seven adapter names are not seven functioning integrations. |
 | M40 — Labs | The threat model and separate web-contract/runner roadmap are retained. The first candidate is a bounded job/grading/receipt contract with a deterministic local protocol fixture. | Conditional extension; contracts alone do not deliver code execution. A usable runner requires its own isolated deployment and adversarial acceptance. |
 | M1/M3/M7/M12 — adoption and assurance | Carry the compatible updater forward, add actual major-version migrations, improve generated guidance and connect new code to the relevant verification inventory. | Required adoption/security work plus bounded maintainer tooling; Verus begins with one production-linked pilot. |

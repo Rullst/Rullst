@@ -103,6 +103,7 @@
   - [v5 to v12](migration-v5-to-v12.md)
   - [v6 to v12](migration-v6-to-v12.md)
   - [v11-era Dependencies to v12](migration-v11-to-v12.md)
+- [Preparing Applications for v13](migration-v13.md)
 - [AI Provider Capability Matrix](ai-provider-capabilities.md)
 - [Guarded Local AI Tools](ai-tool-security.md)
 - [v12 Security Claims & Evidence](v12-security-claims.md)

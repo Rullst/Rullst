@@ -22,8 +22,6 @@ enum SigningError {
         "the generated Android project has no Rullst signing guard; follow the migration steps in the Omni signing tutorial"
     )]
     Unconfigured,
-    #[error("Android release build failed; no distributable APK is certified")]
-    Build,
 }
 
 impl std::fmt::Debug for SigningError {
@@ -45,7 +43,7 @@ pub(super) fn configure_android_signing(omni_dir: &Path) -> Result<(), Box<dyn s
     Ok(())
 }
 
-pub fn build_android_release() -> Result<(), Box<dyn std::error::Error>> {
+pub(super) fn validate() -> Result<(), Box<dyn std::error::Error>> {
     for variable in VARIABLES {
         if std::env::var_os(variable).is_none_or(|value| value.is_empty()) {
             return Err(SigningError::Missing(variable).into());
@@ -60,16 +58,6 @@ pub fn build_android_release() -> Result<(), Box<dyn std::error::Error>> {
     if !gradle.contains(SIGNING_MARKER) {
         return Err(SigningError::Unconfigured.into());
     }
-    let status = super::runner::get_tauri_command(omni_dir)?
-        .args(["android", "build", "--apk", "--ci"])
-        .current_dir(omni_dir)
-        .status()?;
-    if !status.success() {
-        return Err(SigningError::Build.into());
-    }
-    println!(
-        "Android release build completed with application-owned signing. Verify the APK certificate and test it on a device before distribution; store acceptance is separate."
-    );
     Ok(())
 }
 

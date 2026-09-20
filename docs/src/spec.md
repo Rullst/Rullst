@@ -263,6 +263,28 @@ recreates it. The generated consent profile remains shared-local SQLite only.
 The separate [SaaS triage](saas-v12-1-v13-triage.md) assigns the examples' reported
 defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidence.
 
+### v13 source-train and adoption preparation
+
+The development train uses `13.0.0-alpha.1` consistently for the existing
+publishable packages and their internal requirements. This prepares the CLI's
+actual major-version behavior; it is not a publication or stable-release claim.
+The privacy package retains its unpublished admission boundary and explicit
+local-source consumers until its release configuration is accepted.
+
+The `rullst-upgrade-rules-v2` migration catalog recognizes source major 13 as
+well as 5, 6, 11 and 12, keeps exact target-major CLI selection and rejects
+downgrades. Preparations from the previous catalog require fresh preparation
+and verification. The [12.1-to-13 source inventory](migration-v13.md) adds opt-in privacy APIs,
+consumer generators and security header composition, without a known required
+replacement of existing application APIs. Automatic preparation is therefore
+limited to supported dependency manifests and the existing compiler/check/test
+workflow; it must not invent code rewrites, enable age or consent policies,
+bootstrap privacy state, replace authentication or deploy an application.
+Migration evidence must distinguish small offline updater protocol fixtures
+from generated SaaS/LMS consumers compiled against actual framework source.
+Release-time inventory and package checks must revisit this boundary as more
+v13 changes land.
+
 ### v13 formal-verification pilot boundary
 
 The [Verus pilot](verus-roadmap.md) is planned work, beginning with production
@@ -273,6 +295,34 @@ contracts. No dedicated public crate is proposed. A pinned, isolated verifier
 and manual workflow precede any required v13 check; compatibility, reproducible
 proofs, negative controls and measured CI cost are promotion criteria. This
 plan adds no v12.1 release gate or framework-wide correctness claim.
+
+### Conditional v13 supervision crate
+
+The owner requested transparent learner/exam supervision and parental controls
+as the first additional priority after the required v13 deliveries have been
+implemented and validated. The proposed package name is `rullst-supervision`;
+this is a design reservation, not an existing or publishable package.
+
+Keep supervision policy/session/event and reviewer-access contracts separate
+from `rullst-privacy` age and consent primitives. Exam supervision and parental
+controls need distinct modules and authorization policies. The initial candidate
+must deliver one real generated LMS journey, visible session status, explicit
+permissions, revocation, bounded collection/retention and actual application-side
+enforcement, with cross-school/subject and unauthorized-reviewer negatives.
+Parental time/content restrictions initially concern this application only.
+The host must establish guardian/reviewer authority independently; age results,
+account ownership, a checkbox or a claimed family relationship do not prove it.
+
+Browser observations are untrusted client reports, never proof of misconduct,
+identity or an automatic reason to change grades or impose a penalty. Collect
+only the documented minimal events with visible active/paused/ended state;
+do not add covert camera/microphone/location capture or unrelated browsing data.
+Native device-wide controls, camera inference and managed operating-system agents
+need separate platform integration and acceptance. Global legal compliance is
+not inferred from these controls. The exact API/storage boundary and its threat
+model must be specified before scaffolding the crate. Empty contracts or a mock
+alone do not meet its admission criteria, and it must not delay required release
+gates; retain it for a subsequent v13 release if capacity is insufficient.
 
 ### Versioned release-branch boundary
 
@@ -1963,6 +2013,29 @@ authoritative secrets into JavaScript or an untrusted client.
   command enum. No shared signing key, store publication or physical-device
   evidence is implied. Existing/custom-flavor shells need reviewed migration;
   see the [signing guide](tutorials/49-omni-android-signing.md).
+* 🟠 **`[v13 candidate / hosted acceptance pending]` Verified Android release output:** the
+  CLI binds a successful build to one fresh release APK under the generated
+  Android output directory. An explicit relative APK selection may disambiguate
+  variants; absent, unchanged, ambiguous, linked or oversized outputs fail.
+  Reproducible bytes may be accepted only when the output's filesystem timestamp
+  changed during this build; a cached unchanged artifact is not fresh evidence.
+  Compare artifact time with a temporary filesystem timestamp anchor created
+  before the build, so filesystem clock granularity cannot invalidate a fresh
+  fast build merely by lagging the wall clock. The before/after artifact identity
+  comparison remains mandatory.
+  An application-owned DER certificate and a trusted absolute SDK
+  `apksigner.jar` path are required in addition to signing inputs. Invoke the
+  jar through Java from an absolute trusted PATH entry, with bounded output,
+  deadlines and process cleanup. The verifier receives no keystore or password
+  environment inputs. It requires cryptographic verification of a private bounded APK
+  snapshot with SDK warnings treated as errors, report exactly one supported signer and match the expected
+  certificate SHA-256. Verify that the original bytes still match before
+  reporting the APK digest. Tool failures expose fixed diagnostics, not captured
+  logs or signing secrets. Local protocol fixtures are not real APK acceptance;
+  hosted Android CI must build and verify a generated signed APK through this
+  CLI. Multiple signers/key rotation, arbitrary output layouts, AAB/store/device
+  acceptance and protection from hostile build tools or same-user writers remain
+  separate contracts.
 * 🟢 **`[Implemented / Bounded]` Remote-content Boundary:** the generated local
   bootstrap exposes no Tauri IPC API to the remote application. A native
   navigation callback permits only Tauri's packaged origin and the exact
