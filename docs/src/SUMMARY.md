@@ -22,6 +22,7 @@
 - [🧠 Integrating AI into Rullst](6-ai-integration-tutorial.md)
 - [Rullst AI Architecture & Local Models](7-ai-token-economy-and-local-llms.md)
 - [Generated Project Instructions & Context](project-context.md)
+- [Schema-First Rust & TypeScript APIs](typed-api.md)
 - [AI Maintainability & Project-Building Roadmap](ai-maintainability-roadmap.md)
 - [Rullst Labs & Isolated Runner Roadmap](rullst-labs-roadmap.md)
 - [Privacy & Proportional Age Assurance](privacy-age-assurance-roadmap.md)

@@ -66,6 +66,11 @@ cross-owner/tenant denial, missing records, bounded pagination and error respons
 that do not expose credentials or database details. Public demos and a compiling
 example are not substitutes for these application tests.
 
+The unpublished v13 [schema-first API candidate](typed-api.md) adds an explicit
+bounded OpenAPI profile, generated Rust codecs and a compiled TypeScript HTTP
+consumer. Its authenticated fixture proves the stated wire/ownership boundary;
+it does not close the broader CRUD/documentation programme below.
+
 ## What still needs improvement
 
 The existing chapters are useful but are not yet one complete, consistently

@@ -245,6 +245,19 @@ legacy migration, conflicting output and all six generated blueprints. Semantic
 route/authorization inference and task-specific context shards remain follow-up
 work; the [guide](project-context.md) states the exact candidate boundary.
 
+The [schema-first API candidate](typed-api.md) now generates Rust DTOs/operation
+codecs and a strict TypeScript client from one bounded OpenAPI 3.1 JSON profile.
+Seven generator contracts cover unsupported shapes, links, duplicate keys,
+collisions, regeneration and freshness. Local validation passed 371 CLI unit
+tests (one parent-owned child fixture ignored), strict all-target Clippy, the
+real generated Rust/TypeScript HTTP consumer, ten existing command contracts
+and the six-blueprint context journey. The HTTP fixture proves typed statuses,
+Unicode, optional/null semantics, exact safe integers, nested nullable arrays,
+unauthenticated/cross-owner denial and adversarial transport rejection. A
+GET-only Rust module also compiles with strict Clippy. Hosted Linux CLI acceptance
+requires the pinned TypeScript compiler and the actual HTTP journey; combined
+hosted admission remains pending.
+
 On 20 September at 07:31 UTC, the first four v12 mutation shards had hit their
 330-minute execution budget; their partial artifacts were retained. For example,
 shard 2 had executed 72 of 220 scheduled mutations (40 caught, 30 surviving,

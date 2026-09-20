@@ -1767,6 +1767,44 @@ workspace directory is trusted against concurrent adversarial filesystem edits.
 Local unit and real CLI/new-project contracts passed for the bounded inventory;
 combined hosted admission remains pending.
 
+### 11.2. Schema-First API Profile (v13 candidate)
+
+`generate:api --schema <file> --output <directory>` is an opt-in generator with
+one explicit OpenAPI 3.1 JSON source. It must reject unsupported keywords and
+shapes, external/cyclic references, duplicate keys, ambiguous names/routes and
+unbounded input before writing anything. The existing route-scanning generators
+remain discovery aids; their placeholder schemas do not enter this typed profile.
+
+The initial profile admits closed named objects, bounded strings/arrays,
+booleans, JavaScript-safe integers, required nullable scalar/array fields and
+optional non-nullable fields. Optional nullable fields, arbitrary maps,
+polymorphism, floating-point/64-bit numeric wire values, formats and recursive
+schemas remain unsupported. References are local named object components.
+Parameters are explicit path strings and scalar query values; request and
+response bodies are named JSON objects with explicit status codes. Bearer
+authentication is described explicitly, while identity, ownership, CSRF and
+authorization remain host application responsibilities.
+
+Generated Rust DTOs use Serde, and explicit operation codecs reuse Security's
+bounded duplicate-key inspection and offline JSON Schema policies. They validate
+input before deserialization and output before serialization. Generated
+TypeScript uses strict types, runtime validation and typed status/body unions;
+its HTTP client bounds response bytes/time, encodes parameters, refuses redirects
+and never includes tokens or rejected payloads in errors. No route is silently
+mounted and no schema declaration constitutes authorization.
+
+Generation preserves unrelated files, preflights recognized outputs and exposes
+a read-only freshness check. Hard budgets apply to source/output bytes, schemas,
+operations, properties, parameters and reference depth. The trusted project
+directory is not an adversarial concurrent filesystem boundary. Acceptance
+requires compiled generated Rust and strict TypeScript, plus a real HTTP consumer
+journey covering Unicode, missing versus null, bounds, typed errors and denied
+cross-owner access. Local generation, compiled Rust/strict TypeScript and HTTP
+consumer contracts passed, including read-only APIs, exact safe-integer bounds,
+nullable nested arrays, duplicate queries/JSON keys and cancellation. The initial
+implementation remains a candidate pending combined hosted admission; see the
+[supported profile](typed-api.md) for exact limits and application wiring.
+
 ## 🔄 12. Assisted Framework Upgrade Contract
 
 `cargo rullst upgrade` is the canonical application-upgrade boundary. It is an

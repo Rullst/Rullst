@@ -825,9 +825,15 @@ Dynamic routes, custom extractors, and semantic constraints may require manual
 edits; validate the result with an OpenAPI validator before publishing it.
 
 ### `cargo rullst generate:ts`
-Scans supported models and DTOs and emits a TypeScript file (`sdk.ts`). Generated
-types reduce duplication but do not replace compatibility tests for serialization
-and API behavior.
+Scans recognizable route declarations and emits `rullst-client.ts` with unchecked
+request/response placeholders. Review the output before use; route scanning does
+not establish DTO shapes, serialization or authorization.
+
+### `cargo rullst generate:api` (v13 candidate)
+Consumes one explicit bounded OpenAPI 3.1 profile and generates Rust DTOs/codecs,
+a typed TypeScript HTTP client and a canonical schema copy. Requires `--schema`
+and `--output`; `--check` verifies freshness without writes. Unsupported shapes
+fail before generation. See the [profile and executable acceptance](typed-api.md).
 
 ### `cargo rullst generate:diagram`
 Analyzes primary and foreign keys defined in your Models and exports a `diagram.md` file containing Mermaid.js code, visually generating an Entity-Relationship (ER) diagram.

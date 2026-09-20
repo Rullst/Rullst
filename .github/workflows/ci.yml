@@ -175,6 +175,7 @@ jobs:
       RULLST_UI_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && (matrix.shard == 'workspace' || matrix.shard == 'cli-saas-product') && '1' || '0' }}
       RULLST_UI_BROWSER_SCRIPT: ${{ github.workspace }}/.github/mobile-ui-browser-smoke.mjs
       RULLST_BILLING_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'cli-standard' && '1' || '0' }}
+      RULLST_API_CONTRACT_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'cli-standard' && '1' || '0' }}
     strategy:
       fail-fast: false
       matrix:
@@ -204,11 +205,15 @@ jobs:
           # emits false ENOENT annotations and uploads multi-gigabyte archives.
           cache: false
 
-      - name: Set up Node for browser regressions
-        if: env.RULLST_UI_BROWSER_TESTS == '1' || env.RULLST_BILLING_BROWSER_TESTS == '1'
+      - name: Set up Node for browser and typed API regressions
+        if: env.RULLST_UI_BROWSER_TESTS == '1' || env.RULLST_BILLING_BROWSER_TESTS == '1' || env.RULLST_API_CONTRACT_TESTS == '1'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
+
+      - name: Install pinned TypeScript contract compiler
+        if: env.RULLST_API_CONTRACT_TESTS == '1'
+        run: npm ci --prefix .github/api-contract --ignore-scripts --no-audit --no-fund
 
       - name: Run complete all-feature test shard
         # Note: --all-features activates strict-sqlite+strict-mysql+strict-postgres

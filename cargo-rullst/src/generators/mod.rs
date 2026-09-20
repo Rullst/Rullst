@@ -6,6 +6,7 @@ use std::path::Path;
 pub mod academy_doctor;
 pub(crate) mod age_gate;
 pub mod ai_context;
+pub(crate) mod api_contract;
 pub mod audit;
 mod audit_compliance;
 mod audit_evidence;

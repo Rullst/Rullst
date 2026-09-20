@@ -102,6 +102,10 @@ publication or admit a stable v13 release. See the
 - Replace copied project source with a bounded deterministic context inventory,
   key names without values and a read-only freshness check. Preserve existing
   `AGENTS.md` instructions and generate the inventory for all six blueprints.
+- Generate Rust operation codecs and a strict TypeScript HTTP client from one
+  bounded explicit OpenAPI 3.1 profile. Reject unsupported shapes, preserve
+  optional/null semantics and validate request/response data and typed statuses;
+  authentication and ownership remain explicit application responsibilities.
 
 ## [12.1.0] - 2026-09-20
 
