@@ -10,23 +10,26 @@ async fn visible_session_controls_and_event_sequences_survive_pool_reopen() {
                 &context("learner-b"),
                 &scope(),
                 &policy(),
-                &acknowledgement()
+                &acknowledgement(),
+                None
             )
             .await,
         Err(Error::Forbidden)
     ));
     let wrong = Acknowledgement::new("old-policy", "notice-v1", true).unwrap();
     assert!(matches!(
-        store.start_exam(&actor, &scope(), &policy(), &wrong).await,
+        store
+            .start_exam(&actor, &scope(), &policy(), &wrong, None)
+            .await,
         Err(Error::Conflict)
     ));
     let session = store
-        .start_exam(&actor, &scope(), &policy(), &acknowledgement())
+        .start_exam(&actor, &scope(), &policy(), &acknowledgement(), None)
         .await
         .unwrap();
     assert!(matches!(
         store
-            .start_exam(&actor, &scope(), &policy(), &acknowledgement())
+            .start_exam(&actor, &scope(), &policy(), &acknowledgement(), None)
             .await,
         Err(Error::Conflict)
     ));
@@ -180,6 +183,7 @@ async fn review_is_scoped_separate_from_parental_authority_and_revocable() {
             &scope(),
             &policy(),
             &acknowledgement(),
+            None,
         )
         .await
         .unwrap();
@@ -256,7 +260,7 @@ async fn expiry_and_retention_deny_reads_before_bounded_purge() {
         .await
         .unwrap();
     let session = store
-        .start_exam(&actor, &scope(), &policy(), &acknowledgement())
+        .start_exam(&actor, &scope(), &policy(), &acknowledgement(), None)
         .await
         .unwrap();
     store
@@ -327,4 +331,143 @@ async fn expiry_and_retention_deny_reads_before_bounded_purge() {
             .await,
         Err(Error::Conflict)
     ));
+}
+
+#[tokio::test]
+async fn ended_session_requires_a_fresh_start_revision_even_after_reopen() {
+    let (temp, store, clock) = fixture().await;
+    let actor = context("learner-a");
+    assert!(store.latest_exam(&actor, &scope()).await.unwrap().is_none());
+    let session = store
+        .start_exam(&actor, &scope(), &policy(), &acknowledgement(), None)
+        .await
+        .unwrap();
+    assert_eq!(
+        store
+            .latest_exam(&actor, &scope())
+            .await
+            .unwrap()
+            .unwrap()
+            .id(),
+        session.id()
+    );
+    let ended = store
+        .end_exam(&actor, &scope(), session.id(), session.revision())
+        .await
+        .unwrap();
+    store.close().await;
+    let store = SqliteSupervision::open(temp.path().join("supervision.sqlite"), config(), clock)
+        .await
+        .unwrap();
+    assert_eq!(
+        store
+            .latest_exam(&actor, &scope())
+            .await
+            .unwrap()
+            .unwrap()
+            .revision(),
+        ended.revision()
+    );
+    for stale in [None, Some(session.revision())] {
+        assert!(matches!(
+            store
+                .start_exam(&actor, &scope(), &policy(), &acknowledgement(), stale)
+                .await,
+            Err(Error::Conflict)
+        ));
+    }
+    assert!(matches!(
+        store.latest_exam(&context("learner-b"), &scope()).await,
+        Err(Error::Forbidden)
+    ));
+    let next = store
+        .start_exam(
+            &actor,
+            &scope(),
+            &policy(),
+            &acknowledgement(),
+            Some(ended.revision()),
+        )
+        .await
+        .unwrap();
+    assert_ne!(session.id(), next.id());
+    assert!(matches!(
+        store
+            .start_exam(
+                &actor,
+                &scope(),
+                &policy(),
+                &acknowledgement(),
+                Some(ended.revision())
+            )
+            .await,
+        Err(Error::Conflict)
+    ));
+}
+
+#[tokio::test]
+async fn latest_session_preserves_ended_state_and_expires_at_exact_boundaries() {
+    let (_temp, store, clock) = fixture().await;
+    let actor = context("learner-a");
+    let session = store
+        .start_exam(&actor, &scope(), &policy(), &acknowledgement(), None)
+        .await
+        .unwrap();
+    let other = Scope::new("school-a", "learner-a", "other-resource").unwrap();
+    assert!(store.latest_exam(&actor, &other).await.unwrap().is_none());
+    let ended = store
+        .start_exam(&actor, &other, &policy(), &acknowledgement(), None)
+        .await
+        .unwrap();
+    store
+        .end_exam(&actor, &other, ended.id(), ended.revision())
+        .await
+        .unwrap();
+    clock.set(session.expires_at() - 1);
+    assert_eq!(
+        store
+            .latest_exam(&actor, &scope())
+            .await
+            .unwrap()
+            .unwrap()
+            .state(),
+        SessionState::Active
+    );
+    assert_eq!(
+        store
+            .latest_exam(&actor, &other)
+            .await
+            .unwrap()
+            .unwrap()
+            .state(),
+        SessionState::Ended
+    );
+    clock.set(session.expires_at());
+    let expired = store.latest_exam(&actor, &scope()).await.unwrap().unwrap();
+    assert_eq!(expired.state(), SessionState::Expired);
+    assert_eq!(expired.revision(), session.revision());
+    assert_eq!(
+        store
+            .latest_exam(&actor, &other)
+            .await
+            .unwrap()
+            .unwrap()
+            .state(),
+        SessionState::Ended
+    );
+    // Retained expired state still binds the next start form until retention ends.
+    assert!(matches!(
+        store
+            .start_exam(&actor, &scope(), &policy(), &acknowledgement(), None)
+            .await,
+        Err(Error::Conflict)
+    ));
+    clock.set(session.expires_at() + 3600);
+    assert!(store.latest_exam(&actor, &scope()).await.unwrap().is_none());
+    assert!(store.latest_exam(&actor, &other).await.unwrap().is_none());
+    let replacement = store
+        .start_exam(&actor, &scope(), &policy(), &acknowledgement(), None)
+        .await
+        .unwrap();
+    assert_ne!(replacement.id(), session.id());
 }

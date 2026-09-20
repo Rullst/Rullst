@@ -7,18 +7,31 @@ use crate::{
 use ring::rand::SecureRandom;
 
 impl<C: Clock> SqliteSupervision<C> {
+    /// Start after the exact last retained session displayed by the host.
+    /// `None` means no retained session, not unconditional creation. The host's
+    /// form lifetime must be shorter than retention to prevent replay after purge.
     pub async fn start_exam(
         &self,
         context: &Context,
         scope: &Scope,
         policy: &ExamPolicy,
         acknowledgement: &Acknowledgement,
+        previous: Option<Revision>,
     ) -> Result<Session, Error> {
         context.require_subject(scope)?;
         acknowledgement.matches(policy.version(), policy.notice())?;
         let mut op = self.begin().await?;
         if policy.lifetime_seconds() > op.config.session_lifetime {
             return Err(Error::InvalidInput);
+        }
+        if op
+            .latest_session(scope)
+            .await?
+            .as_ref()
+            .map(|s| s.revision())
+            != previous
+        {
+            return Err(Error::Conflict);
         }
         let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_supervision_sessions")
             .fetch_one(&mut *op.tx)
@@ -72,6 +85,28 @@ impl<C: Clock> SqliteSupervision<C> {
             .bind(session.policy.as_str()).bind(session.notice.as_str()).bind(revision.value()).bind(op.now).bind(expires_at).bind(retain_until)
             .execute(&mut *op.tx).await.map_err(storage)?;
         op.until(expires_at)?;
+        op.finish().await?;
+        Ok(session)
+    }
+
+    /// Own latest retained state for start-form revision binding and recovery.
+    pub async fn latest_exam(
+        &self,
+        context: &Context,
+        scope: &Scope,
+    ) -> Result<Option<Session>, Error> {
+        context.require_subject(scope)?;
+        let mut op = self.begin().await?;
+        let mut session = op.latest_session(scope).await?;
+        if let Some(session) = &mut session {
+            if op.now >= session.expires_at && session.state != SessionState::Ended {
+                session.state = SessionState::Expired;
+            }
+            op.until(session.retain_until)?;
+            if matches!(session.state, SessionState::Active | SessionState::Paused) {
+                op.until(session.expires_at)?;
+            }
+        }
         op.finish().await?;
         Ok(session)
     }
@@ -207,6 +242,23 @@ impl<C: Clock> Operation<'_, C> {
         }
         self.require_authority(context, scope, AuthorityAction::ExamReview)
             .await
+    }
+
+    async fn latest_session(&mut self, scope: &Scope) -> Result<Option<Session>, Error> {
+        let id: Option<String> = sqlx::query_scalar("SELECT substr(id,1,129) FROM rullst_supervision_sessions WHERE tenant=? AND subject=? AND resource=? ORDER BY revision DESC LIMIT 1")
+            .bind(scope.tenant().as_str()).bind(scope.subject().as_str()).bind(scope.resource().as_str())
+            .fetch_optional(&mut *self.tx).await.map_err(storage)?;
+        let Some(id) = id else {
+            return Ok(None);
+        };
+        match self
+            .load_session(scope, &OpaqueId::new(id).map_err(|_| Error::Configuration)?)
+            .await
+        {
+            Ok(session) => Ok(Some(session)),
+            Err(Error::Expired) => Ok(None),
+            Err(error) => Err(error),
+        }
     }
 
     pub(super) async fn load_session(

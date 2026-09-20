@@ -49,7 +49,7 @@ async fn a_completed_pause_fences_events_from_another_pool() {
     let actor = context("learner-a");
     let scope = scope();
     let session = store
-        .start_exam(&actor, &scope, &policy(), &acknowledgement())
+        .start_exam(&actor, &scope, &policy(), &acknowledgement(), None)
         .await
         .unwrap();
     let (pause, event) = tokio::join!(
@@ -93,7 +93,7 @@ async fn expiry_while_waiting_for_a_writer_rejects_without_partial_event() {
     let (temp, store, clock) = fixture().await;
     let actor = context("learner-a");
     let session = store
-        .start_exam(&actor, &scope(), &policy(), &acknowledgement())
+        .start_exam(&actor, &scope(), &policy(), &acknowledgement(), None)
         .await
         .unwrap();
     let mut lock = SqliteConnection::connect_with(

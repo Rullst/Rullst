@@ -88,6 +88,7 @@ async fn capacities_never_evict_active_state_or_reset_event_sequence() {
             &scope(),
             &policy(),
             &acknowledgement(),
+            None,
         )
         .await
         .unwrap();
@@ -123,7 +124,8 @@ async fn capacities_never_evict_active_state_or_reset_event_sequence() {
                 &context("learner-a"),
                 &second,
                 &policy(),
-                &acknowledgement()
+                &acknowledgement(),
+                None
             )
             .await,
         Err(Error::Capacity)
@@ -182,6 +184,7 @@ async fn corrupted_rows_are_errors_instead_of_panics_or_authorization() {
             &scope(),
             &policy(),
             &acknowledgement(),
+            None,
         )
         .await
         .unwrap();
@@ -236,6 +239,7 @@ async fn oversized_stored_identifiers_are_rejected_and_never_returned() {
             &scope(),
             &policy(),
             &acknowledgement(),
+            None,
         )
         .await
         .unwrap();
@@ -285,7 +289,7 @@ async fn global_event_budget_rejects_without_advancing_another_session() {
     .unwrap();
     let actor = context("learner-a");
     let first = store
-        .start_exam(&actor, &scope(), &policy(), &acknowledgement())
+        .start_exam(&actor, &scope(), &policy(), &acknowledgement(), None)
         .await
         .unwrap();
     store
@@ -301,7 +305,7 @@ async fn global_event_budget_rejects_without_advancing_another_session() {
         .unwrap();
     let second_scope = Scope::new("school-a", "learner-a", "second-resource").unwrap();
     let second = store
-        .start_exam(&actor, &second_scope, &policy(), &acknowledgement())
+        .start_exam(&actor, &second_scope, &policy(), &acknowledgement(), None)
         .await
         .unwrap();
     assert!(matches!(
@@ -340,6 +344,7 @@ async fn persisted_authority_and_session_are_usable_from_a_new_process() {
             &scope(),
             &policy(),
             &acknowledgement(),
+            None,
         )
         .await
         .unwrap();
