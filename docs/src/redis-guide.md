@@ -34,7 +34,7 @@ feature) and construct the adapter explicitly:
 
 ```toml
 [dependencies]
-rullst-core = { version = "12.0.0", features = ["cache-redis"] }
+rullst-core = { version = "12.1.0", features = ["cache-redis"] }
 ```
 
 ```rust,no_run
@@ -64,7 +64,7 @@ The ORM has a separate opt-in query-cache contract behind its `redis` feature:
 
 ```toml
 [dependencies]
-rullst-orm = { version = "12.0.0", features = ["redis"] }
+rullst-orm = { version = "12.1.0", features = ["redis"] }
 ```
 
 ```rust,no_run
@@ -120,7 +120,7 @@ Rullst provides explicit SQLite and Redis queue constructors:
 
 ```toml
 [dependencies]
-rullst-core = { version = "12.0.0", features = ["queue-sqlite"] }
+rullst-core = { version = "12.1.0", features = ["queue-sqlite"] }
 serde_json = "1"
 ```
 

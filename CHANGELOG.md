@@ -9,8 +9,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Unpublished v13 privacy foundation
+
+- Make age verification and replay claims asynchronous, with trusted server-clock
+  checks before and after storage. Deny expiry, rollback, cancellation and
+  uncertain storage outcomes; production still rejects mocks and local memory.
+- Add optional shared-local SQLite replay state with serialized claim/quota/expiry
+  transactions, persisted configuration and clock metadata, and nonce digests.
+  Retain no photos or birth dates. Live providers, multi-host storage and global
+  privacy compliance remain outside this foundation; the crate stays unpublished.
+
 ### CI tooling
 
+- Prepare the v13 release line with explicit major/branch/tag/package binding,
+  protected-head admission, automatic checks on both maintained branches and
+  fuzz provenance confined to the candidate's release line. Keep the protected
+  publication approval and full release evidence requirements.
 - Distinguish skipped jobs from measured execution in timing reports, including
   GitHub's reversed synthetic timestamps; retain strict validation for jobs
   that ran. Record successful hosted optimization evidence without hiding the
@@ -34,8 +48,6 @@ A prepared version section does not establish that its tag or crates exist.
   target, build and development dependency edges. Unknown inputs, changed
   policy/dependencies, critical crates, executable documentation and ambiguous
   history retain full verification; no check is skipped by its reports.
-- Run Rust CI, documentation and workflow-policy checks on v13 as well as main.
-  Other inherited workflow branch filters and release admission remain unchanged.
 - Add a development-only site admission path for v13 pushes, requiring a recent
   exact-source baseline with all 25 Linux runtime jobs successful, a bounded
   three-file presentation diff and fresh browser/documentation checks. Missing
@@ -63,7 +75,10 @@ A prepared version section does not establish that its tag or crates exist.
 - Correct the nextest scope: coverage uses nextest, while ordinary CI's existing
   eight shards still use Cargo's test runner.
 
-## [12.1.0] - 2026-09-18
+## [12.1.0] - 2026-09-20
+
+Published on September 20 UTC (September 19 in Brasília); see the
+[publication record](docs/src/v12.md#1210-published-maintenance-release).
 
 This compatible maintenance release corrects billing contracts, generated
 application behavior and CLI update/recovery flows. Existing applications must
@@ -75,7 +90,34 @@ generated SQLite persistence. Other provider adapters retain the explicit
 capabilities and account-acceptance requirements in the Capital provider matrix.
 Privacy, age assurance and untrusted exercise execution remain v13 roadmap work.
 
+### Account mail
+
+- Add native SendPulse, Mailjet and Mailtrap transports with explicit Mailjet
+  validation/Mailtrap sandbox selection, offline credentials and protocol tests.
+  Omit provider error bodies while preserving status and retry metadata.
+
+- Fix MAIL-001/RULLST-005: preserve safe opaque reset links through mandatory
+  secret sanitization and generated HTML/plain-text messages; minimize Debug and
+  log output. Add deterministic English/Portuguese/Spanish lifecycle templates.
+- Add opt-in PostgreSQL/SQLite authoritative recovery with 20-minute single-use
+  digested tokens, atomic password/session invalidation and encrypted outbox.
+  Compose Auth/Mail through facade features with bounded leased delivery retries.
+- Propagate delivery identities through transport wrappers; add Resend native
+  idempotency and signed Svix feedback for suppression, plus a bounded ACS Email
+  Managed Identity driver. Provider acceptance and application migration remain
+  explicit; see the [account-mail guide](docs/src/account-mail-v12-1.md).
+- Identify the production SaaS founding-member certificate offer as a real-money
+  purchase in the README and keep the staging link separate. Generated live
+  billing additionally requires an explicit real-charge acknowledgement.
+
 ### SaaS maintenance
+
+- Add exact authenticated machine endpoints retaining the browser CSRF/WAF/header
+  baseline; propagate strict backend choices through Core, Studio, Nexus and the
+  facade, with separate standalone dependency-graph checks.
+- Add a separate fixed-price Stripe one-time checkout/receipt/event contract.
+  This SDK foundation requires application-owned durable entitlements and new
+  sandbox acceptance; existing generated billing remains subscription-only.
 
 - Add the exact Stripe hosted-checkout origin to the SaaS starter's CSP so its
   POST/303 handoff works in Chromium. Preserve Core's strict default; document
@@ -368,8 +410,8 @@ Privacy, age assurance and untrusted exercise execution remain v13 roadmap work.
   Add production-baseline HTTP regressions for valid submissions, preserved
   form data and denials before the handler. Keep the simple read-only HTMX search
   on GET instead of demonstrating a POST without its required token.
-- Record the unreleased 12.1.0 delivery boundaries and remaining updater/release
-  blockers without presenting advisory discovery as installation or migration.
+- Record the 12.1.0 delivery boundaries and updater/release acceptance evidence
+  without presenting advisory discovery as installation or migration.
 - Replace the completed v12 development program with a concise English release
   record and immutable publication receipts. Retire the CLI handoff and preserve
   older audits through archive links.

@@ -56,6 +56,17 @@ pub(crate) fn extract_token_from_body(bytes: &[u8]) -> Option<String> {
 /// matters when an application router adds the explicit development layer and
 /// [`crate::Server`] later composes the production security baseline around it.
 pub async fn csrf_middleware(mut req: Request, next: Next) -> Response {
+    if let Some(policy) = req
+        .extensions()
+        .get::<super::MachineEndpointPolicy>()
+        .cloned()
+        && policy.matches(&req)
+    {
+        return match policy.authenticate(req).await {
+            Ok(request) => next.run(request).await,
+            Err(status) => (status, "Machine request rejected").into_response(),
+        };
+    }
     if req.extensions().get::<CsrfMiddlewareApplied>().is_some() {
         return next.run(req).await;
     }

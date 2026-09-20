@@ -34,6 +34,10 @@ pub use rullst_orm;
 #[cfg(feature = "auth")]
 pub use rullst_auth as auth;
 
+/// Integration between durable Auth recovery and deterministic Mail delivery.
+#[cfg(any(feature = "account-mail-sqlite", feature = "account-mail-postgres"))]
+pub mod account_mail;
+
 #[cfg(feature = "oauth")]
 pub use rullst_connect as connect;
 

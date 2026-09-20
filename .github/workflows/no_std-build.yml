@@ -2,9 +2,9 @@ name: no_std Build Check
 
 on:
   push:
-    branches: [main]
+    branches: [main, v13]
   pull_request:
-    branches: [main]
+    branches: [main, v13]
   workflow_dispatch:
 
 concurrency:

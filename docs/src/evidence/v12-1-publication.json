@@ -1,0 +1,123 @@
+{
+  "checked_at": "2026-09-20T01:19:15.081030+00:00",
+  "release_run": 35475944059,
+  "sha": "b62390b4fc61e5ac06d24eb31bb7c10d370d679d",
+  "crates": [
+    {
+      "crate": "rullst-macros",
+      "version": "12.1.0",
+      "checksum": "4f8881c48fc273a699f64b76cf4b50bca4fc8dfd54416aa40b3d37c1a633cd50",
+      "created_at": "2026-09-20T01:13:06.820372Z",
+      "yanked": false
+    },
+    {
+      "crate": "rullst-orm-macros",
+      "version": "12.1.0",
+      "checksum": "de5782b6c74d4cd16cf8bc2cd120973dbb5c7fd49053c749e06e12344185bad9",
+      "created_at": "2026-09-20T01:13:11.419130Z",
+      "yanked": false
+    },
+    {
+      "crate": "rullst-orm",
+      "version": "12.1.0",
+      "checksum": "b0b8bb3b19d2217afde4c6676eae94402fd455b03f6bb1244576eae80af77860",
+      "created_at": "2026-09-20T01:13:16.461945Z",
+      "yanked": false
+    },
+    {
+      "crate": "rullst-core",
+      "version": "12.1.0",
+      "checksum": "10b57d4b1ef1ec2f1e0dad75a10d04f66c88969a626ae9ef570cf2170f417cf5",
+      "created_at": "2026-09-20T01:13:22.000067Z",
+      "yanked": false
+    },
+    {
+      "crate": "rullst-messaging",
+      "version": "12.1.0",
+      "checksum": "1d1c01d9f573c95198b92939d3d6fdadacbf32b52025d2a966b30e23fa3720de",
+      "created_at": "2026-09-20T01:13:27.101839Z",
+      "yanked": false
+    },
+    {
+      "crate": "rullst-connect",
+      "version": "12.1.0",
+      "checksum": "efe3d8c5903cb41dc0f220c8fbf04145be4a133343e2e73e69dd0d53b12dc222",
+      "created_at": "2026-09-20T01:13:30.866874Z",
+      "yanked": false
+    },
+    {
+      "crate": "rullst-iot",
+      "version": "12.1.0",
+      "checksum": "9e0267e6280cd475a7fe9d6cc9b51b4c41a6d1df3dba282e32ec52d3d55b7202",
+      "created_at": "2026-09-20T01:13:38.577496Z",
+      "yanked": false
+    },
+    {
+      "crate": "rullst-security",
+      "version": "12.1.0",
+      "checksum": "4d5f918c232ba643a5961806420c1af9687449e483dd3d29c5acb7d021f3ff39",
+      "created_at": "2026-09-20T01:13:43.345376Z",
+      "yanked": false
+    },
+    {
+      "crate": "rullst-ai",
+      "version": "12.1.0",
+      "checksum": "8d817923d6d39732ab1dac436d79153f9141165b8e93c4989ecd2fa15a45f350",
+      "created_at": "2026-09-20T01:13:47.566378Z",
+      "yanked": false
+    },
+    {
+      "crate": "rullst-capital",
+      "version": "12.1.0",
+      "checksum": "224f2bff96b7fe29bac79ada2d941c6eedb9d74ba1311d5c7142dbd541494436",
+      "created_at": "2026-09-20T01:13:51.938365Z",
+      "yanked": false
+    },
+    {
+      "crate": "rullst-mail",
+      "version": "12.1.0",
+      "checksum": "1183f3d4848e920ec283f2c170e45f367990d24d38794183556dfcf3d9fd5234",
+      "created_at": "2026-09-20T01:13:57.405111Z",
+      "yanked": false
+    },
+    {
+      "crate": "rullst-auth",
+      "version": "12.1.0",
+      "checksum": "0c5a98f18db6b15d0da14c3834aa34aafc64a6c5bf6ee43698fca393cbb4c71d",
+      "created_at": "2026-09-20T01:14:02.647527Z",
+      "yanked": false
+    },
+    {
+      "crate": "rullst-nexus",
+      "version": "12.1.0",
+      "checksum": "56430fc2d7194d5152a7451d5f177945cc0d4209d26dd3d66193d857e5cd84f7",
+      "created_at": "2026-09-20T01:14:07.570497Z",
+      "yanked": false
+    },
+    {
+      "crate": "rullst-studio",
+      "version": "12.1.0",
+      "checksum": "38301a9ea88040296604c102a4d19f7573c48233878118ad0a9e7141c268a31c",
+      "created_at": "2026-09-20T01:14:10.329556Z",
+      "yanked": false
+    },
+    {
+      "crate": "rullst",
+      "version": "12.1.0",
+      "checksum": "781b885110a6df8053e4a298cf3d07a23f51a88053405de0dc7088d5b4eba87b",
+      "created_at": "2026-09-20T01:14:13.640473Z",
+      "yanked": false
+    },
+    {
+      "crate": "cargo-rullst",
+      "version": "12.1.0",
+      "checksum": "6211b8be65a54d400ed8804709330bdd207e7f2afb1eb6f563aba1f0c1ea5e86",
+      "created_at": "2026-09-20T01:14:16.684702Z",
+      "yanked": false
+    }
+  ],
+  "schema": 1,
+  "release_url": "https://github.com/Rullst/Rullst/releases/tag/v12.1.0",
+  "workflow_url": "https://github.com/Rullst/Rullst/actions/runs/35475944059",
+  "scope": "Independent registry observations; each checksum matched the reviewed release archive. Build provenance is supplied separately by the release attestations."
+}

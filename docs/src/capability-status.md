@@ -1,6 +1,6 @@
 # Simple capability status
 
-This is the compact view of Rullst's canonical M1–M40 programme. It is derived
+This is the compact view of Rullst's canonical M1–M41 programme. It is derived
 from the root [ROADMAP](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md); that roadmap and the
 [capability ledger](capability-ledger.md) retain the evidence and limitations.
 The labels here deliberately do not turn partial foundations into completed
@@ -96,19 +96,23 @@ homologated.
 | M38 | Vendor-specific SQLite replica/synchronization profile | ⏳ Still to implement — not started |
 | M39 | Optional self-hosted `rullst-gateway` load balancer | ⏳ Still to implement — separate v13 research/foundation; no managed-cloud parity claim |
 | M40 | `rullst-labs` contracts and an isolated `rullst-labs-runner` | ⏳ Still to implement — separate v13 research/foundation; full offensive CTF arenas require external isolated infrastructure |
+| M41 | Privacy controls and proportional age assurance | 🟡 Unpublished foundation — policy, signed evidence, asynchronous replay, SQLite and PostgreSQL adapters; combined hosted acceptance, consumer journeys and broader privacy work remain open |
 
-Current planning snapshot: **5 implemented, 24 partial, and 10 not started**
-inside the 39-milestone web-framework horizon. M31 is excluded because it is a
-separately governed safety-critical programme. The weighted planning estimate
-is 43.6% complete and 56.4% remaining; this is not v12 release readiness and
-the 34 milestones without strict closure are not 34 blockers for v12.0. The
+Planning labels checked on 20 September 2026: **5 implemented, 25 partial, and
+10 not started** inside the 40-milestone framework programme. M31 is excluded
+because it is a separately governed safety-critical programme. The 35 milestones
+without strict closure have different sizes and overlap existing published
+capabilities; their count does not measure remaining engineering effort or
+release blockers. Assigning every partial row half credit would not establish
+a completion percentage. The
 [v12 stable record](v12.md) preserves the completed release identity, while the
-root roadmap assigns confirmed v12 defects to `12.0.x` maintenance and new
-capability work to v13 by default. The
+root roadmap assigns compatible v12 fixes to maintenance and new capability
+work to v13 by default. The
 [safe update experience](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience) is a top v13
-priority with a compatible opt-in 12.1.0 delivery planned first. Neither that
-updater nor the verification planner's observation-only reports change the
-implementation counts above.
+priority whose compatible opt-in 12.1.0 scope is already published. Version
+12.1 does not establish 12-to-13 migration acceptance. The
+[26 September delivery plan](v13-delivery-plan.md) selects concrete increments
+from this wider programme and records their acceptance requirements.
 
 ## Claims that are impossible as framework guarantees
 

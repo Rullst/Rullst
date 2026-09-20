@@ -5,6 +5,25 @@ use axum::{Router, http};
 use std::time::Duration;
 use tower_http::cors::CorsLayer;
 
+/// Applies the full baseline and an exact authenticated machine-route policy.
+/// Authentication also runs in development; WAF and browser security retain the
+/// normal environment policy. The legacy signed-webhook path list is unchanged.
+pub fn apply_security_baseline_with_machine_endpoints(
+    app: Router,
+    security: SecurityConfig,
+    environment: Environment,
+    policy: super::MachineEndpointPolicy,
+) -> Result<Router, SecurityBaselineError> {
+    let app = if environment.requires_secure_defaults() {
+        app
+    } else {
+        app.layer(axum::middleware::from_fn(
+            super::machine::authenticate_machine_request,
+        ))
+    };
+    Ok(apply_security_baseline(app, security, environment)?.layer(axum::Extension(policy)))
+}
+
 /// Failure to construct the runtime security baseline from application configuration.
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 #[non_exhaustive]

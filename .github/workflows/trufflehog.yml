@@ -2,9 +2,9 @@ name: TruffleHog Secret Scanner
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main, v13]
   pull_request:
-    branches: [ "main" ]
+    branches: [main, v13]
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * 0' # Run weekly

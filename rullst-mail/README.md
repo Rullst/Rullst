@@ -2,10 +2,12 @@
 
 `rullst-mail` is Rullst's transactional email and mailables engine. Every official dispatch path now passes through one pre-flight pipeline for CRLF protection, recipient deliverability checks, content security scanning, and DLP sanitization before queueing or transport delivery.
 
-Resend, SendGrid, Postmark and the explicit SES bearer-proxy adapter share a
+Resend, SendGrid, Postmark, SendPulse, Mailjet, Mailtrap, ACS and the explicit
+SES bearer-proxy adapter share a
 pooled REST client with redirects and ambient proxy settings disabled, a
 five-second connection deadline and a 30-second request deadline, including
-error-body reads. Error details remain capped at four KiB and secret-redacted.
+error-body reads. Error-body reads remain capped at four KiB; errors retain only status and
+retry metadata, omitting provider bodies that may echo personal data.
 Configure the final trusted endpoint directly. Native SES uses its separate
 AWS SDK transport and SMTP uses Lettre; the REST deadline claim does not
 describe those transports or prove provider acceptance.
@@ -24,10 +26,12 @@ application's recipient/tenant policy remain separate responsibilities.
 - **⚡ Delivery and Test Drivers:**
   - **Resend** (`ResendDriver`) — Native REST API with scheduled delivery & RFC 8058.
   - **SendGrid** (`SendGridDriver`) — Native v3 REST API with personalization & attachments.
+  - **SendPulse**, **Mailjet**, **Mailtrap** — Native transactional REST adapters; see the configuration and bounded contracts below.
+  - **Azure Communication Services** — Native Email REST with Container Apps Managed Identity.
   - **Postmark** (`PostmarkDriver`) — High-deliverability transactional REST API with Message Streams.
   - **AWS SES v2** (`AwsSesDriver`, `aws-ses`) — official AWS SDK/SigV4 native transport with temporary/rotating credential support, plus deterministic offline fixture and an explicit legacy proxy boundary.
   - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with TLS.
-  - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Zero-I/O in-memory harness with fluent assertions.
+  - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Local zero-I/O in-memory harness, distinct from the hosted Mailtrap service with fluent assertions.
   - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
 - **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. Structured tracing exposes bounded decision fields without provider bodies.
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
@@ -363,7 +367,7 @@ Enable the opt-in official SDK transport:
 
 ```toml
 [dependencies]
-rullst-mail = { version = "12.0.0", features = ["aws-ses"] }
+rullst-mail = { version = "12.1.0", features = ["aws-ses"] }
 aws-config = "1.11"
 ```
 
@@ -402,6 +406,47 @@ delta-seconds `Retry-After` for failover/retry policy.
 
 ---
 
+## Native providers added in 12.1
+
+| Provider | Constructor | `MAIL_DRIVER` | Credentials |
+|---|---|---|---|
+| SendPulse | `SendPulseDriver::try_new(api_key)` | `sendpulse` | `SENDPULSE_API_KEY` |
+| Mailjet | `MailjetDriver::try_new(api_key, secret_key)` | `mailjet` | `MAILJET_API_KEY`, `MAILJET_SECRET_KEY` |
+| Mailjet remote validation | Same constructor plus `.with_sandbox()` | `mailjet-sandbox` | Same credential pair |
+| Mailtrap sending | `MailtrapDriver::try_new(token)` | `mailtrap` | `MAILTRAP_API_TOKEN` |
+| Mailtrap hosted capture | `MailtrapDriver::sandbox(token, id)` | `mailtrap-sandbox` | Token plus positive `MAILTRAP_SANDBOX_ID` |
+
+No additional feature is required beyond Mail. All three reuse the mandatory
+pipeline, bounded HTTPS client, typed failure/retry classification and empty or
+`mock_*` offline fallback. Mailjet rejects a mixed real/offline credential pair.
+Real delivery requires an explicit verified sender (`Message::from`). Direct
+future delivery is rejected; use a durable queue for scheduling. Provider
+acceptance is not inbox delivery and retries remain at-least-once.
+
+SendPulse uses its current static Bearer API-key authentication; an OAuth client
+ID/secret is not an API key. The SMTP service must be activated in the account.
+HTML and binary attachments use the provider's Base64 contract. Inline CID and
+unsubscribe headers are rejected by this bounded REST adapter rather than
+silently omitted; use SMTP for those message shapes. Disable security-mail
+tracking in the provider account. See [authentication](https://sendpulse.com/integrations/api)
+and the [transactional API](https://sendpulse.com/integrations/api/smtp).
+
+Mailjet uses [Send API v3.1](https://dev.mailjet.com/docs/email-api/send-api-v31/send-basic-email),
+HTTP Basic credentials, per-message success validation, attachments and inline
+CID. It sets open/click tracking to `disabled`. Remote sandbox mode validates
+with the provider without sending; it is distinct from the no-network mock.
+
+Mailtrap supports the [Sending API](https://docs.mailtrap.io/developers/email-sending)
+and a separately selected [Sandbox API](https://docs.mailtrap.io/developers/email-sandbox/send-test-emails).
+It includes attachments, inline CID and unsubscribe headers. Sending never
+silently falls back to sandbox. Disable tracking at the domain/account level
+for security notices. The older `MailTrap` type remains only Rullst's local test
+harness; `MailtrapDriver` is the hosted provider integration.
+
+Protocol/offline tests cover these contracts. Actual account/domain activation,
+deliverability, limits and live acceptance remain deployment work. Free-plan
+quotas can change; consult the providers rather than relying on SDK constants.
+
 ## ⚙️ Configuration (`Rullst.toml` or Environment Variables)
 
 ```toml
@@ -410,7 +455,8 @@ driver = "resend" # "log" | "memory" | "smtp" | "resend" | "sendgrid" | "postmar
 ```
 
 Environment variables:
-- `MAIL_DRIVER`: Select active driver (`log`, `memory`, `smtp`, `resend`, `sendgrid`, `postmark`, `ses`).
+- `MAIL_DRIVER`: Select active driver (`log`, `memory`, `smtp`, `resend`, `sendgrid`, `postmark`, `ses`, `azure-acs`, `sendpulse`, `mailjet`, `mailjet-sandbox`,
+  `mailtrap`, `mailtrap-sandbox`).
 - `RESEND_API_KEY`: API key for Resend.
 - `SENDGRID_API_KEY`: API key for SendGrid.
 - `POSTMARK_SERVER_TOKEN`: Server API token for Postmark.
@@ -425,7 +471,8 @@ Environment variables:
 - `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`: SMTP credentials.
 - `MAIL_LOG_PATH`: Path for log file (default: `storage/logs/mail.log`).
 
-For Resend, SendGrid, Postmark, the SES fixture/proxy, and authenticated SMTP,
+For Resend, SendGrid, Postmark, SendPulse, Mailjet, Mailtrap, ACS, the SES
+fixture/proxy, and authenticated SMTP,
 an empty credential or one beginning with `mock_` selects the deterministic
 offline fallback. Use `driver.delivery_mode()` and
 `OfflineMailMock::deliveries()` to assert this explicitly in tests.

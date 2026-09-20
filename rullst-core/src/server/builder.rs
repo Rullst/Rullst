@@ -87,6 +87,7 @@ pub struct Server {
     pub(crate) shield: Option<crate::resilience::TrafficShield>,
     pub(crate) limiter: Option<crate::resilience::RateLimiter>,
     pub(crate) lifecycle: Option<ApplicationLifecycle>,
+    pub(crate) machine_endpoints: Option<crate::security::MachineEndpointPolicy>,
 }
 
 impl Server {
@@ -101,6 +102,7 @@ impl Server {
             shield: None,
             limiter: None,
             lifecycle: None,
+            machine_endpoints: None,
         }
     }
 
@@ -116,7 +118,17 @@ impl Server {
             shield: None,
             limiter: None,
             lifecycle: None,
+            machine_endpoints: None,
         }
+    }
+
+    /// Requires explicit machine authentication before CSRF exemptions on exact routes.
+    pub fn with_machine_endpoints(
+        mut self,
+        policy: crate::security::MachineEndpointPolicy,
+    ) -> Self {
+        self.machine_endpoints = Some(policy);
+        self
     }
 
     /// Sets a database URL to initialize the ORM connection pool at startup.
@@ -533,8 +545,17 @@ impl Server {
             app = apply_lifecycle(app, lifecycle);
         }
 
-        app = crate::security::apply_security_baseline(app, app_config.security, environment)
-            .map_err(|error| ServerError::Configuration(error.to_string()))?;
+        app = if let Some(policy) = self.machine_endpoints {
+            crate::security::apply_security_baseline_with_machine_endpoints(
+                app,
+                app_config.security,
+                environment,
+                policy,
+            )
+        } else {
+            crate::security::apply_security_baseline(app, app_config.security, environment)
+        }
+        .map_err(|error| ServerError::Configuration(error.to_string()))?;
 
         println!("Rullst framework serving on http://{}", addr);
         println!(

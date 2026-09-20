@@ -1,9 +1,9 @@
 # 41. Tenant-Bound RAG in One Typed Operation
 
 > [!IMPORTANT]
-> Dependency examples use stable `12.0.0`. Pin that exact version for
-> reproducible v12 builds; use path dependencies only when intentionally
-> testing checkout-local changes.
+> Dependency examples target `12.1.0`. Check the [release record](../v12.md)
+> for publication status and commit Cargo.lock for reproducible builds.
+> Use path dependencies only when intentionally testing checkout-local changes.
 
 Rullst's bounded RAG pipeline turns one authenticated question into a guarded
 embedding, authorized retrieval request, budgeted context, grounded model call,
@@ -18,7 +18,7 @@ dimensions define an index.
 
 ```toml
 [dependencies]
-rullst = { version = "12.0.0", default-features = false, features = ["ai"] }
+rullst = { version = "12.1.0", default-features = false, features = ["ai"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 

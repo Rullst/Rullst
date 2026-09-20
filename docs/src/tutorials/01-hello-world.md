@@ -8,7 +8,7 @@ you will be able to point to the handler that produced the page in your browser.
 [Next: CLI generators](02-cli-generators.md)
 
 This tutorial takes a new developer from installing Rust to a running Rullst
-web application. It uses the stable `12.0.0` release documented by this site.
+web application. It targets `12.1.0`; check the [release record](../v12.md) for registry availability.
 Production adoption still needs application review and immutable artifacts;
 neither moving `main` nor merely pinning end-of-life v5 satisfies that
 requirement.
@@ -51,7 +51,7 @@ Every command below must run in this directory, where `Cargo.toml` lives.
 Select its exact crates.io version:
 
 ```bash
-cargo add rullst@12.0.0
+cargo add rullst@12.1.0
 cargo add tokio --features full
 ```
 
@@ -142,4 +142,4 @@ See the [CLI reference](../cli_reference.md) for every command and boundary.
   errors; server startup propagates `ServerError` with `?`.
 - The moving `main` branch is an integration source, not an immutable release
   artifact. For reproducible v12 applications, use the exact crates.io version
-  and its matching `v12.0.0` tag after the registry publication receipt exists.
+  and its matching immutable release tag after the registry publication receipt exists.

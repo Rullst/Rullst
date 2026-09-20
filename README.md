@@ -33,7 +33,7 @@
 </p>
 
 > **This is the unreleased v13 development branch.** Its starting point is the
-> published v12 source plus the documentation closeout; a branch name is not a
+> published v12.1.0 source plus its documentation closeout; a branch name is not a
 > v13 release. The badges and installation commands below describe stable v12,
 > not verified v13 readiness. `main` remains the v12 maintenance line; `v5` is
 > no longer maintained. [v13 priorities](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#v13-execution-priorities)
@@ -45,7 +45,8 @@
 Generate a project, choose a blueprint and database, then start the development loop:
 
 ```bash
-cargo install cargo-rullst --version 12.0.0 --locked
+cargo install cargo-rullst --version '^12' --locked
+cargo rullst --version
 cargo rullst new my_app
 cd my_app
 cargo rullst dev
@@ -53,6 +54,10 @@ cargo rullst dev
 
 Choose **Blank / API, Blog, SaaS, LMS, Portfolio or ERP**. Generated projects
 contain ordinary Rust you can inspect and change.
+
+The selector installs the latest published stable v12 CLI. To reproduce a
+particular release, use its full version, such as `--version 12.1.0`, after
+confirming its availability on [crates.io](https://crates.io/crates/cargo-rullst).
 
 [Installation and prerequisites](https://rullst.github.io/Rullst/book/1-getting-started.html)
 · [Zero-to-Hero tutorial](https://rullst.github.io/Rullst/book/tutorials/01-hello-world.html)
@@ -71,6 +76,11 @@ deployment recipes in [Rullst/examples](https://github.com/Rullst/examples):
 | 🌐 **Showcase** — blog, SSR and selected integration demonstrations | [Open Showcase ↗](https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/) |
 | 🎓 **LMS** — course catalog and learning-platform example | [Open LMS ↗](https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/) |
 | 💼 **Portfolio** — projects, skills and experience presentation | [Open Portfolio ↗](https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/) |
+| 🛒 **SaaS production** — real purchases with the founding-member certificate offer | [Open SaaS ↗](https://saas.rullst.win/) |
+
+> **The SaaS production checkout charges real money.** The founding-member
+> certificate is part of the published customer offer; review its terms and
+> availability on the site before purchasing.
 
 > **The first visit may take longer.** These Azure Container Apps demos may
 > scale down to zero while idle. Your request can trigger a container startup
@@ -81,7 +91,7 @@ deployment recipes in [Rullst/examples](https://github.com/Rullst/examples):
 These are independently maintained demo snapshots and may lag the stable release.
 Showcase payment fixtures are **not live checkout**. Deployment availability,
 native downloads and provider approval are separate from framework test evidence;
-use test data, not sensitive information, in public demos.
+use test data, not sensitive information, in public test environments.
 
 ## ✨ What you can build on
 

@@ -90,6 +90,7 @@ rullst-orm|pgvector
 rullst-orm|qdrant
 rullst-orm|polyglot
 rullst-core|orm
+rullst-core|drivers-all
 rullst-core|queue-sqlite
 rullst-core|queue-redis
 rullst-core|cache-redis
@@ -115,6 +116,14 @@ rullst-mail|mail-smtp
 rullst-mail|sqlite
 rullst-auth|jwt
 rullst-auth|sqlite
+rullst-auth|recovery-sqlite
+rullst-auth|recovery-postgres
+
+# Unpublished v13 privacy foundation: preserve the database-free base graph.
+rullst-privacy|
+rullst-privacy|age-assurance
+rullst-privacy|sqlite
+rullst-privacy|postgres
 
 # Umbrella boundaries exposed to generated applications.
 rullst|orm
@@ -143,6 +152,8 @@ rullst|messaging-sqlite
 rullst|messaging-orm-outbox
 rullst|auth-jwt
 rullst|auth-sqlite
+rullst|account-mail-sqlite
+rullst|account-mail-postgres
 rullst|oauth-sqlite
 rullst|oauth
 rullst|ai
@@ -160,6 +171,7 @@ rullst|iot
 rullst|telemetry
 rullst|nexus
 rullst|studio
+rullst|drivers-all
 rullst|strict-postgres
 rullst|strict-mysql
 rullst|strict-sqlite
@@ -193,6 +205,7 @@ for feature in "${public_umbrella_features[@]}"; do
 done
 
 if (( shard_index == 0 )); then
+  python3 .github/check-strict-driver-graphs.py
   printf 'Testing  %-20s features=%s\n' "rullst-core" "<none>"
   cargo test --locked --package rullst-core --no-default-features
 fi

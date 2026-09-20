@@ -174,5 +174,5 @@ topic/idempotency key with different content fails closed. Explicit terminal
 purge removes both the retained message and its idempotency
 record, so retention policy must be chosen deliberately.
 
-See the [crate roadmap](https://github.com/Rullst/Rullst/blob/v12.0.0/rullst-messaging/ROADMAP.md) and the
+See the [crate roadmap](https://github.com/Rullst/Rullst/blob/v12.1.0/rullst-messaging/ROADMAP.md) and the
 [brokered messaging tutorial](https://github.com/Rullst/Rullst/blob/main/docs/src/tutorials/49-brokered-messaging.md).

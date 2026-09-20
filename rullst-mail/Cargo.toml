@@ -47,5 +47,8 @@ aws-smithy-types = { version = "=1.6.3", default-features = false, optional = tr
 sqlx = { workspace = true, optional = true, features = ["sqlite", "runtime-tokio"] }
 url = { version = "2.5.8", optional = true }
 
+[dev-dependencies]
+rand = { workspace = true }
+
 [package.metadata.cargo-machete]
 ignored = ["aws-smithy-types", "async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json", "tokio", "lettre", "opentelemetry", "opentelemetry-otlp", "opentelemetry_sdk", "redis", "rullst-connect", "rullst-macros", "toml", "tracing-opentelemetry", "urlencoding", "base64", "notify", "ring", "rullst-auth", "tracing"]

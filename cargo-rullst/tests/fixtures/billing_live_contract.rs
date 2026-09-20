@@ -206,3 +206,14 @@ async fn durable_live_billing_contract() {
     assert_eq!(checkout_with(&config, &other, "price_pro", &fake).await, Err(UNAVAILABLE));
     assert_eq!(fake.0.create_calls.load(Ordering::SeqCst), creates);
 }
+
+#[test]
+fn real_money_activation_requires_explicit_acknowledgement() {
+    let mut config = config();
+    assert!(!scope(&config).unwrap().2);
+    config.api_key = "sk_live_nonfunctional_contract_fixture".into();
+    let allowed = std::env::var("BILLING_LIVE_ACKNOWLEDGEMENT").as_deref()
+        == Ok("I_UNDERSTAND_REAL_CHARGES");
+    assert_eq!(scope(&config).is_ok(), allowed);
+    if allowed { assert!(scope(&config).unwrap().2); }
+}

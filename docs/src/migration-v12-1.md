@@ -1,11 +1,53 @@
 # Migrating from 12.0 to 12.1
 
-12.1 is a maintenance candidate until its admitted tag is published. Updating
-dependencies or the CLI does not rewrite generated application files, migrate
+Version [12.1.0 is published](v12.md#1210-published-maintenance-release).
+Updating dependencies or the CLI does not rewrite generated application files, migrate
 databases or redeploy the Azure examples. Keep the existing application and
 lockfile, generate a separate comparison project, and review the changes below.
 
+## Account mail and machine requests
+
+The [account-mail guide](account-mail-v12-1.md) describes the opt-in durable
+PostgreSQL/SQLite recovery registry and worker. Existing reset templates benefit
+from the mandatory-pipeline fix, but existing encrypted-cookie sessions and
+password tables do not gain revocation automatically. Review imports before
+switching the authoritative account store. Keep provider tracking disabled.
+
+`Server::with_machine_endpoints` accepts exact method/path registrations with
+mandatory bearer, signed-webhook or transport mTLS verification. Use it for
+trusted machine POST routes instead of disabling browser CSRF globally. It
+rejects browser-cookie/origin inputs; the application still owns domain
+permissions and ingress rate limits.
+
+Core with `orm` and disabled defaults now requires an explicit `strict-*`
+backend or `drivers-all`. Studio and Nexus retain their default convenience
+features; disable defaults to obtain an exclusive backend graph. Studio's
+SQLite queue is controlled by `queue-sqlite`, independent of PostgreSQL/MySQL.
+The facade forwards these choices, including optional Studio/Nexus consumers.
+
 ## Billing migration
+
+Generated real-mode Stripe billing now additionally requires
+`BILLING_LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_REAL_CHARGES`. This is a launch control,
+not a substitute for merchant activation and refund/dispute procedures. Test
+credentials do not need that acknowledgement.
+
+For a one-time purchase, use the opt-in `StripePaymentCheckoutRequest` and
+`create_one_time_checkout` API, with `StripeOneTimePrice` from a server-owned
+allowlist. It validates the current active provider price before creation and
+uses `mode=payment`, one card-funded item and a fixed amount/currency. It does
+not enable adaptive pricing, discounts or automatic tax. The existing generated
+subscription flow remains recurring; do not substitute a one-time price there.
+
+Persist owner/account/mode/attempt/session bindings. Process
+`verify_one_time_event` notifications through a durable inbox, then re-read
+`read_one_time_receipt` before an atomic entitlement transition. Refund and
+dispute hints require reconciliation too. Any partial refund/dispute prevents a
+`Paid` receipt; restoration after a resolved dispute needs an explicit reviewed
+application policy. Never grant access from a return URL or mock receipt.
+This additional one-time contract has protocol tests; the earlier subscription
+sandbox evidence does not validate it or the production certificate offer.
+
 
 | Existing integration | Required change |
 |---|---|

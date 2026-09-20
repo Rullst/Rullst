@@ -41,11 +41,11 @@ contains the evidence boundary and recommendation for the highest-risk claims.
 | Detailed roadmap | What is verifiably implemented now | Partial, experimental, or not implemented |
 | :--- | :--- | :--- |
 | [`rullst-ai`](rullst-ai/ROADMAP.md) | Guarded provider clients, deterministic mocks/eval corpus, bounded RAG, opt-in OpenAI-compatible SSE/cancellation, SQL conversational memory, guarded tools, authenticated audit export and adaptive evaluation orchestration. | Provider-native tool loops, first-party external retrievers, non-compatible streaming adapters and hosted-model conformance remain partial or application work. Local eval orchestration is not live-model validation. |
-| [`rullst-auth`](rullst-auth/ROADMAP.md) | Argon2, encrypted sessions, RBAC/policies, OAuth/OIDC re-exports, bounded application JWTs, opt-in SQLite revocation/passkey-device state and a custom ES256 passkey foundation. | Shared passkey ceremony challenges, refresh/recovery workflows and normative WebAuthn conformance remain incomplete; applications own identity, roles and deployed session policy. |
+| [`rullst-auth`](rullst-auth/ROADMAP.md) | Argon2, encrypted sessions, RBAC/policies, OAuth/OIDC re-exports, bounded application JWTs, opt-in SQLite revocation/passkey-device state, a custom ES256 passkey foundation and the 12.1 PostgreSQL/SQLite account-recovery and transactional-notice contracts. | Shared passkey ceremony challenges, broader refresh/device-session workflows and normative WebAuthn conformance remain incomplete; applications own identity, roles and deployed session policy. |
 | [`rullst-capital`](rullst-capital/ROADMAP.md) | Provider trait/adapters, explicit offline mocks, canonical fail-closed webhook verification with Axum/Actix adapters, shared bounded webhook replay claims and team/workspace quotas over four relational protocols, provider-specific coupon/trial contracts, billing scaffolding, analytics, and bounded NFS-e preparation. | Live method coverage varies by gateway; cross-system exactly-once/reconciliation, Alipay RSA2, full tax/proration contracts, and homologated live NFS-e are not implemented. NFS-e is extraordinary and worthwhile only as a dedicated homologation program. |
 | [`rullst-connect`](rullst-connect/ROADMAP.md) | OAuth2/OIDC/social adapters, state/PKCE/nonce lifecycle, guarded refresh/revocation contracts, encrypted account-bound tokens and opt-in shared-local SQLite token persistence with generation CAS. | Live provider conformance, remote refresh leases/reconciliation, multi-host replication, SAML/SCIM/DPoP/JWE/mTLS and risk ML remain application or roadmap work. Broker adapters belong to Messaging. |
 | [`rullst-iot`](rullst-iot/ROADMAP.md) | `no_std` frames/telemetry, bounded MQTT 5 PUBLISH and CoAP request encoders, the Ed25519 OTA manifest gate, and a typed durable-counter CAS boundary with restart/retry/conflict proof. | Download, a concrete hardware-backed counter, flash/boot/rollback, MQTT/CoAP/LoRaWAN transports and session state, real hardware, HSM and PQC are not implemented; deterministic `Simulated*` types are experimental fixtures only. Keep the vision, but require target hardware and interoperability programs. |
-| [`rullst-mail`](rullst-mail/ROADMAP.md) | Core REST/SMTP/log/memory/mock drivers, failover, bounded attachment/CID serialization, scheduling foundations, mandatory security/deliverability pipeline, deterministic mocks, tenant resolution, tracking tokens, factories, background worker integration, opt-in bounded attachment inspection, shared-local SQLite suppression and minimized delivery observations. | A checked item does not prove provider acceptance or inbox delivery; provider limits may be tighter, the local inspector is not antivirus/CDR, and provider webhook authentication plus multi-host suppression remain open. Compile-time mailables/CSS inlining, inbound MIME, AI dunning, DMARC/DKIM/S-MIME, Studio Mail Radar and extra gateways are not implemented; add providers only with a shared contract suite. |
+| [`rullst-mail`](rullst-mail/ROADMAP.md) | Core REST/SMTP/log/memory/mock drivers, failover, bounded attachment/CID serialization, scheduling foundations, mandatory security/deliverability pipeline, deterministic mocks, tenant resolution, tracking tokens, factories, background worker integration, opt-in bounded attachment inspection, shared-local SQLite suppression and minimized delivery observations. Version 12.1 adds Resend/Svix feedback verification and ACS Managed Identity, SendPulse, Mailjet and Mailtrap transports with explicit protocol boundaries. | A checked item does not prove provider acceptance or inbox delivery; provider limits may be tighter, the local inspector is not antivirus/CDR, and other provider feedback adapters plus multi-host suppression remain open. Compile-time mailables/CSS inlining, inbound MIME, AI dunning, DMARC/DKIM/S-MIME and Studio Mail Radar are not implemented; additional providers require a shared contract suite. |
 | [`rullst-messaging`](rullst-messaging/ROADMAP.md) | Bounded envelopes and wire/trace codec, idempotent publication, competing consumers, leases/retry/DLQ, deterministic local broker, encrypted-content SQLite state and opt-in ORM outbox relay. | Remote Kafka/RabbitMQ/Redis Streams/NATS/SQS/Pub/Sub/Pulsar adapters, replication and provider fault evidence remain unimplemented. Local durability does not provide cross-system exactly-once delivery. |
 | [`rullst-nexus`](rullst-nexus/ROADMAP.md) | Fail-closed admin construction, generated metadata/forms, CRUD/search/pagination/batch actions, opt-in trusted-context tenant scope and transaction-coupled mutation audit. | Host authentication/tenant resolution, global-model/custom-route policy, immutable external audit, custom dashboards and a visual SQL builder remain application or roadmap work. |
 | [`rullst-orm`](rullst-orm/ROADMAP.md) | SQLx pools/dialects, Active Record/repository/query/schema foundations, fail-closed tenant scopes, strict DB modes, transactions, relations/soft deletes, audit/privacy, typed Turso primary, bounded MongoDB/DuckDB/SurrealDB adapters, Qdrant vectors and Redis native structures. | Several historical `[x]` entries remain partial or absent: transparent edge replication, universal external-search durability, autonomous schema/index changes, automatic graph traversal, Wasm drivers and PQC. The 45 historical claims are preserved in the [immutable v12 audit](https://github.com/Rullst/Rullst/blob/v12.0.0/docs/src/v12.md); the current capability ledger owns their boundaries. |
@@ -104,15 +104,16 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M38** | In-memory/local-NVMe SQLite read replicas with background synchronization | `[ ] Not implemented` *(worth vendor-specific adapters when demanded; generic “transparent replication” is not worth claiming because consistency and failover semantics belong to the selected database)* | v13 research |
 | **M39** | Optional self-hosted Rullst Gateway and load balancer | `[ ] Not implemented` *(worth a phased v13 design as a separate opt-in `rullst-gateway` crate/binary, preferably on a maintained proxy foundation such as Pingora. It should consume explicit readiness/drain signals and begin with bounded upstream selection, health checks, WebSocket forwarding and telemetry. It must not live inside `rullst-core` or claim parity with a managed global cloud service, whose network, DDoS controls, multi-zone operations and SLA are external infrastructure.)* | v13 research/foundation |
 | **M40** | Isolated programming labs and learning-game execution | `[ ] Not implemented` *(worth a phased v13 design as opt-in `rullst-labs` contracts plus a separately deployed `rullst-labs-runner`. The web process must never execute learner code or receive a container control socket. Full offensive CTF arenas require independently operated, isolated infrastructure; see the dedicated roadmap.)* | v13 research/foundation |
-| **M41** | Privacy defaults and proportional age assurance | `[~] Initial foundation` *(opt-in unpublished `rullst-privacy` age policies, signed evidence and replay contracts; real age providers, guardian verification, consent/rights/retention workflows and reviewed regional profiles remain open. See the [delivery plan](docs/src/privacy-age-assurance-roadmap.md). No automatic worldwide compliance claim.)* | v13 P0 |
+| **M41** | Privacy defaults and proportional age assurance | `[~] Initial foundation` *(opt-in unpublished `rullst-privacy` age policies, signed evidence, asynchronous replay claims, trusted-clock rechecks, shared-local SQLite and optional PostgreSQL storage across application hosts with focused real-database tests; combined hosted acceptance, consumer journeys, real age providers, guardian verification, consent/rights/retention workflows and reviewed regional profiles remain open. See the [privacy roadmap](docs/src/privacy-age-assurance-roadmap.md). No automatic worldwide compliance claim.)* | v13 P0 |
 
 ## Quantified planning horizon through v13
 
-This second progress lens answers a different question from release readiness:
-how much of the **canonical long-term milestone programme through v13** remains
-if every milestone that is not yet `[x]` stays in scope?
+This inventory counts the status labels of the **canonical long-term milestone
+programme**. It includes v13 research and v13+ ambitions, not just features
+selected for 13.0.0 by 26 September. It measures neither release readiness nor
+the percentage of implementation effort already completed.
 
-The snapshot below was recalculated on 17 September 2026 from M1–M41. It includes
+The label counts below were checked on 20 September 2026 against M1–M41. They include
 v12 hardening, continuous, next-SemVer, v13 and v13-research rows. M31 is excluded
 because the tracker explicitly assigns aerospace/autonomous/defence work to a
 separately governed future programme rather than the general v12/v13 framework suite.
@@ -124,23 +125,23 @@ decompose these canonical milestones, so a raw sum would double-count work.
 | `[x]` bounded completion | **5** | **12.5%** |
 | `[~]` useful but incomplete foundation | **25** | **62.5%** |
 | `[ ]` not implemented | **10** | **25.0%** |
-| **Total in scope through v13** | **40** | **100%** |
+| **Total in the framework programme** | **40** | **100%** |
 
-Two calculations are intentionally retained:
+There are **35 milestones without strict closure (87.5% of the labels)**. A
+partial milestone can contain substantial published functionality and years of
+remaining ambitions; these rows do not have equal size. The former calculation
+that assigned half credit to every partial row was an arbitrary index, not a
+measurement of completed code or remaining work. Do not use it to claim that
+a release implements a particular percentage of the entire framework vision.
 
-- **Strict closure:** 5/40 are closed, so **87.5% remains open** (35
-  milestones). This is the correct answer when a partial milestone counts as
-  unfinished.
-- **Weighted engineering maturity:** `(5 + 25 × 0.5) / 40` is **43.75% complete**,
-  leaving **56.25% equivalent work**. That remainder is the ten untouched
-  milestones (25 percentage points) plus the unfinished half of the 25
-  partial milestones (31.25 points).
-
-This is a scope/maturity indicator, not a duration estimate. Provider accounts,
+Progress toward 13.0.0 is tracked through concrete deliverables and their
+acceptance evidence in the [dated delivery plan](docs/src/v13-delivery-plan.md).
+Checking these labels does not constitute a fresh implementation audit of every
+underlying capability. Provider accounts,
 physical hardware, store acceptance, fiscal homologation, independent audits
 and research-grade cryptography cannot be completed by repository code alone.
-The 56.25% must not be added to the historical-claim campaign or the v12 release
-checklist because those lenses substantially overlap.
+Do not add these counts to the historical-claim campaign or the v12 release
+checklist because those inventories substantially overlap.
 
 ## AI-native vision, without absolutes
 
@@ -366,27 +367,36 @@ merging unrelated breaking work into the v12 line. The phased efficiency plan is
 [WORKFLOWS.md](WORKFLOWS.md#verification-efficiency--v12-maintenance-and-v13).
 Application API changes still belong to the appropriate release line.
 
-Complete the compatible **12.1.0** update experience after the verification
-foundation and before concentrating new capability work on v13. The
-[maintenance checkpoint](docs/src/v12.md#1210-delivery-checkpoint-unreleased)
-distinguishes the working source from the published release and lists the
-remaining delivery gates.
+The compatible **12.1.0** update experience is published. The
+[publication record](docs/src/v12.md#1210-published-maintenance-release)
+links its immutable source and successful release evidence. New capability
+work now belongs to v13; compatible security fixes remain eligible for v12
+maintenance.
 
-The released v12 baseline and documentation closeout have been merged into
-v13 while preserving its separate Labs proposal and planning commits. Keep
-subsequent applicable stable fixes synchronized through reviewed changes. A
-development branch name alone does not prove that it includes later fixes.
+The v13 branch already contains an earlier v12 baseline and its separate Labs
+proposal and planning commits. The subsequent 12.1.0 integration is tracked in
+[PR #218](https://github.com/Rullst/Rullst/pull/218); it has not yet been admitted
+to the protected v13 branch at this checkpoint. Keep subsequent applicable
+stable fixes synchronized through reviewed changes. A development branch name
+alone does not prove that it includes later fixes.
 
-The compatible maintenance source through `236579f3` is now carried into v13:
-SaaS provider/WAF fixes, Stripe customer/checkout/event contracts and transactional
-inbox, ORM driver/enum isolation, Windows cache and Android signing corrections.
-The unpublished age-assurance package and v13 Labs/privacy plans remain separate.
-This synchronization is not publication or completion of the remaining 12.1 gates.
+The published **12.1.0** source at `b62390b4` and its documentation closeout
+are carried into this v13 integration: account mail, one-time Stripe contracts,
+machine endpoints, strict driver isolation, native CLI installation and project
+update/recovery join the earlier SaaS and Android corrections. The unpublished
+age-assurance package and v13 Labs/privacy/Verus plans remain separate.
+Integration requires its own CI evidence; stable-release results do not certify
+the combined v13 source.
+
+The [delivery plan through 26 September 2026](docs/src/v13-delivery-plan.md)
+selects the bounded release priorities, acceptance criteria and feature-freeze
+dates. It preserves this wider roadmap and does not turn planned capabilities
+into shipped claims.
 
 | Order | Outcome | Acceptance boundary |
 | :--- | :--- | :--- |
 | **P0 — verification efficiency** | Shorter local and hosted feedback, with measured cold/warm build and queue times | Compare test inventories; select affected crates and their consumers; preserve broad scheduled/release checks and a full-run fallback for unknown changes. Bind reusable evidence to source, dependencies, tools and policy. Prove that security, workflow, manifest and generator changes cannot silently skip required checks. |
-| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | Compatible opt-in 12.1.0 delivery first, carried into v13. Discovery, private Unix/Windows caching and recovery hardening exist; verified installation and isolated project acceptance remain release blockers. |
+| **P0 — safe update experience** | Discover, prepare, verify and approve CLI/project updates through one guided entry point | The compatible opt-in 12.1.0 flow is published with declared native installation and isolated project acceptance. Carry it into v13 and add explicit major-version migration rules and consumer acceptance; publication of 12.1.0 does not establish 12→13 compatibility. |
 | **P0 — SaaS maintenance** | Contain affected live operations and repair confirmed examples feedback | Follow the [15-finding triage plus Nexus configuration fix](docs/src/saas-v12-1-v13-triage.md). Compatible v12.1 fixes remain independently deliverable; new payment contracts need durable ownership/idempotency and provider acceptance evidence. |
 | **P0 — privacy and age assurance** | Reusable privacy defaults and age checks proportionate to risk across SaaS, LMS and examples | Complete the [M41 delivery plan](docs/src/privacy-age-assurance-roadmap.md) before additional learning/monitoring features. Reject production mocks and unverifiable results; minimize data, offer alternatives and review jurisdiction profiles. No automatic legal certification. |
 | **P1 — navigable API documentation** | Developers can find a capability, understand its contract and run a realistic example | Connect versioned Rust API references, task-based guides and tested REST examples. Document errors, feature flags, security boundaries and migration paths alongside each prioritized API; see the [documentation plan](#api-documentation-quality). |
@@ -405,7 +415,7 @@ after its code and evidence exist.
 
 ### Safe update experience
 
-**Status: working-source 12.1.0 implementation; final release acceptance pending.** The goal is
+**Status: published in 12.1.0 for the documented compatible-update scope.** The goal is
 the easiest practical update journey without hiding risk: one guided entry point, a clear
 plan, minimal repeated input, useful progress, verification and recoverable
 application of the approved changes. Ease and speed are acceptance criteria,
@@ -419,9 +429,9 @@ or count this proposal as completed work in the capability ledger.
 
 Implementation and acceptance order:
 
-Initial discovery hardening is in the working source, not a completed 12.1.0
-delivery: interactive-only, offline/CI-aware notices use bounded HTTPS metadata
-and reject redirects, yanked versions, prereleases and unsolicited major jumps.
+Published 12.1.0 discovery uses interactive-only, offline/CI-aware notices and
+bounded HTTPS metadata. It rejects redirects, yanked versions, prereleases and
+unsolicited major jumps.
 The legacy shared temporary cache is removed; the current result is deliberately
 process-local. Explicit `cargo rullst update check` now provides exact-target,
 MSRV/platform and versioned JSON discovery with separate major/prerelease
@@ -430,15 +440,15 @@ now reuses bounded, owner/permission-checked Unix metadata for six hours and
 supports offline reads, forced refresh and cache opt-out. Windows persistence
 has a private owner/DACL implementation with native acceptance recorded in the
 [maintenance checkpoint](docs/src/v12.md#1210-delivery-checkpoint-unreleased).
-The final acceptance below remains required. The existing published v12.0.0
-artifact provenance was exercised separately; it does not authenticate an
-unpublished 12.1.0 candidate.
+The [12.1.0 publication record](docs/src/v12.md#1210-published-maintenance-release)
+records final acceptance. Earlier v12.0.0 provenance exercises remain historical
+evidence for their own artifacts.
 
-Working-source preparation now builds native CLI candidates on four explicit
+Published preparation builds native CLI candidates on four explicit
 targets and binds their version, source, platform, sizes and digests in a
 bounded inventory. The admitted tag workflow separately attests the files and
-adds release assets; ordinary CI inventories have no release tag. Native and
-release evidence is still pending. Explicit `update stage` now rechecks a fresh
+adds release assets; ordinary CI inventories have no release tag. The admitted
+12.1.0 release completed this native and publication evidence. Explicit `update stage` rechecks a fresh
 registry selection, authenticates the manifest before executable downloads and
 bounds HTTPS redirects, sizes, time and hashes in private storage. It executes
 and installs nothing. Managed installation now revalidates eligibility, original
@@ -451,8 +461,8 @@ executing-image tests passed on Linux, Windows and macOS at `ef0a8577` in
 The explicit local `update verify` command now authenticates a private manifest
 snapshot with the caller-installed GitHub CLI and checks both native binary
 digests. It grants no installation authority or registry eligibility and does
-not download, execute or install candidates. Platform/release acceptance is
-still required; this is one verifier boundary in the unfinished flow below.
+not download, execute or install candidates. Its declared platform/release
+acceptance is recorded with the published 12.1.0 flow below.
 
 Working-source `update project prepare` now retains Git working contents and
 the root lockfile in private before/candidate copies, reuses exact dependency
@@ -581,8 +591,8 @@ or label unimplemented v13 contracts as available in v12.
 | Version | Status | Honest scope |
 | :--- | :---: | :--- |
 | **v12.0.0** | `[x] Published stable` | Tag `v12.0.0` at `eb11f892` completed the protected release workflow and published all sixteen packages on September 15, 2026. |
-| **v12.0.x** | `[~] Maintenance if needed` | Preserve the published stable line; separately review important compatible fixes when necessary. |
-| **v12.1.0** | `[ ] Planned compatible minor` | Guided CLI/project updates and separately reviewable SaaS/Nexus maintenance from the [examples triage](docs/src/saas-v12-1-v13-triage.md). Preserve v12 contracts and validate artifact trust, recovery, generated migrations and platform behavior; not yet published. |
+| **v12.x** | `[~] Maintenance if needed` | Preserve published releases; separately review important compatible fixes when necessary. |
+| **v12.1.0** | `[x] Published compatible minor` | All sixteen packages were published from `b62390b4` on 20 September 2026 UTC. Guided CLI/project updates, SaaS/Nexus fixes, account mail and the other bounded contracts are recorded with immutable source and registry evidence in the [publication record](docs/src/v12.md#1210-published-maintenance-release). |
 | **v13.x** | `[ ] Next feature line` | Compatible and breaking improvements move together into the next deliberate cycle: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 
 The framework may call a milestone implemented only when the same commit passes

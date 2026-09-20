@@ -164,6 +164,19 @@ where
     D: MailDriver,
     I: AttachmentInspector,
 {
+    async fn send_with_delivery_id(
+        &self,
+        message: &Message,
+        delivery_id: &str,
+    ) -> Result<(), MailError> {
+        crate::drivers::traits::validate_delivery_id(delivery_id)?;
+        let prepared = DeliveryPipeline::prepare(message)?;
+        self.inspect_all(prepared.message()).await?;
+        self.driver
+            .send_with_delivery_id(prepared.message(), delivery_id)
+            .await
+    }
+
     async fn send(&self, message: &Message) -> Result<(), MailError> {
         let prepared = DeliveryPipeline::prepare(message)?;
         self.inspect_all(prepared.message()).await?;

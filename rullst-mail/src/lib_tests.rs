@@ -83,14 +83,14 @@ async fn test_log_driver() {
     let mut content = String::new();
     for _ in 0..10 {
         content = std::fs::read_to_string(log_path).unwrap_or_default();
-        if content.contains("To: test@rullst.dev") {
+        if content.contains("[MAIL LOGGED]") {
             break;
         }
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
-    assert!(content.contains("To: test@rullst.dev"));
-    assert!(content.contains("Subject: Hello Test"));
-    assert!(content.contains("Testing 1 2 3"));
+    assert!(content.contains("[MAIL LOGGED]"));
+    assert!(!content.contains("Subject: Hello Test"));
+    assert!(!content.contains("Testing 1 2 3"));
 }
 
 #[tokio::test]
@@ -108,12 +108,12 @@ async fn test_mail_send_facade() {
     let mut content = String::new();
     for _ in 0..10 {
         content = std::fs::read_to_string(log_path).unwrap_or_default();
-        if content.contains("facade@rullst.dev") {
+        if content.contains("[MAIL LOGGED]") {
             break;
         }
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
-    assert!(content.contains("facade@rullst.dev"));
+    assert!(content.contains("[MAIL LOGGED]"));
 }
 
 #[test]

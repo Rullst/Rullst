@@ -179,7 +179,7 @@ Advisory release discovery; it does not install a CLI or migrate an application.
 
 ```bash
 cargo rullst update check
-cargo rullst update check --to 12.0.0 --json
+cargo rullst update check --to 12.1.0 --json
 cargo rullst update check --refresh
 cargo rullst update check --offline --json
 cargo rullst update check --no-cache

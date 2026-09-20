@@ -1,9 +1,9 @@
 # Cargo feature matrix
 
 > [!IMPORTANT]
-> Dependency examples use stable `12.0.0`. Pin that exact version for
-> reproducible v12 builds; use path dependencies only when intentionally
-> testing checkout-local changes.
+> Dependency examples target `12.1.0`. Check the [release record](v12.md)
+> for publication status and commit Cargo.lock for reproducible builds.
+> Use path dependencies only when intentionally testing checkout-local changes.
 
 This page is the public feature contract for the 16 packages in the Rullst
 release train. The package manifests remain the machine-readable source of
@@ -33,7 +33,7 @@ that only need the HTTP runtime can opt out:
 
 ```toml
 [dependencies]
-rullst = { version = "12.0.0", default-features = false }
+rullst = { version = "12.1.0", default-features = false }
 ```
 
 | Feature | Default | Enables |
@@ -98,7 +98,7 @@ over one file-backed SQLite URL:
 
 ```toml
 [dependencies]
-rullst = { version = "12.0.0", default-features = false, features = [
+rullst = { version = "12.1.0", default-features = false, features = [
   "auth-sqlite",
   "capital-quota-sql",
   "mail-sqlite",
@@ -319,20 +319,20 @@ documented deterministic offline behavior for empty or `mock_*` credentials.
 Minimal HTTP runtime:
 
 ```toml
-rullst = { version = "12.0.0", default-features = false }
+rullst = { version = "12.1.0", default-features = false }
 ```
 
 SQLite application using the release default:
 
 ```toml
-rullst = "12.0.0"
+rullst = "12.1.0"
 ```
 
 PostgreSQL application with explicit domain integrations:
 
 ```toml
 rullst = {
-    version = "12.0.0",
+    version = "12.1.0",
     default-features = false,
     features = ["strict-postgres", "auth", "security", "telemetry"]
 }
@@ -341,14 +341,14 @@ rullst = {
 Embedded IoT model without the standard library:
 
 ```toml
-rullst-iot = { version = "12.0.0", default-features = false }
+rullst-iot = { version = "12.1.0", default-features = false }
 ```
 
 Experimental IoT fixtures are deliberately separate:
 
 ```toml
 rullst-iot = {
-    version = "12.0.0",
+    version = "12.1.0",
     default-features = false,
     features = ["experimental-simulators"]
 }

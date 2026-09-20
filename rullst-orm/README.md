@@ -225,7 +225,7 @@ Add the library to your `Cargo.toml`:
 Install the exact stable train with:
 
 ```bash
-cargo add rullst-orm@12.0.0
+cargo add rullst-orm@12.1.0
 cargo add tokio -F full
 ```
 
@@ -302,7 +302,7 @@ enums specifically require `strict-postgres`, because SQLx's dynamic `Any`
 driver cannot decode custom PostgreSQL types:
 
 ```toml
-rullst-orm = { version = "12.0.0", features = ["strict-postgres"] }
+rullst-orm = { version = "12.1.0", features = ["strict-postgres"] }
 ```
 
 Then derive one label contract and use it in schema code:

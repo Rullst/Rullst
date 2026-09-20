@@ -62,7 +62,7 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 | **`rullst-connect`** | Social login / OAuth2 / OIDC providers (Google, Apple, GitHub, Discord, Auth0, Cognito) with PKCE and rotating JWKS. | 🟢 **`[Implemented / Bounded]`**: OAuth2/OIDC clients with constant-time PKCE comparison, validated discovery, bounded JWKS refresh/cache policy, deterministic mock credentials and a credential-free `UniversalProfile` projection. `ConnectUser` serialization omits access/refresh tokens. Category-aware remote revocation rejects malformed or oversized tokens before transport: Google, Discord and Apple accept the documented access/refresh categories, GitHub accepts access tokens, and Auth0/Cognito accept refresh tokens; protocol fixtures bind method, endpoint, client authentication and form/JSON shape, while request/response `Debug` omits credentials, bodies and URL query data. Other providers fail explicitly as unsupported, and remote success does not clear application sessions or persistence. `AutoRefreshingSession<P>` validates and user-binds token generations, detects expiry with a bounded early-refresh window, serializes provider refresh through static dispatch, retains/rotates refresh credentials and swaps state only after a complete valid response; callers waiting behind a successful refresh reuse that state. Its state/leases redact secrets. `EncryptedTokenSnapshot` supplies a bounded, versioned AES-256-GCM envelope that authenticates key ID, provider and trusted local-account binding, preserves the validated generation and rejects copied-owner/tampered records. The optional `sqlite` store persists only a pseudonymous binding digest, generation/key metadata and that ciphertext under an immutable row ceiling; `BEGIN IMMEDIATE`, exact-successor compare-and-swap and conditional deletion reject stale shared-local writers, with restart, contention, quota, configuration, corruption, key and symlink evidence. The application still owns secret-manager key custody/rotation, account authorization, a lease around the remote provider call, losing-call reconciliation, retry/backoff, trusted directory/backup, reauthentication and multi-host replication. The optional Axum/tower-sessions lifecycle generates a ten-minute state + PKCE challenge, adds nonce for OIDC, keeps verifier/nonce server-side, removes and immediately saves the sole active challenge before validation and rejects sequential replay/expiry/mismatch. The host still owns durable session storage and cookie/TLS/account policy; the generic session-store API is not distributed compare-and-delete, so simultaneous already-loaded callbacks require idempotent effects or a stronger application store. `ReqwestClient` also exposes explicit HTTP(S) corporate-proxy constructors: endpoint shape is bounded, URL credentials are rejected, authenticated remote proxies require HTTPS, system-proxy lookup is disabled and a local protocol fixture proves routing/auth headers.<br/>🟢 **`[Implemented / Local Test Fixture]`**: The explicitly mounted Axum Mock IdP accepts only configured HTTP-loopback issuer/callback origins, binds one exact client, bounds process-local grants/tokens, consumes expiring authorization codes once, verifies S256 PKCE, signs nonce-bound EdDSA ID tokens and publishes discovery/JWKS. The deterministic key and credentials are public test fixtures; interactive login/consent, refresh/device/federation flows, durability, rotation, public exposure and OIDC conformance are not claimed.<br/>🔵 **`[Roadmap]`**: PAC/WPAD, SOCKS, proxy mTLS identity and enterprise deployment certification are not implied. Message brokers live in `rullst-messaging`, not this OAuth-focused crate. |
 | **`rullst-messaging`** | Broker-neutral event envelopes, idempotent publication, consumer groups, acknowledgement leases, retry, dead letters, durable local SQLite state, and future remote adapters. | 🟢 **`[Implemented / Bounded Foundation]`**: `rullst.messaging.v1` envelopes, bounded identifiers/headers/payloads/batches/retention, topic-scoped exact-replay idempotency, fan-out between groups, competing consumers, expiring single-use ACK leases, bounded retry/attempt ceilings, dead-letter views, explicit terminal purge, injectable time and a reusable static-dispatch contract suite. Debug output redacts keys/tokens/header values/payloads. A canonical bounded v1 envelope codec rejects unknown versions, non-canonical/truncated/oversized frames and namespace mismatch; a deterministic digest fixture freezes its bytes. Validated W3C version-00 `traceparent` and a conservative `tracestate` subset propagate through only those two allowlisted headers; arbitrary baggage, sampling and export remain host work. `InMemoryBroker` remains deterministic/process-local. The opt-in `SqliteBroker` uses a fixed schema and serialized `BEGIN IMMEDIATE` mutations for publications, subscriptions, claims, ACK/retry/DLQ and purge; exact limits are persisted per namespace. Its explicit AES-256-GCM profile encrypts header values plus payload with randomized nonces and AAD binding to immutable row metadata. A bounded primary/prior-key ring rejects missing keys until old records are purged, and plaintext/encrypted profiles cannot mix. The opt-in static `OrmOutboxRelay` binds one relational outbox stream to one topic, validates claimed JSON, publishes the durable event key as broker idempotency and only then ACKs the exact ORM lease; a publish-before-ACK crash/reclaim test produces an exact replay and one broker message. Shared-contract, raw-storage/restart, wrong-key/tamper/row-swap, symlink, rotation, expired-lease, two-instance contention, configuration-drift and malformed-row repair regressions are executable.<br/>🟠 **`[Partial]`**: Delivery is at least once. The default profile is plaintext. Even in the encrypted profile, topic/event/content metadata, IDs, timestamps, idempotency keys, fingerprints, rotation key IDs and delivery state remain visible; key custody, permissions, backup/rollback detection, retention, disk operations, topic/tenant authorization and destination-side idempotency belong to the host. Profile migration requires a new namespace/database and application-owned republishing. The outbox database and broker publication are not one atomic transaction; worker supervision, cleanup and destination idempotency remain application work. The local adapter does not provide replication or automatic failover. The envelope codec is not a remote transport and does not preserve caller publication keys or broker acknowledgements by itself. Kafka, RabbitMQ, Redis Streams, NATS/JetStream, SQS/SNS, Google Pub/Sub and Pulsar adapters plus their live restart/fault matrices remain roadmap work. |
 | **`rullst-iot`** | `no_std` sensor telemetry/protocol helpers and an Ed25519-signed firmware-manifest verification gate. | 🟢 **`[Implemented / Bounded]`**: Ed25519 manifest verification with target/hash/length/counter checks, an explicit durable monotonic-CAS store boundary, `no_std` telemetry/frame models, bounded MQTT 5 PUBLISH and RFC 7252 CoAP base-request encoders, a credential-free local HTML snapshot renderer, and a safe telemetry-module CLI scaffold. Protocol vectors and restart/retry/conflict tests prove these local contracts, not a broker, network or physical device.<br/>🟠 **`[Partial]`**: GPIO state, I2C/Modbus frames, BLE GATT records, RSSI topology, power recommendation and Digital Twin JSON are data/helpers only, not hardware, network or realtime drivers.<br/>🟡 **`[Simulador Dev]`**: Deterministic MQTT-value/HSM/PQC fixtures require `feature = "experimental-simulators"` and never represent broker or cryptographic capabilities.<br/>🔵 **`[Roadmap]`**: Concrete hardware-backed counter/boot integration, firmware download/flashing, MQTT/CoAP transports and state machines, hardware drivers/HSM and audited ML-KEM. |
-| **`rullst-mail`** | Transactional email engine with Resend, SendGrid, Postmark, optional SMTP, optional native AWS SES v2, and offline fixtures. | 🟢 **`[Implemented / Bounded]`**: Mandatory pre-flight pipeline, anti-CRLF validation, bounded disposable-domain/security/DLP heuristics, provider-specific transports, seven safe scaffold variants (including provenance-aware fiscal receipts and explicit D+1/D+3/D+7 dunning), and expiring purpose-bound HMAC tracking tokens. `TenantMailResolver` selects an in-process driver directly from an explicit authenticated Core `TenantContext`; invalid IDs and unavailable registry state fail closed, and tests prove two contexts do not cross-deliver. `MailError` classifies permanent/transient/rate-limit outcomes; the in-process `FailoverDriver` sends another provider only transport/HTTP 5xx/429/transient-SMTP failures, captures bounded delta `Retry-After`, fails closed on circuit-state errors and emits structured tracing without provider response bodies. `Mail::enqueue` preserves tenant and bounded due-time metadata through SQLite/Redis without early claims; the worker consumes that timestamp only after it is due. Direct Resend/SendGrid retain provider-native scheduling, while real SMTP/Postmark/Log and SES paths reject future direct delivery; offline fixtures may retain it for assertions. The shared attachment contract accepts at most 32 items, 20 MiB each and 25 MiB raw aggregate; validates safe basenames, parameter-free MIME and unique HTML-referenced CIDs; redacts bytes from `Debug`; and feeds provider-native Resend, SendGrid, Postmark, native SES and nested SMTP MIME serialization. The opt-in static `AttachmentInspectionGuard` fails before transport on executable magic, spoofed known types, active PDF/SVG, recognized secrets and unsafe text links; external scanners can implement the same contract. The provider-neutral `SuppressionGuard` checks process-local or opt-in shared-local SQLite state before transport; verified event identities are replay-bound, suppression reasons escalate monotonically and immutable quotas are transactional. `ObservedMailDriver` emits only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing observer. With `aws-ses`, `AwsSesDriver` sends SES v2 Simple messages through the official AWS SDK and SigV4, including temporary credentials, caller-owned rotating providers/config, HTML/text, RFC 8058 headers and attachments/CID; it rejects provider field limits and an encoded estimate over 40 MiB before network, caps `Retry-After`, and a loopback contract asserts the signed regional `ses/aws4_request` request plus typed/redacted rejection. The legacy constructor remains only an offline-fixture or explicit trusted bearer-proxy boundary, never an unsigned AWS request. Fiscal mock responses remain visibly unauthorized; dunning does not infer billing state or scheduling.<br/>🟠 **`[Partial]`**: Exact execution time, exactly-once delivery, live-account SES acceptance and inbox delivery are not implied. The local attachment inspector is not antivirus, sandboxing, recursive archive inspection or CDR; provider/account limits may be tighter. Provider webhook authentication/adapters, multi-host suppression replication, file encryption, distributed breaker/telemetry operations, durable encrypted tenant credentials, rotation and cross-process distribution remain application/deployment concerns; tracking payloads are authenticated but not confidential. SES identity/domain verification, sandbox exit, IAM least privilege, quotas, reputation and provider operations remain AWS/account/deployment work.<br/>🟡 **`[Offline Mock]`**: Memory/Log plus empty or `mock_*` provider credentials. |
+| **`rullst-mail`** | Transactional email engine with Resend, SendGrid, Postmark, SendPulse, Mailjet, Mailtrap, ACS, optional SMTP, optional native AWS SES v2, and offline fixtures. | 🟢 **`[Implemented / Bounded]`**: Mandatory pre-flight pipeline, anti-CRLF validation, bounded disposable-domain/security/DLP heuristics, provider-specific transports, seven safe scaffold variants (including provenance-aware fiscal receipts and explicit D+1/D+3/D+7 dunning), and expiring purpose-bound HMAC tracking tokens. `TenantMailResolver` selects an in-process driver directly from an explicit authenticated Core `TenantContext`; invalid IDs and unavailable registry state fail closed, and tests prove two contexts do not cross-deliver. `MailError` classifies permanent/transient/rate-limit outcomes; the in-process `FailoverDriver` sends another provider only transport/HTTP 5xx/429/transient-SMTP failures, captures bounded delta `Retry-After`, fails closed on circuit-state errors and emits structured tracing without provider response bodies. `Mail::enqueue` preserves tenant and bounded due-time metadata through SQLite/Redis without early claims; the worker consumes that timestamp only after it is due. Direct Resend/SendGrid retain provider-native scheduling, while real SMTP/Postmark/Log and SES paths reject future direct delivery; offline fixtures may retain it for assertions. The shared attachment contract accepts at most 32 items, 20 MiB each and 25 MiB raw aggregate; validates safe basenames, parameter-free MIME and unique HTML-referenced CIDs; redacts bytes from `Debug`; and feeds provider-native Resend, SendGrid, Postmark, native SES and nested SMTP MIME serialization. The opt-in static `AttachmentInspectionGuard` fails before transport on executable magic, spoofed known types, active PDF/SVG, recognized secrets and unsafe text links; external scanners can implement the same contract. The provider-neutral `SuppressionGuard` checks process-local or opt-in shared-local SQLite state before transport; verified event identities are replay-bound, suppression reasons escalate monotonically and immutable quotas are transactional. `ObservedMailDriver` emits only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing observer. With `aws-ses`, `AwsSesDriver` sends SES v2 Simple messages through the official AWS SDK and SigV4, including temporary credentials, caller-owned rotating providers/config, HTML/text, RFC 8058 headers and attachments/CID; it rejects provider field limits and an encoded estimate over 40 MiB before network, caps `Retry-After`, and a loopback contract asserts the signed regional `ses/aws4_request` request plus typed/redacted rejection. The legacy constructor remains only an offline-fixture or explicit trusted bearer-proxy boundary, never an unsigned AWS request. Fiscal mock responses remain visibly unauthorized; dunning does not infer billing state or scheduling.<br/>🟠 **`[Partial]`**: Exact execution time, exactly-once delivery, live-account SES acceptance and inbox delivery are not implied. The local attachment inspector is not antivirus, sandboxing, recursive archive inspection or CDR; provider/account limits may be tighter. Provider webhook authentication/adapters, multi-host suppression replication, file encryption, distributed breaker/telemetry operations, durable encrypted tenant credentials, rotation and cross-process distribution remain application/deployment concerns; tracking payloads are authenticated but not confidential. SES identity/domain verification, sandbox exit, IAM least privilege, quotas, reputation and provider operations remain AWS/account/deployment work.<br/>🟡 **`[Offline Mock]`**: Memory/Log plus empty or `mock_*` provider credentials. |
 | **`rullst-studio`** | Local Developer Control Room (`http://127.0.0.1:5555`), clean route navigation, live system telemetry visualizers. | 🟢 **`[Implemented / Bounded]`**: Local control center, `RadarSnapshot` telemetry, database/migration surfaces when configured, and explicit `Unavailable` states for unconnected probes. The data browser reads/filters SQLx tables and, only after the verified debug-loopback/same-origin middleware installs an unforgeable request marker, can update primitive non-key values or delete exactly one complete-primary-key-selected row. Values are bound, request/schema/value cardinality is bounded, backend-specific types remain read-only and SQLite/PostgreSQL/MySQL/MariaDB have executable mutation contracts. This is not application tenant/RBAC, audit, rollback or shared-production administration. The supplied queue snapshot exposes only backend records; SQLite can explicitly retain 1–100,000 successful jobs with atomic pruning and purge while deleting them by default. Retained payload access/policy belongs to the host. An explicitly supplied memory/Redis `Cache` exposes at most 100 metadata rows in the UI; logical keys become process-bound HMAC tokens, values never leave the driver, and only individual local invalidation is available. A separately mounted push-only trace router accepts 1–128 attribute-free v1 spans under 128 KiB after HMAC-SHA256, source/ID/clock/nonce validation and atomic replay rejection; the bounded in-process viewer derives slow-query and repeated-label heuristics without SQL or bindings. It is not OTLP, durable trace storage, a key manager or remote Studio authentication. Successful feature-flag toggles invalidate all warm `DbFeatureDriver` caches in the same process through a constant-size epoch. Cross-process/direct-writer invalidation remains TTL-bound unless the application distributes the signal. |
 | **`rullst-nexus`** | Auto-generated Admin CMS (`/nexus`), dynamic model CRUD, AI Admin Assistant (`/nexus/chat`), SOC Threat Radar. | 🟢 **`[Implemented / Bounded]`**: `#[derive(Nexus)]` emits registered named-field metadata with inferred primitive or explicit semantic widgets; the panel provides parameterized CRUD/search/sort/pagination plus bounded selected-record delete/deactivate. Construction is fail-closed, requires an authentication policy and admin role layer, validates bounded unambiguous model/field/enum/relation metadata, enforces server-side field policy, caps form pairs and field bytes, rejects unknown/protected/duplicate or semantically invalid form values, minimizes database errors returned to clients, and escapes record/model metadata on audited paths. Boolean widgets are inferred; enum options and multiline intent are explicit because an unrelated Rust field type does not expose those semantics to the struct derive. Deactivation requires a writable Boolean `is_active`/`active`.<br/>🟢 **`[Implemented / Opt-in Bounded]`**: a registered text `tenant` column scopes every built-in read, create, update, delete and batch operation to a trusted Core `TenantContext`; create injects the context value and missing context fails closed. `with_required_audit` transactionally couples successful mutations to a minimized fixed-schema row containing the built-in authenticated actor, optional tenant, table/action, optional known key, count, committed outcome, correlation ID, timestamp and format version; missing audit storage rolls back the mutation. The audit table is in the same relational database, mutable by its administrators, records no denied attempts, and may omit an automatically generated create key. Host identity/membership/domain policy, global-model and custom-route authorization, database privileges, schema/type compatibility, retention/backup/replication and immutable external audit delivery remain application/deployment contracts. |
 | **`rullst-macros`** | Procedural macros (`html!`, `rullst::model`, `rullst::runtime::main`) and compatibility helpers. | 🟢 **`[Implemented / Bounded]`**: Compile-time `html!` escaping with explicit `RawHtml`, model/runtime macros, and `trybuild` diagnostics. A concrete async `#[server_function]` returning `RpcResult<T>` generates a matching explicit native router and Wasm caller over the bounded `rullst.client` v1 JSON envelope: owned Serde parameters/results, same-origin `/api/rpc/...` path, 256 KiB request/response policy, request correlation, media-type/version/schema checks, CSRF-cookie forwarding and message-free failure codes. The host must mount the route inside production security, authenticated identity, tenant, authorization and rate-limit layers; application idempotency and browser/network interoperability beyond CI are not inferred. `#[island]` hydration remains experimental. |
@@ -91,10 +91,54 @@ enabled implicitly. Production must reject offline mock evidence and
 process-local replay protection. The host owns authentication, tenant/subject
 binding, risk/legal assessment and durable shared state.
 
+The v13 persistence contract uses static-dispatch asynchronous nonce claims.
+Verification samples a trusted server clock before validation and after the
+claim; expiry or clock rollback during storage cannot return permission.
+The optional `sqlite` adapter is shared-local only: a private file-backed pool,
+WAL with full synchronization, serialized quota/expiry/claim transactions and
+persisted configuration/clock high-water state. It stores only domain-separated
+nonce digests and expiry. No unexpired claim may be evicted. Cancellation or an
+uncertain commit returns no assessment; the host must request fresh evidence
+when consumption is uncertain. File custody, clock synchronization and storage
+durability are deployment obligations. Restoring an older database requires
+quiescing verification and invalidating all outstanding challenges through a
+new policy/key epoch; SQLite cannot detect arbitrary backup rollback. Network
+filesystems and multi-host replication are outside this adapter's boundary.
+
+The v13 PostgreSQL adapter uses a separately enabled `postgres` feature and a
+private bounded pool against one authoritative writable database. Explicit
+deployment initialization creates the fixed `rullst_age_replay` schema; normal
+connection never creates or repairs missing state. Transactional startup locking
+and a metadata row lock serialize schema initialization and quota/expiry/nonce
+claims across application hosts. Metadata persists the schema version, capacity
+and accepted clock high-water mark. Tables must be permanent and WAL-logged;
+`fsync`, full-page writes and synchronous commit are required. Claims store only
+the same domain-separated nonce digest and expiry as SQLite. Remote connections
+require certificate/hostname-verified TLS; loopback and local sockets support
+disposable development databases. Errors must not expose connection credentials.
+Bounded pool acquisition, statement/lock waits and idle transactions prevent
+unbounded database waits; the caller still owns an overall request deadline.
+All verifiers must use that same authoritative database and synchronized trusted
+clocks. Replication configuration, failover fencing, durable hardware and backup
+restore remain operator obligations; asynchronous replica promotion or database
+rollback cannot be advertised as preserving consumed proofs automatically.
+The adapter's focused real-database tests cover concurrent initialization and
+claims, a restricted runtime role, quota, schema/durability drift, cancellation,
+clock changes during a row-lock wait and server restart. Combined hosted
+acceptance and deployment-specific failover/TLS evidence remain separate.
+
 This first contract does not implement a facial model, vendor transport,
 guardian verification or global privacy compliance. The
 [privacy and age-assurance roadmap](privacy-age-assurance-roadmap.md) defines
 the remaining consent, rights, retention, provider and jurisdiction work.
+The owner-approved 13.0.0 delivery scope prioritizes the independent foundation
+and an authenticated first-party declaration journey for policies that permit
+that assurance. An external provider is optional and requires separate native
+protocol and sandbox acceptance before any live claim. A local facial engine is
+follow-up work. Neither an absent provider nor a failed check may downgrade the
+required assurance or make a declaration authorize a stronger-policy action.
+Publication of the privacy package still requires explicit acceptance of its
+advertised API, durable state, consumer behavior and release configuration.
 The separate [SaaS triage](saas-v12-1-v13-triage.md) assigns the examples' reported
 defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidence.
 
@@ -109,7 +153,78 @@ and manual workflow precede any required v13 check; compatibility, reproducible
 proofs, negative controls and measured CI cost are promotion criteria. This
 plan adds no v12.1 release gate or framework-wide correctness claim.
 
+### Versioned release-branch boundary
+
+The v13 preparation policy binds major 13 to `v13`; major 12 remains bound to
+`main`. The source-admission gate requires a canonical matching tag, the exact
+checked-out/tagged commit at the current protected branch head, and every
+publishable inventory package at the tagged version before artifact builds.
+All declared automatic release workflows accept both maintained source lines.
+Required manual/native/security evidence and the protected crates.io approval
+remain separate mandatory gates. Fuzz evidence must come from the candidate's
+release line and a source carrying that same policy; v12 results cannot be
+credited to v13 merely because they are recent. The existing immutable v12
+tags retain their original workflow and policy.
+
 ### v12 audit correction invariants
+
+**12.1 account mail:** `rullst-mail::ActionLink` validates an exact
+application-configured origin (HTTPS, or explicit loopback HTTP); action URLs
+and `Message` contents are redacted from Debug. The compatible `Message`
+pipeline preserves only bounded opaque `token` query values inside safe body
+URLs, including HTML-escaped query separators. This context-aware exception
+does not apply to subjects, arbitrary non-URL text, URL credentials, other
+secret parameters, fragments, provider errors or telemetry. Applications own
+the destination authorization; a generic body URL is not an identity proof.
+`AccountMail` builds versioned deterministic English, Portuguese and Spanish
+account notices. Reset issuance expires after 20 minutes; delivery uses an
+absolute UTC expiry so a stable idempotency key retains identical content.
+Templates generate neither action tokens nor marketing consent and add no
+tracking. Provider tracking configuration remains a separate obligation.
+`LogDriver` records only delivery metadata.
+
+Opt-in Auth `recovery-postgres`/`recovery-sqlite` owns an authoritative account
+registry, purpose-separated keyed token digests, revocable opaque sessions and
+an AES-GCM transactional outbox. Account creation enqueues welcome; password
+replacement, reset consumption, sibling invalidation, session revocation and a
+password-change notice commit atomically. The facade `account-mail-*` features
+compose this store with Mail without another publishable crate. Existing
+password tables and encrypted-only cookies require explicit migration; no
+implicit application rewrite or cross-database transaction is promised.
+Bounded claims, retry, idempotency propagation, Resend/Svix feedback verification
+and the ACS Managed Identity transport are additive foundations. Redis recovery,
+other identity-action transactions, marketing consent and audited administrative
+resend are not implemented by this contract. See [account mail](account-mail-v12-1.md)
+for exact limits, deployment obligations and external acceptance boundaries.
+
+**12.1 additional Mail transports:** native SendPulse static Bearer authentication,
+Mailjet v3.1 Basic authentication and Mailtrap Sending/Sandbox APIs preserve the
+mandatory pipeline and deterministic offline credentials. Real sends require an
+explicit verified sender, due message, bounded JSON and validated success body.
+Mailjet disables open/click tracking; SendPulse/Mailtrap require account-level
+tracking configuration. Mailjet remote sandbox and Mailtrap hosted capture are
+explicitly separate from production and offline mocks. SendPulse rejects inline
+CID/unsubscribe-header messages outside its reviewed REST contract. The local
+`MailTrap` harness is not the hosted Mailtrap service. Provider account acceptance
+and durable operation reconciliation remain external; no exactly-once promise
+is inferred from a delivery ID. HTTP failures omit provider bodies while retaining
+status and bounded retry metadata.
+
+**12.1 one-time Stripe foundation:** a separate fixed-price `mode=payment`
+contract checks active provider catalog amount/currency before creation and
+binds session, owner, customer, attempt, price and mode. Receipt reads validate
+the expanded PaymentIntent/charge, with partial refunds and disputes preventing
+`Paid`. Signed event hints must be reconciled through application-owned durable
+inbox/entitlement transactions. Existing generated billing remains recurring;
+new sandbox evidence and merchant refund/dispute operations are still required.
+
+**12.1 authenticated machine endpoints:** an immutable `MachineEndpointPolicy`
+on `Server` exempts only exact write-method/path pairs from browser CSRF after
+proving a strong bearer secret or an explicit host-supplied signed-webhook/mTLS
+verifier. Cookie/Origin/Sec-Fetch-Site inputs are rejected on these routes; body
+size is bounded and WAF/secure headers remain composed. Wildcards and weak
+secrets fail at construction. Applications own ingress limits, replay storage,
+certificate trust and authorization; an unverified proxy header is not mTLS.
 
 The current [release audit](v12-release-audit.md) reopens earlier readiness
 claims. A historical score, checked roadmap item or green mainline run is not
@@ -144,9 +259,9 @@ evidence that the current revision satisfies these contracts.
 These describe required behavior, not a declaration that every final release
 gate has passed. The audit records the current evidence and remaining work.
 
-### Studio browser composition invariant (12.1.0, unreleased)
+### Studio browser composition invariant (12.1.0)
 
-Studio browser composition in the unreleased 12.1.0 maintenance train preserves
+Studio browser composition in the published 12.1.0 maintenance release preserves
 both root and `/studio`-nested same-origin asset routes. A raw browser without
 a supplied cache renders an explicit unavailable state and exposes no cache
 mutation endpoints. The full local builder installs the configured cache once
@@ -154,9 +269,9 @@ and retains its verified-loopback/same-origin protection. Assets and navigation
 fixes do not constitute a shared-production authentication mode; existing
 application-level workaround routes must be removed before upgrading.
 
-### Mobile presentation invariant (12.1.0 and v13, unreleased)
+### Mobile presentation invariant (12.1.0, carried forward to v13)
 
-The unreleased 12.1.0/v13 mobile maintenance contract keeps Nexus navigation
+The published 12.1.0 mobile maintenance contract keeps Nexus navigation
 dismissible by close control, backdrop, Escape and links, with keyboard focus
 containment/return and visible no-JavaScript navigation. Portfolio scaffolds
 must reflow at phone widths and wrap long content instead of hiding overflow.
@@ -682,8 +797,13 @@ while portability and semantic review remain the model author's responsibility.
   strict features are unified remains PostgreSQL, then MySQL, then SQLite.
 * Features are additive. Another dependency enabling ORM defaults, a SQLite
   queue, Turso's offline SQLite transport or another SQLx driver can broaden the
-  final graph. Studio/facade compositions are not covered by a standalone ORM
-  isolation claim. Turso explicitly enables SQLite for its offline contract.
+  final graph. Core, Studio, Nexus and the facade propagate an explicitly
+  selected backend when defaults are disabled. Studio's SQLite queue is now
+  explicitly optional; defaults retain `drivers-all` and `queue-sqlite`.
+  Fifteen standalone normal/build graphs cover ORM/Core/Studio/Nexus/facade
+  across all three SQLx backends. Capital/other optional capabilities may
+  intentionally broaden those graphs. Turso enables SQLite for its offline
+  contract.
 * A standalone consumer check must compile generated model/query/transaction
   code and inspect its normal/build graph for unrelated SQLx driver packages.
   Workspace all-feature or all-target checks cannot prove driver isolation.
@@ -1435,7 +1555,7 @@ assistant, not a claim that compilation proves production compatibility.
   restoration across multiple workspace members, preserve a failed edit
   only when explicitly requested, restore that persisted review state, and
   reject symlinked Rust sources before starting the transaction.
-  **Unreleased recovery hardening:** automatic and persisted restores validate
+  **12.1.0 recovery hardening:** automatic and persisted restores validate
   the complete bounded index and every snapshot/target before staging all file
   replacements. Limits are 8 MiB/index, 100,000 entries, 64 MiB/file and
   512 MiB/restore. Symlinks/reparse points, malformed or duplicate entries and
@@ -1443,54 +1563,16 @@ assistant, not a claim that compilation proves production compatibility.
   hardlinked destination. A later apply error may leave earlier files restored;
   it reports progress and retains the backup. Stop other writers first: this is
   neither an all-files atomic commit nor protection from hostile concurrent
-  filesystem changes. Platform acceptance remains a release gate.
+  filesystem changes. Platform acceptance is scoped to the
+  [published release evidence](v12.md#1210-published-maintenance-release).
 * 🟠 **`[Manual Application Boundary]`** the command never installs a CLI,
   changes secrets, executes database migrations, invents authorization or
   tenant policy, exposes Nexus/Studio, validates providers, or declares an
   application production-ready. Database restore/migration/rollback, the full
   test suite, authorization negatives and deployment smoke tests remain
   mandatory human-owned gates.
-* ⚪ **`[Planned / Priority]` Guided Update Experience:** a future opt-in
-  orchestrator may coordinate CLI installation and project preparation while
-  preserving the implemented contract above. CLI artifact trust, project
-  execution consent and deployment authorization remain separate boundaries;
-  starting an application must not silently update code or migrate data.
-  The [roadmap acceptance plan](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience)
-  defines a compatible opt-in 12.1.0 delivery carried forward into v13. Neither
-  self-installation nor this expanded orchestration is implemented by the
-  current `upgrade` command.
 
-  **Unreleased discovery hardening, not the complete updater:** the working
-  CLI checks for notices only on interactive dashboard startup, respects
-  explicit offline/CI/notification-disable flags, and retains at most one
-  validated result in process memory. It no longer reads or writes the legacy
-  shared temporary cache. Discovery uses a fixed HTTPS registry endpoint,
-  denies redirects, caps the response at 256 KiB and applies one four-second
-  network/body deadline. Notices select a newer, non-yanked stable version in
-  the installed major, not an arbitrary registry maximum. They authorize no
-  installation or project changes. The explicit `cargo rullst update check`
-  command now reports an exact eligible CLI release, its declared MSRV and the
-  current OS/architecture. `--to` pins selection; another major requires
-  `--allow-major`, and a prerelease separately requires `--prerelease`.
-  `--json` emits `rullst.update-discovery.v1` with every execution/write/artifact
-  authority false. It does not certify compiler/platform compatibility.
-  Explicit discovery now reuses a six-hour advisory cache on Unix platforms.
-  The caller-owned cache base and its ancestors are checked before using a
-  private `0700` directory; regular single-link `0600` files, bounded reads,
-  no-follow opens, a non-blocking writer lock and staged atomic replacement
-  protect the cache. Cached catalogs are parsed and selected again, never
-  accepted as artifact/installation authority. `--offline` never requests the
-  network or writes; missing, invalid, expired or future-dated caches fail.
-  `--refresh` skips cached reads; `--no-cache` disables persistence entirely.
-  Ordinary interactive notices remain process-local, not filesystem writers.
-  Windows persistence stays disabled until its owner/ACL checks are implemented
-  and validated; online discovery still works. A hostile same-user/root process
-  and authenticated release verification are outside this advisory cache's
-  contract. Windows caching, verified CLI installation and the expanded project
-  acceptance transaction remain 12.1.0 release blockers requiring platform and
-  release evidence.
-
-  **Unreleased discovery hardening, not the complete updater:** the working
+  **12.1.0 advisory discovery:** the
   CLI checks for notices only on interactive dashboard startup, respects
   explicit offline/CI/notification-disable flags, and retains at most one
   validated result in process memory. It no longer reads or writes the legacy
@@ -1522,9 +1604,9 @@ assistant, not a claim that compilation proves production compatibility.
   the [documented maintenance checkpoint](v12.md#1210-delivery-checkpoint-unreleased).
   A hostile same-user/root/administrator process
   and authenticated release verification are outside this advisory cache's
-  contract. Verified CLI installation and the expanded project
-  acceptance transaction remain 12.1.0 release blockers requiring platform and
-  release evidence.
+  contract. Verified CLI installation and the expanded project acceptance
+  transaction passed their declared platform and release gates in the
+  [12.1.0 publication](v12.md#1210-published-maintenance-release).
 
   **Native CLI artifact preparation:** the candidate pipeline builds both CLI
   entry points on the four targets in `.github/cli-artifact-targets.json` and
@@ -1561,7 +1643,7 @@ assistant, not a claim that compilation proves production compatibility.
   current registry eligibility or protect against hostile same-user writers.
   Installation must independently revalidate the selected release and bytes.
 
-  **Authenticated download (working source; native acceptance pending):**
+  **Authenticated download (12.1.0):**
   `update stage --to EXACT_VERSION` fetches a fresh non-yanked registry
   selection and uses only the fixed official
   release URL with at most two HTTPS redirects through GitHub/release-assets hosts,
@@ -1573,7 +1655,7 @@ assistant, not a claim that compilation proves production compatibility.
   installation or project authority. Offline mode rejects before I/O; install
   must independently revalidate eligibility, provenance and bytes.
 
-  **Managed CLI installation (working source; native acceptance pending):**
+  **Managed CLI installation (12.1.0):**
   `update install review` authenticates a fresh eligible local candidate and
   previews a new/empty or receipt-owned private destination, a root/source-bound digest,
   proposed version smoke checks and the pinned Cargo source fallback. It does
@@ -1649,7 +1731,7 @@ assistant, not a claim that compilation proves production compatibility.
   verification must explicitly authorize trusted project execution. Bounded
   reviewed application/recovery have separate explicit consent and acceptance gates.
 
-  **Candidate verification (working source; platform acceptance pending):**
+  **Candidate verification (12.1.0):**
   `update project verify` reloads the private preparation, validates its
   baseline/current source/candidate against bounded records and recomputed
   migration plans, rejects stale inputs, and takes an exclusive operation lock.
@@ -1686,7 +1768,7 @@ assistant, not a claim that compilation proves production compatibility.
   8 MiB and no build/test or original-file edit occurs. The review digest grants
   no application authority. Native acceptance remains required.
 
-  **Reviewed application/recovery (working source; native acceptance pending):**
+  **Reviewed application/recovery (12.1.0):**
   `update project apply --verified PATH --approved-review SHA256` requires the
   exact review digest and fresh source validation under both preparation locks
   and a canonical-source lock in the configured private cache. Only the reviewed workspace
@@ -1716,8 +1798,8 @@ assistant, not a claim that compilation proves production compatibility.
   Forced process termination during staging can leave disposable sibling temp
   files; the private before/verified trees and intent must be retained. Timestamp,
   Windows audit-policy preservation and power-loss fault
-  acceptance remain outside this current implementation; final release approval
-  still requires final platform/fault evidence. Local process tests cover a
+  acceptance remain outside this implementation. Published acceptance covers
+  only the declared platform and fault scenarios. Local process tests cover a
   killed per-file commit with a persisted intent and subsequent engine recovery,
   plus real CLI staging terminated by Linux's file-size limit without changing
   originals. They do not establish power-loss durability.
@@ -1750,7 +1832,7 @@ authoritative secrets into JavaScript or an untrusted client.
   real source-derived platform icons, and treats npm, icon generation or
   explicitly requested mobile initialization failures as command failures.
   Explicit iOS initialization requires macOS/Xcode.
-  **Unreleased 12.1.0:** new shells embed the existing Rullst logo as their
+  **12.1.0:** new shells embed the existing Rullst logo as their
   default square icon source and regenerate icons after all mobile init steps.
   Existing shells are never regenerated in place. New Android shells bind the
   release signing configuration to application-owned keystore/alias/password

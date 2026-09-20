@@ -21,7 +21,7 @@ The guides state these evidence limits instead of inventing release history.
 2. Back up every database and prove that the backup can be restored.
 3. Run the old application's tests and save any known failures.
 4. Install the published stable CLI with
-   `cargo install cargo-rullst --version 12.0.0 --locked`.
+   `cargo install cargo-rullst --version 12.1.0 --locked`.
    Pin an exact version for reproducible migrations.
 5. Run `cargo rullst upgrade --dry-run` from the application root and resolve
    every `BLOCKER`; use `--dry-run --json` when CI or other tooling consumes the
@@ -60,7 +60,8 @@ for the v5 workflow, recovery examples, JSON contract and future-major policy.
 
 ## Version placeholder
 
-The snippets in these guides use stable `12.0.0`. Keep that exact version while
+The snippets in these guides target `12.1.0`; check [publication status](v12.md).
+Keep the selected version while
 reproducing this migration, then review any later v12 maintenance update before
 changing the application's lockfile.
 

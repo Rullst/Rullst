@@ -18,7 +18,8 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(mutants)', 'cfg(kani)'] }
 
 
 [features]
-default = []
+default = ["drivers-all"]
+drivers-all = ["rullst-core/drivers-all", "rullst-orm/drivers-all"]
 strict-sqlite = ["rullst-core/strict-sqlite", "rullst-orm/strict-sqlite"]
 strict-postgres = ["rullst-core/strict-postgres", "rullst-orm/strict-postgres"]
 strict-mysql = ["rullst-core/strict-mysql", "rullst-orm/strict-mysql"]
@@ -42,6 +43,7 @@ url = "2.5.8"
 urlencoding = { workspace = true }
 
 [dev-dependencies]
+rullst-orm = { workspace = true, features = ["drivers-all"] }
 tower = { workspace = true, features = ["util"] }
 
 [package.metadata.cargo-machete]

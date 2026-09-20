@@ -1,10 +1,15 @@
 # Privacy and age assurance roadmap
 
 **Status: v13 P0, initial unpublished age-assurance foundation, reviewed
-17 September 2026.** The [crate](../../rullst-privacy/README.md) implements
+17 September 2026; persistence engineering updated 20 September 2026.** The [crate](../../rullst-privacy/README.md) implements
 risk policies, bound challenges, signed threshold attestations, explicit
-outcomes and replay-store contracts. Broader privacy workflows, concrete live
-age providers and production replay storage remain unimplemented.
+outcomes and asynchronous replay-store contracts. The optional shared-local
+SQLite adapter adds atomic persisted consumption, quota and clock rollback
+checks. The optional PostgreSQL candidate adds shared claims across application
+hosts with explicit initialization and real-database concurrency, cancellation,
+expiry, configuration, restricted-role and server-restart tests. Combined hosted
+acceptance, broader privacy workflows and concrete live age providers remain
+open. This engineering update does not revalidate the legal sources.
 
 Rullst should generate applications with privacy-preserving defaults and
 reusable, testable controls. It must not advertise automatic worldwide legal
@@ -207,12 +212,15 @@ mock flow is not deployment evidence for either production or staging.
 | :--- | :--- | :--- |
 | **P0.0** | Threat model, jurisdiction/profile format, data flow, package ADR and LMS migration design | Reviewed applicability assumptions, unknown/conflict behavior, model/provider lifecycle and first Academy/SaaS journeys. |
 | **P0.1** | Bounded privacy policy, consent/withdrawal, rights/retention contracts and explicit age/guardian evidence types | Deterministic tests for withdrawal, purpose changes, expired evidence, replay, tenant isolation and production mock rejection. |
-| **P0.2** | First real privacy workflow and provider-neutral age gate; one reviewed external age adapter with a non-facial alternative | Protocol and authorized sandbox evidence, session binding, outage/cancellation handling, deletion and appeal flow. No production age claim from mocks. |
+| **P0.2 — approved 13.0.0 foundation** | First real privacy workflow and provider-neutral age gate, including an authenticated first-party declaration where the selected policy permits it | Durable state, session/tenant/action binding, effective rights-adapter execution, outage/cancellation handling and rejection of mocks or declarations used for stronger-policy actions. |
+| **Optional provider expansion** | One reviewed external age adapter with an appropriate alternative | Native protocol and authorized sandbox evidence, capture/session binding, evaluated method strength, data lifecycle and appeal flow. The independent foundation cannot claim this integration before these gates pass. |
 | **P0.3** | SaaS/LMS blueprint adoption and versioned examples/Academy migration | Browser/API negatives, no optional tracking before permission, real export/delete execution, backup-restore behavior and no image/identity leakage. |
 | **After foundation** | More regional profiles, credential issuers and an optional local facial estimator | Per-profile review; model provenance/licensing, integrity-pinned weights, supported devices, threshold error rates, demographic fairness and attack evaluations. No bundled unvalidated “simple AI”. |
 
-Facial estimation is in the v13 priority scope as an optional, evaluated adapter;
-shipping a Rullst-trained model is not a prerequisite. Release claims require
+The release owner approved the independent foundation and optional-provider
+approach on 20 September 2026 UTC. Facial estimation remains an optional,
+evaluated expansion in the v13 roadmap; a local facial engine is follow-up work
+outside the committed 13.0.0 scope. Any facial release claims still require
 false-accept/false-reject results near each chosen threshold, relevant audience
 and device coverage, data lifecycle evidence, accessibility and independent
 review appropriate to the risk. One provider's evaluation does not validate

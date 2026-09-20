@@ -23,6 +23,10 @@ pub enum AgeError {
     StoreUnavailable,
     #[error("replay protection capacity reached")]
     StoreCapacity,
+    #[error("replay protection configuration or schema does not match")]
+    StoreConfiguration,
+    #[error("server clock moved backwards across age verification")]
+    ClockRollback,
     #[error("offline age evidence cannot authorize production access")]
     MockInProduction,
     #[error("operating-system randomness is unavailable")]

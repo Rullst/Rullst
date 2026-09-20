@@ -1,0 +1,55 @@
+{
+  "reviewed_head": "04cae2760c005e529cd23ae8e7fea81810f28890",
+  "analyzed_merge": "6716815bec4730dec96c93f3594c5bb2b27a2932",
+  "analysis_id": 1805870541,
+  "sarif_sha256": "091d475f3cebcf3d1a0c74d15a393106e4c739271664b83ba326f452672329fa",
+  "rule": "rust/hard-coded-cryptographic-value",
+  "scope": "Only these 26 individually reviewed instances; all query and source/test analysis remain enabled. Reassess on implementation changes.",
+  "date_utc": "2026-09-20",
+  "groups": {
+    "intentional-test-replay-fixture": {
+      "disposition": "used in tests",
+      "reason": "Reviewed at 04cae276: deterministic nonce in integration tests only, reused to prove replay/failure rejection. Production AgeChallenge uses fallible OS randomness. Preserve the negative fixture and enabled CodeQL rule.",
+      "alert_numbers": [
+        333,
+        332,
+        331,
+        330,
+        329,
+        328,
+        327,
+        326,
+        325,
+        324,
+        323,
+        322,
+        321,
+        320,
+        319,
+        318,
+        317,
+        316,
+        315,
+        314,
+        313,
+        312,
+        311
+      ]
+    },
+    "os-rng-overwrite-not-modeled": {
+      "disposition": "false positive",
+      "reason": "Reviewed 04cae276: ring SystemRandom::fill fully overwrites this buffer before use; RNG failure returns EntropyUnavailable. SARIF omits the mutable overwrite. The distinct-challenge regression rejects a different challenge. No fixed production nonce.",
+      "alert_numbers": [
+        310
+      ]
+    },
+    "policy-threshold-field-conflation": {
+      "disposition": "false positive",
+      "reason": "Reviewed SARIF at 04cae276: 18/13 is the policy minimum age, not nonce material. The path conflates the threshold return with ChallengeWire.nonce. That field is independently filled by ring SystemRandom. No age threshold initializes the nonce.",
+      "alert_numbers": [
+        309,
+        308
+      ]
+    }
+  }
+}

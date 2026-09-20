@@ -1,9 +1,9 @@
 # 49. Bounded Brokered Messaging
 
 > [!IMPORTANT]
-> Dependency examples use stable `12.0.0`. Pin that exact version for
-> reproducible v12 builds; use path dependencies only when intentionally
-> testing checkout-local changes.
+> Dependency examples target `12.1.0`. Check the [release record](../v12.md)
+> for publication status and commit Cargo.lock for reproducible builds.
+> Use path dependencies only when intentionally testing checkout-local changes.
 
 This tutorial starts with `rullst-messaging`'s deterministic in-memory broker
 and then switches the same trait contract to the durable local SQLite adapter.
@@ -13,11 +13,11 @@ Remote broker protocols remain separate adapters.
 
 ```toml
 [dependencies]
-rullst = { version = "12.0.0", features = ["messaging"] }
+rullst = { version = "12.1.0", features = ["messaging"] }
 ```
 
 Use `messaging-sqlite` instead of `messaging` for durable local state. A direct
-dependency uses `rullst-messaging = { version = "12.0.0", features =
+dependency uses `rullst-messaging = { version = "12.1.0", features =
 ["sqlite"] }`.
 
 ## 2. Create a bounded broker

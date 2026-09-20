@@ -6707,6 +6707,7 @@ dependencies = [
  "tokio",
  "tower",
  "url",
+ "zeroize",
 ]
 
 [[package]]
@@ -6889,6 +6890,7 @@ dependencies = [
  "chrono",
  "hmac",
  "lettre",
+ "rand 0.10.2",
  "reqwest",
  "rullst-capital",
  "rullst-core",
@@ -7001,7 +7003,11 @@ dependencies = [
  "ring",
  "serde",
  "serde_json",
+ "sqlx",
+ "tempfile",
  "thiserror 2.0.20",
+ "tokio",
+ "url",
 ]
 
 [[package]]
