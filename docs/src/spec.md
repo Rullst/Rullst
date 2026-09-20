@@ -358,6 +358,25 @@ background tasks require separate application-owned termination. Prove the body
 boundary locally before using it in deployment acceptance. No new gateway crate,
 automatic host administration or general availability guarantee is introduced.
 
+### v13 local deployment diagnostic
+
+Add an offline, read-only `deploy:doctor` executable command in the existing CLI.
+Inspect the selected bounded `Rullst.toml` snapshot (or documented defaults) and
+optionally one explicit literal environment file or the three allowlisted process
+variables `RULLST_ENV`, `APP_ENV`, `APP_KEY`. Never silently combine environment
+sources or search parent dotenv files. Reuse Core environment resolution and
+security validation; report obvious application-key mistakes separately from
+unobserved key generation/custody. Config validity cannot prove mounted middleware,
+webhook verification, proxy trust, shared state, TLS, backups or deployed behavior.
+
+Emit deterministic text/JSON with fixed check codes, source categories, actionable
+messages and explicit uninspected controls. Do not print values, input paths,
+parser details or secret-derived hashes. Reject malformed, duplicate, oversized,
+linked/special-file and unsupported interpolated inputs without executing them.
+No subprocess, network access, configuration/global-environment mutation or
+automatic repair belongs in this command. Test the installed command with real
+generated configuration and negative inputs; retain full hosted acceptance.
+
 ### Conditional v13 supervision crate
 
 The owner requested transparent learner/exam supervision and parental controls

@@ -881,6 +881,21 @@ Generates an inspectable Axum/Tokio entry-point snapshot
   * `--force`: Overwrites `src/main.rs` directly instead of creating `src/ejected_main.rs`.
   * `--output <path>`: Specifies a custom output path for the ejected file.
 
+### `cargo rullst deploy:doctor` (v13 candidate)
+
+Read-only inspection of a local deployment configuration snapshot:
+
+```bash
+cargo rullst deploy:doctor --env-file .env.production --json
+cargo rullst deploy:doctor --config Rullst.production.toml --process-env
+```
+
+Reuses Core environment/security validation, catches obvious key/configuration
+mistakes and identifies application-policy reviews without echoing values.
+Explicit environment sources remain separate. Exit zero covers only the inspected
+local profile; `deployment_verified` remains false. See the
+[input and output contract](deployment-diagnostic.md) before using it in CI.
+
 ### `cargo rullst inspect [target]`
 Statically expands and inspects macro code or structural definitions directly in the terminal without starting a server. Useful for debugging proc-macro output, reviewing route tables, and validating database schemas.
 * **Arguments:**

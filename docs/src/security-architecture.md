@@ -45,12 +45,13 @@ forwarding metadata and HTTP/WebSocket controls. Local acceptance passes; hosted
 admission remains pending. It does not certify a cloud account, VPS or production
 topology.
 
-Read-only local configuration diagnostics remain follow-up work. Reuse
-`rullst-security`, Core and the CLI; no new crate is proposed. Diagnostics must
-identify what was actually inspected, redact sensitive values and report
-unsupported or unobserved controls explicitly. They must not label a declaration
-as deployed evidence, automatically modify firewall/SSH/cloud settings or claim
-that a host is secure. See the [delivery plan](v13-delivery-plan.md).
+The separate [local configuration diagnostic](deployment-diagnostic.md) candidate
+reuses Core validation through `deploy:doctor`, with explicit environment-source
+selection and bounded, redacted reports. It identifies what was actually
+inspected and lists unobserved controls; full hosted/package admission is pending.
+It does not label configuration as deployed evidence, modify firewall/SSH/cloud
+settings or certify a host. No new security crate is introduced. See the
+[delivery plan](v13-delivery-plan.md).
 
 ## Canonical production preset
 

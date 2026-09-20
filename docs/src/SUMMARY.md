@@ -128,6 +128,8 @@
 - [🗺️ Blueprints Roadmap](blueprints_roadmap.md)
 - [🗺️ Rullst Official Roadmap](roadmap.md)
 - [💻 CLI Reference](cli_reference.md)
+  - [Local Deployment Configuration Diagnostic](deployment-diagnostic.md)
+  - [Managed Private Video Roadmap](managed-video-roadmap.md)
 - [GitHub CLI Installation & Safe Login](gh-install.md)
 - [🛡️ CI/CD & Security Workflows](workflows.md)
 
