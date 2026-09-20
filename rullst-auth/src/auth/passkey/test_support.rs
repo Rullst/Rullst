@@ -235,8 +235,21 @@ pub(super) fn assertion_fixture(
     let (_, challenge) = auth
         .start_authenticate(std::slice::from_ref(passkey))
         .expect("authentication challenge should be issued");
+    let credential =
+        assertion_for_challenge(&challenge, passkey, key_pair, rp_id, flags, sign_count);
+    (credential, challenge)
+}
+
+pub(super) fn assertion_for_challenge(
+    challenge: &str,
+    passkey: &Passkey,
+    key_pair: &ring::signature::EcdsaKeyPair,
+    rp_id: &str,
+    flags: u8,
+    sign_count: u32,
+) -> PublicKeyCredential {
     let client_data = serde_json::json!({
-        "challenge": challenge.clone(),
+        "challenge": challenge,
         "origin": "http://localhost",
         "type": "webauthn.get",
         "crossOrigin": false,
@@ -252,7 +265,7 @@ pub(super) fn assertion_fixture(
         .sign(&ring::rand::SystemRandom::new(), &signed)
         .expect("test signature should succeed");
     let id = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&passkey.credential_id);
-    let credential = PublicKeyCredential {
+    PublicKeyCredential {
         id: id.clone(),
         raw_id: id,
         r#type: "public-key".to_owned(),
@@ -261,6 +274,5 @@ pub(super) fn assertion_fixture(
             signature: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(signature.as_ref()),
             client_data_json: base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(client_data),
         },
-    };
-    (credential, challenge)
+    }
 }

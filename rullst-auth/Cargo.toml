@@ -19,6 +19,7 @@ oauth = ["dep:rullst-connect"]
 jwt = ["dep:hex", "dep:jsonwebtoken"]
 sqlite = ["jwt", "dep:sqlx", "sqlx/sqlite"]
 recovery-sqlite = ["dep:sqlx", "sqlx/any", "sqlx/sqlite"]
+passkey-postgres = ["dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls"]
 recovery-postgres = ["dep:sqlx", "sqlx/any", "sqlx/postgres", "sqlx/tls-rustls"]
 
 [dependencies]

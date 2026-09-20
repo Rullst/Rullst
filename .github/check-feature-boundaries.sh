@@ -116,6 +116,7 @@ rullst-mail|mail-smtp
 rullst-mail|sqlite
 rullst-auth|jwt
 rullst-auth|sqlite
+rullst-auth|passkey-postgres
 rullst-auth|recovery-sqlite
 rullst-auth|recovery-postgres
 
@@ -169,6 +170,7 @@ rullst|privacy-consent
 rullst|privacy-consent-sqlite
 rullst|auth-jwt
 rullst|auth-sqlite
+rullst|auth-passkey-postgres
 rullst|account-mail-sqlite
 rullst|account-mail-postgres
 rullst|oauth-sqlite

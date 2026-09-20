@@ -325,6 +325,12 @@ jobs:
           build-warnings: ""
           cache: false
 
+      - name: Set up Node for the shared passkey browser contract
+        if: matrix.feature == 'strict-postgres'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
       - name: Prove standalone ORM driver isolation
         env:
           STRICT_DATABASE_FEATURE: ${{ matrix.feature }}
@@ -342,6 +348,7 @@ jobs:
             strict-postgres)
               python3 .github/check-auth-recovery-postgres.py
               python3 .github/check-privacy-postgres.py
+              RULLST_PASSKEY_BROWSER_TESTS=1 python3 .github/check-passkey-postgres.py
               cargo test -p rullst-orm --no-default-features \
                 --features strict-postgres --test matrix_postgres -- --test-threads=1
               cargo test -p rullst-capital --features quota-sql,webhook-sql,rullst-orm/strict-postgres \

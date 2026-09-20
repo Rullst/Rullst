@@ -98,7 +98,7 @@
       "target_kind": "lib",
       "target": "lib",
       "test_filter": "auth::passkey::service::negative_path_tests::client_authenticator_and_credential_inputs_fail_closed",
-      "source": "rullst-auth/src/auth/passkey/service.rs",
+      "source": "rullst-auth/src/auth/passkey/service_negative_tests.rs",
       "marker": "TM-AUTH-05"
     },
     {
