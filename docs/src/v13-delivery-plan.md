@@ -62,6 +62,29 @@ supported method; unimplemented facial or provider methods cannot be advertised
 as functioning production verification. The package remains unpublished until
 its scoped consumer/state/API and release admission criteria pass.
 
+## Blueprint scope and automated acceptance
+
+On September 20 the owner prioritized implementation and testing over extending
+every new feature to every blueprint. Keep existing working integrations and
+their regression tests. For new work, choose the smallest real consumer that
+exercises the capability: supervision in LMS, billing entitlements in SaaS,
+and a focused server/client fixture for an API contract. A public generator must
+still test each supported output shape; do not advertise an untested shape.
+Additional blueprint coverage belongs in the release only when it demonstrates
+a different supported contract or provides clear product value. Opt-in features
+must remain opt-in, and source/manifest, authentication, persistence and packaged
+installation checks cannot be replaced with mock-only examples.
+
+Human exploratory testing is not assumed to be available during this delivery
+window. Use automated unit, integration, real-database, HTTP/browser and failure
+tests appropriate to each supported feature. Record environmental and usability
+limits explicitly; neither AI authorship nor a passing suite proves every
+deployment. Missing provider/device/isolation evidence stays missing and limits
+the supported scope. Defer optional scope and non-critical improvements when
+needed, but fix known authorization, privacy or data-integrity failures before
+admission. The possibility of a later patch does not turn a failing contract into
+an accepted release.
+
 ## Starting evidence
 
 - All sixteen v12.1.0 packages are published from `b62390b4`; the
@@ -287,9 +310,13 @@ were subsequently generated from clean commit `30e2f753`; their source identity,
 licenses and excluded secret/database paths were audited. The archive-only
 privacy consumer and privacy publication dry run passed without uploading a
 version. These are local rehearsals, not final release receipts.
-The archive-only hosted test now compiles the installed CLI's
-SaaS/LMS opt-ins and executes the same durable facade contract from extracted
-packages. A crates.io read on 20 September returned 404 for `rullst-privacy`;
+The archive-only hosted test compiles the installed CLI's SaaS/LMS opt-ins and
+executes the same durable facade contract from extracted packages. It passed at
+`365d2252` in [run 35520146394](https://github.com/Rullst/Rullst/actions/runs/35520146394)
+on September 20: seventeen package archives were audited, the durable facade
+test passed and all six installed-CLI blueprints compiled. This diagnostic does
+not replace the final full/native release campaign or publication authorization.
+A crates.io read on 20 September returned 404 for `rullst-privacy`;
 initial registration and Trusted Publishing configuration remain required.
 The stable publisher continues to reject an unregistered package.
 The ownership-policy validator now checks each proposed bootstrap name against
@@ -370,6 +397,7 @@ when its dependencies and verification capacity are ready.
 | M9 — Auth/session consistency | Durable account recovery and revocation exist. Evaluate one shared passkey-ceremony lifecycle with atomic single use, expiry and tenant/session binding. | Next extension after the active product increments; choose the storage/API boundary before promising implementation. |
 | Transparent supervision | The owner has selected the proposed `rullst-supervision` as the first additional priority. Keep parental and exam policies distinct and reuse privacy primitives through explicit composition. | First conditional extension after required deliveries; a usable generated journey and browser/authorization tests precede package admission. Device-wide control remains separate. |
 | M27 — deployment acceptance with an existing proxy | Core exposes readiness/drain contracts and Foundry generates a Caddy configuration with one upstream. Evaluate one local two-replica deployment fixture with a pinned existing proxy: startup exclusion, unhealthy replica removal, bounded in-flight shutdown, explicit forwarded-header trust and WebSocket behavior. | Recommended after supervision and shared passkey state, before a new remote integration. This is conditional deployment evidence, not an existing multi-replica Foundry feature, a new crate or a zero-downtime guarantee. Keep state-store topology and retry/idempotency requirements explicit. |
+| M10/M27 — cloud and VPS application protection | Reuse Security/Core controls and CLI diagnostics for a reviewed deployment profile. Extend the proxy fixture with forged-forwarding-header negatives, explicit Redis shared-budget enforcement, request/resource limits and security-header/session behavior; evaluate read-only local configuration diagnostics with secret-minimized output. | Part of the conditional deployment increment, ahead of a first-party gateway. No new security crate is needed. Add new diagnostics only with a bounded input contract and executable negative fixtures; no automatic firewall/SSH/cloud-account changes, host antivirus or volumetric DDoS guarantee. See the [deployment boundary](security-architecture.md#cloud-and-vps-deployments). |
 | M15 — remote messaging | Wire contracts, local durable state and the ORM outbox exist. Evaluate one remote broker adapter with real restart, redelivery and lease/idempotency evidence. | Conditional extension; select a broker and supported semantics first. Seven adapter names are not seven functioning integrations. |
 | M40 — Labs | The threat model and separate web-contract/runner roadmap are retained. The first candidate is a bounded job/grading/receipt contract with a deterministic local protocol fixture. | Conditional extension; contracts alone do not deliver code execution. A usable runner requires its own isolated deployment and adversarial acceptance. |
 | M39 — optional Rullst Gateway | No `rullst-gateway` crate or executable exists. Keep the separate opt-in proxy/load-balancer design from the master roadmap; readiness helpers and deployment templates do not implement it. | Lower priority than supervision, shared passkey state, deployment acceptance, one remote broker and bounded Labs work. Reconsider when a concrete self-hosted need justifies implementation and operations; no September 26 delivery commitment. |
