@@ -6,8 +6,8 @@
 
 ## 🧠 The Core Concept
 
-**The golden rule: `main` is the protected v12 maintenance and release
-source line.** Normal work is reviewed through short-lived branches targeting
+**The golden rule: release majors have explicit protected source lines:
+v12 uses `main`, and v13 uses `v13`.** Normal work is reviewed through short-lived branches targeting
 the appropriate release line. A branch name is not a publication or a security certification.
 Official release artifacts remain crates.io packages and their matching
 immutable tags.
@@ -18,7 +18,7 @@ source and generated site data:
 | Reference | What it is | Published to crates.io? |
 |--------|------------|------------------------|
 | `main` | Protected source for v12 maintenance releases | Only after an approved release tag |
-| `v13` | Next-major development and breaking changes | Not until its own reviewed release |
+| `v13` | Protected next-major development and v13 release source | Only after its own admitted release tag |
 | `v5` | Frozen source snapshot of the legacy v5 line | No; use the existing `v5.0.0` tag/crate |
 | `gh-pages` | Generated website/benchmark history used by Pages | No |
 | `feat/*`, `fix/*`, etc. | Short-lived reviewed work | Never directly |
@@ -52,7 +52,7 @@ git commit -m "fix(scope): describe the correction"
 git push -u origin fix/<short-topic>
 ```
 
-Every push to `main` and every pull request targeting it triggers the relevant
+Every push to `main` or `v13` and every pull request targeting either triggers the relevant
 CI. Checks are classified so unfinished roadmap work does not make every
 development signal meaningless:
 
@@ -137,28 +137,29 @@ Before releasing, make sure:
 
 ---
 
-### Phase 3 — Freeze `main` + Create a Tag
+### Phase 3 — Freeze the release branch + Create a Tag
 
 Once everything is stable and verified:
 
 1. Freeze feature work and prepare the synchronized version change through a
-   reviewed pull request into `main`.
-2. Run the full local and CI release gates on the resulting `main` SHA.
+   reviewed pull request into the selected release branch (`main` for v12,
+   `v13` for v13).
+2. Run the full local and CI release gates on the resulting release-branch SHA.
 3. Record and review the package/evidence artifacts for that exact SHA.
 4. Create a new version tag only on the approved SHA, then push that tag to
-   trigger the release workflow. The existing `v12.0.0` tag is immutable;
-   never recreate or move it:
+   trigger the release workflow. Published tags, including `v12.0.0` and `v12.1.0`, are immutable;
+   never recreate or move them. For a reviewed v13 candidate:
 
 ```powershell
-git switch main
-git pull --ff-only origin main
-git tag vX.Y.Z
-git push origin vX.Y.Z
+git switch v13
+git pull --ff-only origin v13
+git tag v13.X.Y
+git push origin v13.X.Y
 ```
 
 An RC or stable version is a real public crates.io release. It can be yanked but
 never overwritten; inspect and test every `.crate` before pushing the tag.
-Prereleases require explicit opt-in with a requirement such as `12.0.0-rc.1`.
+Prereleases require explicit opt-in with a requirement such as `13.0.0-rc.1`.
 
 GitHub Actions will automatically execute the topological crate publish pipeline:
 1. ✅ `rullst-macros` & `rullst-orm-macros`
@@ -191,16 +192,16 @@ git switch -c feat/<short-topic>
 Carry applicable v12 fixes forward through reviewed changes. Evaluate
 Dependabot updates individually: a dependency's major version does not by
 itself prove that Rullst's public API must break. Compatible fixes may ship in
-`12.0.x`; changes that break Rullst's compatibility contract belong to v13.
+`12.x`; changes that break Rullst's compatibility contract belong to v13.
 Keep the v12 release gates active while v13's own CI policy evolves.
 
-The current order is verification-efficiency work, then a compatible opt-in
-`12.1.0` [update experience](ROADMAP.md#safe-update-experience), then concentrated
-v13 development. Prepare the minor against the maintained v12 baseline in a
-reviewed PR and carry it forward; do not merge the entire v13 branch into
-`main`. Synchronize package versions only when the candidate is accepted for
-release. A future major upgrade needs that major's own tested migration rules,
-not just an updated installer. This plan does not authorize publication or end
+Version 12.1.0 is published. Carry its compatible
+[update experience](ROADMAP.md#safe-update-experience) into v13 while keeping
+maintenance on `main`; do not merge the entire v13 branch into `main`.
+Synchronize package versions only when the candidate is accepted for release.
+A major upgrade needs its own tested migration rules, not just an updated
+installer. Follow the [v13 delivery plan](docs/src/v13-delivery-plan.md) for
+current priorities. This plan does not itself authorize publication or end
 v12 maintenance.
 
 ---
@@ -208,7 +209,7 @@ v12 maintenance.
 ## 🔄 Visual Summary
 
 ```
-short-lived branches ── reviewed pull requests ──▶ main
+short-lived branches ── reviewed pull requests ──▶ main (v12) / v13 (v13)
                                                    │
                                                    │ exact approved SHA
                                                    ▼
@@ -233,12 +234,12 @@ short-lived branches ── reviewed pull requests ──▶ main
 > order. A workflow name alone is not evidence; the exact release run must pass.
 
 > [!WARNING]
-> Keep `main` green and protected. Normal changes arrive through reviewed,
+> Keep both release branches green and protected. Normal changes arrive through reviewed,
 > short-lived branches; emergency direct pushes require the same evidence and
 > must not bypass repository rulesets.
 
 > [!IMPORTANT]
-> The automatic publishing only triggers when you push a **version tag** (e.g., `v1.0.5`). A regular `git push` to `main` does **NOT** publish to crates.io.
+> The automatic publishing only triggers when you push a **version tag** (e.g., `v1.0.5`). A regular branch push does **NOT** publish to crates.io.
 
 ---
 
@@ -266,10 +267,10 @@ git switch -c fix/<short-topic>
 git status
 
 # After the candidate commit is approved on main
-git switch main
-git pull --ff-only origin main
-git tag vX.Y.Z
-git push origin vX.Y.Z
+git switch v13
+git pull --ff-only origin v13
+git tag v13.X.Y
+git push origin v13.X.Y
 ```
 
 ---

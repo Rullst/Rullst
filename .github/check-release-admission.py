@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, NoReturn
 
+from release_line import policy_line
+
 
 SHA = re.compile(r"[0-9A-Fa-f]{40}")
 REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
@@ -58,12 +60,11 @@ def load_object(path: Path) -> dict[str, Any]:
 
 
 def validate_policy(policy: dict[str, Any]) -> tuple[str, list[WorkflowRequirement]]:
-    if policy.get("schema_version") != 2:
-        fail("unsupported policy schema")
-    branch = policy.get("required_branch")
+    try:
+        _, branch = policy_line(policy)
+    except ValueError as error:
+        fail(str(error))
     workflows = policy.get("workflows")
-    if branch != "main":
-        fail("required_branch must be main")
     if not isinstance(workflows, list) or not workflows:
         fail("workflows must be a non-empty list")
 
@@ -236,7 +237,7 @@ def equivalent_fuzz_jobs(repository: str, sha: str, token: str, api_url: str,
     expected = {"Fuzz campaign evidence boundary", *(f"Fuzz {item['target']}" for item in candidate.inventory)}
     if set(required_jobs) != expected:
         raise ValueError("release policy does not match the complete fuzz inventory")
-    report = plan(candidate, GitHub(repository, token, api_url))
+    report = plan(candidate, GitHub(repository, token, api_url, branch=candidate.release_branch))
     write_report(report, Path("release-fuzz-evidence.json"))
     return not report["selected"]
 

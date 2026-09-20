@@ -11,6 +11,10 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### CI tooling
 
+- Prepare the v13 release line with explicit major/branch/tag/package binding,
+  protected-head admission, automatic checks on both maintained branches and
+  fuzz provenance confined to the candidate's release line. Keep the protected
+  publication approval and full release evidence requirements.
 - Distinguish skipped jobs from measured execution in timing reports, including
   GitHub's reversed synthetic timestamps; retain strict validation for jobs
   that ran. Record successful hosted optimization evidence without hiding the
@@ -34,8 +38,6 @@ A prepared version section does not establish that its tag or crates exist.
   target, build and development dependency edges. Unknown inputs, changed
   policy/dependencies, critical crates, executable documentation and ambiguous
   history retain full verification; no check is skipped by its reports.
-- Run Rust CI, documentation and workflow-policy checks on v13 as well as main.
-  Other inherited workflow branch filters and release admission remain unchanged.
 - Add a development-only site admission path for v13 pushes, requiring a recent
   exact-source baseline with all 25 Linux runtime jobs successful, a bounded
   three-file presentation diff and fresh browser/documentation checks. Missing

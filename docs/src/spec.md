@@ -109,6 +109,19 @@ and manual workflow precede any required v13 check; compatibility, reproducible
 proofs, negative controls and measured CI cost are promotion criteria. This
 plan adds no v12.1 release gate or framework-wide correctness claim.
 
+### Versioned release-branch boundary
+
+The v13 preparation policy binds major 13 to `v13`; major 12 remains bound to
+`main`. The source-admission gate requires a canonical matching tag, the exact
+checked-out/tagged commit at the current protected branch head, and every
+publishable inventory package at the tagged version before artifact builds.
+All declared automatic release workflows accept both maintained source lines.
+Required manual/native/security evidence and the protected crates.io approval
+remain separate mandatory gates. Fuzz evidence must come from the candidate's
+release line and a source carrying that same policy; v12 results cannot be
+credited to v13 merely because they are recent. The existing immutable v12
+tags retain their original workflow and policy.
+
 ### v12 audit correction invariants
 
 **12.1 account mail:** `rullst-mail::ActionLink` validates an exact

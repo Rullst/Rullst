@@ -70,6 +70,7 @@ jobs:
           python3 .github/test-fuzz-evidence-inputs.py
           python3 .github/test-fuzz-evidence.py
           python3 .github/test-check-release-admission.py
+          python3 .github/test-release-source.py
           python3 .github/test-check-fuzz-locks.py
           python3 .github/test-upgrade-package-inventory.py
 

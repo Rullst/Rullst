@@ -17,9 +17,12 @@ No deadline waives a security or publication gate.
   replay interfaces. It has no production replay backend or live age provider.
   Its 16 integration tests and one documentation test passed during integration;
   this is foundation evidence, not end-to-end production acceptance.
-- Release admission currently requires `main`; most security workflows still
-  filter only that branch. The GitHub `v13` branch was not protected at this
-  review. These are explicit preparation tasks before any v13 tag.
+- The initial review found main-only release admission/security filters and an
+  unprotected `v13` branch. The preparation change binds each major to its
+  release branch and enables the missing automatic checks. On 20 September UTC,
+  hosted v13 protection was enabled and read back with 43 required existing
+  checks; [the observed profile](../../WORKFLOWS.md#observed-v13-protection)
+  records its scope. Combined hosted evidence and packaging remain pending.
 - The v12.1.0 post-release mutation campaign is informational. Its repaired
   controller discovers the measured source's complete inventory and limits the
   80 shards to four concurrent jobs. Findings are reviewed separately from v13

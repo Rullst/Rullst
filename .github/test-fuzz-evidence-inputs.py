@@ -21,6 +21,8 @@ class InputTests(unittest.TestCase):
         self.run_git("config", "user.name", "Fixture")
         self.inventory = json.loads((ROOT / ".github/fuzz-targets.json").read_text())
         self.write(".github/fuzz-targets.json", json.dumps(self.inventory))
+        self.write(".github/release-required-workflows.json",
+                   '{"schema_version":2,"required_branch":"main"}')
         self.write(".github/workflows/fuzzing.yml", (ROOT / ".github/workflows/fuzzing.yml").read_text())
         self.write("rullst-mail/Cargo.toml", '[package]\nname="mail"\nversion="1.0.0"\n')
         self.write("rullst-core/src/lib.rs", "pub fn shared() {}\n")
@@ -51,6 +53,14 @@ class InputTests(unittest.TestCase):
         current = Snapshot(self.commit(), self.root)
         return {directory for directory in self.base.directories
                 if self.base.fingerprint(directory) != current.fingerprint(directory)}
+
+    def test_release_line_is_read_from_the_selected_git_object(self):
+        self.write(".github/release-required-workflows.json",
+                   '{"schema_version":3,"required_major":13,"required_branch":"v13"}')
+        current = Snapshot(self.commit(), self.root)
+        self.assertEqual(current.release_branch, "v13")
+        self.assertEqual(Snapshot(self.base.sha, self.root).release_branch, "main")
+        self.assertNotEqual(current.global_hash, self.base.global_hash)
 
     def test_reviewed_fixture_and_dev_dependency_changes_preserve_fuzz_inputs(self):
         for path in ("rullst-mail/tests/feedback.rs", ".github/mobile-ui-browser-smoke.mjs",

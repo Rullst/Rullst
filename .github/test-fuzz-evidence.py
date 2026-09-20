@@ -25,6 +25,7 @@ class Source:
     inventory = INVENTORY
     contract = "execution"
     global_hash = "shared"
+    release_branch = "main"
     packages = {item["dir"] for item in INVENTORY}
     def __init__(self, sha=SHA, root=ROOT):
         self.sha = sha
@@ -60,6 +61,7 @@ def jobs_fixture(run_id=1):
 
 class FakeGitHub:
     repository = "Rullst/Rullst"
+    branch = "main"
     def __init__(self):
         self.items = [run_fixture()]
         self.job_sets = {1: jobs_fixture()}
@@ -78,6 +80,33 @@ class EvidenceTests(unittest.TestCase):
         self.addCleanup(self.mock.stop)
     def plan(self):
         return evidence.plan(self.candidate, self.github, NOW)
+
+    def test_v13_evidence_cannot_be_borrowed_from_main(self):
+        self.candidate.release_branch = "v13"
+        self.github.branch = "v13"
+        self.assertEqual(len(self.plan()["selected"]), 40)
+        self.github.items[0]["head_branch"] = "v13"
+        # The source itself must carry the matching release-line policy.
+        self.assertEqual(len(self.plan()["selected"]), 40)
+        with patch.object(Source, "release_branch", "v13"):
+            report = self.plan()
+        self.assertEqual(report["selected"], [])
+        self.assertEqual(report["release_branch"], "v13")
+
+    def test_api_selection_must_match_candidate_policy_even_for_a_full_campaign(self):
+        self.github.branch = "v13"
+        with self.assertRaises(ValueError):
+            self.plan()
+        with self.assertRaises(ValueError):
+            evidence.plan(self.candidate, self.github, NOW, force_full=True)
+
+    def test_github_query_uses_only_the_selected_release_branch(self):
+        github = evidence.GitHub("Rullst/Rullst", "fixture", branch="v13")
+        with patch.object(github, "get", return_value={"workflow_runs": []}) as get:
+            self.assertEqual(github.runs(), [])
+        self.assertIn("branch=v13", get.call_args.args[0])
+        with self.assertRaises(ValueError):
+            evidence.GitHub("Rullst/Rullst", "fixture", branch="feature")
 
     def test_all_targets_reuse_original_jobs_and_keep_source_provenance(self):
         report = self.plan()

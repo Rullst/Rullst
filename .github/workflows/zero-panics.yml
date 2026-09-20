@@ -2,9 +2,9 @@ name: Zero Panics Policy
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, v13]
   pull_request:
-    branches: [ main ]
+    branches: [main, v13]
   workflow_dispatch:
 
 concurrency:

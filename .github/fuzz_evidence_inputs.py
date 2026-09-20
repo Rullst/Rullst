@@ -9,6 +9,8 @@ import subprocess
 import tomllib
 from pathlib import Path
 
+from release_line import policy_line
+
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ".github/workflows/fuzzing.yml"
 INVENTORY = ".github/fuzz-targets.json"
@@ -99,6 +101,7 @@ class Snapshot:
         if SHA.fullmatch(sha) is None:
             raise ValueError("source must be a full lowercase commit SHA")
         self.sha, self.root = sha, root
+        self.release_branch = policy_line(json.loads(self.read(".github/release-required-workflows.json")))[1]
         self.files: dict[str, tuple[str, str]] = {}
         for entry in git("ls-tree", "-rz", sha, root=root).split(b"\0"):
             if not entry:

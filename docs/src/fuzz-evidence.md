@@ -1,7 +1,8 @@
 # Fuzz evidence reuse
 
 The release still requires coverage of all 40 declared targets. A successful
-`fuzzing.yml` run on the final `main` commit remains mandatory. In release mode,
+`fuzzing.yml` run on the final release-branch commit remains mandatory (`main`
+for v12, `v13` for v13). In release mode,
 the planner can credit an original successful campaign when its reviewed inputs
 match the candidate; only targets without eligible evidence execute again.
 `force_full: true` requests all 40 executions. Diagnostic mode remains a
@@ -64,7 +65,9 @@ candidate; this exception only concerns the bounded fuzz campaign.
 
 The planner examines at most 30 recent runs and credits only original jobs:
 
-- The same repository, `main`, `workflow_dispatch`, and `fuzzing.yml` identity.
+- The same repository, candidate release branch, `workflow_dispatch`, and
+  `fuzzing.yml` identity. The source's committed release policy must identify
+  that same branch; results do not cross the v12/v13 release boundary.
 - A source commit that is the candidate or a Git ancestor of it.
 - A run created within the preceding seven days; reusing it does not renew age.
 - A completed successful workflow and evidence boundary, a successful package
