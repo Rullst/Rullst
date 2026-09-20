@@ -53,7 +53,9 @@ jobs:
         run: python3 .github/validate-fuzz-targets.py
 
       - name: Validate native SES resolver constraint
-        run: python3 .github/test-mail-smithy-constraint.py
+        run: |
+          python3 .github/test-mail-smithy-constraint.py
+          python3 .github/test-semver-baseline-constraints.py
 
       - name: Validate release notes for the current package version
         run: |
