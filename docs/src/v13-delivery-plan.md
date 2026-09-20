@@ -212,12 +212,14 @@ follow-up preserves OS process helpers in the fixture PATH and compares artifact
 timestamps against a temporary filesystem anchor. Local native selection and
 redaction scenarios passed after correction; a fresh combined campaign is required.
 
-[PR #220](https://github.com/Rullst/Rullst/pull/220) now carries the adoption,
-Android and conditional supervision-planning changes, synchronized with the
-admitted privacy head. Its real SDK job passed; the remaining combined CI is
-pending. The initial campaign caught a missing changelog section for the new
-source version; the current head includes dated, explicitly unpublished
-`13.0.0-alpha.1` development notes and retains the release-note validation.
+[PR #220](https://github.com/Rullst/Rullst/pull/220) admitted the adoption,
+Android and conditional supervision-planning changes into `v13` at `6ccbe2a7`
+on 20 September at 14:20 UTC. Its exact head `ee4f46df` completed 86 successful
+checks and four declared skips, with no unresolved review threads. This includes
+the full OS/workspace matrix, strict Clippy, coverage and the real SDK signed-APK
+job. The initial campaign's changelog, filesystem timing and terminal prerelease
+fixture failures were corrected without weakening their checks. This admission
+does not certify the later entitlement, context, API, Verus or packaging changes.
 
 The entitlement candidate adds a typed current-state gate in Capital and an
 authenticated SaaS billing report. It requires an exact server plan allowlist,
@@ -280,8 +282,12 @@ child fixture ignored), strict CLI Clippy and the minimal facade panic gate also
 passed. A separate consumer compiled only the extracted framework archives and
 passed that durable facade test. All 42 fuzz targets' eleven locked dependency
 graphs resolved offline without running a new fuzz campaign.
-Combined hosted acceptance remains in progress; the initial local
-packaging used an explicitly dirty candidate and is not a release receipt. The archive-only hosted test now compiles the installed CLI's
+Combined hosted acceptance remains outstanding. All seventeen local archives
+were subsequently generated from clean commit `30e2f753`; their source identity,
+licenses and excluded secret/database paths were audited. The archive-only
+privacy consumer and privacy publication dry run passed without uploading a
+version. These are local rehearsals, not final release receipts.
+The archive-only hosted test now compiles the installed CLI's
 SaaS/LMS opt-ins and executes the same durable facade contract from extracted
 packages. A crates.io read on 20 September returned 404 for `rullst-privacy`;
 initial registration and Trusted Publishing configuration remain required.
@@ -293,8 +299,9 @@ bootstrap allowlist and the stable publisher's refusal remain in force.
 PR 220's Linux terminal fixture also needed an explicit prerelease dependency
 requirement and `--prerelease` when exercising the alpha CLI. All four local
 terminal scenarios passed after that correction: decline copying, decline
-execution, apply/recover, and a failing application. Its new head must complete
-its own hosted checks; the previous Android/macOS passes are not substituted.
+execution, apply/recover, and a failing application. The corrected `ee4f46df`
+head then passed its own combined hosted campaign, as recorded above; previous
+Android/macOS passes were not substituted.
 
 On 20 September at 07:31 UTC, the first four v12 mutation shards had hit their
 330-minute execution budget; their partial artifacts were retained. For example,
