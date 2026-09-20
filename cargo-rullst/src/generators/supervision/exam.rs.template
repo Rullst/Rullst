@@ -2,7 +2,7 @@ use super::{failure, page, proof::{Binding, Proof}, selection::Selection, servic
 use rullst::server::{Extension, Form, HeaderMap, IntoResponse, Redirect, Response, StatusCode};
 use rullst::security::{CsrfToken, CspNonce};
 use rullst_security::UserContext;
-use rullst_supervision::{Context, OpaqueId, Revision, Scope, SupervisionError as Error, exam::{Acknowledgement, ExamPolicy, SessionState, VisibilityEvent}};
+use rullst_supervision::{Context, OpaqueId, Revision, Scope, SupervisionError as Error, exam::{Acknowledgement, ExamPolicy, SessionState, BrowserEvent, Collection, ObservationRequest}};
 use serde::Deserialize;
 
 async fn context(user_id: i32, user: &UserContext, selection: &Selection, review: bool, learning: bool) -> Result<(Context, Scope), Error> {
@@ -42,7 +42,7 @@ pub(super) async fn show(Extension(user_id): Extension<i32>, Extension(user): Ex
         let revision = session.as_ref().or(latest.as_ref()).map(|s| s.revision().value()).unwrap_or(0);
         let binding = Binding { actor: &actor, scope: &scope, session: id, kind: "exam" };
         let proof = binding.issue(headers, revision)?;
-        Ok(page::exam(&scope, session.as_ref(), &url(&scope, session.as_ref().map(|s| s.id())), csrf, nonce, &proof).into_response())
+        Ok(page::exam(&scope, session.as_ref(), &url(&scope, session.as_ref().map(|s| s.id())), csrf, nonce, &proof)?.into_response())
     }
     match render(user_id, &user, &selection, csrf.as_str(), nonce.as_str(), &headers).await { Ok(response) => response, Err(error) => failure(error) }
 }
@@ -54,12 +54,13 @@ enum Action { Start, Pause, Resume, End }
 #[serde(deny_unknown_fields)]
 pub(super) struct ExamForm {
     action: Action, revision: i64, issued_at: i64, proof: String, _token: String,
-    policy: Option<String>, notice: Option<String>, acknowledge: Option<String>,
+    policy: Option<String>, notice: Option<String>, acknowledge: Option<String>, collection: Option<u16>,
 }
 impl ExamForm {
-    fn acknowledgement(&self) -> Result<Acknowledgement, Error> {
+    fn acknowledgement(&self, collection: Collection) -> Result<Acknowledgement, Error> {
+        if self.collection != Some(collection.bits()) { return Err(Error::Conflict); }
         if self.policy.as_deref() != Some(service::config::POLICY) || self.notice.as_deref() != Some(service::config::NOTICE) { return Err(Error::Conflict); }
-        Acknowledgement::new(service::config::POLICY, service::config::NOTICE, self.acknowledge.as_deref() == Some("yes"))
+        Acknowledgement::for_collection(service::config::POLICY, service::config::NOTICE, collection, self.acknowledge.as_deref() == Some("yes"))
     }
 }
 pub(super) async fn submit(Extension(user_id): Extension<i32>, Extension(user): Extension<UserContext>, Extension(selection): Extension<Selection>, headers: HeaderMap, Form(form): Form<ExamForm>) -> Response {
@@ -72,10 +73,15 @@ pub(super) async fn submit(Extension(user_id): Extension<i32>, Extension(user): 
         let session = match form.action {
             Action::Start => {
                 if selection.session.is_some() { return Err(Error::Conflict); }
-                store.start_exam(&actor, &scope, &ExamPolicy::new(service::config::POLICY, service::config::NOTICE, service::config::SESSION_SECONDS)?, &form.acknowledgement()?, if form.revision == 0 { None } else { Some(Revision::new(form.revision)?) }).await?
+                store.start_exam(&actor, &scope, &ExamPolicy::new(service::config::POLICY, service::config::NOTICE, service::config::SESSION_SECONDS)?.with_collection(service::config::collection()?), &form.acknowledgement(service::config::collection()?)?, if form.revision == 0 { None } else { Some(Revision::new(form.revision)?) }).await?
             },
             Action::Pause => store.pause_exam(&actor, &scope, &session_id(selection)?, Revision::new(form.revision)?).await?,
-            Action::Resume => store.resume_exam(&actor, &scope, &session_id(selection)?, Revision::new(form.revision)?, &form.acknowledgement()?).await?,
+            Action::Resume => {
+                let id = session_id(selection)?;
+                let session = store.session(&actor, &scope, &id).await?;
+                if !session.collection().is_subset_of(service::config::collection()?) { return Err(Error::Conflict); }
+                store.resume_exam(&actor, &scope, &id, Revision::new(form.revision)?, &form.acknowledgement(session.collection())?).await?
+            },
             Action::End => store.end_exam(&actor, &scope, &session_id(selection)?, Revision::new(form.revision)?).await?,
         };
         Ok(Redirect::to(&url(&scope, Some(session.id()))).into_response())
@@ -85,7 +91,7 @@ pub(super) async fn submit(Extension(user_id): Extension<i32>, Extension(user): 
 
 #[derive(Deserialize)]
 #[serde(rename_all = "snake_case")]
-enum Observation { PageVisible, PageHidden }
+enum Observation { PageVisible, PageHidden, WindowFocused, WindowBlurred, CopyAttempt, CutAttempt, PasteAttempt, FullscreenEntered, FullscreenExited }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct EventForm { revision: i64, issued_at: i64, proof: String, _token: String, sequence: i64, event: Observation }
@@ -96,9 +102,15 @@ pub(super) async fn event(Extension(user_id): Extension<i32>, Extension(user): E
         Binding { actor: &actor, scope: &scope, session: id.as_str(), kind: "exam" }.verify(headers, &Proof { revision: form.revision, issued_at: form.issued_at, proof: form.proof })?;
         let store = service::store().await?;
         let session = store.session(&actor, &scope, &id).await?;
-        if session.policy().as_str() != service::config::POLICY || session.notice().as_str() != service::config::NOTICE { return Err(Error::Conflict); }
-        let event = match form.event { Observation::PageVisible => VisibilityEvent::PageVisible, Observation::PageHidden => VisibilityEvent::PageHidden };
-        store.record_visibility(&actor, &scope, &id, Revision::new(form.revision)?, form.sequence, event).await?;
+        if session.policy().as_str() != service::config::POLICY || session.notice().as_str() != service::config::NOTICE || !session.collection().is_subset_of(service::config::collection()?) { return Err(Error::Conflict); }
+        let event = match form.event {
+            Observation::PageVisible => BrowserEvent::PageVisible, Observation::PageHidden => BrowserEvent::PageHidden,
+            Observation::WindowFocused => BrowserEvent::WindowFocused, Observation::WindowBlurred => BrowserEvent::WindowBlurred,
+            Observation::CopyAttempt => BrowserEvent::CopyAttempt, Observation::CutAttempt => BrowserEvent::CutAttempt,
+            Observation::PasteAttempt => BrowserEvent::PasteAttempt, Observation::FullscreenEntered => BrowserEvent::FullscreenEntered,
+            Observation::FullscreenExited => BrowserEvent::FullscreenExited,
+        };
+        store.record_browser(ObservationRequest::new(&actor, &scope, &id, Revision::new(form.revision)?, form.sequence)?, event).await?;
         Ok(())
     }
     match record(user_id, &user, &selection, &headers, form).await { Ok(()) => StatusCode::NO_CONTENT.into_response(), Err(error) => failure(error) }
@@ -110,7 +122,7 @@ pub(super) async fn review(Extension(user_id): Extension<i32>, Extension(user): 
         let id = session_id(selection)?;
         let store = service::store().await?;
         let session = store.session(&actor, &scope, &id).await?;
-        let events = store.events(&actor, &scope, &id, selection.after.unwrap_or(0), 50).await?;
+        let events = store.observations(&actor, &scope, &id, selection.after.unwrap_or(0), 50).await?;
         Ok(page::review(&scope, &session, &events).into_response())
     }
     match read(user_id, &user, &selection).await { Ok(response) => response, Err(error) => failure(error) }

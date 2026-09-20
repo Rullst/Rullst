@@ -1,9 +1,12 @@
 //! Bounded shared-local SQLite. No replication or network-filesystem support.
 //! Restore requires independently re-established authority and deployment epoch.
 
+#[cfg(feature = "analysis")]
+mod analysis;
 mod authority;
 mod events;
 mod maintenance;
+mod observations;
 mod parental;
 mod schema;
 mod sessions;
@@ -61,7 +64,7 @@ impl<C: Clock> SqliteSupervision<C> {
             let mut tx = store.pool.begin_with("BEGIN IMMEDIATE").await.map_err(storage)?;
             for (_, statement) in schema::SCHEMA { sqlx::query(*statement).execute(&mut *tx).await.map_err(storage)?; }
             let now = crate::clock::checked_time(store.clock.now()?)?;
-            sqlx::query("INSERT INTO rullst_supervision_meta (id,version,config,last_now,revision) VALUES (1,1,?,?,0)")
+            sqlx::query("INSERT INTO rullst_supervision_meta (id,version,config,last_now,revision) VALUES (1,2,?,?,0)")
                 .bind(store.config_key()).bind(now).execute(&mut *tx).await.map_err(storage)?;
             tx.commit().await.map_err(|_| Error::UncertainCommit)?;
             store.validate_schema().await
@@ -129,7 +132,7 @@ impl<C: Clock> SqliteSupervision<C> {
     fn config_key(&self) -> String {
         let c = &self.config;
         format!(
-            "v1|{}|{}|{}|{}|{}|{}|{}|{}|{}",
+            "v2|{}|{}|{}|{}|{}|{}|{}|{}|{}",
             c.epoch.as_str(),
             c.limits.grants,
             c.limits.sessions,
@@ -149,7 +152,7 @@ impl<C: Clock> SqliteSupervision<C> {
             .await
             .map_err(storage)?;
         let records: Vec<(String, String)> =
-            sqlx::query_as("SELECT substr(name,1,129),substr(sql,1,2049) FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' LIMIT 9")
+            sqlx::query_as("SELECT substr(name,1,129),substr(sql,1,2049) FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' LIMIT 10")
                 .fetch_all(&mut *tx)
                 .await
                 .map_err(storage)?;

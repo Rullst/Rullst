@@ -35,8 +35,8 @@ impl Binding<'_> {
     fn message(&self, headers: &HeaderMap, revision: i64, issued_at: i64) -> Result<Vec<u8>, Error> {
         let cookie = rullst::auth::extract_session_cookie(headers).ok_or(Error::Forbidden)?;
         if cookie.is_empty() || cookie.len() > 4096 || revision < 0 || issued_at < 0 { return Err(Error::Forbidden); }
-        let mut bytes = b"rullst.supervision-form.v1\0".to_vec();
-        for value in [self.actor.actor().as_str().as_bytes(), self.scope.tenant().as_str().as_bytes(), self.scope.subject().as_str().as_bytes(), self.scope.resource().as_str().as_bytes(), self.session.as_bytes(), self.kind.as_bytes(), cookie.as_bytes(), super::service::config::POLICY.as_bytes(), super::service::config::NOTICE.as_bytes(), &revision.to_be_bytes(), &issued_at.to_be_bytes()] {
+        let mut bytes = b"rullst.supervision-form.v2\0".to_vec();
+        for value in [self.actor.actor().as_str().as_bytes(), self.scope.tenant().as_str().as_bytes(), self.scope.subject().as_str().as_bytes(), self.scope.resource().as_str().as_bytes(), self.session.as_bytes(), self.kind.as_bytes(), cookie.as_bytes(), super::service::config::POLICY.as_bytes(), super::service::config::NOTICE.as_bytes(), &super::service::config::COLLECTION_BITS.to_be_bytes(), &revision.to_be_bytes(), &issued_at.to_be_bytes()] {
             bytes.extend_from_slice(&(value.len() as u64).to_be_bytes()); bytes.extend_from_slice(value);
         }
         Ok(bytes)

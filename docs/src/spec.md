@@ -377,13 +377,49 @@ No subprocess, network access, configuration/global-environment mutation or
 automatic repair belongs in this command. Test the installed command with real
 generated configuration and negative inputs; retain full hosted acceptance.
 
+### v13 supervision observation extension
+
+The owner explicitly requested the reusable proctoring base on September 20.
+Extend `rullst-supervision`, not a second proctoring crate. Keep legacy visibility
+APIs working, but new sessions must persist an exact selected collection set and
+require matching acknowledgement at start/resume. Default selection remains
+page visibility. New browser event kinds are focus, copy/cut/paste occurrence
+and fullscreen transitions, never clipboard content or other-window inventories.
+Optional camera/microphone/screen capture-status reports are distinct from
+optional camera-presence/audio-activity adapter observations; preserve provenance
+and inconclusive/unavailable outcomes without a misconduct score.
+
+Add bounded, typed, statically dispatched analysis interfaces. Permission and
+active session/tenant/subject/revision must be checked before analysis and again
+before storing its result. Keep borrowed media samples bounded and out of durable
+event state/logs. No camera/audio model, identity inference, hidden recording,
+grading or automated accusation is introduced. Selected capabilities do not
+establish browser permission or prove media belongs to the learner; the host
+must bind capture to the authenticated session and implement adapter cancellation.
+
+The unpublished SQLite candidate may move to schema v2 with explicit rejection
+of old schemas. Never silently rewrite a v1 database: preserve it for review and
+require a fresh independently named store/epoch and authority provisioning for
+this prepublication transition. Session pause/end/expiry and policy revisions
+must reject pending results. Retain all existing capacity, sequence, clock,
+reviewer authorization and retention invariants.
+
+Expose new browser collection only by explicit CLI selection and a matching
+visible notice. The collector must bound its queue and stop on session control,
+expiry or failure; it must not prevent copying, request fullscreen/capture or
+start media analysis automatically. Extend the focused LMS/browser fixture and
+test local adapter faults, revocation races, disallowed capabilities, persistence,
+source attribution and legacy visibility compatibility before hosted admission.
+
 ### Conditional v13 supervision crate
 
 The owner requested transparent learner/exam supervision and parental controls
 as the first additional priority after the required v13 deliveries have been
 implemented and validated. `rullst-supervision` is now an unpublished implementation
 candidate with bounded domain contracts and shared-local SQLite state. Its
-local generated-consumer and Chromium journeys now pass. Full workspace regression, installed-archive and hosted acceptance remain pending;
+local generated-consumer and Chromium journeys pass. The baseline also passed
+hosted checks and archive rehearsal in PR #222; the observation extension requires
+its own complete acceptance before admission;
 `publish = false` is retained.
 
 Keep supervision policy/session/event and reviewer-access contracts separate
@@ -409,7 +445,7 @@ gates; retain it for a subsequent v13 release if capacity is insufficient.
 
 The initial implementation contract is now the
 [bounded supervision design](supervision.md). Use a separate unpublished package
-with optional `exam`, `parental` and `sqlite` features, no Core/default dependency,
+with optional `exam`, `parental`, `sqlite` and `analysis` features, no Core/default dependency,
 and a concrete SQLite adapter generic over a trusted clock. Tests use real local
 SQLite and an injected deterministic clock; no memory mock is needed for this
 initial backend. One private initialized database owns scoped authority,

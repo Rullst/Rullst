@@ -1,5 +1,5 @@
 use rullst::{html::escape_str as escape, response::Html};
-use rullst_supervision::{Scope, exam::{Session, SessionState, EventReceipt, VisibilityEvent}, parental::ManagedLearner};
+use rullst_supervision::{Scope, exam::{Session, SessionState, Observation, CaptureDevice, ObservationReceipt, ObservationSource, Collection}, parental::ManagedLearner};
 use super::{proof::Proof, service::config};
 
 fn shell(title: &str, body: &str) -> Html<String> {
@@ -8,8 +8,8 @@ fn shell(title: &str, body: &str) -> Html<String> {
 fn fields(csrf: &str, proof: &Proof) -> String {
     format!(r##"<input type="hidden" name="_token" value="{}"><input type="hidden" name="revision" value="{}"><input type="hidden" name="issued_at" value="{}"><input type="hidden" name="proof" value="{}">"##, escape(csrf), proof.revision, proof.issued_at, escape(&proof.proof))
 }
-fn acknowledgement() -> String {
-    format!(r##"<input type="hidden" name="policy" value="{}"><input type="hidden" name="notice" value="{}"><label><input type="checkbox" name="acknowledge" value="yes" required="true"> I have read this notice and agree to start these page visibility reports.</label>"##, escape(config::POLICY), escape(config::NOTICE))
+fn acknowledgement(collection: Collection) -> String {
+    format!(r##"<input type="hidden" name="policy" value="{}"><input type="hidden" name="notice" value="{}"><input type="hidden" name="collection" value="{}"><label><input type="checkbox" name="acknowledge" value="yes" required="true"> I have read this notice and agree to the observation categories listed above.</label>"##, escape(config::POLICY), escape(config::NOTICE), collection.bits())
 }
 fn state(session: &Session) -> &'static str {
     match session.state() { SessionState::Active => "Active", SessionState::Paused => "Paused", SessionState::Ended => "Ended", SessionState::Expired => "Expired", _ => "Unavailable" }
@@ -18,27 +18,30 @@ fn date(epoch: i64) -> String {
     chrono::DateTime::from_timestamp(epoch, 0).map(|v| v.format("%Y-%m-%d %H:%M:%S UTC").to_string()).unwrap_or_else(|| "Unavailable".to_owned())
 }
 
-pub(super) fn exam(scope: &Scope, session: Option<&Session>, url: &str, csrf: &str, nonce: &str, proof: &Proof) -> Html<String> {
+pub(super) fn exam(scope: &Scope, session: Option<&Session>, url: &str, csrf: &str, nonce: &str, proof: &Proof) -> Result<Html<String>, rullst_supervision::SupervisionError> {
+    let configured = config::collection()?;
     let hidden = fields(csrf, proof); let action = escape(url);
-    let mut body = format!(r##"<p>This optional session reports only whether this page is visible or hidden. It does not record your camera, microphone, screen, keys, other pages or location. Reports can be missing or inaccurate and do not determine grades, attendance or misconduct.</p><p>Reports are available only to you and separately authorized reviewers. Each report expires after {} seconds. Collection stops after at most {} seconds. You can pause or end it below; learning access does not require starting collection.</p><p>Policy: {}. Notice: {}.</p><noscript><p>JavaScript is disabled: page visibility is not reported. The session controls below still work.</p></noscript>"##, config::RETENTION_SECONDS, config::SESSION_SECONDS, escape(config::POLICY), escape(config::NOTICE));
+    let collection = session.map(|session| session.collection()).unwrap_or(configured);
+    let categories = collection.capabilities().map(|category| category.name()).collect::<Vec<_>>().join(", ");
+    let mut body = format!(r##"<p>Selected browser observation categories: {}. These reports describe occurrences on this page only. Collection does not record your camera, microphone, screen, keys, other pages or location. Reports can be missing or inaccurate and do not determine grades, attendance or misconduct.</p><p>Reports are available only to you and separately authorized reviewers. Each report expires after {} seconds. Collection stops after at most {} seconds. You can pause or end it below; learning access does not require starting collection.</p><p>Policy: {}. Notice: {}.</p><noscript><p>JavaScript is disabled: browser observations are not reported. The session controls below still work.</p></noscript>"##, escape(&categories), config::RETENTION_SECONDS, config::SESSION_SECONDS, escape(config::POLICY), escape(config::NOTICE));
     if let Some(session) = session {
-        body.push_str(&format!(r##"<p>Session: <span id="session-state">{}</span>. Expires: {}.</p><p id="collection-status" role="status" aria-live="polite">No observations are sent until this page's visibility changes.</p><p>Accepted observations: {}.</p>"##, state(session), date(session.expires_at()), session.accepted_event_count()));
+        body.push_str(&format!(r##"<p>Session: <span id="session-state">{}</span>. Expires: {}.</p><p id="collection-status" role="status" aria-live="polite">No observations are sent until a selected browser event occurs.</p><p>Accepted observations: {}.</p>"##, state(session), date(session.expires_at()), session.accepted_event_count()));
         if matches!(session.state(), SessionState::Active | SessionState::Paused) {
             let control = if session.state() == SessionState::Active { "pause" } else { "resume" };
             let label = if control == "pause" { "Pause collection" } else { "Resume collection" };
-            let ack = if control == "resume" { acknowledgement() } else { String::new() };
+            let ack = if control == "resume" { acknowledgement(collection) } else { String::new() };
             body.push_str(&format!(r##"<form data-session-control="true" method="post" action="{action}">{hidden}{ack}<button name="action" value="{control}" type="submit">{label}</button></form><form data-session-control="true" method="post" action="{action}">{hidden}<button name="action" value="end" type="submit">End collection</button></form>"##));
         }
-        if session.state() == SessionState::Active && session.policy().as_str() == config::POLICY && session.notice().as_str() == config::NOTICE {
+        if session.state() == SessionState::Active && session.policy().as_str() == config::POLICY && session.notice().as_str() == config::NOTICE && collection.is_subset_of(configured) {
             let event_url = url.replacen("/supervision/exam", "/supervision/event", 1);
-            body.push_str(&format!(r##"<form id="visibility-report" hidden="true" data-expires="{}" action="{}">{hidden}<input type="hidden" name="sequence" value="{}"></form><script nonce="{}">{}</script>"##, session.expires_at(), escape(&event_url), session.last_sequence(), escape(nonce), include_str!("visibility.js")));
-        } else { body.push_str("<p>Page visibility collection is stopped on this page.</p>"); }
+            body.push_str(&format!(r##"<form id="visibility-report" hidden="true" data-expires="{}" action="{}" data-collection="{}">{hidden}<input type="hidden" name="sequence" value="{}"></form><script nonce="{}">{}</script>"##, session.expires_at(), escape(&event_url), collection.bits(), session.last_sequence(), escape(nonce), include_str!("visibility.js")));
+        } else { body.push_str("<p>Observation collection is stopped on this page.</p>"); }
     } else {
-        body.push_str(&format!(r##"<form method="post" action="{action}">{hidden}{}<button name="action" value="start" type="submit">Start optional collection</button></form>"##, acknowledgement()));
+        body.push_str(&format!(r##"<form method="post" action="{action}">{hidden}{}<button name="action" value="start" type="submit">Start optional collection</button></form>"##, acknowledgement(collection)));
     }
     let lesson = scope.resource().as_str().strip_prefix("lesson:").unwrap_or("");
     body.push_str(&format!(r##"<p>School: {}. Lesson: {}.</p><p><a href="/lessons/{lesson}/play">Open lesson</a> (uses your current school selection).</p>"##, escape(scope.tenant().as_str()), escape(lesson)));
-    shell("Transparent supervision", &body)
+    Ok(shell("Transparent supervision", &body))
 }
 
 pub(super) fn parental(scope: &Scope, managed: Option<&ManagedLearner>, manager: bool, url: &str, csrf: &str, proof: &Proof) -> Html<String> {
@@ -55,11 +58,24 @@ pub(super) fn parental(scope: &Scope, managed: Option<&ManagedLearner>, manager:
     shell("Learning restrictions", &body)
 }
 
-pub(super) fn review(scope: &Scope, session: &Session, events: &[EventReceipt]) -> Html<String> {
-    let mut body = format!("<p>Learner {}. Session {}. These untrusted reports never establish misconduct, attendance or identity.</p><table><caption>Reported page visibility</caption><thead><tr><th>Sequence</th><th>Report</th><th>Received (UTC)</th></tr></thead><tbody>", escape(scope.subject().as_str()), state(session));
+pub(super) fn review(scope: &Scope, session: &Session, events: &[ObservationReceipt]) -> Html<String> {
+    let mut body = format!("<p>Learner {}. Session {}. These untrusted reports never establish misconduct, attendance or identity.</p><table><caption>Reported observations</caption><thead><tr><th>Sequence</th><th>Report</th><th>Source</th><th>Received (UTC)</th></tr></thead><tbody>", escape(scope.subject().as_str()), state(session));
     for event in events {
-        let report = match event.event() { VisibilityEvent::PageVisible => "Page visible", VisibilityEvent::PageHidden => "Page hidden", _ => "Unknown" };
-        body.push_str(&format!("<tr><td>{}</td><td>{report}</td><td>{}</td></tr>", event.sequence(), date(event.received_at())));
+        let occurrence = event.observation();
+        let device = match occurrence {
+            Observation::Capture { device: CaptureDevice::Camera, .. } => "Camera: ",
+            Observation::Capture { device: CaptureDevice::Microphone, .. } => "Microphone: ",
+            Observation::Capture { device: CaptureDevice::ScreenShare, .. } => "Screen share: ",
+            _ => "",
+        };
+        let report = format!("{device}{}", occurrence.name().replace('_', " "));
+        let report = escape(&report);
+        let source = match event.source() {
+            ObservationSource::Browser => "Unverified browser report".to_owned(),
+            ObservationSource::Adapter { id, version, simulated } => format!("{} adapter {} / {}", if *simulated { "Simulated" } else { "Unverified" }, escape(id.as_str()), escape(version.as_str())),
+            _ => "Unknown source".to_owned(),
+        };
+        body.push_str(&format!("<tr><td>{}</td><td>{report}</td><td>{source}</td><td>{}</td></tr>", event.sequence(), date(event.received_at())));
     }
     body.push_str("</tbody></table>");
     if events.len() == 50 && let Some(last) = events.last() {

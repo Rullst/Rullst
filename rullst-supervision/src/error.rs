@@ -26,4 +26,6 @@ pub enum SupervisionError {
     Clock,
     #[error("supervision revision exhausted")]
     RevisionExhausted,
+    #[error("supervision analysis adapter unavailable or unable to process the sample")]
+    AnalysisUnavailable,
 }

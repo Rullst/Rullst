@@ -2,7 +2,7 @@ use super::{SqliteSupervision, storage};
 use crate::{
     Clock, Context, OpaqueId, Revision, Scope, SupervisionError as Error,
     clock::MAX_TIME,
-    exam::{EventReceipt, SessionState, VisibilityEvent},
+    exam::{EventReceipt, VisibilityEvent},
 };
 
 impl<C: Clock> SqliteSupervision<C> {
@@ -17,54 +17,24 @@ impl<C: Clock> SqliteSupervision<C> {
         sequence: i64,
         event: VisibilityEvent,
     ) -> Result<EventReceipt, Error> {
-        context.require_subject(scope)?;
-        let mut op = self.begin().await?;
-        let session = op.load_session(scope, session_id).await?;
-        op.until(session.expires_at)?;
-        if session.state != SessionState::Active || session.revision != revision {
-            return Err(Error::Conflict);
-        }
-        if sequence <= 0 || session.sequence.checked_add(1) != Some(sequence) {
-            return Err(Error::Sequence);
-        }
-        if session.event_count >= op.config.limits.events_per_session {
-            return Err(Error::Capacity);
-        }
-        if session
-            .last_event_at
-            .is_some_and(|time| op.now - time < op.config.limits.event_interval)
-        {
-            return Err(Error::RateLimited);
-        }
-        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_supervision_events")
-            .fetch_one(&mut *op.tx)
-            .await
-            .map_err(storage)?;
-        if count >= op.config.limits.events {
-            return Err(Error::Capacity);
-        }
-        let expires_at = op
-            .now
-            .checked_add(op.config.event_retention)
-            .filter(|time| *time <= MAX_TIME)
-            .ok_or(Error::Configuration)?;
-        let receipt = EventReceipt {
-            sequence,
+        let browser = match event {
+            VisibilityEvent::PageVisible => crate::exam::BrowserEvent::PageVisible,
+            VisibilityEvent::PageHidden => crate::exam::BrowserEvent::PageHidden,
+        };
+        let receipt = self
+            .record_browser(
+                crate::exam::ObservationRequest::new(
+                    context, scope, session_id, revision, sequence,
+                )?,
+                browser,
+            )
+            .await?;
+        Ok(EventReceipt {
+            sequence: receipt.sequence(),
             event,
-            received_at: op.now,
-            expires_at,
-        };
-        let kind = match event {
-            VisibilityEvent::PageVisible => 1,
-            VisibilityEvent::PageHidden => 2,
-        };
-        sqlx::query("INSERT INTO rullst_supervision_events (session_id,sequence,kind,received_at,expires_at) VALUES (?,?,?,?,?)")
-            .bind(session_id.as_str()).bind(sequence).bind(kind).bind(op.now).bind(expires_at).execute(&mut *op.tx).await.map_err(storage)?;
-        sqlx::query("UPDATE rullst_supervision_sessions SET sequence=?,event_count=event_count+1,last_event_at=? WHERE id=?")
-            .bind(sequence).bind(op.now).bind(session_id.as_str()).execute(&mut *op.tx).await.map_err(storage)?;
-        op.until(expires_at)?;
-        op.finish().await?;
-        Ok(receipt)
+            received_at: receipt.received_at(),
+            expires_at: receipt.expires_at(),
+        })
     }
 
     /// At most 100 non-expired events, with fresh learner/reviewer authorization.
@@ -85,11 +55,14 @@ impl<C: Clock> SqliteSupervision<C> {
         op.require_exam_read(context, scope).await?;
         let session = op.load_session(scope, session_id).await?;
         op.until(session.retain_until)?;
-        let rows: Vec<(i64,i64,i64,i64)> = sqlx::query_as("SELECT sequence,kind,received_at,expires_at FROM rullst_supervision_events WHERE session_id=? AND sequence>? AND expires_at>? ORDER BY sequence LIMIT ?")
+        let rows: Vec<(i64,i64,i64,i64)> = sqlx::query_as("SELECT sequence,kind,received_at,expires_at FROM rullst_supervision_events WHERE session_id=? AND sequence>? AND expires_at>? AND kind IN (1,2) AND source=1 AND adapter_id IS NULL AND adapter_version IS NULL ORDER BY sequence LIMIT ?")
             .bind(session_id.as_str()).bind(after_sequence).bind(op.now).bind(limit).fetch_all(&mut *op.tx).await.map_err(storage)?;
         let mut events = Vec::with_capacity(rows.len());
         for (sequence, kind, received_at, expires_at) in rows {
-            if sequence <= after_sequence
+            if !session
+                .initial_collection
+                .contains(crate::exam::Capability::Visibility)
+                || sequence <= after_sequence
                 || sequence > session.sequence
                 || received_at < session.started_at
                 || received_at >= session.expires_at

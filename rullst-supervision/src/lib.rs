@@ -10,6 +10,9 @@ mod config;
 mod error;
 mod identity;
 
+#[cfg(feature = "analysis")]
+pub mod analysis;
+
 #[cfg(feature = "exam")]
 pub mod exam;
 #[cfg(feature = "parental")]

@@ -28,7 +28,7 @@ impl<'a, C: Clock> Operation<'a, C> {
         .await
         .map_err(storage)?;
         let (previous_time, revision) = match rows.as_slice() {
-            [(1, 1, config, time, revision)]
+            [(1, 2, config, time, revision)]
                 if config == &store.config_key() && *time >= 0 && *revision >= 0 =>
             {
                 (*time, *revision)
@@ -39,7 +39,7 @@ impl<'a, C: Clock> Operation<'a, C> {
         if now < before || now < previous_time {
             return Err(Error::Clock);
         }
-        let counts: (i64,i64,i64,i64,i64) = sqlx::query_as("SELECT (SELECT COUNT(*) FROM rullst_supervision_grants), (SELECT COUNT(*) FROM rullst_supervision_sessions), (SELECT COUNT(*) FROM rullst_supervision_events), (SELECT COUNT(*) FROM rullst_supervision_managed), (SELECT COUNT(*) FROM rullst_supervision_courses)")
+        let counts: (i64,i64,i64,i64,i64,i64) = sqlx::query_as("SELECT (SELECT COUNT(*) FROM rullst_supervision_grants), (SELECT COUNT(*) FROM rullst_supervision_sessions), (SELECT COUNT(*) FROM rullst_supervision_events), (SELECT COUNT(*) FROM rullst_supervision_managed), (SELECT COUNT(*) FROM rullst_supervision_courses), (SELECT COUNT(*) FROM rullst_supervision_analysis)")
             .fetch_one(&mut *tx).await.map_err(storage)?;
         let limits = &store.config.limits;
         for (count, limit) in [
@@ -48,6 +48,7 @@ impl<'a, C: Clock> Operation<'a, C> {
             (counts.2, limits.events),
             (counts.3, limits.managed),
             (counts.4, limits.managed * 64),
+            (counts.5, limits.sessions),
         ] {
             if !(0..=limit).contains(&count) {
                 return Err(Error::Configuration);

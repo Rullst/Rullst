@@ -1,7 +1,11 @@
 pub(super) const SCHEMA: &[(&str, &str)] = &[
     (
+        "rullst_supervision_analysis",
+        "CREATE TABLE rullst_supervision_analysis (session_id TEXT PRIMARY KEY NOT NULL REFERENCES rullst_supervision_sessions(id) ON DELETE CASCADE, token TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision > 0), sequence INTEGER NOT NULL CHECK(sequence > 0), capability TEXT NOT NULL, expires_at INTEGER NOT NULL CHECK(expires_at > 0))",
+    ),
+    (
         "rullst_supervision_meta",
-        "CREATE TABLE rullst_supervision_meta (id INTEGER PRIMARY KEY CHECK(id = 1), version INTEGER NOT NULL CHECK(version = 1), config TEXT NOT NULL, last_now INTEGER NOT NULL CHECK(last_now >= 0), revision INTEGER NOT NULL CHECK(revision >= 0))",
+        "CREATE TABLE rullst_supervision_meta (id INTEGER PRIMARY KEY CHECK(id = 1), version INTEGER NOT NULL CHECK(version = 2), config TEXT NOT NULL, last_now INTEGER NOT NULL CHECK(last_now >= 0), revision INTEGER NOT NULL CHECK(revision >= 0))",
     ),
     (
         "rullst_supervision_grants",
@@ -9,7 +13,7 @@ pub(super) const SCHEMA: &[(&str, &str)] = &[
     ),
     (
         "rullst_supervision_sessions",
-        "CREATE TABLE rullst_supervision_sessions (id TEXT PRIMARY KEY NOT NULL, tenant TEXT NOT NULL, subject TEXT NOT NULL, resource TEXT NOT NULL, policy TEXT NOT NULL, notice TEXT NOT NULL, state INTEGER NOT NULL CHECK(state IN (1,2,3)), revision INTEGER NOT NULL CHECK(revision > 0), started_at INTEGER NOT NULL CHECK(started_at >= 0), expires_at INTEGER NOT NULL CHECK(expires_at > started_at), retain_until INTEGER NOT NULL CHECK(retain_until > expires_at), sequence INTEGER NOT NULL CHECK(sequence >= 0), last_event_at INTEGER, event_count INTEGER NOT NULL CHECK(event_count >= 0))",
+        "CREATE TABLE rullst_supervision_sessions (id TEXT PRIMARY KEY NOT NULL, tenant TEXT NOT NULL, subject TEXT NOT NULL, resource TEXT NOT NULL, policy TEXT NOT NULL, notice TEXT NOT NULL, collection INTEGER NOT NULL CHECK(collection BETWEEN 0 AND 511), initial_collection INTEGER NOT NULL CHECK(initial_collection BETWEEN 0 AND 511), state INTEGER NOT NULL CHECK(state IN (1,2,3)), revision INTEGER NOT NULL CHECK(revision > 0), started_at INTEGER NOT NULL CHECK(started_at >= 0), expires_at INTEGER NOT NULL CHECK(expires_at > started_at), retain_until INTEGER NOT NULL CHECK(retain_until > expires_at), sequence INTEGER NOT NULL CHECK(sequence >= 0), last_event_at INTEGER, event_count INTEGER NOT NULL CHECK(event_count >= 0))",
     ),
     (
         "rullst_supervision_session_scope",
@@ -17,7 +21,7 @@ pub(super) const SCHEMA: &[(&str, &str)] = &[
     ),
     (
         "rullst_supervision_events",
-        "CREATE TABLE rullst_supervision_events (session_id TEXT NOT NULL REFERENCES rullst_supervision_sessions(id) ON DELETE CASCADE, sequence INTEGER NOT NULL CHECK(sequence > 0), kind INTEGER NOT NULL CHECK(kind IN (1,2)), received_at INTEGER NOT NULL CHECK(received_at >= 0), expires_at INTEGER NOT NULL CHECK(expires_at > received_at), PRIMARY KEY(session_id,sequence))",
+        "CREATE TABLE rullst_supervision_events (session_id TEXT NOT NULL REFERENCES rullst_supervision_sessions(id) ON DELETE CASCADE, sequence INTEGER NOT NULL CHECK(sequence > 0), kind INTEGER NOT NULL CHECK(kind BETWEEN 1 AND 27), source INTEGER NOT NULL DEFAULT 1 CHECK(source IN (1,2,3)), adapter_id TEXT, adapter_version TEXT, received_at INTEGER NOT NULL CHECK(received_at >= 0), expires_at INTEGER NOT NULL CHECK(expires_at > received_at), PRIMARY KEY(session_id,sequence))",
     ),
     (
         "rullst_supervision_event_expiry",

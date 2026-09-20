@@ -13,6 +13,7 @@ publish = false
 [features]
 default = []
 exam = []
+analysis = ["exam", "dep:tokio"]
 parental = []
 sqlite = ["exam", "parental", "dep:ring", "dep:sqlx"]
 
@@ -20,7 +21,12 @@ sqlite = ["exam", "parental", "dep:ring", "dep:sqlx"]
 thiserror = { workspace = true }
 ring = { workspace = true, features = ["std"], optional = true }
 sqlx = { workspace = true, features = ["runtime-tokio", "sqlite"], optional = true }
+tokio = { workspace = true, features = ["time", "rt"], optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
 tempfile = "3"
+
+[[example]]
+name = "observation_adapter"
+required-features = ["sqlite", "analysis"]

@@ -1,12 +1,21 @@
 //! Visible, participant-controlled sessions. Reports never establish misconduct.
 use crate::{OpaqueId, Revision, Scope, SupervisionError as Error};
 
+mod collection;
+mod observation;
+pub use collection::{Capability, Collection};
+pub use observation::{
+    AudioObservation, BrowserEvent, CaptureDevice, CaptureEvent, Observation, ObservationReceipt,
+    ObservationRequest, ObservationSource, PresenceObservation,
+};
+
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct ExamPolicy {
     version: OpaqueId,
     notice: OpaqueId,
     lifetime: i64,
+    collection: Collection,
 }
 
 impl ExamPolicy {
@@ -22,6 +31,7 @@ impl ExamPolicy {
             version: OpaqueId::new(version)?,
             notice: OpaqueId::new(notice)?,
             lifetime: lifetime_seconds.into(),
+            collection: Collection::visibility_only(),
         })
     }
     pub fn version(&self) -> &OpaqueId {
@@ -33,6 +43,14 @@ impl ExamPolicy {
     pub fn lifetime_seconds(&self) -> i64 {
         self.lifetime
     }
+    /// The host must disclose these categories and use a distinct notice/version.
+    pub fn with_collection(mut self, collection: Collection) -> Self {
+        self.collection = collection;
+        self
+    }
+    pub fn collection(&self) -> Collection {
+        self.collection
+    }
 }
 
 /// Explicit acknowledgement of the server-selected policy and notice. This is
@@ -42,6 +60,7 @@ impl ExamPolicy {
 pub struct Acknowledgement {
     policy: OpaqueId,
     notice: OpaqueId,
+    collection: Collection,
 }
 
 impl Acknowledgement {
@@ -56,6 +75,7 @@ impl Acknowledgement {
         Ok(Self {
             policy: OpaqueId::new(policy)?,
             notice: OpaqueId::new(notice)?,
+            collection: Collection::visibility_only(),
         })
     }
     pub fn policy(&self) -> &OpaqueId {
@@ -64,9 +84,27 @@ impl Acknowledgement {
     pub fn notice(&self) -> &OpaqueId {
         &self.notice
     }
+    pub fn for_collection(
+        policy: impl Into<String>,
+        notice: impl Into<String>,
+        collection: Collection,
+        acknowledged: bool,
+    ) -> Result<Self, Error> {
+        let mut acknowledgement = Self::new(policy, notice, acknowledged)?;
+        acknowledgement.collection = collection;
+        Ok(acknowledgement)
+    }
+    pub fn collection(&self) -> Collection {
+        self.collection
+    }
     #[cfg(feature = "sqlite")]
-    pub(crate) fn matches(&self, policy: &OpaqueId, notice: &OpaqueId) -> Result<(), Error> {
-        if &self.policy != policy || &self.notice != notice {
+    pub(crate) fn matches(
+        &self,
+        policy: &OpaqueId,
+        notice: &OpaqueId,
+        collection: Collection,
+    ) -> Result<(), Error> {
+        if &self.policy != policy || &self.notice != notice || self.collection != collection {
             return Err(Error::Conflict);
         }
         Ok(())
@@ -96,6 +134,8 @@ pub struct Session {
     pub(crate) scope: Scope,
     pub(crate) policy: OpaqueId,
     pub(crate) notice: OpaqueId,
+    pub(crate) collection: Collection,
+    pub(crate) initial_collection: Collection,
     pub(crate) state: SessionState,
     pub(crate) revision: Revision,
     pub(crate) started_at: i64,
@@ -118,6 +158,12 @@ impl Session {
     }
     pub fn notice(&self) -> &OpaqueId {
         &self.notice
+    }
+    pub fn collection(&self) -> Collection {
+        self.collection
+    }
+    pub fn initial_collection(&self) -> Collection {
+        self.initial_collection
     }
     pub fn state(&self) -> SessionState {
         self.state

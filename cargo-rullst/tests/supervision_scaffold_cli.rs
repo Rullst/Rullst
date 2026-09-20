@@ -55,6 +55,9 @@ fn materialize(root: &Path, workspace: &Path, hot: bool, database: &str) {
     );
 }
 fn install(root: &Path, workspace: &Path) -> Output {
+    install_collection(root, workspace, "visibility")
+}
+fn install_collection(root: &Path, workspace: &Path, collection: &str) -> Output {
     Command::new(env!("CARGO_BIN_EXE_rullst"))
         .current_dir(root)
         .args([
@@ -67,6 +70,8 @@ fn install(root: &Path, workspace: &Path) -> Output {
             "3600",
             "--session-seconds",
             "600",
+            "--browser-observations",
+            collection,
             "--supervision-source",
         ])
         .arg(workspace.join("rullst-supervision"))
@@ -189,7 +194,11 @@ fn real_supervision_operator_and_lms_http_journey() {
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().join("app");
     materialize(&root, workspace, true, "Sqlite");
-    success(install(&root, workspace));
+    success(install_collection(
+        &root,
+        workspace,
+        "visibility,focus,clipboard,fullscreen",
+    ));
     success(
         Command::new(env!("CARGO_BIN_EXE_rullst"))
             .current_dir(&root)
@@ -361,5 +370,27 @@ fn privacy_age_and_supervision_compose_without_replacing_application_instruction
                     .unwrap(),
             );
         }
+    }
+}
+
+#[test]
+fn supervision_rejects_unknown_or_duplicate_browser_capabilities_before_writing() {
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    for selection in [
+        "",
+        "camera",
+        "visibility,visibility",
+        "clipboard, keys",
+        "visibility,",
+        "screen",
+        "focus,audio",
+    ] {
+        assert!(
+            !install_collection(temp.path(), workspace, selection)
+                .status
+                .success()
+        );
+        assert_eq!(std::fs::read_dir(temp.path()).unwrap().count(), 0);
     }
 }
