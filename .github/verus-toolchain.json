@@ -1,0 +1,16 @@
+{
+  "schema": "rullst.verus-toolchain.v1",
+  "release": "0.2026.09.13.671956e",
+  "commit": "671956ec527d3b7164779f767bdbfe769bedce6c",
+  "rust_toolchain": "1.98.1-x86_64-unknown-linux-gnu",
+  "solver_version": "Z3 version 4.16.0 - 64 bit",
+  "url": "https://github.com/verus-lang/verus/releases/download/release/0.2026.09.13.671956e/verus-0.2026.09.13.671956e-x86-linux.zip",
+  "archive_bytes": 485525774,
+  "archive_sha256": "08c85b96e0fbbbdcb1b3a9fa8943dce7598c3e7b343680820f649b4e1efda4b4",
+  "archive_root": "verus-x86-linux",
+  "maximum_expanded_bytes": 3221225472,
+  "maximum_archive_entries": 6000,
+  "proofs": ["AgePolicy::permits"],
+  "negative_controls": ["restricted_weakening", "elevated_weakening", "low_denial"],
+  "flags": ["--crate-name", "rullst_age_policy_pilot", "--rlimit", "10", "--num-threads", "1", "--no-cheating", "--output-json", "--time"]
+}

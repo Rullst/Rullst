@@ -106,6 +106,10 @@ publication or admit a stable v13 release. See the
   bounded explicit OpenAPI 3.1 profile. Reject unsupported shapes, preserve
   optional/null semantics and validate request/response data and typed statuses;
   authentication and ownership remain explicit application responsibilities.
+- Add a manual Verus pilot for the existing age-policy method predicate, with
+  production syntax linkage, pinned tooling, mandatory failing controls and
+  resource/source receipts. Preserve production dependencies and the broader
+  runtime, integration and release verification requirements.
 
 ## [12.1.0] - 2026-09-20
 

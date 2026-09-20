@@ -1,16 +1,90 @@
 # Verus verification pilot for v13
 
-**Status: planned v13 pilot, 18 September 2026.** No Verus proofs, dependencies
-or workflow are implemented by this plan. It adds no v12.1 release gate and
+**Status: locally verified v13 candidate, 20 September 2026.** One production
+method predicate and three deliberate failing controls have passed the pilot
+harness. A manual workflow is prepared; hosted acceptance and any promotion
+remain pending. There are no new runtime dependencies. It adds no v12.1 gate and
 preserves the existing Kani, Miri, fuzzing, integration and provider acceptance
 requirements.
 
-The pilot will verify a small set of explicit correctness properties in code
-used by production modules. Start with the age-policy foundation; expand to
+The first property uses the existing `AgePolicy::permits` implementation. Expand to
 Auth and Capital only after measuring compatibility, proof maintenance and CI
 cost. The first privacy/age journey retains its product priority.
 
-## Initial scope
+## Implemented candidate and measured boundary
+
+The source-linked projection verifies exactly this engineering policy table:
+
+| Risk preset | Self-declaration | Facial estimation | Verified attribute |
+| --- | --- | --- | --- |
+| Low | Allowed method | Allowed method | Allowed method |
+| Elevated | Denied method | Allowed method | Allowed method |
+| Restricted | Denied method | Denied method | Allowed method |
+
+An allowed **method** does not authorize an application action or establish a
+person's age. The predicate receives an `AgePolicy` and an `AgeMethod`; it does
+not inspect evidence, signatures, challenges, replay state, clocks or guardians.
+Those boundaries retain their runtime/integration tests and separate contracts.
+
+The specification lives in `rullst-privacy/verification/age-policy.spec.rs`.
+An ordinary CLI integration test parses actual production Rust with `syn`, checks
+the package/root/module/export path and the exact reviewed enum/type/signature
+domain, and extracts the executable body unchanged. It rejects new calls,
+macros, unsafe code or conditional attributes until their proof closure is
+reviewed. Type/body/source/specification fingerprints accompany the projection.
+The only additions are Verus annotations, `Structural` support for the existing
+fieldless derived-equality enums, a closed specification accessor and an erased
+reveal step. Production source and normal package dependencies remain unchanged.
+There is no handwritten copy of the decision algorithm and no proof precondition
+that excludes one of the nine risk/method combinations.
+
+The trusted boundary includes the syntax extractor, Rust's derived structural
+equality, Verus/its proof library, Rust compiler, Z3 and the executing host.
+`--no-cheating` rejects local `assume`, admitted properties and external bodies;
+the imported verifier standard library remains part of the trusted toolchain.
+The runner requires the whole projection, exactly one verified production
+function and its actual successful result. The three negative implementations
+weaken restricted/elevated policies or deny low-risk methods. Each must fail
+that function's postcondition; an absent proof, compiler error, zero-test pass
+or changed tool/source cannot substitute for a functioning negative control.
+
+The pinned Linux bundle is Verus `0.2026.09.13.671956e`, upstream commit
+`671956ec527d3b7164779f767bdbfe769bedce6c`, Rust `1.98.1` and Z3 `4.16.0`.
+The archive digest, flags and inventory are in `.github/verus-toolchain.json`.
+Every run checks the archive and all extracted members before executing them.
+Ordinary application builds still use the framework's own stable/MSRV policy
+and do not install Verus.
+
+Two initial local runs took 12.105 and 12.139 seconds including full bundle
+validation. In the first, the production proof took 0.82 seconds and each
+negative control about 0.53–0.54 seconds; peak prover RSS stayed below 292 MiB.
+The compressed tool download is about 486 MB and expands to 1.63 GB. These are
+measurements on one workstation, not hosted-CI or cold-download predictions.
+Execution uses one verifier thread, a 60-second wall limit per case, 45-second
+CPU limit, 2 GiB address-space limit and 2 MiB output-file limits. Local runtime
+age tests and a Rust 1.96 age-feature check also passed.
+
+## Running the isolated pilot
+
+On Linux, download the exact URL from `.github/verus-toolchain.json` into a
+disposable directory, install the pinned Rust toolchain and use fresh absolute
+output paths. The installer verifies the archive before extraction:
+
+```text
+python3 .github/verus-pilot.py install --archive /absolute/release.zip --output /absolute/tools
+RULLST_VERUS_OUTPUT=/absolute/projection cargo test -p cargo-rullst --test verus_policy_linkage --locked
+python3 .github/verus-pilot.py verify --archive /absolute/release.zip --bundle /absolute/tools/verus-x86-linux --projection /absolute/projection --output /absolute/evidence
+```
+
+`evidence.json` records source SHA, dirty-worktree status, source/spec/type/body
+linkage, exact tool identities/flags, result hashes, wall/CPU time and peak RSS.
+Dirty local evidence is explicitly developmental. The prepared `verus.yml`
+workflow uploads the projection and reports for its exact selected commit;
+availability through GitHub's manual workflow registry and a successful hosted
+run must be established before citing hosted evidence. It remains outside the
+required release workflow inventory.
+
+## Subsequent scope, not proven by this pilot
 
 | Module | Proposed property | Explicit boundary |
 | :--- | :--- | :--- |
@@ -45,7 +119,7 @@ runtime validation at boundaries reached from unverified callers.
 
 ## CI adoption and promotion
 
-The proposed dedicated `verus.yml` workflow begins with `workflow_dispatch` and
+The candidate dedicated `verus.yml` workflow uses `workflow_dispatch` and
 a small named proof inventory. Its checks fail on a proof failure, timeout,
 missing proof or tool error; the pilot remains outside release admission until
 promotion is explicitly implemented.
@@ -72,11 +146,13 @@ promotion is explicitly implemented.
 
 ## Delivery checkpoints
 
-- [ ] Select the first age-policy functions and review their threat model,
+- [x] Select the first age-policy method predicate and review its threat model,
   contracts, assumptions and compatibility with a pinned Verus version.
-- [ ] Implement proofs attached to the production functions, with negative
-  controls and stable/MSRV/package-consumer checks.
-- [ ] Add the manual workflow, exact-commit evidence and resource measurements.
+- [x] Implement source-linked local proof and negative controls, stable runtime
+  tests and an MSRV check without changing production dependencies.
+- [x] Prepare the manual workflow and local resource/evidence collection.
+- [ ] Obtain clean exact-commit hosted evidence and the combined package-consumer
+  rehearsal; the local dirty-worktree samples are not release admission.
 - [ ] Review results and decide whether to make the selected scope mandatory on
   relevant v13 changes.
 - [ ] Evaluate the Auth and Capital predicates independently before expanding

@@ -136,6 +136,12 @@ The workflows below run **only when requested manually**:
 | `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | **Required v12 release evidence for the declared scopes:** every selected scope is strict. This nightly-only interpreter uses pinned `nightly-2026-08-21` (`rustc 1.100.0-nightly`); it does not change the project's stable toolchain or MSRV. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. |
 | `mutants.yml` | A source-bound discovered inventory, eighty lossless shards with at most four running concurrently, their artifacts and a strict aggregate | Informational: a cheap all-feature `--list --json` preflight records the selected source's complete unique inventory before runners start; every shard then uses that release surface, and aggregation requires every reviewed candidate to receive exactly one classification before reporting the conservative caught percentage. A targeted mode retests one validated production Rust file after a correction; it does not replace the complete campaign. Recovery modes accept only the repository-reviewed campaign policy, bind the source/run/branch/tool/inventory digest, bisect explicitly authorized failed fragments, reuse immutable successful artifacts and emit a content-addressed aggregate. Missed/time-out exit codes remain findings, while a broken baseline, incomplete artifact set, preflight/classification mismatch, invalid invocation or cargo-mutants internal failure fails the workflow. The v12 campaign completed 14,391/14,391 classifications in run `34761010296`; “pass” does not mean every mutant was killed. |
 
+The v13 candidate also provides `verus.yml` as a manual-only pilot. Its source
+linkage/proof/negative-control checks are strict when invoked, while the pilot
+remains outside release admission. A new workflow must first be available in
+GitHub's default-branch workflow registry before its manual button/dispatch can
+be assumed available; prepared YAML is not hosted evidence.
+
 These workflows are **periodic and manually runnable**:
 
 | Cadence | Workflows | Mode |
@@ -566,7 +572,7 @@ Dependabot updating the wrapper alone is insufficient. The scan's existing
 scope and verified-secret failure policy remain unchanged. These automation
 updates do not change published crate versions or constitute a v12.0.1 release.
 
-## Workflow inventory (38 definitions)
+## Workflow inventory (39 definitions)
 
 Durations are intentionally omitted because runner load, cache state, and the
 dependency graph make static estimates unreliable.
@@ -609,6 +615,7 @@ dependency graph make static estimates unreliable.
 | [`trufflehog.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/trufflehog.yml) | main/v13 push and PR, weekly, manual | Blocking | Verified-secret scan over the configured Git history range. |
 | [`udeps.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/udeps.yml) | weekly, manual | Informational | `cargo-udeps` signal on pinned `nightly-2026-08-21`; command failures are tolerated. |
 | [`unsafe-policy.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/unsafe-policy.yml) | main/v13 push and PR, manual | Blocking | Denies new production unsafe code and validates the reviewed exception allowlist. |
+| [`verus.yml`](https://github.com/Rullst/Rullst/blob/v13/.github/workflows/verus.yml) | manual-only v13 candidate | Strict pilot, outside release admission | Verifies the source-linked age-policy method predicate with pinned Verus/Rust/Z3 and requires three postcondition-failing controls. Uploads fingerprints, tool identities and resource measurements; hosted acceptance/promotion pending. |
 | [`wasm-matrix.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/wasm-matrix.yml) | main/v13 push and PR, manual | Blocking | Compiles Core, the public `rullst` facade and macros for `wasm32-unknown-unknown` and `wasm32-wasip1`. |
 | [`workflow-lint.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/workflow-lint.yml) | main/v13 push and PR, manual | Blocking | Validates the shared fuzz inventory, then Actionlint checks workflow syntax, GitHub expressions and embedded shell using an immutable container digest. |
 | [`zero-panics.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/zero-panics.yml) | main/v13 push and PR, manual | Blocking | Panic-family Clippy lints plus generated-code regression checks for published runtime targets. |
@@ -804,7 +811,7 @@ These ideas remain valuable, but are not current guarantees:
 
 | Idea | Status and recommendation |
 | :--- | :--- |
-| Verus proofs for selected production contracts | **Planned v13 pilot; no workflow or proofs implemented.** Start with age-policy decisions, then evaluate Auth authorization and Capital integer money calculations. Use a pinned isolated verifier and manual workflow; reviewed assumptions, negative controls, consumer compatibility, reproducible exact-commit evidence and measured cost precede required checks for affected code/contracts/dependencies/tooling. See the [pilot plan](docs/src/verus-roadmap.md). No additional v12.1 gate. |
+| Verus proofs for selected production contracts | **Locally verified v13 candidate; hosted acceptance pending.** `verus.yml` is manual-only, with a pinned archive/compiler/solver, syntax-linked `AgePolicy::permits` projection, one verified predicate, three mandatory postcondition-failing controls and source/resource receipts. Normal CLI CI checks the source linkage without installing Verus. The pilot remains outside release admission; Auth, Capital, age evidence/time/storage and promotion remain separate work. See the [measured scope and assumptions](docs/src/verus-roadmap.md). No additional v12.1 gate. |
 | Loom and Shuttle concurrency exploration | **Not implemented — worth implementing** for the small shared-state primitives that have explicit concurrency invariants. Do not apply them indiscriminately to the whole workspace. |
 | `cargo-vet` dependency review | **Not implemented — worth implementing** once review ownership and audit criteria are defined; an empty policy file would add ceremony without assurance. |
 | `cargo-careful` and zero-allocation assertions | **Not implemented — worth targeted experiments.** Allocation claims need stable benchmarks and explicit hot paths before becoming gates. |

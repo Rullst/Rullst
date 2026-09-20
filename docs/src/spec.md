@@ -287,14 +287,27 @@ v13 changes land.
 
 ### v13 formal-verification pilot boundary
 
-The [Verus pilot](verus-roadmap.md) is planned work, beginning with production
-age-policy decisions and subsequently evaluating Auth authorization predicates
+The [Verus pilot](verus-roadmap.md) has a locally verified candidate for production
+age-policy method decisions, with later evaluation of Auth authorization predicates
 and Capital integer money calculations. Specifications must remain linked to
 the executable implementation, with explicit trusted assumptions and external
 contracts. No dedicated public crate is proposed. A pinned, isolated verifier
 and manual workflow precede any required v13 check; compatibility, reproducible
 proofs, negative controls and measured CI cost are promotion criteria. This
 plan adds no v12.1 release gate or framework-wide correctness claim.
+
+The first implementation candidate verifies the existing `AgePolicy::permits`
+body with its actual enum variants and policy fields, extracted from Rust syntax.
+No public API or production dependency changes are required. Extraction must
+check the reviewed signatures/types and original structural equality derives,
+copy the executable body unchanged and record source/type/body fingerprints.
+Only verifier annotations, structural-equality support, a specification accessor
+and an erased reveal step may be added to the projection. The proof covers all
+nine risk/method combinations without narrowing valid runtime inputs; it does
+not prove age evidence, policy validation, timestamps, storage or authorization.
+The isolated verifier must reject weakened restricted/elevated policies and a
+denied low-risk policy as negative controls. This is a bounded pilot candidate,
+not a promotion into required release checks.
 
 ### Conditional v13 supervision crate
 

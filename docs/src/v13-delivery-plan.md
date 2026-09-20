@@ -258,6 +258,17 @@ GET-only Rust module also compiles with strict Clippy. Hosted Linux CLI acceptan
 requires the pinned TypeScript compiler and the actual HTTP journey; combined
 hosted admission remains pending.
 
+The Verus pilot has a local candidate for the unchanged production
+`AgePolicy::permits` predicate. Rust syntax extraction checks the actual package,
+module path, enum/type/signature domain and body; the verifier covers all nine
+risk/method combinations. Both local runs verified the predicate and rejected
+all three deliberately incorrect implementations. They took about 12.1 seconds
+including complete pinned-tool validation, with prover peak RSS below 292 MiB.
+The runtime age suite and MSRV 1.96 check passed. The prepared manual workflow
+is separate from release admission; clean hosted evidence and any promotion
+remain pending. See the [proof boundary](verus-roadmap.md); this does not prove
+age evidence, expiry, replay state or application authorization.
+
 On 20 September at 07:31 UTC, the first four v12 mutation shards had hit their
 330-minute execution budget; their partial artifacts were retained. For example,
 shard 2 had executed 72 of 220 scheduled mutations (40 caught, 30 surviving,
