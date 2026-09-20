@@ -199,6 +199,12 @@ the exact source and reasoning. The policy literal is 18; the fuzz-only nonce
 is a separate deterministic fixture, and production issuance retains OS entropy.
 No source path, query or fuzz target was disabled.
 
+PR #220 head `52657955` passed the real SDK signed-APK job, but its coverage
+and macOS CLI campaign exposed two Android fixture/build-timing issues. The
+follow-up preserves OS process helpers in the fixture PATH and compares artifact
+timestamps against a temporary filesystem anchor. Local native selection and
+redaction scenarios passed after correction; a fresh combined campaign is required.
+
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |
 | P0 | Published v12.1.0 corrections integrated without losing v13 work | Review conflicts; retain the stable runtime changes; pass the combined workspace tests, strict Clippy, format and feature/consumer checks. |
