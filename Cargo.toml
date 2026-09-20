@@ -18,6 +18,7 @@ members = [
     "rullst-security",
     "rullst-iot",
     "rullst-privacy",
+    "rullst-supervision",
 ]
 exclude = [
     "benchmark/rullst",

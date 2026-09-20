@@ -337,8 +337,9 @@ not a promotion into required release checks.
 
 The owner requested transparent learner/exam supervision and parental controls
 as the first additional priority after the required v13 deliveries have been
-implemented and validated. The proposed package name is `rullst-supervision`;
-this is a design reservation, not an existing or publishable package.
+implemented and validated. `rullst-supervision` is now an unpublished implementation
+candidate with bounded domain contracts and shared-local SQLite state. Its
+consumer/browser/hosted acceptance remains pending; `publish = false` is retained.
 
 Keep supervision policy/session/event and reviewer-access contracts separate
 from `rullst-privacy` age and consent primitives. Exam supervision and parental
@@ -360,6 +361,33 @@ not inferred from these controls. The exact API/storage boundary and its threat
 model must be specified before scaffolding the crate. Empty contracts or a mock
 alone do not meet its admission criteria, and it must not delay required release
 gates; retain it for a subsequent v13 release if capacity is insufficient.
+
+The initial implementation contract is now the
+[bounded supervision design](supervision.md). Use a separate unpublished package
+with optional `exam`, `parental` and `sqlite` features, no Core/default dependency,
+and a concrete SQLite adapter generic over a trusted clock. Tests use real local
+SQLite and an injected deterministic clock; no memory mock is needed for this
+initial backend. One private initialized database owns scoped authority,
+sessions, parental enrollment/policy and allowlisted events. Serialize operations
+with `BEGIN IMMEDIATE`, persist configuration, a clock high-water mark and a
+global revision counter, and enforce bounded quotas and retention. An opener
+must supply the independently retained deployment epoch. This detects epoch
+mismatch, not restoration of an old database with the same epoch.
+
+Only trusted operator provisioning can establish expiring `ExamReview` or
+`ParentalManage` authority after independent relationship verification. The host
+binds current authenticated identity, school membership and resource access;
+the store rechecks its own scoped grants atomically on each operation. Those
+two authorization layers are not one transaction unless the host composes them
+that way. In-flight results cannot be recalled after external membership changes.
+Session start/resume requires explicit current policy/notice acknowledgement;
+pause/end and policy changes use exact revisions. Events are only visible/hidden
+page reports with an exact next client sequence and server receipt time. Their
+absence or contents never influence grading. Parental enrollment is operator
+managed: an enrolled subject with absent, expired or denied policy is denied;
+an unenrolled subject retains existing application authorization. Revoking a
+manager does not remove the subject's restrictions. The generated opt-in must
+enforce them on original lesson/progress routes before package admission.
 
 ### Versioned release-branch boundary
 

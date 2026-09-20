@@ -348,6 +348,22 @@ The corrected head requires its own hosted admission. A new explicit package-onl
 diagnostic runs the existing archive/installed-CLI acceptance without repeating
 the OS matrix; a regression proves that this subset cannot admit a release.
 
+The corrected `365d2252` head subsequently passed **87 hosted checks**, with four
+declared skips and no unresolved review threads. PR #221 merged normally into
+`v13` at `48a6ee51` on September 20 at 17:23 UTC, with all 43 required checks and
+administrator enforcement preserved. Its seventeen-archive/installed-CLI
+diagnostic passed separately as recorded above. This admits the combined
+application/privacy candidate; the final full/native/security release campaign
+and initial new-package registration remain outstanding.
+
+The first conditional supervision implementation now has a separate unpublished
+crate, bounded domain contracts and shared-local SQLite state. Its focused local
+tests cover explicit acknowledgement, scoped/revocable authority, session
+transitions, event bounds, parental course windows, retention, fresh-process
+reopen, concurrent revisions, lock-wait expiry, cancellation and corrupt rows.
+The generated LMS enforcement and browser journey are still being implemented;
+these local results do not admit the package for publication.
+
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |
 | P0 | Published v12.1.0 corrections integrated without losing v13 work | Review conflicts; retain the stable runtime changes; pass the combined workspace tests, strict Clippy, format and feature/consumer checks. |

@@ -128,6 +128,13 @@ rullst-privacy|challenge-tokens
 rullst-privacy|sqlite
 rullst-privacy|postgres
 
+# Unpublished supervision candidate: domain contracts stay database-free.
+rullst-supervision|
+rullst-supervision|exam
+rullst-supervision|parental
+rullst-supervision|exam,parental
+rullst-supervision|sqlite
+
 # Umbrella boundaries exposed to generated applications.
 rullst|orm
 rullst|orm-mongodb
