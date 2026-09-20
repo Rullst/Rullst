@@ -80,11 +80,9 @@ fn release_binds_fresh_selected_bytes_and_expected_certificate_without_exposing_
     .unwrap();
     // Keep OS process-lifecycle helpers (`ps`/`kill` or `taskkill`) available.
     // The absolute fixture directory still takes precedence for Cargo and Java.
-    let fixture_path = std::env::join_paths(
-        std::iter::once(tools.path().to_path_buf()).chain(std::env::split_paths(
-            &std::env::var_os("PATH").unwrap_or_default(),
-        )),
-    )
+    let fixture_path = std::env::join_paths(std::iter::once(tools.path().to_path_buf()).chain(
+        std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default()),
+    ))
     .unwrap();
     for mode in [
         "valid",
