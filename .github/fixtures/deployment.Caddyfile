@@ -1,0 +1,27 @@
+{
+    admin off
+    auto_https off
+}
+
+http://127.0.0.1:__PROXY_PORT__ {
+    bind 127.0.0.1
+    reverse_proxy 127.0.0.1:__APP_A__ 127.0.0.1:__APP_B__ {
+        lb_policy round_robin
+        # Mutating work is never automatically replayed by this profile.
+        lb_retries 0
+        health_uri /ready
+        health_interval 100ms
+        health_timeout 500ms
+        health_status 200
+        health_fails 1
+        health_passes 1
+        # No inbound proxy is trusted. Caddy sanitizes X-Forwarded-For;
+        # also remove RFC Forwarded, which the application does not trust.
+        header_up -Forwarded
+        stream_timeout 30s
+        transport http {
+            dial_timeout 1s
+            response_header_timeout 3s
+        }
+    }
+}

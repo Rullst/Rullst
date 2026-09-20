@@ -48,6 +48,7 @@ qrcode = { version = "0.14.1", default-features = false, features = ["svg"] }
 redis = { workspace = true, features = ["tokio-comp", "aio"], optional = true }
 
 [dev-dependencies]
+futures-util = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
 axum = { workspace = true }
 criterion = { workspace = true, features = ["async_tokio"] }

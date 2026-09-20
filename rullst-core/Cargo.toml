@@ -47,6 +47,7 @@ opentelemetry = { workspace = true, optional = true }
 opentelemetry-otlp = { workspace = true, optional = true, features = ["reqwest-client", "http-proto", "reqwest-rustls"] }
 opentelemetry_sdk = { workspace = true, optional = true, features = ["rt-tokio"] }
 axum = { workspace = true, features = ["macros", "ws"] }
+http-body = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time", "fs", "io-util", "sync", "net", "signal"] }
 rullst-orm = { workspace = true, optional = true }
 sqlx = { workspace = true, features = ["runtime-tokio", "macros"], optional = true }
