@@ -310,6 +310,8 @@ pub(crate) fn create_new_project_with_cli_options(
         env_config::generate_nix_files(path)?;
     }
 
+    crate::generators::ai_context::generate_ai_context(Some(path))?;
+
     if db_needed && !skip_initial_migration {
         println!("\n{}", "📦 Bootstrapping Database...".cyan().bold());
         let migration = crate::ui::components::with_spinner(
@@ -372,14 +374,14 @@ pub(crate) fn create_new_project_with_cli_options(
     };
     println!(
         "{}",
-        format!("  v12 application profile: {generated_application_profile}")
+        format!("  Application profile: {generated_application_profile}")
             .white()
             .dimmed()
     );
     if db_needed {
         println!(
             "{}",
-            format!("  v12 ORM profile: {}", wizard_opts.orm_pattern)
+            format!("  ORM profile: {}", wizard_opts.orm_pattern)
                 .white()
                 .dimmed()
         );

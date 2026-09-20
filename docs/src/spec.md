@@ -88,7 +88,7 @@ Other values are replaced by the layer's configured policy; missing/invalid
 optional Security configuration retains its existing behavior. This narrow rule
 does not attempt to order every Referrer-Policy value or weaken other headers.
 
-`rullst-privacy` is an opt-in, unpublished v13 package. Its initial
+`rullst-privacy` is an opt-in, unpublished v13 release candidate. Its initial
 `age-assurance` feature owns bounded risk policies, server-issued challenges,
 minimal signed age attestations, explicit decisions and replay-store contracts.
 Low-risk declarations, facial estimates and verified age attributes have
@@ -147,6 +147,21 @@ required assurance or make a declaration authorize a stronger-policy action.
 Publication of the privacy package still requires explicit acceptance of its
 advertised API, durable state, consumer behavior and release configuration.
 
+The packaging candidate adds this independent package to the seventeen-package
+release inventory before the umbrella. The facade exposes only explicit
+`privacy-*` features and `rullst::privacy`; default builds acquire no privacy,
+age, consent or database dependency from this addition. CLI age/privacy consumers
+select the matching registry version by default, with an explicit matching local
+source override for development. Existing dependency sources, versions and
+features must be checked before composing two consumers; no silent source switch
+is permitted. Both commands refresh the bounded project context after scaffolding,
+reporting a refresh failure without concealing the completed source edits.
+Archive-only acceptance must install the packaged CLI and compile
+generated SaaS/LMS consumers with both opt-ins and no workspace source paths.
+This is packaging eligibility, not a published version or registration claim.
+The stable publisher still refuses an unregistered crate; initial registration,
+reviewed ownership and Trusted Publishing configuration are separate prerequisites.
+
 The native `DeclarationGate` contract processes an authenticated first-party
 `AgeDeclaration` without requiring an external issuer or a signing key for the
 declaration itself. It accepts only a retained server-issued `SelfDeclaration`
@@ -184,9 +199,10 @@ tenant and authenticated session, never request-supplied identities. Application
 keys and replay storage are mandatory; initialization, timeout, stale context or
 unknown/negative answers cannot grant access. SQLite and PostgreSQL are explicit
 profiles with their existing deployment obligations. Generation refuses unknown
-or already-modified route shapes before writing. Until privacy release admission,
-this command requires an explicitly supplied matching unpublished privacy source;
-it must not emit an unavailable registry dependency. Other blueprint adapters,
+or already-modified route shapes before writing. This command selects the matching
+registry dependency unless the caller explicitly supplies a matching local source.
+Before that version is published, development consumers must use the explicit
+source override or a reviewed archive-only registry patch. Other blueprint adapters,
 provider flows, persistent age permissions and deployed browser acceptance remain
 separate work.
 
@@ -268,8 +284,8 @@ defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidenc
 The development train uses `13.0.0-alpha.1` consistently for the existing
 publishable packages and their internal requirements. This prepares the CLI's
 actual major-version behavior; it is not a publication or stable-release claim.
-The privacy package retains its unpublished admission boundary and explicit
-local-source consumers until its release configuration is accepted.
+The privacy package joins the candidate inventory with explicit optional facade
+features; registry publication remains subject to package and ownership admission.
 
 The `rullst-upgrade-rules-v2` migration catalog recognizes source major 13 as
 well as 5, 6, 11 and 12, keeps exact target-major CLI selection and rejects
@@ -287,14 +303,27 @@ v13 changes land.
 
 ### v13 formal-verification pilot boundary
 
-The [Verus pilot](verus-roadmap.md) is planned work, beginning with production
-age-policy decisions and subsequently evaluating Auth authorization predicates
+The [Verus pilot](verus-roadmap.md) has a locally verified candidate for production
+age-policy method decisions, with later evaluation of Auth authorization predicates
 and Capital integer money calculations. Specifications must remain linked to
 the executable implementation, with explicit trusted assumptions and external
 contracts. No dedicated public crate is proposed. A pinned, isolated verifier
 and manual workflow precede any required v13 check; compatibility, reproducible
 proofs, negative controls and measured CI cost are promotion criteria. This
 plan adds no v12.1 release gate or framework-wide correctness claim.
+
+The first implementation candidate verifies the existing `AgePolicy::permits`
+body with its actual enum variants and policy fields, extracted from Rust syntax.
+No public API or production dependency changes are required. Extraction must
+check the reviewed signatures/types and original structural equality derives,
+copy the executable body unchanged and record source/type/body fingerprints.
+Only verifier annotations, structural-equality support, a specification accessor
+and an erased reveal step may be added to the projection. The proof covers all
+nine risk/method combinations without narrowing valid runtime inputs; it does
+not prove age evidence, policy validation, timestamps, storage or authorization.
+The isolated verifier must reject weakened restricted/elevated policies and a
+denied low-risk policy as negative controls. This is a bounded pilot candidate,
+not a promotion into required release checks.
 
 ### Conditional v13 supervision crate
 
@@ -1226,6 +1255,43 @@ before retry, serialize conflicting changes, reconcile signed webhooks and
 evaluate provider-specific billing-cycle effects. Live-account acceptance is
 release evidence, not inferred from protocol fixtures.
 
+#### Server-side Plan Entitlements (v13 candidate)
+
+The candidate `rullst-capital::entitlements` module supplies a read-time gate,
+separate from usage quotas. `EntitlementScope` binds an authenticated tenant to
+an existing `BillingSubject`; `EntitlementPolicy` binds one server-selected
+feature to at most 64 exact plan IDs, an explicit live/sandbox mode and a
+1–300 second maximum reconciliation age. Only active subscriptions qualify;
+trial, past-due, canceled, unknown and mock states deny access. Validity has an
+exclusive end, and both future observations and clock rollback during a read
+are rejected. No serialized snapshot or browser field is an authorization token.
+
+`EntitlementStore` is a static-dispatch trusted adapter contract. Every gate
+call reads it again and checks the returned tenant/subject binding, provenance,
+plan, status, expiration and trusted clock before and after the read. Store
+failures deny access. Hosts must supply authoritative current state and serialize
+reconciliation/revocation; this read gate does not make subsequent domain writes
+atomic or revoke an operation already authorized. Custom adapters and database
+backup/restore remain explicit application obligations.
+
+The generated SaaS candidate consumes this gate at an authenticated billing
+report route. Its single-tenant scope is the configured Stripe account/mode
+inside the application's database, never a request header or submitted owner.
+The existing durable billing intent and revision fence precede an actual
+ownership-bound provider refresh; the state is committed before authorization.
+It performs this refresh on every report, with a bounded deadline and no cached
+grant. The exact report-plan allowlist is separately configured on the server.
+Production requires live state; local sandbox state requires the explicit test
+profile, and offline credentials produce deterministic denial. Mutable CMS
+subscription projections, checkout redirects and unverified events cannot grant
+report access. Other providers need reviewed reconciliation adapters before this
+consumer can enable them. Existing profile/rights exports remain independent.
+
+The local implementation and generated HTTP/database contracts exercise current
+state, account/owner isolation, revocation races, expiry, provider/store failures,
+mock denial and cancellation at the request deadline. Combined hosted admission
+is pending; protocol fixtures do not establish live provider-account acceptance.
+
 #### Shared Team and Workspace Quotas
 
 `BillingSubject` identifies one authoritative user, team, workspace or trusted
@@ -1694,6 +1760,79 @@ sending.
 4. **Zero-Panic Invariant:** Production paths must never call `panic!()`, `unwrap()`, or `expect()`; domain errors must return typed `Result<T, AppError>`.
 
 ---
+
+### 11.1. Generated Project Context (v13 candidate)
+
+`generate:ai-context` retains its existing helper signature but replaces raw
+source/configuration embedding with the `rullst.project-context.v1` inventory.
+It writes a readable `.llms.txt` and machine-readable `.rullst/context-map.json`,
+and creates a project `AGENTS.md` only when no user instructions already exist.
+New project generation installs the same instructions and inventory. Existing
+`AGENTS.md` files are never rewritten by regeneration or automatic scaffold hooks.
+
+The map contains bounded project/dependency/feature names, validated dependency
+version requirements, configuration key
+names, source paths and roles, file sizes and one deterministic input fingerprint.
+It contains no source bodies, configuration values, dependency URLs or absolute
+workstation paths. Only bounded `Cargo.toml`, optional `Rullst.toml` and
+`.env.example`, and regular `.rs` files beneath `src` are inspected. Secrets,
+databases, VCS metadata, build output, dependency directories, hidden descendants
+and symlinks are excluded or rejected explicitly. Directory depth, entries,
+individual files, aggregate reads and output size all have hard limits; errors
+must not echo configuration values. Generated instructions identify the map as
+an inventory, not evidence that a feature, deployment or test has passed.
+The dotenv inventory accepts single-line declarations and rejects multiline
+values before they can be mistaken for key names; it performs no interpolation.
+The selected root's `src` is explicit: external workspace members are not scanned.
+
+`--check` recomputes and compares the generated inventory without writing files;
+stale, missing or altered output fails. Normal regeneration uses preflighted
+atomic replacement/rollback, refuses links and unrecognized output, and retains
+the legacy generated `.llms.txt` migration boundary explicitly. The fingerprint
+detects changed Rust source and inventoried metadata, excluding configuration
+values and dependency URLs; it is not a signature or an authorization claim. The
+workspace directory is trusted against concurrent adversarial filesystem edits.
+
+Local unit and real CLI/new-project contracts passed for the bounded inventory;
+combined hosted admission remains pending.
+
+### 11.2. Schema-First API Profile (v13 candidate)
+
+`generate:api --schema <file> --output <directory>` is an opt-in generator with
+one explicit OpenAPI 3.1 JSON source. It must reject unsupported keywords and
+shapes, external/cyclic references, duplicate keys, ambiguous names/routes and
+unbounded input before writing anything. The existing route-scanning generators
+remain discovery aids; their placeholder schemas do not enter this typed profile.
+
+The initial profile admits closed named objects, bounded strings/arrays,
+booleans, JavaScript-safe integers, required nullable scalar/array fields and
+optional non-nullable fields. Optional nullable fields, arbitrary maps,
+polymorphism, floating-point/64-bit numeric wire values, formats and recursive
+schemas remain unsupported. References are local named object components.
+Parameters are explicit path strings and scalar query values; request and
+response bodies are named JSON objects with explicit status codes. Bearer
+authentication is described explicitly, while identity, ownership, CSRF and
+authorization remain host application responsibilities.
+
+Generated Rust DTOs use Serde, and explicit operation codecs reuse Security's
+bounded duplicate-key inspection and offline JSON Schema policies. They validate
+input before deserialization and output before serialization. Generated
+TypeScript uses strict types, runtime validation and typed status/body unions;
+its HTTP client bounds response bytes/time, encodes parameters, refuses redirects
+and never includes tokens or rejected payloads in errors. No route is silently
+mounted and no schema declaration constitutes authorization.
+
+Generation preserves unrelated files, preflights recognized outputs and exposes
+a read-only freshness check. Hard budgets apply to source/output bytes, schemas,
+operations, properties, parameters and reference depth. The trusted project
+directory is not an adversarial concurrent filesystem boundary. Acceptance
+requires compiled generated Rust and strict TypeScript, plus a real HTTP consumer
+journey covering Unicode, missing versus null, bounds, typed errors and denied
+cross-owner access. Local generation, compiled Rust/strict TypeScript and HTTP
+consumer contracts passed, including read-only APIs, exact safe-integer bounds,
+nullable nested arrays, duplicate queries/JSON keys and cancellation. The initial
+implementation remains a candidate pending combined hosted admission; see the
+[supported profile](typed-api.md) for exact limits and application wiring.
 
 ## 🔄 12. Assisted Framework Upgrade Contract
 

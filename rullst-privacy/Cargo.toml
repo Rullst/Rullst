@@ -8,8 +8,8 @@ description = "Bounded privacy and proportional age-assurance contracts for Rull
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/Rullst/Rullst"
-# v13 foundation only; join the release inventory after scoped consumer/state acceptance.
-publish = false
+documentation = "https://docs.rs/rullst-privacy"
+include = ["src/**", "README.md", "LICENSE", "Cargo.toml", "Cargo.lock"]
 
 [features]
 default = []

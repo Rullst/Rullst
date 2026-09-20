@@ -645,9 +645,11 @@ The threshold above is an example for an application-assessed low-assurance
 policy. Select `postgres` explicitly for a shared database across hosts.
 Configure the required private key and replay database as described by the
 generated `AGE_GATE.md`; missing state or configuration denies access. The
-preview requires the explicit unpublished privacy source, and refuses unknown
+candidate defaults to the registry version matching this CLI. The source
+override shown above is required for development before that version is published,
+unless an explicit archive-only patch is configured. Generation refuses unknown
 privacy dependencies or unrecognized authentication/route shapes before writing.
-It composes with `make:privacy` when both use the same recognized source path;
+It composes with `make:privacy` when both use the same registry/local source;
 both consumers' explicit dependency features are preserved.
 Review the generated diff before deployment. It does not install facial models,
 verified guardianship, reusable age flags or global compliance.
@@ -679,6 +681,8 @@ of 365 days is not a legal retention rule. Select `--blueprint lms` and omit
 `--tenant-ref` for the full LMS starter. Its current school membership determines
 the tenant; a bounded `school` query value only selects among authorized schools.
 The generated consumer composes with `make:age-gate` in either installation order.
+Omitting `--privacy-source` selects this CLI's matching registry version; before
+publication use the explicit local override shown above or a reviewed archive patch.
 Unknown authentication, dependencies, routes or existing output files require
 manual integration rather than overwriting application code.
 
@@ -825,9 +829,15 @@ Dynamic routes, custom extractors, and semantic constraints may require manual
 edits; validate the result with an OpenAPI validator before publishing it.
 
 ### `cargo rullst generate:ts`
-Scans supported models and DTOs and emits a TypeScript file (`sdk.ts`). Generated
-types reduce duplication but do not replace compatibility tests for serialization
-and API behavior.
+Scans recognizable route declarations and emits `rullst-client.ts` with unchecked
+request/response placeholders. Review the output before use; route scanning does
+not establish DTO shapes, serialization or authorization.
+
+### `cargo rullst generate:api` (v13 candidate)
+Consumes one explicit bounded OpenAPI 3.1 profile and generates Rust DTOs/codecs,
+a typed TypeScript HTTP client and a canonical schema copy. Requires `--schema`
+and `--output`; `--check` verifies freshness without writes. Unsupported shapes
+fail before generation. See the [profile and executable acceptance](typed-api.md).
 
 ### `cargo rullst generate:diagram`
 Analyzes primary and foreign keys defined in your Models and exports a `diagram.md` file containing Mermaid.js code, visually generating an Entity-Relationship (ER) diagram.
@@ -847,10 +857,12 @@ or replacing application models.
 * **Optional Flags:**
   * `--output`: Where to save the generated structs (Default: `src/models`).
 
-### `cargo rullst generate:ai-context`
-Creates `.llms.txt`, a compact summary of project structure, conventions, and
-dependencies for coding assistants. It is context, not a guarantee that a model
-will understand or modify the project correctly.
+### `cargo rullst generate:ai-context [--check]`
+The v13 candidate writes a bounded `.llms.txt` and `.rullst/context-map.json`
+with dependency metadata, configuration key names and source paths. It creates
+`AGENTS.md` only when absent and preserves existing project instructions.
+`--check` detects missing, altered or stale inventory without writing files.
+See [project context](project-context.md) for limits, exclusions and legacy migration.
 
 ### `cargo rullst audit [--ai] [--compliance] [--idor]`
 Runs bounded source/configuration checks and can invoke installed dependency

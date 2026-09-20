@@ -82,7 +82,7 @@ jq -e '
 
 jq -e '
   .schema_version == 1
-  and .scope == "v12-maximum-local-campaign"
+  and .scope == "release-train-local-campaign"
   and (.targets | length > 0)
   and (.targets | length == ([.[].name] | unique | length))
   and all(
@@ -262,7 +262,7 @@ repository_target_gap=$((repository_target - repository_achieved))
   echo
   echo "**$repository_score/100 ($repository_grade)** — $repository_achieved/$repository_denominator audited points across ${#packages[@]} crates."
   echo
-  echo "The provisional maximum-local v12 target is $repository_target/$repository_denominator; this run remains $repository_target_gap planning points away. Targets never increase achieved scores."
+  echo "The provisional release-train local target is $repository_target/$repository_denominator; this run remains $repository_target_gap planning points away. Targets never increase achieved scores."
   echo
   echo "The repository score is the equal-crate aggregate. Capability progress is reported separately. Failed/cancelled/skipped applicable gates suppress the dimensions they are meant to prove; they never increase a ceiling."
   echo

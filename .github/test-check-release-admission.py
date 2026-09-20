@@ -141,6 +141,20 @@ class ReleaseAdmissionTests(unittest.TestCase):
                     )
                 )
 
+    def test_package_diagnostic_cannot_admit_a_release(self) -> None:
+        policy = MODULE.load_object(SCRIPT.parent / "release-required-workflows.json")
+        _, requirements = MODULE.validate_policy(policy)
+        required = next(item.required_jobs for item in requirements if item.workflow == "ci.yml")
+        jobs = [
+            {"name": "Verification scope", "conclusion": "success"},
+            {"name": "Code Quality & Format", "conclusion": "success"},
+            {"name": "Packaged distribution and installed CLI", "conclusion": "success"},
+        ]
+        self.assertIn("Packaged distribution and installed CLI", required)
+        self.assertFalse(MODULE.required_jobs_succeeded(
+            {"total_count": len(jobs), "jobs": jobs}, required
+        ))
+
     def test_policy_requires_full_manual_ci_and_unique_safe_workflows(self) -> None:
         valid_ci = {
             "workflow": "ci.yml",

@@ -96,3 +96,22 @@ async fn assess<S: ReplayStore>(
         )
         .await
 }
+
+#[test]
+fn public_method_permission_matches_the_complete_pilot_truth_table() {
+    let methods = [
+        AgeMethod::SelfDeclaration,
+        AgeMethod::FacialEstimation,
+        AgeMethod::VerifiedAttribute,
+    ];
+    for (risk, expected) in [
+        (RiskLevel::Low, [true, true, true]),
+        (RiskLevel::Elevated, [false, true, true]),
+        (RiskLevel::Restricted, [false, false, true]),
+    ] {
+        let policy = AgePolicy::new("verus-pilot-contract", risk, 18).unwrap();
+        for (method, allowed) in methods.into_iter().zip(expected) {
+            assert_eq!(policy.permits(method), allowed, "{risk:?} / {method:?}");
+        }
+    }
+}

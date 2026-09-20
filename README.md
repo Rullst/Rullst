@@ -239,7 +239,7 @@ Badges and test results are evidence for their stated scope, not a security
 certification of every application built with the framework.
 
 <details>
-<summary><strong>🛡️ Open the full v12 verification dashboard (38 workflows)</strong></summary>
+<summary><strong>🛡️ Open the verification dashboard (39 workflows)</strong></summary>
 
 <h3 align="center">🛡️ v12 Main Verification Dashboard</h3>
 
@@ -289,13 +289,17 @@ green main gates:
 | [Fuzzing](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) / [corpus minimization](https://github.com/Rullst/Rullst/actions/workflows/corpus-sync.yml) | Forty manual libFuzzer jobs; weekly/manual corpus maintenance is informational. |
 | [OWASP ZAP](https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml) | Manual baseline over three release surfaces: generated REST API and complete LMS are blocking with no ignored alerts; the deliberately CDN-backed blog showcase remains an explicitly informational boundary. |
 | [Kani](https://github.com/Rullst/Rullst/actions/workflows/kani.yml), [Miri](https://github.com/Rullst/Rullst/actions/workflows/miri.yml), [mutation testing](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml), [cargo-udeps](https://github.com/Rullst/Rullst/actions/workflows/udeps.yml) | Manual or scheduled research signals: selected Kani/Miri scopes are strict, while mutation and unused-dependency findings remain explicitly informational. |
+| [v13 Verus pilot](https://github.com/Rullst/Rullst/blob/v13/.github/workflows/verus.yml) | Optional production-linked age-policy proof with pinned tooling and three negative controls. Hosted registration/acceptance remains pending; no framework-wide correctness claim. |
 | [GitHub Pages](https://github.com/Rullst/Rullst/actions/workflows/pages.yml) | Deploys the v12 documentation from `main`; it is not a code-quality gate. |
 | [Release and provenance](https://github.com/Rullst/Rullst/actions/workflows/release.yml) | Exact version tags only: full verification, package-all, evidence bundle, checksums, GitHub build-provenance attestation, changelog-derived release notes, and ordered crates.io publication. This does **not** claim a project-wide SLSA level or independent certification. |
 
 Scheduled events use the repository's default branch, so scheduled and
 continuous v12 evidence now refer to `main`. The recommended required-check
 profile and the exact scope of all
-38 workflow definitions are documented in [WORKFLOWS.md](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).
+39 workflow definitions in this source branch are documented in
+[WORKFLOWS.md](https://github.com/Rullst/Rullst/blob/v13/WORKFLOWS.md). The additional
+v13 Verus pilot is manual and has local proof evidence; the stable `main` badges
+above do not certify it.
 
 > 📖 **[Read the detailed breakdown of all CI/CD and security workflows](https://github.com/Rullst/Rullst/blob/main/WORKFLOWS.md).**
 >

@@ -159,7 +159,11 @@ rejection regression. Four new CodeQL policy-threshold conflations were
 individually reviewed and dismissed; the
 [declaration review receipt](evidence/v13-codeql-declaration-review.json)
 binds those decisions to the old analyzed source. No query was disabled.
-Combined hosted acceptance for the subsequent changes remains pending.
+PR #219's corrected head `d783f3b7` subsequently passed 85 hosted checks with
+four declared skips, including all-feature workspace tests, strict Clippy,
+coverage floors and the generated privacy consumers. It merged into `v13` at
+`df589770` on 20 September UTC. This admits that privacy increment; it does not
+certify the later adoption, Android or entitlement changes.
 
 The next adoption increment gives the existing sixteen release packages and
 their internal requirements the explicit development version `13.0.0-alpha.1`.
@@ -188,8 +192,11 @@ process fixtures exercise success, explicit selection, wrong certificates,
 missing/stale/oversized/changed files, verifier/build failures and output/time
 bounds. The hosted Android workflow now exercises this CLI against a real
 signed release and independently checks its certificate and receipt. That new
-hosted result remains pending; protocol fixture success does not certify SDK
-interoperability or devices/stores.
+hosted SDK job passed on PR #220 head `52657955`: it compiled and verified a
+signed release APK through the CLI and the independent SDK check
+([run 35497371156](https://github.com/Rullst/Rullst/actions/runs/35497371156)).
+The rest of the combined campaign remains pending. This is SDK interoperability
+evidence; device/store acceptance remains separate.
 
 The PR #219 follow-up CodeQL analysis reported one additional threshold-to-nonce
 conflation in the isolated privacy fuzz helper. Alert 338 was individually
@@ -204,6 +211,115 @@ and macOS CLI campaign exposed two Android fixture/build-timing issues. The
 follow-up preserves OS process helpers in the fixture PATH and compares artifact
 timestamps against a temporary filesystem anchor. Local native selection and
 redaction scenarios passed after correction; a fresh combined campaign is required.
+
+[PR #220](https://github.com/Rullst/Rullst/pull/220) admitted the adoption,
+Android and conditional supervision-planning changes into `v13` at `6ccbe2a7`
+on 20 September at 14:20 UTC. Its exact head `ee4f46df` completed 86 successful
+checks and four declared skips, with no unresolved review threads. This includes
+the full OS/workspace matrix, strict Clippy, coverage and the real SDK signed-APK
+job. The initial campaign's changelog, filesystem timing and terminal prerelease
+fixture failures were corrected without weakening their checks. This admission
+does not certify the later entitlement, context, API, Verus or packaging changes.
+
+The entitlement candidate adds a typed current-state gate in Capital and an
+authenticated SaaS billing report. It requires an exact server plan allowlist,
+fresh revision-fenced Stripe reads, a matching live/sandbox mode and an active,
+unexpired subscription. The six focused local contracts passed tenant/owner,
+status/mode, revocation, expiry, stale/future clock and adapter-failure cases.
+The existing generated SQLite/Turso billing contract also passed. The additional
+generated SaaS HTTP/reconciliation fixture passed all four configuration profiles,
+including real session/owner checks, a delayed active read losing to revocation,
+the 20-second provider deadline and strict generated all-target Clippy. Its
+test-only provider boundary is explicit; it is not a live Stripe acceptance run.
+CMS projections and offline billing fixtures cannot grant the new report.
+Local validation also passed the public doctest, strict Capital default-feature
+all-target Clippy, CLI all-feature/all-target Clippy, production panic checks,
+353 CLI unit tests (one parent-owned child fixture ignored by the outer harness),
+20 command/scaffold contracts and book/local links. Combined hosted acceptance
+remains outstanding.
+
+The project-context candidate replaces raw source concatenation with a bounded,
+versioned file/dependency/configuration-key inventory. It creates common project
+instructions only when absent, preserves user `AGENTS.md`, supports non-writing
+freshness checks and records source scope/exclusions explicitly. Local contracts
+cover private-value omission, links, size/depth/count budgets, stale inputs,
+legacy migration, conflicting output and all six generated blueprints. Semantic
+route/authorization inference and task-specific context shards remain follow-up
+work; the [guide](project-context.md) states the exact candidate boundary.
+
+The [schema-first API candidate](typed-api.md) now generates Rust DTOs/operation
+codecs and a strict TypeScript client from one bounded OpenAPI 3.1 JSON profile.
+Seven generator contracts cover unsupported shapes, links, duplicate keys,
+collisions, regeneration and freshness. Local validation passed 371 CLI unit
+tests (one parent-owned child fixture ignored), strict all-target Clippy, the
+real generated Rust/TypeScript HTTP consumer, ten existing command contracts
+and the six-blueprint context journey. The HTTP fixture proves typed statuses,
+Unicode, optional/null semantics, exact safe integers, nested nullable arrays,
+unauthenticated/cross-owner denial and adversarial transport rejection. A
+GET-only Rust module also compiles with strict Clippy. Hosted Linux CLI acceptance
+requires the pinned TypeScript compiler and the actual HTTP journey; combined
+hosted admission remains pending.
+
+The Verus pilot has a local candidate for the unchanged production
+`AgePolicy::permits` predicate. Rust syntax extraction checks the actual package,
+module path, enum/type/signature domain and body; the verifier covers all nine
+risk/method combinations. Both local runs verified the predicate and rejected
+all three deliberately incorrect implementations. They took about 12.1 seconds
+including complete pinned-tool validation, with prover peak RSS below 292 MiB.
+The runtime age suite and MSRV 1.96 check passed. The prepared manual workflow
+is separate from release admission; clean hosted evidence and any promotion
+remain pending. See the [proof boundary](verus-roadmap.md); this does not prove
+age evidence, expiry, replay state or application authorization.
+
+The next packaging candidate adds `rullst-privacy` as the seventeenth package,
+with its license, a bounded source archive, opt-in `rullst::privacy` features,
+coordinated upgrade inventory and registry-shaped age/privacy generators.
+The local seventeen-archive packaging/content audit and the durable facade
+reopen test passed. Both generated SaaS/LMS privacy journeys passed, including
+the registry-shaped LMS dependency and the existing local-source SaaS profile.
+Context freshness for both new commands, 372 CLI unit tests (one parent-owned
+child fixture ignored), strict CLI Clippy and the minimal facade panic gate also
+passed. A separate consumer compiled only the extracted framework archives and
+passed that durable facade test. All 42 fuzz targets' eleven locked dependency
+graphs resolved offline without running a new fuzz campaign.
+Combined hosted acceptance remains outstanding. All seventeen local archives
+were subsequently generated from clean commit `30e2f753`; their source identity,
+licenses and excluded secret/database paths were audited. The archive-only
+privacy consumer and privacy publication dry run passed without uploading a
+version. These are local rehearsals, not final release receipts.
+The archive-only hosted test now compiles the installed CLI's
+SaaS/LMS opt-ins and executes the same durable facade contract from extracted
+packages. A crates.io read on 20 September returned 404 for `rullst-privacy`;
+initial registration and Trusted Publishing configuration remain required.
+The stable publisher continues to reject an unregistered package.
+The ownership-policy validator now checks each proposed bootstrap name against
+the inventory, with unknown/duplicate/malformed-name negatives; the empty
+bootstrap allowlist and the stable publisher's refusal remain in force.
+
+PR 220's Linux terminal fixture also needed an explicit prerelease dependency
+requirement and `--prerelease` when exercising the alpha CLI. All four local
+terminal scenarios passed after that correction: decline copying, decline
+execution, apply/recover, and a failing application. The corrected `ee4f46df`
+head then passed its own combined hosted campaign, as recorded above; previous
+Android/macOS passes were not substituted.
+
+On 20 September at 07:31 UTC, the first four v12 mutation shards had hit their
+330-minute execution budget; their partial artifacts were retained. For example,
+shard 2 had executed 72 of 220 scheduled mutations (40 caught, 30 surviving,
+two unviable), so it is explicitly incomplete. Surviving mutations require
+individual review and are not automatically confirmed runtime defects. The
+remaining campaign continues; partial results must not be reported as a complete
+mutation pass, and any later continuation must preserve source/inventory identity.
+
+The first combined [PR #221](https://github.com/Rullst/Rullst/pull/221) campaign
+at `4773171a` passed 85 checks, including the OS/workspace and generated consumer
+matrix, strict Clippy, coverage, feature boundaries and MSRV. Two inventory checks
+failed: the README omitted the added Verus workflow, and the observational
+scorecard omitted the seventeenth package. The correction retains both checks,
+adds a conservative unpublished privacy ceiling and preserves its planning floor.
+The corrected head requires its own hosted admission. A new explicit package-only
+diagnostic runs the existing archive/installed-CLI acceptance without repeating
+the OS matrix; a regression proves that this subset cannot admit a release.
 
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |

@@ -418,3 +418,12 @@ pub async fn recover_stripe_customer(identity: &BillingIdentity, customer_id: &s
     let config = billing_config().map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
     live::recover_customer(&config, identity, customer_id).await
 }
+
+/// Authenticated plan-gated report. Mock credentials deterministically deny access.
+pub async fn billing_report(Extension(identity): Extension<BillingIdentity>) -> Response {
+    let config = match billing_config() {
+        Ok(config) => config,
+        Err(_) => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
+    };
+    live::report(&config, &identity).await
+}

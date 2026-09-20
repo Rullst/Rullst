@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "audit_date": "2026-09-03",
+  "audit_date": "2026-09-20",
   "dimensions": {
     "api_architecture": 20,
     "verification": 25,
@@ -140,6 +140,24 @@
       "specialist_gate": "threat-minimum",
       "finding": "Strong password/session/RBAC/JWT primitives plus bounded shared SQLite JWT revocation and passkey device lifecycle with restart, quota, replay and counter-CAS evidence; shared ceremonies, multi-host replication, refresh workflow and normative WebAuthn conformance remain external or incomplete.",
       "evidence": ["rullst-auth/README.md", "rullst-auth/src/auth/passkey/sqlite.rs", "rullst-auth/src/auth/passkey/sqlite/tests.rs", "rullst-auth/src/jwt/sqlite.rs", "rullst-auth/tests/sqlite_jwt_revocation.rs", "docs/src/crates/auth.md"]
+    },
+    {
+      "name": "rullst-privacy",
+      "api_architecture": 19,
+      "verification": 23,
+      "security_failure_design": 19,
+      "documentation_dx": 14,
+      "operations_release": 10,
+      "specialist_gate": "none",
+      "finding": "Optional bounded age/challenge and consent APIs have durable SQLite replay/withdrawal, real PostgreSQL lifecycle and generated authenticated SaaS/LMS contracts. The initial 85-point ceiling withholds credit for pending installed-distribution acceptance, registry ownership/publication and deployment recovery. Live age providers, verified guardianship and global legal compliance are not implemented. Local Verus evidence is separate from this CI score.",
+      "evidence": [
+        "rullst-privacy/README.md",
+        "rullst-privacy/tests",
+        "cargo-rullst/tests/privacy_scaffold_cli.rs",
+        ".github/fixtures/privacy-facade.rs",
+        "docs/src/privacy-age-assurance-roadmap.md",
+        "docs/src/quality-scorecard.md"
+      ]
     },
     {
       "name": "rullst-nexus",

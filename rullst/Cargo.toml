@@ -46,6 +46,13 @@ mail-aws-ses = ["mail", "rullst-mail/aws-ses"]
 messaging = ["dep:rullst-messaging"]
 messaging-sqlite = ["messaging", "rullst-messaging/sqlite"]
 messaging-orm-outbox = ["messaging", "orm", "rullst-messaging/orm-outbox"]
+privacy = ["dep:rullst-privacy"]
+privacy-age = ["privacy", "rullst-privacy/age-assurance"]
+privacy-challenge-tokens = ["privacy-age", "rullst-privacy/challenge-tokens"]
+privacy-sqlite = ["privacy-age", "rullst-privacy/sqlite"]
+privacy-postgres = ["privacy-age", "rullst-privacy/postgres"]
+privacy-consent = ["privacy", "rullst-privacy/consent"]
+privacy-consent-sqlite = ["privacy-consent", "rullst-privacy/consent-sqlite"]
 oauth = ["dep:rullst-connect"]
 oauth-sqlite = ["oauth", "rullst-connect/sqlite"]
 ai = ["dep:rullst-ai"]
@@ -100,6 +107,7 @@ validator = { workspace = true, features = ["derive"] }
 rullst-auth = { workspace = true, optional = true }
 rullst-mail = { workspace = true, optional = true }
 rullst-messaging = { workspace = true, optional = true }
+rullst-privacy = { workspace = true, optional = true }
 rullst-ai = { workspace = true, optional = true }
 rullst-nexus = { workspace = true, optional = true }
 rullst-capital = { workspace = true, optional = true }
@@ -121,6 +129,7 @@ console_error_panic_hook = "0.1.7"
 getrandom = { version = "0.4.2", features = ["wasm_js"] }
 
 [dev-dependencies]
+tempfile = "3"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 rullst-connect = { workspace = true, features = ["axum-session"] }
 tower-sessions = "0.15"

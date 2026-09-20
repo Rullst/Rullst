@@ -90,12 +90,29 @@ publication or admit a stable v13 release. See the
 - Require a public application certificate and trusted SDK verifier for Android
   release builds. Reject stale, ambiguous, changed or incorrectly signed APKs;
   emit a bounded digest receipt and withhold signing-tool diagnostics/secrets.
-- Keep `rullst-privacy` separately unpublished: native proportional declarations,
+- Prepare the seventeenth package, `rullst-privacy`, for the unpublished candidate:
+  explicit optional facade features, registry/local CLI consumers, archive-only
+  acceptance and coordinated upgrade inventory. Its runtime scope includes native
+  proportional declarations,
   authenticated challenge transport, SQLite/PostgreSQL replay state, optional
   versioned consent/withdrawal, and opt-in generated SaaS/LMS profile journeys.
   No facial engine, live age provider or automatic global legal-compliance claim.
 - Track transparent learner/exam/parental supervision as the first conditional
   extension. This checkpoint does not introduce a supervision crate.
+- Gate generated SaaS billing reports on current reconciled subscription state,
+  authenticated ownership and explicit paid plans. Reject mock, stale, expired,
+  revoked or mismatched state; retain application-owned billing reconciliation.
+- Replace copied project source with a bounded deterministic context inventory,
+  key names without values and a read-only freshness check. Preserve existing
+  `AGENTS.md` instructions and generate the inventory for all six blueprints.
+- Generate Rust operation codecs and a strict TypeScript HTTP client from one
+  bounded explicit OpenAPI 3.1 profile. Reject unsupported shapes, preserve
+  optional/null semantics and validate request/response data and typed statuses;
+  authentication and ownership remain explicit application responsibilities.
+- Add a manual Verus pilot for the existing age-policy method predicate, with
+  production syntax linkage, pinned tooling, mandatory failing controls and
+  resource/source receipts. Preserve production dependencies and the broader
+  runtime, integration and release verification requirements.
 
 ## [12.1.0] - 2026-09-20
 

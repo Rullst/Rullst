@@ -354,7 +354,7 @@ pub enum Commands {
         #[arg(short, long, default_value = "src/models")]
         output: String,
     },
-    /// Generate an AI context file (.llms.txt) for Cursor, Claude, Gemini, etc.
+    /// Generate a bounded project inventory while preserving project instructions
     #[command(name = "generate:ai-context")]
     GenerateAiContext,
     /// Creates a new background worker in the src/workers/ folder
@@ -889,7 +889,7 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
         | Commands::MakeBilling { .. }
         | Commands::MakeCors
         | Commands::MakeJwt => {
-            crate::generators::ai_context::generate_ai_context(None).ok();
+            crate::generators::ai_context::refresh_after_scaffold();
             crate::generators::diagram::generate_mermaid_diagram(None).ok();
         }
         _ => {}

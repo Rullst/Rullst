@@ -71,6 +71,24 @@ The earlier planning tables and interim scores are preserved in the
 Future work can earn different scores only after the policy, implementation
 and evidence are reviewed together.
 
+## Unpublished v13 privacy candidate
+
+The 20 September policy update retains the sixteen existing ceilings and adds
+`rullst-privacy` to the seventeen-package candidate inventory. Its initial ceiling
+is **85/100**, below the unchanged 90-point RC planning floor and 95-point local
+target. The report remains observational; these planning values grant no release
+approval and are not a published v13 result.
+
+The reviewed dimensions are API 19/20 (explicit optional contracts), verification
+23/25 (restart, concurrency, real PostgreSQL and generated HTTP consumers),
+security 19/20 (bounded, bound and fail-closed decisions), documentation 14/15
+(scoped methods, setup and recovery obligations), and operations 10/20. Pending
+installed-distribution acceptance, first registry publication/ownership and
+operator recovery evidence withhold operations credit. Live providers and
+verified guardianship remain outside the implemented scope. The workspace
+and generated CLI test matrix conditions security/operations credit; the local Verus pilot
+is separate evidence and does not increase this report's score.
+
 ## Maintaining the score
 
 For every relevant change, retain the commit and workflow result, identify

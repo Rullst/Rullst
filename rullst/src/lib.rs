@@ -47,6 +47,10 @@ pub use rullst_mail as mail;
 #[cfg(all(feature = "messaging", not(target_arch = "wasm32")))]
 pub use rullst_messaging as messaging;
 
+/// Optional age-assurance and purpose-bound consent contracts.
+#[cfg(all(feature = "privacy", not(target_arch = "wasm32")))]
+pub use rullst_privacy as privacy;
+
 #[cfg(feature = "ai")]
 pub use rullst_ai as ai;
 

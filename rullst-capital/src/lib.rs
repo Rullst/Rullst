@@ -4,6 +4,7 @@ pub mod charge;
 pub mod checkout;
 pub mod customer;
 pub mod dashboard;
+pub mod entitlements;
 pub mod error;
 pub mod fiscal;
 pub mod invoice;

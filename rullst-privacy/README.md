@@ -1,22 +1,42 @@
 # rullst-privacy
 
-Unpublished v13 foundation for proportional age assurance and optional consent. This package is a
-workspace member with `publish = false`; it is not part of the v12 release
-inventory or the default `rullst` dependency graph.
+Unpublished v13 release candidate for proportional age assurance and optional
+consent. The source package joins the v13 distribution inventory, subject to
+package validation, initial registration and publication configuration. It is
+not part of v12 or the default `rullst` dependency graph.
 
 Enable `age-assurance` for age checks or `consent` for independent purpose-bound
 choices. No feature is enabled by default. Broader rights-request, retention and regional-policy support
-is tracked in the [privacy roadmap](../docs/src/privacy-age-assurance-roadmap.md).
+is tracked in the [privacy roadmap](https://github.com/Rullst/Rullst/blob/v13/docs/src/privacy-age-assurance-roadmap.md).
+
+## Optional umbrella features
+
+The native `rullst::privacy` facade is available with explicit features:
+
+| Umbrella feature | Privacy feature |
+| :--- | :--- |
+| `privacy` | Empty base; no implicit age or consent controls |
+| `privacy-age` | `age-assurance` |
+| `privacy-challenge-tokens` | `challenge-tokens` |
+| `privacy-sqlite` | `sqlite` age replay storage |
+| `privacy-postgres` | `postgres` age replay storage |
+| `privacy-consent` | `consent` |
+| `privacy-consent-sqlite` | `consent-sqlite` |
+
+Enabling a feature does not select a policy, create state or mount routes.
+The standalone package remains independent of Core and the umbrella.
 
 ## Optional-processing consent
 
 The v13 CLI's explicit
-[`make:privacy` consumer](../docs/src/cli_reference.md#cargo-rullst-makeprivacy-unpublished-v13-preview)
+[`make:privacy` consumer](https://github.com/Rullst/Rullst/blob/v13/docs/src/cli_reference.md#cargo-rullst-makeprivacy-unpublished-v13-preview)
 composes these controls with the recognized SaaS/full LMS authentication and
 school membership. It supplies preferences, an optional personalized greeting,
 and an independent direct JSON export of only the current account's ID, name
-and email. It is a preview requiring the matching unpublished source path;
-the generated `PRIVACY.md` specifies setup and remaining application duties.
+and email. The CLI selects its matching registry version unless an explicit
+`--privacy-source` selects local development source. Before publication, use that
+override or a reviewed archive patch. The generated `PRIVACY.md` specifies setup
+and remaining application duties.
 
 The independent `consent` feature provides typed purpose/notice versions,
 authenticated subject/tenant bindings, explicit grant/refusal/withdrawal and a
@@ -85,8 +105,9 @@ gate.withdraw(&subject, &purpose).await?;
 # }
 ```
 
-The crate-level contracts and local storage tests do not yet constitute an
-authenticated generated preferences/rights journey or deployed acceptance.
+Generated SaaS/LMS consumer tests exercise authenticated preferences, withdrawal
+and the bounded own-account profile export. Deployment-specific acceptance and
+rights workflows across the rest of an application remain separate.
 
 ## Current boundary
 
@@ -247,10 +268,10 @@ keep tokens out of URLs and logs. A changed policy or session invalidates the
 old challenge. No external age provider is required for this transport.
 
 The v13 CLI preview supplies an optional
-[`make:age-gate` SaaS/LMS consumers](../docs/src/cli_reference.md#cargo-rullst-makeage-gate-unpublished-v13-preview).
+[`make:age-gate` SaaS/LMS consumers](https://github.com/Rullst/Rullst/blob/v13/docs/src/cli_reference.md#cargo-rullst-makeage-gate-unpublished-v13-preview).
 It mounts a declaration before the existing authenticated dashboard rendering,
-with explicit server policy, CSRF and durable one-use consumption. It requires
-this unpublished source until package admission. The LMS profile binds the
+with explicit server policy, CSRF and durable one-use consumption. Before registry
+publication, use the matching local source override or archive patch. The LMS profile binds the
 school resolved by current authenticated membership; changing school invalidates
 the challenge, and a declaration changes no guardian or subject-age record.
 Other app actions and stronger

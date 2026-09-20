@@ -199,6 +199,8 @@ BILLING_API_KEY=
 BILLING_WEBHOOK_SECRET=
 BILLING_REDIRECT_URL=http://localhost:3000/dashboard
 BILLING_ALLOWED_PLAN_IDS=price_starter,price_pro
+# Optional plan-gated report; configure an explicit subset before enabling access.
+BILLING_REPORT_PLAN_IDS=
 "#;
         env_content.push_str(billing_template);
         env_example_content.push_str(billing_template);

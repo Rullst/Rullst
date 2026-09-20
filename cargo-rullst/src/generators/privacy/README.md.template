@@ -4,8 +4,10 @@ This opt-in consumer adds `/privacy` preferences, `/privacy/personalization`
 and `/privacy/export`. It supports the recognized SaaS or full LMS starter and
 composes with `make:age-gate` in either installation order. Custom authentication,
 unknown privacy dependencies, ambiguous routes and existing output files need
-manual review. Until publication admission, the dependency uses the matching
-unpublished source path supplied explicitly to the generator.
+manual review. The dependency uses the registry version matching this CLI unless
+`--privacy-source` explicitly selected a matching local source. Before that
+version is published, use the local override or a reviewed archive-only patch.
+Composing consumers does not silently switch an existing dependency source.
 
 ## Configure and initialize
 

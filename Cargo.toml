@@ -46,6 +46,7 @@ rullst-studio = { version = "13.0.0-alpha.1", path = "rullst-studio", default-fe
 rullst-nexus = { version = "13.0.0-alpha.1", path = "rullst-nexus", default-features = false }
 rullst-mail = { version = "13.0.0-alpha.1", path = "rullst-mail" }
 rullst-messaging = { version = "13.0.0-alpha.1", path = "rullst-messaging" }
+rullst-privacy = { version = "13.0.0-alpha.1", path = "rullst-privacy", default-features = false }
 rullst-ai = { version = "13.0.0-alpha.1", path = "rullst-ai" }
 rullst-connect = { version = "13.0.0-alpha.1", path = "rullst-connect" }
 rullst-iot = { version = "13.0.0-alpha.1", path = "rullst-iot" }

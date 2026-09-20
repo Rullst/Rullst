@@ -1,15 +1,17 @@
 # Privacy and age assurance roadmap
 
 **Status: v13 P0, initial unpublished age-assurance foundation, reviewed
-17 September 2026; persistence engineering updated 20 September 2026.** The [crate](../../rullst-privacy/README.md) implements
+17 September 2026; persistence, consumer and packaging engineering updated 20 September 2026.** The [crate](../../rullst-privacy/README.md) implements
 risk policies, bound challenges, signed threshold attestations, explicit
 outcomes and asynchronous replay-store contracts. The optional shared-local
 SQLite adapter adds atomic persisted consumption, quota and clock rollback
 checks. The optional PostgreSQL candidate adds shared claims across application
 hosts with explicit initialization and real-database concurrency, cancellation,
 expiry, configuration, restricted-role and server-restart tests. Combined hosted
-acceptance, broader privacy workflows and concrete live age providers remain
-open. This engineering update does not revalidate the legal sources.
+package acceptance, broader privacy workflows and concrete live age providers
+remain open. Native declarations, independent optional consent and authenticated
+SaaS/LMS preference/profile-export journeys now have focused test evidence;
+these do not implement every roadmap responsibility. This engineering update does not revalidate the legal sources.
 
 Rullst should generate applications with privacy-preserving defaults and
 reusable, testable controls. It must not advertise automatic worldwide legal
@@ -51,9 +53,11 @@ age-only crate is unnecessary for the first bounded contract.
 
 The base crate must not require a database, camera, remote provider, inference
 runtime or new default Core dependency. Provider/persistence integrations stay
-feature-gated. The initial package is a workspace member with `publish = false`
-and no umbrella/Core dependency; keep it outside the release-order manifest
-until the v13 package and provider/state acceptance gates pass.
+feature-gated. The package candidate is included in the v13 release-order
+manifest and has explicit optional umbrella features, with no Core dependency.
+Registry publication still requires packaged consumer acceptance, initial name
+registration and reviewed ownership/Trusted Publishing configuration. Live
+providers remain outside this independent foundation's advertised scope.
 A future local vision engine may need its own package/model lifecycle;
 that is separate from this first policy and adapter contract.
 
