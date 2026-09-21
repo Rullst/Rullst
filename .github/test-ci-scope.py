@@ -159,6 +159,9 @@ class WorkflowGuardTests(unittest.TestCase):
                          "python3 .github/validate-site.py", "node .github/site-browser-smoke.mjs"):
             self.assertIn(required, site)
         self.assertIn("github.event_name != 'push'", jobs["quality-scorecard"])
+        scorecard_guard = jobs["quality-scorecard"].split("    if: >-\n", 1)[1].split("    needs:", 1)[0]
+        self.assertIn("!cancelled()", scorecard_guard)
+        self.assertNotIn("always()", scorecard_guard)
         self.assertIn("RULLST_CI_SHARD: ${{ inputs.shard }}", jobs["scope"])
         self.assertIn("RULLST_CI_PLATFORM: ${{ inputs.platform }}", jobs["scope"])
         self.assertIn("inputs.shard != 'packaged-distribution' || inputs.platform == 'all'", jobs["check"])

@@ -584,6 +584,8 @@ Required manual/native/security evidence and the protected crates.io approval
 remain separate mandatory gates. Archive evidence requires the named archive
 job to succeed on the exact candidate; a green workflow with that job skipped
 is insufficient. Incompatible manual package selectors must fail explicitly.
+Observational CI reports may describe failed checks, but must stop on cancellation
+so an obsolete run cannot retain the concurrency slot needed by its replacement.
 Fuzz evidence must come from the candidate's
 release line and a source carrying that same policy; v12 results cannot be
 credited to v13 merely because they are recent. The existing immutable v12

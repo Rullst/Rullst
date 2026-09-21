@@ -823,8 +823,10 @@ jobs:
     name: Evidence quality scorecard (observational)
     # The scorecard's verification dimension requires the full OS matrix. A
     # Linux-only post-merge push must not silently inherit cross-platform credit.
+    # Report failures, but never hold a replaced run's concurrency slot after
+    # cancellation. An always() job can survive normal workflow cancellation.
     if: >-
-      always() && github.event_name != 'push' &&
+      !cancelled() && github.event_name != 'push' &&
       (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
       (github.event_name != 'workflow_dispatch' || (inputs.platform == 'all' && inputs.shard == 'all'))
     needs:
