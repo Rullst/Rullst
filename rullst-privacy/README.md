@@ -7,7 +7,7 @@ not part of v12 or the default `rullst` dependency graph.
 
 Enable `age-assurance` for age checks or `consent` for independent purpose-bound
 choices. No feature is enabled by default. Broader rights-request, retention and regional-policy support
-is tracked in the [privacy roadmap](https://github.com/Rullst/Rullst/blob/v13/docs/src/privacy-age-assurance-roadmap.md).
+is tracked in the [privacy roadmap](https://github.com/Rullst/Rullst/blob/main/docs/src/privacy-age-assurance-roadmap.md).
 
 ## Optional umbrella features
 
@@ -29,7 +29,7 @@ The standalone package remains independent of Core and the umbrella.
 ## Optional-processing consent
 
 The v13 CLI's explicit
-[`make:privacy` consumer](https://github.com/Rullst/Rullst/blob/v13/docs/src/cli_reference.md#cargo-rullst-makeprivacy-unpublished-v13-preview)
+[`make:privacy` consumer](https://github.com/Rullst/Rullst/blob/main/docs/src/cli_reference.md#cargo-rullst-makeprivacy-unpublished-v13-preview)
 composes these controls with the recognized SaaS/full LMS authentication and
 school membership. It supplies preferences, an optional personalized greeting,
 and an independent direct JSON export of only the current account's ID, name
@@ -268,7 +268,7 @@ keep tokens out of URLs and logs. A changed policy or session invalidates the
 old challenge. No external age provider is required for this transport.
 
 The v13 CLI preview supplies an optional
-[`make:age-gate` SaaS/LMS consumers](https://github.com/Rullst/Rullst/blob/v13/docs/src/cli_reference.md#cargo-rullst-makeage-gate-unpublished-v13-preview).
+[`make:age-gate` SaaS/LMS consumers](https://github.com/Rullst/Rullst/blob/main/docs/src/cli_reference.md#cargo-rullst-makeage-gate-unpublished-v13-preview).
 It mounts a declaration before the existing authenticated dashboard rendering,
 with explicit server policy, CSRF and durable one-use consumption. Before registry
 publication, use the matching local source override or archive patch. The LMS profile binds the

@@ -7,7 +7,7 @@
 ## 🧠 The Core Concept
 
 **The golden rule: release majors have explicit protected source lines:
-v12 uses `main`, and v13 uses `v13`.** Normal work is reviewed through short-lived branches targeting
+v12 uses `v12`, and v13 uses `main`.** Normal work is reviewed through short-lived branches targeting
 the appropriate release line. A branch name is not a publication or a security certification.
 Official release artifacts remain crates.io packages and their matching
 immutable tags.
@@ -17,8 +17,9 @@ source and generated site data:
 
 | Reference | What it is | Published to crates.io? |
 |--------|------------|------------------------|
-| `main` | Protected source for v12 maintenance releases | Only after an approved release tag |
-| `v13` | Protected next-major development and v13 release source | Only after its own admitted release tag |
+| `main` | Protected v13 development and release source | Only after an admitted release tag |
+| `v12` | Protected source for compatible 12.x maintenance | Only after its own approved release tag |
+| `v13` | Transitional source reference retained during main-line admission | No new releases from this branch under the current policy |
 | `v5` | Frozen source snapshot of the legacy v5 line | No; use the existing `v5.0.0` tag/crate |
 | `gh-pages` | Generated website/benchmark history used by Pages | No |
 | `feat/*`, `fix/*`, etc. | Short-lived reviewed work | Never directly |
@@ -31,15 +32,15 @@ source and generated site data:
 
 ### Phase 1 — Select the maintenance or development line
 
-Compatible v12 work starts from the latest green `main` and returns through a
-pull request targeting `main`. Product features and breaking work start from
-`v13` and target `v13`. Keep branches short-lived and do not stack work on a
+Compatible v12 work starts from the latest green `v12` and returns through a
+pull request targeting `v12`. Product features and breaking work start from
+`main` and target `main`. Keep branches short-lived and do not stack work on a
 broken required gate. The example below is for v12 maintenance:
 
 ```powershell
-# Synchronize main before starting any new work
-git switch main
-git pull --ff-only origin main
+# Synchronize the maintenance branch before starting a v12 fix
+git switch v12
+git pull --ff-only origin v12
 git switch -c fix/<short-topic>
 ```
 
@@ -52,7 +53,7 @@ git commit -m "fix(scope): describe the correction"
 git push -u origin fix/<short-topic>
 ```
 
-Every push to `main` or `v13` and every pull request targeting either triggers the relevant
+Every push to `main` or `v12` and every pull request targeting either triggers the relevant
 CI. Checks are classified so unfinished roadmap work does not make every
 development signal meaningless:
 
@@ -82,16 +83,18 @@ Before releasing, make sure:
   exact candidate commit:
   - `ci.yml`: Multi-OS test matrix (Ubuntu, macOS, Windows MSVC), isolated
     feature boundaries, MSRV and live provider matrices on Linux.
-  - `coverage.yml`: exact-SHA line and patch coverage with the configured 90%
-    repository/framework/component gates and a blocking Codecov upload.
+  - `coverage.yml`: exact-SHA whole-repository and framework-library line
+    coverage with both configured 90% floors and a blocking Codecov upload.
+    Patch reports remain visible; they do not replace the governed floors.
   - `proptest.yml`: release-mode invariant suites with 10,000 configured cases.
   - `kani.yml`: Model checking for the explicit harnesses and configured bounds;
     this is not a proof of every path in the workspace.
   - `sanitizers.yml`: ThreadSanitizer (`TSan`) and AddressSanitizer (`ASan`) for
     the targets declared by the workflow.
-  - `miri.yml`: Undefined-behavior checks with randomized layouts for its 15
+  - `miri.yml`: Undefined-behavior checks with randomized layouts for its
     declared pure-Rust scopes.
-  - `fuzzing.yml`: Bounded libFuzzer runs over the 40 validated targets. The
+  - `fuzzing.yml`: Bounded libFuzzer runs over the versioned inventory
+    (42 targets for v13; 40 for v12). The
     separate `oss-fuzz/projects/rullst` directory remains an unsubmitted local
     integration draft and is not release evidence.
   - `dast-zap.yml`: Blocking ZAP baselines for freshly generated REST API and
@@ -121,13 +124,12 @@ Before releasing, make sure:
   [security-event v1 JSON Schema](rullst-security/schema/security-event-v1.schema.json)
   matches `LiveSecurityEvent`, and any incompatible event change uses a new
   schema version instead of silently changing v1.
-- [ ] All 16 publishable crate `Cargo.toml` versions and internal requirements
-  are synchronized at the selected new release version:
-  - `rullst-macros`, `rullst-orm-macros`
-  - `rullst-core`, `rullst-orm`, `rullst-auth`, `rullst-security`
-  - `rullst-ai`, `rullst-capital`, `rullst-connect`, `rullst-messaging`, `rullst-iot`, `rullst-mail`
-  - `rullst-studio`, `rullst-nexus`
-  - `cargo-rullst`, `rullst`
+- [ ] Every package in [the release order](.github/release-order.json) has
+  synchronized manifest versions and internal requirements at the selected
+  release version. The current v13 candidate inventory has 17 packages, including
+  `rullst-privacy`. Supervision, Media, Labs and its runner remain outside that
+  inventory until their separate package/release admission; a successful
+  experimental archive rehearsal does not authorize their publication.
 - [ ] Review the README extracted from each `.crate`, installation examples and
   public demo links before creating the tag. The facade and CLI package the root
   README. Run both `rullst --version` and `cargo rullst --version` from the staged
@@ -142,8 +144,8 @@ Before releasing, make sure:
 Once everything is stable and verified:
 
 1. Freeze feature work and prepare the synchronized version change through a
-   reviewed pull request into the selected release branch (`main` for v12,
-   `v13` for v13).
+   reviewed pull request into the selected release branch (`v12` for v12,
+   `main` for v13).
 2. Run the full local and CI release gates on the resulting release-branch SHA.
 3. Record and review the package/evidence artifacts for that exact SHA.
 4. Create a new version tag only on the approved SHA, then push that tag to
@@ -151,8 +153,8 @@ Once everything is stable and verified:
    never recreate or move them. For a reviewed v13 candidate:
 
 ```powershell
-git switch v13
-git pull --ff-only origin v13
+git switch main
+git pull --ff-only origin main
 git tag v13.X.Y
 git push origin v13.X.Y
 ```
@@ -164,7 +166,7 @@ Prereleases require explicit opt-in with a requirement such as `13.0.0-rc.1`.
 GitHub Actions will automatically execute the topological crate publish pipeline:
 1. ✅ `rullst-macros` & `rullst-orm-macros`
 2. 📦 Foundations: `rullst-orm`, `rullst-core`, `rullst-messaging`
-3. 📦 Domain crates: `rullst-connect`, `rullst-iot`, `rullst-security`, `rullst-ai`, `rullst-capital`, `rullst-mail`, `rullst-auth`
+3. 📦 Domain crates: `rullst-connect`, `rullst-iot`, `rullst-security`, `rullst-ai`, `rullst-capital`, `rullst-mail`, `rullst-auth`, `rullst-privacy` (v13 candidate)
 4. 📦 Dashboards: `rullst-nexus`, `rullst-studio`
 5. 📦 Main bundle & CLI: `rullst`, `cargo-rullst`
 
@@ -180,12 +182,12 @@ independent certification.
 
 ### Phase 4 — Continue v13 while maintaining v12
 
-The `v13` branch already exists. Start next-major work from that branch after
+The `main` branch develops v13. Start next-major work from that branch after
 reviewing its roadmap and differences from the published v12 source:
 
 ```powershell
-git switch v13
-git pull --ff-only origin v13
+git switch main
+git pull --ff-only origin main
 git switch -c feat/<short-topic>
 ```
 
@@ -197,7 +199,7 @@ Keep the v12 release gates active while v13's own CI policy evolves.
 
 Version 12.1.0 is published. Carry its compatible
 [update experience](ROADMAP.md#safe-update-experience) into v13 while keeping
-maintenance on `main`; do not merge the entire v13 branch into `main`.
+maintenance on `v12`; forward-port applicable fixes through reviewed PRs.
 Synchronize package versions only when the candidate is accepted for release.
 A major upgrade needs its own tested migration rules, not just an updated
 installer. Follow the [v13 delivery plan](docs/src/v13-delivery-plan.md) for
@@ -209,7 +211,7 @@ v12 maintenance.
 ## 🔄 Visual Summary
 
 ```
-short-lived branches ── reviewed pull requests ──▶ main (v12) / v13 (v13)
+short-lived branches ── reviewed pull requests ──▶ v12 (12.x) / main (v13)
                                                    │
                                                    │ exact approved SHA
                                                    ▼
@@ -258,17 +260,17 @@ permanent repository-wide registry token.
 ## 📌 Quick Reference Commands
 
 ```powershell
-# Start a compatible v12 maintenance change (use v13 for next-major work)
-git switch main
-git pull --ff-only origin main
+# Start a compatible v12 maintenance change (use main for v13 work)
+git switch v12
+git pull --ff-only origin v12
 git switch -c fix/<short-topic>
 
 # Check status before releasing
 git status
 
 # After the candidate commit is approved on main
-git switch v13
-git pull --ff-only origin v13
+git switch main
+git pull --ff-only origin main
 git tag v13.X.Y
 git push origin v13.X.Y
 ```
@@ -282,7 +284,8 @@ git push origin v13.X.Y
 | `rullst` | Check `rullst/Cargo.toml` |
 | `rullst-macros` | Check `rullst-macros/Cargo.toml` |
 | `cargo-rullst` | Check `cargo-rullst/Cargo.toml` |
-| Current `main` line | v12 stable maintenance after the approved tag; new feature work belongs on the v13 line |
+| Current `main` line | Unpublished `13.0.0-alpha.1` development; a branch merge does not publish it |
+| Maintenance line | Protected `v12` for compatible 12.x fixes |
 | Legacy source | Frozen `v5` branch and immutable `v5.0.0` tag |
 | Published prerelease | `12.0.0-rc.1` / `v12.0.0-rc.1` |
-| Published stable | `12.0.0` / `v12.0.0` at `eb11f892ae28f076e7a83c38a635316c6ed89028` |
+| Published stable | `12.1.0` / immutable `v12.1.0`; see the [publication record](docs/src/v12.md#1210-published-maintenance-release) |

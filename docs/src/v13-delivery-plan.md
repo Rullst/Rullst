@@ -9,11 +9,18 @@ No deadline waives a security or publication gate.
 ## Source-line transition approved on 21 September
 
 The owner approved development on `main`, stable maintenance on `v12`, and
-retention of the Pages branch. Stable source `184bc1f7` is preserved on `v12`;
-`main`/`v12` now have the 43-check protected profile. Source promotion, versioned
-release-branch rules and Dependabot routing still need candidate CI and normal
-PR admission. The six-feature PR retains its existing source while this work
-is prepared separately. No tag or published crate is changed.
+retention of the Pages branch. Stable source `184bc1f7` is preserved in the
+`v12` history. [PR #237](https://github.com/Rullst/Rullst/pull/237) prepared its
+maintenance workflows and versioned release rules; it merged at `0bb7406b`
+after all 43 required checks and 24 relevant workflows passed. `main` and `v12`
+have the same strict, admin-enforced 43-check protected profile.
+
+The six-feature source was admitted in PR #236 as recorded below.
+[PR #238](https://github.com/Rullst/Rullst/pull/238) combines that source with
+all six Dependabot updates and the `13 → main`, `12 → v12` transition. Its exact
+combined source still requires workspace/platform, coverage, security and
+extracted-package admission before a normal protected merge. No tag or
+published crate is changed.
 
 ## Approved delivery sequence
 
@@ -527,17 +534,47 @@ column is a requirement, not a description of code already present.
 
 The owner approved the following order after the Bunny/Labs source work. Finish
 each supported journey and its acceptance before expanding its advertised scope.
-These are implementation priorities, not evidence of completed deliveries or a
-promise that every increment fits before feature freeze.
+The six implementations passed the source admission recorded below; their
+combined dependency validation and final release admission remain separate.
 
 | Order | Increment | Completion boundary |
 | :---: | :--- | :--- |
 | 1 | Private S3/R2 storage in existing Core/facade APIs | Upload, download, metadata, deletion and temporary private GET grants; current tenant/owner authorization, bounded failures, an independent disposable S3 service and an extracted-package consumer. See [the candidate contract](private-object-storage.md). |
-| 2 | Active-session inventory and effective revocation in Auth | Authenticated inventory, expiration, selective logout and logout of other sessions with rejection by actual request verification across processes. Preserve account/tenant isolation, recovery and fail-closed storage behavior. See [the candidate and migration contract](session-management.md); hosted source/package admission remains pending. |
-| 3 | One remote Messaging adapter | Redis Streams selected; see [the candidate contract](redis-messaging.md). Prove publication acknowledgement, restart/redelivery, competing consumers, retry/DLQ and outbox composition against a disposable broker. Hosted source/package admission remains pending. |
-| 4 | Reconnection and recovery for server-driven real-time interfaces | The opt-in Core/facade candidate uses full snapshots, current authorization, transactional expected revisions and bounded connections, actions and slow peers. Actual WebSocket and Chromium tests cover conflicts, uncertain writes and application restart without automatic mutation replay. See [the recovery contract](live-recovery.md); hosted source/package admission remains pending. |
-| 5 | Operation tracing across processes | Core/facade's optional candidate has explicit parent trust, approved operation labels, minimized bounded OTLP export and an owned lifecycle. Separate Messaging processes reach a standard TLS collector with verified ancestry; local failure/queue/TLS contracts pass. See [the tracing profile](distributed-tracing.md); hosted source/package admission remains pending. |
-| 6 | An application-driven ORM increment | Transactional partial updates selected: merge a submitted lesson/profile patch into the current row and reuse policy, hooks, encryption, atomic audit and post-commit effects. Preserve the caller model on rejected operations and add explicit transaction support. See [the candidate contract](transactional-partial-updates.md); local database/cancellation/cache/Scout and extracted-consumer checks passed; hosted source/package admission remains pending. |
+| 2 | Active-session inventory and effective revocation in Auth | Authenticated inventory, expiration, selective logout and logout of other sessions with rejection by actual request verification across processes. Preserve account/tenant isolation, recovery and fail-closed storage behavior. See [the candidate and migration contract](session-management.md); source/package admission passed in PR #236. |
+| 3 | One remote Messaging adapter | Redis Streams selected; see [the candidate contract](redis-messaging.md). Prove publication acknowledgement, restart/redelivery, competing consumers, retry/DLQ and outbox composition against a disposable broker. Source/package admission passed in PR #236. |
+| 4 | Reconnection and recovery for server-driven real-time interfaces | The opt-in Core/facade candidate uses full snapshots, current authorization, transactional expected revisions and bounded connections, actions and slow peers. Actual WebSocket and Chromium tests cover conflicts, uncertain writes and application restart without automatic mutation replay. See [the recovery contract](live-recovery.md); source/package admission passed in PR #236. |
+| 5 | Operation tracing across processes | Core/facade's optional candidate has explicit parent trust, approved operation labels, minimized bounded OTLP export and an owned lifecycle. Separate Messaging processes reach a standard TLS collector with verified ancestry; local failure/queue/TLS contracts pass. See [the tracing profile](distributed-tracing.md); source/package admission passed in PR #236. |
+| 6 | An application-driven ORM increment | Transactional partial updates selected: merge a submitted lesson/profile patch into the current row and reuse policy, hooks, encryption, atomic audit and post-commit effects. Preserve the caller model on rejected operations and add explicit transaction support. See [the candidate contract](transactional-partial-updates.md); local database/cancellation/cache/Scout and extracted-consumer checks passed; source/package admission passed in PR #236. |
+
+### Six-increment source admission on September 21
+
+[PR #236](https://github.com/Rullst/Rullst/pull/236) admitted all six increments
+at source `548216881e062b83d6b73a824abe140936aca5b8`. It merged normally into
+protected `v13` at `d246ea072a0bddd1ced86471c49ffdb22d2b96cc`; its tree matches
+the tested merge candidate. Evidence for this source:
+
+- [Rust CI](https://github.com/Rullst/Rullst/actions/runs/35634162531): all 43
+  protected requirements passed, including the Linux/macOS/Windows matrix,
+  strict Clippy, format, MSRV and feature boundaries. Private S3 and isolated
+  Labs acceptance also passed. All 21 relevant PR workflows completed successfully.
+- [Coverage](https://github.com/Rullst/Rullst/actions/runs/35634162210):
+  103382/114571 whole-repository lines (90.2340%) and 74906/82383 governed
+  library lines (90.9241% across 581 files). Both unchanged 90% floors passed;
+  the downloaded summary was independently checked. The all-feature nextest
+  artifact records 2701 cases with zero failures, errors or skips; default,
+  browser, database, collector and isolated-controller profiles ran separately.
+- [CodeQL](https://github.com/Rullst/Rullst/actions/runs/35634162178): Rust and
+  JavaScript scans bound to the exact merge source completed with zero open
+  findings. All seven review conversations were resolved.
+- [Packaged distribution](https://github.com/Rullst/Rullst/actions/runs/35634201254):
+  21 candidate archives audited, archive-only consumers exercised, and all six
+  blueprints compiled through the isolated installed CLI. The actual package
+  job executed; skipped diagnostic jobs were not credited as PR checks.
+
+This admits the documented source contracts, not a crates.io release or every
+parent roadmap milestone. No owner/provider accounts were exercised. The Labs
+profile retains its separate independent isolation-review boundary. The new
+main-line dependency combination must pass its own exact-source campaign.
 
 After this approved round, report the delivered scope and remaining time to the
 owner before selecting another round. September 24–25 remain reserved for
@@ -575,7 +612,7 @@ when its dependencies and verification capacity are ready.
 | M10/M27 — cloud and VPS application protection | PR #225 merged the offline `deploy:doctor` with explicit environment sources, bounded inputs, redacted reports and rejection of the public Auth key placeholder after hosted checks; its missing archive gate subsequently passed in the exact-commit run recorded above. | Preserve the installed-archive and diagnostic coverage in the final campaign and prepare the separate stable Auth backport. No automatic host/cloud changes or volumetric DDoS guarantee. See the [diagnostic](deployment-diagnostic.md) and [deployment boundary](security-architecture.md#cloud-and-vps-deployments). |
 | LMS/Academy — managed private video | PR #227 admitted the unpublished `rullst-media` candidate after hosted workspace/platform, browser and installed-archive acceptance. It implements Bunny lifecycle management, resumable upload, authoritative processing, private playback and deletion with SQLite recovery. | Preserve the supported journey in the final combined release campaign. Live-account interoperability stays unvalidated; release-inventory admission remains separate. See the [managed-video candidate](managed-video-roadmap.md). |
 | M40 — Labs | Unpublished `rullst-labs` and `rullst-labs-runner` candidates provide encrypted durable exercises/jobs, exact grading, cancellation/recovery/retention and a separate Linux Rust/Wasmi executor. The named profile passed 26 ordinary and 26 instrumented hosted journey checks at `977e40a3`, including actual execution, compiler deadline/cleanup and recovery at full group capacity; the scoped coverage report was also generated. | PR #228 passed workspace/platform and actual extracted-package source admission, plus both 90% coverage floors. The non-required patch-coverage gap, independent isolation review and final release admission remain outstanding. See the [recorded profile evidence](labs-first-profile.md#recorded-linux-acceptance). |
-| M15 — remote messaging | Wire contracts, local durable state and the ORM outbox exist. Evaluate one remote broker adapter with real restart, redelivery and lease/idempotency evidence. | Conditional extension after the selected Bunny and Labs journeys; select a broker and supported semantics first. Seven adapter names are not seven functioning integrations. |
+| M15 — remote messaging | PR #236 admitted the optional standalone Redis Streams profile with TLS, restart/redelivery, fenced leases, exact replay, retry/DLQ and outbox evidence. | Preserve the documented Redis and operator boundaries in combined validation. Other broker adapters, native Redis group interoperability and replication/failover remain separate roadmap work. |
 | M39 — optional Rullst Gateway | No `rullst-gateway` crate or executable exists. Keep the separate opt-in proxy/load-balancer design from the master roadmap; readiness helpers and deployment templates do not implement it. | Lower priority than supervision, shared passkey state, deployment acceptance, one remote broker and bounded Labs work. Reconsider when a concrete self-hosted need justifies implementation and operations; no September 26 delivery commitment. |
 | M1/M3/M7/M12 — adoption and assurance | Carry the compatible updater forward, add actual major-version migrations, improve generated guidance and connect new code to the relevant verification inventory. | Required adoption/security work plus bounded maintainer tooling; Verus begins with one production-linked pilot. |
 

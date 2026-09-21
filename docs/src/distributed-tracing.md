@@ -6,9 +6,8 @@ exports a minimized operation trace through the maintained OpenTelemetry SDK.
 The existing `SpanCollector` stays process-local; Studio's authenticated trace
 ingestion remains its separate protocol and is not an OTLP collector.
 
-Local acceptance includes independent Messaging producer/consumer processes and
-the standard OpenTelemetry Collector 0.161.0 over verified TLS. Full hosted
-workspace, platform, package and release admission remain pending.
+Acceptance includes independent Messaging producer/consumer processes and the
+standard OpenTelemetry Collector 0.161.0 over verified TLS. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21). Final release admission remains separate.
 
 ## Explicit configuration and lifecycle
 

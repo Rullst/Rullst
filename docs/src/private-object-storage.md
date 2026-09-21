@@ -5,11 +5,10 @@ to `rullst-core::Storage` and the `rullst` facade. It supports bounded object
 upload, download, metadata, deletion and signed GET URLs. Bare Core does not
 enable this feature or its HTTP/signing dependencies.
 
-This increment is under validation. Local tests exercise protocol failures and
-a digest-pinned disposable Garage service, including signature rejection and
-restart persistence. Hosted source/package admission is pending. No AWS/R2 owner
-account has been exercised; bucket policy and provider interoperability remain
-deployment responsibilities.
+Protocol tests and a digest-pinned disposable Garage service exercise signature
+rejection and restart persistence. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21). Final release admission remains separate.
+No AWS/R2 owner account has been exercised; bucket policy and provider
+interoperability remain deployment responsibilities.
 
 ## Explicit configuration
 

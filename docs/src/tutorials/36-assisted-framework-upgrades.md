@@ -264,7 +264,7 @@ record and shows the full dependency diff with a review digest. Use the returned
 the reviewed manifests/root lockfile. The matching `recover` command restores
 only that operation and refuses unrelated edits.
 
-The [safe-update priority](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience) proposes
+The [safe-update priority](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#safe-update-experience) proposes
 one guided flow for CLI installation, project preparation, validation and
 approved application. The working-source **12.1.0** CLI now composes those
 commands through `cargo rullst update guided --to 12.1.0 --scope both --root

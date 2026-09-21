@@ -31,6 +31,6 @@ hosts or implement the complete "sign out all other sessions" product flow.
 The v13 candidate extends the existing PostgreSQL/SQLite recovery registry with
 bounded opaque-session inventory, explicit display labels, selected/all-other
 logout and expired-session retention. Independent-process HTTP, database
-restart, transaction and timeout contracts are implemented; hosted source/package
-admission is pending. It neither inventories encrypted-only/JWT sessions nor
+restart, transaction and timeout contracts passed hosted source/package
+admission in PR #236; final release admission remains separate. It neither inventories encrypted-only/JWT sessions nor
 proves device identity. See [the session contract](../docs/src/session-management.md).

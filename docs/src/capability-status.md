@@ -1,7 +1,7 @@
 # Simple capability status
 
 This is the compact view of Rullst's canonical M1–M41 programme. It is derived
-from the root [ROADMAP](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md); that roadmap and the
+from the root [ROADMAP](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md); that roadmap and the
 [capability ledger](capability-ledger.md) retain the evidence and limitations.
 The labels here deliberately do not turn partial foundations into completed
 features.
@@ -70,7 +70,7 @@ homologated.
 | M12 | Defence-in-depth security programme | 🟡 Still to implement — continuous/partial |
 | M13 | Audited PQC protocols and sandboxed Wasm extensions | ⏳ Still to implement — not started |
 | M14 | HTMX-first SSR and real Leptos/Dioxus interoperability | 🟡 Still to implement — partial |
-| M15 | Runtime queues/cache/scheduler plus brokered messaging | 🟡 Still to implement — bounded local messaging foundation; remote adapters open |
+| M15 | Runtime queues/cache/scheduler plus brokered messaging | 🟡 Still to implement — local foundation and admitted standalone Redis profile; other adapters open |
 | M16 | Wasm islands and `#[client_component]` protocol | 🟡 Still to implement — partial |
 | M17 | Realtime, object storage, media, and packages | 🟡 Still to implement — partial |
 | M18 | LiveView-style server-driven UI | 🟡 Still to implement — partial |
@@ -108,7 +108,7 @@ a completion percentage. The
 [v12 stable record](v12.md) preserves the completed release identity, while the
 root roadmap assigns compatible v12 fixes to maintenance and new capability
 work to v13 by default. The
-[safe update experience](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#safe-update-experience) is a top v13
+[safe update experience](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#safe-update-experience) is a top v13
 priority whose compatible opt-in 12.1.0 scope is already published. Version
 12.1 does not establish 12-to-13 migration acceptance. The
 [26 September delivery plan](v13-delivery-plan.md) selects concrete increments

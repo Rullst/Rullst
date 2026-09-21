@@ -3,8 +3,8 @@
 The v13 candidate adds `RedisBroker` to the existing `rullst-messaging` crate.
 Enable `redis-streams` directly, or `messaging-redis` on the `rullst` facade.
 The default messaging build remains network-free; the facade feature does not
-enable ORM, mail, cache or Core queues. Full hosted source/package admission is
-pending. Local acceptance uses an owned, digest-pinned Redis 7.4 service, not an
+enable ORM, mail, cache or Core queues. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21). Final release admission remains separate.
+Acceptance uses an owned, digest-pinned Redis 7.4 service, not an
 owner's account or production data.
 
 ## Configuration and startup

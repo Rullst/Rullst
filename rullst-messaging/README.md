@@ -37,7 +37,7 @@ tenant-aware correlation policy.
 ## Optional Redis Streams candidate
 
 The optional remote profile is documented separately in the
-[Redis messaging contract](https://github.com/Rullst/Rullst/blob/v13/docs/src/redis-messaging.md).
+[Redis messaging contract](https://github.com/Rullst/Rullst/blob/main/docs/src/redis-messaging.md).
 It uses verified TLS, exact replay, server-time lease fencing, bounded retry/DLQ,
 explicit provisioning and partial-write quarantine. It does not implement native
 `XREADGROUP` interoperability, replication/failover, automatic repair or at-rest

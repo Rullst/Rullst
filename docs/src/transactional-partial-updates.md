@@ -6,8 +6,7 @@ preserving a note that another operation has already changed, applying its
 policy, recording the audit and refreshing projections after commit.
 
 Local SQLite, PostgreSQL and MySQL journeys, cancellation, Redis cache, Scout,
-MSRV 1.96, strict linting and an extracted-facade consumer passed. Full hosted
-workspace, platform, archive and release admission remain pending.
+MSRV 1.96, strict linting and an extracted-facade consumer passed. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21). Final release admission remains separate.
 
 ## Application use
 
@@ -150,5 +149,5 @@ journey is part of the existing SQLite, PostgreSQL and MySQL matrices.
 
 The separate Redis cache and Scout tests verify that committed patches refresh
 projections while rolled-back patches leave them intact. SQLite contention tests
-verify known rollback state before an explicit fresh retry. Hosted admission is
-still separate from these local checks.
+verify known rollback state before an explicit fresh retry. The linked source
+admission records the corresponding hosted and extracted-package results.
