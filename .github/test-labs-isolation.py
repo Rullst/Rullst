@@ -156,7 +156,11 @@ def accept(args, directory, groups):
         cases = [
             ('wrong-answer', 'pub fn solve(a:i64,b:i64)->i64 { a-b }', 'WrongAnswer'),
             ('fuel', 'pub fn solve(_:i64,_:i64)->i64 { loop {} }', {'Trapped': 'Fuel'}),
-            ('memory', 'pub fn solve(_:i64,_:i64)->i64 { let data=std::hint::black_box(vec![1u8;67108864]); data[0] as i64 }', {'Trapped': 'Memory'}),
+            # Rust's allocator aborts after memory.grow returns failure; the
+            # resulting unreachable instruction carries no authenticated OOM
+            # reason. Do not relabel every guest abort as a memory exception.
+            ('allocation-abort', 'pub fn solve(_:i64,_:i64)->i64 { let data=std::hint::black_box(vec![1u8;67108864]); data[0] as i64 }', {'Trapped': 'Guest'}),
+            ('memory-access', 'pub fn solve(_:i64,_:i64)->i64 { unsafe { std::ptr::read_volatile(std::hint::black_box(8388608usize) as *const u8) as i64 } }', {'Trapped': 'Memory'}),
             ('recursion', '#[inline(never)] fn recurse(n:u64)->u64 { if n==0 {0} else {std::hint::black_box(recurse(n-1)).wrapping_add(n)} } pub fn solve(_:i64,_:i64)->i64 { recurse(std::hint::black_box(10000)) as i64 }', {'Trapped': 'Stack'}),
         ]
         for name, code, feedback in cases:
@@ -190,12 +194,19 @@ def accept(args, directory, groups):
             checks.append(name)
             print('passed:', name, flush=True)
 
-        # A new guest instance for each grader case must reset mutable state.
-        isolated_state = 'static mut COUNT:i64=0; pub fn solve(a:i64,b:i64)->i64 { unsafe { COUNT+=1; a+b+COUNT-1 } }'
-        app.success('alice', {'Submit': {'submission': submission('case-state', isolated_state)}})
-        assert run_runner(runner, config_path).returncode == 0
-        assert app.success('alice', {'Status': {'id': 'case-state'}})['result']['Graded']['passed'] == 2
-        checks.append('fresh-guest-state-for-each-case')
+        # Reset guest state between cases and independently prove the actual
+        # memory-growth bound, rather than inferring it from allocator aborts.
+        for name, code in [
+            ('fresh-guest-state', 'static mut COUNT:i64=0; pub fn solve(a:i64,b:i64)->i64 { unsafe { COUNT+=1; a+b+COUNT-1 } }'),
+            ('memory-growth-bound', 'pub fn solve(a:i64,b:i64)->i64 { let previous=core::arch::wasm32::memory_grow::<0>(1024); if previous==usize::MAX && core::arch::wasm32::memory_size::<0>()<=64 { a+b } else { 0 } }'),
+        ]:
+            app.success('alice', {'Submit': {'submission': submission(name, code)}})
+            assert run_runner(runner, config_path).returncode == 0
+            view = app.success('alice', {'Status': {'id': name}})
+            assert view['state'] == 'Completed' and 'Graded' in view['result'], (name, view['state'])
+            assert view['result']['Graded']['passed'] == 2, (name, view['result']['Graded']['cases'])
+            checks.append(name)
+            print('passed:', name, flush=True)
 
         # A deliberately expensive constant expression is compiled only by the
         # isolated worker. Observe a real compiler in its bounded group, cancel

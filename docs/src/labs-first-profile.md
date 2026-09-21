@@ -99,7 +99,7 @@ untrusted input into the worker:
   ioctl request is still denied. The namespace exposes no device-control handles.
 - Structural Wasm validation, bounded compilation, memory/stack/table/fuel
   limits, no guest imports and bounded, normalized output. No deserialization
-  of untrusted native/precompiled engine caches.
+of untrusted native/precompiled engine caches.
 - Mandatory teardown of the entire job group and workspace. Uncertain cleanup,
   memory/process exhaustion, malformed output and worker loss cannot be graded
   as successful execution.
@@ -166,6 +166,10 @@ restart/loss, stale-result fencing, cancellation/expiry, idempotency collisions,
 retention and actual application submission/status/result access. Include both
 working Rust examples and failing submissions; a mocked receipt cannot pass the
 execution/isolation gate.
+Memory acceptance separately verifies denied growth, out-of-bounds access and
+Rust allocation failure. An allocator abort is a generic guest trap because a
+Wasm `unreachable` instruction does not reliably identify its original cause;
+it must not be relabeled as a memory-specific trap merely to fit a test.
 
 The platform matrix and named profile remain experimental until the required
 tests and independent isolation review exist. No claim of risk-free hostile-code
