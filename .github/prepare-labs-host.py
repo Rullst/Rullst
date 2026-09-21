@@ -21,7 +21,7 @@ def render(source, destination):
     # Keep all upstream rules, including the child capability denial. Give both
     # profiles unique names and attach only to our root-owned launcher copy.
     text = text.replace('unpriv_bwrap', 'rullst_labs_ci_child')
-    text = text.replace('profile bwrap /usr/bin/bwrap', 'profile rullst_labs_ci /opt/rullst-labs-ci/bwrap')
+    text = text.replace('profile bwrap /usr/bin/bwrap', 'profile rullst_labs_ci /usr/lib/rullst-labs-ci/bwrap')
     text = text.replace('-> bwrap//&', '-> rullst_labs_ci//&')
     # Do not import any unrelated host-local policy into the reviewed fixture.
     text = '\n'.join(line for line in text.splitlines() if 'include if exists <local/' not in line) + '\n'

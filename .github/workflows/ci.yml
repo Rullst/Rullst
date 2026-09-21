@@ -757,10 +757,13 @@ jobs:
           python3 .github/prepare-labs-host.py \
             "$profile_dir/extracted/usr/share/apparmor/extra-profiles/bwrap-userns-restrict" \
             "$profile_dir/rullst-labs-ci"
-          test ! -e /opt/rullst-labs-ci
+          # Hosted images deliberately make /opt shared-writable. Keep the
+          # launcher below protected system ancestors; never relax custody.
+          stat -c '%u:%a %n' / /usr /usr/lib
+          test ! -e /usr/lib/rullst-labs-ci
           test ! -e /etc/apparmor.d/rullst-labs-ci
-          sudo install -d -m 0755 /opt/rullst-labs-ci
-          sudo install -m 0755 /usr/bin/bwrap /opt/rullst-labs-ci/bwrap
+          sudo install -d -m 0755 /usr/lib/rullst-labs-ci
+          sudo install -m 0755 /usr/bin/bwrap /usr/lib/rullst-labs-ci/bwrap
           sudo install -m 0644 "$profile_dir/rullst-labs-ci" /etc/apparmor.d/rullst-labs-ci
           sudo apparmor_parser --add /etc/apparmor.d/rullst-labs-ci
 
@@ -784,7 +787,7 @@ jobs:
             --runner "$PWD/target/debug/rullst-labs-runner" \
             --app "$PWD/target/debug/examples/course_app" \
             --toolchain "$(rustc +1.96.0 --print sysroot)" \
-            --launcher /opt/rullst-labs-ci/bwrap --evidence "$PWD/target/labs-evidence.json"
+            --launcher /usr/lib/rullst-labs-ci/bwrap --evidence "$PWD/target/labs-evidence.json"
 
       - name: Retain minimized execution evidence without fixture keys or source
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
