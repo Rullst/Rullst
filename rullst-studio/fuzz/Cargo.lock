@@ -2247,6 +2247,7 @@ dependencies = [
  "dotenvy",
  "getrandom 0.4.3",
  "http",
+ "http-body",
  "js-sys",
  "libloading",
  "rand 0.10.2",
