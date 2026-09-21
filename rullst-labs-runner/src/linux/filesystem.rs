@@ -45,23 +45,35 @@ pub(super) fn fingerprint() -> Result<ContentHash, Error> {
 /// compiler can no longer reopen the worker's descriptors/memory via /proc.
 /// Only fixed tools can execute; /work is writable but not executable.
 pub(super) fn enforce() -> Result<ContentHash, Error> {
+    eprintln!("labs-preflight:landlock-create");
     let mut ruleset = Ruleset::default()
         .set_compatibility(CompatLevel::HardRequirement)
         .handle_access(AccessFs::from_all(ABI::V3))
         .map_err(|_| Error::Unsupported)?
         .create()
         .map_err(|_| Error::Unsupported)?;
+    eprintln!("labs-preflight:landlock-rules");
     for (path, access) in rules() {
         let fd = PathFd::new(path).map_err(|_| Error::Unsupported)?;
         ruleset = ruleset
             .add_rule(PathBeneath::new(fd, access))
             .map_err(|_| Error::Unsupported)?;
     }
+    eprintln!("labs-preflight:landlock-restrict");
     let status = ruleset.restrict_self().map_err(|_| Error::Unsupported)?;
+    eprintln!("labs-preflight:landlock-enforcement");
     if status.ruleset != RulesetStatus::FullyEnforced || !status.no_new_privs {
         return Err(Error::Unsupported);
     }
-    for denied in ["/proc/self/status", "/proc/self/fd/1", "/limits/memory.max"] {
+    for (denied, category) in [
+        ("/proc/self/status", "labs-preflight:landlock-proc-denial"),
+        ("/proc/self/fd/1", "labs-preflight:landlock-fd-denial"),
+        (
+            "/limits/memory.max",
+            "labs-preflight:landlock-cgroup-denial",
+        ),
+    ] {
+        eprintln!("{category}");
         if !matches!(std::fs::File::open(denied),Err(error) if error.raw_os_error()==Some(libc::EACCES))
         {
             return Err(Error::Unsupported);
