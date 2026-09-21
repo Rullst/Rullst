@@ -696,7 +696,10 @@ jobs:
           printf 'version=%s\n' "$candidate_version" >> "$GITHUB_OUTPUT"
 
       - name: Fetch locked dependencies for the isolated offline consumer
-        run: cargo fetch --locked --target x86_64-unknown-linux-gnu
+        # The archive consumer inspects its full dependency graph, including
+        # target-specific edges. A host-only fetch leaves that offline metadata
+        # check dependent on an accidentally warm foreign-platform cache.
+        run: cargo fetch --locked
 
       - name: Package and audit candidate archives without publication
         env:

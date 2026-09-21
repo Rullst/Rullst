@@ -53,7 +53,7 @@ cargo_bin="${CARGO:-cargo}"
 # all registry dependencies must retain the packaged resolution.
 "$cargo_bin" test --manifest-path "$work_dir/rullst-labs-runner-$version/Cargo.toml" --offline --locked
 "$cargo_bin" build --manifest-path "$work_dir/consumer/Cargo.toml" --offline
-"$cargo_bin" metadata --manifest-path "$work_dir/consumer/Cargo.toml" --offline --format-version 1 > "$work_dir/consumer-metadata.json"
+"$cargo_bin" metadata --manifest-path "$work_dir/consumer/Cargo.toml" --locked --offline --format-version 1 > "$work_dir/consumer-metadata.json"
 python3 - "$work_dir" <<'PY'
 import json, os, subprocess, sys
 from pathlib import Path
