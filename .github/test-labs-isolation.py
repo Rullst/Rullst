@@ -163,8 +163,11 @@ def accept(args, directory, groups):
             app.success('alice', {'Submit': {'submission': submission(name, code)}})
             assert run_runner(runner, config_path).returncode == 0
             view = app.success('alice', {'Status': {'id': name}})
-            assert view['result']['Graded']['passed'] == 0
-            assert view['result']['Graded']['cases'] == [feedback, feedback]
+            assert view['state'] == 'Completed' and 'Graded' in view['result'], (name, view['state'])
+            assert view['result']['Graded']['passed'] == 0, name
+            # These are closed grader feedback enums for fixed public fixtures,
+            # never raw diagnostics, learner source, expected values or keys.
+            assert view['result']['Graded']['cases'] == [feedback, feedback], (name, view['result']['Graded']['cases'])
             checks.append(name)
             print('passed:', name, flush=True)
 
@@ -180,7 +183,7 @@ def accept(args, directory, groups):
             app.success('alice', {'Submit': {'submission': submission(name, code)}})
             assert run_runner(runner, config_path).returncode == 0
             view = app.success('alice', {'Status': {'id': name}})
-            assert view['state'] == 'Failed' and 'Rejected' in view['result']
+            assert view['state'] == 'Failed' and 'Rejected' in view['result'], (name, view['state'])
             if name == 'compiler-errors':
                 text = view['result']['Rejected']['diagnostics']
                 assert 'submission.rs' in text and '\x1b' not in text
