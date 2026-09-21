@@ -2,9 +2,9 @@ name: IoT Helpers & Signed OTA Verification
 
 on:
   push:
-    branches: [main]
+    branches: [main, v12]
   pull_request:
-    branches: [main]
+    branches: [main, v12]
   workflow_dispatch:
 
 concurrency:

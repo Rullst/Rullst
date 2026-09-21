@@ -16,6 +16,15 @@ This document is the **Single Source of Truth (SST)** for the **Rullst Framework
 
 ---
 
+### Stable source and release boundary
+
+Release policy schema 4 binds major 12 to protected `v12` and major 13 to
+protected development `main`. Historical policies keep their original branch
+bindings. The tag, checked-out source, every package version and protected
+branch head must agree before release builds. Stable fuzz admission retains
+all 40 targets and selects evidence from its own release line; development
+results cannot certify maintenance. Existing v12.1.0 artifacts are immutable.
+
 ## 📂 1. Directory Structure Conventions
 
 A standard Rullst application scaffold strictly adheres to this folder hierarchy:

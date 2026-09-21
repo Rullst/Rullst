@@ -2,9 +2,9 @@ name: Documentation
 
 on:
   push:
-    branches: [main]
+    branches: [main, v12]
   pull_request:
-    branches: [main]
+    branches: [main, v12]
   schedule:
     - cron: "23 7 * * 1"
   workflow_dispatch:
@@ -73,6 +73,11 @@ jobs:
         run: >-
           lychee --offline --no-progress --include-fragments=anchor-only
           '**/*.md'
+
+      - name: Validate rendered book links and fragments
+        run: >-
+          lychee --offline --no-progress --include-fragments=full
+          --root-dir docs/book docs/book
 
       - name: Inspect external links
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'

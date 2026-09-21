@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plan and independently verify fresh or equivalent 40-target fuzz evidence."""
+"""Plan and independently verify fresh or equivalent complete fuzz evidence."""
 
 from __future__ import annotations
 
@@ -13,7 +13,8 @@ import sys
 import urllib.parse
 import urllib.request
 
-from fuzz_evidence_inputs import DOC_REVIEW, ROOT, SHA, Snapshot, digest
+from fuzz_evidence_inputs import DOC_REVIEW, ROOT, SHA, FuzzSurfaceChanged, Snapshot, digest
+from release_line import EVIDENCE_BRANCHES
 
 SECONDS = 19_800
 MAX_AGE = timedelta(days=7)
@@ -32,14 +33,18 @@ def timestamp(value: object) -> datetime:
 
 
 class GitHub:
-    def __init__(self, repository: str, token: str, api: str = "https://api.github.com"):
+    def __init__(self, repository: str, token: str, api: str = "https://api.github.com",
+                 *, branch: str = "main"):
         if re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository) is None:
             raise ValueError("repository must be OWNER/REPO")
         if api != "https://api.github.com":
             raise ValueError("fuzz evidence accepts the GitHub.com API only")
         if not token:
             raise ValueError("GITHUB_TOKEN is required")
+        if branch not in EVIDENCE_BRANCHES:
+            raise ValueError("unsupported fuzz evidence release branch")
         self.repository, self.token, self.api = repository, token, api
+        self.branch = branch
 
     def get(self, suffix: str) -> dict:
         request = urllib.request.Request(f"{self.api}/repos/{self.repository}/{suffix}", headers={
@@ -53,7 +58,7 @@ class GitHub:
         return payload
 
     def runs(self) -> list[dict]:
-        query = urllib.parse.urlencode({"branch": "main", "event": "workflow_dispatch",
+        query = urllib.parse.urlencode({"branch": self.branch, "event": "workflow_dispatch",
                                       "per_page": MAX_RUNS})
         payload = self.get(f"actions/workflows/fuzzing.yml/runs?{query}")
         runs = payload.get("workflow_runs")
@@ -71,12 +76,13 @@ class GitHub:
         return jobs
 
 
-def eligible_run(run: dict, repository: str, now: datetime) -> bool:
+def eligible_run(run: dict, repository: str, now: datetime, branch: str = "main") -> bool:
     try:
         return (type(run.get("id")) is int and run["id"] > 0
                 and type(run.get("run_attempt")) is int and run["run_attempt"] > 0
                 and isinstance(run.get("head_sha"), str) and SHA.fullmatch(run["head_sha"]) is not None
-                and run.get("head_branch") == "main" and run.get("event") == "workflow_dispatch"
+                and branch in EVIDENCE_BRANCHES and run.get("head_branch") == branch
+                and run.get("event") == "workflow_dispatch"
                 and run.get("path") == WORKFLOW
                 and run.get("repository", {}).get("full_name") == repository
                 and run.get("head_repository", {}).get("full_name") == repository
@@ -116,17 +122,26 @@ def full_duration(job: dict, now: datetime) -> bool:
 
 def plan(candidate: Snapshot, github: GitHub, now: datetime | None = None,
          force_full: bool = False) -> dict:
+    if github.branch != candidate.release_branch:
+        raise ValueError("fuzz evidence branch differs from the candidate release policy")
     now = now or datetime.now(timezone.utc)
     reused: dict[str, dict] = {}
     blocked: set[str] = set()
     considered = []
     runs = [] if force_full else github.runs()
-    runs = [run for run in runs if isinstance(run, dict) and eligible_run(run, github.repository, now)]
+    runs = [run for run in runs if isinstance(run, dict)
+            and eligible_run(run, github.repository, now, candidate.release_branch)]
     # Newest evidence wins; never hide a newer matching failure behind an older pass.
     runs.sort(key=lambda run: (timestamp(run.get("run_started_at", run["created_at"])), run["id"]), reverse=True)
     for run in runs[:MAX_RUNS]:
-        source = Snapshot(run["head_sha"], candidate.root)
-        if not source.ancestor_of(candidate) or source.contract != candidate.contract:
+        try:
+            source = Snapshot(run["head_sha"], candidate.root)
+        except FuzzSurfaceChanged:
+            # A pre-expansion campaign certifies none of the new surface. The
+            # candidate itself is still required to have the exact reviewed count.
+            continue
+        if (source.release_branch != candidate.release_branch
+                or not source.ancestor_of(candidate) or source.contract != candidate.contract):
             continue
         equivalent = [item for item in candidate.inventory
                       if item["dir"] in source.packages
@@ -164,13 +179,15 @@ def plan(candidate: Snapshot, github: GitHub, now: datetime | None = None,
                 blocked.add(target)  # Wait for a newer attempt, never race it.
     selected = [item for item in candidate.inventory if item["target"] not in reused]
     return {"schema_version": 1, "candidate_sha": candidate.sha, "created_at": now.isoformat(),
-            "repository": github.repository, "campaign_seconds": SECONDS,
+            "repository": github.repository, "release_branch": candidate.release_branch,
+            "campaign_seconds": SECONDS,
             "max_source_age_days": MAX_AGE.days, "total_targets": len(candidate.inventory),
             "execution_sha256": candidate.contract, "global_input_sha256": candidate.global_hash,
             "selected": selected, "reused": [reused[key] for key in sorted(reused)],
             "considered": considered, "blocked_by_newer_run": sorted(blocked),
             "policy_sha256": digest({name: (ROOT / name).read_text() for name in
                                       (".github/fuzz_evidence.py", ".github/fuzz_evidence_inputs.py",
+                                       ".github/release_line.py", ".github/release-required-workflows.json",
                                        DOC_REVIEW)})}
 
 
@@ -197,10 +214,11 @@ def main() -> int:
     parser.add_argument("--require-complete", action="store_true")
     args = parser.parse_args()
     try:
-        github = GitHub(args.repository, os.environ.get("GITHUB_TOKEN", ""))
-        report = plan(Snapshot(args.sha), github, force_full=args.force_full)
+        candidate = Snapshot(args.sha)
+        github = GitHub(args.repository, os.environ.get("GITHUB_TOKEN", ""), branch=candidate.release_branch)
+        report = plan(candidate, github, force_full=args.force_full)
         write_report(report, args.output)
-        print(f"Fuzz evidence: {len(report['reused'])}/40 reusable; {len(report['selected'])} require execution.")
+        print(f"Fuzz evidence: {len(report['reused'])}/{report['total_targets']} reusable; {len(report['selected'])} require execution.")
         if args.require_complete and report["selected"]:
             return 1
         return 0

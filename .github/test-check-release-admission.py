@@ -238,5 +238,16 @@ class ReleaseAdmissionTests(unittest.TestCase):
         )
 
 
+    def test_maintenance_policy_requires_its_own_branch_and_forty_targets(self):
+        policy = MODULE.load_object(SCRIPT.parent / "release-required-workflows.json")
+        branch, requirements = MODULE.validate_policy(policy)
+        self.assertEqual(branch, "v12")
+        fuzz = next(item for item in requirements if item.workflow == "fuzzing.yml")
+        self.assertEqual(len(fuzz.required_jobs), 41)
+        for wrong in ("main", "v13"):
+            with self.subTest(branch=wrong), self.assertRaises(SystemExit):
+                MODULE.validate_policy({**policy, "required_branch": wrong})
+
+
 if __name__ == "__main__":
     unittest.main()
