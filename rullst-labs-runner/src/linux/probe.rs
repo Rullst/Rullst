@@ -230,14 +230,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
         }
     }
     eprintln!("labs-preflight:environment");
-    if std::env::vars_os().any(|(key, _)| {
-        !matches!(
-            key.to_str(),
-            Some("PATH" | "LANG" | "LC_ALL" | "TMPDIR" | "LD_LIBRARY_PATH" | "RAYON_NUM_THREADS")
-        )
-    }) {
-        return Err(Error::Unsupported);
-    }
+    validate_environment(std::env::vars_os())?;
     eprintln!("labs-preflight:compiler");
     let mut compiler = std::process::Command::new("/toolchain/bin/rustc")
         .arg("--version")
@@ -272,4 +265,34 @@ pub(super) fn inspect() -> Result<Observation, Error> {
         uid_map,
         compiler_version: version.trim().to_owned(),
     })
+}
+
+pub(super) fn validate_environment(
+    values: impl Iterator<Item = (std::ffi::OsString, std::ffi::OsString)>,
+) -> Result<(), Error> {
+    let expected = [
+        ("PATH", "/toolchain/bin"),
+        ("LANG", "C"),
+        ("LC_ALL", "C"),
+        ("TMPDIR", "/work"),
+        ("LD_LIBRARY_PATH", "/toolchain/lib:/lib"),
+        ("RAYON_NUM_THREADS", "1"),
+        // Bubblewrap unconditionally sets PWD after its fixed --chdir.
+        ("PWD", "/work"),
+    ];
+    let mut seen = [false; 7];
+    for (key, value) in values {
+        let index = expected
+            .iter()
+            .position(|(name, contents)| key == *name && value == *contents)
+            .ok_or(Error::Unsupported)?;
+        if std::mem::replace(&mut seen[index], true) {
+            return Err(Error::Unsupported);
+        }
+    }
+    if seen.into_iter().all(|present| present) {
+        Ok(())
+    } else {
+        Err(Error::Unsupported)
+    }
 }

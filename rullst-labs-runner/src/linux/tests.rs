@@ -12,6 +12,34 @@ const ADD: &[u8] = &[
     111, 108, 118, 101, 0, 0, 10, 9, 1, 7, 0, 32, 0, 32, 1, 124, 11,
 ];
 #[test]
+fn worker_environment_requires_exact_fixed_values_including_launcher_pwd() {
+    let expected = [
+        ("PATH", "/toolchain/bin"),
+        ("LANG", "C"),
+        ("LC_ALL", "C"),
+        ("TMPDIR", "/work"),
+        ("LD_LIBRARY_PATH", "/toolchain/lib:/lib"),
+        ("RAYON_NUM_THREADS", "1"),
+        ("PWD", "/work"),
+    ];
+    let check = |values: &[(&str, &str)]| {
+        probe::validate_environment(values.iter().map(|(k, v)| ((*k).into(), (*v).into())))
+    };
+    assert!(check(&expected).is_ok());
+    let mut changed = expected;
+    changed[6] = ("PWD", "/host-home");
+    assert!(check(&changed).is_err());
+    changed = expected;
+    changed[4] = ("LD_LIBRARY_PATH", "/work");
+    assert!(check(&changed).is_err());
+    assert!(check(&expected[..6]).is_err());
+    let mut extra = expected.to_vec();
+    extra.push(("APPLICATION_SECRET", "forbidden"));
+    assert!(check(&extra).is_err());
+    extra[7] = expected[0];
+    assert!(check(&extra).is_err());
+}
+#[test]
 fn launcher_diagnostics_expose_only_closed_categories_without_raw_details() {
     for (message, category) in [
         (
