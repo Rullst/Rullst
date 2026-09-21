@@ -83,6 +83,10 @@ untrusted input into the worker:
   descriptors are checked against the exact owned protocol handles.
 - Reviewed syscall restrictions in addition to namespaces; no extra privileges
   or unbounded resource allowance on unsupported kernels/platforms.
+  The compiler selects the pinned linker by its absolute toolchain path. Rust's
+  changed-`PATH` spawn fallback uses a socket pair, so a bare linker name would
+  fail under the unchanged no-sockets policy. A real seccomp regression verifies
+  absolute-path spawning while socket-pair creation remains denied.
 - Structural Wasm validation, bounded compilation, memory/stack/table/fuel
   limits, no guest imports and bounded, normalized output. No deserialization
   of untrusted native/precompiled engine caches.

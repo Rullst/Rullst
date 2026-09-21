@@ -114,11 +114,14 @@ pub(super) fn run(parent: u32) -> Result<(), Error> {
     }
     let maximum = u64::from(pages) * 65_536;
     let mut command = Command::new("/toolchain/bin/rustc");
+    // rustc adjusts PATH for the linker. With a bare tool name Rust falls back
+    // to fork/exec using socketpair, which this profile deliberately forbids.
+    // An absolute pinned tool path retains posix_spawn without opening sockets.
     command.env_clear()
         .env("PATH","/toolchain/bin").env("LD_LIBRARY_PATH","/toolchain/lib:/lib").env("TMPDIR","/work").env("LANG","C").env("RAYON_NUM_THREADS","1")
         .args(["/work/submission.rs","--crate-name","submission","--crate-type","cdylib","--edition","2024","--target","wasm32-unknown-unknown","--sysroot","/toolchain","--color","never","--error-format","short","-C","opt-level=1","-C","panic=abort","-C","debuginfo=0","-C","strip=symbols","-C","codegen-units=1","-C","overflow-checks=on","-C","target-feature=-simd128,-relaxed-simd,-multivalue,-reference-types,-tail-call,-extended-const","-C","link-arg=-zstack-size=1048576",
             "-C",
-            "link-arg=--threads=1","-C"])
+            "link-arg=--threads=1","-C","linker=/toolchain/lib/rustlib/x86_64-unknown-linux-gnu/bin/rust-lld","-C"])
         .arg(format!("link-arg=--max-memory={maximum}"))
         .args(["-o","/work/submission.wasm"])
         .stdin(Stdio::null()).stdout(Stdio::null());

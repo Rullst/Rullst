@@ -785,6 +785,9 @@ jobs:
       - name: Prove the separate compiler domain blocks parent descriptor aliases
         run: cargo test --locked -p rullst-labs-runner --test landlock_domains -- --ignored --exact independent_domains_block_interpreter_descriptors
 
+      - name: Prove pinned tool spawning preserves the no-sockets policy
+        run: cargo test --locked -p rullst-labs-runner --test seccomp_spawn -- --ignored --exact absolute_tool_spawn_preserves_socket_denial
+
       - name: Require real isolated execution in an owned unprivileged service
         env:
           LABS_UNIT_SUFFIX: ${{ github.run_id }}-${{ github.run_attempt }}
