@@ -29,8 +29,10 @@ release campaign and independent isolation review remain separate requirements.
 It does not prove every adversarial case or every deployment environment.
 
 Coverage must also measure the trusted controller's lifecycle paths. The
-instrumented fixture uses a separate private controller and retains the ordinary
-worker binary and all namespace, environment, filesystem and resource checks.
+instrumented fixture retains identical controller/worker executable hashes and
+all namespace, environment, filesystem and resource checks. A CI-only LLVM hook
+initializes profile output only for a trusted host with an explicit output path;
+in the worker's cleared environment it performs no profiling initialization.
 Only trusted host processes write profiler data outside the sandbox; the worker
 does not receive profiling variables or a host output directory. These counters
 are merged with ordinary workspace coverage, without changing either 90% floor.

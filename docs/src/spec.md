@@ -92,10 +92,12 @@ submission, cancellation, leased execution, retention and result reconciliation.
 It must not reuse the application's authentication/database secrets as job keys.
 
 Coverage measures the trusted controller through the same real isolated
-acceptance journey, using a private instrumented controller outside the worker's
-mounted tree. The mounted compiler/interpreter binary stays uninstrumented;
-profiler paths, environment variables and output permissions must never weaken
-its isolation policy. Ordinary and instrumented acceptance are distinct evidence.
+acceptance journey, preserving identical controller/worker executable hashes.
+A CI-only LLVM runtime hook initializes profile output only when the trusted
+host supplies its explicit path. Workers retain the exact cleared environment
+and never initialize or export counters. No extra mounts, descriptors or output
+permissions may weaken isolation. Ordinary and instrumented acceptance are
+distinct evidence; the hook must never enter a distributed runner.
 Keep both existing 90% line-coverage floors and include the new v13 application
 libraries in the framework-library aggregate; the runner remains counted in
 the whole repository as a separate executable.

@@ -1,24 +1,25 @@
 #!/usr/bin/env bash
-# Measure the trusted controller using the real isolated journey. The worker
-# remains uninstrumented; no profiler environment/path enters its sandbox.
+# Measure host controller paths using the real isolated journey. The identical
+# binary runs every role; workers never initialize or export profile counters.
 set -euo pipefail
 [[ "${GITHUB_ACTIONS:-}" == true && "${RUNNER_ENVIRONMENT:-}" == github-hosted ]]
-plain_runner="${1:?usage: run-labs-coverage.sh UNINSTRUMENTED_RUNNER}"
 measurement_dir=$(mktemp -d "${RUNNER_TEMP:?}/rullst-labs-measured.XXXXXX")
 trap 'rm -rf -- "$measurement_dir"' EXIT
-install -m 0755 "$plain_runner" "$measurement_dir/runner"
-readelf --wide --section-headers "$measurement_dir/runner" > "$measurement_dir/worker-sections"
-if grep -q '__llvm_prf_cnts' "$measurement_dir/worker-sections"; then
-  echo 'The isolated worker must not be instrumented.' >&2
-  exit 1
-fi
+cc -std=c11 -Wall -Wextra -Werror -c .github/labs-profile-runtime.c \
+  -o "$measurement_dir/profile-runtime.o"
+install -m 0755 .github/labs-profile-linker.sh "$measurement_dir/linker"
 
 # External-test integration documented by cargo-llvm-cov. Preserve existing
 # profiles from the workspace/default/DB suites; never clean them here.
 cargo llvm-cov show-env --sh > "$measurement_dir/coverage-env.sh"
 source "$measurement_dir/coverage-env.sh"
-cargo build --locked -p rullst-labs -p rullst-labs-runner \
-  --all-features --bins --examples --target-dir "$CARGO_LLVM_COV_TARGET_DIR"
+# Explicit target flags also invalidate an ordinary cached executable. Changing
+# RUSTC_WRAPPER alone does not necessarily make Cargo rebuild an existing target.
+cargo rustc --locked -p rullst-labs-runner --bin rullst-labs-runner \
+  --all-features --target-dir "$CARGO_LLVM_COV_TARGET_DIR" -- \
+  -C instrument-coverage -C linker-flavor=gcc -C "linker=$measurement_dir/linker"
+cargo rustc --locked -p rullst-labs --example course_app \
+  --all-features --target-dir "$CARGO_LLVM_COV_TARGET_DIR" -- -C instrument-coverage
 readelf --wide --section-headers "$CARGO_LLVM_COV_TARGET_DIR/debug/rullst-labs-runner" > "$measurement_dir/controller-sections"
 grep -q '__llvm_prf_cnts' "$measurement_dir/controller-sections"
 profile_prefix="labs-controller-${GITHUB_RUN_ID:?}-${GITHUB_RUN_ATTEMPT:?}"
@@ -32,8 +33,7 @@ sudo systemd-run --wait --collect --pipe \
   --setenv="LLVM_PROFILE_FILE=$CARGO_LLVM_COV_TARGET_DIR/$profile_prefix-%p-%m.profraw" \
   --working-directory="$PWD" \
   /usr/bin/python3 .github/test-labs-isolation.py \
-  --runner "$measurement_dir/runner" \
-  --controller "$CARGO_LLVM_COV_TARGET_DIR/debug/rullst-labs-runner" \
+  --runner "$CARGO_LLVM_COV_TARGET_DIR/debug/rullst-labs-runner" \
   --app "$CARGO_LLVM_COV_TARGET_DIR/debug/examples/course_app" \
   --toolchain "$(rustc +1.96.0 --print sysroot)" \
   --launcher /usr/lib/rullst-labs-ci/bwrap \
@@ -42,7 +42,7 @@ python3 - "$CARGO_LLVM_COV_TARGET_DIR" "$profile_prefix" <<'PY'
 import json, sys
 from pathlib import Path
 evidence = json.loads(Path('target/labs-coverage-evidence.json').read_text())
-assert evidence['status'] == 'passed' and evidence['controller_measurement_only']
+assert evidence['status'] == 'passed'
 profiles = list(Path(sys.argv[1]).glob(sys.argv[2] + '-*.profraw'))
 assert profiles and all(p.is_file() and p.stat().st_size > 0 for p in profiles)
 print('Measured real isolated controller journey:', len(evidence['checks']), 'checks;', len(profiles), 'profiles')

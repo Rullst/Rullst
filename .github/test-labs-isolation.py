@@ -108,9 +108,9 @@ def accept(args, directory, groups):
     spec = importlib.util.spec_from_file_location('prepare_labs', Path(__file__).with_name('prepare-labs-fixture.py'))
     prepare = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(prepare)
-    config_path = prepare.prepare(directory, args.runner, args.toolchain, args.launcher, groups, args.controller)
+    config_path = prepare.prepare(directory, args.runner, args.toolchain, args.launcher, groups)
     config = json.loads(config_path.read_text())
-    runner = directory / 'controller' if args.controller is not None else Path(config['linux']['rootfs']) / 'runner'
+    runner = Path(config['linux']['rootfs']) / 'runner'
     # The actual controller runs from its verified private fixture copy, not a
     # group-writable Cargo target file left by a developer's umask.
     try:
@@ -315,7 +315,7 @@ def accept(args, directory, groups):
         with sqlite3.connect(directory / 'jobs.sqlite') as database:
             assert database.execute('SELECT COUNT(*) FROM labs_jobs WHERE content IS NOT NULL').fetchone()[0] == 0
         checks.append('terminal-source-removal')
-        args.evidence.write_text(json.dumps({'status': 'passed', 'profile': config['linux']['profile'], 'preflight': doctor, 'checks': checks, 'controller_measurement_only': args.controller is not None, 'live_providers_used': False, 'independent_isolation_review': 'outstanding'}, indent=2) + '\n')
+        args.evidence.write_text(json.dumps({'status': 'passed', 'profile': config['linux']['profile'], 'preflight': doctor, 'checks': checks, 'live_providers_used': False, 'independent_isolation_review': 'outstanding'}, indent=2) + '\n')
     finally:
         # A failed assertion must not leave a controller touching the fixture
         # while the outer cleanup tears down its groups and deletes its files.
@@ -332,8 +332,6 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for field in ('runner', 'app', 'toolchain', 'launcher', 'evidence'):
         parser.add_argument('--' + field, required=True, type=Path)
-    parser.add_argument('--controller', type=Path,
-                        help='trusted instrumented controller; the worker and its environment remain unchanged')
     args = parser.parse_args()
     groups = delegated_jobs()
     parent = Path(tempfile.mkdtemp(prefix='rullst-labs-acceptance-'))

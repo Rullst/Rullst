@@ -128,10 +128,9 @@ jobs:
       - name: Measure the trusted controller with real isolated workloads
         run: |
           python3 .github/test-labs-measurement.py
-          # Keep an ordinary worker separate from the instrumented controller.
-          # Neither profiler paths nor coverage variables enter the sandbox.
-          cargo build --locked -p rullst-labs-runner --target-dir "$RUNNER_TEMP/rullst-labs-plain"
-          bash .github/run-labs-coverage.sh "$RUNNER_TEMP/rullst-labs-plain/debug/rullst-labs-runner"
+          # Preserve identical controller/worker bytes and collect only host
+          # counters. No profiler state or output path enters the sandbox.
+          bash .github/run-labs-coverage.sh
 
       - name: Generate merged coverage report
         run: |

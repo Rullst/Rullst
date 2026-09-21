@@ -1,54 +1,74 @@
 #!/usr/bin/env python3
-"""Verify measurement custody without launching a compiler, worker or service."""
-import importlib.util
+"""Exercise the CI-only profiling hook using a tiny, trusted Rust fixture.
+
+No learner code, namespace, service or framework build is launched. The ordinary
+instrumented control proves the runtime environment mutation that must be absent
+from the worker; the same hooked binary must still emit valid host profile data.
+"""
 from pathlib import Path
-import stat
+import shutil
+import subprocess
 import tempfile
 import unittest
 
-spec = importlib.util.spec_from_file_location('prepare', Path(__file__).with_name('prepare-labs-fixture.py'))
-prepare = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(prepare)
+ROOT = Path(__file__).resolve().parent
 
 
 class ControllerMeasurement(unittest.TestCase):
-    def test_private_copy_cannot_change_or_enter_worker_tree(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            fixture = root / 'fixture'
-            fixture.mkdir(mode=0o700)
-            worker_tree = fixture / 'rootfs'
-            worker_tree.mkdir(mode=0o755)
-            worker = worker_tree / 'runner'
-            worker.write_bytes(b'trusted uninstrumented worker')
-            source = root / 'measured-build'
-            source.write_bytes(b'trusted measured controller')
-            source.chmod(0o777)  # Developer build mode must not be preserved.
-            controller = prepare.copy_controller(fixture, source)
-            self.assertFalse(controller.is_relative_to(worker_tree))
-            self.assertEqual(controller.read_bytes(), source.read_bytes())
-            self.assertEqual(stat.S_IMODE(controller.stat().st_mode), 0o755)
-            self.assertEqual(stat.S_IMODE(fixture.stat().st_mode), 0o700)
-            source.write_bytes(b'later build')
-            self.assertEqual(controller.read_bytes(), b'trusted measured controller')
-            self.assertEqual(worker.read_bytes(), b'trusted uninstrumented worker')
-            self.assertEqual(list(worker_tree.iterdir()), [worker])
+    @classmethod
+    def setUpClass(cls):
+        cls.temporary = tempfile.TemporaryDirectory(prefix='rullst-profile-hook-')
+        cls.addClassCleanup(cls.temporary.cleanup)
+        cls.root = Path(cls.temporary.name)
+        available = shutil.disk_usage(cls.root).free
+        if available < 15 * 1024**3 or available - 32 * 1024**2 < 12 * 1024**3:
+            raise RuntimeError('insufficient headroom for the bounded profiling fixture')
+        source = cls.root / 'probe.rs'
+        source.write_text('fn main() { println!("{}", std::env::vars_os().count()); }\n')
+        hook = cls.root / 'profile-runtime.o'
+        subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-c',
+                        str(ROOT / 'labs-profile-runtime.c'), '-o', str(hook)],
+                       check=True, capture_output=True, timeout=30)
+        linker = cls.root / 'linker'
+        shutil.copyfile(ROOT / 'labs-profile-linker.sh', linker)
+        linker.chmod(0o755)
+        for name, extra in [('ordinary', []), ('host-only', ['-C', 'linker-flavor=gcc', '-C', 'linker=' + str(linker)])]:
+            subprocess.run(['rustc', '--edition=2024', '-C', 'instrument-coverage',
+                            str(source), '-o', str(cls.root / name), *extra],
+                           check=True, timeout=60)
 
-    def test_existing_destination_or_link_is_never_overwritten(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            source = root / 'source'
-            source.write_bytes(b'measurement')
-            target = root / 'controller'
-            target.write_bytes(b'previous')
-            with self.assertRaises(FileExistsError):
-                prepare.copy_controller(root, source)
-            self.assertEqual(target.read_bytes(), b'previous')
-            target.unlink()
-            target.symlink_to(source)
-            with self.assertRaises(FileExistsError):
-                prepare.copy_controller(root, source)
-            self.assertEqual(source.read_bytes(), b'measurement')
+    def execute(self, name, environment):
+        directory = self.root / self.id().rsplit('.', 1)[-1]
+        directory.mkdir()
+        result = subprocess.run([str(self.root / name)], cwd=directory,
+                                env=environment, text=True, capture_output=True,
+                                check=True, timeout=10)
+        return directory, result
+
+    def test_control_exposes_automatic_runtime_side_effects(self):
+        directory, result = self.execute('ordinary', {})
+        self.assertEqual(result.stdout.strip(), '1')
+        self.assertTrue(list(directory.glob('*.profraw')))
+
+    def test_cleared_worker_environment_is_unchanged_and_writes_nothing(self):
+        directory, result = self.execute('host-only', {})
+        self.assertEqual(result.stdout.strip(), '0')
+        self.assertEqual(result.stderr, '')
+        self.assertEqual(list(directory.iterdir()), [])
+
+    def test_empty_profile_path_does_not_initialize_runtime(self):
+        directory, result = self.execute('host-only', {'LLVM_PROFILE_FILE': ''})
+        self.assertEqual(result.stdout.strip(), '1')
+        self.assertEqual(result.stderr, '')
+        self.assertEqual(list(directory.iterdir()), [])
+
+    def test_explicit_host_path_collects_nonempty_profile(self):
+        profile = self.root / 'trusted-host.profraw'
+        directory, result = self.execute('host-only', {'LLVM_PROFILE_FILE': str(profile)})
+        self.assertEqual(result.stdout.strip(), '2')
+        self.assertEqual(result.stderr, '')
+        self.assertGreater(profile.stat().st_size, 0)
+        self.assertEqual(list(directory.iterdir()), [])
 
 
 if __name__ == '__main__':
