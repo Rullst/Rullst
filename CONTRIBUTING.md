@@ -108,4 +108,11 @@ Do not interpret an archived score, checklist or example as current evidence.
 Documentation fixes update the repository/site; already-published crates.io
 archives remain immutable and receive changes only in a later package version.
 
+Build the manual with `mdbook build docs` using mdBook 0.5.4 and Python 3.
+The canonical-links preprocessor keeps included root documents as single sources
+and resolves their links into book chapters or repository pages. Its
+`source-revision` in `docs/book.toml` identifies the branch/tag used for repository
+links. CI checks both the Markdown sources and the rendered HTML, including
+section fragments; a successful Markdown check alone does not validate the book.
+
 Thank you for your interest in making Rullst better!

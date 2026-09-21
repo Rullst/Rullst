@@ -74,6 +74,11 @@ jobs:
           lychee --offline --no-progress --include-fragments=anchor-only
           '**/*.md'
 
+      - name: Validate rendered book links and fragments
+        run: >-
+          lychee --offline --no-progress --include-fragments=full
+          --root-dir docs/book docs/book
+
       - name: Inspect external links
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         continue-on-error: true
