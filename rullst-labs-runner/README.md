@@ -84,6 +84,12 @@ authorizes only a root-owned private launcher copy and denies capabilities to
 its children. The global user-namespace restriction remains enabled; the runner
 does not install policy or reconfigure the developer's machine.
 
+The CI `labs-isolation` manual shard runs workspace formatting, strict Clippy for
+the two Labs packages and the real isolated acceptance journey. It avoids
+repeating unrelated workspace checks during host diagnostics. This shard is not
+release evidence on its own: complete PR/release runs still require workspace
+quality, the cross-platform suite and packaged-consumer acceptance.
+
 ## Results and failure recovery
 
 Expected answers stay in the trusted grader. Worker responses contain bounded

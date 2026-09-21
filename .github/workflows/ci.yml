@@ -116,7 +116,12 @@ jobs:
 
   check:
     needs: scope
-    if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
+    # A manual Labs diagnostic has targeted formatting/Clippy in its own job.
+    # Full workspace quality remains required for PRs and complete release runs.
+    if: >-
+      !cancelled() &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard != 'labs-isolation') &&
+      (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     name: Code Quality & Format
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -705,8 +710,8 @@ jobs:
 
   labs-isolation:
     name: Isolated Labs acceptance (Linux)
-    # Independent runtime evidence can run alongside the full workspace linter.
-    # Both jobs remain mandatory in a complete run; neither grants the other a pass.
+    # Independent runtime evidence runs alongside workspace quality in full CI.
+    # A manual diagnostic is targeted evidence, never complete release evidence.
     needs: scope
     if: >-
       (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
@@ -736,7 +741,14 @@ jobs:
         with:
           rustflags: "-D warnings"
           build-warnings: ""
+          components: rustfmt, clippy
           cache: false
+
+      - name: Check formatting and targeted quality for the manual Labs diagnostic
+        if: github.event_name == 'workflow_dispatch' && inputs.shard == 'labs-isolation'
+        run: |
+          cargo fmt --all --check
+          cargo clippy --locked -p rullst-labs -p rullst-labs-runner --all-features --all-targets -- -D warnings
 
       - name: Install pinned exercise toolchain and namespace launcher
         run: |
