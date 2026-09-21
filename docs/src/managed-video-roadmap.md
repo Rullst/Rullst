@@ -1,26 +1,30 @@
 # Managed private video candidate
 
 On September 20, 2026 the owner asked about Bunny.net video hosting and a native
-Rullst integration. No Bunny adapter, provider-aware player or management API is
-implemented in the current repository. Existing LMS media fields and HTML media
-elements do not provide remote upload, transcoding or private playback control.
+Rullst integration. The unpublished `rullst-media` candidate now implements the
+selected Bunny Stream lifecycle with opt-in HTTP and shared-local SQLite, an
+authenticated browser acceptance consumer and an executable offline example.
+It remains outside the framework facade and release inventory. Workspace CI,
+archive acceptance and review are still required; real Bunny interoperability
+has not been tested. Existing LMS fields do not automatically enable this service.
 
 A Bunny Stream integration is selected for implementation after the deployment
 diagnostic and supervision observation base. The owner's subsequent September
 20 direction prioritizes completing the supported private-video lifecycle before
-starting Labs or another optional integration. This is a delivery target, not
-implemented functionality or a promise that every Bunny service/API belongs in
+starting Labs or another optional integration. This is an acceptance target,
+not a promise that every Bunny service/API belongs in
 v13. Acceptance by scope freeze remains required; the September 24–26
 validation/publication window remains reserved.
 
-## Proposed first journey
+## Supported candidate journey
 
 1. An authorized instructor creates a tenant/course-bound asset record. Resolve
    ownership on the server; caller-supplied library/video IDs cannot authorize
    upload, playback, modification or deletion.
-2. Grant one bounded upload to the provider without exposing account/library
-   management keys to the browser. Review TUS authorization, limits, expiry,
-   retries and uncertain creation results before implementing a public API.
+2. Grant a scoped, expiring upload capability without exposing account/library
+   management keys to the browser. The TUS client bounds bytes/requests/time and
+   handles resume, pause and cancellation. Provider tokens do not prove one-shot
+   use or enforce these client limits against a modified client.
 3. Track processing through authenticated notifications and authoritative
    provider reads. Verify exact raw-body signatures in constant time. The current
    Bunny webhook v1 signature does not bind a timestamp: duplicate/reordered or
@@ -75,9 +79,8 @@ Conversely, a token helper and mocked success response alone do not complete it.
 
 ## Architecture and provider boundary
 
-Keep video optional and separate from Core's default runtime. Evaluate a focused
-media crate against existing storage responsibilities before adding a package;
-no crate name or public provider API is committed by this roadmap. Reuse Auth,
+The SST selects `rullst-media` for managed-video lifecycle responsibilities,
+separate from Core's default runtime and object-storage helpers. Reuse Auth,
 tenant context and existing application entitlements through explicit composition.
 Start with one provider and support declared capabilities instead of pretending
 all video services have interchangeable APIs.
@@ -109,6 +112,8 @@ scope. Later application fixes should be contributed back to the framework.
 - [Signed processing webhooks](https://bunny.net/docs/stream/webhooks): exact body,
   version/algorithm headers and library read-only API key; no signed timestamp.
 
-Pricing and API details must be checked again during adapter implementation.
-This proposal is not a claim that Bunny is universally cheapest or that the
-current Rullst release already supports it.
+Implementation also reviewed the official Stream OpenAPI, TUS and advanced CDN
+HMAC documentation. See the [candidate integration and operation guide](managed-video.md)
+for exact support, recovery, provider configuration and acceptance limitations.
+This candidate is not a claim that Bunny is universally cheapest or that the
+published Rullst release already supports it.

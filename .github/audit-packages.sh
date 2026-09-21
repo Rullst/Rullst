@@ -1,13 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="${1:?usage: audit-packages.sh VERSION [PACKAGE_DIR] [--supervision-candidate]}"
+version="${1:?usage: audit-packages.sh VERSION [PACKAGE_DIR] [--supervision-candidate|--v13-candidates]}"
 package_dir="${2:-target/package}"
 max_archive_bytes=$((10 * 1024 * 1024))
 
 mapfile -t crates < <(jq -r '.[]' .github/release-order.json)
 case "${3:-}" in
   "") ;;
+  --v13-candidates)
+    for candidate in rullst-supervision rullst-media; do
+      if jq -e --arg name "$candidate" 'index($name) != null' .github/release-order.json > /dev/null; then
+        echo "Remove candidate mode after release admission." >&2
+        exit 1
+      fi
+      crates+=("$candidate")
+    done
+    ;;
   --supervision-candidate)
     if jq -e 'index("rullst-supervision") != null' .github/release-order.json > /dev/null; then
       echo "Remove candidate mode after supervision enters the release inventory." >&2

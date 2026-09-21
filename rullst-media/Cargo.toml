@@ -1,0 +1,39 @@
+[package]
+name = "rullst-media"
+version = "13.0.0-alpha.1"
+edition = "2024"
+rust-version = "1.96.0"
+authors = ["Rullst Core Team"]
+description = "Explicit private video lifecycle and Bunny Stream integration for Rullst"
+license = "MIT"
+repository = "https://github.com/Rullst/Rullst"
+readme = "README.md"
+publish = false
+
+[features]
+default = []
+bunny = ["dep:reqwest", "dep:ring", "dep:base64", "dep:zeroize", "dep:tokio"]
+sqlite = ["dep:sqlx", "dep:ring", "dep:tokio"]
+
+[dependencies]
+thiserror = { workspace = true }
+serde = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+reqwest = { workspace = true, features = ["json", "rustls"], optional = true }
+ring = { workspace = true, features = ["std"], optional = true }
+base64 = { workspace = true, optional = true }
+zeroize = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["time", "rt"], optional = true }
+sqlx = { workspace = true, features = ["runtime-tokio", "sqlite"], optional = true }
+
+[dev-dependencies]
+rullst-core = { workspace = true }
+async-trait = { workspace = true }
+subtle = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time", "net"] }
+tempfile = "3"
+axum = { workspace = true }
+
+[[example]]
+name = "private_course_video"
+required-features = ["bunny", "sqlite"]

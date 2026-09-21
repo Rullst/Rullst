@@ -6908,6 +6908,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "rullst-media"
+version = "13.0.0-alpha.1"
+dependencies = [
+ "async-trait",
+ "axum",
+ "base64 0.23.1",
+ "reqwest",
+ "ring",
+ "rullst-core",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "subtle",
+ "tempfile",
+ "thiserror 2.0.20",
+ "tokio",
+ "zeroize",
+]
+
+[[package]]
 name = "rullst-messaging"
 version = "13.0.0-alpha.1"
 dependencies = [

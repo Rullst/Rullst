@@ -138,6 +138,12 @@ rullst-supervision|analysis
 rullst-supervision|sqlite
 rullst-supervision|sqlite,analysis
 
+# Unpublished private-video candidate: HTTP and persistence remain independent.
+rullst-media|
+rullst-media|bunny
+rullst-media|sqlite
+rullst-media|bunny,sqlite
+
 # Umbrella boundaries exposed to generated applications.
 rullst|orm
 rullst|orm-mongodb

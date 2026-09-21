@@ -131,6 +131,7 @@
 - [💻 CLI Reference](cli_reference.md)
   - [Local Deployment Configuration Diagnostic](deployment-diagnostic.md)
   - [Managed Private Video Roadmap](managed-video-roadmap.md)
+  - [Private Course Video Integration Candidate](managed-video.md)
 - [GitHub CLI Installation & Safe Login](gh-install.md)
 - [🛡️ CI/CD & Security Workflows](workflows.md)
 

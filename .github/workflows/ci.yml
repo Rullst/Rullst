@@ -176,6 +176,7 @@ jobs:
       # Reuse real renderer/generated-project tests; do not add another build.
       RULLST_UI_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && (matrix.shard == 'workspace' || matrix.shard == 'cli-saas-product') && '1' || '0' }}
       RULLST_UI_BROWSER_SCRIPT: ${{ github.workspace }}/.github/mobile-ui-browser-smoke.mjs
+      RULLST_MEDIA_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'workspace' && '1' || '0' }}
       RULLST_SUPERVISION_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'cli-standard' && '1' || '0' }}
       RULLST_BILLING_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'cli-standard' && '1' || '0' }}
       RULLST_API_CONTRACT_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'cli-standard' && '1' || '0' }}
@@ -692,15 +693,14 @@ jobs:
         env:
           CANDIDATE_VERSION: ${{ steps.inventory.outputs.version }}
         run: |
-          bash .github/package-release.sh --no-verify
-          # Validate the unpublished candidate without adding it to publication.
-          cargo package -p rullst-supervision --all-features --locked --no-verify
-          bash .github/audit-packages.sh "$CANDIDATE_VERSION" target/package --supervision-candidate
+          # Rehearse unpublished candidates without release-order admission.
+          bash .github/package-release.sh --no-verify --v13-candidates
+          bash .github/audit-packages.sh "$CANDIDATE_VERSION" target/package --v13-candidates
 
       - name: Compile archive-only consumer and test the isolated installed CLI
         env:
           CANDIDATE_VERSION: ${{ steps.inventory.outputs.version }}
-        run: bash .github/test-packaged-distribution.sh "$CANDIDATE_VERSION" target/package --supervision-candidate
+        run: bash .github/test-packaged-distribution.sh "$CANDIDATE_VERSION" target/package --v13-candidates
 
   quality-scorecard:
     name: Evidence quality scorecard (observational)

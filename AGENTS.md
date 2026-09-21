@@ -33,6 +33,7 @@ The Rullst framework is organized into decoupled, high-performance crates:
 | **`rullst-macros`** | Procedural macros (`html!`, `rullst::model`, `rullst::runtime::main`). |
 | **`cargo-rullst`** | Developer CLI scaffold generator (`make:*` commands), AST IDOR scanner, and 1-Click cloud deployer. |
 | **`rullst-labs`** *(v13 roadmap)* | Planned trusted contracts and orchestration for bounded programming exercises and graders; it must never execute learner code. |
+| **`rullst-media`** *(unpublished v13 candidate)* | Optional Bunny Stream lifecycle, scoped upload/playback grants, exact-body notifications, shared-local SQLite reconciliation and browser upload module. Actual provider/CDN interoperability remains unvalidated; no release admission or blueprint/facade default is implied. |
 | **`rullst-supervision`** *(unpublished v13 implementation candidate)* | Optional exam/parental contracts, exact collection acknowledgement, typed browser/capture observations, bounded camera-presence/audio-activity adapter orchestration and shared-local SQLite authority/session/retention state. The host owns authenticated membership, capture permission, models, reviewer workflow and verified relationships. No media model, automatic grading or device-wide control is included; the observation extension needs its own hosted/archive admission. |
 | **`rullst-labs-runner`** *(v13 roadmap)* | Planned separately deployed untrusted-code executor; it must not run in the web process or receive application secrets/control sockets. |
 

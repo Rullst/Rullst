@@ -79,6 +79,58 @@ the application to expose a container control socket. A complete offensive CTF
 arena is external, separately governed deployment infrastructure even when it
 uses Rullst identity, challenge, score and receipt contracts.
 
+### v13 managed-video implementation boundary
+
+The optional, unpublished `rullst-media` candidate owns managed private video,
+starting with Bunny Stream. This differs from Core's object-storage facade:
+remote video creation, upload capabilities, asynchronous processing, playback
+grants and lifecycle reconciliation require a separate explicit domain.
+It has no Core/Auth/ORM runtime dependency and no default network/database features.
+Core is a test-only dependency for the real HTTP/browser security composition.
+`bunny` selects the reviewed HTTP/signature adapter; `sqlite` selects durable
+shared-local asset/operation state and static-dispatch application orchestration.
+No facade dependency or release-order admission is implied by scaffolding it.
+
+The host supplies authenticated actor/course membership and current management
+or playback entitlement through a checked authorization trait. Local asset IDs
+bind an immutable tenant/course/provider-library scope; provider IDs and signed
+webhooks never establish that ownership. Service operations recheck permission
+and local revision/state after external work and use bounded durable leases to
+reject concurrent/stale results. SQLite state binds its schema, provider mode,
+library and capacity, refuses clock rollback and requires trusted local files,
+backup policy and operator-owned keys. Multi-host replication is separate work.
+Only confirmed-deleted local tombstones may be purged, in batches up to 100 and
+after at least 24 hours; the host must retire purged creation IDs because their
+idempotency memory ends at that point. Provider backups/cache erasure is separate.
+
+Creation is journaled before remote dispatch. Bunny's documented creation API
+does not supply an idempotency key: ambiguous creation must reconcile a persisted
+random opaque creation marker, never blindly retry or claim exactly-once remote
+creation. Updates/deletion are reconciled against authoritative reads. Webhook
+v1 authenticates exact body bytes with the read-only library key but has no
+signed timestamp; bounded durable duplicate suppression and serialized provider
+refresh prevent replay/reordering from granting access or publishing assets.
+Webhook status numbers and API video status numbers are distinct protocols.
+
+Publication is an explicit application mutation after current provider readiness;
+processing completion alone cannot publish. Playback requires current entitlement,
+fresh ready state and configured provider protection; withdrawal/deletion stop
+new grants but cannot immediately invalidate previously issued bearer tokens or
+provider caches. Upload grants are scoped and expiring, not cryptographic proofs
+of a one-shot upload, file type or byte limit. Library upload quotas and direct
+file protection remain required configuration. Embed SHA-256, TUS SHA-256 and
+CDN advanced HMAC-SHA256 directory tokens have independent documented formats.
+Redirects/ambient proxies/arbitrary remote endpoints are disabled; request,
+response, retry and total-operation budgets are finite. Secret-bearing errors,
+credentials, grants and debug output must not leak keys or bearer URLs.
+
+Empty or `mock_*` credentials select deterministic offline behavior; mixed modes
+fail configuration. Production rejects mock or loopback-fixture capabilities.
+Automated protocol/browser/disposable-state evidence is required. The owner's
+no-live-account-testing instruction remains in force: actual Bunny account,
+transcoding/CDN interoperability and paid DRM are not validated or implied.
+See the [supported delivery target](managed-video-roadmap.md).
+
 ### v13 privacy and age-assurance boundary
 
 Core and Security header layers share `apply_referrer_policy`: a response that
