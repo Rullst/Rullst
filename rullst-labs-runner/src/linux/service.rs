@@ -34,8 +34,13 @@ fn load(path: &Path) -> Result<RunnerConfig, Error> {
 }
 pub(super) async fn doctor(path: &Path) -> Result<(), Error> {
     let config = load(path)?;
-    config.linux.validate()?;
-    let digest = supervisor::preflight(&config.linux, &nonce()?).await?;
+    config
+        .linux
+        .validate()
+        .inspect_err(|_| eprintln!("labs-preflight:configuration"))?;
+    let digest = supervisor::preflight(&config.linux, &nonce()?)
+        .await
+        .inspect_err(|_| eprintln!("labs-preflight:execution-boundary"))?;
     println!(
         "{}",
         serde_json::json!({"profile":rullst_labs::PROFILE,"status":"experimental-preflight-passed","observations":digest})

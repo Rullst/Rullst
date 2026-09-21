@@ -114,6 +114,11 @@ def accept(args, directory, groups):
     # group-writable Cargo target file left by a developer's umask.
     preflight = subprocess.run([str(runner), 'doctor', str(config_path)], capture_output=True, timeout=40)
     if preflight.returncode:
+        allowed = {'labs-preflight:configuration', 'labs-preflight:execution-boundary', 'labs-preflight:launch', 'labs-preflight:cgroup', 'labs-preflight:seccomp', 'labs-preflight:worker-probes', 'labs-preflight:landlock', 'labs-preflight:namespace-launcher'}
+        allowed.update('labs-preflight:' + phase for phase in ('privileges', 'uid-map', 'limits', 'mounts', 'network', 'workspace', 'descriptors', 'environment', 'compiler', 'namespaces'))
+        for line in preflight.stderr.decode('utf-8', errors='replace').splitlines():
+            if line in allowed:
+                print(line, flush=True)
         raise RuntimeError('mandatory real Linux isolation preflight failed; no submissions executed')
     doctor = json.loads(preflight.stdout)
     app = Application(args.app, directory / 'application.json')

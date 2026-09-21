@@ -87,7 +87,7 @@ pub(super) async fn execute<C: Clock>(
         .map_err(|_| Error::Expired)
         .and_then(|v| v);
     let exhausted = session.group.as_ref().ok_or(Error::Uncertain)?.exhausted();
-    session.close().await?;
+    session.close(false).await?;
     let mut result = outcome?;
     if exhausted? {
         result.output.outcome =
@@ -101,12 +101,14 @@ pub(super) async fn preflight(
     config: &LinuxConfig,
     nonce: &Reference,
 ) -> Result<ContentHash, Error> {
-    let mut session = Session::start(config, nonce).await?;
+    let mut session = Session::start(config, nonce)
+        .await
+        .inspect_err(|_| eprintln!("labs-preflight:launch"))?;
     let result = timeout(Duration::from_secs(5), session.observe(config))
         .await
         .map_err(|_| Error::Unsupported)
         .and_then(|v| v);
-    session.close().await?;
+    session.close(result.is_err()).await?;
     result
 }
 struct Session {
@@ -114,12 +116,13 @@ struct Session {
     child: tokio::process::Child,
     stdin: tokio::process::ChildStdin,
     stdout: tokio::process::ChildStdout,
-    stderr: Option<tokio::task::JoinHandle<Result<(), Error>>>,
+    stderr: Option<tokio::task::JoinHandle<Result<Option<&'static str>, Error>>>,
     host_namespaces: std::collections::BTreeMap<String, String>,
 }
 impl Session {
     async fn start(config: &LinuxConfig, nonce: &Reference) -> Result<Self, Error> {
-        let group = Group::create(&config.cgroups, nonce)?;
+        let group = Group::create(&config.cgroups, nonce)
+            .inspect_err(|_| eprintln!("labs-preflight:cgroup"))?;
         let host_namespaces = probe::namespaces()?;
         let mut child = Command::new(std::env::current_exe().map_err(|_| Error::Configuration)?)
             .arg("__bootstrap")
@@ -152,7 +155,23 @@ impl Session {
             if bytes.len() > 8192 {
                 return Err(Error::Capacity);
             }
-            Ok(())
+            // Only closed, pre-input probe categories may be surfaced after a
+            // failed no-source doctor run. Raw stderr never leaves this buffer.
+            let text = String::from_utf8_lossy(&bytes);
+            let category = text
+                .lines()
+                .filter_map(|line| {
+                    probe::CATEGORIES
+                        .iter()
+                        .copied()
+                        .find(|category| line == *category)
+                })
+                .next_back();
+            Ok(category.or_else(|| {
+                text.lines()
+                    .any(|line| line.starts_with("bwrap:"))
+                    .then_some("labs-preflight:namespace-launcher")
+            }))
         });
         Ok(Self {
             group: Some(group),
@@ -195,7 +214,7 @@ impl Session {
             &serde_json::to_vec(&observation).map_err(|_| Error::Protocol)?,
         ))
     }
-    async fn close(mut self) -> Result<(), Error> {
+    async fn close(mut self, report_preflight_failure: bool) -> Result<(), Error> {
         let _ = self.child.start_kill();
         let cleanup = self.group.take().ok_or(Error::Uncertain)?.close();
         let wait = timeout(Duration::from_secs(2), self.child.wait()).await;
@@ -207,6 +226,11 @@ impl Session {
         cleanup?;
         wait.map_err(|_| Error::Uncertain)?
             .map_err(|_| Error::Uncertain)?;
-        stderr
+        if report_preflight_failure && let Some(category) = stderr? {
+            eprintln!("{category}");
+        } else {
+            stderr?;
+        }
+        Ok(())
     }
 }

@@ -26,9 +26,10 @@ pub(super) fn run() -> Result<(), Error> {
             return Err(Error::Unsupported);
         }
     }
-    super::syscalls::apply()?;
+    super::syscalls::apply().inspect_err(|_| eprintln!("labs-preflight:seccomp"))?;
     let mut observation = super::probe::inspect()?;
-    observation.filesystem_policy = Some(super::filesystem::enforce()?);
+    observation.filesystem_policy =
+        Some(super::filesystem::enforce().inspect_err(|_| eprintln!("labs-preflight:landlock"))?);
     write_frame(&observation)?;
     // Parent verifies actual observations and cgroup placement before releasing
     // any student-controlled bytes. An EOF/invalid frame stops this worker.

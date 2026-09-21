@@ -9,6 +9,21 @@ use std::{
 pub(super) const MEMORY: u64 = 1_073_741_824;
 pub(super) const PIDS: u64 = 32;
 pub(super) const CPU: &str = "100000 100000";
+pub(super) const CATEGORIES: &[&str] = &[
+    "labs-preflight:seccomp",
+    "labs-preflight:worker-probes",
+    "labs-preflight:landlock",
+    "labs-preflight:privileges",
+    "labs-preflight:uid-map",
+    "labs-preflight:limits",
+    "labs-preflight:mounts",
+    "labs-preflight:network",
+    "labs-preflight:workspace",
+    "labs-preflight:descriptors",
+    "labs-preflight:environment",
+    "labs-preflight:compiler",
+    "labs-preflight:namespaces",
+];
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Observation {
@@ -53,6 +68,7 @@ fn number(path: &str) -> Result<u64, Error> {
         .map_err(|_| Error::Unsupported)
 }
 pub(super) fn inspect() -> Result<Observation, Error> {
+    eprintln!("labs-preflight:privileges");
     let status = read_text("/proc/self/status", 16384)?;
     for (name, value) in [
         ("NoNewPrivs:", "1"),
@@ -70,6 +86,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
     // Bubblewrap's --disable-userns deliberately creates a second user
     // namespace; its one-ID map can therefore map 0 to its parent namespace's
     // 0. The controller independently checks a different user namespace inode.
+    eprintln!("labs-preflight:uid-map");
     let uid_map = read_text("/proc/self/uid_map", 1024)?;
     let mapping: Vec<u64> = uid_map
         .split_whitespace()
@@ -79,6 +96,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
     if !matches!(mapping.as_slice(), [0, _, 1]) {
         return Err(Error::Unsupported);
     }
+    eprintln!("labs-preflight:limits");
     let fs = rustix::fs::statfs("/limits").map_err(|_| Error::Unsupported)?;
     if fs.f_type != libc::CGROUP2_SUPER_MAGIC {
         return Err(Error::Unsupported);
@@ -104,6 +122,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
     if memory_max != MEMORY || swap_max != 0 || pids_max != PIDS || cpu_max != CPU {
         return Err(Error::Unsupported);
     }
+    eprintln!("labs-preflight:mounts");
     for path in [
         "/home",
         "/root",
@@ -116,6 +135,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
             return Err(Error::Unsupported);
         }
     }
+    eprintln!("labs-preflight:network");
     let denied = std::net::TcpStream::connect_timeout(
         &std::net::SocketAddr::from(([169, 254, 169, 254], 80)),
         std::time::Duration::from_millis(100),
@@ -130,6 +150,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
     {
         return Err(Error::Unsupported);
     }
+    eprintln!("labs-preflight:workspace");
     let mut file = std::fs::OpenOptions::new()
         .create_new(true)
         .write(true)
@@ -139,6 +160,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
         .map_err(|_| Error::Unsupported)?;
     drop(file);
     std::fs::remove_file("/work/probe").map_err(|_| Error::Unsupported)?;
+    eprintln!("labs-preflight:descriptors");
     // The directory iterator may own a descriptor for /proc/self/fd itself.
     for entry in std::fs::read_dir("/proc/self/fd").map_err(|_| Error::Unsupported)? {
         let entry = entry.map_err(|_| Error::Unsupported)?;
@@ -157,6 +179,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
             return Err(Error::Unsupported);
         }
     }
+    eprintln!("labs-preflight:environment");
     if std::env::vars_os().any(|(key, _)| {
         !matches!(
             key.to_str(),
@@ -165,6 +188,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
     }) {
         return Err(Error::Unsupported);
     }
+    eprintln!("labs-preflight:compiler");
     let mut compiler = std::process::Command::new("/toolchain/bin/rustc")
         .arg("--version")
         .stdin(std::process::Stdio::null())
@@ -186,6 +210,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
     {
         return Err(Error::Unsupported);
     }
+    eprintln!("labs-preflight:namespaces");
     Ok(Observation {
         namespaces: namespaces()?,
         syscall_policy: super::syscalls::fingerprint()?,
