@@ -1,6 +1,5 @@
 use rullst_labs::{ContentHash, ExecutionProfile, LabError as Error};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::{
     io::Read,
     os::unix::fs::MetadataExt,
@@ -53,7 +52,7 @@ pub(super) fn hash_file(path: &Path) -> Result<ContentHash, Error> {
         return Err(Error::Configuration);
     }
     let mut file = std::fs::File::open(path).map_err(|_| Error::Configuration)?;
-    let mut digest = Sha256::new();
+    let mut digest = ring::digest::Context::new(&ring::digest::SHA256);
     let mut buffer = [0u8; 65536];
     let mut total = 0u64;
     loop {
@@ -70,7 +69,7 @@ pub(super) fn hash_file(path: &Path) -> Result<ContentHash, Error> {
     if total != meta.len() {
         return Err(Error::Integrity);
     }
-    ContentHash::new(hex::encode(digest.finalize()))
+    ContentHash::new(hex::encode(digest.finish().as_ref()))
 }
 pub(super) fn hash_tree(root: &Path) -> Result<ContentHash, Error> {
     trusted_directory(root)?;
