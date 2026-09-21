@@ -345,6 +345,19 @@ revocation and signature-counter CAS remain mandatory before session issuance.
 Real independent-manager/database/process and HTTP/browser acceptance must precede
 an implemented claim. No new crate or broad blueprint expansion is required.
 
+### v13 deployment acceptance increment
+
+Before expanding deployment generators, exercise two independent application
+processes behind one digest-pinned existing reverse proxy. Keep readiness,
+unhealthy-node exclusion, bounded shutdown, forwarded identity and WebSocket
+behavior explicit. Ordinary HTTP admission must remain counted until the response
+body completes, errors or is dropped, including streaming data and trailers;
+returning response headers alone is not completion. This counts application body
+lifetime, not client receipt or TCP acknowledgement. Upgraded connections and
+background tasks require separate application-owned termination. Prove the body
+boundary locally before using it in deployment acceptance. No new gateway crate,
+automatic host administration or general availability guarantee is introduced.
+
 ### Conditional v13 supervision crate
 
 The owner requested transparent learner/exam supervision and parental controls

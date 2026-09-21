@@ -412,6 +412,9 @@ jobs:
           RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
         run: cargo test -p rullst-security --features redis-rate-limit --test redis_rate_limit_live
 
+      - name: Prove two Rullst processes behind the owned Caddy and Redis profile
+        run: python3 .github/check-deployment-proxy.py
+
       - name: Prove Redis queue never claims scheduled jobs early
         env:
           RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
