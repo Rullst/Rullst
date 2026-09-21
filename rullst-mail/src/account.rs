@@ -54,6 +54,11 @@ pub enum AccountEvent {
         link: ActionLink,
         expires_at: chrono::DateTime<chrono::Utc>,
     },
+    /// Browser-bound, single-use sign-in with an absolute expiry stable on retry.
+    EmailLoginAt {
+        link: ActionLink,
+        expires_at: chrono::DateTime<chrono::Utc>,
+    },
     PasswordChanged,
     EmailVerification {
         link: ActionLink,
@@ -90,6 +95,7 @@ impl AccountEvent {
                 "account.password-reset.v1"
             }
             Self::PasswordChanged => "account.password-changed.v1",
+            Self::EmailLoginAt { .. } => "account.email-login.v1",
             Self::EmailVerification { .. } => "account.email-verification.v1",
             Self::EmailVerified => "account.email-verified.v1",
             Self::NewDevice => "account.new-device.v1",
@@ -116,7 +122,9 @@ impl AccountEvent {
                 expires_in_minutes,
             } => Some((link, Some(*expires_in_minutes))),
             Self::ExportReady { link } => Some((link, None)),
-            Self::PasswordResetAt { link, .. } => Some((link, None)),
+            Self::PasswordResetAt { link, .. } | Self::EmailLoginAt { link, .. } => {
+                Some((link, None))
+            }
             _ => None,
         }
     }
@@ -124,6 +132,11 @@ impl AccountEvent {
     fn title(&self, locale: MailLocale) -> &str {
         match self {
             Self::Welcome => locale.select("Welcome!", "Boas-vindas!", "¡Bienvenido!"),
+            Self::EmailLoginAt { .. } => locale.select(
+                "Confirm your sign-in",
+                "Confirme seu acesso",
+                "Confirma tu acceso",
+            ),
             Self::PasswordReset { .. } | Self::PasswordResetAt { .. } => locale.select(
                 "Reset your password",
                 "Redefina sua senha",
@@ -215,7 +228,9 @@ impl AccountMail {
             escape_html(&app),
             escape_html(title)
         );
-        if let AccountEvent::PasswordResetAt { expires_at, .. } = &event {
+        if let AccountEvent::PasswordResetAt { expires_at, .. }
+        | AccountEvent::EmailLoginAt { expires_at, .. } = &event
+        {
             let expiry = format!(
                 "{} {}",
                 locale.select("Expires at", "Expira em", "Caduca el"),
@@ -223,6 +238,15 @@ impl AccountMail {
             );
             text.push_str(&format!("{expiry}\n"));
             html.push_str(&format!("<p>{expiry}</p>"));
+        }
+        if matches!(&event, AccountEvent::EmailLoginAt { .. }) {
+            let instruction = locale.select(
+                "Open this link in the browser where you requested it and confirm sign-in. Do not forward this message.",
+                "Abra este link no navegador onde solicitou o acesso e confirme a entrada. Não encaminhe esta mensagem.",
+                "Abre este enlace en el navegador donde solicitaste el acceso y confirma la entrada. No reenvíes este mensaje.",
+            );
+            text.push_str(&format!("{instruction}\n"));
+            html.push_str(&format!("<p>{}</p>", escape_html(instruction)));
         }
         if let Some((link, expiry)) = event.action() {
             if let Some(minutes) = expiry {

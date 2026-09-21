@@ -7,6 +7,8 @@
 //! secure headers, CSRF and no-store/referrer-policy protections.
 
 mod crypto;
+#[cfg(any(feature = "email-login-sqlite", feature = "email-login-postgres"))]
+pub mod email_login;
 mod outbox;
 mod sessions;
 mod store;

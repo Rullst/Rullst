@@ -192,6 +192,36 @@ append_package_patches "$consent_dir/Cargo.toml"
 python3 "$repository_root/.github/check-privacy-postgres.py" \
   --suite consent --manifest-path "$consent_dir/Cargo.toml"
 
+# Email-login contracts run through only the extracted facade/auth archives.
+login_dir="$work_dir/email-login-consumer"
+mkdir -p "$login_dir/tests/email_login"
+{
+  printf '[package]\nname = "rullst-packaged-email-login"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
+  printf '[features]\ndefault = ["email-login-sqlite", "email-login-postgres"]\nemail-login-sqlite = []\nemail-login-postgres = []\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["auth-email-login-sqlite", "auth-email-login-postgres", "mail"] }\n' "$version"
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "process", "io-std"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "any", "sqlite", "postgres", "tls-rustls-ring"] }\n'
+  printf 'tempfile = "3"\nurl = "2.5.8"\nrand = "0.10.1"\nchrono = "0.4.45"\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
+} > "$login_dir/Cargo.toml"
+cp "$repository_root/.github/fixtures/email-login-mail-facade.rs" "$login_dir/tests/email_login_mail.rs"
+for test in email_login_contract email_login_restart; do
+  cp "$repository_root/rullst-auth/tests/$test.rs" "$login_dir/tests/$test.rs"
+done
+for test in support lifecycle failures locking limits postgres; do
+  cp "$repository_root/rullst-auth/tests/email_login/$test.rs" "$login_dir/tests/email_login/$test.rs"
+done
+python3 - "$login_dir/tests" <<'LOGIN_PY'
+from pathlib import Path
+import sys
+for source in Path(sys.argv[1]).rglob('*.rs'):
+    source.write_text(source.read_text().replace('rullst_auth::', 'rullst::auth::'))
+LOGIN_PY
+append_package_patches "$login_dir/Cargo.toml"
+"$cargo_bin" generate-lockfile --manifest-path "$login_dir/Cargo.toml" --offline
+"$cargo_bin" test --manifest-path "$login_dir/Cargo.toml" --offline --locked
+python3 "$repository_root/.github/check-auth-recovery-postgres.py" \
+  --suite email-login --manifest-path "$login_dir/Cargo.toml"
+
 storage_dir="$work_dir/storage-consumer"
 mkdir -p "$storage_dir/tests"
 {

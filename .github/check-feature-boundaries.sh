@@ -121,6 +121,8 @@ rullst-auth|sqlite
 rullst-auth|passkey-postgres
 rullst-auth|recovery-sqlite
 rullst-auth|recovery-postgres
+rullst-auth|email-login-sqlite
+rullst-auth|email-login-postgres
 
 # Privacy candidate: preserve the database-free base graph.
 rullst-privacy|
@@ -172,6 +174,8 @@ rullst|storage-s3
 rullst|auth
 rullst|auth-sessions-sqlite
 rullst|auth-sessions-postgres
+rullst|auth-email-login-sqlite
+rullst|auth-email-login-postgres
 rullst|mail-smtp
 rullst|mailer
 rullst|mail

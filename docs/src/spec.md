@@ -663,6 +663,54 @@ and cross-store denial, independent-process request verification, restart,
 expiry, password recovery, concurrent revocation and fail-closed storage errors.
 Source/package admission passed in PR #236; final release admission remains separate.
 
+### v13 email-login implementation contract
+
+The owner-selected email-login increment is a local candidate pending hosted
+source/package admission; see [the operational contract](email-login.md). It must stay
+explicitly optional in Auth, with SQLite shared-local and PostgreSQL shared
+state profiles composed with the existing authoritative recovery account/session
+registry. It must not turn a password-reset token into a login credential or
+silently enable email login for every existing account.
+
+The selected journey requires an explicit server-configured application/tenant
+namespace and account opt-in established through existing authenticated account
+proof plus the host's tenant/MFA policy. The application resolves membership and
+ordinary authorization; namespace strings from URLs are never authority. Email
+access alone does not satisfy a stronger authentication requirement.
+
+Issuance generates separate random 256-bit emailed and browser-held secrets,
+binds their digests to the account, namespace and current authentication epoch,
+and queues a minimized encrypted notice atomically. Known, unknown, disabled and
+throttled accounts receive the same public acknowledgement. Storage, account and
+request limits must remain bounded. Tokens expire after a fixed 15-minute
+lifetime and are invalidated by replacement, account-policy changes or a changed
+authentication epoch. Database time observations and post-storage expiry checks
+must prevent rollback or long lock waits from authenticating stale evidence.
+
+GET/HEAD requests may render the landing page but never consume a token or mint
+a session. Redemption requires deliberate CSRF-protected POST, the matching
+browser-held secret and the current configured context. Token consumption and
+creation of the existing revocable opaque session must commit in one database
+transaction. Any uncertain outcome returns no authentication credential.
+The session retains existing limits, inventory, logout and epoch revocation.
+
+Landing and destination URLs are explicit server configuration, with HTTPS in
+production, no request-derived host/redirect and no third-party page content.
+Responses require no-store and no-referrer protections; secret-bearing URLs,
+cookies and messages must not enter logs. A fenced encrypted delivery outbox
+supports bounded retries and stable delivery identifiers, with a dedicated Mail
+security template and deterministic delivery fixtures. An email scanner's GET
+must not invalidate the user's login. These token and prefetch choices draw on
+[OWASP's URL-token guidance](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html#url-tokens)
+and [Supabase's documented prefetch behavior](https://supabase.com/docs/guides/auth/auth-email-templates#email-prefetching).
+
+Required acceptance includes both relational backends, concurrent redemption,
+account/namespace/browser mismatch, account-policy and password-reset races,
+outbox failure/retry, session limits, server restart, a real HTTP/browser journey
+and extracted-package consumers. Production credentials and live inbox delivery
+remain outside the owner's authorized testing scope. The existing reset journey
+keeps its separate behavior and must retain its regression evidence.
+
 ### v12 audit correction invariants
 
 **12.1 account mail:** `rullst-mail::ActionLink` validates an exact

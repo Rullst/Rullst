@@ -33,6 +33,7 @@
 - [Two-Replica Deployment Acceptance](deployment-acceptance.md)
 - [Private S3/R2 Object Storage](private-object-storage.md)
 - [Active Sessions and Remote Logout](session-management.md)
+  - [Email login](email-login.md)
 - [Redis Streams Messaging](redis-messaging.md)
 - [Recoverable Live UI](live-recovery.md)
 - [Distributed Operation Tracing](distributed-tracing.md)

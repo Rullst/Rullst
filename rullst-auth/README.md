@@ -58,6 +58,17 @@ Hosted source/package admission is pending; see the
 [session contract](../docs/src/session-management.md) for retention, deadlines,
 tenant boundaries and automated evidence.
 
+## Email login candidate (v13)
+
+Optional `email-login-sqlite` / `email-login-postgres` adds explicit account-opt-in,
+browser-bound single-use links and an encrypted delivery outbox. A deliberate
+CSRF-protected POST consumes the link and creates an existing revocable opaque
+session in one transaction. GET/HEAD never authenticate. The application still
+owns tenant authorization, MFA policy, secure cookies and sensitive-URL logging.
+SQLite shares one local file; PostgreSQL shares one authoritative writable server.
+See the [email-login contract](../docs/src/email-login.md) for limits, retention,
+Mail composition, process/browser evidence and pending hosted admission.
+
 ## WebAuthn/passkeys
 
 `PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges,

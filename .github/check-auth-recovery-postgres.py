@@ -34,7 +34,11 @@ def url(name):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--coverage", action="store_true")
+    parser.add_argument("--suite", choices=["all", "email-login"], default="all")
+    parser.add_argument("--manifest-path", type=Path)
     args = parser.parse_args()
+    if args.manifest_path and (args.suite != "email-login" or args.coverage):
+        parser.error("archive consumers support only --suite email-login without coverage")
     name = "rullst-auth-recovery-" + uuid.uuid4().hex
     started = False
     try:
@@ -46,29 +50,48 @@ def main():
         ready(name)
         env = dict(os.environ, RULLST_RECOVERY_TEST_POSTGRES_URL=url(name))
         command = ["cargo", "llvm-cov", "--no-report"] if args.coverage else ["cargo", "test"]
-        command += ["--locked", "-p", "rullst-auth", "--no-default-features",
-                    "--features", "recovery-postgres"]
-        subprocess.run(command + ["--test", "recovery_contract", "--", "--ignored", "--exact",
-                                  "postgres_recovery_contract"], env=env, check=True, timeout=1800)
-        subprocess.run(command + ["--lib", "--", "--ignored", "--exact",
-                                  "recovery::sessions::tests::postgres_inventory_and_revocation_are_account_scoped"],
-                       env=env, check=True, timeout=1800)
-        subprocess.run(command + ["--lib", "--", "--ignored", "--exact",
-                                  "recovery::sessions::tests::postgres::contention_and_locked_database_preserve_revocation_and_deadlines"],
-                       env=env, check=True, timeout=1800)
+        command += ["--locked"]
+        if args.manifest_path:
+            command += ["--manifest-path", str(args.manifest_path.resolve()), "--offline"]
+        else:
+            command += ["-p", "rullst-auth", "--no-default-features",
+                        "--features", "recovery-postgres,email-login-postgres"]
+        if args.suite == "all":
+            subprocess.run(command + ["--test", "recovery_contract", "--", "--ignored", "--exact",
+                                      "postgres_recovery_contract"], env=env, check=True, timeout=1800)
+            subprocess.run(command + ["--lib", "--", "--ignored", "--exact",
+                                      "recovery::sessions::tests::postgres_inventory_and_revocation_are_account_scoped"],
+                           env=env, check=True, timeout=1800)
+            subprocess.run(command + ["--lib", "--", "--ignored", "--exact",
+                                      "recovery::sessions::tests::postgres::contention_and_locked_database_preserve_revocation_and_deadlines"],
+                           env=env, check=True, timeout=1800)
+        subprocess.run(command + ["--test", "email_login_contract", "--", "--ignored", "--exact",
+                                  "postgres_login_contract"], env=env, check=True, timeout=1800)
+        if os.environ.get("RULLST_EMAIL_LOGIN_BROWSER_TESTS") == "1":
+            subprocess.run(command + ["--test", "email_login_http", "--", "--ignored", "--exact",
+                                      "postgres_email_login_browser", "--nocapture"], env=env, check=True, timeout=180)
         with tempfile.TemporaryDirectory(prefix="rullst-session-restart-") as temporary:
             receipt = Path(temporary, "receipt.json")
             receipt.touch(mode=0o600)
-            env.update(RULLST_SESSION_RESTART_RECEIPT=str(receipt),
+            login_receipt = Path(temporary, "email-login.json")
+            login_receipt.touch(mode=0o600)
+            env.update(RULLST_EMAIL_LOGIN_RESTART_RECEIPT=str(login_receipt),
+                       RULLST_SESSION_RESTART_RECEIPT=str(receipt),
                        RULLST_SESSION_RESTART_PHASE="exercise")
             journey = command + ["--test", "session_process", "--", "--ignored", "--exact",
                                  "postgres_requests_observe_revocation_across_processes_and_restart"]
-            subprocess.run(journey, env=env, check=True, timeout=1800)
+            login_journey = command + ["--test", "email_login_restart", "--", "--ignored", "--exact",
+                                       "postgres_email_login_process_restart"]
+            if args.suite == "all":
+                subprocess.run(journey, env=env, check=True, timeout=1800)
+            subprocess.run(login_journey, env=env, check=True, timeout=1800)
             subprocess.run(["docker", "restart", "--time", "0", name], check=True, timeout=60)
             ready(name)
             env.update(RULLST_RECOVERY_TEST_POSTGRES_URL=url(name),
                        RULLST_SESSION_RESTART_PHASE="restart")
-            subprocess.run(journey, env=env, check=True, timeout=1800)
+            if args.suite == "all":
+                subprocess.run(journey, env=env, check=True, timeout=1800)
+            subprocess.run(login_journey, env=env, check=True, timeout=1800)
     finally:
         if started:
             subprocess.run(["docker", "stop", "--time", "5", name], check=True, timeout=30)

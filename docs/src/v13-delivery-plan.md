@@ -90,6 +90,14 @@ and carry necessary fixes forward while independent implementation progresses.
 | 1 | Shared PostgreSQL consent in `rullst-privacy` | Preserve purpose/version binding, exact-revision grants, withdrawal precedence, clock checks and durable tombstones across independent application pools. Add explicit initialization, restricted-role operation, bounded waits, concurrency/cancellation/restart tests, opt-in facade features and a documented consumer. Keep database restore/failover obligations explicit. |
 | 2 | Single-use email login links in `rullst-auth`, composed with `rullst-mail` | Complete issuance, delivery and deliberate redemption into the existing authenticated session lifecycle. Require purpose-separated secret tokens, durable atomic consumption, expiry, tenant/account binding, bounded abuse controls, enumeration-resistant responses and safe redirects. Email scanners must not consume credentials merely by following a GET. Test replay races, mail/storage failures, stale accounts and session invalidation with deterministic delivery fixtures. |
 
+The email-login item now has a local Auth/Mail candidate: explicit account opt-in,
+independent browser/email secrets, atomic opaque-session creation, durable
+SQLite/PostgreSQL state, fenced encrypted delivery and deterministic localized
+Mail templates. Local SQLite, native PostgreSQL, Chromium, fresh-process,
+database-restart and extracted-facade Auth/Mail contracts passed. Hosted
+source/package/coverage admission is still required. See the
+[email-login contract](email-login.md). No owner-provider accounts were used.
+
 The owner subsequently approved the five additional items below as the next
 implementation queue after the two priorities, emphasizing security throughout.
 All seven are targeted through September 23; completion still requires the

@@ -47,6 +47,13 @@ default dependencies or select application policies automatically.
 See the [privacy package guide](../../rullst-privacy/README.md) for initialization,
 runtime roles, data minimization, backup/failover obligations and acceptance.
 
+The local email-login candidate adds Auth `email-login-sqlite` and
+`email-login-postgres`, with facade `auth-email-login-sqlite` /
+`auth-email-login-postgres`. These optional paths reuse authoritative recovery
+accounts and opaque sessions; they do not enable email login on accounts or
+replace tenant/MFA policy. Hosted source/package admission remains pending; see
+[the email-login contract](email-login.md).
+
 ## Umbrella crate: `rullst`
 
 The default `rullst` dependency enables `orm` and `queue-sqlite`. Applications

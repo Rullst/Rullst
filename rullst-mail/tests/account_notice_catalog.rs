@@ -179,3 +179,41 @@ fn durable_reset_renders_the_same_absolute_expiry_on_every_retry() {
         );
     }
 }
+
+#[test]
+fn email_login_is_localized_security_mail_with_stable_expiry_and_no_tracking() {
+    let expiry = chrono::DateTime::parse_from_rfc3339("2026-09-21T20:15:00+00:00")
+        .unwrap()
+        .to_utc();
+    for (locale, title, browser) in [
+        (MailLocale::En, "Confirm your sign-in", "browser"),
+        (MailLocale::PtBr, "Confirme seu acesso", "navegador"),
+        (MailLocale::Es, "Confirma tu acceso", "navegador"),
+    ] {
+        let event = AccountEvent::EmailLoginAt {
+            link: link(),
+            expires_at: expiry,
+        };
+        let first =
+            AccountMail::new("member@example.com", "School", locale, event.clone()).unwrap();
+        assert_eq!(first.purpose(), MailPurpose::Security);
+        assert_eq!(first.template_id(), "account.email-login.v1");
+        assert!(!format!("{first:?}").contains(URL));
+        let first = first.into_message();
+        let retry = AccountMail::new("member@example.com", "School", locale, event)
+            .unwrap()
+            .into_message();
+        assert_eq!(first.body_html, retry.body_html);
+        assert_eq!(first.body_text, retry.body_text);
+        assert_eq!(first.subject, format!("School: {title}"));
+        assert!(first.body_text.as_ref().unwrap().contains(browser));
+        assert!(
+            first
+                .body_text
+                .as_ref()
+                .unwrap()
+                .contains("2026-09-21T20:15:00+00:00")
+        );
+        assert!(!first.body_html.as_ref().unwrap().contains("<img"));
+    }
+}
