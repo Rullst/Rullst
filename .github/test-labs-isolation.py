@@ -37,6 +37,7 @@ def delegated_jobs():
     jobs = root / 'jobs'
     jobs.mkdir()
     jobs.joinpath('cgroup.subtree_control').write_text('+memory +pids +cpu')
+    jobs.joinpath('cgroup.max.descendants').write_text('32')
     return jobs
 
 
@@ -112,6 +113,13 @@ def accept(args, directory, groups):
     runner = Path(config['linux']['rootfs']) / 'runner'
     # The actual controller runs from its verified private fixture copy, not a
     # group-writable Cargo target file left by a developer's umask.
+    try:
+        for maximum in ('max', '0', '33'):
+            (groups / 'cgroup.max.descendants').write_text(maximum)
+            refused = subprocess.run([str(runner), 'doctor', str(config_path)], capture_output=True, timeout=40)
+            assert refused.returncode != 0, 'unsupported shared group capacity must be refused'
+    finally:
+        (groups / 'cgroup.max.descendants').write_text('32')
     preflight = subprocess.run([str(runner), 'doctor', str(config_path)], capture_output=True, timeout=40)
     if preflight.returncode:
         allowed = {'labs-preflight:configuration', 'labs-preflight:execution-boundary', 'labs-preflight:launch', 'labs-preflight:cgroup', 'labs-preflight:seccomp', 'labs-preflight:worker-probes', 'labs-preflight:landlock', 'labs-preflight:compiler-domain', 'labs-preflight:namespace-launcher'}
@@ -125,7 +133,7 @@ def accept(args, directory, groups):
     doctor = json.loads(preflight.stdout)
     app = Application(args.app, directory / 'application.json')
     controllers = []
-    checks = ['actual-isolation-preflight', 'compiler-parent-descriptors-denied']
+    checks = ['actual-isolation-preflight', 'compiler-parent-descriptors-denied', 'kernel-group-capacity-required']
     try:
         for name, wall in [('sum', 10), ('stress', 5)]:
             app.success('teacher', {'Register': {'exercise': exercise(name, wall)}})
@@ -225,11 +233,32 @@ def accept(args, directory, groups):
         delay = max(0, lease_until - time.time() + 1)
         assert delay <= 26
         time.sleep(delay)
+        # Exhaust the actual kernel group capacity with empty test-owned
+        # placeholders. Recovery of the authenticated abandoned job must free
+        # its existing group BEFORE a new preflight needs another slot.
+        placeholders = []
+        existing = sum(path.is_dir() for path in groups.iterdir())
+        assert existing == 1
+        for index in range(32 - existing):
+            placeholder = groups / f'capacity-fixture-{index}'
+            placeholder.mkdir()
+            placeholders.append(placeholder)
+        overflow = groups / 'capacity-overflow'
+        try:
+            overflow.mkdir()
+        except OSError:
+            pass  # The exact kernel errno is not the capacity contract.
+        else:
+            overflow.rmdir()
+            raise RuntimeError('kernel descendant capacity was not enforced')
         assert run_runner(runner, config_path).returncode == 0
         lost = app.success('alice', {'Status': {'id': 'worker-loss'}})
         assert lost['state'] == 'Cancelled' and not lost['cleanup_pending'] and lost['result'] is None
+        for placeholder in placeholders:
+            placeholder.rmdir()
         assert not any(path.is_dir() for path in groups.iterdir())
         checks.append('controller-loss-restart-fencing-and-cleanup')
+        checks.append('full-cgroup-capacity-recovery')
 
         # Two independent controllers compete for one real durable job.
         app.success('alice', {'Submit': {'submission': submission('concurrent', source)}})
@@ -276,7 +305,7 @@ def main():
         deadline = time.monotonic() + 5
         while any(path.is_dir() for path in groups.iterdir()) and time.monotonic() < deadline:
             for path in groups.iterdir():
-                if path.is_dir() and path.name.startswith('rullst-labs-') and 'populated 0' in (path / 'cgroup.events').read_text():
+                if path.is_dir() and path.name.startswith(('rullst-labs-', 'capacity-fixture-')) and 'populated 0' in (path / 'cgroup.events').read_text():
                     path.rmdir()
             time.sleep(0.05)
         if any(path.is_dir() for path in groups.iterdir()):

@@ -158,19 +158,15 @@ pub(super) fn validate_root(path: &Path) -> Result<(), Error> {
     {
         return Err(Error::Unsupported);
     }
-    let mut count = 0;
-    for entry in std::fs::read_dir(path).map_err(|_| Error::Unsupported)? {
-        if entry
-            .map_err(|_| Error::Unsupported)?
-            .file_type()
-            .map_err(|_| Error::Unsupported)?
-            .is_dir()
-        {
-            count += 1;
-        }
-        if count > 32 {
-            return Err(Error::Capacity);
-        }
+    // A directory count races concurrent controllers and can block recovery
+    // precisely when capacity is exhausted. Require the kernel's shared bound;
+    // recovering an existing nonce must not require room for another group.
+    let maximum = read_text(path.join("cgroup.max.descendants"), 64)?
+        .trim()
+        .parse::<u32>()
+        .map_err(|_| Error::Unsupported)?;
+    if !(1..=32).contains(&maximum) {
+        return Err(Error::Unsupported);
     }
     Ok(())
 }

@@ -93,6 +93,10 @@ The independently deployed runner accesses only that dedicated job plane and
 runner-owned tools. It must never give submitted code the job database, signing
 keys, application secrets, inherited environment or control sockets. The first
 Linux backend requires delegated cgroups v2, an unprivileged namespace launcher,
+at most 32 job/probe groups enforced by the delegated root's kernel descendant
+limit, and recovery of authenticated expired/cancelled attempts before a new
+preflight needs an empty group. Recovery never releases source or grants a grade.
+New source still requires successful live preflight and a current lease, plus
 restricted mounts/egress, no-new-privileges, syscall restrictions, a fully enforced
 Landlock filesystem policy and bounded
 compiler/interpreter resources. Both processes require observed enforcement. The compiler and interpreter must enter separate

@@ -50,9 +50,6 @@ pub(super) async fn doctor(path: &Path) -> Result<(), Error> {
 pub(super) async fn run_once(path: &Path) -> Result<(), Error> {
     let config = load(path)?;
     config.linux.validate()?;
-    // Never consume queued submissions on an unsupported machine. This real
-    // probe contains no student source, grade key or application credentials.
-    supervisor::preflight(&config.linux, &nonce()?).await?;
     let content_key = read_key(&config.plane.content_key)?;
     let seed = read_key(&config.plane.receipt_seed)?;
     if content_key.as_ref() == seed.as_ref() {
@@ -77,7 +74,19 @@ pub(super) async fn run_once(path: &Path) -> Result<(), Error> {
         SystemClock,
     )
     .await?;
-    let result = process(&config.linux, &store, &signer).await;
+    let result = async {
+        // Recover authenticated old attempts before allocating a probe group.
+        // A full subtree must not prevent its own cleanup. No queued source is
+        // released here and cleanup receipts can never award a passing grade.
+        for cleanup in store.cleanup_candidates(32).await? {
+            reconcile(&config.linux, &store, &signer, &cleanup).await?;
+        }
+        // Never consume queued submissions on an unsupported machine. This
+        // probe contains no source, grade key or application credentials.
+        supervisor::preflight(&config.linux, &nonce()?).await?;
+        process(&config.linux, &store, &signer).await
+    }
+    .await;
     store.close().await;
     result
 }
@@ -86,9 +95,6 @@ async fn process(
     store: &SqliteLabs,
     signer: &ReceiptSigner,
 ) -> Result<(), Error> {
-    for cleanup in store.cleanup_candidates(32).await? {
-        reconcile(config, store, signer, &cleanup).await?;
-    }
     let Some(job) = store.claim_next().await? else {
         println!("{{\"status\":\"idle\"}}");
         return Ok(());

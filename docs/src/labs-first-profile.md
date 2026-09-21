@@ -58,6 +58,11 @@ untrusted input into the worker:
   swap, process and CPU limits plus controller-owned wall-clock deadlines.
   Place the inert child in its bounded group before releasing input; cover
   compiler initialization/translation as well as guest execution.
+  The delegated root must have a kernel-enforced `cgroup.max.descendants`
+  between 1 and 32, including probe groups. Counting directories before creation
+  cannot enforce capacity across concurrent controllers. Reconcile authenticated
+  expired/cancelled attempts before preflight so a full subtree can recover;
+  cleanup never releases source and cannot award a successful grade.
 - Unprivileged user, PID, mount, IPC and network namespaces; capability drop,
   no-new-privileges, no inherited terminal/session or additional user namespaces.
   The launcher is a reviewed, pinned configuration of Bubblewrap, not an

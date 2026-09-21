@@ -21,6 +21,8 @@ only bounded `funcref` tables are accepted and host imports remain prohibited.
 Every attempt requires:
 
 - An owned delegated cgroups v2 subtree with memory, pids and CPU controllers.
+  Its operator-configured `cgroup.max.descendants` must be between 1 and 32;
+  the kernel enforces this shared capacity for job and preflight groups.
   Each job has 1 GiB native memory, no swap, 32 processes, one CPU's bandwidth
   and a controller wall deadline. An inert bootstrap is attached before release.
 - Bubblewrap with distinct user/PID/mount/network/IPC/UTS/cgroup namespaces,
@@ -58,8 +60,9 @@ rullst-labs-runner run-once CONFIG.json
 
 `describe-profile` records tool identities and the dedicated public receipt key;
 it does not validate runtime enforcement. `doctor` runs real probes without
-student source and requires teardown. `run-once` repeats preflight, reconciles
-expired/cancelled work, leases at most one job and performs isolated execution.
+student source and requires teardown. `run-once` first reconciles authenticated
+expired/cancelled work, including when the subtree is full, then repeats
+preflight, leases at most one job and performs isolated execution.
 A supervisor may schedule this bounded command. The internal bootstrap/worker
 commands are implementation details, not application or public network APIs.
 
