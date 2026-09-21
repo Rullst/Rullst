@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: Platform matrix for a diagnostic rerun; use all for release evidence
+        description: Platform matrix; packaged-distribution and release evidence require all
         required: true
         default: all
         type: choice
@@ -79,11 +79,13 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Admit only source-equivalent v13 site pushes
+      - name: Validate diagnostic selectors and admit source-equivalent site pushes
         id: scope
         env:
           GH_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ github.event.before || '' }}
+          RULLST_CI_SHARD: ${{ inputs.shard }}
+          RULLST_CI_PLATFORM: ${{ inputs.platform }}
         run: bash .github/plan-ci-scope.sh
 
   site-validation:
@@ -121,6 +123,7 @@ jobs:
     if: >-
       !cancelled() &&
       (github.event_name != 'workflow_dispatch' || inputs.shard != 'labs-isolation') &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard != 'packaged-distribution' || inputs.platform == 'all') &&
       (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     name: Code Quality & Format
     runs-on: ubuntu-latest

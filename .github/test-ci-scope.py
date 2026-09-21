@@ -93,6 +93,18 @@ else:
         self.assertEqual(output, "runtime_required=true")
         self.assertFalse((self.root / "api-called").exists())
 
+    def test_package_diagnostic_rejects_selectors_that_skip_the_archive_job(self):
+        for platform in ("ubuntu-latest", "windows-latest", "macos-latest", "", "all"):
+            result, output = self.execute(GITHUB_EVENT_NAME="workflow_dispatch",
+                                          RULLST_CI_SHARD="packaged-distribution",
+                                          RULLST_CI_PLATFORM=platform)
+            with self.subTest(platform=platform):
+                self.assertEqual(result.returncode, 0 if platform == "all" else 1)
+                self.assertTrue(all(line == "runtime_required=true" for line in output.splitlines()))
+                self.assertFalse((self.root / "api-called").exists())
+                if platform != "all":
+                    self.assertIn("require platform=all", result.stderr)
+
     def test_api_failure_retains_full_ci(self):
         result, output = self.execute(RULLST_SCOPE_API_FAIL="1")
         self.assertEqual(result.returncode, 0)
@@ -147,6 +159,9 @@ class WorkflowGuardTests(unittest.TestCase):
                          "python3 .github/validate-site.py", "node .github/site-browser-smoke.mjs"):
             self.assertIn(required, site)
         self.assertIn("github.event_name != 'push'", jobs["quality-scorecard"])
+        self.assertIn("RULLST_CI_SHARD: ${{ inputs.shard }}", jobs["scope"])
+        self.assertIn("RULLST_CI_PLATFORM: ${{ inputs.platform }}", jobs["scope"])
+        self.assertIn("inputs.shard != 'packaged-distribution' || inputs.platform == 'all'", jobs["check"])
 
 
 if __name__ == "__main__":

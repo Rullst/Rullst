@@ -13,6 +13,13 @@ finish() {
 }
 trap finish EXIT
 
+if [[ "${GITHUB_EVENT_NAME:-}" == workflow_dispatch &&
+      "${RULLST_CI_SHARD:-}" == packaged-distribution &&
+      "${RULLST_CI_PLATFORM:-}" != all ]]; then
+  echo 'Packaged-distribution diagnostics require platform=all; otherwise the archive job would be skipped.' >&2
+  exit 1
+fi
+
 if [[ "${GITHUB_EVENT_NAME:-}" != push || "${GITHUB_REF:-}" != refs/heads/v13 ||
       "${GITHUB_REPOSITORY:-}" != Rullst/Rullst ]]; then
   exit 0
