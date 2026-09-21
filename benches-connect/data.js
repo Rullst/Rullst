@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789874972239,
+  "lastUpdate": 1789985441848,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -7039,6 +7039,34 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 293,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "@venelouis",
+            "username": "venelouis",
+            "email": "37526748+venelouis@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "184bc1f7456b4a8761fa622dfd1ae66597237706",
+          "message": "fix(ci): close v12.1 publication and restore mutation verification\n\nRecord immutable v12.1 publication, correct mutation inventory discovery and repair the SemVer baseline resolver.",
+          "timestamp": "2026-09-20T03:04:33Z",
+          "url": "https://github.com/Rullst/Rullst/commit/184bc1f7456b4a8761fa622dfd1ae66597237706"
+        },
+        "date": 1789985441071,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 379,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
