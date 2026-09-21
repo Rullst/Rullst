@@ -514,10 +514,10 @@ column is a requirement, not a description of code already present.
 
 ## Coverage of the wider roadmap
 
-The master roadmap contains 41 umbrella milestones, including the separately
-governed M31 programme. Its 40 framework rows currently label five bounded
-implementations, 25 partial foundations and ten unimplemented ambitions.
-These unequal units cannot tell us whether this release adds "10% of all future
+The [master roadmap](../../ROADMAP.md#executive-milestone-tracker) owns the current
+status of the framework milestones and the separately governed M31 programme.
+Its milestones differ substantially in scope and remaining effort; counting
+their status labels cannot tell us whether this release adds "10% of all future
 work". Nor does finishing one increment close its entire parent milestone.
 The wider v13/v13+ programme remains available for subsequent minor releases.
 
