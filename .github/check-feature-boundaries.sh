@@ -95,8 +95,10 @@ rullst-core|queue-sqlite
 rullst-core|queue-redis
 rullst-core|cache-redis
 rullst-core|offline-sync
+rullst-core|storage-s3
 rullst-core|telemetry
 rullst-messaging|sqlite
+rullst-messaging|redis-streams
 rullst-messaging|orm-outbox
 rullst-connect|axum
 rullst-connect|actix
@@ -165,7 +167,10 @@ rullst|queue-redis
 rullst|cache-redis
 rullst|redis
 rullst|offline-sync
+rullst|storage-s3
 rullst|auth
+rullst|auth-sessions-sqlite
+rullst|auth-sessions-postgres
 rullst|mail-smtp
 rullst|mailer
 rullst|mail
@@ -173,6 +178,7 @@ rullst|mail-aws-ses
 rullst|mail-sqlite
 rullst|messaging
 rullst|messaging-sqlite
+rullst|messaging-redis
 rullst|messaging-orm-outbox
 rullst|privacy
 rullst|privacy-age

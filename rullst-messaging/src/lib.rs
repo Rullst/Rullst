@@ -2,9 +2,9 @@
 //!
 //! This crate is deliberately separate from [`rullst-connect`](https://docs.rs/rullst-connect):
 //! identity federation and event brokers have different security, availability, and delivery
-//! semantics. The initial implementation provides a deterministic in-memory broker and a shared
-//! conformance boundary for future remote adapters. It does not claim Kafka, RabbitMQ, NATS,
-//! Redis Streams, SQS/SNS, Pub/Sub, or Pulsar interoperability yet.
+//! semantics. The crate provides deterministic memory, optional durable SQLite and an opt-in
+//! standalone Redis Streams profile with Rullst-owned fenced delivery indexes. Other remote
+//! brokers remain roadmap work; no cross-system exactly-once effects are claimed.
 
 mod admin;
 mod clock;
@@ -13,6 +13,8 @@ mod memory;
 mod model;
 #[cfg(feature = "orm-outbox")]
 mod outbox_relay;
+#[cfg(feature = "redis-streams")]
+mod redis_streams;
 #[cfg(feature = "sqlite")]
 mod sqlite;
 mod trace;
@@ -31,6 +33,8 @@ pub use model::{
 };
 #[cfg(feature = "orm-outbox")]
 pub use outbox_relay::{OrmOutboxRelay, OrmOutboxRelayError, OutboxRelayReceipt};
+#[cfg(feature = "redis-streams")]
+pub use redis_streams::{RedisBroker, RedisBrokerConfig};
 #[cfg(feature = "sqlite")]
 pub use sqlite::{MessagingKeyring, MessagingStorageKey, SqliteBroker};
 pub use trace::TraceContext;

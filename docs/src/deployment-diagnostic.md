@@ -3,7 +3,11 @@
 The v13 `deploy:doctor` candidate inspects a bounded local configuration snapshot
 without starting the application, invoking other programs, contacting a provider
 or changing files. Its focused CLI tests include a real generated SaaS profile.
-Full workspace, installed-package and hosted admission remain pending.
+Its source merged in [PR #225](https://github.com/Rullst/Rullst/pull/225) after
+hosted checks. The initially skipped archive gate subsequently passed in
+[exact-commit validation](https://github.com/Rullst/Rullst/actions/runs/35564762822).
+That retrospective repair and the remaining final release campaign are recorded
+in the [delivery plan](v13-delivery-plan.md).
 
 ```bash
 # Explicit file snapshot, independent of this terminal's environment:

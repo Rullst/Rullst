@@ -185,8 +185,10 @@ start/latest-session paths catches all six executable mutations; three attempted
 `Default`. The earlier scoped-authority run caught twenty mutations with one
 non-compiling replacement. These bounded samples are not a whole-crate mutation
 score. The baseline subsequently passed its hosted checks and archive rehearsal and
-was merged in PR #222. New observation-extension evidence must be collected
-separately; that earlier pass does not validate these new APIs.
+was merged in PR #222. The observation extension subsequently passed its own
+hosted checks in PR #226 and retrospective exact-commit archive validation;
+the [delivery plan](v13-delivery-plan.md) records the original skipped gate and
+its repair. Neither source increment replaces the final release campaign.
 
 The distribution diagnostic audits and extracts the unpublished supervision
 archive explicitly and feeds that extracted source to the installed CLI. Normal

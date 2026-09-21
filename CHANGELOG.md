@@ -14,13 +14,79 @@ A prepared version section does not establish that its tag or crates exist.
 - Make age verification and replay claims asynchronous, with trusted server-clock
   checks before and after storage. Deny expiry, rollback, cancellation and
   uncertain storage outcomes; production still rejects mocks and local memory.
-- Add optional shared-local SQLite replay state with serialized claim/quota/expiry
-  transactions, persisted configuration and clock metadata, and nonce digests.
-  Retain no photos or birth dates. Live providers, multi-host storage and global
-  privacy compliance remain outside this foundation; the crate stays unpublished.
+- Add optional shared-local SQLite and authoritative PostgreSQL replay state
+  with serialized claim/quota/expiry transactions, persisted configuration and
+  clock metadata, and nonce digests. Retain no photos or birth dates. Live age
+  providers, verified guardianship and automatic global privacy compliance
+  remain outside the unpublished package; see the v13 source inventory below.
+
+### Private object storage candidate
+
+- Prepare an opt-in `storage-s3` Core/facade adapter for private S3/R2 files,
+  explicit credentials, bounded transfers, tenant namespaces and signed GET
+  grants. Add deterministic offline mode, protocol failure tests, a disposable
+  S3 service with restart/signature checks and an extracted-package consumer.
+  Hosted source/release admission and real provider-account interoperability
+  remain pending; see the [storage contract](docs/src/private-object-storage.md).
+
+### Remote messaging candidate
+
+- Add optional `redis-streams` Messaging and facade `messaging-redis` profiles:
+  canonical Redis log, Rullst-owned bounded groups and expiring ACK capabilities,
+  exact publication replay, retry/DLQ, explicit retention and server-time fencing.
+  Validate TLS, partial-write quarantine, timeout replay, an ORM outbox and actual
+  AOF restart against a disposable service. Hosted source/package admission is
+  pending; [the contract](docs/src/redis-messaging.md) states deployment limits.
+
+### Active-session management candidate
+
+- Extend opt-in Auth recovery stores with account-owned session inventory,
+  selective/all-other logout, bounded explicit labels, additive metadata and
+  expired-session retention. Preserve the current token while fencing stale
+  authentication proofs during logout of siblings. Add session-only facade
+  features, independent-process HTTP checks, PostgreSQL restart/deadline tests
+  and an extracted-package consumer. Hosted source/release admission remains
+  pending; see the [session contract](docs/src/session-management.md).
+
+### Recoverable Live UI candidate
+
+- Add explicit Core/facade `live::recovery` with mandatory authorization,
+  complete snapshots, transactional revision conflicts and bounded WebSocket
+  admission, operations and lifetimes. Its same-origin browser module recovers
+  state without replaying uncertain mutations. Actual protocol and Chromium
+  tests include revocation, disconnect and process restart. Legacy components
+  and scaffolds remain separate; hosted source/package admission is pending.
+  See [the adoption and limits guide](docs/src/live-recovery.md).
+
+### Distributed tracing candidate
+
+- Add opt-in Core/facade `telemetry::distributed` with explicit parent trust,
+  operation-label approval, minimized OTLP protobuf export, bounded transport
+  and an owned flush/shutdown lifecycle. Validate separate Messaging processes
+  against a standard TLS collector, including ancestry, failures and queue
+  pressure. Repair legacy initialization's async-client/threaded-processor
+  mismatch and OTLP/HTTP endpoint handling. Hosted source/package admission
+  remains pending; see [the profile and migration](docs/src/distributed-tracing.md).
+
+### Transactional partial-update candidate
+
+- Merge selected values into the current tenant-bound row within a savepoint,
+  reuse the full save lifecycle and expose explicit `save_with_tx`.
+- Preserve caller state on rejected operations and include audit/post-commit
+  effects. Full-row SQL, object refresh and audit-context migration are documented
+  in [the candidate guide](docs/src/transactional-partial-updates.md).
+- Local native database, cancellation, cache/Scout and extracted-consumer
+  checks passed; full hosted admission remains pending.
 
 ### CI tooling
 
+- Isolate partial-update integration tests in separate processes with checked
+  SQLite initialization. Verify Live's oversized-frame rejection across TCP
+  resets while retaining domain-state and connection-admission assertions.
+- Reject manual archive selectors that would skip the requested package gate.
+  Prepare the complete locked dependency graph before offline archive consumers
+  inspect cross-platform dependencies. Let cancelled observational scorecards
+  release their workflow concurrency slot while retaining reports after failures.
 - Prepare the v13 release line with explicit major/branch/tag/package binding,
   protected-head admission, automatic checks on both maintained branches and
   fuzz provenance confined to the candidate's release line. Keep the protected
@@ -81,6 +147,8 @@ This section describes the v13 source train. It does not announce a crates.io
 publication or admit a stable v13 release. See the
 [delivery plan](docs/src/v13-delivery-plan.md) and
 [adoption guide](docs/src/migration-v13.md) for current evidence and boundaries.
+The inventory includes subsequent source increments through September 21;
+the development version remains unpublished.
 
 - Set the existing sixteen release packages and internal requirements to the
   explicit development version. Migration catalog v2 admits reviewed 12.1→13
@@ -97,8 +165,31 @@ publication or admit a stable v13 release. See the
   authenticated challenge transport, SQLite/PostgreSQL replay state, optional
   versioned consent/withdrawal, and opt-in generated SaaS/LMS profile journeys.
   No facial engine, live age provider or automatic global legal-compliance claim.
-- Track transparent learner/exam/parental supervision as the first conditional
-  extension. This checkpoint does not introduce a supervision crate.
+- Add the unpublished `rullst-supervision` candidate with explicit collection
+  acknowledgement, scoped/revocable authority, shared-local SQLite state and
+  an opt-in generated LMS journey. Typed browser/capture observations and bounded
+  camera-presence/audio-activity adapter contracts support human review; no media
+  model, device-wide surveillance or automatic misconduct verdict is included.
+- Add optional PostgreSQL passkey ceremonies with tenant/account/session/RP
+  binding, single use, bounded durable state, database/process recovery and
+  Chromium virtual-authenticator evidence. Credential ownership, revocation and
+  counter updates remain explicit application responsibilities.
+- Retain HTTP requests through response-body completion during graceful drain.
+  Exercise readiness, draining, shared budgets and browser/proxy boundaries with
+  two real application processes behind Caddy and Redis. Add the bounded offline
+  `deploy:doctor` and reject the public example application-key placeholder.
+  These controls do not certify or automatically modify a cloud/VPS deployment.
+- Add the unpublished `rullst-media` candidate for Bunny Stream asset lifecycle,
+  resumable upload, processing reconciliation, private playback and deletion,
+  with SQLite recovery and authenticated HTTP/browser consumers. Real provider
+  and CDN interoperability remain unvalidated; existing LMS fields do not enable
+  this opt-in service automatically.
+- Add unpublished `rullst-labs` orchestration and a separate experimental Linux
+  Rust/Wasmi runner for bounded pure-function exercises. Encrypted durable jobs,
+  signed receipts, exact grading, cancellation, recovery and retention have
+  automated execution/consumer evidence. The application never executes learner
+  code. Independent isolation review and final release admission remain pending;
+  neither a general Rust/Rullst hosting service nor production readiness is claimed.
 - Gate generated SaaS billing reports on current reconciled subscription state,
   authenticated ownership and explicit paid plans. Reject mock, stale, expired,
   revoked or mismatched state; retain application-owned billing reconciliation.

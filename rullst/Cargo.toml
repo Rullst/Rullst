@@ -33,6 +33,8 @@ auth = ["dep:rullst-auth"]
 auth-jwt = ["auth", "rullst-auth/jwt"]
 auth-sqlite = ["auth-jwt", "rullst-auth/sqlite"]
 auth-passkey-postgres = ["auth", "rullst-auth/passkey-postgres"]
+auth-sessions-sqlite = ["auth", "rullst-auth/recovery-sqlite"]
+auth-sessions-postgres = ["auth", "rullst-auth/recovery-postgres"]
 account-mail-sqlite = ["auth", "mail", "rullst-auth/recovery-sqlite"]
 account-mail-postgres = ["auth", "mail", "rullst-auth/recovery-postgres"]
 mail = ["dep:rullst-mail"]
@@ -42,10 +44,12 @@ redis = ["queue-redis", "cache-redis", "orm-redis"]
 queue-redis = ["dep:redis", "rullst-core/queue-redis"]
 cache-redis = ["dep:redis", "rullst-core/cache-redis"]
 offline-sync = ["rullst-core/offline-sync"]
+storage-s3 = ["rullst-core/storage-s3"]
 mail-smtp = ["mail", "rullst-mail/mail-smtp"]
 mail-aws-ses = ["mail", "rullst-mail/aws-ses"]
 messaging = ["dep:rullst-messaging"]
 messaging-sqlite = ["messaging", "rullst-messaging/sqlite"]
+messaging-redis = ["messaging", "rullst-messaging/redis-streams"]
 messaging-orm-outbox = ["messaging", "orm", "rullst-messaging/orm-outbox"]
 privacy = ["dep:rullst-privacy"]
 privacy-age = ["privacy", "rullst-privacy/age-assurance"]
@@ -131,7 +135,7 @@ getrandom = { version = "0.4.2", features = ["wasm_js"] }
 
 [dev-dependencies]
 tempfile = "3"
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "process", "io-util"] }
 rullst-connect = { workspace = true, features = ["axum-session"] }
 tower-sessions = "0.15"
 futures-util = "0.3.32"

@@ -20,6 +20,7 @@
         "ORM strict-postgres",
         "ORM strict-sqlite",
         "Packaged distribution and installed CLI",
+        "Private S3 storage contracts",
         "Native CLI distribution / Native CLI (x86_64-unknown-linux-gnu)",
         "Native CLI distribution / Native CLI (x86_64-pc-windows-msvc)",
         "Native CLI distribution / Native CLI (aarch64-apple-darwin)",

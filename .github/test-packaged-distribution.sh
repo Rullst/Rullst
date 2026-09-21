@@ -164,6 +164,73 @@ append_package_patches "$privacy_dir/Cargo.toml"
 "$cargo_bin" test --manifest-path "$privacy_dir/Cargo.toml" --offline \
   --test privacy_facade
 
+storage_dir="$work_dir/storage-consumer"
+mkdir -p "$storage_dir/tests"
+{
+  printf '[package]\nname = "rullst-packaged-storage"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["storage-s3", "security"] }\n' "$version"
+} > "$storage_dir/Cargo.toml"
+cp "$repository_root/.github/fixtures/storage-facade.rs" "$storage_dir/tests/storage_facade.rs"
+append_package_patches "$storage_dir/Cargo.toml"
+"$cargo_bin" test --manifest-path "$storage_dir/Cargo.toml" --offline --test storage_facade
+
+session_dir="$work_dir/session-consumer"
+mkdir -p "$session_dir/tests"
+{
+  printf '[package]\nname = "rullst-packaged-sessions"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["auth-sessions-sqlite"] }\n' "$version"
+  printf '\n[dev-dependencies]\ntempfile = "3"\n'
+} > "$session_dir/Cargo.toml"
+cp "$repository_root/.github/fixtures/session-facade.rs" "$session_dir/tests/session_facade.rs"
+append_package_patches "$session_dir/Cargo.toml"
+"$cargo_bin" test --manifest-path "$session_dir/Cargo.toml" --offline --test session_facade
+
+messaging_redis_dir="$work_dir/messaging-redis-consumer"
+mkdir -p "$messaging_redis_dir/tests"
+{
+  printf '[package]\nname = "rullst-packaged-messaging-redis"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["messaging-redis"] }\n' "$version"
+} > "$messaging_redis_dir/Cargo.toml"
+cp "$repository_root/.github/fixtures/messaging-redis-facade.rs" "$messaging_redis_dir/tests/messaging_redis_facade.rs"
+append_package_patches "$messaging_redis_dir/Cargo.toml"
+"$cargo_bin" test --manifest-path "$messaging_redis_dir/Cargo.toml" --offline --test messaging_redis_facade
+
+live_dir="$work_dir/live-recovery-consumer"
+mkdir -p "$live_dir/tests"
+{
+  printf '[package]\nname = "rullst-packaged-live-recovery"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false }\n' "$version"
+} > "$live_dir/Cargo.toml"
+cp "$repository_root/.github/fixtures/live-recovery-facade.rs" "$live_dir/tests/live_recovery_facade.rs"
+append_package_patches "$live_dir/Cargo.toml"
+"$cargo_bin" test --manifest-path "$live_dir/Cargo.toml" --offline --test live_recovery_facade
+
+tracing_dir="$work_dir/tracing-consumer"
+mkdir -p "$tracing_dir/tests"
+{
+  printf '[package]\nname = "rullst-packaged-tracing"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["telemetry"] }\n' "$version"
+  printf 'tracing = "0.1.44"\ntracing-subscriber = "0.3"\n'
+} > "$tracing_dir/Cargo.toml"
+cp "$repository_root/.github/fixtures/distributed-tracing-facade.rs" "$tracing_dir/tests/telemetry_facade.rs"
+append_package_patches "$tracing_dir/Cargo.toml"
+"$cargo_bin" test --manifest-path "$tracing_dir/Cargo.toml" --offline --test telemetry_facade
+
+partial_dir="$work_dir/partial-update-consumer"
+mkdir -p "$partial_dir/tests"
+{
+  printf '[package]\nname = "rullst-packaged-partial-update"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["strict-sqlite"] }\n' "$version"
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }\nsqlx = { version = "0.9.0", default-features = false }\ntracing = "0.1.44"\n'
+  cat <<'TOML'
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'] }
+TOML
+} > "$partial_dir/Cargo.toml"
+cp "$repository_root/.github/fixtures/partial-update-facade.rs" "$partial_dir/tests/partial_update.rs"
+append_package_patches "$partial_dir/Cargo.toml"
+"$cargo_bin" test --manifest-path "$partial_dir/Cargo.toml" --offline --test partial_update
+
 cli_package="$packages_dir/cargo-rullst-${version}"
 if [ ! -f "$cli_package/Cargo.lock" ]; then
   echo "The packaged cargo-rullst archive must include Cargo.lock."

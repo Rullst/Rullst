@@ -11,6 +11,16 @@
   forwarding, and message-free typed failures. Identity and domain policy stay
   server-owned.
 - **Runtime Telemetry:** Exposes process/runtime snapshots and tracing-span collection for consumers such as Rullst Studio.
+- **Distributed Tracing Candidate (v13):** Optional `telemetry::distributed`
+  adds explicit parent trust, approved operation labels, minimized OTLP export
+  and an owned lifecycle. Independent Messaging processes and a standard TLS
+  collector passed local acceptance; hosted source/package admission is pending.
+  See [the profile](../docs/src/distributed-tracing.md).
+- **Recoverable Live UI Candidate (v13):** Explicitly mounted typed views add
+  current authorization, complete snapshots, transactional revision conflicts
+  and bounded WebSocket recovery. The included browser module never replays
+  uncertain mutations. Local protocol/Chromium restart acceptance passed;
+  hosted source/package admission is pending. See [adoption and limits](../docs/src/live-recovery.md).
 - **Lifecycle-aware Readiness:** An opt-in process lifecycle gates new requests
   during startup, dependency unavailability, and graceful drain. It accepts at
   most 32 immutable component labels and exposes counts—not labels or errors—on
@@ -34,6 +44,12 @@
   requests, times them out, and detects stalled cursors. Applications still own
   Keychain/Keystore access, atomic platform persistence, authenticated HTTP,
   retry, and background scheduling.
+- **Private Object Storage Candidate (v13):** The optional `storage-s3` feature
+  adds bounded S3/R2 upload, download, metadata, deletion and short-lived signed
+  GET URLs to the existing storage and tenant APIs. Configuration is explicit;
+  offline credentials select a bounded deterministic store. Source/package
+  admission is pending, and owner-account interoperability is unvalidated.
+  See the [candidate contract](../docs/src/private-object-storage.md).
 
 ## 🚀 Usage
 

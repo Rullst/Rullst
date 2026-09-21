@@ -31,6 +31,11 @@
 - [Exam observation integration](supervision-observations.md)
 - [Shared Passkey Ceremony Contract](shared-passkey-ceremonies.md)
 - [Two-Replica Deployment Acceptance](deployment-acceptance.md)
+- [Private S3/R2 Object Storage](private-object-storage.md)
+- [Active Sessions and Remote Logout](session-management.md)
+- [Redis Streams Messaging](redis-messaging.md)
+- [Recoverable Live UI](live-recovery.md)
+- [Distributed Operation Tracing](distributed-tracing.md)
 - [Verus Verification Pilot for v13](verus-roadmap.md)
 - [SaaS Findings: v12.1 & v13 Triage](saas-v12-1-v13-triage.md)
 - [⚡ Redis Architecture, Caching & Distributed Queues](redis-guide.md)
@@ -138,6 +143,7 @@
 
 # 📦 Crates Ecosystem
 - [rullst-orm](crates/orm.md)
+  - [Transactional partial updates](transactional-partial-updates.md)
 - [rullst-connect](crates/connect.md)
 - [rullst-messaging](crates/messaging.md)
 - [rullst-mail](crates/mail.md)

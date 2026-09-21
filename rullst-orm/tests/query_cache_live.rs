@@ -186,6 +186,48 @@ async fn redis_cache_is_live_bounded_and_never_replaces_transaction_state() {
         .expect("cached fixture should exist");
     assert_eq!(still_cached.name, "third");
 
+    let mut partial = still_cached;
+    partial
+        .update_partial()
+        .name("partial fourth".into())
+        .save()
+        .await
+        .unwrap();
+    assert!(!redis.exists::<_, bool>(&cache_key).await.unwrap());
+    let refreshed = QueryCacheLiveRecord::query()
+        .where_id(1)
+        .limit(1)
+        .remember(30)
+        .first()
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(refreshed.name, "partial fourth");
+    let partial_rollback = Orm::transaction(|_| {
+        Box::pin(async {
+            let mut row = QueryCacheLiveRecord::find(1).await?.unwrap();
+            row.update_partial()
+                .name("partial rolled back".into())
+                .save()
+                .await?;
+            Err::<(), rullst_orm::Error>(rullst_orm::Error::Validation(
+                "rollback partial cache update".into(),
+            ))
+        })
+    })
+    .await;
+    assert!(partial_rollback.is_err());
+    assert!(redis.exists::<_, bool>(&cache_key).await.unwrap());
+    let preserved = QueryCacheLiveRecord::query()
+        .where_id(1)
+        .limit(1)
+        .remember(30)
+        .first()
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(preserved.name, "partial fourth");
+
     let _: usize = redis
         .del(&cache_key)
         .await

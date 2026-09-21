@@ -1,6 +1,6 @@
 use super::{
-    RecoveryError, RecoveryNotice, RecoveryNoticeKind, RecoverySecrets, SecretToken,
-    normalized_email, timestamp, valid_subject,
+    RecoveryError, RecoveryNotice, RecoveryNoticeKind, RecoverySecrets, normalized_email,
+    timestamp, valid_subject,
 };
 use sqlx::{Any, AnyPool, Row, Transaction};
 use std::sync::Arc;
@@ -12,14 +12,14 @@ use zeroize::Zeroizing;
 pub struct SqlRecoveryStore {
     pub(super) pool: AnyPool,
     pub(super) keys: Arc<RecoverySecrets>,
-    instance: Arc<()>,
+    pub(super) instance: Arc<()>,
 }
 
 /// Proof of successful password verification, bound to the current session version.
 pub struct AuthenticatedRecoveryAccount {
-    subject: String,
-    version: i64,
-    instance: Arc<()>,
+    pub(super) subject: String,
+    pub(super) version: i64,
+    pub(super) instance: Arc<()>,
 }
 
 impl std::fmt::Debug for AuthenticatedRecoveryAccount {
@@ -91,6 +91,8 @@ impl SqlRecoveryStore {
             "CREATE TABLE IF NOT EXISTS rullst_recovery_outbox (id TEXT PRIMARY KEY, subject TEXT NOT NULL, kind TEXT NOT NULL, ciphertext TEXT NOT NULL, expires_at BIGINT NOT NULL, status TEXT NOT NULL, attempts BIGINT NOT NULL, due_at BIGINT NOT NULL, lease TEXT NOT NULL, lease_until BIGINT NOT NULL)",
             "CREATE INDEX IF NOT EXISTS rullst_recovery_outbox_due ON rullst_recovery_outbox(status, due_at)",
             "CREATE INDEX IF NOT EXISTS rullst_recovery_sessions_subject ON rullst_recovery_sessions(subject)",
+            "CREATE INDEX IF NOT EXISTS rullst_recovery_sessions_expiry ON rullst_recovery_sessions(expires_at, token_digest)",
+            "CREATE TABLE IF NOT EXISTS rullst_recovery_session_details (token_digest TEXT PRIMARY KEY REFERENCES rullst_recovery_sessions(token_digest) ON DELETE CASCADE, created_at BIGINT NOT NULL, label TEXT NOT NULL)",
         ] {
             sqlx::query(ddl).execute(&mut *tx).await?;
         }
@@ -198,76 +200,6 @@ impl SqlRecoveryStore {
             version: row.try_get("session_version")?,
             instance: self.instance.clone(),
         }))
-    }
-
-    /// Mints an opaque session after password authentication. Set it only in a
-    /// Secure, HttpOnly, SameSite cookie; verify it on every authenticated request.
-    pub async fn create_session(
-        &self,
-        account: &AuthenticatedRecoveryAccount,
-        now: u64,
-        lifetime_seconds: u32,
-    ) -> Result<SecretToken, RecoveryError> {
-        if !Arc::ptr_eq(&account.instance, &self.instance) {
-            return Err(RecoveryError::InvalidAction);
-        }
-        if lifetime_seconds == 0 || lifetime_seconds > 30 * 86400 {
-            return Err(RecoveryError::InvalidInput);
-        }
-        let now = timestamp(now)?;
-        let token = SecretToken::generate()?;
-        let mut tx = self.pool.begin().await?;
-        self.lock_writes(&mut tx).await?;
-        let current: Option<i64> = sqlx::query_scalar(
-            "SELECT session_version FROM rullst_recovery_accounts WHERE subject = $1",
-        )
-        .bind(&account.subject)
-        .fetch_optional(&mut *tx)
-        .await?;
-        if current != Some(account.version) {
-            return Err(RecoveryError::InvalidAction);
-        }
-        sqlx::query("DELETE FROM rullst_recovery_sessions WHERE subject = $1 AND expires_at <= $2")
-            .bind(&account.subject)
-            .bind(now)
-            .execute(&mut *tx)
-            .await?;
-        let count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM rullst_recovery_sessions WHERE subject = $1")
-                .bind(&account.subject)
-                .fetch_one(&mut *tx)
-                .await?;
-        if count >= 20 {
-            return Err(RecoveryError::Limited);
-        }
-        sqlx::query("INSERT INTO rullst_recovery_sessions (token_digest, subject, session_version, expires_at) VALUES ($1, $2, $3, $4)")
-            .bind(self.keys.digest("session", token.expose())).bind(&account.subject).bind(account.version).bind(now + i64::from(lifetime_seconds))
-            .execute(&mut *tx).await?;
-        tx.commit().await?;
-        Ok(token)
-    }
-
-    /// Reads authoritative revocation state; storage errors never authenticate.
-    pub async fn verify_session(
-        &self,
-        token: &str,
-        now: u64,
-    ) -> Result<Option<String>, RecoveryError> {
-        if token.len() != 43 {
-            return Ok(None);
-        }
-        let subject = sqlx::query_scalar("SELECT s.subject FROM rullst_recovery_sessions s JOIN rullst_recovery_accounts a ON a.subject = s.subject AND a.session_version = s.session_version WHERE s.token_digest = $1 AND s.expires_at > $2")
-            .bind(self.keys.digest("session", token)).bind(timestamp(now)?).fetch_optional(&self.pool).await?;
-        Ok(subject)
-    }
-
-    /// Logout revokes this opaque session immediately across all users of the store.
-    pub async fn revoke_session(&self, token: &str) -> Result<(), RecoveryError> {
-        sqlx::query("DELETE FROM rullst_recovery_sessions WHERE token_digest = $1")
-            .bind(self.keys.digest("session", token))
-            .execute(&self.pool)
-            .await?;
-        Ok(())
     }
 
     pub(super) async fn lock_writes(

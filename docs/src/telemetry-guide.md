@@ -11,6 +11,11 @@ The optional `telemetry` Cargo feature also installs an OpenTelemetry tracing
 layer. None of these components proves a performance target or replaces a
 durable production observability backend.
 
+The unpublished v13 candidate adds an explicit, minimized cross-process profile
+and repairs legacy OTLP transport initialization. See
+[distributed operation tracing](distributed-tracing.md) for parent trust,
+approved labels, owned shutdown, actual collector tests and admission status.
+
 ## Process and Tokio observations
 
 `RadarSnapshot::collect_async()` measures one scheduler yield and samples the
@@ -81,15 +86,17 @@ or a parent/child tracing model.
 
 ## OpenTelemetry export
 
-Enable the feature and point it at an OTLP/HTTP collector:
+The following legacy initializer example targets the unpublished v13 repair.
+Prefer the owned profile linked above when you need explicit metadata policy
+and flush/shutdown. Enable the feature and use reviewed candidate source:
 
 ```toml
 [dependencies]
-rullst-core = { version = "12.1.0", features = ["telemetry"] }
+rullst-core = { version = "13.0.0-alpha.1", features = ["telemetry"] }
 ```
 
 ```env
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://127.0.0.1:4318/v1/traces
 RUST_LOG=info
 ```
 
@@ -106,6 +113,8 @@ rullst_core::telemetry::init_telemetry()?;
 to fail closed on telemetry configuration should initialize it explicitly and
 handle the returned error before starting the server. The current exporter uses
 OTLP over HTTP and the service resource name `rullst-app`.
+The generic `OTEL_EXPORTER_OTLP_ENDPOINT` instead denotes a base URL to which
+the initializer appends `/v1/traces`; do not put a gRPC endpoint in either value.
 
 `RedactPersonalDataLayer` detects a small list of sensitive *field names* and
 emits a warning. It cannot rewrite a tracing event already observed by another

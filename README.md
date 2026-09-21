@@ -44,6 +44,14 @@ The development manifests and CLI now identify `13.0.0-alpha.1`. See the
 [v13 adoption guide](docs/src/migration-v13.md) for the current compatibility
 inventory, explicit source evaluation and reviewed application updates.
 
+The current development candidates include [private S3/R2 files](docs/src/private-object-storage.md),
+[session management](docs/src/session-management.md), [Redis messaging](docs/src/redis-messaging.md)
+[recoverable Live UI](docs/src/live-recovery.md),
+[distributed tracing](docs/src/distributed-tracing.md) and
+[transactional partial updates](docs/src/transactional-partial-updates.md). Their guides distinguish
+local acceptance from pending hosted and release admission; these additions are
+not part of the published v12.1.0 package.
+
 ## 🚀 Start building
 
 Generate a project, choose a blueprint and database, then start the development loop:

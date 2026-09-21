@@ -176,7 +176,9 @@ pub use scheduler::{Scheduler, SchedulerError, SchedulerFailurePolicy, Scheduler
 
 // Re-export Milestone 6: Enterprise Features
 #[cfg(not(target_arch = "wasm32"))]
-pub use storage::{LocalDriver, Storage, StorageDriver, StorageError, TenantStorage};
+pub use storage::{
+    LocalDriver, ObjectMetadata, Storage, StorageDriver, StorageError, TenantStorage,
+};
 #[cfg(not(target_arch = "wasm32"))]
 pub use uploads::{
     OfflineMockScanner, QuarantinedUpload, ReleasedUpload, ScanVerdict, UploadError, UploadKind,

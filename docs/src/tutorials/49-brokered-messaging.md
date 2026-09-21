@@ -254,7 +254,10 @@ host owns key custody, file permissions, protected backup/restore, rollback
 detection, retention, disk monitoring and topic/tenant authorization. A future
 remote adapter is supported only after it
 passes the shared contract plus its own protocol, restart, and fault matrix; an
-adapter name alone is not durability evidence.
+adapter name alone is not durability evidence. The optional v13
+[Redis Streams candidate](../redis-messaging.md) now provides that standalone
+transport journey under hosted validation, with explicit operational limits and
+Rullst-owned delivery indexes. Other remote adapters remain future work.
 
 ## 6. Relay a relational outbox after commit
 

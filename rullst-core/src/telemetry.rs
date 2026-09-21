@@ -2,6 +2,10 @@ use tracing_core::Field;
 use tracing_core::field::Visit;
 use tracing_subscriber::Layer;
 
+/// Explicit minimized OTLP export and trusted cross-process propagation.
+#[cfg(feature = "telemetry")]
+pub mod distributed;
+
 /// A diagnostic layer that warns when known sensitive field names appear in tracing events.
 ///
 /// This observer cannot alter an event already recorded by other layers. Callers must redact
@@ -47,18 +51,24 @@ impl<S: tracing_core::Subscriber> Layer<S> for RedactPersonalDataLayer {
 #[cfg(feature = "telemetry")]
 #[cfg_attr(mutants, mutants::skip)]
 /// Initializes the OpenTelemetry OTLP pipeline for distributed tracing.
-/// This configuration connects to a local OTLP collector on port 4317.
+/// This legacy subscriber exports OTLP/HTTP protobuf to port 4318 by default.
+/// Use `distributed` for an owned lifecycle and an operation/metadata allowlist.
 /// Returns a Result which can be gracefully ignored if the collector is unavailable.
 pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
-    use opentelemetry_otlp::WithExportConfig;
+    use opentelemetry_otlp::{WithExportConfig, WithHttpConfig};
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-    let endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
-        .unwrap_or_else(|_| "http://localhost:4317".to_string());
+    let endpoint = std::env::var("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT").unwrap_or_else(|_| {
+        let base = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
+            .unwrap_or_else(|_| "http://127.0.0.1:4318".to_string());
+        format!("{}/v1/traces", base.trim_end_matches('/'))
+    });
 
     let exporter = opentelemetry_otlp::SpanExporter::builder()
         .with_http()
-        .with_endpoint(endpoint)
+        .with_endpoint(&endpoint)
+        .with_protocol(opentelemetry_otlp::Protocol::HttpBinary)
+        .with_http_client(distributed::BoundedOtlpClient::legacy(endpoint))
         .build()?;
 
     let resource = opentelemetry_sdk::Resource::builder()
@@ -70,7 +80,6 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
         .with_resource(resource)
         .build();
 
-    opentelemetry::global::set_tracer_provider(provider.clone());
     use opentelemetry::trace::TracerProvider as _;
     let tracer = provider.tracer("rullst");
 
@@ -86,15 +95,16 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
         .with(telemetry_layer)
         .try_init()?;
 
+    // Failed subscriber installation must not replace an application's provider.
+    opentelemetry::global::set_tracer_provider(provider);
+
     Ok(())
 }
 
 #[cfg(not(feature = "telemetry"))]
 #[cfg_attr(mutants, mutants::skip)]
-/// Initializes the OpenTelemetry OTLP pipeline for distributed tracing.
-///
-/// This configuration connects to a local OTLP collector on port 4317.
-/// Returns a Result which can be gracefully ignored if the collector is unavailable.
+/// Initializes local formatted tracing when the `telemetry` feature is disabled.
+/// No OTLP collector or network export is enabled by this build.
 pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 

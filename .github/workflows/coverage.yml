@@ -122,6 +122,29 @@ jobs:
           python3 .github/check-privacy-postgres.py --coverage
           python3 .github/check-passkey-postgres.py --coverage
 
+      - name: Measure PostgreSQL recovery and cross-process session revocation
+        run: python3 .github/check-auth-recovery-postgres.py --coverage
+
+      - name: Measure private S3 access and service restart contracts
+        run: bash .github/test-storage-s3-live.sh --coverage
+
+      - name: Set up Node for the Live recovery browser contract
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Measure Live recovery with Chromium and an application restart
+        run: >-
+          cargo llvm-cov --no-report -p rullst-core --no-default-features
+          --test live_recovery -- --ignored --exact
+          chromium_recovers_across_disconnects_and_process_restart --nocapture
+
+      - name: Measure distributed propagation with a standard TLS collector
+        run: python3 .github/check-distributed-tracing.py --coverage
+
+      - name: Measure remote messaging, TLS and Redis restart contracts
+        run: python3 .github/check-messaging-redis.py --coverage
+
       - name: Provision the reviewed disposable Labs host
         run: bash .github/provision-labs-host.sh
 

@@ -472,8 +472,15 @@ campaign. Bunny subsequently passed its own source admission in
 passed all 87 current checks, the actual
 [installed-archive job](https://github.com/Rullst/Rullst/actions/runs/35564717398),
 and review with no unresolved threads, then merged at `618655c1`.
-Labs remains an unpublished implementation candidate awaiting its own complete
-source admission. Stable-line backport preparation remains separate as well.
+[PR #228](https://github.com/Rullst/Rullst/pull/228) subsequently admitted Labs
+source at `278a115b`. Candidate `977e40a3` passed all 24 native shards, 43
+branch-required checks, actual isolated execution, the actual installed-archive
+job and both 90% whole/library coverage floors. Its non-required Codecov patch
+check remained at 83.45936%, below its 90% target; the
+[profile evidence](labs-first-profile.md#recorded-linux-acceptance) records this
+limitation without exporting worker profiles or relaxing isolation. Independent
+isolation review and final release admission remain outstanding. Stable-line
+backport preparation remains separate as well.
 
 The September 20 observation extension now adds selected browser categories,
 capture-status contracts and bounded analysis adapters to the supervision
@@ -507,10 +514,31 @@ column is a requirement, not a description of code already present.
 
 ## Coverage of the wider roadmap
 
-The master roadmap contains 41 umbrella milestones, including the separately
-governed M31 programme. Its 40 framework rows currently label five bounded
-implementations, 25 partial foundations and ten unimplemented ambitions.
-These unequal units cannot tell us whether this release adds "10% of all future
+### Additional increments approved on September 21
+
+The owner approved the following order after the Bunny/Labs source work. Finish
+each supported journey and its acceptance before expanding its advertised scope.
+These are implementation priorities, not evidence of completed deliveries or a
+promise that every increment fits before feature freeze.
+
+| Order | Increment | Completion boundary |
+| :---: | :--- | :--- |
+| 1 | Private S3/R2 storage in existing Core/facade APIs | Upload, download, metadata, deletion and temporary private GET grants; current tenant/owner authorization, bounded failures, an independent disposable S3 service and an extracted-package consumer. See [the candidate contract](private-object-storage.md). |
+| 2 | Active-session inventory and effective revocation in Auth | Authenticated inventory, expiration, selective logout and logout of other sessions with rejection by actual request verification across processes. Preserve account/tenant isolation, recovery and fail-closed storage behavior. See [the candidate and migration contract](session-management.md); hosted source/package admission remains pending. |
+| 3 | One remote Messaging adapter | Redis Streams selected; see [the candidate contract](redis-messaging.md). Prove publication acknowledgement, restart/redelivery, competing consumers, retry/DLQ and outbox composition against a disposable broker. Hosted source/package admission remains pending. |
+| 4 | Reconnection and recovery for server-driven real-time interfaces | The opt-in Core/facade candidate uses full snapshots, current authorization, transactional expected revisions and bounded connections, actions and slow peers. Actual WebSocket and Chromium tests cover conflicts, uncertain writes and application restart without automatic mutation replay. See [the recovery contract](live-recovery.md); hosted source/package admission remains pending. |
+| 5 | Operation tracing across processes | Core/facade's optional candidate has explicit parent trust, approved operation labels, minimized bounded OTLP export and an owned lifecycle. Separate Messaging processes reach a standard TLS collector with verified ancestry; local failure/queue/TLS contracts pass. See [the tracing profile](distributed-tracing.md); hosted source/package admission remains pending. |
+| 6 | An application-driven ORM increment | Transactional partial updates selected: merge a submitted lesson/profile patch into the current row and reuse policy, hooks, encryption, atomic audit and post-commit effects. Preserve the caller model on rejected operations and add explicit transaction support. See [the candidate contract](transactional-partial-updates.md); local database/cancellation/cache/Scout and extracted-consumer checks passed; hosted source/package admission remains pending. |
+
+After this approved round, report the delivered scope and remaining time to the
+owner before selecting another round. September 24–25 remain reserved for
+combined validation; September 26 remains the conditional final-adjustment and
+publication day. Publication is excluded from the current implementation goal.
+
+The [master roadmap](../../ROADMAP.md#executive-milestone-tracker) owns the current
+status of the framework milestones and the separately governed M31 programme.
+Its milestones differ substantially in scope and remaining effort; counting
+their status labels cannot tell us whether this release adds "10% of all future
 work". Nor does finishing one increment close its entire parent milestone.
 The wider v13/v13+ programme remains available for subsequent minor releases.
 
@@ -537,7 +565,7 @@ when its dependencies and verification capacity are ready.
 | M27 — deployment acceptance with an existing proxy | PR #224 admitted the response-body lifetime correction and the real two-process Caddy/Redis contract for readiness, draining, shared budgets/outage, forwarding, CSRF/body limits and WebSocket behavior. | Preserve combined-release coverage. This loopback fixture does not establish generated multi-replica Foundry, cross-host failover or zero downtime. See [deployment acceptance](deployment-acceptance.md). |
 | M10/M27 — cloud and VPS application protection | PR #225 merged the offline `deploy:doctor` with explicit environment sources, bounded inputs, redacted reports and rejection of the public Auth key placeholder after hosted checks; its missing archive gate subsequently passed in the exact-commit run recorded above. | Preserve the installed-archive and diagnostic coverage in the final campaign and prepare the separate stable Auth backport. No automatic host/cloud changes or volumetric DDoS guarantee. See the [diagnostic](deployment-diagnostic.md) and [deployment boundary](security-architecture.md#cloud-and-vps-deployments). |
 | LMS/Academy — managed private video | PR #227 admitted the unpublished `rullst-media` candidate after hosted workspace/platform, browser and installed-archive acceptance. It implements Bunny lifecycle management, resumable upload, authoritative processing, private playback and deletion with SQLite recovery. | Preserve the supported journey in the final combined release campaign. Live-account interoperability stays unvalidated; release-inventory admission remains separate. See the [managed-video candidate](managed-video-roadmap.md). |
-| M40 — Labs | Unpublished `rullst-labs` and `rullst-labs-runner` candidates provide encrypted durable exercises/jobs, exact grading, cancellation/recovery/retention and a separate Linux Rust/Wasmi executor. The named profile passed 26 hosted journey checks at `a519c795`, including actual execution, compiler deadline/cleanup and recovery at full group capacity. | Finish current workspace/platform and extracted-package source admission. Independent isolation review and final release admission remain outstanding; the targeted Linux run is not complete release evidence. See the [recorded profile evidence](labs-first-profile.md#recorded-linux-acceptance). |
+| M40 — Labs | Unpublished `rullst-labs` and `rullst-labs-runner` candidates provide encrypted durable exercises/jobs, exact grading, cancellation/recovery/retention and a separate Linux Rust/Wasmi executor. The named profile passed 26 ordinary and 26 instrumented hosted journey checks at `977e40a3`, including actual execution, compiler deadline/cleanup and recovery at full group capacity; the scoped coverage report was also generated. | PR #228 passed workspace/platform and actual extracted-package source admission, plus both 90% coverage floors. The non-required patch-coverage gap, independent isolation review and final release admission remain outstanding. See the [recorded profile evidence](labs-first-profile.md#recorded-linux-acceptance). |
 | M15 — remote messaging | Wire contracts, local durable state and the ORM outbox exist. Evaluate one remote broker adapter with real restart, redelivery and lease/idempotency evidence. | Conditional extension after the selected Bunny and Labs journeys; select a broker and supported semantics first. Seven adapter names are not seven functioning integrations. |
 | M39 — optional Rullst Gateway | No `rullst-gateway` crate or executable exists. Keep the separate opt-in proxy/load-balancer design from the master roadmap; readiness helpers and deployment templates do not implement it. | Lower priority than supervision, shared passkey state, deployment acceptance, one remote broker and bounded Labs work. Reconsider when a concrete self-hosted need justifies implementation and operations; no September 26 delivery commitment. |
 | M1/M3/M7/M12 — adoption and assurance | Carry the compatible updater forward, add actual major-version migrations, improve generated guidance and connect new code to the relevant verification inventory. | Required adoption/security work plus bounded maintainer tooling; Verus begins with one production-linked pilot. |
@@ -637,8 +665,9 @@ above.
 The owner's subsequent direction selects the complete
 supported Bunny journey next, followed by usable Labs execution and grading,
 before remote messaging or other optional expansion. Bunny has passed source
-admission; Labs implementation exists with its remaining source/release acceptance
-tracked above. Increasing the crate count is not a priority.
+admission; Labs has now passed source admission with its remaining quality,
+independent-review and release requirements tracked above. Increasing the crate
+count is not a priority.
 
 The owner subsequently requested no manual or real-provider account testing in
 this window, including the confirmed existing Bunny library. Continue automated

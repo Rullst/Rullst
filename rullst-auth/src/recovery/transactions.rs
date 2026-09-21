@@ -117,6 +117,8 @@ impl SqlRecoveryStore {
             .bind(&subject)
             .execute(&mut *tx)
             .await?;
+        sqlx::query("DELETE FROM rullst_recovery_session_details WHERE token_digest IN (SELECT token_digest FROM rullst_recovery_sessions WHERE subject = $1)")
+            .bind(&subject).execute(&mut *tx).await?;
         sqlx::query("DELETE FROM rullst_recovery_sessions WHERE subject = $1")
             .bind(&subject)
             .execute(&mut *tx)

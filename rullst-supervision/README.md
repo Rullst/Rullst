@@ -30,6 +30,9 @@ Unpublished schema v1 requires a separately reviewed transition to a fresh store
 opening it never upgrades, deletes or infers consent from existing records.
 
 The [design and acceptance boundary](../docs/src/supervision.md) records the
-supported scope, local generated-LMS/Chromium evidence and remaining archive,
-full-workspace and hosted release requirements.
+supported scope and generated-LMS/Chromium evidence. Source increments entered
+`v13` through PRs #222 and #226; the latter's missing premerge archive gate was
+repaired retrospectively, as recorded in the
+[delivery evidence](../docs/src/v13-delivery-plan.md). Final combined release
+and package-admission requirements remain separate.
 This package is not yet admitted for publication or production use.

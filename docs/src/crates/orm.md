@@ -129,8 +129,9 @@ generated API.
 - **Cascading soft deletes:** Opt-in relationship metadata can cascade through
   generated delete methods; transaction-aware variants use the supplied
   transaction.
-- **Partial updates:** `.update_partial()` binds only the selected supported
-  fields.
+- **Transactional partial updates (v13 candidate):** `.update_partial()` merges
+  selected values into a fresh row and performs its full save lifecycle, with
+  explicit transaction support. See [the contract and migration](../transactional-partial-updates.md).
 - **Model policies:** `#[orm(policy = "MyPolicy")]` invokes the configured
   policy on generated create/update/delete/restore operations.
 - **Strict lazy-loading prevention:** the global toggle makes generated lazy

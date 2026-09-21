@@ -252,6 +252,17 @@ jobs:
             exit "$test_status"
           fi
 
+      - name: Exercise Live recovery in Chromium across a server restart
+        if: runner.os == 'Linux' && matrix.shard == 'workspace'
+        run: >-
+          cargo test --locked -p rullst-core --no-default-features
+          --test live_recovery -- --ignored --exact
+          chromium_recovers_across_disconnects_and_process_restart --nocapture
+
+      - name: Exercise distributed propagation against a standard TLS collector
+        if: runner.os == 'Linux' && matrix.shard == 'workspace'
+        run: python3 .github/check-distributed-tracing.py
+
       - name: Exercise guided update in a real terminal
         if: runner.os == 'Linux' && (matrix.shard == 'cli-standard' || matrix.shard == 'cli-updates')
         run: python3 .github/cli-guided-pty-smoke.py target/debug/cargo-rullst
@@ -382,6 +393,36 @@ jobs:
               ;;
           esac
 
+  storage-s3:
+    needs: scope
+    if: >-
+      !cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
+    name: Private S3 storage contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+    steps:
+      - name: Checkout source without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
+          cache: false
+      - name: Prove private object access, signature rejection and restart persistence
+        run: bash .github/test-storage-s3-live.sh
+
   redis-rate-limit:
     needs: scope
     if: >-
@@ -421,6 +462,9 @@ jobs:
         env:
           RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
         run: cargo test -p rullst-security --features redis-rate-limit --test redis_rate_limit_live
+
+      - name: Prove Redis messaging leases, TLS, outbox replay and AOF restart
+        run: python3 .github/check-messaging-redis.py
 
       - name: Prove two Rullst processes behind the owned Caddy and Redis profile
         run: python3 .github/check-deployment-proxy.py

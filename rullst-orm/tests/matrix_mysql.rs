@@ -1,5 +1,6 @@
 #![cfg(not(any(feature = "strict-sqlite", feature = "strict-postgres")))]
 
+mod partial_update_contract;
 mod support;
 
 use rullst_orm::schema::{Blueprint, Schema};
@@ -124,6 +125,7 @@ async fn test_matrix_mysql_crud() {
     assert!(not_found.is_none());
 
     support::exercise_outbox().await;
+    partial_update_contract::exercise().await;
     exercise_native_enum().await;
 }
 

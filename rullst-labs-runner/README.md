@@ -1,9 +1,9 @@
 # Rullst Labs Runner
 
 Unpublished experimental v13 candidate. The named Linux journey passed
-[targeted hosted acceptance](https://github.com/Rullst/Rullst/actions/runs/35565291103)
-at `a519c795`; complete source/release admission and independent security review
-remain outstanding. Do not present this as a production
+[targeted hosted acceptance](https://github.com/Rullst/Rullst/actions/runs/35582398251)
+at `977e40a3` and workspace/archive source admission in [PR #228](https://github.com/Rullst/Rullst/pull/228).
+Final release admission and independent security review remain outstanding. Do not present this as a production
 sandbox or a general Rust/Rullst application hosting service.
 
 This package is a separately deployed Linux x86-64 executable. It must never be a

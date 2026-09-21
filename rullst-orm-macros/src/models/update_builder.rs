@@ -1,4 +1,4 @@
-use crate::parser::{EncryptedFieldKind, ParsedModel};
+use crate::parser::ParsedModel;
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -6,207 +6,172 @@ use quote::quote;
 pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStream) {
     let name = &parsed.name;
     let table_name = &parsed.table_name;
-    let update_builder_name = quote::format_ident!("{}UpdateBuilder", name);
-    let normal_fields = &parsed.normal_fields;
-    let normal_fields_types = &parsed.normal_fields_types;
-    let tenant_column = parsed.tenant_column.as_str();
-    let tenant_field_type = normal_fields
+    let builder = quote::format_ident!("{}UpdateBuilder", name);
+    let fields: Vec<_> = parsed
+        .normal_fields
         .iter()
-        .zip(normal_fields_types.iter())
-        .find(|(field, _)| *field == tenant_column)
-        .map(|(_, ty)| ty);
-
-    let mut builder_fields = vec![];
-    let mut builder_methods = vec![];
-    let mut set_clauses = vec![];
-    let mut update_bindings = vec![];
-    let mut apply_to_model = vec![];
-    let mut builder_inits = vec![];
-
-    for (field, ty) in normal_fields.iter().zip(normal_fields_types.iter()) {
-        if field == "id" || (!tenant_column.is_empty() && field == tenant_column) {
-            continue;
-        }
-
-        builder_fields.push(quote! {
-            #field: Option<#ty>
-        });
-
-        builder_inits.push(quote! {
-            #field: None
-        });
-
-        builder_methods.push(quote! {
+        .zip(&parsed.normal_fields_types)
+        .filter(|(field, _)| *field != "id" && *field != parsed.tenant_column.as_str())
+        .collect();
+    let declarations = fields
+        .iter()
+        .map(|(field, ty)| quote! { #field: Option<#ty> });
+    let setters = fields.iter().map(|(field, ty)| {
+        quote! {
             pub fn #field(mut self, value: #ty) -> Self {
                 self.#field = Some(value);
                 self
             }
-        });
-
-        let field_str = field.to_string();
-        set_clauses.push(quote! {
-            if self.#field.is_some() {
-                sets.push(format!("{} = ?", #field_str));
-            }
-        });
-
-        let encrypted_kind = parsed
-            .encrypted_fields
-            .iter()
-            .find(|encrypted| encrypted.name == *field)
-            .map(|encrypted| encrypted.kind);
-        update_bindings.push(match encrypted_kind {
-            Some(EncryptedFieldKind::String) => quote! {
-                if let Some(ref value) = self.#field {
-                    exec = exec.bind(rullst_orm::privacy::encrypt_model_field(
-                        value,
-                        #table_name,
-                        #field_str,
-                    )?);
-                }
-            },
-            Some(EncryptedFieldKind::OptionalString) => quote! {
-                if let Some(ref value) = self.#field {
-                    let encrypted_value = match value.as_deref() {
-                        Some(plaintext) => Some(rullst_orm::privacy::encrypt_model_field(
-                            plaintext,
-                            #table_name,
-                            #field_str,
-                        )?),
-                        None => None,
-                    };
-                    exec = exec.bind(encrypted_value);
-                }
-            },
-            None => quote! {
-                if let Some(ref value) = self.#field {
-                    exec = exec.bind(value.clone());
-                }
-            },
-        });
-
-        apply_to_model.push(quote! {
-            if let Some(ref val) = self.#field {
-                self.model.#field = val.clone();
-            }
-        });
-    }
-
-    let policy_check = if !parsed.policy.is_empty() {
-        let policy_type = syn::Ident::new(&parsed.policy, parsed.name.span());
+        }
+    });
+    let changes = fields
+        .iter()
+        .map(|(field, _)| quote! { || self.#field.is_some() });
+    let apply = fields.iter().map(|(field, _)| {
         quote! {
-            if !<#policy_type as rullst_orm::Policy<#name>>::can_update(self.model).await? {
-                return Err(rullst_orm::Error::Validation(
-                    "Policy prevents updating this record".to_string()
-                ));
+            if let Some(value) = &self.#field {
+                candidate.#field = value.clone();
             }
         }
-    } else {
-        quote! {}
-    };
-
-    let tenant_guard = if let Some(tenant_field_type) = tenant_field_type {
-        let col_ident = syn::Ident::new(&parsed.tenant_column, name.span());
-        let col = &parsed.tenant_column;
-        quote! {
-            let tenant = rullst_orm::tenant::get_tenant_id().ok_or_else(|| {
-                rullst_orm::Error::Validation(format!(
-                    "tenant context is required to update `{}`",
-                    #table_name
-                ))
-            })?;
-            let expected_tenant: #tenant_field_type = tenant.try_into().map_err(|_| {
-                rullst_orm::Error::Validation(format!(
-                    "tenant context type does not match `{}.{}`",
-                    #table_name,
-                    stringify!(#col_ident)
-                ))
-            })?;
-            if self.model.#col_ident != expected_tenant {
-                return Err(rullst_orm::Error::Validation(
-                    "record is outside the active tenant scope".to_string()
-                ));
-            }
-            sql.push_str(concat!(" AND ", #col, " = ?"));
-        }
-    } else {
-        quote! {}
-    };
-    let tenant_binding = if !parsed.tenant_column.is_empty() {
-        let col_ident = syn::Ident::new(&parsed.tenant_column, name.span());
-        quote! { exec = exec.bind(self.model.#col_ident.clone()); }
-    } else {
-        quote! {}
-    };
-    let tenant_rows_check = if !parsed.tenant_column.is_empty() {
-        quote! {
-            if result.rows_affected() != 1 {
-                return Err(rullst_orm::Error::Validation(
-                    "record is outside the active tenant scope".to_string()
-                ));
-            }
-        }
-    } else {
-        quote! {}
-    };
+    });
+    let inits = fields.iter().map(|(field, _)| quote! { #field: None });
+    let (tenant_guard, tenant_clause, tenant_bind) = tenant_scope(parsed);
 
     let struct_def = quote! {
-        pub struct #update_builder_name<'a> {
+        /// Typed logical patch merged into the current row through the normal save lifecycle.
+        pub struct #builder<'a> {
             model: &'a mut #name,
-            #(#builder_fields),*
+            #(#declarations),*
         }
 
-        impl<'a> #update_builder_name<'a> {
-            #(#builder_methods)*
+        impl<'a> #builder<'a> {
+            #(#setters)*
 
-            pub async fn save(mut self) -> Result<(), rullst_orm::Error> {
+            fn __rullst_has_partial_changes(&self) -> bool { false #(#changes)* }
+
+            /// Applies selected values to a freshly loaded row and performs a full-row save.
+            /// Direct calls own the commit. A task-scoped transaction remains caller-owned;
+            /// discard/reload the returned model if that enclosing transaction rolls back.
+            pub async fn save(self) -> Result<(), rullst_orm::Error> {
                 rullst_orm::__transaction_access::ensure_allowed()?;
-                let mut sets = vec![];
-                #(#set_clauses)*
-
-                if sets.is_empty() {
-                    return Ok(()); // Nothing to update
+                if !self.__rullst_has_partial_changes() { return Ok(()); }
+                if let Ok(transaction) = rullst_orm::CURRENT_TX.try_with(Clone::clone) {
+                    let mut guard = transaction.lock().await;
+                    let tx = guard.as_mut().ok_or_else(|| rullst_orm::Error::Internal(
+                        "partial update transaction is no longer available".to_string()
+                    ))?;
+                    return self.save_with_tx(tx).await;
                 }
+                let mut tx = rullst_orm::Orm::begin_transaction().await?;
+                let (candidate, callbacks) = match self.__rullst_apply_partial(&mut tx).await {
+                    Ok(result) => result,
+                    Err(error) => {
+                        tx.rollback().await?;
+                        return Err(error);
+                    }
+                };
+                tx.commit().await?;
+                *self.model = candidate;
+                callbacks.commit().await
+            }
 
-                #(#apply_to_model)*
+            /// Applies the patch inside a savepoint of the supplied transaction.
+            /// Strict post-commit effects require `Orm::transaction`; raw SQLx transactions
+            /// cannot expose their later commit/rollback decision to this API.
+            pub async fn save_with_tx(
+                self,
+                tx: &mut rullst_orm::db::Transaction<'_>,
+            ) -> Result<(), rullst_orm::Error> {
+                if !self.__rullst_has_partial_changes() { return Ok(()); }
+                let (candidate, callbacks) = self.__rullst_apply_partial(tx).await?;
+                *self.model = candidate;
+                callbacks.promote_to_parent().await
+            }
 
-                #policy_check
-
-                let driver = rullst_orm::Orm::driver()?;
-                let mut sql = format!("UPDATE {} SET {} WHERE id = ?", #table_name, sets.join(", "));
+            async fn __rullst_apply_partial(
+                &self,
+                tx: &mut rullst_orm::db::Transaction<'_>,
+            ) -> Result<(#name, rullst_orm::post_commit::PostCommitScope), rullst_orm::Error> {
+                use rullst_orm::_sqlx::Acquire;
                 #tenant_guard
-                if driver == "postgres" {
-                    sql = rullst_orm::replace_placeholders(&sql);
-                }
-
-                if rullst_orm::schema::is_query_log_enabled() {
-                    println!("[SQL Debug Partial Update] {:?} | ID: {}", sql, self.model.id);
-                }
-
-                let pool = rullst_orm::Orm::try_pool()?;
-                let query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(sql.as_str()));
-                let mut exec = query;
-
-                #(#update_bindings)*
-
-                exec = exec.bind(self.model.id);
-                #tenant_binding
-                let result = rullst_orm::execute_query!(exec, execute, pool)?;
-                #tenant_rows_check
-
-                Ok(())
+                if self.model.id == 0 { return Err(rullst_orm::Error::RecordNotFound); }
+                let mut savepoint = (&mut **tx).begin().await?;
+                let callbacks = rullst_orm::post_commit::PostCommitScope::new();
+                let result = callbacks.run(async {
+                    let driver = rullst_orm::Orm::driver()?;
+                    let mut sql = format!("SELECT * FROM {} WHERE id = ?{}", #table_name, #tenant_clause);
+                    if driver == "postgres" || driver == "mysql" { sql.push_str(" FOR UPDATE"); }
+                    if driver == "postgres" { sql = rullst_orm::replace_placeholders(&sql); }
+                    let query = rullst_orm::_sqlx::query_as::<_, #name>(
+                        rullst_orm::_sqlx::AssertSqlSafe(sql.as_str())
+                    ).bind(self.model.id) #tenant_bind;
+                    let row = if let Some(timeout) = rullst_orm::schema::get_query_timeout() {
+                        tokio::time::timeout(timeout, query.fetch_optional(&mut *savepoint))
+                            .await.map_err(|_| rullst_orm::Error::DatabaseError(
+                                "Partial update lookup timed out".to_string()
+                            ))??
+                    } else {
+                        query.fetch_optional(&mut *savepoint).await?
+                    };
+                    let mut candidate = row.ok_or(rullst_orm::Error::RecordNotFound)?;
+                    candidate.__rullst_decrypt_encrypted_fields()?;
+                    #(#apply)*
+                    candidate.save_with_tx(&mut savepoint).await?;
+                    Ok::<_, rullst_orm::Error>(candidate)
+                }).await;
+                let candidate = match result {
+                    Ok(candidate) => candidate,
+                    Err(error) => {
+                        savepoint.rollback().await?;
+                        return Err(error);
+                    }
+                };
+                savepoint.commit().await?;
+                Ok((candidate, callbacks))
             }
         }
     };
-
     let method_def = quote! {
-        pub fn update_partial(&mut self) -> #update_builder_name<'_> {
-            #update_builder_name {
-                model: self,
-                #(#builder_inits),*
-            }
+        /// Selects logical field changes; saving refreshes the row and runs its full lifecycle.
+        pub fn update_partial(&mut self) -> #builder<'_> {
+            #builder { model: self, #(#inits),* }
         }
     };
-
     (struct_def, method_def)
+}
+
+fn tenant_scope(parsed: &ParsedModel) -> (TokenStream, String, TokenStream) {
+    if parsed.tenant_column.is_empty() {
+        return (quote! {}, String::new(), quote! {});
+    }
+    let column = syn::Ident::new(&parsed.tenant_column, parsed.name.span());
+    let Some((_, ty)) = parsed
+        .normal_fields
+        .iter()
+        .zip(&parsed.normal_fields_types)
+        .find(|(field, _)| *field == parsed.tenant_column.as_str())
+    else {
+        // The structured model parser rejects this before code generation.
+        return (
+            quote! { compile_error!("partial update tenant column is missing"); },
+            String::new(),
+            quote! {},
+        );
+    };
+    let guard = quote! {
+        let tenant = rullst_orm::tenant::get_tenant_id().ok_or_else(||
+            rullst_orm::Error::Validation("tenant context is required for partial update".to_string())
+        )?;
+        let expected: #ty = tenant.try_into().map_err(|_|
+            rullst_orm::Error::Validation("partial update tenant context type mismatch".to_string())
+        )?;
+        if self.model.#column != expected {
+            return Err(rullst_orm::Error::Validation("record is outside the active tenant scope".to_string()));
+        }
+    };
+    (
+        guard,
+        format!(" AND {} = ?", parsed.tenant_column),
+        quote! { .bind(self.model.#column.clone()) },
+    )
 }
