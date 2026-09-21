@@ -29,6 +29,7 @@ on:
           - cli-standard
           - cli-updates
           - packaged-distribution
+          - labs-isolation
           - cli-profiles-basic
           - cli-profiles-relational
           - cli-profiles-polyglot
@@ -161,7 +162,7 @@ jobs:
     # expensive cross-platform suite starts when the PR is ready for review.
     if: >-
       !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
-      (github.event_name != 'workflow_dispatch' || inputs.shard != 'packaged-distribution') &&
+      (github.event_name != 'workflow_dispatch' || (inputs.shard != 'packaged-distribution' && inputs.shard != 'labs-isolation')) &&
       (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     runs-on: ${{ matrix.os }}
     # Generated CLI applications are real independent Cargo workspaces. Keep
@@ -701,6 +702,76 @@ jobs:
         env:
           CANDIDATE_VERSION: ${{ steps.inventory.outputs.version }}
         run: bash .github/test-packaged-distribution.sh "$CANDIDATE_VERSION" target/package --v13-candidates
+
+  labs-isolation:
+    name: Isolated Labs acceptance (Linux)
+    needs: check
+    if: >-
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'labs-isolation')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+    steps:
+      - name: Checkout candidate without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Set up framework build toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
+          cache: false
+
+      - name: Install pinned exercise toolchain and namespace launcher
+        run: |
+          rustup toolchain install 1.96.0 --profile minimal --target wasm32-unknown-unknown
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends bubblewrap
+          df -h . /tmp
+
+      - name: Build separate controller and application fixture
+        run: cargo build --locked -p rullst-labs -p rullst-labs-runner --all-features --bins --examples
+
+      - name: Require real isolated execution in an owned unprivileged service
+        env:
+          LABS_UNIT_SUFFIX: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          # The test creates children only under this disposable delegated unit.
+          # No global namespace/sysctl downgrade is allowed on unsupported hosts.
+          sudo systemd-run --wait --collect --pipe \
+            --unit="rullst-labs-acceptance-$LABS_UNIT_SUFFIX" \
+            --property="User=$(id -un)" --property="Group=$(id -gn)" \
+            --property=Delegate=yes --property=MemoryMax=3G \
+            --property=TasksMax=256 --property=RuntimeMaxSec=15min \
+            --setenv=RULLST_LABS_HOSTED_ACCEPTANCE=1 \
+            --working-directory="$PWD" \
+            /usr/bin/python3 .github/test-labs-isolation.py \
+            --runner "$PWD/target/debug/rullst-labs-runner" \
+            --app "$PWD/target/debug/examples/course_app" \
+            --toolchain "$(rustc +1.96.0 --print sysroot)" \
+            --launcher /usr/bin/bwrap --evidence "$PWD/target/labs-evidence.json"
+
+      - name: Retain minimized execution evidence without fixture keys or source
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: labs-isolation-${{ github.sha }}
+          path: target/labs-evidence.json
+          if-no-files-found: error
+          retention-days: 14
 
   quality-scorecard:
     name: Evidence quality scorecard (observational)

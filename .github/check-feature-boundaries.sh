@@ -143,6 +143,11 @@ rullst-media|
 rullst-media|bunny
 rullst-media|sqlite
 rullst-media|bunny,sqlite
+# Labs orchestration remains independent from the separately deployed runner.
+rullst-labs|
+rullst-labs|sqlite
+rullst-labs|receipt-signing
+rullst-labs|sqlite,receipt-signing
 
 # Umbrella boundaries exposed to generated applications.
 rullst|orm

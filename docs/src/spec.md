@@ -70,14 +70,44 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 
 ### v13 roadmap package boundaries
 
-The proposed [`rullst-labs`](rullst-labs-roadmap.md) library and separately
-deployed `rullst-labs-runner` are roadmap packages, not current workspace
-capabilities. The former owns trusted, versioned orchestration and grading
+The [`rullst-labs`](rullst-labs-roadmap.md) library and separately
+deployed `rullst-labs-runner` are unpublished implementation candidates whose
+acceptance is outstanding. The former owns trusted, versioned orchestration and grading
 contracts; the latter owns isolated execution. Neither may become a default
 framework dependency, execute learner code inside the HTTP process, or require
 the application to expose a container control socket. A complete offensive CTF
 arena is external, separately governed deployment infrastructure even when it
 uses Rullst identity, challenge, score and receipt contracts.
+
+The selected first Labs profile is a bounded Rust pure-function exercise,
+compiled with a pinned Rust toolchain to import-free WebAssembly and executed
+by a pinned Wasmi interpreter in a separate restricted Linux process. This is
+not a native Rullst server, Cargo dependency, WASI or arbitrary shell profile.
+`rullst-labs` must not depend on an executor or spawn submitted code. Its default
+surface is validated contracts; opt-in shared-local SQLite stores dedicated,
+encrypted job content with current application authorization, idempotent
+submission, cancellation, leased execution, retention and result reconciliation.
+It must not reuse the application's authentication/database secrets as job keys.
+
+The independently deployed runner accesses only that dedicated job plane and
+runner-owned tools. It must never give submitted code the job database, signing
+keys, application secrets, inherited environment or control sockets. The first
+Linux backend requires delegated cgroups v2, an unprivileged namespace launcher,
+restricted mounts/egress, no-new-privileges, syscall restrictions, a fully enforced
+Landlock filesystem policy and bounded
+compiler/interpreter resources. Observed isolation and resource enforcement are
+mandatory: accepted configuration properties or a successful launcher exit do
+not prove the required boundary. Unsupported local/hosted environments fail
+closed, without a less restrictive execution fallback.
+
+Only an integrity-bound result matching the current job/lease, tenant, learner,
+exercise, grader, toolchain, source and execution profile may become a grade.
+Expected answers remain in the trusted grader; worker outputs are bounded data,
+not a passing-grade authority. Cancellation/expiry fence late results; worker
+loss never means success. Offline simulation is explicit and cannot establish
+execution evidence. See [the first-profile decision and threat model](labs-first-profile.md).
+Independent isolation review and the roadmap's adversarial acceptance remain
+required before any production-ready untrusted-code claim.
 
 ### v13 managed-video implementation boundary
 

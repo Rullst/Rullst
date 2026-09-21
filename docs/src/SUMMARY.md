@@ -25,6 +25,7 @@
 - [Schema-First Rust & TypeScript APIs](typed-api.md)
 - [AI Maintainability & Project-Building Roadmap](ai-maintainability-roadmap.md)
 - [Rullst Labs & Isolated Runner Roadmap](rullst-labs-roadmap.md)
+- [Labs First Profile Decision & Threat Model](labs-first-profile.md)
 - [Privacy & Proportional Age Assurance](privacy-age-assurance-roadmap.md)
 - [Transparent Exam & Parental Supervision](supervision.md)
 - [Exam observation integration](supervision-observations.md)
