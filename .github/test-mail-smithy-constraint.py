@@ -11,7 +11,7 @@ class MailSmithyConstraint(unittest.TestCase):
     def test_native_ses_uses_the_verified_types_without_default_activation(self):
         manifest = tomllib.loads((ROOT / "rullst-mail/Cargo.toml").read_text())
         constraint = manifest["dependencies"]["aws-smithy-types"]
-        self.assertEqual(constraint["version"], "=1.6.3")
+        self.assertEqual(constraint["version"], "=1.6.4")
         self.assertIs(constraint["optional"], True)
         self.assertIs(constraint["default-features"], False)
         self.assertIn("dep:aws-smithy-types", manifest["features"]["aws-ses"])
