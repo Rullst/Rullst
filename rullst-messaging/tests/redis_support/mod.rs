@@ -1,7 +1,10 @@
 use rullst_messaging::*;
 use std::time::Duration;
 
-pub const PASSWORD: &str = "fixture-redis-messaging-only";
+pub fn password() -> String {
+    std::env::var("RULLST_MESSAGING_TEST_REDIS_PASSWORD")
+        .expect("run .github/check-messaging-redis.py with its generated fixture credential")
+}
 
 pub fn endpoint() -> String {
     std::env::var("RULLST_MESSAGING_TEST_REDIS_URL").expect("run .github/check-messaging-redis.py")
@@ -26,7 +29,7 @@ pub fn configuration_with(broker: BrokerConfig) -> RedisBrokerConfig {
         "fixture-generation",
         endpoint(),
         "default",
-        PASSWORD,
+        password(),
     )
     .unwrap()
     .allow_loopback_for_tests()
@@ -65,7 +68,7 @@ pub async fn raw() -> redis::aio::MultiplexedConnection {
         .set_redis_settings(
             redis::RedisConnectionInfo::default()
                 .set_username("default")
-                .set_password(PASSWORD),
+                .set_password(password()),
         );
     redis::Client::open(info)
         .unwrap()

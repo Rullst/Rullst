@@ -24,7 +24,7 @@ async fn explicit_mock_runs_the_shared_contract_without_network() {
         "deployment-v1",
         "rediss://invalid.example",
         "",
-        "",
+        String::new(),
     )
     .unwrap();
     assert!(config.clone().require_production().is_err());
@@ -36,6 +36,7 @@ async fn explicit_mock_runs_the_shared_contract_without_network() {
 
 #[test]
 fn configuration_rejects_unsafe_endpoints_credentials_and_limits() {
+    let credential = uuid::Uuid::new_v4().simple().to_string();
     for endpoint in [
         "redis://remote.example",
         "redis://localhost",
@@ -53,7 +54,7 @@ fn configuration_rejects_unsafe_endpoints_credentials_and_limits() {
                 "v1",
                 endpoint,
                 "user",
-                "fixture-only"
+                &credential
             )
             .is_err()
         );
@@ -65,7 +66,7 @@ fn configuration_rejects_unsafe_endpoints_credentials_and_limits() {
                 "v1",
                 "rediss://host",
                 username,
-                "fixture-only"
+                &credential
             )
             .is_err()
         );
@@ -75,7 +76,7 @@ fn configuration_rejects_unsafe_endpoints_credentials_and_limits() {
         "v1",
         "rediss://host",
         "user",
-        "fixture-only",
+        &credential,
     )
     .unwrap();
     assert!(config.clone().with_timeout(Duration::ZERO).is_err());
@@ -93,7 +94,7 @@ fn configuration_rejects_unsafe_endpoints_credentials_and_limits() {
             .allow_loopback_for_tests()
             .is_err()
     );
-    assert!(!format!("{config:?}").contains("fixture-only"));
+    assert!(!format!("{config:?}").contains(&credential));
     assert!(
         RedisBrokerConfig::try_new(
             BrokerConfig::try_new("test")
@@ -103,7 +104,7 @@ fn configuration_rejects_unsafe_endpoints_credentials_and_limits() {
             "v1",
             "rediss://host",
             "user",
-            "fixture-only"
+            &credential
         )
         .is_err()
     );
@@ -198,7 +199,7 @@ async fn actual_redis_contract_concurrency_and_fenced_redelivery() {
         "wrong-generation",
         endpoint(),
         "default",
-        PASSWORD,
+        password(),
     )
     .unwrap()
     .allow_loopback_for_tests()
