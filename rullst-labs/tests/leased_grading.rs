@@ -1,4 +1,6 @@
 #![cfg(all(feature = "sqlite", feature = "receipt-signing"))]
+#[path = "support/mixed_grading.rs"]
+mod mixed_grading;
 mod support;
 use rullst_labs::{sqlite::*, *};
 use std::sync::atomic::Ordering;

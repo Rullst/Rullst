@@ -705,7 +705,9 @@ jobs:
 
   labs-isolation:
     name: Isolated Labs acceptance (Linux)
-    needs: check
+    # Independent runtime evidence can run alongside the full workspace linter.
+    # Both jobs remain mandatory in a complete run; neither grants the other a pass.
+    needs: scope
     if: >-
       (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
       (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'labs-isolation')
