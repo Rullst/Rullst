@@ -126,6 +126,7 @@ rullst-auth|recovery-postgres
 rullst-privacy|
 rullst-privacy|consent
 rullst-privacy|consent-sqlite
+rullst-privacy|consent-postgres
 rullst-privacy|age-assurance
 rullst-privacy|challenge-tokens
 rullst-privacy|sqlite
@@ -187,6 +188,7 @@ rullst|privacy-sqlite
 rullst|privacy-postgres
 rullst|privacy-consent
 rullst|privacy-consent-sqlite
+rullst|privacy-consent-postgres
 rullst|auth-jwt
 rullst|auth-sqlite
 rullst|auth-passkey-postgres

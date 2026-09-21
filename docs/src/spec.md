@@ -371,6 +371,26 @@ requires quiesced processing, reconciled withdrawals and fresh purpose versions.
 Deployment retention/restore review and hosted acceptance remain required
 before release admission.
 
+The owner-selected PostgreSQL consent increment is under implementation; it is
+not yet source-admitted. Its separate `consent-postgres` feature exposes
+`PostgresConsentStore::initialize` for deployment bootstrap and `connect` for
+ordinary runtime access. Both accept a connection string and immutable capacity.
+One authoritative writable database owns the fixed `rullst_consent` schema.
+Explicit initialization serializes concurrent bootstrap without resetting
+existing state. A private bounded pool enforces verified TLS for remote TCP,
+fixed name resolution, synchronous commits and bounded acquisition/SQL waits.
+Every read/update validates permanent WAL-logged tables and locks the metadata
+row, serializing clock observations, quota and revision changes across hosts.
+Withdrawals remain durable tombstones; no expiry/capacity cleanup removes them.
+Stored subjects remain domain-separated digests. Replication fencing, clock
+synchronization, hardware durability and stale-backup reconciliation remain
+deployment obligations. The facade feature `privacy-consent-postgres` must not
+enable age assurance or add a database dependency to default builds. The
+existing CLI privacy consumer remains explicitly SQLite until separately
+extended; an ordinary typed application can use the PostgreSQL store directly.
+Disposable-database concurrency, restricted-role, cancellation, clock, restart,
+consumer and hosted acceptance are required before completion is claimed.
+
 The opt-in `make:privacy` consumer mounts authenticated preferences,
 an explicitly optional personalized greeting and an own-account JSON export
 inside the starter's existing CSRF/header/security boundary. It composes

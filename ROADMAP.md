@@ -405,8 +405,8 @@ into shipped claims.
 On September 21, the owner selected shared PostgreSQL consent and single-use
 email login links as the next two implementation priorities through September
 23. The [additional-priorities section](docs/src/v13-delivery-plan.md#additional-priorities-approved-on-21-september)
-records their acceptance boundaries and five further candidates awaiting
-selection. These entries do not claim implementation or expand the validation
+records their acceptance boundaries and five subsequent additions approved for
+the implementation queue. These entries do not claim implementation or expand the validation
 and publication dates.
 
 | Order | Outcome | Acceptance boundary |

@@ -26,6 +26,27 @@ feature cannot silently escape the matrix. See
 [`check-feature-boundaries.sh`](../../.github/check-feature-boundaries.sh) for
 the exact individual checks.
 
+## Unpublished v13 privacy additions
+
+The v13 candidate adds `rullst-privacy` as an optional seventeenth release
+package. These features are absent from published 12.1.0; use the matching v13
+source until its package and release admission complete. They do not change
+default dependencies or select application policies automatically.
+
+| Umbrella feature | Standalone privacy feature | Contract |
+| :--- | :--- | :--- |
+| `privacy` | None | Independent empty base |
+| `privacy-age` | `age-assurance` | Proportional age-policy contracts |
+| `privacy-challenge-tokens` | `challenge-tokens` | Authenticated server challenge transport |
+| `privacy-sqlite` | `sqlite` | Shared-local age replay protection |
+| `privacy-postgres` | `postgres` | Age replay protection on one authoritative PostgreSQL database |
+| `privacy-consent` | `consent` | Purpose/version choices and effective withdrawal |
+| `privacy-consent-sqlite` | `consent-sqlite` | Shared-local consent state |
+| `privacy-consent-postgres` | `consent-postgres` | New candidate for shared consent across application hosts; independent of age assurance |
+
+See the [privacy package guide](../../rullst-privacy/README.md) for initialization,
+runtime roles, data minimization, backup/failover obligations and acceptance.
+
 ## Umbrella crate: `rullst`
 
 The default `rullst` dependency enables `orm` and `queue-sqlite`. Applications

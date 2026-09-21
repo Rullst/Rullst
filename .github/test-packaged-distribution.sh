@@ -164,6 +164,34 @@ append_package_patches "$privacy_dir/Cargo.toml"
 "$cargo_bin" test --manifest-path "$privacy_dir/Cargo.toml" --offline \
   --test privacy_facade
 
+# Exercise the PostgreSQL public facade against the extracted archives, using
+# the same independent-pool/fault/restart contracts as the source package.
+consent_dir="$work_dir/consent-postgres-consumer"
+mkdir -p "$consent_dir/tests/consent"
+{
+  printf '[package]\nname = "rullst-packaged-consent"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
+  printf '[features]\ndefault = ["consent", "consent-postgres"]\nconsent = []\nconsent-postgres = []\nconsent-sqlite = []\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["privacy-consent-postgres"] }\n' "$version"
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "sync", "time"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "tls-rustls-ring"] }\n'
+} > "$consent_dir/Cargo.toml"
+cp "$repository_root/rullst-privacy/tests/consent.rs" "$consent_dir/tests/consent.rs"
+cp "$repository_root/rullst-privacy/tests/consent/adapter_failures.rs" "$consent_dir/tests/consent/adapter_failures.rs"
+cp -R "$repository_root/rullst-privacy/tests/consent/postgres" "$consent_dir/tests/consent/postgres"
+python3 - "$consent_dir/tests/consent.rs" <<'PY'
+from pathlib import Path
+import sys
+source = Path(sys.argv[1])
+text = source.read_text()
+assert 'use rullst_privacy::consent::*;' in text
+source.write_text(text.replace('use rullst_privacy::consent::*;', 'use rullst::privacy::consent::*;'))
+PY
+append_package_patches "$consent_dir/Cargo.toml"
+"$cargo_bin" generate-lockfile --manifest-path "$consent_dir/Cargo.toml" --offline
+"$cargo_bin" test --manifest-path "$consent_dir/Cargo.toml" --offline --locked --test consent
+python3 "$repository_root/.github/check-privacy-postgres.py" \
+  --suite consent --manifest-path "$consent_dir/Cargo.toml"
+
 storage_dir="$work_dir/storage-consumer"
 mkdir -p "$storage_dir/tests"
 {

@@ -245,23 +245,6 @@ impl ConsentStore for SqliteConsentStore {
     }
 }
 
-fn scope_digest(subject: &ConsentSubject, purpose: &str) -> ring::digest::Digest {
-    let mut digest = ring::digest::Context::new(&ring::digest::SHA256);
-    digest.update(b"rullst.optional-consent-scope.v1\0");
-    for value in [subject.tenant_ref(), subject.subject_ref(), purpose] {
-        digest.update(&(value.len() as u64).to_be_bytes());
-        digest.update(value.as_bytes());
-    }
-    digest.finish()
-}
-
-fn validate_capacity(capacity: usize) -> Result<(), ConsentError> {
-    if !(1..=100_000).contains(&capacity) {
-        return Err(ConsentError::InvalidConfiguration);
-    }
-    Ok(())
-}
-
 fn resolved_path(path: &Path) -> Result<PathBuf, ConsentError> {
     let name = path
         .file_name()

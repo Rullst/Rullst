@@ -90,10 +90,13 @@ and carry necessary fixes forward while independent implementation progresses.
 | 1 | Shared PostgreSQL consent in `rullst-privacy` | Preserve purpose/version binding, exact-revision grants, withdrawal precedence, clock checks and durable tombstones across independent application pools. Add explicit initialization, restricted-role operation, bounded waits, concurrency/cancellation/restart tests, opt-in facade features and a documented consumer. Keep database restore/failover obligations explicit. |
 | 2 | Single-use email login links in `rullst-auth`, composed with `rullst-mail` | Complete issuance, delivery and deliberate redemption into the existing authenticated session lifecycle. Require purpose-separated secret tokens, durable atomic consumption, expiry, tenant/account binding, bounded abuse controls, enumeration-resistant responses and safe redirects. Email scanners must not consume credentials merely by following a GET. Test replay races, mail/storage failures, stale accounts and session invalidation with deterministic delivery fixtures. |
 
-The owner also requested five further candidates. The list below is an ordered
-backlog for selection after the two priorities, **not approval or a promise to
-implement all five before the freeze**. The previously discussed metadata-only
-Studio messaging inspector remains a separate candidate.
+The owner subsequently approved the five additional items below as the next
+implementation queue after the two priorities, emphasizing security throughout.
+All seven are targeted through September 23; completion still requires the
+advertised behavior and its acceptance evidence. Report any unfinished item
+before the freeze instead of silently including it in the supported release.
+The previously discussed metadata-only Studio messaging inspector remains a
+separate candidate.
 
 | Priority | Additional candidate | User benefit and required boundary |
 | :--- | :--- | :--- |
@@ -103,7 +106,7 @@ Studio messaging inspector remains a separate candidate.
 | 4 | Durable outgoing application webhooks | Deliver application events to explicitly approved destinations with signatures, bounded retries and inspectable terminal failure. Compose the existing outbox, destination/SSRF policy and idempotency contracts; incoming payment-webhook verification is a different capability. |
 | 5 | Resumable multipart uploads for private S3-compatible storage | Support larger attachments and interrupted uploads with bounded parts, authenticated tenant/object ownership, checksums, completion/abort and orphan cleanup. Extend the existing private-object adapter; this is separate from Bunny Stream resumable video uploads and requires native protocol evidence. |
 
-Selection depends on measured implementation and validation cost. Do not replace
+Execution order may respond to measured implementation and validation cost. Do not replace
 full journeys with mock-only placeholders to increase the feature count. Keep
 September 24–25 for combined validation and September 26 for final adjustments
 and separately authorized publication. No owner/provider account tests are

@@ -3,6 +3,9 @@
 use rullst_privacy::consent::*;
 #[path = "consent/adapter_failures.rs"]
 mod adapter_failures;
+#[cfg(feature = "consent-postgres")]
+#[path = "consent/postgres/mod.rs"]
+mod postgres;
 #[cfg(feature = "consent-sqlite")]
 #[path = "consent/sqlite.rs"]
 mod sqlite;
