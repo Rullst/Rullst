@@ -1,0 +1,31 @@
+[package]
+name = "rullst-labs-runner"
+version = "13.0.0-alpha.1"
+edition = "2024"
+rust-version = "1.96.0"
+authors = ["Rullst Core Team"]
+description = "Separately deployed experimental isolated Rust exercise runner for Rullst Labs"
+license = "MIT"
+repository = "https://github.com/Rullst/Rullst"
+readme = "README.md"
+publish = false
+
+[dependencies]
+rullst-labs = { path = "../rullst-labs", version = "13.0.0-alpha.1", features = ["sqlite", "receipt-signing"] }
+serde = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+hex = { workspace = true }
+ring = { workspace = true, features = ["std"] }
+zeroize = { workspace = true }
+tokio = { workspace = true, features = ["rt", "macros", "time", "process", "io-util", "sync"] }
+
+[target.'cfg(all(target_os = "linux", target_arch = "x86_64"))'.dependencies]
+wasmi = { version = "=2.0.0", default-features = false, features = ["std", "validate", "extra-checks", "deterministic", "portable-dispatch"] }
+wasmparser = { version = "=0.228.0", default-features = false, features = ["std"] }
+landlock = { version = "=0.4.7", default-features = false }
+seccompiler = { version = "=0.5.0", default-features = false }
+rustix = { version = "=1.1.5", features = ["process", "fs"] }
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3"

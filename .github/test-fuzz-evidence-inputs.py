@@ -19,8 +19,11 @@ class InputTests(unittest.TestCase):
         self.run_git("init", "-q")
         self.run_git("config", "user.email", "fixture@example.invalid")
         self.run_git("config", "user.name", "Fixture")
-        self.inventory = json.loads((ROOT / ".github/fuzz-targets.json").read_text())
+        self.v13_inventory = json.loads((ROOT / ".github/fuzz-targets.json").read_text())
+        self.inventory = [item for item in self.v13_inventory if item["dir"] != "rullst-privacy/fuzz"]
         self.write(".github/fuzz-targets.json", json.dumps(self.inventory))
+        self.write(".github/release-required-workflows.json",
+                   '{"schema_version":2,"required_branch":"main"}')
         self.write(".github/workflows/fuzzing.yml", (ROOT / ".github/workflows/fuzzing.yml").read_text())
         self.write("rullst-mail/Cargo.toml", '[package]\nname="mail"\nversion="1.0.0"\n')
         self.write("rullst-core/src/lib.rs", "pub fn shared() {}\n")
@@ -51,6 +54,23 @@ class InputTests(unittest.TestCase):
         current = Snapshot(self.commit(), self.root)
         return {directory for directory in self.base.directories
                 if self.base.fingerprint(directory) != current.fingerprint(directory)}
+
+    def test_release_line_is_read_from_the_selected_git_object(self):
+        self.write(".github/release-required-workflows.json",
+                   '{"schema_version":3,"required_major":13,"required_branch":"v13"}')
+        for item in self.v13_inventory:
+            if item not in self.inventory:
+                directory = item["dir"]
+                self.write(f"{directory}/Cargo.toml", '[package]\nname="privacy-fixture"\n[dependencies]\nparent={path=".."}\n')
+                self.write(f"{directory}/Cargo.lock", "locked graph")
+                self.write(f'{directory}/fuzz_targets/{item["target"]}.rs', "fn main() {}\n")
+        self.write(".github/fuzz-targets.json", json.dumps(self.v13_inventory))
+        current = Snapshot(self.commit(), self.root)
+        self.assertEqual(len(current.inventory), 42)
+        self.assertEqual(len(Snapshot(self.base.sha, self.root).inventory), 40)
+        self.assertEqual(current.release_branch, "v13")
+        self.assertEqual(Snapshot(self.base.sha, self.root).release_branch, "main")
+        self.assertNotEqual(current.global_hash, self.base.global_hash)
 
     def test_reviewed_fixture_and_dev_dependency_changes_preserve_fuzz_inputs(self):
         for path in ("rullst-mail/tests/feedback.rs", ".github/mobile-ui-browser-smoke.mjs",
@@ -179,6 +199,17 @@ class InputTests(unittest.TestCase):
         self.inventory[-1] = self.inventory[0]
         self.write(".github/fuzz-targets.json", json.dumps(self.inventory))
         with self.assertRaisesRegex(ValueError, "duplicate"):
+            Snapshot(self.commit(), self.root)
+
+    def test_v13_cannot_admit_the_legacy_forty_target_surface(self):
+        self.write(".github/release-required-workflows.json",
+                   '{"schema_version":3,"required_major":13,"required_branch":"v13"}')
+        with self.assertRaisesRegex(ValueError, "exactly 42"):
+            Snapshot(self.commit(), self.root)
+
+    def test_v12_cannot_reinterpret_an_expanded_inventory(self):
+        self.write(".github/fuzz-targets.json", json.dumps(self.v13_inventory))
+        with self.assertRaisesRegex(ValueError, "exactly 40"):
             Snapshot(self.commit(), self.root)
 
     def test_symlink_and_missing_commit_fail_closed(self):

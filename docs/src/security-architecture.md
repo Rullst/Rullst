@@ -24,6 +24,35 @@ flowchart LR
 Each arrow is an application integration point. If a layer is not mounted, its
 counter and API being present in the crate do not protect traffic.
 
+## Cloud and VPS deployments
+
+The application controls work in a compatible cloud container or VPS just as
+they do in a local HTTP server. Their effect depends on the configured routes,
+middleware, identity and persistence. `Server` mounts the Core baseline;
+additional Security controls require explicit composition.
+
+| Scope | Current boundary |
+| :--- | :--- |
+| Sites and API backends | Bounded WAF/RASP inspection, HTML sanitization, CSP/security headers, login abuse controls, ownership/role helpers, WebSocket-origin validation and audit primitives are available. Application policy and negative route tests remain necessary. |
+| Multiple application instances | The opt-in Redis limiter has an atomic shared-budget contract. Production must require distributed mode explicitly. Process-local jails, bans and counters do not become shared because the application has more replicas. |
+| Reverse proxy | Verified socket identity is the default. Forwarded addresses need an explicit trusted-hop policy; an arbitrary client header cannot establish the rate-limit or ban identity. |
+| Host and cloud account | OS/SSH patching, firewall rules, IAM, secret custody, backup/restore and privileged container configuration belong to the deployment operator/provider. The crate does not administer these systems. |
+| Network availability | Application request limits can reduce specific abuse. Network saturation and upstream DDoS filtering require infrastructure controls outside the application process. |
+
+The [v13 deployment candidate](deployment-acceptance.md) now exercises two real
+application processes with an existing proxy, shared Redis budgets, forged
+forwarding metadata and HTTP/WebSocket controls. Local acceptance passes; hosted
+admission remains pending. It does not certify a cloud account, VPS or production
+topology.
+
+The separate [local configuration diagnostic](deployment-diagnostic.md) candidate
+reuses Core validation through `deploy:doctor`, with explicit environment-source
+selection and bounded, redacted reports. It identifies what was actually
+inspected and lists unobserved controls; full hosted/package admission is pending.
+It does not label configuration as deployed evidence, modify firewall/SSH/cloud
+settings or certify a host. No new security crate is introduced. See the
+[delivery plan](v13-delivery-plan.md).
+
 ## Canonical production preset
 
 `ProductionPreset::middleware_order()` is the v12 machine-readable ordering

@@ -2,7 +2,9 @@
 
 `rullst-messaging` defines bounded, broker-neutral messaging contracts for
 Rullst applications. It provides a deterministic in-memory broker and an
-opt-in durable SQLite adapter. Remote broker interoperability is roadmap work.
+opt-in durable SQLite adapter. The unpublished v13 `redis-streams` candidate adds
+a standalone Redis transport with Rullst-owned delivery indexes; hosted source
+and package admission remain pending.
 
 ## Implemented boundary
 
@@ -31,6 +33,16 @@ transport. It does not establish a connection, persist the caller's publish
 idempotency key, map broker-specific acknowledgements, or certify any named
 broker. Applications also own trace sampling, export, retention and
 tenant-aware correlation policy.
+
+## Optional Redis Streams candidate
+
+The optional remote profile is documented separately in the
+[Redis messaging contract](https://github.com/Rullst/Rullst/blob/main/docs/src/redis-messaging.md).
+It uses verified TLS, exact replay, server-time lease fencing, bounded retry/DLQ,
+explicit provisioning and partial-write quarantine. It does not implement native
+`XREADGROUP` interoperability, replication/failover, automatic repair or at-rest
+encryption. The facade feature is `messaging-redis`. Local tests use a disposable
+Redis service, including actual restart, TLS failures and an ORM outbox journey.
 
 ## Durable local profile
 

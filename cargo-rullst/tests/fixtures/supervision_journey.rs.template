@@ -1,0 +1,168 @@
+use supervision_consumer::{router, migrations};
+use http_body_util::BodyExt;
+use rullst::server::{Body, Request, Response, StatusCode};
+use tower::ServiceExt;
+
+async fn request(app: &rullst::Router, uri: &str, session: Option<&str>, csrf: Option<&str>, school: Option<&str>, form: Option<String>) -> Response {
+    let mut builder = Request::builder().uri(uri); let mut cookies = Vec::new();
+    if let Some(session) = session { cookies.push(format!("rullst_session={session}")); }
+    if let Some(csrf) = csrf { cookies.push(format!("rullst_csrf={csrf}")); }
+    if !cookies.is_empty() { builder = builder.header("cookie",cookies.join("; ")); }
+    if let Some(school) = school { builder = builder.header("x-school-id",school); }
+    let body = if let Some(form) = form { builder = builder.method("POST").header("content-type","application/x-www-form-urlencoded"); Body::from(form) } else { Body::empty() };
+    app.as_axum().clone().oneshot(builder.body(body).unwrap()).await.unwrap()
+}
+async fn text(response: Response) -> String { String::from_utf8(response.into_body().collect().await.unwrap().to_bytes().to_vec()).unwrap() }
+fn value(html: &str, name: &str) -> String { html.split_once(&format!("name=\"{name}\" value=\"")).unwrap().1.split('"').next().unwrap().to_owned() }
+fn form(html: &str) -> (String, String) {
+    let fields = ["_token","revision","issued_at","proof"].map(|key|format!("{key}={}",value(html,key))).join("&"); (value(html,"_token"),fields)
+}
+fn operator(command: serde_json::Value) -> String {
+    let database = std::path::PathBuf::from(std::env::var_os("RULLST_SUPERVISION_DATABASE").unwrap());
+    let input = database.with_extension("command.json");
+    std::fs::write(&input,serde_json::to_vec(&serde_json::json!({"tenant":"academy-demo","operator":"operator-7","evidence":"case-42","command":command})).unwrap()).unwrap();
+    let output = std::process::Command::new(std::env::var_os("RULLST_SUPERVISION_OPERATOR").unwrap()).arg(&input).output().unwrap();
+    assert!(output.status.success(),"operator failed: {}",String::from_utf8_lossy(&output.stderr));
+    std::fs::remove_file(input).unwrap(); String::from_utf8(output.stdout).unwrap()
+}
+fn revision(receipt: &str) -> i64 { receipt.split("revision=").nth(1).unwrap().split(|c: char| !c.is_ascii_digit()).next().unwrap().parse().unwrap() }
+
+#[tokio::test]
+async fn transparent_sessions_and_parental_rules_on_original_routes() {
+    rullst_orm::Orm::init("sqlite::memory:").await.unwrap();
+    for migration in migrations::get_migrations() { migration.up().await.unwrap(); }
+    let pool = rullst_orm::Orm::pool().unwrap();
+    for id in 1..=4 {
+        sqlx::query("INSERT INTO users (id,name,email,created_at,updated_at) VALUES (?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)").bind(id).bind(format!("Member {id}")).bind(format!("member-{id}@example.test")).execute(pool).await.unwrap();
+        sqlx::query("INSERT INTO school_memberships (membership_key,school_id,user_id,status,is_default,valid_from_epoch,expires_at_epoch,created_at,updated_at) VALUES (?,?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)").bind(format!("member-{id}")).bind(if id == 4 {2} else {1}).bind(id).bind("active").bind(1).bind(1_i64).bind(0_i64).execute(pool).await.unwrap();
+    }
+    sqlx::query("INSERT INTO enrollments (user_id,course_id,status,created_at,updated_at) VALUES (?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)").bind(1).bind(1).bind("active").execute(pool).await.unwrap();
+    let key = rullst::auth::get_app_key().unwrap();
+    let learner = rullst::auth::encrypt_session(1,&key).unwrap();
+    let parent = rullst::auth::encrypt_session(2,&key).unwrap();
+    let reviewer = rullst::auth::encrypt_session(3,&key).unwrap();
+    let outsider = rullst::auth::encrypt_session(4,&key).unwrap();
+    let mut app = router().unwrap();
+    *app.as_axum_mut() = rullst::security::apply_security_baseline(app.as_axum().clone(),rullst::config::SecurityConfig::default(),rullst::config::Environment::Production).unwrap();
+    let start = "/supervision/exam?school=academy-demo&lesson=1";
+    assert_eq!(request(&app,start,None,None,None,None).await.status(),StatusCode::SEE_OTHER);
+    assert_eq!(request(&app,start,Some(&outsider),None,None,None).await.status(),StatusCode::FORBIDDEN);
+    for uri in ["/supervision/exam?school=academy-demo&school=rival&lesson=1","/supervision/exam?school=academy-demo&lesson=1&capture=camera","/supervision/exam?school=%0A&lesson=1"] {
+        assert_eq!(request(&app,uri,Some(&learner),None,None,None).await.status(),StatusCode::FORBIDDEN);
+    }
+    assert_eq!(request(&app,start,Some(&learner),None,Some("rival"),None).await.status(),StatusCode::FORBIDDEN);
+    let shown = request(&app,start,Some(&learner),None,None,None).await;
+    assert_eq!(shown.status(),StatusCode::OK); assert_eq!(shown.headers()["cache-control"],"no-store");
+    let initial = text(shown).await; let (csrf,fields) = form(&initial);
+    let start_form = format!("{fields}&action=start&policy=exam-v1&notice=notice-v1&collection=15&acknowledge=yes");
+    assert_eq!(request(&app,start,Some(&learner),None,None,Some(start_form.clone())).await.status(),StatusCode::FORBIDDEN);
+    assert_eq!(request(&app,start,Some(&learner),Some(&csrf),None,Some(start_form.replace("&acknowledge=yes",""))).await.status(),StatusCode::FORBIDDEN);
+    assert_eq!(value(&initial,"collection"),"15");
+    for bad in [start_form.replace("&collection=15",""), start_form.replace("&collection=15","&collection=1")] {
+        assert_eq!(request(&app,start,Some(&learner),Some(&csrf),None,Some(bad)).await.status(),StatusCode::CONFLICT);
+    }
+    let rotated = rullst::auth::encrypt_session(1,&key).unwrap();
+    assert_eq!(request(&app,start,Some(&rotated),Some(&csrf),None,Some(start_form.clone())).await.status(),StatusCode::FORBIDDEN);
+    let oversized = format!("_token={csrf}&proof={}","x".repeat(20000));
+    assert_eq!(request(&app,start,Some(&learner),Some(&csrf),None,Some(oversized)).await.status(),StatusCode::PAYLOAD_TOO_LARGE);
+    let started = request(&app,start,Some(&learner),Some(&csrf),None,Some(start_form.clone())).await;
+    assert_eq!(started.status(),StatusCode::SEE_OTHER);
+    let session_url = started.headers()["location"].to_str().unwrap().to_owned();
+    let session_id = session_url.split("&session=").nth(1).unwrap();
+    let active = text(request(&app,&session_url,Some(&learner),None,None,None).await).await;
+    assert!(active.contains("id=\"session-state\">Active")); let (csrf,fields) = form(&active);
+    assert_eq!(request(&app,&session_url,Some(&parent),None,None,None).await.status(),StatusCode::FORBIDDEN);
+    assert_eq!(request(&app,start,Some(&learner),None,None,None).await.headers()["location"],session_url);
+    let event_url = session_url.replace("/exam?","/event?");
+    let report = format!("{fields}&sequence=1&event=page_hidden");
+    assert_eq!(request(&app,&event_url,Some(&learner),Some(&csrf),None,Some(format!("{report}&payload=unexpected"))).await.status(),StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(request(&app,&event_url,Some(&learner),Some(&csrf),None,Some(report.clone())).await.status(),StatusCode::NO_CONTENT);
+    assert_eq!(request(&app,&event_url,Some(&learner),Some(&csrf),None,Some(report)).await.status(),StatusCode::CONFLICT);
+    for (index,event) in ["window_blurred","copy_attempt","cut_attempt","paste_attempt","fullscreen_entered","fullscreen_exited"].iter().enumerate() {
+        tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+        let observation = format!("{fields}&sequence={}&event={event}",index+2);
+        assert_eq!(request(&app,&event_url,Some(&learner),Some(&csrf),None,Some(observation)).await.status(),StatusCode::NO_CONTENT);
+    }
+    let forbidden = format!("{fields}&sequence=8&event=person_detected");
+    assert_eq!(request(&app,&event_url,Some(&learner),Some(&csrf),None,Some(forbidden)).await.status(),StatusCode::UNPROCESSABLE_ENTITY);
+    let review_url = format!("/supervision/review?school=academy-demo&subject=1&lesson=1&session={session_id}");
+    assert_eq!(request(&app,&review_url,Some(&reviewer),None,None,None).await.status(),StatusCode::FORBIDDEN);
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
+    let grant = operator(serde_json::json!({"operation":"grant","subject":1,"delegate":3,"action":"exam_review","lesson":1,"expires_at":now+3600}));
+    let review = request(&app,&review_url,Some(&reviewer),None,None,None).await; assert_eq!(review.status(),StatusCode::OK); assert!(text(review).await.contains("page hidden"));
+    operator(serde_json::json!({"operation":"revoke","subject":1,"delegate":3,"action":"exam_review","lesson":1,"revision":revision(&grant)}));
+    assert_eq!(request(&app,&review_url,Some(&reviewer),None,None,None).await.status(),StatusCode::FORBIDDEN);
+    assert_eq!(request(&app,&session_url,Some(&learner),Some(&csrf),None,Some(format!("{fields}&action=pause"))).await.status(),StatusCode::SEE_OTHER);
+    assert_eq!(request(&app,&event_url,Some(&learner),Some(&csrf),None,Some(format!("{fields}&sequence=2&event=page_visible"))).await.status(),StatusCode::CONFLICT);
+    let paused = text(request(&app,&session_url,Some(&learner),None,None,None).await).await;
+    assert!(!paused.contains("id=\"visibility-report\"")); let (csrf,fields) = form(&paused);
+    assert_eq!(request(&app,&session_url,Some(&learner),Some(&csrf),None,Some(format!("{fields}&action=end"))).await.status(),StatusCode::SEE_OTHER);
+    assert_eq!(request(&app,&session_url,Some(&learner),Some(&csrf),None,Some(format!("{fields}&action=resume&policy=exam-v1&notice=notice-v1&collection=15&acknowledge=yes"))).await.status(),StatusCode::CONFLICT);
+    assert_eq!(request(&app,start,Some(&learner),Some(&value(&initial,"_token")),None,Some(start_form.clone())).await.status(),StatusCode::CONFLICT);
+    assert_eq!(request(&app,"/lessons/1/play",Some(&learner),None,Some("academy-demo"),None).await.status(),StatusCode::OK);
+    let progress = format!("_token={csrf}&progress_percent=10&idempotency_key=allowed-supervision-progress");
+    assert_eq!(request(&app,"/lessons/1/progress",Some(&learner),Some(&csrf),Some("academy-demo"),Some(progress)).await.status(),StatusCode::SEE_OTHER);
+    operator(serde_json::json!({"operation":"enroll","subject":1}));
+    assert_eq!(request(&app,"/lessons/1/play",Some(&learner),None,Some("academy-demo"),None).await.status(),StatusCode::FORBIDDEN);
+    let parent_url = "/supervision/parental?school=academy-demo&subject=1";
+    assert_eq!(request(&app,parent_url,Some(&parent),None,None,None).await.status(),StatusCode::FORBIDDEN);
+    let parent_grant = operator(serde_json::json!({"operation":"grant","subject":1,"delegate":2,"action":"parental_manage","expires_at":now+3600}));
+    assert_eq!(request(&app,&review_url,Some(&parent),None,None,None).await.status(),StatusCode::FORBIDDEN);
+    let shown = text(request(&app,parent_url,Some(&parent),None,None,None).await).await; let (csrf,fields) = form(&shown);
+    let utc = |epoch| chrono::DateTime::from_timestamp(epoch,0).unwrap().format("%Y-%m-%dT%H:%M").to_string();
+    let policy = format!("{fields}&courses=1&not_before={}&expires_at={}",utc(now-60),utc(now+3600));
+    assert_eq!(request(&app,parent_url,Some(&parent),Some(&csrf),None,Some(policy.clone())).await.status(),StatusCode::SEE_OTHER);
+    assert_eq!(request(&app,parent_url,Some(&parent),Some(&csrf),None,Some(policy)).await.status(),StatusCode::CONFLICT);
+    assert_eq!(request(&app,"/lessons/1/play",Some(&learner),None,Some("academy-demo"),None).await.status(),StatusCode::OK);
+    assert_eq!(request(&app,"/lessons/1/play",Some(&parent),None,Some("academy-demo"),None).await.status(),StatusCode::FORBIDDEN);
+    let current = text(request(&app,parent_url,Some(&parent),None,None,None).await).await; let (csrf,fields) = form(&current);
+    let deny_all = format!("{fields}&courses=&not_before={}&expires_at={}",utc(now-60),utc(now+3600));
+    assert_eq!(request(&app,parent_url,Some(&parent),Some(&csrf),None,Some(deny_all)).await.status(),StatusCode::SEE_OTHER);
+    operator(serde_json::json!({"operation":"revoke","subject":1,"delegate":2,"action":"parental_manage","revision":revision(&parent_grant)}));
+    assert_eq!(request(&app,parent_url,Some(&parent),None,None,None).await.status(),StatusCode::FORBIDDEN);
+    assert_eq!(request(&app,"/lessons/1/play",Some(&learner),None,Some("academy-demo"),None).await.status(),StatusCode::FORBIDDEN);
+    let progress = format!("_token={csrf}&progress_percent=100&idempotency_key=denied-supervision-progress");
+    assert_eq!(request(&app,"/lessons/1/progress",Some(&learner),Some(&csrf),Some("academy-demo"),Some(progress)).await.status(),StatusCode::FORBIDDEN);
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM lesson_progress WHERE user_id=?").bind(1).fetch_one(pool).await.unwrap(); assert_eq!(count,1);
+    let progress: i32 = sqlx::query_scalar("SELECT progress_percent FROM lesson_progress WHERE user_id=? AND lesson_id=?").bind(1).bind(1).fetch_one(pool).await.unwrap(); assert_eq!(progress,10);
+    let admin = rullst_security::UserContext::new("3",vec!["admin".to_owned()]).try_with_tenant_id("academy-demo").unwrap();
+    let corrected = supervision_consumer::services::progress_service::correct_progress(&admin,"supervision-admin-correction",1,1,5,"independent manual review").await.unwrap();
+    assert_eq!(corrected.progress.progress_percent,5);
+    let unprivileged = rullst_security::UserContext::new("2",vec!["parent".to_owned()]).try_with_tenant_id("academy-demo").unwrap();
+    assert!(supervision_consumer::services::supervision_service::authorize_learning(1,&unprivileged,1).await.is_err());
+    let learner_policy = text(request(&app,parent_url,Some(&learner),None,None,None).await).await;
+    assert!(learner_policy.contains("Allowed course numbers: None")); assert!(!learner_policy.contains("<form"));
+    let store = supervision_consumer::services::supervision_service::store().await.unwrap();
+    let learner_context = rullst_supervision::Context::new("academy-demo","1").unwrap();
+    let scope = rullst_supervision::Scope::new("academy-demo","1","learning").unwrap();
+    let record = store.parental(&learner_context,&scope).await.unwrap().unwrap();
+    operator(serde_json::json!({"operation":"remove","subject":1,"revision":record.revision().value()}));
+    match std::env::var("RULLST_SUPERVISION_BROWSER_TESTS").as_deref() {
+        Ok("1") => browser(app.as_axum().clone(),&learner).await,
+        Err(std::env::VarError::NotPresent) | Ok("0") => eprintln!("HTTP journey passed; Chromium requires RULLST_SUPERVISION_BROWSER_TESTS=1"),
+        other => panic!("invalid browser mode: {other:?}"),
+    }
+    let raw = sqlx::SqlitePool::connect_with(sqlx::sqlite::SqliteConnectOptions::new().filename(std::env::var_os("RULLST_SUPERVISION_DATABASE").unwrap())).await.unwrap();
+    sqlx::query("DROP TABLE rullst_supervision_meta").execute(&raw).await.unwrap();
+    assert_eq!(request(&app,"/lessons/1/play",Some(&learner),None,Some("academy-demo"),None).await.status(),StatusCode::FORBIDDEN);
+    assert_eq!(request(&app,parent_url,Some(&learner),None,None,None).await.status(),StatusCode::SERVICE_UNAVAILABLE);
+    raw.close().await;
+    sqlx::query("UPDATE school_memberships SET status=? WHERE user_id=?").bind("revoked").bind(1).execute(pool).await.unwrap();
+    assert_eq!(request(&app,&session_url,Some(&learner),None,None,None).await.status(),StatusCode::FORBIDDEN);
+}
+
+async fn browser(app: axum::Router, session: &str) {
+    use std::io::Write;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let origin = format!("http://{}", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move { axum::serve(listener,app).await.unwrap(); });
+    let input = serde_json::to_vec(&serde_json::json!({"origin":origin,"cookie":session})).unwrap();
+    let script = std::env::var_os("RULLST_SUPERVISION_BROWSER_SCRIPT").unwrap();
+    let output = tokio::task::spawn_blocking(move || {
+        let mut child = std::process::Command::new("node").arg(script).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped()).spawn().unwrap();
+        child.stdin.take().unwrap().write_all(&input).unwrap(); child.wait_with_output().unwrap()
+    }).await.unwrap();
+    server.abort(); let _ = server.await;
+    assert!(output.status.success(),"browser failed: {}\n{}",String::from_utf8_lossy(&output.stdout),String::from_utf8_lossy(&output.stderr));
+    eprintln!("{}",String::from_utf8_lossy(&output.stdout));
+}

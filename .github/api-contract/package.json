@@ -1,0 +1,7 @@
+{
+  "name": "rullst-api-contract-verification",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pinned compiler for generated TypeScript HTTP contract acceptance",
+  "devDependencies": { "typescript": "5.9.3" }
+}

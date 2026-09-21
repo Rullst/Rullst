@@ -1,0 +1,320 @@
+{
+  "openapi": "3.1.1",
+  "x-rullst-profile": "rullst.api.v1",
+  "info": {
+    "title": "Authenticated lesson contract",
+    "version": "1"
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "LessonRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 16
+            },
+            "maxItems": 4
+          },
+          "nickname": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "details": {
+            "$ref": "#/components/schemas/WireLimits"
+          }
+        },
+        "required": [
+          "title",
+          "note",
+          "attempts",
+          "tags",
+          "active"
+        ],
+        "additionalProperties": false
+      },
+      "LessonReply": {
+        "type": "object",
+        "properties": {
+          "owner": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "request": {
+            "$ref": "#/components/schemas/LessonRequest"
+          }
+        },
+        "required": [
+          "owner",
+          "request"
+        ],
+        "additionalProperties": false
+      },
+      "Failure": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "WireLimits": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lower",
+          "upper",
+          "maybe_number",
+          "maybe_flag",
+          "maybe_items"
+        ],
+        "properties": {
+          "lower": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "upper": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "maybe_number": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "maybe_flag": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "maybe_items": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "maxItems": 4
+          },
+          "child": {
+            "$ref": "#/components/schemas/Failure"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/lessons/{owner}": {
+      "post": {
+        "operationId": "save_lesson",
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          },
+          {
+            "name": "verbose",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonReply"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "read_lesson",
+        "parameters": [
+          {
+            "name": "owner",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          },
+          {
+            "name": "verbose",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LessonReply"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Failure"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

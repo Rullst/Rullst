@@ -27,7 +27,13 @@
 - [ ] NATS Core and JetStream.
 - [ ] RabbitMQ/AMQP 0-9-1.
 - [ ] Apache Kafka.
-- [ ] Redis Streams.
+- [x] Redis Streams source/package admission (unpublished v13): the v13 `redis-streams` candidate
+  implements a bounded standalone profile with verified TLS, Rullst-owned group
+  indexes, atomic server-time lease fencing and partial-write quarantine.
+  Disposable-service restart/fault/outbox and hosted/extracted-package evidence
+  passed in PR #236; final release admission remains separate. Native groups,
+  replication/failover and at-rest encryption are out
+  of scope; see the [contract](../docs/src/redis-messaging.md).
 - [ ] AWS SQS and SNS.
 - [ ] Google Cloud Pub/Sub.
 - [ ] Apache Pulsar.

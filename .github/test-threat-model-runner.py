@@ -85,7 +85,7 @@ class RunnerTests(unittest.TestCase):
         expected = list(dict.fromkeys(key(row) for row in MANIFEST["cases"]))
         self.assertEqual(calls[0], ["fetch", "--locked"])
         self.assertEqual(len(calls[1:]), len(expected))
-        self.assertEqual(len(expected), 59)
+        self.assertEqual(len(expected), 62)
         for call, test_key in zip(calls[1:], expected):
             crate, kind, target, test = test_key.split(":", 3)
             target_args = ["--lib"] if kind == "lib" else ["--test", target]

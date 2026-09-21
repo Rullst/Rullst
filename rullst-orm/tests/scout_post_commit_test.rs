@@ -142,6 +142,30 @@ async fn generated_scout_projection_uses_the_managed_commit_boundary() {
         .expect_err("Scout search transport errors must remain visible");
     assert!(matches!(search_error, Error::Internal(_)));
     fail_search.store(false, Ordering::SeqCst);
+    let before_partial = updates.load(Ordering::SeqCst);
+    let row_id = model.id;
+    let pending_updates = updates.clone();
+    let partial_rollback = Orm::transaction(|_| {
+        Box::pin(async move {
+            let mut row = ScoutPostCommitModel::find(row_id).await?.unwrap();
+            row.update_partial()
+                .name("partial rollback".into())
+                .save()
+                .await?;
+            assert_eq!(pending_updates.load(Ordering::SeqCst), before_partial);
+            Err::<(), Error>(Error::Validation("partial rollback".into()))
+        })
+    })
+    .await;
+    assert!(partial_rollback.is_err());
+    assert_eq!(updates.load(Ordering::SeqCst), before_partial);
+    model
+        .update_partial()
+        .name("partial committed".into())
+        .save()
+        .await
+        .unwrap();
+    assert_eq!(updates.load(Ordering::SeqCst), before_partial + 1);
     model.delete().await.expect("delete and project model");
     assert_eq!(deletes.load(Ordering::SeqCst), 1);
 

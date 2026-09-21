@@ -2,9 +2,9 @@ name: Test Coverage (LLVM)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main, v12, v13]
   pull_request:
-    branches: [ "main" ]
+    branches: [main, v12, v13]
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   schedule:
     - cron: "23 5 * * 1"
@@ -30,7 +30,7 @@ jobs:
   coverage:
     name: Generate Code Coverage
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     permissions:
       contents: read
@@ -53,14 +53,15 @@ jobs:
           cache: false
 
       - name: Install pinned coverage tools
-        uses: taiki-e/install-action@26e9283f268b880168bdbd2c545dfcd60ec2c6ab # v2.87.13
+        uses: taiki-e/install-action@4076c08d76dba979c11a7285295b0716c1d67908 # v2.87.15
         with:
-          tool: cargo-llvm-cov,cargo-nextest@0.9.137
+          tool: cargo-llvm-cov@0.9.1,cargo-nextest@0.9.137
 
       - name: Run cargo-llvm-cov (all features — parallel unit + integration)
         env:
           NEXTEST_PROFILE: coverage
         run: |
+          python3 .github/test-coverage-libraries.py
           cargo llvm-cov nextest --no-report --all-features --workspace --no-fail-fast
 
       - name: Preserve exact all-feature test execution evidence
@@ -116,6 +117,44 @@ jobs:
             --test data_browser_mutation_mysql \
             --test data_browser_mutation_mariadb -- --test-threads=1
 
+      - name: Measure PostgreSQL age/passkey state and server restart contracts
+        run: |
+          python3 .github/check-privacy-postgres.py --coverage
+          python3 .github/check-passkey-postgres.py --coverage
+
+      - name: Measure PostgreSQL recovery and cross-process session revocation
+        run: python3 .github/check-auth-recovery-postgres.py --coverage
+
+      - name: Measure private S3 access and service restart contracts
+        run: bash .github/test-storage-s3-live.sh --coverage
+
+      - name: Set up Node for the Live recovery browser contract
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Measure Live recovery with Chromium and an application restart
+        run: >-
+          cargo llvm-cov --no-report -p rullst-core --no-default-features
+          --test live_recovery -- --ignored --exact
+          chromium_recovers_across_disconnects_and_process_restart --nocapture
+
+      - name: Measure distributed propagation with a standard TLS collector
+        run: python3 .github/check-distributed-tracing.py --coverage
+
+      - name: Measure remote messaging, TLS and Redis restart contracts
+        run: python3 .github/check-messaging-redis.py --coverage
+
+      - name: Provision the reviewed disposable Labs host
+        run: bash .github/provision-labs-host.sh
+
+      - name: Measure the trusted controller with real isolated workloads
+        run: |
+          python3 .github/test-labs-measurement.py
+          # Preserve identical controller/worker bytes and collect only host
+          # counters. No profiler state or output path enters the sandbox.
+          bash .github/run-labs-coverage.sh
+
       - name: Generate merged coverage report
         run: |
           cargo llvm-cov report --json --summary-only \
@@ -134,6 +173,7 @@ jobs:
           path: |
             coverage-summary.json
             coverage.txt
+            target/labs-coverage-evidence.json
           if-no-files-found: error
           retention-days: 30
 
@@ -141,7 +181,7 @@ jobs:
         run: python3 .github/check-coverage-threshold.py coverage-summary.json
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@0b35c9ecc4f0529d0eb674914510c22f85b196b4 # v7.1.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: lcov.info
           fail_ci_if_error: true
@@ -172,9 +212,9 @@ jobs:
           cache: false
 
       - name: Install pinned coverage tools
-        uses: taiki-e/install-action@26e9283f268b880168bdbd2c545dfcd60ec2c6ab # v2.87.13
+        uses: taiki-e/install-action@4076c08d76dba979c11a7285295b0716c1d67908 # v2.87.15
         with:
-          tool: cargo-llvm-cov,cargo-nextest@0.9.137
+          tool: cargo-llvm-cov@0.9.1,cargo-nextest@0.9.137
 
       - name: Run branch-instrumented workspace tests
         env:

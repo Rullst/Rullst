@@ -64,9 +64,11 @@ fn plan_manifests(
         .flat_map(|plan| plan.source_majors.iter().copied())
         .collect();
     if std::collections::BTreeSet::is_empty(&majors)
-        || majors.iter().any(|major| !matches!(major, 5 | 6 | 11 | 12))
+        || majors
+            .iter()
+            .any(|major| !matches!(major, 5 | 6 | 11 | 12 | 13))
     {
-        return Err("the migration catalog covers source majors 5, 6, 11 and 12 only".into());
+        return Err("the migration catalog covers source majors 5, 6, 11, 12 and 13 only".into());
     }
     let roots = plans
         .iter()

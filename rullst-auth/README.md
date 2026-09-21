@@ -46,6 +46,18 @@ fn round_trip(user_id: i32) -> Result<i32, AuthError> {
 }
 ```
 
+## Active-session management candidate (v13)
+
+With `recovery-sqlite` or `recovery-postgres`, `SqlRecoveryStore` can list the
+current account's active opaque sessions, revoke one sibling or revoke all
+others while preserving the current session. Explicit display labels are
+bounded; no device fingerprint, IP address or activity history is collected.
+Run the additive schema migration and verify SQL state on every request.
+Encrypted-only cookies and independent JWTs do not adopt this policy implicitly.
+Hosted source/package admission is pending; see the
+[session contract](../docs/src/session-management.md) for retention, deadlines,
+tenant boundaries and automated evidence.
+
 ## WebAuthn/passkeys
 
 `PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges,
@@ -62,10 +74,22 @@ Revoked entries remain visible in device inventory and continue to count toward
 the configured quota so revocation history is not silently recycled.
 
 WebAuthn challenge state remains bounded and process-local inside `PasskeyAuth`.
-Multi-instance deployments therefore need sticky ceremony routing or a custom
-shared challenge layer. The SQLite store does not establish normative WebAuthn
-conformance, encrypt the file, replicate it, or replace application identity
-and device-ownership policy.
+The optional v13 `passkey-postgres` path adds
+`passkey::shared::SharedPasskeyAuth<PostgresCeremonyStore>` for challenges shared
+by separate hosts. It binds tenant/account/session, RP configuration and current
+credential fingerprints, consumes once under a database transaction, and checks
+expiry again after cryptographic work. Store capacity, lifetime and an
+independently retained deployment epoch must match every instance. Normal startup
+opens existing state; deployment initialization is explicit.
+
+The host still establishes registration authority, resolves the account, forwards
+an optional authenticator user handle, and atomically persists current credential
+ownership/revocation/counter state before granting a session. The existing
+SQLite registry and the shared ceremony adapter are not one distributed
+transaction. See the [shared ceremony contract](../docs/src/shared-passkey-ceremonies.md)
+for local evidence and outstanding hosted/archive acceptance. Neither adapter
+establishes normative WebAuthn conformance, manages replication/failover, or
+replaces application identity and device-ownership policy.
 
 ## Application JWTs
 

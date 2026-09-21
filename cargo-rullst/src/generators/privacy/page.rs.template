@@ -1,0 +1,45 @@
+use rullst::{html::escape_str as escape, response::Html};
+use rullst_privacy::consent::{ConsentChoice, ConsentRecord, ConsentSubject};
+use super::config;
+
+pub(super) fn preferences(subject: &ConsentSubject, record: &ConsentRecord, csrf: &str, proof: &str, issued_at: i64) -> Html<String> {
+    let enabled = record.choice() == ConsentChoice::Granted && record.version() == config::NOTICE_VERSION && record.valid_until() > issued_at;
+    let status = if enabled { "Personalized greeting is enabled." } else { "A generic greeting is currently selected." };
+    let fields = format!(r#"<input type="hidden" name="_token" value="{}">
+<input type="hidden" name="purpose" value="{}">
+<input type="hidden" name="version" value="{}">
+<input type="hidden" name="revision" value="{}">
+<input type="hidden" name="issued_at" value="{issued_at}">
+<input type="hidden" name="proof" value="{}">"#, escape(csrf), escape(config::PURPOSE_ID), escape(config::NOTICE_VERSION), record.revision(), escape(proof));
+    let action_url = config::url("/privacy", subject);
+    let action = escape(&action_url);
+    Html(format!(r#"<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Privacy choices</title></head><body><main>
+<h1>Privacy choices</h1><p>{status}</p>
+<section aria-labelledby="greeting"><h2 id="greeting">Optional personalized greeting</h2>
+<p>Allow this page to use the name in your account for a personalized greeting. This optional feature does not share it with an external service. Refusing or withdrawing keeps a generic greeting and does not close your account.</p>
+<p>This choice covers only this greeting. It does not authorize other processing, email marketing or tracking. Notice version: {}. Permission expires automatically after {}.</p>
+<form method="post" action="{action}">{fields}<fieldset><legend>Your choice</legend>
+<label><input type="radio" name="choice" value="grant" required="true"> Allow the personalized greeting</label>
+<label><input type="radio" name="choice" value="decline" required="true"> Keep a generic greeting</label>
+</fieldset><button type="submit">Save choice</button></form>
+<form method="post" action="{action}">{fields}<button type="submit" name="choice" value="withdraw">Withdraw permission</button></form>
+<p><a href="{}">View the greeting</a></p></section>
+<section aria-labelledby="export"><h2 id="export">Account profile export</h2>
+<p>Download your account ID, name and email. This file excludes passwords and session credentials. It covers your account profile only; contact the service for requests involving other records.</p>
+<a href="{}" download="account-profile.json">Download account profile</a></section>
+<p><a href="/">Return to the service</a></p></main></body></html>"#,
+        escape(config::NOTICE_VERSION), duration(config::VALIDITY_SECONDS),
+        escape(&config::url("/privacy/personalization", subject)), escape(&config::url("/privacy/export", subject))))
+}
+
+fn duration(seconds: i64) -> String {
+    for (unit, divisor) in [("days", 86_400), ("hours", 3600), ("minutes", 60)] {
+        if seconds % divisor == 0 { return format!("{} {unit}", seconds / divisor); }
+    }
+    format!("{seconds} seconds")
+}
+
+pub(super) fn greeting(name: Option<&str>, subject: &ConsentSubject) -> Html<String> {
+    let message = name.map(|name| format!("Welcome, {}!", escape(name))).unwrap_or_else(|| "Welcome!".to_owned());
+    Html(format!(r#"<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Your greeting</title></head><body><main><h1>{message}</h1><a href="{}">Manage privacy choices</a></main></body></html>"#, escape(&config::url("/privacy", subject))))
+}

@@ -4,7 +4,9 @@ use std::fs;
 use std::path::Path;
 
 pub mod academy_doctor;
+pub(crate) mod age_gate;
 pub mod ai_context;
+pub(crate) mod api_contract;
 pub mod audit;
 mod audit_compliance;
 mod audit_evidence;
@@ -12,10 +14,13 @@ pub mod auth;
 pub mod billing;
 pub mod build;
 pub mod chat;
+mod consumer_files;
+mod consumer_support;
 pub mod controller;
 pub mod cors_jwt;
 pub mod db;
 pub mod deploy;
+pub(crate) mod deploy_doctor;
 pub mod desktop;
 pub mod dev;
 pub mod diagram;
@@ -35,6 +40,7 @@ pub mod middleware;
 pub mod migration;
 pub mod model;
 pub mod openapi;
+pub(crate) mod privacy;
 pub mod project;
 pub mod resource;
 pub mod scalar;
@@ -472,3 +478,5 @@ rullst-orm = { version = "12", features = ["turso"] }
         );
     }
 }
+
+pub(crate) mod supervision;

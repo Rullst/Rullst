@@ -291,8 +291,9 @@ pub async fn revoke_role_at(
     if let Some(existing) = rullst::db::sqlx::query_scalar::<_, String>(duplicate_sql)
         .bind(revocation_key).fetch_optional(&mut *transaction).await
         .map_err(|error| RoleError::Database(error.into()))?
+        && existing != assignment_key
     {
-        if existing != assignment_key { return Err(RoleError::IdempotencyConflict); }
+        return Err(RoleError::IdempotencyConflict);
     }
     let update_sql = match driver {
         "postgres" => "UPDATE role_assignments SET status = $1, revocation_key = $2, revoked_by = $3, revoked_at_epoch = $4, revocation_reason = $5, updated_at = CURRENT_TIMESTAMP WHERE assignment_key = $6 AND school_id = $7 AND status = $8",

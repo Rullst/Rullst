@@ -2,9 +2,9 @@ name: SemVer Checks
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main, v12, v13]
   pull_request:
-    branches: [ "main" ]
+    branches: [main, v12, v13]
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
 
@@ -73,7 +73,7 @@ jobs:
           toolchain: 1.98.1
           cache: false
       - name: Install cargo-semver-checks
-        uses: taiki-e/install-action@26e9283f268b880168bdbd2c545dfcd60ec2c6ab # v2.87.13
+        uses: taiki-e/install-action@4076c08d76dba979c11a7285295b0716c1d67908 # v2.87.15
         with:
           tool: cargo-semver-checks
       - name: Check published Rust API for SemVer regressions

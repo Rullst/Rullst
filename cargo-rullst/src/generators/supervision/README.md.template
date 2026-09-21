@@ -1,0 +1,114 @@
+# Explicit supervision preview
+
+This unpublished opt-in supports only the full SQLite LMS. Its local path
+dependency is deliberate until the package passes admission. No deployment,
+verified family relationship or legal compliance is implied.
+
+Before startup, configure `RULLST_SUPERVISION_DATABASE` as a private absolute file
+path in a trusted directory, `RULLST_SUPERVISION_EPOCH` as an independently retained
+opaque deployment identifier, and `RULLST_SUPERVISION_FORM_KEY_HEX` as a separate
+random nonzero 32-byte hexadecimal secret. Store it in your secret manager; do not
+commit it. All processes must use the same configuration. No automatic database
+creation or recovery occurs at startup.
+
+Run `cargo run --bin supervision-admin -- /private/command.json` locally as a
+trusted operator. Each bounded JSON command has this shape:
+
+```json
+{"tenant":"school-1","operator":"operator-7","evidence":"case-42","command":{"operation":"initialize"}}
+```
+
+Initialization exclusively creates a new file and grants no authority. The
+operator/evidence fields are audit references, not authentication. The local OS
+operator must independently verify identities, current school membership,
+relationship, legal basis and purpose before granting authority. Never expose
+this executable or an unchecked `Operator` constructor through a web endpoint.
+No documents, biometrics or relationship evidence belong in this file/store.
+
+Other `command` objects:
+
+- `{"operation":"enroll","subject":1}` enables management, initially denying
+  protected learning. Perform this before exposing the learner's application.
+- `{"operation":"grant","subject":1,"delegate":2,"action":"parental_manage","expires_at":<future UTC epoch seconds>}`
+  grants management of the fixed `learning` resource. First creation omits
+  `revision`; replacement requires the current revision.
+- `{"operation":"grant","subject":1,"delegate":3,"action":"exam_review","lesson":1,"expires_at":<future UTC epoch seconds>}`
+  grants separate review for that learner/lesson. A parental grant never implies it.
+- `inspect_grant` uses the same subject/delegate/action/optional lesson fields.
+- `revoke` uses those fields plus the exact current `revision`. Revoking a manager
+  preserves the learner's existing restrictions.
+- `{"operation":"remove","subject":1,"revision":<current policy revision>}`
+  explicitly removes management; obtain the latest revision from the authorized
+  parental form. Ordinary enrollment and school authorization remain mandatory.
+- `{"operation":"purge","limit":100}` removes at most 100 expired rows for this
+  tenant. Schedule bounded cleanup; repeatedly call if a backlog remains.
+
+Example routes (replace IDs with existing authorized records):
+
+- Learner: `/supervision/exam?school=school-1&lesson=1`. Starting redirects to an
+  opaque session URL. Opening the start page again recovers the current active
+  or paused session. A start form from before the last session was ended cannot
+  start another session: reload to obtain its new revision.
+- Learner/manager: `/supervision/parental?school=school-1&subject=1`.
+- Reviewer: `/supervision/review?school=school-1&subject=1&lesson=1&session=<id>`.
+  The operator/learner supplies this URL to the authorized reviewer separately.
+
+All requests refresh authenticated school membership. Subject membership and
+lesson/course school binding are checked separately. Missing/expired/revoked
+grants deny delegated operations. Existing lesson, progress and quiz service
+calls pass through the added parental gate. This is an additional restriction,
+not an enrollment grant; unmanaged learners retain ordinary authorization.
+Only server code selects the `learning` policy resource. Existing authorized
+cross-subject administrator corrections retain their original authorization and
+require current actor/subject school membership, without applying learner-use
+restrictions. They grant no exam-review or parental-management permission. Existing learning routes
+use their original authenticated school-selection rules; supervision's `school`
+query hint does not alter unrelated routes.
+
+Own session state and pause/end controls remain available after learning access
+is restricted, provided current school membership and lesson binding still hold.
+Starting, resuming and reporting require current learning access. Paused/ended
+states cannot accept reports. Forms bind actor, cookie session, school, learner,
+resource, configured categories, policy, notice and revision and expire after five minutes. A failed or
+cancelled write may have committed: reload state before retrying.
+
+Only the selected categories on this page are reported: visibility by default;
+`--browser-observations visibility,focus,clipboard,fullscreen` selects all four
+at generation time. Start/resume acknowledgement binds exact categories; browser
+permission for camera/audio is separate and never requested by this generator.
+Copy/cut/paste reports contain no clipboard contents. Focus cannot identify other
+windows, and fullscreen events do not force fullscreen or establish integrity.
+Reports are limited to at most one per second,
+256 per session and 8192 stored across all tenants. Dropped/forged reports are
+expected; they never establish misconduct or change grades. Forms work without
+JavaScript, with no browser reports. Submission of pause/end stops local
+collection immediately; the server transition must still succeed. A different
+tab can attempt a report until it learns of the change, but committed state
+changes reject it. The collector serializes requests with at most sixteen queued occurrences;
+overflow stops collection and clears the queue. There are no background
+heartbeats or automatic renewal.
+Five-minute form expiry stops local collection until the page is reloaded.
+
+The configured event retention and maximum session lifetime are shown to the
+learner. Reads exclude expired records before scheduled purge. Session metadata
+remains for the lifetime plus retention; logical deletion does not erase WAL,
+free pages or backups. Grants/managed learners/sessions have global capacities
+1024/512/256 and are never silently evicted. Exhaustion/storage/clock/configuration
+failures deny protected operations. Changing persisted limits requires a reviewed
+new store, not editing startup constants against an existing one.
+
+This is local shared-file state, not multi-host replication. App membership and
+supervision use separate database transactions. Operators own private filesystem
+access, encryption, backup retention and trustworthy clocks. Restore with the
+feature quiesced and a new independently retained epoch; restoring an old file
+with its old epoch can restore revoked authority. No automatic rollback detection,
+OS/device control, recurring schedules, screen-time accounting or camera analysis
+is provided. Review course policies and relationship evidence periodically.
+
+The unpublished observation extension uses schema v2. Schema v1 is refused;
+there is no automatic migration, acknowledgement upgrade or deletion. Quiesce
+the old preview, retain/expire its state under the existing retention policy and
+prepare a separately named private v2 store with a new independently retained
+epoch. Independently re-establish grants/restrictions before allowing protected
+learning; a fresh store has no enrolled parental restrictions. Do not just change
+the epoch against an old file or delete state to bypass the refusal.

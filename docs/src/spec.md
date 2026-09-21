@@ -53,20 +53,595 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 
 | Crate | Responsibilities | Status & Capabilities |
 | :--- | :--- | :--- |
-| **`rullst-core`** | Kernel HTTP runtime, `routes!`, Server bootstrap, HTML engine, async task queues, WebSockets, circular telemetry buffers, storage facade, and the default baseline CSRF/WAF/header/PII stack. | 🟢 **`[Implemented / Bounded]`**: Routing, server lifecycle, `html!` engine, graceful shutdown, backpressure guard, queues, and local storage with path-traversal protection. `ApplicationLifecycle` adds an opt-in process-local monotonic startup/ready/draining/stopped state, at most 32 immutable component readiness bits, secret-minimized `/ready`, fail-closed admission and a bounded drain wait. `Server` marks ready after binding, begins drain before Axum's graceful wait, and accepts an explicit supervisor shutdown future; deterministic tests cover startup failure, in-flight completion, rejection after drain and lock poisoning. It does not run dependency checks, coordinate replicas/load balancers or authorize domain requests. SQLite and Redis persist `dispatch_at` timestamps for at most 366 days and never claim them early; Redis promotion uses server time and a digest-pinned live CI/release contract. Execution starts on the first later worker poll and is at-least-once. Custom drivers fail closed for future scheduling until implemented. `TenantStorage`, `TenantCache`, `TenantRealtime` and `TenantPresence` bind those facades to a validated `TenantContext`, apply immutable tenant namespaces and prove same-name local non-interference; the realtime wrappers also bound channel/event/identity names and payload size. Memory and Redis caches expose an opt-in, at-most-200-entry metadata snapshot containing logical key, UTF-8 value length and remaining TTL but never the value; custom drivers fail explicitly unless they implement that method. Remote bucket policy, distributed transport/liveness, cache operator authorization and application room authorization remain deployment/application work.<br/>🟢 **`[Implemented / Bounded]`**: The in-memory upload admission contract enforces a hard size/allowlist boundary, canonical tenant/name, recognized signature versus MIME/extension, active-text denial, randomized tenant quarantine keys, SHA-256 binding and fail-closed scanner release. It is not multipart streaming, a deep parser, remote persistence or a production malware engine.<br/>🟢 **`[Implemented / Bounded]`**: Validated environment precedence is `RULLST_ENV`, legacy `APP_ENV`, then `[app].env`; invalid values fail instead of silently enabling development.<br/>🟢 **`[Implemented / Bounded]`**: `apply_security_baseline` and `Server` compose configured CSP nonce headers, exact-origin CORS with explicit credential opt-in, bounded WAF, double-submit CSRF and optional PII masking in one tested order, with the per-application config installed outside every middleware. Browser/proxy/TLS deployment evidence and application-owned session/auth/tenant/authorization remain separate. A fail-closed typed Academy boundary-assessment contract records those application observations without certifying them, and the extended `rullst-security` stack is still composed explicitly.<br/>🟢 **`[Implemented / Bounded]`**: `client_contract` exposes the portable `rullst.client` v1 typed JSON envelope, positive version negotiation, bounded correlation/idempotency/failure tokens, server-authored time and a fail-closed 2 MiB codec on native and Wasm. It deliberately contains no role, tenant or authorization assertion; durable replay and domain policy remain server/application work.<br/>🟢 **`[Implemented / Feature-gated Foundation]`**: native `offline-sync` adds bounded account state, FIFO idempotent proposals, server revisions/cursors, explicit conflicts/full resync/recovery/logical erasure, account-bound AES-256-GCM snapshots and a static-dispatch foreground coordinator with request budgets, timeout and cursor-stall checks. Platform persistence/secure-key adapters, browser offline storage, concrete authenticated HTTP/retry/background orchestration, future-schema migrations and device evidence remain application/platform work.<br/>🔵 **`[Roadmap]`**: Native S3/R2 direct cloud drivers. |
+| **`rullst-core`** | Kernel HTTP runtime, `routes!`, Server bootstrap, HTML engine, async task queues, WebSockets, circular telemetry buffers, storage facade, and the default baseline CSRF/WAF/header/PII stack. | 🟢 **`[Implemented / Bounded]`**: Routing, server lifecycle, `html!` engine, graceful shutdown, backpressure guard, queues, and local storage with path-traversal protection. `ApplicationLifecycle` adds an opt-in process-local monotonic startup/ready/draining/stopped state, at most 32 immutable component readiness bits, secret-minimized `/ready`, fail-closed admission and a bounded drain wait. `Server` marks ready after binding, begins drain before Axum's graceful wait, and accepts an explicit supervisor shutdown future; deterministic tests cover startup failure, in-flight completion, rejection after drain and lock poisoning. It does not run dependency checks, coordinate replicas/load balancers or authorize domain requests. SQLite and Redis persist `dispatch_at` timestamps for at most 366 days and never claim them early; Redis promotion uses server time and a digest-pinned live CI/release contract. Execution starts on the first later worker poll and is at-least-once. Custom drivers fail closed for future scheduling until implemented. `TenantStorage`, `TenantCache`, `TenantRealtime` and `TenantPresence` bind those facades to a validated `TenantContext`, apply immutable tenant namespaces and prove same-name local non-interference; the realtime wrappers also bound channel/event/identity names and payload size. Memory and Redis caches expose an opt-in, at-most-200-entry metadata snapshot containing logical key, UTF-8 value length and remaining TTL but never the value; custom drivers fail explicitly unless they implement that method. Remote bucket policy, distributed transport/liveness, cache operator authorization and application room authorization remain deployment/application work.<br/>🟢 **`[Implemented / Bounded]`**: The in-memory upload admission contract enforces a hard size/allowlist boundary, canonical tenant/name, recognized signature versus MIME/extension, active-text denial, randomized tenant quarantine keys, SHA-256 binding and fail-closed scanner release. It is not multipart streaming, a deep parser, remote persistence or a production malware engine.<br/>🟢 **`[Implemented / Bounded]`**: Validated environment precedence is `RULLST_ENV`, legacy `APP_ENV`, then `[app].env`; invalid values fail instead of silently enabling development.<br/>🟢 **`[Implemented / Bounded]`**: `apply_security_baseline` and `Server` compose configured CSP nonce headers, exact-origin CORS with explicit credential opt-in, bounded WAF, double-submit CSRF and optional PII masking in one tested order, with the per-application config installed outside every middleware. Browser/proxy/TLS deployment evidence and application-owned session/auth/tenant/authorization remain separate. A fail-closed typed Academy boundary-assessment contract records those application observations without certifying them, and the extended `rullst-security` stack is still composed explicitly.<br/>🟢 **`[Implemented / Bounded]`**: `client_contract` exposes the portable `rullst.client` v1 typed JSON envelope, positive version negotiation, bounded correlation/idempotency/failure tokens, server-authored time and a fail-closed 2 MiB codec on native and Wasm. It deliberately contains no role, tenant or authorization assertion; durable replay and domain policy remain server/application work.<br/>🟢 **`[Implemented / Feature-gated Foundation]`**: native `offline-sync` adds bounded account state, FIFO idempotent proposals, server revisions/cursors, explicit conflicts/full resync/recovery/logical erasure, account-bound AES-256-GCM snapshots and a static-dispatch foreground coordinator with request budgets, timeout and cursor-stall checks. Platform persistence/secure-key adapters, browser offline storage, concrete authenticated HTTP/retry/background orchestration, future-schema migrations and device evidence remain application/platform work.<br/>🟢 **`[Implemented / Bounded, unpublished v13]`**: Optional `storage-s3` private S3/R2 operations passed hosted source/package admission in PR #236; final release admission and actual owner-account interoperability remain outstanding. See section 4.4. |
 | **`rullst-orm`** | Active Record & Repository patterns, parameterized SQLx connection pool (PostgreSQL, MySQL/MariaDB, SQLite), typed Turso/libSQL primary profile, schema migrations, AES-256-GCM privacy, Scout search, typed pgvector/Qdrant queries, Redis native structures, and optional capability-oriented persistence adapters. | 🟢 **`[Implemented / Bounded]`**: Relational CRUD, eager loading, type-safe queries, migration runner, versioned field encryption, and connection-pool resilience for supported SQLx drivers/features. PostgreSQL, MySQL, MariaDB and SQLite have distinct executable matrix contracts, while MariaDB intentionally shares SQLx's MySQL protocol/backend.<br/>🟢 **`[Implemented / Bounded]`**: `#[derive(Orm)] #[orm(backend = "turso")]` supplies typed CRUD, equality filters, ordering, pagination/counts and generated/app-assigned keys through a process-wide `TursoOrm`. Its migrations are ordered, checksummed, drift-detecting and reversible. The blank/API CLI profile generates, compiles, migrates, reports status and rolls back locally, while the same typed contract passes against the official remote libSQL server. Unsupported SQLx-specific model behaviors fail during macro expansion rather than being ignored. Other SQLx-specific blueprints, ORM relations/hooks, schema auto-diff, seed generation and transparent embedded-replica synchronization are not part of this bounded Turso profile.<br/>🟢 **`[Implemented / Bounded]`**: The optional persistence boundary supplies portable document CRUD for MongoDB and SurrealDB, parameterized OLAP queries through in-process DuckDB, explicit parameterized Turso/libSQL SQL/transactions, and bounded read-only ISO GQL through SurrealDB. These capability APIs do not claim shared semantics or cross-store transactions. External adapters select deterministic offline behavior for empty or `mock_*` credentials where documented; SurrealDB uses its HTTP protocol rather than embedding the BSL-licensed SDK.<br/>🟢 **`[Implemented / Feature-gated]`**: `scout-http` provides bounded Meilisearch, Elasticsearch and Algolia indexing/search adapters plus deterministic mocks. Meilisearch has a digest-pinned live lifecycle; Elasticsearch/Algolia have protocol fixtures, not hosted-provider certification. Generated projections are process-local post-commit effects unless the application explicitly composes the transactional outbox.<br/>🟢 **`[Implemented / Feature-gated]`**: `pgvector` with `strict-postgres` supplies typed SQL vector helpers. `qdrant` supplies a separate bounded dense-vector collection/upsert/delete/cosine-query contract, while `redis` supplies namespaced Hash, Set and Sorted Set operations. All three have digest-pinned live lifecycles; RAG orchestration, authorization, production ANN tuning and Redis cluster/failover remain application/deployment boundaries.<br/>🟢 **`[Implemented / Benchmark Evidence]`**: A lockfile-pinned Criterion target compares five equivalent typed-SQLite shapes through one Rullst, Diesel and SeaORM connection under the same schema, seed and SQLite policy. It is per-run evidence, not a superiority, negligible-overhead, networked-database or full-application claim. |
-| **`rullst-auth`** | Argon2id password hashing, encrypted cookie sessions (AES-256-GCM), opt-in application JWTs, Passkey ceremony foundations, RBAC context guards. | 🟢 **`[Implemented / Bounded]`**: Non-blocking `spawn_blocking` Argon2id hashing, versioned expiring AES-256-GCM sessions, fail-closed `RequireRoleLayer`, compile-validated `#[rullst::require_role]`, named `Policy<User, Resource>` decisions, and a feature-gated application JWT policy with required versioned claims, bounded TTL/scopes, strong HS256 keys, `kid` rotation and revocation contracts that reject process-local state in production mode.<br/>🟢 **`[Implemented / Feature-gated]`**: `sqlite` supplies bounded shared local auth state. `SqliteJwtRevocationStore` persists JTI expiry and monotonic subject session versions through serialized transactions, stored quota/configuration and async verification. `SqlitePasskeyStore` persists validated public credentials, bounded device inventory/rename/revocation and optimistic signature-counter CAS; executable restart, replay, quota, corruption/configuration and two-instance contention evidence covers both stores. Authentication, role persistence, resource/tenant/device ownership, trusted file permissions/encryption, backup and multi-host replication remain application/deployment boundaries.<br/>🟠 **`[Partial]`**: Passkey registration/assertion validates the documented ES256/`none`-attestation scope, but challenge state remains process-local. Sticky ceremony routing or an application shared challenge layer is required across instances. Normative WebAuthn conformance or adoption of an audited full server library, refresh tokens and complete recovery/session UX remain required before a general stable claim. |
+| **`rullst-auth`** | Argon2id password hashing, encrypted cookie sessions (AES-256-GCM), opt-in application JWTs, Passkey ceremony foundations, RBAC context guards. | 🟢 **`[Implemented / Bounded]`**: Non-blocking `spawn_blocking` Argon2id hashing, versioned expiring AES-256-GCM sessions, fail-closed `RequireRoleLayer`, compile-validated `#[rullst::require_role]`, named `Policy<User, Resource>` decisions, and a feature-gated application JWT policy with required versioned claims, bounded TTL/scopes, strong HS256 keys, `kid` rotation and revocation contracts that reject process-local state in production mode.<br/>🟢 **`[Implemented / Feature-gated]`**: `sqlite` supplies bounded shared local auth state. `SqliteJwtRevocationStore` persists JTI expiry and monotonic subject session versions through serialized transactions, stored quota/configuration and async verification. `SqlitePasskeyStore` persists validated public credentials, bounded device inventory/rename/revocation and optimistic signature-counter CAS; executable restart, replay, quota, corruption/configuration and two-instance contention evidence covers both stores. Authentication, role persistence, resource/tenant/device ownership, trusted file permissions/encryption, backup and multi-host replication remain application/deployment boundaries.<br/>🟠 **`[Partial]`**: Passkey registration/assertion validates the documented ES256/`none`-attestation scope; the compatible `PasskeyAuth` challenge state remains process-local. The optional `passkey-postgres` v13 candidate adds a separate shared manager with bound single-use PostgreSQL ceremonies; independent-process/database-restart and Chromium virtual-authenticator contracts pass, and PR #223 passed hosted workspace/archive source acceptance. Final release admission remains separate. The v13 opaque-session inventory/logout increment extends the recovery store with process/database evidence and passed hosted source/package admission in PR #236. Final release admission remains separate. Normative WebAuthn conformance or adoption of an audited full server library, refresh tokens and complete recovery/session UX remain required before a general stable claim. |
 | **`rullst-security`** | Explicit extended defense-in-depth layers: bounded RASP, authenticated Vault, Login Jail, Secure Headers, rate limiting, DLP and security telemetry. | 🟢 **`[Implemented / Bounded]`**: AES-256-GCM envelopes with rotation/AAD, bounded URI/header/body RASP heuristics, local abuse controls, CSWSH origin guard, OS-random TOTP with SVG enrollment QR, strict JSON transport inspection plus an explicitly mounted reusable JSON Schema 2020-12/OpenAPI 3.1-component policy, explicit log redaction, file-backed SRI hashes, and a versioned/bounded `LiveSecurityEvent` v1 dashboard envelope. `DurableSiemSpool` preserves the compatible unsigned local format, while `AuthenticatedSiemSpool` offers an explicit HMAC-SHA256-chained format with named active/historical keys, zeroized key material, sequence/predecessor validation and byte/record quotas. Restart, forgery, wrong/missing keys, reordering, interior deletion, quota, symlink and external-length-change paths fail closed. Whole valid-tail rollback requires a separately trusted checkpoint, and the caller owns directory/key trust, permissions, retention and exclusive-writer operation. Schema construction caps bytes/nodes/depth, accepts only local references, disables network/filesystem resolution and uses linear-time regexes; auth/ownership/domain rules and query/header/form validation remain application contracts. A deterministic Sentinel classifies three caller-supplied aggregate patterns and can issue HMAC-authenticated, subject-bound, expiring, one-shot process-local proof-of-work challenges; it is not AI attribution, automatic blocking or distributed replay protection. The CLI emits bounded fail-closed evidence and a CycloneDX 1.5 Cargo SBOM; it does not certify the application.<br/>🟢 **`[Implemented / Feature-gated]`**: `redis-rate-limit` provides namespaced atomic Redis fixed-window counters, hashes client keys and exposes an explicit process-local offline mode that production can reject with `require_distributed()`.<br/>🟠 **`[Partial]`**: Recovery-code consumption must be persisted transactionally by the application. Real Redis cross-instance/eviction/failover evidence is still required. CSP nonce composition is shared, but Core and Security are not yet one canonical Server stack; WebSocket CSRF tickets/frame crypto, trusted rollback checkpoints, spool compaction/remote acknowledgement and external SIEM delivery are not implemented. |
 | **`rullst-ai`** | Multi-provider LLM client (Gemini, OpenAI, Claude, DeepSeek, Ollama, explicit OpenAI-compatible endpoints), prompt injection defenses, PII masking, bounded tenant-aware RAG, guarded local tools, and conversational memory. | 🟢 **`[Implemented / Bounded]`**: Guarded `AiClient`, heuristic prompt filter, PII masking, machine-readable provider capabilities, configurable bounded live-request deadlines, a versioned deterministic injection/jailbreak/PII regression corpus, and a capability-declared OpenAI-compatible adapter. The adapter separates literal-loopback-IP HTTP(S) from HTTPS cloud configuration, supports optional Bearer authentication, disables ambient proxies/redirects, and bounds image/response bodies; unrelated protocols use `AiProvider`. A separate static-dispatch `StreamingAiClient<P>` enforces chunk/output ceilings and explicit cancellation; exact OpenAI-compatible configurations may declare strict incremental SSE with a required terminal marker and cancellation raced against request/body reads. `AdaptiveAiEvaluator<P>` runs caller-defined multi-turn strategies with independent turn/prompt/response/deadline limits, cancellation, typed pass/fail/inconclusive decisions and a versioned report that retains no raw prompt, response or provider error. Repository fixtures prove orchestration, not live-model behavior.<br/>🟢 **`[Implemented / Bounded]`**: Strict URL/resolved-IP/redirect/resource policy plus an opt-in deny-by-default HTTPS fetcher with exact-host allowlist, DNS pinning, proxy bypass, peer verification and streaming limits. Explicit vision helpers accept application-admitted bytes, canonical exact-root local files or URLs only through that fetcher; capability and prompt checks precede I/O, input is capped at 10 MiB, supported image signatures are sniffed and a supplied remote media type must match. Local tool dispatch separately requires allowlist, principal authorization, closed bounded JSON, call budget, audit sink, and payload-bound approval for destructive/financial calls. `RagPipeline::answer` composes guarded embedding, a static-dispatch application retriever, Unicode-safe context budgets, guarded generation, source metadata, and required secret-minimized terminal audit under a trusted `TenantContext`; a bounded tenant-partitioned process-local cosine retriever supplies the offline contract. `DurableRagAuditTrail` and `DurableToolAuditTrail` synchronously append minimized events to distinct versioned local files under byte/record quotas and fail closed on restart corruption, symlink targets, competing-writer growth or durability uncertainty. Their SHA-256 frames detect corruption but do not authenticate events. The separate opt-in `AuditDeliveryClient` exports a caller-minimized, at-most-16-KiB JSON envelope with an exact HMAC-SHA256 signature, key/timestamp metadata, stable event identity across bounded transient retries, explicit cancellation and a closed event-bound acknowledgement. Cloud delivery requires HTTPS and literal-loopback HTTP(S) is development-only; the receiver still owns freshness verification, deduplication, authorization, persistence, retention and key operations.<br/>🟢 **`[Implemented / Feature-gated]`**: `StatefulChat<M>` loads bounded tenant/conversation history, performs guarded generation and atomically appends one user/assistant exchange through a static `ChatMemory`. The bounded in-memory store is always available; `sql-memory` supplies fixed-schema SQLite/PostgreSQL/MySQL/MariaDB storage with an even monotonic revision and transactional compare-and-swap, so stale cross-process writers fail instead of silently reordering. Raw message encryption/retention, authenticated ownership within a tenant, provider audit, backups and conflict UX remain application contracts; the CLI scaffold remains the Turso/custom-model path.<br/>🟠 **`[Partial]`**: The egress fetcher is not automatically mounted around provider transports, RAG or arbitrary application clients; hosted-provider SSE conformance, non-compatible streaming protocols, image decoder safety, host path trust/authorization, provider-native tool calling, cancellation for ordinary non-streaming calls, automatic provider retries, durable audit outbox/receiver operations, approver authentication, first-party external vector-store retrievers, authoritative datastore/domain authorization, ingestion/deletion, maintained application-specific eval corpora and output policy remain application or roadmap work. Exact live-model evaluation execution/results and provider behavior remain external evidence.<br/>🟡 **`[Offline Mock]`**: Deterministic offline chat/vision/embedding fallbacks. |
 | **`rullst-capital`** | Multi-gateway billing, SaaS MRR/ARR metrics, constant-time webhook signatures, contractor payouts, and a bounded National NFS-e preparation pipeline. | 🟢 **`[Implemented / Bounded]`**: Provider-specific payment/payout adapters, pooled HTTP clients, explicit mock credentials, and signature/freshness/replay foundations for the methods documented by each adapter.<br/>🟢 **`[Implemented / Feature-gated]`**: `webhook-sql` persists bounded provider-scoped payload digests or caller-supplied stable event identifiers across processes on SQLite, PostgreSQL, MySQL, and MariaDB. Immutable capacity/TTL, serialized claims, expiry, restart, contention, configuration drift, and fail-closed full/storage states have executable evidence. A caller-owned relational transaction can bind one semantic event claim to its domain mutation. Middleware admission and cross-system exactly-once are not implied; external effects still require an outbox, idempotent consumers, and reconciliation.<br/>🟢 **`[Implemented / Bounded]`**: Static-dispatch metered billing uses the current Stripe Meter Events and Lemon Squeezy Usage Records request shapes, binds accepted responses to the original event, caps response bodies and exposes deterministic non-live mocks. Stripe forwards a bounded provider identifier; Lemon Squeezy explicitly requires application-outbox deduplication.<br/>🟠 **`[Partial]`**: Uniform live method coverage, provider-account interoperability, cross-system exactly-once, and reconciliation are incomplete; Alipay RSA2 fails closed.<br/>🟢 **`[Implemented / Feature-gated]`**: `nfse` pins the current official 1.01 production/restricted artifact profiles by SHA-256, builds a strict ordinary-service DPS subset without floating-point money, and validates extracted official XSD sources from a closed in-memory catalogue. After hash verification, the production profile receives exactly one declared compatibility normalization: .NET-style `^...$` anchors are removed from the known DPS-series pattern so the XSD-regex engine applies the authority's apparent intent instead of treating the anchors as literals. The same feature signs `infDPS/@Id` with PKCS#12 RSA-SHA256/inclusive-C14N 1.0, verifies its local XMLDSig test fixture, and constructs a bounded rustls mTLS identity/client. Its offline protocol codec requires the signed `tpAmb`, emits the exact `dpsXmlGZipB64` JSON object deterministically and parses bounded synchronous 201 authorization or 400/403/500 rejection responses, binding environment, submitted DPS, access key and a cryptographically valid embedded NFS-e XMLDSig. A single-active-writer HMAC-chained local command journal records idempotent prepared/terminal digests, recovers unresolved descriptors after restart and supports independently retained exact-tip checkpoints without storing XML, access keys or response messages. Certificate secrets are redacted and zeroized where owned by Rullst.<br/>🟡 **`[Offline Mock]`**: Deterministic `NfseEnvironment::Mock` fixture, unmistakably not a tax authorization.<br/>🔵 **`[Roadmap / External Evidence]`**: Live transmission, full emitter-certificate/ICP-Brasil trust policy, authoritative request/outbox and multi-writer operations, restricted-environment certificate tests, independent review and SEFIN homologation. Homologation/production transmission remains fail-closed. |
 | **`rullst-connect`** | Social login / OAuth2 / OIDC providers (Google, Apple, GitHub, Discord, Auth0, Cognito) with PKCE and rotating JWKS. | 🟢 **`[Implemented / Bounded]`**: OAuth2/OIDC clients with constant-time PKCE comparison, validated discovery, bounded JWKS refresh/cache policy, deterministic mock credentials and a credential-free `UniversalProfile` projection. `ConnectUser` serialization omits access/refresh tokens. Category-aware remote revocation rejects malformed or oversized tokens before transport: Google, Discord and Apple accept the documented access/refresh categories, GitHub accepts access tokens, and Auth0/Cognito accept refresh tokens; protocol fixtures bind method, endpoint, client authentication and form/JSON shape, while request/response `Debug` omits credentials, bodies and URL query data. Other providers fail explicitly as unsupported, and remote success does not clear application sessions or persistence. `AutoRefreshingSession<P>` validates and user-binds token generations, detects expiry with a bounded early-refresh window, serializes provider refresh through static dispatch, retains/rotates refresh credentials and swaps state only after a complete valid response; callers waiting behind a successful refresh reuse that state. Its state/leases redact secrets. `EncryptedTokenSnapshot` supplies a bounded, versioned AES-256-GCM envelope that authenticates key ID, provider and trusted local-account binding, preserves the validated generation and rejects copied-owner/tampered records. The optional `sqlite` store persists only a pseudonymous binding digest, generation/key metadata and that ciphertext under an immutable row ceiling; `BEGIN IMMEDIATE`, exact-successor compare-and-swap and conditional deletion reject stale shared-local writers, with restart, contention, quota, configuration, corruption, key and symlink evidence. The application still owns secret-manager key custody/rotation, account authorization, a lease around the remote provider call, losing-call reconciliation, retry/backoff, trusted directory/backup, reauthentication and multi-host replication. The optional Axum/tower-sessions lifecycle generates a ten-minute state + PKCE challenge, adds nonce for OIDC, keeps verifier/nonce server-side, removes and immediately saves the sole active challenge before validation and rejects sequential replay/expiry/mismatch. The host still owns durable session storage and cookie/TLS/account policy; the generic session-store API is not distributed compare-and-delete, so simultaneous already-loaded callbacks require idempotent effects or a stronger application store. `ReqwestClient` also exposes explicit HTTP(S) corporate-proxy constructors: endpoint shape is bounded, URL credentials are rejected, authenticated remote proxies require HTTPS, system-proxy lookup is disabled and a local protocol fixture proves routing/auth headers.<br/>🟢 **`[Implemented / Local Test Fixture]`**: The explicitly mounted Axum Mock IdP accepts only configured HTTP-loopback issuer/callback origins, binds one exact client, bounds process-local grants/tokens, consumes expiring authorization codes once, verifies S256 PKCE, signs nonce-bound EdDSA ID tokens and publishes discovery/JWKS. The deterministic key and credentials are public test fixtures; interactive login/consent, refresh/device/federation flows, durability, rotation, public exposure and OIDC conformance are not claimed.<br/>🔵 **`[Roadmap]`**: PAC/WPAD, SOCKS, proxy mTLS identity and enterprise deployment certification are not implied. Message brokers live in `rullst-messaging`, not this OAuth-focused crate. |
-| **`rullst-messaging`** | Broker-neutral event envelopes, idempotent publication, consumer groups, acknowledgement leases, retry, dead letters, durable local SQLite state, and future remote adapters. | 🟢 **`[Implemented / Bounded Foundation]`**: `rullst.messaging.v1` envelopes, bounded identifiers/headers/payloads/batches/retention, topic-scoped exact-replay idempotency, fan-out between groups, competing consumers, expiring single-use ACK leases, bounded retry/attempt ceilings, dead-letter views, explicit terminal purge, injectable time and a reusable static-dispatch contract suite. Debug output redacts keys/tokens/header values/payloads. A canonical bounded v1 envelope codec rejects unknown versions, non-canonical/truncated/oversized frames and namespace mismatch; a deterministic digest fixture freezes its bytes. Validated W3C version-00 `traceparent` and a conservative `tracestate` subset propagate through only those two allowlisted headers; arbitrary baggage, sampling and export remain host work. `InMemoryBroker` remains deterministic/process-local. The opt-in `SqliteBroker` uses a fixed schema and serialized `BEGIN IMMEDIATE` mutations for publications, subscriptions, claims, ACK/retry/DLQ and purge; exact limits are persisted per namespace. Its explicit AES-256-GCM profile encrypts header values plus payload with randomized nonces and AAD binding to immutable row metadata. A bounded primary/prior-key ring rejects missing keys until old records are purged, and plaintext/encrypted profiles cannot mix. The opt-in static `OrmOutboxRelay` binds one relational outbox stream to one topic, validates claimed JSON, publishes the durable event key as broker idempotency and only then ACKs the exact ORM lease; a publish-before-ACK crash/reclaim test produces an exact replay and one broker message. Shared-contract, raw-storage/restart, wrong-key/tamper/row-swap, symlink, rotation, expired-lease, two-instance contention, configuration-drift and malformed-row repair regressions are executable.<br/>🟠 **`[Partial]`**: Delivery is at least once. The default profile is plaintext. Even in the encrypted profile, topic/event/content metadata, IDs, timestamps, idempotency keys, fingerprints, rotation key IDs and delivery state remain visible; key custody, permissions, backup/rollback detection, retention, disk operations, topic/tenant authorization and destination-side idempotency belong to the host. Profile migration requires a new namespace/database and application-owned republishing. The outbox database and broker publication are not one atomic transaction; worker supervision, cleanup and destination idempotency remain application work. The local adapter does not provide replication or automatic failover. The envelope codec is not a remote transport and does not preserve caller publication keys or broker acknowledgements by itself. Kafka, RabbitMQ, Redis Streams, NATS/JetStream, SQS/SNS, Google Pub/Sub and Pulsar adapters plus their live restart/fault matrices remain roadmap work. |
+| **`rullst-messaging`** | Broker-neutral event envelopes, idempotent publication, consumer groups, acknowledgement leases, retry, dead letters, durable local SQLite state, and future remote adapters. | 🟢 **`[Implemented / Bounded Foundation]`**: `rullst.messaging.v1` envelopes, bounded identifiers/headers/payloads/batches/retention, topic-scoped exact-replay idempotency, fan-out between groups, competing consumers, expiring single-use ACK leases, bounded retry/attempt ceilings, dead-letter views, explicit terminal purge, injectable time and a reusable static-dispatch contract suite. Debug output redacts keys/tokens/header values/payloads. A canonical bounded v1 envelope codec rejects unknown versions, non-canonical/truncated/oversized frames and namespace mismatch; a deterministic digest fixture freezes its bytes. Validated W3C version-00 `traceparent` and a conservative `tracestate` subset propagate through only those two allowlisted headers; arbitrary baggage, sampling and export remain host work. `InMemoryBroker` remains deterministic/process-local. The opt-in `SqliteBroker` uses a fixed schema and serialized `BEGIN IMMEDIATE` mutations for publications, subscriptions, claims, ACK/retry/DLQ and purge; exact limits are persisted per namespace. Its explicit AES-256-GCM profile encrypts header values plus payload with randomized nonces and AAD binding to immutable row metadata. A bounded primary/prior-key ring rejects missing keys until old records are purged, and plaintext/encrypted profiles cannot mix. The opt-in static `OrmOutboxRelay` binds one relational outbox stream to one topic, validates claimed JSON, publishes the durable event key as broker idempotency and only then ACKs the exact ORM lease; a publish-before-ACK crash/reclaim test produces an exact replay and one broker message. Shared-contract, raw-storage/restart, wrong-key/tamper/row-swap, symlink, rotation, expired-lease, two-instance contention, configuration-drift and malformed-row repair regressions are executable.<br/>🟠 **`[Partial]`**: Delivery is at least once. The default profile is plaintext. Even in the encrypted profile, topic/event/content metadata, IDs, timestamps, idempotency keys, fingerprints, rotation key IDs and delivery state remain visible; key custody, permissions, backup/rollback detection, retention, disk operations, topic/tenant authorization and destination-side idempotency belong to the host. Profile migration requires a new namespace/database and application-owned republishing. The outbox database and broker publication are not one atomic transaction; worker supervision, cleanup and destination idempotency remain application work. The local adapter does not provide replication or automatic failover. The envelope codec is not a remote transport and does not preserve caller publication keys or broker acknowledgements by itself. The optional standalone Redis Streams candidate passed source admission in PR #236, with Rullst-owned indexes, verified TLS, exact replay, server-time lease fencing, partial-write quarantine and disposable restart/fault/outbox tests; final release admission remains separate (see the Redis messaging guide below). Kafka, RabbitMQ, NATS/JetStream, SQS/SNS, Google Pub/Sub and Pulsar adapters, replication/failover and native Redis group interoperability remain roadmap work. |
 | **`rullst-iot`** | `no_std` sensor telemetry/protocol helpers and an Ed25519-signed firmware-manifest verification gate. | 🟢 **`[Implemented / Bounded]`**: Ed25519 manifest verification with target/hash/length/counter checks, an explicit durable monotonic-CAS store boundary, `no_std` telemetry/frame models, bounded MQTT 5 PUBLISH and RFC 7252 CoAP base-request encoders, a credential-free local HTML snapshot renderer, and a safe telemetry-module CLI scaffold. Protocol vectors and restart/retry/conflict tests prove these local contracts, not a broker, network or physical device.<br/>🟠 **`[Partial]`**: GPIO state, I2C/Modbus frames, BLE GATT records, RSSI topology, power recommendation and Digital Twin JSON are data/helpers only, not hardware, network or realtime drivers.<br/>🟡 **`[Simulador Dev]`**: Deterministic MQTT-value/HSM/PQC fixtures require `feature = "experimental-simulators"` and never represent broker or cryptographic capabilities.<br/>🔵 **`[Roadmap]`**: Concrete hardware-backed counter/boot integration, firmware download/flashing, MQTT/CoAP transports and state machines, hardware drivers/HSM and audited ML-KEM. |
 | **`rullst-mail`** | Transactional email engine with Resend, SendGrid, Postmark, SendPulse, Mailjet, Mailtrap, ACS, optional SMTP, optional native AWS SES v2, and offline fixtures. | 🟢 **`[Implemented / Bounded]`**: Mandatory pre-flight pipeline, anti-CRLF validation, bounded disposable-domain/security/DLP heuristics, provider-specific transports, seven safe scaffold variants (including provenance-aware fiscal receipts and explicit D+1/D+3/D+7 dunning), and expiring purpose-bound HMAC tracking tokens. `TenantMailResolver` selects an in-process driver directly from an explicit authenticated Core `TenantContext`; invalid IDs and unavailable registry state fail closed, and tests prove two contexts do not cross-deliver. `MailError` classifies permanent/transient/rate-limit outcomes; the in-process `FailoverDriver` sends another provider only transport/HTTP 5xx/429/transient-SMTP failures, captures bounded delta `Retry-After`, fails closed on circuit-state errors and emits structured tracing without provider response bodies. `Mail::enqueue` preserves tenant and bounded due-time metadata through SQLite/Redis without early claims; the worker consumes that timestamp only after it is due. Direct Resend/SendGrid retain provider-native scheduling, while real SMTP/Postmark/Log and SES paths reject future direct delivery; offline fixtures may retain it for assertions. The shared attachment contract accepts at most 32 items, 20 MiB each and 25 MiB raw aggregate; validates safe basenames, parameter-free MIME and unique HTML-referenced CIDs; redacts bytes from `Debug`; and feeds provider-native Resend, SendGrid, Postmark, native SES and nested SMTP MIME serialization. The opt-in static `AttachmentInspectionGuard` fails before transport on executable magic, spoofed known types, active PDF/SVG, recognized secrets and unsafe text links; external scanners can implement the same contract. The provider-neutral `SuppressionGuard` checks process-local or opt-in shared-local SQLite state before transport; verified event identities are replay-bound, suppression reasons escalate monotonically and immutable quotas are transactional. `ObservedMailDriver` emits only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing observer. With `aws-ses`, `AwsSesDriver` sends SES v2 Simple messages through the official AWS SDK and SigV4, including temporary credentials, caller-owned rotating providers/config, HTML/text, RFC 8058 headers and attachments/CID; it rejects provider field limits and an encoded estimate over 40 MiB before network, caps `Retry-After`, and a loopback contract asserts the signed regional `ses/aws4_request` request plus typed/redacted rejection. The legacy constructor remains only an offline-fixture or explicit trusted bearer-proxy boundary, never an unsigned AWS request. Fiscal mock responses remain visibly unauthorized; dunning does not infer billing state or scheduling.<br/>🟠 **`[Partial]`**: Exact execution time, exactly-once delivery, live-account SES acceptance and inbox delivery are not implied. The local attachment inspector is not antivirus, sandboxing, recursive archive inspection or CDR; provider/account limits may be tighter. Provider webhook authentication/adapters, multi-host suppression replication, file encryption, distributed breaker/telemetry operations, durable encrypted tenant credentials, rotation and cross-process distribution remain application/deployment concerns; tracking payloads are authenticated but not confidential. SES identity/domain verification, sandbox exit, IAM least privilege, quotas, reputation and provider operations remain AWS/account/deployment work.<br/>🟡 **`[Offline Mock]`**: Memory/Log plus empty or `mock_*` provider credentials. |
 | **`rullst-studio`** | Local Developer Control Room (`http://127.0.0.1:5555`), clean route navigation, live system telemetry visualizers. | 🟢 **`[Implemented / Bounded]`**: Local control center, `RadarSnapshot` telemetry, database/migration surfaces when configured, and explicit `Unavailable` states for unconnected probes. The data browser reads/filters SQLx tables and, only after the verified debug-loopback/same-origin middleware installs an unforgeable request marker, can update primitive non-key values or delete exactly one complete-primary-key-selected row. Values are bound, request/schema/value cardinality is bounded, backend-specific types remain read-only and SQLite/PostgreSQL/MySQL/MariaDB have executable mutation contracts. This is not application tenant/RBAC, audit, rollback or shared-production administration. The supplied queue snapshot exposes only backend records; SQLite can explicitly retain 1–100,000 successful jobs with atomic pruning and purge while deleting them by default. Retained payload access/policy belongs to the host. An explicitly supplied memory/Redis `Cache` exposes at most 100 metadata rows in the UI; logical keys become process-bound HMAC tokens, values never leave the driver, and only individual local invalidation is available. A separately mounted push-only trace router accepts 1–128 attribute-free v1 spans under 128 KiB after HMAC-SHA256, source/ID/clock/nonce validation and atomic replay rejection; the bounded in-process viewer derives slow-query and repeated-label heuristics without SQL or bindings. It is not OTLP, durable trace storage, a key manager or remote Studio authentication. Successful feature-flag toggles invalidate all warm `DbFeatureDriver` caches in the same process through a constant-size epoch. Cross-process/direct-writer invalidation remains TTL-bound unless the application distributes the signal. |
 | **`rullst-nexus`** | Auto-generated Admin CMS (`/nexus`), dynamic model CRUD, AI Admin Assistant (`/nexus/chat`), SOC Threat Radar. | 🟢 **`[Implemented / Bounded]`**: `#[derive(Nexus)]` emits registered named-field metadata with inferred primitive or explicit semantic widgets; the panel provides parameterized CRUD/search/sort/pagination plus bounded selected-record delete/deactivate. Construction is fail-closed, requires an authentication policy and admin role layer, validates bounded unambiguous model/field/enum/relation metadata, enforces server-side field policy, caps form pairs and field bytes, rejects unknown/protected/duplicate or semantically invalid form values, minimizes database errors returned to clients, and escapes record/model metadata on audited paths. Boolean widgets are inferred; enum options and multiline intent are explicit because an unrelated Rust field type does not expose those semantics to the struct derive. Deactivation requires a writable Boolean `is_active`/`active`.<br/>🟢 **`[Implemented / Opt-in Bounded]`**: a registered text `tenant` column scopes every built-in read, create, update, delete and batch operation to a trusted Core `TenantContext`; create injects the context value and missing context fails closed. `with_required_audit` transactionally couples successful mutations to a minimized fixed-schema row containing the built-in authenticated actor, optional tenant, table/action, optional known key, count, committed outcome, correlation ID, timestamp and format version; missing audit storage rolls back the mutation. The audit table is in the same relational database, mutable by its administrators, records no denied attempts, and may omit an automatically generated create key. Host identity/membership/domain policy, global-model and custom-route authorization, database privileges, schema/type compatibility, retention/backup/replication and immutable external audit delivery remain application/deployment contracts. |
 | **`rullst-macros`** | Procedural macros (`html!`, `rullst::model`, `rullst::runtime::main`) and compatibility helpers. | 🟢 **`[Implemented / Bounded]`**: Compile-time `html!` escaping with explicit `RawHtml`, model/runtime macros, and `trybuild` diagnostics. A concrete async `#[server_function]` returning `RpcResult<T>` generates a matching explicit native router and Wasm caller over the bounded `rullst.client` v1 JSON envelope: owned Serde parameters/results, same-origin `/api/rpc/...` path, 256 KiB request/response policy, request correlation, media-type/version/schema checks, CSRF-cookie forwarding and message-free failure codes. The host must mount the route inside production security, authenticated identity, tenant, authorization and rate-limit layers; application idempotency and browser/network interoperability beyond CI are not inferred. `#[island]` hydration remains experimental. |
 | **`cargo-rullst`** | Developer CLI toolkit, scaffolding generators (`make:*`), project blueprints, AST IDOR static route scanner. | 🟢 **`[Implemented / Bounded]`**: Interactive wizard, generators, heuristic IDOR scanner, CycloneDX exporter, toolchain doctor and a fail-closed Academy evidence diagnostic that explicitly does not certify a deployment. Version 12 deterministic generation can explicitly select the blueprint, primary database or database-free blank profile, AI, Redis and additive persistence capabilities. It deliberately fixes generated database-backed application code to Active Record and full-stack rendering to server-side `html!` plus HTMX; Repository/Data Mapper and the LiveView, Wasm Island, Pico.css and Tera foundations remain application APIs rather than equivalent v12 generator profiles. The optional storage multi-select remains public and accepts zero or more Turso/libSQL, MongoDB, DuckDB, SurrealDB and Qdrant add-ons with their distinct capability boundaries. SQLx manifests disable umbrella defaults and select one strict primary backend. A structural gate retains 18 internal layouts: nine directly linked public shapes and nine legacy DLL regression shapes. A minimal eight-case matrix still checks legacy templates and release boundaries without advertising DLL runtime support. Seven additional public-CLI profiles exercise all six blueprints plus distinct database/AI/Redis/polyglot axes; the CLI-level polyglot case compiles while dedicated ORM matrices own adapter runtime evidence. `dash` uses bounded logs/input, probes application and Studio availability, observes its child process, reports configured rather than presumed-connected persistence, runs migrations asynchronously and restores terminal/process state on exit; neon motion is optional and has reduced-motion/color-free modes. The public development commands now use supervised process restart: coalesced source/asset/configuration changes trigger a real build, compile failures retain the current application, and successful candidates run from owned executable snapshots. A debug/development-only same-origin generation probe drives browser refresh and verifies startup identity; process state resets and shutdown is bounded. The CLI rejects legacy DLL profile generation after the Windows LMS/ORM state-split finding. The retained experimental loader is not a public v12 workflow or stable Rust ABI; see the release audit and supervised-reload tutorial. `make:chat-session` emits registered SQLx or Turso-primary models, reversible migrations and application-owned bounded chat memory; materialized contracts run persistent mock conversations on both backends and prove collision refusal. `make:billing --model` likewise emits SQLx/Turso-primary persistence plus Stripe/LemonSqueezy pricing, authenticated checkout/portal and mandatory signed-webhook code; its materialized contract compiles, migrates, persists, denies cross-owner subscription mutation before customer binding and refuses existing outputs on both backends.<br/>🟢 **`[Implemented / Bounded]`**: The LMS starter supplies bounded curriculum, school-scoped learning/assessment/publication/progress/completion, roles, leaderboard, automation/outbox/workers, localized in-app notifications and a minimized privacy-request foundation. Its SSR catalog performs limited, ORM-parameterized title/category filtering; generated auth/catalog/course/player shells consume the Core CSP nonce without remote page dependencies or inline style attributes and include keyboard landmarks, visible focus and reduced-motion handling. Lesson presentation distinguishes video/audio, rejects non-HTTPS non-local sources, requires a WebVTT track for video and a bounded transcript/language for both; materialized tests cover escaping and fail-closed negatives, not real-browser playback or caption quality. Privacy claims use exact leases, retry/dead-letter with a hard ten-attempt ceiling, actor/digest-bound completion and a supervised static-dispatch executor with an explicit protocol-only mock; the product must still supply the adapter that performs application-specific export/deletion/anonymization. Materialized SQLite exercises catalog/player escaping/nonce, privacy hard limits and the documented vertical/cross-school boundaries. Detached `--lms-modules auth`, `auth,learning` and `auth,learning,assessment` profiles remain small compiling foundations; the assessment profile grades versioned quizzes authoritatively without pulling score/leaderboard/outbox verticals. The complete starter is the default.<br/>🟠 **`[Partial]`**: Other detached combinations, profile hot reload, complete generated frontend alternatives, full Turso-primary parity beyond Blank/API, media upload/hosting/transcoding, advanced/localized search, caption/transcript quality and localization, WCAG/browser evidence, distributed failover, PostgreSQL/MySQL isolation, visual authoring, exported telemetry and the separately operated Academy remain roadmap or release-engineering work. |
+
+### v13 roadmap package boundaries
+
+The [`rullst-labs`](rullst-labs-roadmap.md) library and separately
+deployed `rullst-labs-runner` are unpublished implementation candidates whose
+source admission passed in PR #228. Final release admission and independent
+isolation review remain outstanding. The named Linux execution journey and
+remaining patch-coverage gap have
+[recorded hosted evidence](labs-first-profile.md#recorded-linux-acceptance).
+The former owns trusted, versioned orchestration and grading
+contracts; the latter owns isolated execution. Neither may become a default
+framework dependency, execute learner code inside the HTTP process, or require
+the application to expose a container control socket. A complete offensive CTF
+arena is external, separately governed deployment infrastructure even when it
+uses Rullst identity, challenge, score and receipt contracts.
+
+The selected first Labs profile is a bounded Rust pure-function exercise,
+compiled with a pinned Rust toolchain to import-free WebAssembly and executed
+by a pinned Wasmi interpreter in a separate restricted Linux process. This is
+not a native Rullst server, Cargo dependency, WASI or arbitrary shell profile.
+`rullst-labs` must not depend on an executor or spawn submitted code. Its default
+surface is validated contracts; opt-in shared-local SQLite stores dedicated,
+encrypted job content with current application authorization, idempotent
+submission, cancellation, leased execution, retention and result reconciliation.
+It must not reuse the application's authentication/database secrets as job keys.
+
+Coverage measures the trusted controller through the same real isolated
+acceptance journey, preserving identical controller/worker executable hashes.
+A CI-only LLVM runtime hook initializes profile output only when the trusted
+host supplies its explicit path. Workers retain the exact cleared environment
+and never initialize or export counters. No extra mounts, descriptors or output
+permissions may weaken isolation. Ordinary and instrumented acceptance are
+distinct evidence; the hook must never enter a distributed runner.
+Keep both existing 90% line-coverage floors and include the new v13 application
+libraries in the framework-library aggregate; the runner remains counted in
+the whole repository as a separate executable.
+Controller keys require protected root/controller-owned ancestors and owned
+private regular files. Validate the opened no-follow descriptor and exact key
+length; a prior path metadata check alone does not bind the bytes read.
+
+The independently deployed runner accesses only that dedicated job plane and
+runner-owned tools. It must never give submitted code the job database, signing
+keys, application secrets, inherited environment or control sockets. The first
+Linux backend requires delegated cgroups v2, an unprivileged namespace launcher,
+at most 32 job/probe groups enforced by the delegated root's kernel descendant
+limit, and recovery of authenticated expired/cancelled attempts before a new
+preflight needs an empty group. Recovery never releases source or grants a grade.
+New source still requires successful live preflight and a current lease, plus
+restricted mounts/egress, no-new-privileges, syscall restrictions, a fully enforced
+Landlock filesystem policy and bounded
+compiler/interpreter resources. Both processes require observed enforcement. The compiler and interpreter must enter separate
+Landlock domains before source is released. Landlock does not mediate a process's
+own anonymous pipes through `/proc`; compiler-to-interpreter descriptor access
+must instead fail through the domain/ptrace boundary. The compiler's standard
+input/output are null during compilation, with only bounded diagnostics retained.
+The syscall policy permits only the `FIONBIO` ioctl request needed for Rust's
+captured linker pipes; other ioctl requests and all socket creation remain denied.
+Observed isolation and resource enforcement are
+mandatory: accepted configuration properties or a successful launcher exit do
+not prove the required boundary. Unsupported local/hosted environments fail
+closed, without a less restrictive execution fallback.
+
+Only an integrity-bound result matching the current job/lease, tenant, learner,
+exercise, grader, toolchain, source and execution profile may become a grade.
+Expected answers remain in the trusted grader; worker outputs are bounded data,
+not a passing-grade authority. Cancellation/expiry fence late results; worker
+loss never means success. Offline simulation is explicit and cannot establish
+execution evidence. Authorized course maintenance must expire queued submissions
+and remove their source without requiring a supported/available executor. It
+must not clear a running lease or infer teardown. Withdrawn exercise revisions
+may be removed only after every referencing job has been purged; immutable
+revision identifiers must not be reused after removal. See
+[the first-profile decision and threat model](labs-first-profile.md).
+Independent isolation review and the roadmap's adversarial acceptance remain
+required before any production-ready untrusted-code claim.
+
+### v13 managed-video implementation boundary
+
+The optional, unpublished `rullst-media` candidate owns managed private video,
+starting with Bunny Stream. This differs from Core's object-storage facade:
+remote video creation, upload capabilities, asynchronous processing, playback
+grants and lifecycle reconciliation require a separate explicit domain.
+It has no Core/Auth/ORM runtime dependency and no default network/database features.
+Core is a test-only dependency for the real HTTP/browser security composition.
+`bunny` selects the reviewed HTTP/signature adapter; `sqlite` selects durable
+shared-local asset/operation state and static-dispatch application orchestration.
+No facade dependency or release-order admission is implied by scaffolding it.
+
+The host supplies authenticated actor/course membership and current management
+or playback entitlement through a checked authorization trait. Local asset IDs
+bind an immutable tenant/course/provider-library scope; provider IDs and signed
+webhooks never establish that ownership. Service operations recheck permission
+and local revision/state after external work and use bounded durable leases to
+reject concurrent/stale results. SQLite state binds its schema, provider mode,
+library and capacity, refuses clock rollback and requires trusted local files,
+backup policy and operator-owned keys. Multi-host replication is separate work.
+Only confirmed-deleted local tombstones may be purged, in batches up to 100 and
+after at least 24 hours; the host must retire purged creation IDs because their
+idempotency memory ends at that point. Provider backups/cache erasure is separate.
+
+Creation is journaled before remote dispatch. Bunny's documented creation API
+does not supply an idempotency key: ambiguous creation must reconcile a persisted
+random opaque creation marker, never blindly retry or claim exactly-once remote
+creation. Updates/deletion are reconciled against authoritative reads. Webhook
+v1 authenticates exact body bytes with the read-only library key but has no
+signed timestamp; bounded durable duplicate suppression and serialized provider
+refresh prevent replay/reordering from granting access or publishing assets.
+Webhook status numbers and API video status numbers are distinct protocols.
+
+Publication is an explicit application mutation after current provider readiness;
+processing completion alone cannot publish. Playback requires current entitlement,
+fresh ready state and configured provider protection; withdrawal/deletion stop
+new grants but cannot immediately invalidate previously issued bearer tokens or
+provider caches. Upload grants are scoped and expiring, not cryptographic proofs
+of a one-shot upload, file type or byte limit. Library upload quotas and direct
+file protection remain required configuration. Embed SHA-256, TUS SHA-256 and
+CDN advanced HMAC-SHA256 directory tokens have independent documented formats.
+Redirects/ambient proxies/arbitrary remote endpoints are disabled; request,
+response, retry and total-operation budgets are finite. Secret-bearing errors,
+credentials, grants and debug output must not leak keys or bearer URLs.
+
+Empty or `mock_*` credentials select deterministic offline behavior; mixed modes
+fail configuration. Production rejects mock or loopback-fixture capabilities.
+Automated protocol/browser/disposable-state evidence is required. The owner's
+no-live-account-testing instruction remains in force: actual Bunny account,
+transcoding/CDN interoperability and paid DRM are not validated or implied.
+See the [supported delivery target](managed-video-roadmap.md).
+
+### v13 privacy and age-assurance boundary
+
+Core and Security header layers share `apply_referrer_policy`: a response that
+explicitly supplies a canonical `no-referrer` value retains that restriction
+through composition, normalized to one header even if duplicate values exist.
+Other values are replaced by the layer's configured policy; missing/invalid
+optional Security configuration retains its existing behavior. This narrow rule
+does not attempt to order every Referrer-Policy value or weaken other headers.
+
+`rullst-privacy` is an opt-in, unpublished v13 release candidate. Its initial
+`age-assurance` feature owns bounded risk policies, server-issued challenges,
+minimal signed age attestations, explicit decisions and replay-store contracts.
+Low-risk declarations, facial estimates and verified age attributes have
+different assurance semantics; configured policy determines their eligibility.
+No camera, image retention, external inference, database or Core dependency is
+enabled implicitly. Production must reject offline mock evidence and
+process-local replay protection. The host owns authentication, tenant/subject
+binding, risk/legal assessment and durable shared state.
+
+The v13 persistence contract uses static-dispatch asynchronous nonce claims.
+Verification samples a trusted server clock before validation and after the
+claim; expiry or clock rollback during storage cannot return permission.
+The optional `sqlite` adapter is shared-local only: a private file-backed pool,
+WAL with full synchronization, serialized quota/expiry/claim transactions and
+persisted configuration/clock high-water state. It stores only domain-separated
+nonce digests and expiry. No unexpired claim may be evicted. Cancellation or an
+uncertain commit returns no assessment; the host must request fresh evidence
+when consumption is uncertain. File custody, clock synchronization and storage
+durability are deployment obligations. Restoring an older database requires
+quiescing verification and invalidating all outstanding challenges through a
+new policy/key epoch; SQLite cannot detect arbitrary backup rollback. Network
+filesystems and multi-host replication are outside this adapter's boundary.
+
+The v13 PostgreSQL adapter uses a separately enabled `postgres` feature and a
+private bounded pool against one authoritative writable database. Explicit
+deployment initialization creates the fixed `rullst_age_replay` schema; normal
+connection never creates or repairs missing state. Transactional startup locking
+and a metadata row lock serialize schema initialization and quota/expiry/nonce
+claims across application hosts. Metadata persists the schema version, capacity
+and accepted clock high-water mark. Tables must be permanent and WAL-logged;
+`fsync`, full-page writes and synchronous commit are required. Claims store only
+the same domain-separated nonce digest and expiry as SQLite. Remote connections
+require certificate/hostname-verified TLS; loopback and local sockets support
+disposable development databases. Errors must not expose connection credentials.
+Bounded pool acquisition, statement/lock waits and idle transactions prevent
+unbounded database waits; the caller still owns an overall request deadline.
+All verifiers must use that same authoritative database and synchronized trusted
+clocks. Replication configuration, failover fencing, durable hardware and backup
+restore remain operator obligations; asynchronous replica promotion or database
+rollback cannot be advertised as preserving consumed proofs automatically.
+The adapter's focused real-database tests cover concurrent initialization and
+claims, a restricted runtime role, quota, schema/durability drift, cancellation,
+clock changes during a row-lock wait and server restart. Combined hosted
+acceptance and deployment-specific failover/TLS evidence remain separate.
+
+This first contract does not implement a facial model, vendor transport,
+guardian verification or global privacy compliance. The
+[privacy and age-assurance roadmap](privacy-age-assurance-roadmap.md) defines
+the remaining consent, rights, retention, provider and jurisdiction work.
+The owner-approved 13.0.0 delivery scope prioritizes the independent foundation
+and an authenticated first-party declaration journey for policies that permit
+that assurance. An external provider is optional and requires separate native
+protocol and sandbox acceptance before any live claim. A local facial engine is
+follow-up work. Neither an absent provider nor a failed check may downgrade the
+required assurance or make a declaration authorize a stronger-policy action.
+Publication of the privacy package still requires explicit acceptance of its
+advertised API, durable state, consumer behavior and release configuration.
+
+The packaging candidate adds this independent package to the seventeen-package
+release inventory before the umbrella. The facade exposes only explicit
+`privacy-*` features and `rullst::privacy`; default builds acquire no privacy,
+age, consent or database dependency from this addition. CLI age/privacy consumers
+select the matching registry version by default, with an explicit matching local
+source override for development. Existing dependency sources, versions and
+features must be checked before composing two consumers; no silent source switch
+is permitted. Both commands refresh the bounded project context after scaffolding,
+reporting a refresh failure without concealing the completed source edits.
+Archive-only acceptance must install the packaged CLI and compile
+generated SaaS/LMS consumers with both opt-ins and no workspace source paths.
+This is packaging eligibility, not a published version or registration claim.
+The stable publisher still refuses an unregistered crate; initial registration,
+reviewed ownership and Trusted Publishing configuration are separate prerequisites.
+
+The native `DeclarationGate` contract processes an authenticated first-party
+`AgeDeclaration` without requiring an external issuer or a signing key for the
+declaration itself. It accepts only a retained server-issued `SelfDeclaration`
+challenge under the exact current policy and tenant/subject/session/action
+binding. It shares the signed verifier's durable one-use claim and post-storage
+expiry/clock checks. An affirmative answer can return only `Assurance::Declared`;
+negative or declined answers deny the operation. An estimated/verified method
+or stronger policy cannot be downgraded through this entry point. The host owns
+authentication, CSRF protection, explicit user choice and trusted challenge
+retention/transport. This contract is not a determination of the person's age.
+
+The optional `challenge-tokens` transport uses a bounded, versioned,
+HMAC-SHA256-authenticated server challenge with an explicit active key and at
+most seven previous verification keys. It authenticates the version, key ID and
+exact encoded payload before decoding challenge JSON. Opening revalidates the
+current policy, authenticated binding, clock and exact configured lifetime.
+There is no client-supplied algorithm or key discovery. Tokens contain only the
+existing opaque challenge references and are authenticated, not encrypted;
+applications must not put cookies, email addresses or document numbers into
+those references. A token restores a server-issued challenge, never an age
+decision or an authorization grant. Production still consumes its nonce in the
+shared durable replay store. The host owns independent secret provisioning,
+rotation/retirement, TLS, CSRF and endpoint limits; no external age provider is
+needed for this transport.
+
+The v13 `make:age-gate` consumer is an explicit opt-in for recognized SaaS and full
+LMS starters. It protects the existing dashboard action with an authenticated GET
+challenge and POST declaration; it never sets a reusable age-verified account
+flag. Both routes retain the starter's authentication, CSRF, headers and Server
+baseline. Policy version and threshold are chosen explicitly at generation time;
+the SaaS profile also requires its fixed application tenant. Low-assurance
+declarations are identified as such. Opaque
+binding references are domain-separated keyed digests of server-resolved user,
+tenant and authenticated session, never request-supplied identities. Application
+keys and replay storage are mandatory; initialization, timeout, stale context or
+unknown/negative answers cannot grant access. SQLite and PostgreSQL are explicit
+profiles with their existing deployment obligations. Generation refuses unknown
+or already-modified route shapes before writing. This command selects the matching
+registry dependency unless the caller explicitly supplies a matching local source.
+Before that version is published, development consumers must use the explicit
+source override or a reviewed archive-only registry patch. Other blueprint adapters,
+provider flows, persistent age permissions and deployed browser acceptance remain
+separate work.
+
+The extension of this same generator to the full LMS starter uses
+the authenticated `TenantContext` produced by active school-membership resolution.
+For the dashboard only, a bounded `school` query value may act as a selection
+hint before the existing authentication middleware. It is never authorization:
+unknown/conflicting selections, inactive membership and ambiguous selection fail
+closed. The existing policy may select an explicitly stored default school.
+The form action carries the already-resolved school selection, allowing
+ordinary browser submission without a custom header. The challenge binds the
+resolved school, user and session again on POST. The declaration does not update
+the existing subject age band or guardian-consent records, and the age-state
+middleware is not mounted around unrelated learning actions. The generated local
+contract exercises cross-school/user denial, selector ambiguity/conflicts,
+ordinary form submission, replay and membership revocation between issuance and
+submission. Hosted and deployed-browser acceptance remain separate.
+
+The v13 fuzz inventory adds two isolated privacy targets for authenticated
+challenge transport and signed attestations. Deterministic fuzz-only keys permit
+mutation beyond signature validation; assertions bind accepted results to the
+current context, assurance and one-use replay contract. These targets enable no
+database or network integration. They expand v13's required inventory to 42;
+the immutable v12 release line retains 40. Short diagnostics are not full release
+evidence, and the durable database lifecycle keeps its separate acceptance gates.
+
+The unpublished `consent` contract is independent of age assurance and concerns only
+optional processing that the operator has assigned to an explicit purpose and
+notice version. Absence, refusal, withdrawal, version mismatch and expiry deny
+processing. An affirmative choice uses the exact observed revision; withdrawal
+atomically advances that revision even when its form is stale, preventing an
+earlier affirmative form from undoing it. The authenticated subject and tenant
+are server-owned inputs, never browser identity fields. The explicit submission
+also binds the displayed purpose/notice version to current server configuration,
+so a policy change cannot borrow an old form's unchanged revision. A bounded store must
+serialize reads/updates against a persisted clock high-water mark and preserve
+withdrawal tombstones; production rejects process-local state. Permission must
+be checked immediately before each processing action, including deferred jobs.
+Already-started external effects are not cancelled retroactively by a later
+withdrawal, and consent does not authorize essential processing or establish
+age/guardian authority. The optional `consent-sqlite` adapter initializes a new
+local file explicitly; ordinary opening never creates or repairs missing state.
+It serializes reads/updates with `BEGIN IMMEDIATE`, WAL/full synchronization,
+a bounded private pool, immutable quota and persisted clock metadata. It retains
+scope digests, latest choices/versions/revisions and timestamps, without raw
+subject IDs. Those digests are pseudonymous data. Expired records and withdrawal
+tombstones are never evicted to create capacity. All processes must use that same
+trusted local file; multi-host replication is unsupported. Restoring stale state
+requires quiesced processing, reconciled withdrawals and fresh purpose versions.
+Deployment retention/restore review and hosted acceptance remain required
+before release admission.
+
+The opt-in `make:privacy` consumer mounts authenticated preferences,
+an explicitly optional personalized greeting and an own-account JSON export
+inside the starter's existing CSRF/header/security boundary. It composes
+with the age consumer while preserving both consumers' dependency features.
+Choice forms bind the displayed notice/version and current revision, with a
+bounded expiring HMAC proof tied to the authenticated account, tenant and session;
+an old tab cannot apply a choice after switching accounts or sessions. Identity
+comes only from the authenticated user and, for LMS, active school membership.
+The export projects only account ID, name and email with explicit output bounds;
+it exposes no credential fields, produces no public artifact and does not mark
+broader queued rights requests as fulfilled. Its direct private response needs no
+retained export file and remains independent of optional-consent storage
+availability. Refusal/withdrawal changes the next greeting to generic content.
+Local materialized SaaS/full LMS fixtures cover both age/privacy installation
+orders, real authenticated profile queries, explicit choices, withdrawal/stale
+forms, session/account/school changes, CSRF, expiry, bounded input and missing or
+failed state. A normal SaaS using PostgreSQL as its primary database compiles;
+this is not live PostgreSQL consumer or browser/deployment acceptance. Bootstrap
+explicitly initializes a new private consent file; ordinary opening never
+recreates it. The generated consent profile remains shared-local SQLite only.
+
+The separate [SaaS triage](saas-v12-1-v13-triage.md) assigns the examples' reported
+defects to compatible v12.1 maintenance and v13 contracts; it is not fix evidence.
+
+### v13 source-train and adoption preparation
+
+The development train uses `13.0.0-alpha.1` consistently for the existing
+publishable packages and their internal requirements. This prepares the CLI's
+actual major-version behavior; it is not a publication or stable-release claim.
+The privacy package joins the candidate inventory with explicit optional facade
+features; registry publication remains subject to package and ownership admission.
+
+The `rullst-upgrade-rules-v2` migration catalog recognizes source major 13 as
+well as 5, 6, 11 and 12, keeps exact target-major CLI selection and rejects
+downgrades. Preparations from the previous catalog require fresh preparation
+and verification. The [12.1-to-13 source inventory](migration-v13.md) adds opt-in privacy APIs,
+consumer generators and security header composition, without a known required
+replacement of existing application APIs. Automatic preparation is therefore
+limited to supported dependency manifests and the existing compiler/check/test
+workflow; it must not invent code rewrites, enable age or consent policies,
+bootstrap privacy state, replace authentication or deploy an application.
+Migration evidence must distinguish small offline updater protocol fixtures
+from generated SaaS/LMS consumers compiled against actual framework source.
+Release-time inventory and package checks must revisit this boundary as more
+v13 changes land.
+
+The current candidate intentionally tightens the Android release command's
+configuration contract: the expected public certificate and trusted verifier
+paths are now required in addition to the existing signing inputs. An unchanged
+Rust helper signature does not make that behavior minor-compatible. Retain this
+break in the migration inventory. The major-aware SemVer job is not evidence
+that the candidate could instead be released as 12.2; that question requires a
+minor-level comparison and review of the full documented compatibility surface.
+
+### v13 formal-verification pilot boundary
+
+The [Verus pilot](verus-roadmap.md) has a locally verified candidate for production
+age-policy method decisions, with later evaluation of Auth authorization predicates
+and Capital integer money calculations. Specifications must remain linked to
+the executable implementation, with explicit trusted assumptions and external
+contracts. No dedicated public crate is proposed. A pinned, isolated verifier
+and manual workflow precede any required v13 check; compatibility, reproducible
+proofs, negative controls and measured CI cost are promotion criteria. This
+plan adds no v12.1 release gate or framework-wide correctness claim.
+
+The first implementation candidate verifies the existing `AgePolicy::permits`
+body with its actual enum variants and policy fields, extracted from Rust syntax.
+No public API or production dependency changes are required. Extraction must
+check the reviewed signatures/types and original structural equality derives,
+copy the executable body unchanged and record source/type/body fingerprints.
+Only verifier annotations, structural-equality support, a specification accessor
+and an erased reveal step may be added to the projection. The proof covers all
+nine risk/method combinations without narrowing valid runtime inputs; it does
+not prove age evidence, policy validation, timestamps, storage or authorization.
+The isolated verifier must reject weakened restricted/elevated policies and a
+denied low-risk policy as negative controls. This is a bounded pilot candidate,
+not a promotion into required release checks.
+
+### v13 shared passkey ceremony increment
+
+The next Auth increment follows the [shared ceremony contract](shared-passkey-ceremonies.md).
+Keep the existing synchronous process-local API compatible. Add a separate generic
+shared manager in `rullst-auth`, backed first by opt-in authoritative PostgreSQL,
+with tenant/account/session/RP binding, bounded expiry/quotas, atomic single use
+and fail-closed outage/cancellation. Reuse private cryptographic validation; do
+not expose a stateless acceptance bypass. Application credential ownership,
+revocation and signature-counter CAS remain mandatory before session issuance.
+Real independent-manager/database/process and HTTP/browser acceptance must precede
+an implemented claim. No new crate or broad blueprint expansion is required.
+
+### v13 deployment acceptance increment
+
+Before expanding deployment generators, exercise two independent application
+processes behind one digest-pinned existing reverse proxy. Keep readiness,
+unhealthy-node exclusion, bounded shutdown, forwarded identity and WebSocket
+behavior explicit. Ordinary HTTP admission must remain counted until the response
+body completes, errors or is dropped, including streaming data and trailers;
+returning response headers alone is not completion. This counts application body
+lifetime, not client receipt or TCP acknowledgement. Upgraded connections and
+background tasks require separate application-owned termination. Prove the body
+boundary locally before using it in deployment acceptance. No new gateway crate,
+automatic host administration or general availability guarantee is introduced.
+
+### v13 local deployment diagnostic
+
+Add an offline, read-only `deploy:doctor` executable command in the existing CLI.
+Inspect the selected bounded `Rullst.toml` snapshot (or documented defaults) and
+optionally one explicit literal environment file or the three allowlisted process
+variables `RULLST_ENV`, `APP_ENV`, `APP_KEY`. Never silently combine environment
+sources or search parent dotenv files. Reuse Core environment resolution and
+security validation; report obvious application-key mistakes separately from
+unobserved key generation/custody. Config validity cannot prove mounted middleware,
+webhook verification, proxy trust, shared state, TLS, backups or deployed behavior.
+
+Emit deterministic text/JSON with fixed check codes, source categories, actionable
+messages and explicit uninspected controls. Do not print values, input paths,
+parser details or secret-derived hashes. Reject malformed, duplicate, oversized,
+linked/special-file and unsupported interpolated inputs without executing them.
+No subprocess, network access, configuration/global-environment mutation or
+automatic repair belongs in this command. Test the installed command with real
+generated configuration and negative inputs; retain full hosted acceptance.
+
+### v13 supervision observation extension
+
+The owner explicitly requested the reusable proctoring base on September 20.
+Extend `rullst-supervision`, not a second proctoring crate. Keep legacy visibility
+APIs working, but new sessions must persist an exact selected collection set and
+require matching acknowledgement at start/resume. Default selection remains
+page visibility. New browser event kinds are focus, copy/cut/paste occurrence
+and fullscreen transitions, never clipboard content or other-window inventories.
+Optional camera/microphone/screen capture-status reports are distinct from
+optional camera-presence/audio-activity adapter observations; preserve provenance
+and inconclusive/unavailable outcomes without a misconduct score.
+
+Add bounded, typed, statically dispatched analysis interfaces. Permission and
+active session/tenant/subject/revision must be checked before analysis and again
+before storing its result. Keep borrowed media samples bounded and out of durable
+event state/logs. No camera/audio model, identity inference, hidden recording,
+grading or automated accusation is introduced. Selected capabilities do not
+establish browser permission or prove media belongs to the learner; the host
+must bind capture to the authenticated session and implement adapter cancellation.
+
+The unpublished SQLite candidate may move to schema v2 with explicit rejection
+of old schemas. Never silently rewrite a v1 database: preserve it for review and
+require a fresh independently named store/epoch and authority provisioning for
+this prepublication transition. Session pause/end/expiry and policy revisions
+must reject pending results. Retain all existing capacity, sequence, clock,
+reviewer authorization and retention invariants.
+
+Expose new browser collection only by explicit CLI selection and a matching
+visible notice. The collector must bound its queue and stop on session control,
+expiry or failure; it must not prevent copying, request fullscreen/capture or
+start media analysis automatically. Extend the focused LMS/browser fixture and
+test local adapter faults, revocation races, disallowed capabilities, persistence,
+source attribution and legacy visibility compatibility before hosted admission.
+
+### Conditional v13 supervision crate
+
+The owner requested transparent learner/exam supervision and parental controls
+as the first additional priority after the required v13 deliveries have been
+implemented and validated. `rullst-supervision` is now an unpublished implementation
+candidate with bounded domain contracts and shared-local SQLite state. Its
+local generated-consumer and Chromium journeys pass. The baseline also passed
+hosted checks and archive rehearsal in PR #222; the observation extension requires
+its own complete acceptance before admission;
+`publish = false` is retained.
+
+Keep supervision policy/session/event and reviewer-access contracts separate
+from `rullst-privacy` age and consent primitives. Exam supervision and parental
+controls need distinct modules and authorization policies. The initial candidate
+must deliver one real generated LMS journey, visible session status, explicit
+permissions, revocation, bounded collection/retention and actual application-side
+enforcement, with cross-school/subject and unauthorized-reviewer negatives.
+Parental time/content restrictions initially concern this application only.
+The host must establish guardian/reviewer authority independently; age results,
+account ownership, a checkbox or a claimed family relationship do not prove it.
+
+Browser observations are untrusted client reports, never proof of misconduct,
+identity or an automatic reason to change grades or impose a penalty. Collect
+only the documented minimal events with visible active/paused/ended state;
+do not add covert camera/microphone/location capture or unrelated browsing data.
+Native device-wide controls, camera inference and managed operating-system agents
+need separate platform integration and acceptance. Global legal compliance is
+not inferred from these controls. The exact API/storage boundary and its threat
+model must be specified before scaffolding the crate. Empty contracts or a mock
+alone do not meet its admission criteria, and it must not delay required release
+gates; retain it for a subsequent v13 release if capacity is insufficient.
+
+The initial implementation contract is now the
+[bounded supervision design](supervision.md). Use a separate unpublished package
+with optional `exam`, `parental`, `sqlite` and `analysis` features, no Core/default dependency,
+and a concrete SQLite adapter generic over a trusted clock. Tests use real local
+SQLite and an injected deterministic clock; no memory mock is needed for this
+initial backend. One private initialized database owns scoped authority,
+sessions, parental enrollment/policy and allowlisted events. Serialize operations
+with `BEGIN IMMEDIATE`, persist configuration, a clock high-water mark and a
+global revision counter, and enforce bounded quotas and retention. An opener
+must supply the independently retained deployment epoch. This detects epoch
+mismatch, not restoration of an old database with the same epoch.
+
+Only trusted operator provisioning can establish expiring `ExamReview` or
+`ParentalManage` authority after independent relationship verification. The host
+binds current authenticated identity, school membership and resource access;
+the store rechecks its own scoped grants atomically on each operation. Those
+two authorization layers are not one transaction unless the host composes them
+that way. In-flight results cannot be recalled after external membership changes.
+Session start/resume requires explicit current policy/notice acknowledgement;
+pause/end and policy changes use exact revisions. Events are only visible/hidden
+page reports with an exact next client sequence and server receipt time. Their
+absence or contents never influence grading. Parental enrollment is operator
+managed: an enrolled subject with absent, expired or denied policy is denied;
+an unenrolled subject retains existing application authorization. Revoking a
+manager does not remove the subject's restrictions. The generated opt-in must
+enforce them on original lesson/progress routes before package admission.
+
+### Versioned release-branch boundary
+
+Release policy schema 4 binds major 13 to development `main` and major 12 to
+maintenance `v12`. Schemas 2 and 3 retain their historical bindings; no existing
+tag or receipt is reinterpreted. `v13` remains a transitional integration branch
+until its admitted source is promoted through a protected PR to `main`.
+The source-admission gate requires a canonical matching tag, the exact
+checked-out/tagged commit at the current protected branch head, and every
+publishable inventory package at the tagged version before artifact builds.
+All declared automatic release workflows accept both maintained source lines
+and the transitional `v13` branch.
+Required manual/native/security evidence and the protected crates.io approval
+remain separate mandatory gates. Archive evidence requires the named archive
+job to succeed on the exact candidate; a green workflow with that job skipped
+is insufficient. Incompatible manual package selectors must fail explicitly.
+Observational CI reports may describe failed checks, but must stop on cancellation
+so an obsolete run cannot retain the concurrency slot needed by its replacement.
+Fuzz evidence must come from the candidate's
+release line and a source carrying that same policy; v12 results cannot be
+credited to v13 merely because they are recent. The existing immutable v12
+tags retain their original workflow and policy.
+
+### v13 active-session management (source admitted, unpublished)
+
+Extend the existing opt-in `SqlRecoveryStore` rather than introducing another
+authentication registry or crate. A currently valid opaque session may list
+only its account's at-most-20 active sessions, revoke a selected sibling or
+revoke all siblings. Management identifiers are purpose-separated keyed
+digests, never bearer credentials. Current-session logout keeps the existing
+revocation API. Every protected request still verifies authoritative SQL state;
+encrypted-only cookies and independent JWTs do not acquire revocation implicitly.
+
+Inventory may expose creation/expiry times, a current-session marker and an
+explicit bounded display label. Do not collect IP addresses, raw user agents,
+device fingerprints or activity history. Old sessions without the additive
+metadata keep working and report unknown creation/label values. Metadata follows
+expired-session retention, logout and password-reset deletion in the same transactions.
+An operator-owned task purges at most 100 expired sessions per transaction;
+time passing alone does not physically delete rows. Session operations have a
+ten-second database deadline; an error does not prove an uncertain write rolled
+back, and applications reconcile authoritative state before reporting success.
+Management requires current authentication inside its SQL transaction; selective
+revocation binds the target to that account and rejects the current session.
+Logout of siblings also advances the account session version while preserving
+the current session, fencing previously issued password-authentication proofs.
+
+The application supplies trusted server time and mounts management behind its
+authenticated tenant selection, CSRF, security headers, WAF and ingress limits.
+Account stores remain explicitly separated by application/tenant database and
+keys as documented in the recovery contract; request data cannot choose either.
+No device label proves device identity. Already-authorized in-flight operations,
+WebSockets and sessions managed by another identity system need separate policy.
+Required acceptance includes SQLite and PostgreSQL transactions, cross-account
+and cross-store denial, independent-process request verification, restart,
+expiry, password recovery, concurrent revocation and fail-closed storage errors.
+Source/package admission passed in PR #236; final release admission remains separate.
 
 ### v12 audit correction invariants
 
@@ -189,6 +764,99 @@ compiled is used. Stable or version-mismatched packages fall back to crates.io.
 This permits evaluation outside the repository without silently mixing release
 trains, but generated absolute path dependencies remain non-portable until the
 matching immutable release is published.
+
+### Distributed operation tracing candidate (v13, source admitted)
+
+The fifth approved September increment extends Core/facade's optional
+`telemetry` capability, using the maintained OpenTelemetry SDK and OTLP/HTTP
+protobuf transport. The existing process-local `SpanCollector` and authenticated
+Studio ingestion remain separate interfaces. A new explicit configuration must
+select service and bounded operation labels, a trusted collector, bounded queue,
+batch and export deadlines, and an owned flush/shutdown lifecycle. It must not
+infer user identity or authorization from trace identifiers.
+
+Context propagation accepts canonical nonzero W3C version-00 `traceparent` only
+after an explicit upstream trust decision. Untrusted ingress starts a new trace;
+arbitrary baggage and vendor tracestate are not propagated by this minimized
+profile. An actual independent producer/consumer journey must preserve parent
+relationships through the existing Messaging carrier and reach a disposable
+standard collector. Export only bounded approved operation/service names,
+trace/span relationships, timing, kind and status; omit application attributes,
+events, error descriptions, SQL, tokens, bodies and ambient resource metadata.
+This profile does not sanitize other tracing/logging layers.
+
+Export must run outside request execution with a compatible SDK processor/client,
+bounded response handling and no redirects or ambient proxies. Production uses
+verified HTTPS; literal-loopback HTTP is an explicit test/local-collector choice.
+Remote failure never falls back to a fake success. Malformed propagation, queue
+pressure, unavailable/slow collectors, TLS denial, exact package consumption and
+flush/shutdown require executable evidence. Sampling, retention, collector access,
+durability, availability and deployment operations remain host responsibilities;
+trace delivery is best effort, not an audit ledger or application transaction.
+The implementation and actual collector/TLS/process evidence are documented in
+[the tracing guide](distributed-tracing.md). Hosted source/package admission
+passed in PR #236; final release admission remains separate. Legacy initialization uses compatible threaded export and the corrected
+OTLP/HTTP endpoint; it retains its separate general logging/metadata policy.
+
+### Recoverable Live UI candidate (v13, source admitted)
+
+The fourth approved September increment extends `rullst-core::live` with a
+separate opt-in typed recovery API, preserving the legacy component interface.
+An application-bound tenant/account/component scope and mandatory static-dispatch
+authorization callback must be checked before upgrading, before actions and
+outputs, and periodically while connected. Exact browser origin and protocol
+validation supplement, rather than replace, application authentication.
+
+The v1 transport sends bounded complete server snapshots on initial connection,
+reconnection and conflicts. Commands carry a bounded correlation ID and expected
+revision; the host must check that revision atomically with its persistent domain
+write. The client must not queue or automatically replay mutations after uncertain
+disconnects. Recovery converges to authoritative application state, not replay of
+every missed transient event. Browser/server buffers, admitted connections,
+callbacks, sends, session lifetime and event counts must be bounded. Expired or
+revoked access closes the session without exposing a new snapshot.
+
+A small optional same-origin browser module and real browser/server tests must
+prove reconnect convergence, action conflict, session/tenant denial, revocation,
+bounded malformed/slow peers and recovery after an application restart. Domain
+persistence, transactional revision checks, HTML escaping, authorization policy,
+replication and proxy configuration remain explicit application responsibilities.
+No automatic durability or upgrade of legacy `LiveComponent` code is implied.
+The implementation and its local protocol/Chromium acceptance are recorded in
+[the recovery guide](live-recovery.md). Hosted workspace/platform/package
+admission passed in PR #236; final release admission remains separate.
+The API uses complete snapshots; it does not imply
+DOM diffing, broadcast of other clients' changes or automatic event replay.
+
+### Remote messaging candidate (v13, source admitted)
+
+The first remote adapter is an opt-in Redis Streams profile in the existing
+`rullst-messaging` crate. Redis stores the canonical envelope log; Rullst owns
+bounded group, retry, dead-letter and single-use lease indexes. These are Rullst
+consumer groups, not interoperability with arbitrary native `XREADGROUP` clients.
+Every lease mutation must check authoritative server time and the exact current
+capability atomically. Publication replay must retain the original receipt until
+explicit terminal purge. Empty/mock credentials select an explicit process-local
+fixture; a failed live connection must never downgrade to that fixture.
+
+The initial profile targets a dedicated standalone Redis 7.4+ database with
+verified TLS outside an explicit literal-loopback test mode. Exact configuration
+and an application-supplied deployment generation bind persisted namespaces;
+provisioning is explicit and normal connection must not recreate lost state.
+Lua mutations are isolated but do not roll back on runtime errors: a persistent
+in-progress marker must quarantine partial changes rather than silently continue.
+Bounded batches, retained bytes, subscriptions, operation deadlines and admission
+limits are required. AOF/no-eviction, clock discipline, credentials/ACLs, backups,
+restore reconciliation, topic authorization and destination idempotency remain
+deployment responsibilities. Cluster, replication/failover, native-group mixing,
+automatic repair and exactly-once effects are excluded from this profile.
+
+Admission requires the shared broker contract plus an actual disposable Redis
+restart, conflicting publication, concurrent consumer, expired/late ACK, retry,
+DLQ, outbox replay, configuration-loss and partial-write failure evidence.
+The implementation candidate and its capability/operational limits are described
+in [the Redis messaging guide](redis-messaging.md). Hosted source/package
+admission passed in PR #236; final release admission remains separate.
 
 ### Shared-local facade composition invariant
 
@@ -375,6 +1043,39 @@ PostgreSQL/MySQL contention evidence also remains open.
 
 ---
 
+### 4.4. Private S3-compatible storage (v13, source admitted)
+
+The opt-in `storage-s3` Core/facade feature extends the existing `Storage` and
+`TenantStorage` APIs with explicit AWS S3 or Cloudflare R2 credentials. It must
+not add cloud dependencies to bare Core or infer credentials from the ambient
+environment. The provider constructors alone remain unconfigured until a
+validated cloud configuration is attached.
+
+The supported journey is bounded object upload, download, metadata, deletion
+and short-lived signed GET URLs. Use the maintained AWS SigV4 signer, explicit
+provider endpoint/region rules, HTTPS, no redirects or ambient proxies, bounded
+request/body budgets and redacted errors. A separate development configuration
+may target a literal loopback endpoint for disposable protocol acceptance; it
+must not pass a production-configuration check. Empty or `mock_*` credentials
+select a deterministic bounded in-memory fallback, also rejected by that check.
+No mock URL may impersonate a signed provider URL.
+
+Tenant wrappers bind all five operations to the authenticated namespace. The
+application still authorizes the current account and object before every
+operation or grant; namespacing alone is not authorization. Private access URLs
+are bearer secrets, remain usable until expiry/provider invalidation, and must
+not appear in Debug/errors. They are not single-use or individually revocable.
+Direct presigned uploads, bucket/IAM provisioning, image processing and arbitrary
+S3 operations are outside this increment. Existing file quarantine/admission
+remains an explicit application step before cloud persistence or sharing.
+
+Acceptance requires feature-off/on and MSRV checks, an extracted-package
+consumer, a tenant-bound application journey, independent signature/protocol
+fixtures, bounded failure/expiry tests and a real disposable S3-compatible
+service. Those tests do not establish interoperability with owner accounts,
+provider configuration or regional legal compliance. Source/package admission
+passed in PR #236; final release admission remains separate.
+
 ## 🗄️ 5. Active Record ORM & Schema Engine (`rullst-orm`)
 
 ### 5.1. Model Definition & CRUD
@@ -498,6 +1199,37 @@ while portability and semantic review remain the model author's responsibility.
   create/delete, oversized, stale, malformed, cross-tenant, or redacted-field
   revisions fail closed. Bulk builders still do not synthesize per-row history,
   and durable external export remains an explicit outbox/application contract.
+
+### 5.4.1. Transactional partial-update candidate (source admitted)
+
+* `update_partial().save()` and its new explicit `save_with_tx(...)` variant
+  merge selected typed values into the current persisted row within a savepoint.
+  PostgreSQL and MySQL lock that row with `FOR UPDATE`; SQLite retains its
+  transaction/locking semantics and can reject contended read-to-write upgrades.
+  Missing rows and cross-tenant model handles fail before mutation.
+* The merged model uses the normal generated save lifecycle, including policy,
+  hooks, observers, encrypted fields, atomic audit entries and post-commit
+  cache/Scout/observer effects. This is a logical partial change implemented
+  through a full-row save, not a selected-column SQL optimization. Existing
+  model hooks can transform that candidate under the normal save contract.
+* The caller's object is replaced with the fresh merged model only after the
+  operation succeeds. A direct save waits for its transaction commit; an
+  explicit or task-scoped save reflects the transaction's tentative state, so
+  the caller must discard/reload it if the enclosing transaction rolls back.
+  A `PostCommit` failure does not undo a durable direct save. An ambiguous
+  database commit error requires reconciliation rather than blind replay.
+* An empty builder remains a no-op. A failed policy, hook, SQL write or audit
+  rolls back the operation's savepoint and discards its pending effects. This
+  allows a managed outer transaction to catch that failure and continue.
+  Strict post-commit timing requires `Orm::transaction` or the owned direct
+  path; a raw SQLx transaction retains the documented observation limitation.
+* Unselected persisted values and relation fields in the caller's object are
+  refreshed from the database representation. Unsubmitted edits on that object
+  do not become an implicit patch. This is not an expected-version comparison:
+  callers needing conflict rejection must still supply their domain revision
+  contract. Local SQLite/PostgreSQL/MySQL, cancellation, cache/Scout and
+  extracted-facade journeys pass. Full hosted workspace/platform/package
+  source admission passed in PR #236; final release admission remains separate.
 
 ### 5.5. Process-Local Post-Commit Contract
 
@@ -956,6 +1688,43 @@ The host must authorize the subscription owner, persist a stable command time
 before retry, serialize conflicting changes, reconcile signed webhooks and
 evaluate provider-specific billing-cycle effects. Live-account acceptance is
 release evidence, not inferred from protocol fixtures.
+
+#### Server-side Plan Entitlements (v13 candidate)
+
+The candidate `rullst-capital::entitlements` module supplies a read-time gate,
+separate from usage quotas. `EntitlementScope` binds an authenticated tenant to
+an existing `BillingSubject`; `EntitlementPolicy` binds one server-selected
+feature to at most 64 exact plan IDs, an explicit live/sandbox mode and a
+1–300 second maximum reconciliation age. Only active subscriptions qualify;
+trial, past-due, canceled, unknown and mock states deny access. Validity has an
+exclusive end, and both future observations and clock rollback during a read
+are rejected. No serialized snapshot or browser field is an authorization token.
+
+`EntitlementStore` is a static-dispatch trusted adapter contract. Every gate
+call reads it again and checks the returned tenant/subject binding, provenance,
+plan, status, expiration and trusted clock before and after the read. Store
+failures deny access. Hosts must supply authoritative current state and serialize
+reconciliation/revocation; this read gate does not make subsequent domain writes
+atomic or revoke an operation already authorized. Custom adapters and database
+backup/restore remain explicit application obligations.
+
+The generated SaaS candidate consumes this gate at an authenticated billing
+report route. Its single-tenant scope is the configured Stripe account/mode
+inside the application's database, never a request header or submitted owner.
+The existing durable billing intent and revision fence precede an actual
+ownership-bound provider refresh; the state is committed before authorization.
+It performs this refresh on every report, with a bounded deadline and no cached
+grant. The exact report-plan allowlist is separately configured on the server.
+Production requires live state; local sandbox state requires the explicit test
+profile, and offline credentials produce deterministic denial. Mutable CMS
+subscription projections, checkout redirects and unverified events cannot grant
+report access. Other providers need reviewed reconciliation adapters before this
+consumer can enable them. Existing profile/rights exports remain independent.
+
+The local implementation and generated HTTP/database contracts exercise current
+state, account/owner isolation, revocation races, expiry, provider/store failures,
+mock denial and cancellation at the request deadline. Combined hosted admission
+is pending; protocol fixtures do not establish live provider-account acceptance.
 
 #### Shared Team and Workspace Quotas
 
@@ -1426,6 +2195,81 @@ sending.
 
 ---
 
+### 11.1. Generated Project Context (v13 candidate)
+
+`generate:ai-context` retains its existing helper signature but replaces raw
+source/configuration embedding with the `rullst.project-context.v1` inventory.
+It writes a readable `.llms.txt` and machine-readable `.rullst/context-map.json`,
+and creates a project `AGENTS.md` only when no user instructions already exist.
+New project generation installs the same instructions and inventory. Existing
+`AGENTS.md` files are never rewritten by regeneration or automatic scaffold hooks.
+
+The map contains bounded project/dependency/feature names, validated dependency
+version requirements, configuration key
+names, source paths and roles, file sizes and one deterministic input fingerprint.
+It contains no source bodies, configuration values, dependency URLs or absolute
+workstation paths. Only bounded `Cargo.toml`, optional `Rullst.toml` and
+`.env.example`, and regular `.rs` files beneath `src` are inspected. Secrets,
+databases, VCS metadata, build output, dependency directories, hidden descendants
+and symlinks are excluded or rejected explicitly. Directory depth, entries,
+individual files, aggregate reads and output size all have hard limits; errors
+must not echo configuration values. Generated instructions identify the map as
+an inventory, not evidence that a feature, deployment or test has passed.
+The dotenv inventory accepts single-line declarations and rejects multiline
+values before they can be mistaken for key names; it performs no interpolation.
+The selected root's `src` is explicit: external workspace members are not scanned.
+
+`--check` recomputes and compares the generated inventory without writing files;
+stale, missing or altered output fails. Normal regeneration uses preflighted
+atomic replacement/rollback, refuses links and unrecognized output, and retains
+the legacy generated `.llms.txt` migration boundary explicitly. The fingerprint
+detects changed Rust source and inventoried metadata, excluding configuration
+values and dependency URLs; it is not a signature or an authorization claim. The
+workspace directory is trusted against concurrent adversarial filesystem edits.
+
+Local unit and real CLI/new-project contracts passed for the bounded inventory.
+Hosted and installed-archive source acceptance passed in PR #221, as recorded
+in the [delivery plan](v13-delivery-plan.md); final release admission remains separate.
+
+### 11.2. Schema-First API Profile (v13 candidate)
+
+`generate:api --schema <file> --output <directory>` is an opt-in generator with
+one explicit OpenAPI 3.1 JSON source. It must reject unsupported keywords and
+shapes, external/cyclic references, duplicate keys, ambiguous names/routes and
+unbounded input before writing anything. The existing route-scanning generators
+remain discovery aids; their placeholder schemas do not enter this typed profile.
+
+The initial profile admits closed named objects, bounded strings/arrays,
+booleans, JavaScript-safe integers, required nullable scalar/array fields and
+optional non-nullable fields. Optional nullable fields, arbitrary maps,
+polymorphism, floating-point/64-bit numeric wire values, formats and recursive
+schemas remain unsupported. References are local named object components.
+Parameters are explicit path strings and scalar query values; request and
+response bodies are named JSON objects with explicit status codes. Bearer
+authentication is described explicitly, while identity, ownership, CSRF and
+authorization remain host application responsibilities.
+
+Generated Rust DTOs use Serde, and explicit operation codecs reuse Security's
+bounded duplicate-key inspection and offline JSON Schema policies. They validate
+input before deserialization and output before serialization. Generated
+TypeScript uses strict types, runtime validation and typed status/body unions;
+its HTTP client bounds response bytes/time, encodes parameters, refuses redirects
+and never includes tokens or rejected payloads in errors. No route is silently
+mounted and no schema declaration constitutes authorization.
+
+Generation preserves unrelated files, preflights recognized outputs and exposes
+a read-only freshness check. Hard budgets apply to source/output bytes, schemas,
+operations, properties, parameters and reference depth. The trusted project
+directory is not an adversarial concurrent filesystem boundary. Acceptance
+requires compiled generated Rust and strict TypeScript, plus a real HTTP consumer
+journey covering Unicode, missing versus null, bounds, typed errors and denied
+cross-owner access. Local generation, compiled Rust/strict TypeScript and HTTP
+consumer contracts passed, including read-only APIs, exact safe-integer bounds,
+nullable nested arrays, duplicate queries/JSON keys and cancellation. The initial
+implementation passed hosted and installed-archive source acceptance in PR #221;
+final release admission remains separate. See the
+[supported profile](typed-api.md) for exact limits and application wiring.
+
 ## 🔄 12. Assisted Framework Upgrade Contract
 
 `cargo rullst upgrade` is the canonical application-upgrade boundary. It is an
@@ -1744,6 +2588,30 @@ authoritative secrets into JavaScript or an untrusted client.
   command enum. No shared signing key, store publication or physical-device
   evidence is implied. Existing/custom-flavor shells need reviewed migration;
   see the [signing guide](tutorials/49-omni-android-signing.md).
+* 🟢 **`[Implemented / Bounded v13 candidate]` Verified Android release output:** the
+  CLI binds a successful build to one fresh release APK under the generated
+  Android output directory. An explicit relative APK selection may disambiguate
+  variants; absent, unchanged, ambiguous, linked or oversized outputs fail.
+  Reproducible bytes may be accepted only when the output's filesystem timestamp
+  changed during this build; a cached unchanged artifact is not fresh evidence.
+  Compare artifact time with a temporary filesystem timestamp anchor created
+  before the build, so filesystem clock granularity cannot invalidate a fresh
+  fast build merely by lagging the wall clock. The before/after artifact identity
+  comparison remains mandatory.
+  An application-owned DER certificate and a trusted absolute SDK
+  `apksigner.jar` path are required in addition to signing inputs. Invoke the
+  jar through Java from an absolute trusted PATH entry, with bounded output,
+  deadlines and process cleanup. The verifier receives no keystore or password
+  environment inputs. It requires cryptographic verification of a private bounded APK
+  snapshot with SDK warnings treated as errors, report exactly one supported signer and match the expected
+  certificate SHA-256. Verify that the original bytes still match before
+  reporting the APK digest. Tool failures expose fixed diagnostics, not captured
+  logs or signing secrets. Local protocol fixtures are not real APK acceptance;
+  hosted Android CI built and verified a generated signed APK through this
+  CLI in PR #220, whose complete source campaign passed. Preserve that check
+  in final release verification. Multiple signers/key rotation, arbitrary output layouts, AAB/store/device
+  acceptance and protection from hostile build tools or same-user writers remain
+  separate contracts.
 * 🟢 **`[Implemented / Bounded]` Remote-content Boundary:** the generated local
   bootstrap exposes no Tauri IPC API to the remote application. A native
   navigation callback permits only Tauri's packaged origin and the exact

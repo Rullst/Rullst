@@ -1,6 +1,8 @@
 //! Preparation uses real Git/Cargo metadata, but must never compile the project.
 #[path = "update_project_cli/application.rs"]
 mod application;
+#[path = "update_project_cli/migration.rs"]
+mod migration;
 #[path = "update_project_cli/review.rs"]
 mod review;
 #[path = "update_project_cli/verification.rs"]
@@ -19,6 +21,10 @@ struct Fixture {
 }
 
 impl Fixture {
+    fn current() -> Self {
+        Self::new(env!("CARGO_PKG_VERSION"), env!("CARGO_PKG_VERSION"))
+    }
+
     fn new(requirement: &str, version: &str) -> Self {
         #[cfg(windows)]
         let temp = tempfile::tempdir_in(std::env::var_os("LOCALAPPDATA").unwrap()).unwrap();
@@ -124,7 +130,7 @@ fn text(output: &Output) -> String {
 
 #[test]
 fn preserves_dirty_untracked_deleted_and_ignored_lock_inputs_without_running_builds() {
-    let fixture = Fixture::new("12.0", env!("CARGO_PKG_VERSION"));
+    let fixture = Fixture::current();
     let dirty = b"// uncommitted user work\nfn main() {}\n";
     fs::write(fixture.app.join("src/main.rs"), dirty).unwrap();
     fs::write(fixture.app.join("src/untracked.rs"), "// not indexed\n").unwrap();
@@ -221,7 +227,7 @@ fn source_findings_are_review_data_and_never_execution_authority() {
 
 #[test]
 fn virtual_workspace_prepares_members_and_records_an_absent_lockfile() {
-    let fixture = Fixture::new("12", env!("CARGO_PKG_VERSION"));
+    let fixture = Fixture::current();
     fs::create_dir_all(fixture.app.join("member/src")).unwrap();
     let manifest = fs::read_to_string(fixture.app.join("Cargo.toml"))
         .unwrap()
@@ -265,21 +271,28 @@ fn virtual_workspace_prepares_members_and_records_an_absent_lockfile() {
 #[test]
 fn rejects_unknown_catalog_downgrades_and_unversioned_dependencies_without_retaining_staging() {
     let unknown = Fixture::new("7", "7.0.0");
-    unknown.assert_clean_failure(&unknown.prepare(), "source majors 5, 6, 11 and 12");
-    let future = Fixture::new("12.2", "12.2.0");
+    unknown.assert_clean_failure(&unknown.prepare(), "source majors 5, 6, 11, 12 and 13");
+    let mut newer = semver::Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
+    newer.patch += 1;
+    newer.pre = semver::Prerelease::EMPTY;
+    let newer = newer.to_string();
+    let future = Fixture::new(&newer, &newer);
     future.assert_clean_failure(
         &future.prepare(),
         "cannot downgrade a dependency requirement",
     );
-    let locked = Fixture::new("12", "12.2.0");
+    let locked = Fixture::new(env!("CARGO_PKG_VERSION"), &newer);
     locked.assert_clean_failure(
         &locked.prepare(),
         "cannot downgrade a locked Rullst package",
     );
-    let unversioned = Fixture::new("12", env!("CARGO_PKG_VERSION"));
+    let unversioned = Fixture::current();
     let manifest = fs::read_to_string(unversioned.app.join("Cargo.toml"))
         .unwrap()
-        .replace("version = \"12\", ", "");
+        .replace(
+            &format!("version = \"{}\", ", env!("CARGO_PKG_VERSION")),
+            "",
+        );
     fs::write(unversioned.app.join("Cargo.toml"), &manifest).unwrap();
     unversioned.assert_clean_failure(&unversioned.prepare(), "require manual review");
     assert_eq!(
@@ -290,7 +303,7 @@ fn rejects_unknown_catalog_downgrades_and_unversioned_dependencies_without_retai
 
 #[test]
 fn rejects_oversized_inputs_and_reports_instead_of_filling_storage() {
-    let fixture = Fixture::new("12", env!("CARGO_PKG_VERSION"));
+    let fixture = Fixture::current();
     fs::File::create(fixture.app.join("large.bin"))
         .unwrap()
         .set_len(64 * 1024 * 1024 + 1)
@@ -301,7 +314,10 @@ fn rejects_oversized_inputs_and_reports_instead_of_filling_storage() {
         fixture.app.join("Cargo.toml"),
         fs::read_to_string(fixture.app.join("Cargo.toml"))
             .unwrap()
-            .replace("version = \"12\"", "version = \"5\""),
+            .replace(
+                &format!("version = \"{}\"", env!("CARGO_PKG_VERSION")),
+                "version = \"5\"",
+            ),
     )
     .unwrap();
     fs::write(
@@ -315,7 +331,7 @@ fn rejects_oversized_inputs_and_reports_instead_of_filling_storage() {
 #[cfg(unix)]
 #[test]
 fn rejects_linked_and_special_inputs_without_following_or_blocking() {
-    let fixture = Fixture::new("12", env!("CARGO_PKG_VERSION"));
+    let fixture = Fixture::current();
     std::os::unix::fs::symlink(fixture.base.join("outside"), fixture.app.join("link")).unwrap();
     fixture.assert_clean_failure(&fixture.prepare(), "regular files");
     fs::remove_file(fixture.app.join("link")).unwrap();
@@ -336,7 +352,7 @@ fn rejects_linked_and_special_inputs_without_following_or_blocking() {
 #[cfg(windows)]
 #[test]
 fn rejects_a_junction_replacing_a_tracked_source_directory() {
-    let fixture = Fixture::new("12", env!("CARGO_PKG_VERSION"));
+    let fixture = Fixture::current();
     let outside = fixture.base.join("outside");
     fs::rename(fixture.app.join("src"), &outside).unwrap();
     let output = Command::new("cmd")

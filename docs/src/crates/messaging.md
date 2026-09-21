@@ -29,9 +29,11 @@ The `InMemoryBroker` is suitable for offline tests, deterministic development,
 and explicitly process-local workloads. `SqliteBroker` uses a fixed schema and
 serialized SQLite write transactions; restart, two-instance contention,
 configuration drift and corrupt-row repair are tested. It is a durable local
-adapter, not a remote transport. Kafka, RabbitMQ, Redis Streams,
-NATS/JetStream, SQS/SNS, Google Pub/Sub, and Pulsar adapters remain roadmap
-work.
+adapter, not a remote transport. The unpublished optional
+[Redis Streams candidate](../redis-messaging.md) provides a standalone transport
+with Rullst-owned group and fenced-lease indexes; hosted source/package admission
+is pending. Kafka, RabbitMQ, NATS/JetStream, SQS/SNS, Google Pub/Sub and Pulsar
+adapters remain roadmap work.
 
 The wire codec is not a remote adapter: it neither opens broker connections nor
 maps a provider's publish/ACK/retention semantics. Trace sampling, exporting,

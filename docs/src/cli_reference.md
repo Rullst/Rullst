@@ -623,6 +623,86 @@ responsible for calculating the due state, scheduling delivery, enforcing its
 disclosed billing policy, and reconciling payment. The generated build path
 runs the mandatory pre-flight and rejects dangerous links.
 
+### `cargo rullst make:age-gate` (unpublished v13 preview)
+
+Adds an explicit first-party declaration before each visit to the recognized
+SaaS starter's `/dashboard`. Generation requires a server-owned policy version,
+threshold and single-tenant deployment reference; it never chooses a universal
+legal minimum age. The existing authentication and CSRF layers protect both
+GET and POST. A successful answer remains declared, and authorizes only that
+dashboard rendering after durable one-use consumption.
+
+```bash
+cargo rullst make:age-gate \
+  --privacy-source /path/to/Rullst/rullst-privacy \
+  --minimum-age 18 \
+  --policy-version dashboard-v1 \
+  --tenant-ref application-tenant-ref \
+  --replay-store sqlite
+```
+
+The threshold above is an example for an application-assessed low-assurance
+policy. Select `postgres` explicitly for a shared database across hosts.
+Configure the required private key and replay database as described by the
+generated `AGE_GATE.md`; missing state or configuration denies access. The
+candidate defaults to the registry version matching this CLI. The source
+override shown above is required for development before that version is published,
+unless an explicit archive-only patch is configured. Generation refuses unknown
+privacy dependencies or unrecognized authentication/route shapes before writing.
+It composes with `make:privacy` when both use the same registry/local source;
+both consumers' explicit dependency features are preserved.
+Review the generated diff before deployment. It does not install facial models,
+verified guardianship, reusable age flags or global compliance.
+
+For the full LMS starter, select `--blueprint lms` and omit `--tenant-ref`.
+The server resolves the school through its existing active-membership policy;
+the form preserves that selection for an ordinary browser POST. A school query
+parameter is only a selection hint, and cannot grant membership or move an age
+challenge between schools. Other learning routes keep their existing policies.
+
+### `cargo rullst make:privacy` (unpublished v13 preview)
+
+Adds authenticated preferences at `/privacy`, an optional personalized greeting
+at `/privacy/personalization`, and a private own-account JSON download at
+`/privacy/export`. The concrete export projects only the authenticated account's
+ID, name and email; it does not complete broader queued privacy requests or
+export subscription, learning, guardian, backup or processor records.
+
+```bash
+cargo rullst make:privacy \
+  --privacy-source /path/to/Rullst/rullst-privacy \
+  --purpose-version greeting-v1 \
+  --validity-seconds 86400 \
+  --tenant-ref application-tenant-ref
+```
+
+The version and lifetime are explicit application choices; the engineering cap
+of 365 days is not a legal retention rule. Select `--blueprint lms` and omit
+`--tenant-ref` for the full LMS starter. Its current school membership determines
+the tenant; a bounded `school` query value only selects among authorized schools.
+The generated consumer composes with `make:age-gate` in either installation order.
+Omitting `--privacy-source` selects this CLI's matching registry version; before
+publication use the explicit local override shown above or a reviewed archive patch.
+Unknown authentication, dependencies, routes or existing output files require
+manual integration rather than overwriting application code.
+
+Follow generated `PRIVACY.md`: provision an independent random
+`RULLST_PRIVACY_FORM_KEY_HEX` and initialize a new private local consent file with
+`cargo run --bin privacy-init`, with `RULLST_PRIVACY_DATABASE` exported into that
+process environment. Ordinary opening never creates or repairs missing state.
+The generated 10,000-record SQLite store requires one trusted shared local file;
+it does not provide multi-host replication. Preferences and personalization deny
+unavailable state, while the authenticated export remains independent of that
+store and form key.
+
+Choices are initially unselected. Refusal and withdrawal produce a generic
+greeting; an earlier positive form cannot undo a completed withdrawal. Forms
+bind the displayed notice, revision, account, tenant and session and expire after
+five minutes. The server checks current permission before the optional name
+query. Add visible application navigation and review the documented backup,
+retention and broader rights obligations before deployment. This bounded
+consumer does not establish worldwide legal compliance or verify age.
+
 ### `cargo rullst make:jwt`
 Injects a pre-configured boilerplate Middleware into your project for strict JWT Authentication (verifying Bearer tokens in the `Authorization` header).
 
@@ -749,9 +829,15 @@ Dynamic routes, custom extractors, and semantic constraints may require manual
 edits; validate the result with an OpenAPI validator before publishing it.
 
 ### `cargo rullst generate:ts`
-Scans supported models and DTOs and emits a TypeScript file (`sdk.ts`). Generated
-types reduce duplication but do not replace compatibility tests for serialization
-and API behavior.
+Scans recognizable route declarations and emits `rullst-client.ts` with unchecked
+request/response placeholders. Review the output before use; route scanning does
+not establish DTO shapes, serialization or authorization.
+
+### `cargo rullst generate:api` (v13 candidate)
+Consumes one explicit bounded OpenAPI 3.1 profile and generates Rust DTOs/codecs,
+a typed TypeScript HTTP client and a canonical schema copy. Requires `--schema`
+and `--output`; `--check` verifies freshness without writes. Unsupported shapes
+fail before generation. See the [profile and executable acceptance](typed-api.md).
 
 ### `cargo rullst generate:diagram`
 Analyzes primary and foreign keys defined in your Models and exports a `diagram.md` file containing Mermaid.js code, visually generating an Entity-Relationship (ER) diagram.
@@ -771,10 +857,12 @@ or replacing application models.
 * **Optional Flags:**
   * `--output`: Where to save the generated structs (Default: `src/models`).
 
-### `cargo rullst generate:ai-context`
-Creates `.llms.txt`, a compact summary of project structure, conventions, and
-dependencies for coding assistants. It is context, not a guarantee that a model
-will understand or modify the project correctly.
+### `cargo rullst generate:ai-context [--check]`
+The v13 candidate writes a bounded `.llms.txt` and `.rullst/context-map.json`
+with dependency metadata, configuration key names and source paths. It creates
+`AGENTS.md` only when absent and preserves existing project instructions.
+`--check` detects missing, altered or stale inventory without writing files.
+See [project context](project-context.md) for limits, exclusions and legacy migration.
 
 ### `cargo rullst audit [--ai] [--compliance] [--idor]`
 Runs bounded source/configuration checks and can invoke installed dependency
@@ -792,6 +880,21 @@ Generates an inspectable Axum/Tokio entry-point snapshot
 * **Flags:**
   * `--force`: Overwrites `src/main.rs` directly instead of creating `src/ejected_main.rs`.
   * `--output <path>`: Specifies a custom output path for the ejected file.
+
+### `cargo rullst deploy:doctor` (v13 candidate)
+
+Read-only inspection of a local deployment configuration snapshot:
+
+```bash
+cargo rullst deploy:doctor --env-file .env.production --json
+cargo rullst deploy:doctor --config Rullst.production.toml --process-env
+```
+
+Reuses Core environment/security validation, catches obvious key/configuration
+mistakes and identifies application-policy reviews without echoing values.
+Explicit environment sources remain separate. Exit zero covers only the inspected
+local profile; `deployment_verified` remains false. See the
+[input and output contract](deployment-diagnostic.md) before using it in CI.
 
 ### `cargo rullst inspect [target]`
 Statically expands and inspects macro code or structural definitions directly in the terminal without starting a server. Useful for debugging proc-macro output, reviewing route tables, and validating database schemas.
@@ -895,9 +998,15 @@ migrations, data backup, external reachability check, or automatic rollback. It
 does not guarantee zero downtime and does not support IPv6 SCP targets.
 
 ### `cargo rullst omni`
-The unreleased 12.1.0 executable adds `cargo rullst omni android --release` for
+The 12.1.0 executable added `cargo rullst omni android --release` for
 an explicit Android release build using application-owned signing inputs. It
 does not change the existing Rust `Commands::Omni` variant or start a backend.
+The v13 development CLI additionally requires `--signing-certificate` and
+`--apksigner-jar` (or their documented environment variables), verifies one
+fresh release APK against that certificate and reports its SHA-256. Use
+`--apk` to select a relative output when variants are ambiguous and
+`--android-arch` to restrict the native build. Neither a successful build alone
+nor a previous unchanged artifact is accepted as fresh verified output.
 See [Android signing and icons](tutorials/49-omni-android-signing.md) for key
 setup, migration of existing shells and certificate/device verification.
 

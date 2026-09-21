@@ -9,6 +9,212 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Dependency refresh candidate
+
+- Update the workspace and affected fuzz locks for jsonwebtoken 11.1.0,
+  syn 3.0.6, rustix 1.1.5, ammonia 4.2.0 and the compatible pinned
+  aws-smithy-types 1.6.4. Preserve the Rust 1.96 MSRV, SES feature boundary
+  and historical SemVer baseline constraint. Actual Labs isolation and the
+  full hosted campaign must pass before this candidate is admitted.
+- Refresh immutable CodeQL, Rust toolchain installer, tool installer,
+  TruffleHog wrapper and Codecov Action references together across v13 workflows.
+
+### Unpublished v13 privacy foundation
+
+- Make age verification and replay claims asynchronous, with trusted server-clock
+  checks before and after storage. Deny expiry, rollback, cancellation and
+  uncertain storage outcomes; production still rejects mocks and local memory.
+- Add optional shared-local SQLite and authoritative PostgreSQL replay state
+  with serialized claim/quota/expiry transactions, persisted configuration and
+  clock metadata, and nonce digests. Retain no photos or birth dates. Live age
+  providers, verified guardianship and automatic global privacy compliance
+  remain outside the unpublished package; see the v13 source inventory below.
+
+### Private object storage candidate
+
+- Prepare an opt-in `storage-s3` Core/facade adapter for private S3/R2 files,
+  explicit credentials, bounded transfers, tenant namespaces and signed GET
+  grants. Add deterministic offline mode, protocol failure tests, a disposable
+  S3 service with restart/signature checks and an extracted-package consumer.
+  Hosted source/release admission and real provider-account interoperability
+  remain pending; see the [storage contract](docs/src/private-object-storage.md).
+
+### Remote messaging candidate
+
+- Add optional `redis-streams` Messaging and facade `messaging-redis` profiles:
+  canonical Redis log, Rullst-owned bounded groups and expiring ACK capabilities,
+  exact publication replay, retry/DLQ, explicit retention and server-time fencing.
+  Validate TLS, partial-write quarantine, timeout replay, an ORM outbox and actual
+  AOF restart against a disposable service. Hosted source/package admission is
+  pending; [the contract](docs/src/redis-messaging.md) states deployment limits.
+
+### Active-session management candidate
+
+- Extend opt-in Auth recovery stores with account-owned session inventory,
+  selective/all-other logout, bounded explicit labels, additive metadata and
+  expired-session retention. Preserve the current token while fencing stale
+  authentication proofs during logout of siblings. Add session-only facade
+  features, independent-process HTTP checks, PostgreSQL restart/deadline tests
+  and an extracted-package consumer. Hosted source/release admission remains
+  pending; see the [session contract](docs/src/session-management.md).
+
+### Recoverable Live UI candidate
+
+- Add explicit Core/facade `live::recovery` with mandatory authorization,
+  complete snapshots, transactional revision conflicts and bounded WebSocket
+  admission, operations and lifetimes. Its same-origin browser module recovers
+  state without replaying uncertain mutations. Actual protocol and Chromium
+  tests include revocation, disconnect and process restart. Legacy components
+  and scaffolds remain separate; hosted source/package admission is pending.
+  See [the adoption and limits guide](docs/src/live-recovery.md).
+
+### Distributed tracing candidate
+
+- Add opt-in Core/facade `telemetry::distributed` with explicit parent trust,
+  operation-label approval, minimized OTLP protobuf export, bounded transport
+  and an owned flush/shutdown lifecycle. Validate separate Messaging processes
+  against a standard TLS collector, including ancestry, failures and queue
+  pressure. Repair legacy initialization's async-client/threaded-processor
+  mismatch and OTLP/HTTP endpoint handling. Hosted source/package admission
+  remains pending; see [the profile and migration](docs/src/distributed-tracing.md).
+
+### Transactional partial-update candidate
+
+- Merge selected values into the current tenant-bound row within a savepoint,
+  reuse the full save lifecycle and expose explicit `save_with_tx`.
+- Preserve caller state on rejected operations and include audit/post-commit
+  effects. Full-row SQL, object refresh and audit-context migration are documented
+  in [the candidate guide](docs/src/transactional-partial-updates.md).
+- Local native database, cancellation, cache/Scout and extracted-consumer
+  checks passed; full hosted admission remains pending.
+
+### CI tooling
+
+- Isolate partial-update integration tests in separate processes with checked
+  SQLite initialization. Verify Live's oversized-frame rejection across TCP
+  resets while retaining domain-state and connection-admission assertions.
+- Reject manual archive selectors that would skip the requested package gate.
+  Prepare the complete locked dependency graph before offline archive consumers
+  inspect cross-platform dependencies. Let cancelled observational scorecards
+  release their workflow concurrency slot while retaining reports after failures.
+- Prepare the v13 release line with explicit major/branch/tag/package binding,
+  protected-head admission, automatic checks on both maintained branches and
+  fuzz provenance confined to the candidate's release line. Keep the protected
+  publication approval and full release evidence requirements.
+- Distinguish skipped jobs from measured execution in timing reports, including
+  GitHub's reversed synthetic timestamps; retain strict validation for jobs
+  that ran. Record successful hosted optimization evidence without hiding the
+  longer total elapsed time caused by substantial job-start waits.
+- Limit single-target fuzz diagnostic preparation to the exact requested target
+  with fail-closed package selection. Retain every release preflight target,
+  sanitizer setting and campaign duration; add scheduling/failure regressions.
+- Validate the entire threat evidence manifest before builds, remove repeated
+  Cargo target-listing calls, and require exact non-ignored execution instead
+  of accepting a zero-test success. Preserve all 59 unique negative tests.
+- Run only the fully materialized LMS for its eight threat mappings, using the
+  same case and application-test helper. Keep every configuration and assertion
+  in the normal eight-project matrix, including ERP release builds; exclude only
+  its redundant exact-name LMS wrapper there. Add real Rust harness and
+  scheduling regressions, and bound nested compilation to two jobs in hosted
+  threat checks. The optimized Linux run passed all 25 required runtime jobs;
+  reduced execution work did not guarantee shorter overall queue-plus-run time.
+- Add a bounded read-only job-timing reporter and negative fixtures; distinguish
+  job waits, combined execution steps and summed runner time from release evidence.
+- Add an observation-only Git impact planner with transitive normal, optional,
+  target, build and development dependency edges. Unknown inputs, changed
+  policy/dependencies, critical crates, executable documentation and ambiguous
+  history retain full verification; no check is skipped by its reports.
+- Add a development-only site admission path for v13 pushes, requiring a recent
+  exact-source baseline with all 25 Linux runtime jobs successful, a bounded
+  three-file presentation diff and fresh browser/documentation checks. Missing
+  or invalid evidence falls back to full runtime CI; PRs, main, manual and release
+  gates are unchanged. The first hosted positive path completed Rust CI in 43s;
+  its immediately preceding full Linux baseline took 20m57s. These observed
+  timings do not predict runtime-change or release verification duration.
+- Resolve every fuzz dependency graph with locked Cargo metadata before Clippy
+  and campaign builds. Remove the ineffective `--no-deps` preflight and add real
+  stale-lock regression evidence; retain all forty fuzz targets and durations.
+- Use pinned prebuilt mdBook releases for documentation and Pages builds while
+  retaining their book, link and real-browser checks.
+
+### Documentation
+
+- Sequence verification efficiency before a compatible opt-in 12.1.0 updater,
+  then concentrated v13 development. Require artifact verification, project
+  acceptance and bounded recovery; future-major migrations need their own rules.
+- Define v13 API documentation acceptance criteria for connected Rust reference
+  pages and tested REST journeys, using Qt's organization as inspiration.
+  These documentation and expanded-updater programmes remain planned.
+- Version landing CSS and JavaScript by content hash, including the organization
+  privacy page, with a real stale-browser-cache regression. Restore the earlier
+  examples presentation and describe Rullst as a suite for bringing ideas to life.
+- Correct the nextest scope: coverage uses nextest, while ordinary CI's existing
+  eight shards still use Cargo's test runner.
+
+## [13.0.0-alpha.1] - 2026-09-20 (unpublished development checkpoint)
+
+This section describes the v13 source train. It does not announce a crates.io
+publication or admit a stable v13 release. See the
+[delivery plan](docs/src/v13-delivery-plan.md) and
+[adoption guide](docs/src/migration-v13.md) for current evidence and boundaries.
+The inventory includes subsequent source increments through September 21;
+the development version remains unpublished.
+
+- Set the existing sixteen release packages and internal requirements to the
+  explicit development version. Migration catalog v2 admits reviewed 12.1→13
+  dependency preparation, rejects stale inputs and retains apply/recovery checks.
+- Preserve an endpoint's explicit `Referrer-Policy: no-referrer` through Core and
+  Security header composition, with duplicate-header and layer-order regressions.
+- Require a public application certificate and trusted SDK verifier for Android
+  release builds. Reject stale, ambiguous, changed or incorrectly signed APKs;
+  emit a bounded digest receipt and withhold signing-tool diagnostics/secrets.
+- Prepare the seventeenth package, `rullst-privacy`, for the unpublished candidate:
+  explicit optional facade features, registry/local CLI consumers, archive-only
+  acceptance and coordinated upgrade inventory. Its runtime scope includes native
+  proportional declarations,
+  authenticated challenge transport, SQLite/PostgreSQL replay state, optional
+  versioned consent/withdrawal, and opt-in generated SaaS/LMS profile journeys.
+  No facial engine, live age provider or automatic global legal-compliance claim.
+- Add the unpublished `rullst-supervision` candidate with explicit collection
+  acknowledgement, scoped/revocable authority, shared-local SQLite state and
+  an opt-in generated LMS journey. Typed browser/capture observations and bounded
+  camera-presence/audio-activity adapter contracts support human review; no media
+  model, device-wide surveillance or automatic misconduct verdict is included.
+- Add optional PostgreSQL passkey ceremonies with tenant/account/session/RP
+  binding, single use, bounded durable state, database/process recovery and
+  Chromium virtual-authenticator evidence. Credential ownership, revocation and
+  counter updates remain explicit application responsibilities.
+- Retain HTTP requests through response-body completion during graceful drain.
+  Exercise readiness, draining, shared budgets and browser/proxy boundaries with
+  two real application processes behind Caddy and Redis. Add the bounded offline
+  `deploy:doctor` and reject the public example application-key placeholder.
+  These controls do not certify or automatically modify a cloud/VPS deployment.
+- Add the unpublished `rullst-media` candidate for Bunny Stream asset lifecycle,
+  resumable upload, processing reconciliation, private playback and deletion,
+  with SQLite recovery and authenticated HTTP/browser consumers. Real provider
+  and CDN interoperability remain unvalidated; existing LMS fields do not enable
+  this opt-in service automatically.
+- Add unpublished `rullst-labs` orchestration and a separate experimental Linux
+  Rust/Wasmi runner for bounded pure-function exercises. Encrypted durable jobs,
+  signed receipts, exact grading, cancellation, recovery and retention have
+  automated execution/consumer evidence. The application never executes learner
+  code. Independent isolation review and final release admission remain pending;
+  neither a general Rust/Rullst hosting service nor production readiness is claimed.
+- Gate generated SaaS billing reports on current reconciled subscription state,
+  authenticated ownership and explicit paid plans. Reject mock, stale, expired,
+  revoked or mismatched state; retain application-owned billing reconciliation.
+- Replace copied project source with a bounded deterministic context inventory,
+  key names without values and a read-only freshness check. Preserve existing
+  `AGENTS.md` instructions and generate the inventory for all six blueprints.
+- Generate Rust operation codecs and a strict TypeScript HTTP client from one
+  bounded explicit OpenAPI 3.1 profile. Reject unsupported shapes, preserve
+  optional/null semantics and validate request/response data and typed statuses;
+  authentication and ownership remain explicit application responsibilities.
+- Add a manual Verus pilot for the existing age-policy method predicate, with
+  production syntax linkage, pinned tooling, mandatory failing controls and
+  resource/source receipts. Preserve production dependencies and the broader
+  runtime, integration and release verification requirements.
+
 ## [12.1.0] - 2026-09-20
 
 Published on September 20 UTC (September 19 in Brasília); see the

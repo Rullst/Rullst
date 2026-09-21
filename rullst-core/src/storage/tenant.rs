@@ -10,7 +10,7 @@ use crate::security::TenantContext;
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct TenantStorage {
-    storage: Storage,
+    pub(super) storage: Storage,
     tenant_id: String,
 }
 
@@ -30,6 +30,10 @@ impl TenantStorage {
 
     /// Returns the backend object key confined below the tenant namespace.
     pub fn object_key(&self, relative_path: &str) -> Result<String, StorageError> {
+        #[cfg(feature = "storage-s3")]
+        if self.storage.cloud.is_some() {
+            super::cloud::validate_key(relative_path)?;
+        }
         let path = normalized_object_key(relative_path)?;
         Ok(format!("tenants/{}/{path}", self.tenant_id))
     }

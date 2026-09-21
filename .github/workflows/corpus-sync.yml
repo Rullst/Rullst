@@ -64,12 +64,12 @@ jobs:
           disable_annotations: true
 
       - name: Install Rust nightly
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # nightly
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # nightly
         with:
           toolchain: nightly-2026-08-21
 
       - name: Install cargo-fuzz 0.13.2
-        uses: taiki-e/install-action@26e9283f268b880168bdbd2c545dfcd60ec2c6ab # v2.87.13
+        uses: taiki-e/install-action@4076c08d76dba979c11a7285295b0716c1d67908 # v2.87.15
         with:
           tool: cargo-fuzz@0.13.2
 
@@ -98,6 +98,9 @@ jobs:
           args=(-max_total_time=60)
           if [ "$FUZZ_TARGET" = "fuzz_parser" ]; then
             args+=(-max_len=2048 -rss_limit_mb=4096)
+          fi
+          if [[ "$FUZZ_TARGET" == fuzz_age_* ]]; then
+            args+=(-max_len=9000 -timeout=10 -rss_limit_mb=2048)
           fi
           cargo +nightly-2026-08-21 fuzz run \
             --target "$FUZZ_BUILD_TARGET" "$FUZZ_TARGET" -- "${args[@]}"

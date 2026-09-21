@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "v12-maximum-local-campaign",
+  "scope": "release-train-local-campaign",
   "targets": [
     { "name": "rullst-macros", "rc_floor": 90, "local_target": 94 },
     { "name": "rullst-orm-macros", "rc_floor": 90, "local_target": 95 },
@@ -14,6 +14,7 @@
     { "name": "rullst-capital", "rc_floor": 90, "local_target": 93 },
     { "name": "rullst-mail", "rc_floor": 90, "local_target": 95 },
     { "name": "rullst-auth", "rc_floor": 90, "local_target": 95 },
+    { "name": "rullst-privacy", "rc_floor": 90, "local_target": 95 },
     { "name": "rullst-nexus", "rc_floor": 90, "local_target": 95 },
     { "name": "rullst-studio", "rc_floor": 90, "local_target": 94 },
     { "name": "rullst", "rc_floor": 90, "local_target": 96 },

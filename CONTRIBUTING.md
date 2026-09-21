@@ -72,8 +72,8 @@ verification gates to every contribution, regardless of authorship. See
 
 ## Development Setup
 
-1. Fork the repo and create a short-lived branch from `main` for v12
-   maintenance, or from `v13` for next-major development. Target the same
+1. Fork the repo and create a short-lived branch from `v12` for v12
+   maintenance, or from `main` for v13 development. Target the same
    base branch with your pull request.
 2. Use the repository-pinned toolchain in `rust-toolchain.toml`.
 3. Run `cargo build --workspace --all-features` to build the framework.
@@ -84,10 +84,12 @@ verification gates to every contribution, regardless of authorship. See
 8. Ensure the full test suite passes.
 
 ## Branching Model
-- `main`: Protected v12 maintenance and release source. Compatible fixes,
-  documentation and dependency updates target this branch.
-- `v13`: Next-major development. Additive product work and breaking changes
-  target this branch; its contents are not published v12 APIs.
+- `main`: Protected v13 development and release source. Product work and
+  breaking changes target this branch; its contents are not published v12 APIs.
+- `v12`: Protected 12.x maintenance. Compatible fixes, documentation and
+  appropriate dependency updates target this branch.
+- `v13`: Transitional source reference retained while main-line admission
+  completes; new work targets `main`.
 - `v5`: Frozen historical source for the legacy v5 line. Do not target it with
   routine fixes or dependency updates; released v5 consumers should pin the
   immutable `v5.0.0` tag or crates.io artifact.
@@ -107,5 +109,12 @@ tags and keep a short archive pointer when a public page URL already exists.
 Do not interpret an archived score, checklist or example as current evidence.
 Documentation fixes update the repository/site; already-published crates.io
 archives remain immutable and receive changes only in a later package version.
+
+Build the manual with `mdbook build docs` using mdBook 0.5.4 and Python 3.
+The canonical-links preprocessor keeps included root documents as single sources
+and resolves their links into book chapters or repository pages. Its
+`source-revision` in `docs/book.toml` identifies the branch/tag used for repository
+links. CI checks both the Markdown sources and the rendered HTML, including
+section fragments; a successful Markdown check alone does not validate the book.
 
 Thank you for your interest in making Rullst better!

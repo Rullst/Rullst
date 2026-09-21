@@ -10,6 +10,16 @@
 Rullst ORM aims for an inspectable, AI-friendly Active Record experience while
 retaining Rust typing, explicit escape hatches and parameterized values.
 
+## Unpublished v13 candidate
+
+[Transactional partial updates](../docs/src/transactional-partial-updates.md)
+merge selected values into the current scoped row and reuse the normal save
+lifecycle, including audit and post-commit cache/Scout/observer effects. This
+adds explicit transaction support and refreshes the caller model only after
+operation success. Full-row SQL and enclosing-rollback behavior require the
+linked migration review. Archive and hosted source admission passed in PR #236;
+final release admission remains separate.
+
 ## Implemented foundations
 
 - Active Record models via `#[derive(Orm)]` and repository abstractions.
@@ -93,7 +103,7 @@ compile-time schema verified.
 - [~] **Declarative Struct-Based Migrations**: SQLite AST/schema diff scaffolding exists, but it is not a type-complete or universally safe synchronizer.
 - [~] **Declarative Destructive Migrations**: SQLite diff emits destructive suggestions commented out; full synchronization and an `--allow-destructive` execution contract do not exist.
 - [~] **Strict Lazy Loading Prevention**: Explicit generated relationship access fails while prevention is enabled; it cannot prove absence of every application-level N+1 pattern.
-- [~] **Type-Safe Partial Updates**: A typed explicit builder emits only selected fields and preserves policy/tenant checks; it is not automatic dirty tracking or a zero-overhead proof.
+- [~] **Type-Safe Partial Updates**: The v13 typed builder merges selected values into the current scoped row, then runs full-row persistence with policy/hooks/audit and explicit transaction support. It is not automatic dirty tracking, selected-column SQL or a zero-overhead proof.
 - [~] **Compliance & Data Governance Foundations**: `PersonalData`, redacted `SecretString`, and AES-GCM encrypted model fields are separate bounded primitives, not automatic GDPR/LGPD compliance.
 - [x] **Audit Trails (bounded)**: Generated auditable instance mutations require a typed actor context, derive active-tenant metadata, recursively redact bounded payloads and share their savepoint with the audit row. Eligible v2 updates support guarded compensating restore with stale/cross-tenant/sensitive refusal. Bulk per-row history and durable external export remain explicit outbox/application work.
 - [~] **Full-Text Search (Scout)**: The `scout-http` feature supplies bounded

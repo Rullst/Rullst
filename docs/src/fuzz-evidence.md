@@ -1,10 +1,13 @@
 # Fuzz evidence reuse
 
-The release still requires coverage of all 40 declared targets. A successful
-`fuzzing.yml` run on the final `main` commit remains mandatory. In release mode,
+The v13 release requires all 42 declared targets across eleven fuzz workspaces,
+including challenge-token and signed-attestation checks in `rullst-privacy`.
+The immutable v12 release line retains its 40-target policy. A successful
+`fuzzing.yml` run on the final release-branch commit remains mandatory (`main`
+for v12, `v13` for v13). In release mode,
 the planner can credit an original successful campaign when its reviewed inputs
 match the candidate; only targets without eligible evidence execute again.
-`force_full: true` requests all 40 executions. Diagnostic mode remains a
+`force_full: true` requests every declared execution. Diagnostic mode remains a
 five-minute, single-target check and cannot replace release evidence.
 
 ## What is compared
@@ -13,7 +16,7 @@ five-minute, single-target check and cannot replace release evidence.
 working tree. A SHA-256 identity includes tracked paths, modes and blob IDs,
 the pinned execution environment, preflight and campaign commands, runner
 labels, tool/action versions, flags and each fuzz package's complete contents.
-Each of the ten separate fuzz workspaces retains its own dependency lockfile.
+Each of the eleven separate fuzz workspaces retains its own dependency lockfile.
 
 Shared production source, normal/build dependencies, compiler configuration,
 the target inventory and unclassified files are global inputs: changing one
@@ -29,7 +32,7 @@ There is a small explicit list of reviewed non-inputs, not a blanket exclusion
 of test or documentation directories. It includes the two browser helpers,
 the mail feedback integration test, this documentation, and release/admission
 control code. The root lockfile is not used by the separate fuzz workspaces;
-their ten locks remain inputs. Only the top-level `dev-dependencies` table of
+their eleven locks remain inputs. Only the top-level `dev-dependencies` table of
 `rullst-mail/Cargo.toml` is normalized out, because the mail dependency's
 integration tests are not built by the fuzz workspaces. Every other field,
 including target-specific, normal and build dependencies, remains an input.
@@ -64,7 +67,9 @@ candidate; this exception only concerns the bounded fuzz campaign.
 
 The planner examines at most 30 recent runs and credits only original jobs:
 
-- The same repository, `main`, `workflow_dispatch`, and `fuzzing.yml` identity.
+- The same repository, candidate release branch, `workflow_dispatch`, and
+  `fuzzing.yml` identity. The source's committed release policy must identify
+  that same branch; results do not cross the v12/v13 release boundary.
 - A source commit that is the candidate or a Git ancestor of it.
 - A run created within the preceding seven days; reusing it does not renew age.
 - A completed successful workflow and evidence boundary, a successful package
@@ -86,7 +91,7 @@ source commit and completion time. The GitHub summary links to those runs.
 
 The tag-only release admission check first requires a successful current-commit
 fuzz workflow. If some target jobs were reused, it independently reads Git and
-GitHub again and requires complete 40-target coverage; it does not trust the
+GitHub again and requires complete coverage of the release line's reviewed inventory; it does not trust the
 uploaded receipt. It retains `release-fuzz-evidence.json` for that decision.
 Expired or newly invalidated evidence blocks publication and requires another
 campaign. The other 27 required workflows retain their existing exact-SHA rules.

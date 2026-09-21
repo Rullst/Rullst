@@ -128,7 +128,7 @@ fn json_dry_run_is_versioned_and_machine_readable() {
     let report = serde_json::from_slice::<serde_json::Value>(&output.stdout)
         .expect("stdout must contain only JSON");
     assert_eq!(report["schema_version"], "rullst.upgrade-plan.v1");
-    assert_eq!(report["rule_catalog"], "rullst-upgrade-rules-v1");
+    assert_eq!(report["rule_catalog"], "rullst-upgrade-rules-v2");
     assert_eq!(report["production_ready"], false);
     assert_eq!(report["source_findings"][0]["code"], "V5-ROUTES-ATTRIBUTE");
 }
@@ -185,7 +185,7 @@ fn virtual_workspace_updates_only_cargo_metadata_members() {
 fn successful_upgrade_changes_the_manifest_and_keeps_a_review_report() {
     let fixture = Fixture::new(
         "success",
-        ">=5, <13",
+        env!("CARGO_PKG_VERSION"),
         env!("CARGO_PKG_VERSION"),
         "fn main() {}\n",
     );

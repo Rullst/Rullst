@@ -1,0 +1,34 @@
+[package]
+name = "rullst-privacy"
+version = "13.0.0-alpha.1"
+authors = ["Rullst Core Team"]
+edition = "2024"
+rust-version = "1.96.0"
+description = "Bounded privacy and proportional age-assurance contracts for Rullst"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/Rullst/Rullst"
+documentation = "https://docs.rs/rullst-privacy"
+include = ["src/**", "README.md", "LICENSE", "Cargo.toml", "Cargo.lock"]
+
+[features]
+default = []
+consent = ["dep:thiserror"]
+consent-sqlite = ["consent", "dep:ring", "dep:sqlx", "sqlx/sqlite"]
+age-assurance = ["dep:ring", "dep:serde", "dep:serde_json", "dep:thiserror"]
+challenge-tokens = ["age-assurance", "dep:base64"]
+sqlite = ["age-assurance", "dep:sqlx", "sqlx/sqlite"]
+postgres = ["age-assurance", "dep:sqlx", "dep:url", "sqlx/postgres", "sqlx/tls-rustls-ring"]
+
+[dependencies]
+base64 = { workspace = true, optional = true }
+ring = { workspace = true, features = ["std"], optional = true }
+serde = { workspace = true, features = ["std"], optional = true }
+serde_json = { workspace = true, features = ["std"], optional = true }
+thiserror = { workspace = true, optional = true }
+sqlx = { workspace = true, features = ["runtime-tokio"], optional = true }
+url = { version = "2.5.8", optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
+tempfile = "3"

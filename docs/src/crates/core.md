@@ -51,6 +51,11 @@ embedded supervisors and deterministic tests. The lifecycle does not run
 dependency probes, coordinate replicas, authorize users, or guarantee load
 balancer propagation.
 
+The v13 drain candidate retains admission through the response body, including
+streaming/trailers, error and cancellation. It does not track upgraded connections
+or prove client receipt. The [two-replica deployment contract](../deployment-acceptance.md)
+exercises this boundary through a real proxy; full hosted admission remains pending.
+
 ## ✨ Core Features & Subsystems
 
 - **Axum-compatible routing:** `rullst::Router` wraps and converts to/from

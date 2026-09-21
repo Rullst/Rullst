@@ -2,10 +2,12 @@ name: Omni Android Compile
 
 on:
   push:
-    branches: [main]
+    branches: [main, v12, v13]
     paths:
       - "cargo-rullst/src/cli.rs"
       - "cargo-rullst/src/generators/desktop/**"
+      - "cargo-rullst/tests/android_release_cli.rs"
+      - "cargo-rullst/tests/omni_packaging_cli.rs"
       - "cargo-rullst/src/blueprints/blank/rullst.png"
       - "cargo-rullst/Cargo.toml"
       - "Cargo.toml"
@@ -14,10 +16,12 @@ on:
       - ".github/check-android-signing.py"
       - ".github/test-check-android-signing.py"
   pull_request:
-    branches: [main]
+    branches: [main, v12, v13]
     paths:
       - "cargo-rullst/src/cli.rs"
       - "cargo-rullst/src/generators/desktop/**"
+      - "cargo-rullst/tests/android_release_cli.rs"
+      - "cargo-rullst/tests/omni_packaging_cli.rs"
       - "cargo-rullst/src/blueprints/blank/rullst.png"
       - "cargo-rullst/Cargo.toml"
       - "Cargo.toml"
@@ -66,6 +70,7 @@ jobs:
         run: |
           test -d "$JAVA_HOME_17_X64"
           echo "JAVA_HOME=$JAVA_HOME_17_X64" >> "$GITHUB_ENV"
+          echo "$JAVA_HOME_17_X64/bin" >> "$GITHUB_PATH"
           ndk_dir="${ANDROID_NDK_LATEST_HOME:-}"
           if [ -z "$ndk_dir" ]; then
             ndk_dir="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
@@ -157,11 +162,24 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Compile and verify a genuinely signed release APK
-        working-directory: ${{ runner.temp }}/rullst-omni-host/omni-app
+        working-directory: ${{ runner.temp }}/rullst-omni-host
         shell: bash
         run: |
-          npm run tauri -- android build --target aarch64 --apk --ci
           build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          test -f "$build_tools/lib/apksigner.jar"
+          "$GITHUB_WORKSPACE/target/debug/rullst" omni android --release \
+            --android-arch aarch64 \
+            --signing-certificate "$RUNNER_TEMP/omni-ci-certificate.der" \
+            --apksigner-jar "$build_tools/lib/apksigner.jar" \
+            > "$RUNNER_TEMP/omni-cli-release-evidence.json"
+          jq -e '.schema_version == "rullst.android-release.v1" and .bytes > 0' \
+            "$RUNNER_TEMP/omni-cli-release-evidence.json"
+          apk="$(jq -er '.apk' "$RUNNER_TEMP/omni-cli-release-evidence.json")"
+          test "$(sha256sum "$apk" | cut -d ' ' -f 1)" = \
+            "$(jq -er '.apk_sha256' "$RUNNER_TEMP/omni-cli-release-evidence.json")"
+          test "$(sha256sum "$RUNNER_TEMP/omni-ci-certificate.der" | cut -d ' ' -f 1)" = \
+            "$(jq -er '.certificate_sha256' "$RUNNER_TEMP/omni-cli-release-evidence.json")"
+          cd omni-app
           count=0
           while IFS= read -r -d '' apk; do
             if ! "$build_tools/apksigner" verify --verbose --print-certs "$apk" > "$RUNNER_TEMP/omni-apk-certificate.txt" 2>&1; then
@@ -186,6 +204,7 @@ jobs:
           path: |
             ${{ runner.temp }}/omni-ci-certificate.der
             ${{ runner.temp }}/omni-apk-certificate.txt
+            ${{ runner.temp }}/omni-cli-release-evidence.json
           if-no-files-found: ignore
           retention-days: 7
 

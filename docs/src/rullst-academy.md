@@ -92,6 +92,14 @@ version and server-owned scoring policy.
 
 ## Local AI mascot
 
+Privacy and proportional age assurance are v13 P0 dependencies for the
+applicable learner journeys; follow the shared
+[privacy programme](privacy-age-assurance-roadmap.md). Academy must decide its
+audience and processing purposes, validate any guardian relationship, and
+implement actual export/deletion adapters. Existing LMS age bands and consent
+records are not independent age or guardianship verification. Reading lessons
+must not acquire a camera requirement without a justified policy.
+
 The mascot can be a friendly tutor backed by the existing Ollama path in
 `rullst-ai`, with a deterministic offline fallback for tests. It should use a
 bounded RAG corpus containing version-pinned official Rust material, Rullst
@@ -138,9 +146,9 @@ the Rullst repository and it is not a framework release gate.
   future external Academy may be proposed with their own bounded contracts;
   research-heavy or breaking work remains explicitly governed by v13 criteria.
 
-The 32 canonical milestones that are not fully closed belong to the long-term
-v13 horizon. They are not release blockers for v12.0, and Academy itself is not
-part of that milestone denominator.
+The open canonical milestones in the [current roadmap](roadmap.md) belong to
+the long-term v13 horizon. They are not release blockers for v12.0, and Academy
+itself is not part of that milestone denominator.
 
 ## Acceptance evidence
 

@@ -133,7 +133,13 @@ pub fn validate_app_key(key: &[u8]) -> Result<(), AuthError> {
     if normalized.starts_with("mock_")
         || matches!(
             normalized.as_str(),
-            "changeme" | "change_me" | "password" | "replace_me" | "secret"
+            "changeme"
+                | "change_me"
+                | "password"
+                | "replace_me"
+                | "secret"
+                | "replace_with_your_32_char_random_key"
+                | "change_me_to_a_secure_random_key"
         )
     {
         return Err(AuthError::MissingAppKey(

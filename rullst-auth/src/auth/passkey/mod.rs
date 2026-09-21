@@ -2,6 +2,7 @@ pub mod cbor;
 mod ceremony;
 pub mod config;
 pub mod service;
+pub mod shared;
 #[cfg(feature = "sqlite")]
 mod sqlite;
 pub mod types;

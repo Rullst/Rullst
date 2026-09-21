@@ -1,0 +1,72 @@
+name: Verus age-policy pilot (manual evidence)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  policy:
+    name: Verify production age-policy predicate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out the selected source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up the isolated verifier-compatible Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          toolchain: 1.98.1
+          rustflags: "-D warnings"
+          build-warnings: ""
+          cache: false
+
+      - name: Exercise evidence rejection controls
+        run: python3 .github/test-verus-pilot.py
+
+      - name: Download and validate the pinned verifier bundle
+        shell: bash
+        run: |
+          verus_archive="$RUNNER_TEMP/rullst-verus-release.zip"
+          verus_url="$(python3 -c 'import json; print(json.load(open(".github/verus-toolchain.json"))["url"])')"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --connect-timeout 15 --max-time 300 --max-filesize 600000000 \
+            --silent --show-error --output "$verus_archive" "$verus_url"
+          python3 .github/verus-pilot.py install \
+            --archive "$verus_archive" --output "$RUNNER_TEMP/rullst-verus-tools"
+
+      - name: Check and export actual production syntax
+        env:
+          RULLST_VERUS_OUTPUT: ${{ runner.temp }}/rullst-verus-projection
+        run: cargo test -p cargo-rullst --test verus_policy_linkage --locked -- --nocapture
+
+      - name: Verify the production predicate and require failing mutants
+        shell: bash
+        run: |
+          python3 .github/verus-pilot.py verify \
+            --archive "$RUNNER_TEMP/rullst-verus-release.zip" \
+            --bundle "$RUNNER_TEMP/rullst-verus-tools/verus-x86-linux" \
+            --projection "$RUNNER_TEMP/rullst-verus-projection" \
+            --output "$RUNNER_TEMP/rullst-verus-evidence"
+
+      - name: Retain exact source linkage, results and measurements
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verus-age-policy-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/rullst-verus-evidence
+            ${{ runner.temp }}/rullst-verus-projection
+          if-no-files-found: warn
+          retention-days: 7

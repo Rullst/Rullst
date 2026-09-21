@@ -2,9 +2,9 @@ name: Unsafe Policy
 
 on:
   push:
-    branches: [main]
+    branches: [main, v12, v13]
   pull_request:
-    branches: [main]
+    branches: [main, v12, v13]
   workflow_dispatch:
 
 concurrency:

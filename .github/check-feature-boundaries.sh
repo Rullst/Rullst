@@ -61,7 +61,7 @@ while IFS='|' read -r package features; do
   printf 'Checking %-20s features=%s\n' "$package" "${features:-<none>}"
   "${command[@]}"
 done <<'MATRIX'
-# All 16 publishable packages without default features.
+# Release inventory without default features (privacy also has a row below).
 rullst-macros|
 rullst-orm-macros|
 rullst-orm|
@@ -95,8 +95,10 @@ rullst-core|queue-sqlite
 rullst-core|queue-redis
 rullst-core|cache-redis
 rullst-core|offline-sync
+rullst-core|storage-s3
 rullst-core|telemetry
 rullst-messaging|sqlite
+rullst-messaging|redis-streams
 rullst-messaging|orm-outbox
 rullst-connect|axum
 rullst-connect|actix
@@ -116,8 +118,38 @@ rullst-mail|mail-smtp
 rullst-mail|sqlite
 rullst-auth|jwt
 rullst-auth|sqlite
+rullst-auth|passkey-postgres
 rullst-auth|recovery-sqlite
 rullst-auth|recovery-postgres
+
+# Privacy candidate: preserve the database-free base graph.
+rullst-privacy|
+rullst-privacy|consent
+rullst-privacy|consent-sqlite
+rullst-privacy|age-assurance
+rullst-privacy|challenge-tokens
+rullst-privacy|sqlite
+rullst-privacy|postgres
+
+# Unpublished supervision candidate: domain contracts stay database-free.
+rullst-supervision|
+rullst-supervision|exam
+rullst-supervision|parental
+rullst-supervision|exam,parental
+rullst-supervision|analysis
+rullst-supervision|sqlite
+rullst-supervision|sqlite,analysis
+
+# Unpublished private-video candidate: HTTP and persistence remain independent.
+rullst-media|
+rullst-media|bunny
+rullst-media|sqlite
+rullst-media|bunny,sqlite
+# Labs orchestration remains independent from the separately deployed runner.
+rullst-labs|
+rullst-labs|sqlite
+rullst-labs|receipt-signing
+rullst-labs|sqlite,receipt-signing
 
 # Umbrella boundaries exposed to generated applications.
 rullst|orm
@@ -135,7 +167,10 @@ rullst|queue-redis
 rullst|cache-redis
 rullst|redis
 rullst|offline-sync
+rullst|storage-s3
 rullst|auth
+rullst|auth-sessions-sqlite
+rullst|auth-sessions-postgres
 rullst|mail-smtp
 rullst|mailer
 rullst|mail
@@ -143,9 +178,18 @@ rullst|mail-aws-ses
 rullst|mail-sqlite
 rullst|messaging
 rullst|messaging-sqlite
+rullst|messaging-redis
 rullst|messaging-orm-outbox
+rullst|privacy
+rullst|privacy-age
+rullst|privacy-challenge-tokens
+rullst|privacy-sqlite
+rullst|privacy-postgres
+rullst|privacy-consent
+rullst|privacy-consent-sqlite
 rullst|auth-jwt
 rullst|auth-sqlite
+rullst|auth-passkey-postgres
 rullst|account-mail-sqlite
 rullst|account-mail-postgres
 rullst|oauth-sqlite

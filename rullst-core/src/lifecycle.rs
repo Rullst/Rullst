@@ -13,6 +13,7 @@ use std::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use tokio::sync::Notify;
+mod body;
 
 const PHASE_STARTING: u8 = 0;
 const PHASE_READY: u8 = 1;
@@ -280,12 +281,14 @@ impl ApplicationLifecycle {
         }
     }
 
-    /// Returns the number of application requests admitted and still executing.
+    /// Returns admitted requests whose handler or HTTP response body is still active.
+    /// Upgraded connections and detached background work require separate tracking.
     pub fn in_flight_requests(&self) -> usize {
         self.inner.in_flight.load(Ordering::Acquire)
     }
 
-    /// Waits for all requests admitted before draining to finish.
+    /// Waits for admitted handlers and response bodies to finish or be dropped.
+    /// This does not wait for client acknowledgement or upgraded connections.
     pub async fn wait_for_drain(&self, timeout: Duration) -> Result<(), ApplicationLifecycleError> {
         if timeout.is_zero() || timeout > MAX_DRAIN_WAIT {
             return Err(ApplicationLifecycleError::InvalidDrainWait);
@@ -370,7 +373,7 @@ pub struct ReadinessSnapshot {
     pub required_components: usize,
     /// Number of required components currently marked unavailable.
     pub unready_components: usize,
-    /// Number of admitted requests still executing.
+    /// Number of admitted handlers or ordinary HTTP response bodies still active.
     pub in_flight_requests: usize,
 }
 
@@ -428,7 +431,7 @@ async fn lifecycle_middleware(
     }
 
     match lifecycle.try_admit() {
-        Ok(_guard) => next.run(request).await,
+        Ok(guard) => body::track(next.run(request).await, guard),
         Err(_) => (
             StatusCode::SERVICE_UNAVAILABLE,
             [

@@ -2,14 +2,14 @@ name: Rust CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, v12, v13]
   pull_request:
-    branches: [ main ]
+    branches: [main, v12, v13]
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
     inputs:
       platform:
-        description: Platform matrix for a diagnostic rerun; use all for release evidence
+        description: Platform matrix; packaged-distribution and release evidence require all
         required: true
         default: all
         type: choice
@@ -28,6 +28,8 @@ on:
           - workspace
           - cli-standard
           - cli-updates
+          - packaged-distribution
+          - labs-isolation
           - cli-profiles-basic
           - cli-profiles-relational
           - cli-profiles-polyglot
@@ -62,7 +64,67 @@ defaults:
     working-directory: .
 
 jobs:
+  scope:
+    name: Verification scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      runtime_required: ${{ steps.scope.outputs.runtime_required }}
+    steps:
+      - name: Checkout source and comparison history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Validate diagnostic selectors and admit source-equivalent site pushes
+        id: scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.before || '' }}
+          RULLST_CI_SHARD: ${{ inputs.shard }}
+          RULLST_CI_PLATFORM: ${{ inputs.platform }}
+        run: bash .github/plan-ci-scope.sh
+
+  site-validation:
+    name: Verify site-only presentation
+    needs: scope
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/v13' || github.ref == 'refs/heads/main') && needs.scope.outputs.runtime_required == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RUSTC_WRAPPER: ""
+    steps:
+      - name: Checkout site candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned documentation builder
+        uses: taiki-e/install-action@4076c08d76dba979c11a7285295b0716c1d67908 # v2.87.15
+        with:
+          tool: mdbook@0.5.4
+      - name: Set up browser-test runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Validate rendered content and real browser behavior
+        run: |
+          mdbook build docs
+          python3 .github/validate-site.py
+          node --check docs/site.js
+          node .github/site-browser-smoke.mjs
+
   check:
+    needs: scope
+    # A manual Labs diagnostic has targeted formatting/Clippy in its own job.
+    # Full workspace quality remains required for PRs and complete release runs.
+    if: >-
+      !cancelled() &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard != 'labs-isolation') &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard != 'packaged-distribution' || inputs.platform == 'all') &&
+      (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     name: Code Quality & Format
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -102,10 +164,14 @@ jobs:
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   test:
+    needs: scope
     name: Run Tests (${{ matrix.os }} / ${{ matrix.shard }})
     # Draft PRs still receive the faster format/Clippy feedback above. The
     # expensive cross-platform suite starts when the PR is ready for review.
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    if: >-
+      !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'workflow_dispatch' || (inputs.shard != 'packaged-distribution' && inputs.shard != 'labs-isolation')) &&
+      (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     runs-on: ${{ matrix.os }}
     # Generated CLI applications are real independent Cargo workspaces. Keep
     # them in isolated shards so their compile contracts run concurrently
@@ -119,7 +185,10 @@ jobs:
       # Reuse real renderer/generated-project tests; do not add another build.
       RULLST_UI_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && (matrix.shard == 'workspace' || matrix.shard == 'cli-saas-product') && '1' || '0' }}
       RULLST_UI_BROWSER_SCRIPT: ${{ github.workspace }}/.github/mobile-ui-browser-smoke.mjs
+      RULLST_MEDIA_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'workspace' && '1' || '0' }}
+      RULLST_SUPERVISION_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'cli-standard' && '1' || '0' }}
       RULLST_BILLING_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'cli-standard' && '1' || '0' }}
+      RULLST_API_CONTRACT_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'cli-standard' && '1' || '0' }}
     strategy:
       fail-fast: false
       matrix:
@@ -149,11 +218,15 @@ jobs:
           # emits false ENOENT annotations and uploads multi-gigabyte archives.
           cache: false
 
-      - name: Set up Node for browser regressions
-        if: env.RULLST_UI_BROWSER_TESTS == '1' || env.RULLST_BILLING_BROWSER_TESTS == '1'
+      - name: Set up Node for browser and typed API regressions
+        if: env.RULLST_UI_BROWSER_TESTS == '1' || env.RULLST_BILLING_BROWSER_TESTS == '1' || env.RULLST_API_CONTRACT_TESTS == '1'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
+
+      - name: Install pinned TypeScript contract compiler
+        if: env.RULLST_API_CONTRACT_TESTS == '1'
+        run: npm ci --prefix .github/api-contract --ignore-scripts --no-audit --no-fund
 
       - name: Run complete all-feature test shard
         # Note: --all-features activates strict-sqlite+strict-mysql+strict-postgres
@@ -178,6 +251,17 @@ jobs:
               done
             exit "$test_status"
           fi
+
+      - name: Exercise Live recovery in Chromium across a server restart
+        if: runner.os == 'Linux' && matrix.shard == 'workspace'
+        run: >-
+          cargo test --locked -p rullst-core --no-default-features
+          --test live_recovery -- --ignored --exact
+          chromium_recovers_across_disconnects_and_process_restart --nocapture
+
+      - name: Exercise distributed propagation against a standard TLS collector
+        if: runner.os == 'Linux' && matrix.shard == 'workspace'
+        run: python3 .github/check-distributed-tracing.py
 
       - name: Exercise guided update in a real terminal
         if: runner.os == 'Linux' && (matrix.shard == 'cli-standard' || matrix.shard == 'cli-updates')
@@ -231,8 +315,11 @@ jobs:
           cargo test -p rullst-capital --features quota-sql,webhook-sql --test quota_sql_postgres --test quota_sql_mysql --test quota_sql_mariadb -- --test-threads=1
 
   strict-database-features:
+    needs: scope
+    if: >-
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: ORM ${{ matrix.feature }}
-    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -259,6 +346,12 @@ jobs:
           build-warnings: ""
           cache: false
 
+      - name: Set up Node for the shared passkey browser contract
+        if: matrix.feature == 'strict-postgres'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
       - name: Prove standalone ORM driver isolation
         env:
           STRICT_DATABASE_FEATURE: ${{ matrix.feature }}
@@ -275,6 +368,8 @@ jobs:
           case "$STRICT_DATABASE_FEATURE" in
             strict-postgres)
               python3 .github/check-auth-recovery-postgres.py
+              python3 .github/check-privacy-postgres.py
+              RULLST_PASSKEY_BROWSER_TESTS=1 python3 .github/check-passkey-postgres.py
               cargo test -p rullst-orm --no-default-features \
                 --features strict-postgres --test matrix_postgres -- --test-threads=1
               cargo test -p rullst-capital --features quota-sql,webhook-sql,rullst-orm/strict-postgres \
@@ -298,9 +393,42 @@ jobs:
               ;;
           esac
 
+  storage-s3:
+    needs: scope
+    if: >-
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
+    name: Private S3 storage contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+    steps:
+      - name: Checkout source without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+      - name: Set up Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
+          cache: false
+      - name: Prove private object access, signature rejection and restart persistence
+        run: bash .github/test-storage-s3-live.sh
+
   redis-rate-limit:
+    needs: scope
+    if: >-
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Redis live contracts
-    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     services:
@@ -335,6 +463,12 @@ jobs:
           RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
         run: cargo test -p rullst-security --features redis-rate-limit --test redis_rate_limit_live
 
+      - name: Prove Redis messaging leases, TLS, outbox replay and AOF restart
+        run: python3 .github/check-messaging-redis.py
+
+      - name: Prove two Rullst processes behind the owned Caddy and Redis profile
+        run: python3 .github/check-deployment-proxy.py
+
       - name: Prove Redis queue never claims scheduled jobs early
         env:
           RULLST_TEST_REDIS_URL: redis://127.0.0.1:6379
@@ -355,8 +489,11 @@ jobs:
           --test scout_post_commit_test
 
   feature-boundaries:
+    needs: scope
+    if: >-
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Public feature boundaries (${{ matrix.shard }}/4)
-    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -384,8 +521,11 @@ jobs:
         run: bash .github/check-feature-boundaries.sh --shard "${{ matrix.shard }}/4"
 
   threat-model-release-minimum:
+    needs: scope
+    if: >-
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Threat-model release-negative minimum (${{ matrix.shard }}/4)
-    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -436,8 +576,11 @@ jobs:
           retention-days: 7
 
   versioned-ai-evals:
+    needs: scope
+    if: >-
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Versioned deterministic AI evals
-    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -461,8 +604,11 @@ jobs:
         run: bash .github/check-ai-evals.sh
 
   generated-release-access:
+    needs: scope
+    if: >-
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Generated release access boundaries
-    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -489,8 +635,11 @@ jobs:
         run: cargo test --release -p rullst-studio protected_router_accepts_only_a_verified_loopback_peer
 
   facade-composition:
+    needs: scope
+    if: >-
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Facade shared-local recovery composition
-    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -514,8 +663,11 @@ jobs:
         run: bash .github/check-facade-composition.sh
 
   msrv:
+    needs: scope
+    if: >-
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Check MSRV (Rust 1.96.0)
-    if: github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -529,7 +681,7 @@ jobs:
           disable_annotations: true
 
       - name: Install Rust 1.96.0 (declared MSRV)
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # stable
         with:
           toolchain: "1.96.0"
 
@@ -548,8 +700,9 @@ jobs:
   packaged-distribution:
     name: Packaged distribution and installed CLI
     # Exercise the actual archives before a tag or any registry publication.
-    # Diagnostic subsets and automatic development runs do not claim this proof.
-    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'all' && inputs.shard == 'all'
+    # An explicit package diagnostic exercises the same archives without the OS
+    # test/native matrix; it cannot satisfy complete release admission.
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'all' && (inputs.shard == 'all' || inputs.shard == 'packaged-distribution')
     needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 180
@@ -587,27 +740,141 @@ jobs:
           printf 'version=%s\n' "$candidate_version" >> "$GITHUB_OUTPUT"
 
       - name: Fetch locked dependencies for the isolated offline consumer
-        run: cargo fetch --locked --target x86_64-unknown-linux-gnu
+        # The archive consumer inspects its full dependency graph, including
+        # target-specific edges. A host-only fetch leaves that offline metadata
+        # check dependent on an accidentally warm foreign-platform cache.
+        run: cargo fetch --locked
 
       - name: Package and audit candidate archives without publication
         env:
           CANDIDATE_VERSION: ${{ steps.inventory.outputs.version }}
         run: |
-          cargo package --workspace --exclude rullst-blog-example \
-            --all-features --locked --no-verify
-          bash .github/audit-packages.sh "$CANDIDATE_VERSION"
+          # Rehearse unpublished candidates without release-order admission.
+          bash .github/package-release.sh --no-verify --v13-candidates
+          bash .github/audit-packages.sh "$CANDIDATE_VERSION" target/package --v13-candidates
 
       - name: Compile archive-only consumer and test the isolated installed CLI
         env:
           CANDIDATE_VERSION: ${{ steps.inventory.outputs.version }}
-        run: bash .github/test-packaged-distribution.sh "$CANDIDATE_VERSION"
+        run: bash .github/test-packaged-distribution.sh "$CANDIDATE_VERSION" target/package --v13-candidates
+
+  labs-isolation:
+    name: Isolated Labs acceptance (Linux)
+    # Independent runtime evidence runs alongside workspace quality in full CI.
+    # A manual diagnostic is targeted evidence, never complete release evidence.
+    needs: scope
+    if: >-
+      !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'labs-isolation') &&
+      (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+    steps:
+      - name: Checkout candidate without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Set up framework build toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
+          components: rustfmt, clippy
+          cache: false
+
+      - name: Check formatting and targeted quality for the manual Labs diagnostic
+        if: github.event_name == 'workflow_dispatch' && inputs.shard == 'labs-isolation'
+        run: |
+          cargo fmt --all --check
+          cargo clippy --locked -p rullst-labs -p rullst-labs-runner --all-features --all-targets -- -D warnings
+
+      - name: Provision the reviewed disposable Labs host
+        run: bash .github/provision-labs-host.sh
+
+      - name: Verify profiling stays outside the cleared worker environment
+        run: python3 .github/test-labs-measurement.py
+
+      - name: Build separate controller and application fixture
+        run: cargo build --locked -p rullst-labs -p rullst-labs-runner --all-features --bins --examples
+
+      - name: Prove the separate compiler domain blocks parent descriptor aliases
+        run: cargo test --locked -p rullst-labs-runner --test landlock_domains -- --ignored --exact independent_domains_block_interpreter_descriptors
+
+      - name: Prove pinned tool spawning preserves the no-sockets policy
+        run: cargo test --locked -p rullst-labs-runner --test seccomp_spawn -- --ignored --exact absolute_tool_spawn_preserves_socket_denial
+
+      - name: Require real isolated execution in an owned unprivileged service
+        env:
+          LABS_UNIT_SUFFIX: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          # The test creates children only under this disposable delegated unit.
+          # No global namespace/sysctl downgrade is allowed on unsupported hosts.
+          sudo systemd-run --wait --collect --pipe \
+            --unit="rullst-labs-acceptance-$LABS_UNIT_SUFFIX" \
+            --property="User=$(id -un)" --property="Group=$(id -gn)" \
+            --property=Delegate=yes --property=MemoryMax=3G \
+            --property=TasksMax=256 --property=RuntimeMaxSec=15min \
+            --setenv=RULLST_LABS_HOSTED_ACCEPTANCE=1 \
+            --working-directory="$PWD" \
+            /usr/bin/python3 .github/test-labs-isolation.py \
+            --runner "$PWD/target/debug/rullst-labs-runner" \
+            --app "$PWD/target/debug/examples/course_app" \
+            --toolchain "$(rustc +1.96.0 --print sysroot)" \
+            --launcher /usr/lib/rullst-labs-ci/bwrap --evidence "$PWD/target/labs-evidence.json"
+
+      - name: Retain minimized execution evidence without fixture keys or source
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: labs-isolation-${{ github.sha }}
+          path: target/labs-evidence.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Install pinned measurement tool for the manual Labs diagnostic
+        if: github.event_name == 'workflow_dispatch' && inputs.shard == 'labs-isolation'
+        uses: taiki-e/install-action@4076c08d76dba979c11a7285295b0716c1d67908 # v2.87.15
+        with:
+          tool: cargo-llvm-cov@0.9.1
+
+      - name: Measure the controller through the real isolated journey
+        if: github.event_name == 'workflow_dispatch' && inputs.shard == 'labs-isolation'
+        run: |
+          rustup component add llvm-tools-preview
+          bash .github/run-labs-coverage.sh
+          cargo llvm-cov report --json --summary-only --output-path target/labs-coverage-summary.json
+
+      - name: Retain the scoped controller coverage diagnostic
+        if: github.event_name == 'workflow_dispatch' && inputs.shard == 'labs-isolation'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: labs-controller-coverage-${{ github.sha }}
+          path: |
+            target/labs-coverage-evidence.json
+            target/labs-coverage-summary.json
+          if-no-files-found: error
+          retention-days: 14
 
   quality-scorecard:
     name: Evidence quality scorecard (observational)
     # The scorecard's verification dimension requires the full OS matrix. A
     # Linux-only post-merge push must not silently inherit cross-platform credit.
+    # Report failures, but never hold a replaced run's concurrency slot after
+    # cancellation. An always() job can survive normal workflow cancellation.
     if: >-
-      always() && github.event_name != 'push' &&
+      !cancelled() && github.event_name != 'push' &&
       (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
       (github.event_name != 'workflow_dispatch' || (inputs.platform == 'all' && inputs.shard == 'all'))
     needs:

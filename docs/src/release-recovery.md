@@ -33,6 +33,11 @@ RC. All sixteen v12 package names are now registered, so future releases must
 use Trusted Publishing and must not recreate a bootstrap secret unless a new,
 reviewed package name is introduced:
 
+**Historical procedure:** the current `release.yml` has removed this token
+fallback and refuses every unregistered package, including on prerelease tags.
+Adding a name to the allowlist does not enable publication. Do not set the old
+secret and expect the steps below to work on the current workflow.
+
 1. Protect the GitHub `crates-io` environment with required review and tag
    deployment rules.
 2. Configure Trusted Publishing for every already-registered package using
@@ -58,6 +63,22 @@ Trusted Publishing cannot be configured before a crate's first release. The
 one-time token is therefore an explicit, bounded exception, not a permanent
 fallback. See the official [crates.io Trusted Publishing announcement](https://blog.rust-lang.org/2025/07/11/crates-io-development-update-2025-07/)
 and [Cargo publishing rules](https://doc.rust-lang.org/cargo/reference/publishing.html).
+
+### v13 privacy package registration
+
+The unpublished packaging candidate adds `rullst-privacy` to the release
+inventory. Its owner endpoint returned 404 on 20 September 2026. The current
+[crates.io documentation](https://crates.io/docs/trusted-publishing) still requires
+an API token for the first publication. Package/consumer acceptance must precede
+an explicitly reviewed initial publication of real crate content; an empty
+name-reservation package does not meet Rullst's admission criteria.
+
+After that initial release is accepted, verify `venelouis` ownership and set the
+Trusted Publisher to `Rullst/Rullst`, `release.yml`, environment `crates-io`.
+Enable trusted-publishing-only updates and revoke the one-time credential.
+The ordinary stable workflow remains unchanged and must pass the ownership
+check again. Initial registration is still pending, and this document does not
+claim that a bootstrap workflow or token has been configured.
 
 ## Determine the exact state
 

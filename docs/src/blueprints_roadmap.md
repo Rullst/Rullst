@@ -11,6 +11,13 @@ Every blueprint added to the CLI must meet three fundamental principles:
 2. **Native Rust/Rullst Features:** Demonstrate measured resource use, typed concurrency and explicit server/realtime boundaries.
 3. **Production-minded defaults:** Generate `.env.example`, database configuration, and a conservative `.gitignore`; deployment readiness remains an application-level review.
 
+The v13 [privacy and age-assurance programme](privacy-age-assurance-roadmap.md)
+applies across blueprint shapes: minimize collection, disable optional tracking,
+generate explicit policies and rights workflows, and require age evidence only
+when the selected risk policy calls for it. Camera checks are not a universal
+default. The [SaaS maintenance triage](saas-v12-1-v13-triage.md) separately covers
+the v12.1/v13 payment and generator defects reported by `Rullst/examples`.
+
 ---
 
 ## 🗺️ Proposed blueprints (ordered from easiest to hardest)

@@ -8,6 +8,9 @@ mod store;
 #[path = "billing_events.rs"]
 mod events;
 pub(super) use events::webhook;
+#[path = "billing_report.rs"]
+mod report;
+pub(super) use report::report;
 
 #[path = "billing_gateway.rs"]
 mod gateway;

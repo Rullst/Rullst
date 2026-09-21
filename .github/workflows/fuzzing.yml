@@ -152,12 +152,12 @@ jobs:
           disable_annotations: true
 
       - name: Install Rust nightly
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # nightly
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # nightly
         with:
           toolchain: nightly-2026-08-21
 
       - name: Install cargo-fuzz 0.13.2
-        uses: taiki-e/install-action@26e9283f268b880168bdbd2c545dfcd60ec2c6ab # v2.87.13
+        uses: taiki-e/install-action@4076c08d76dba979c11a7285295b0716c1d67908 # v2.87.15
         with:
           tool: cargo-fuzz@0.13.2
 
@@ -230,12 +230,12 @@ jobs:
           disable_annotations: true
 
       - name: Install Rust nightly
-        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # nightly
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # nightly
         with:
           toolchain: nightly-2026-08-21
 
       - name: Install cargo-fuzz 0.13.2
-        uses: taiki-e/install-action@26e9283f268b880168bdbd2c545dfcd60ec2c6ab # v2.87.13
+        uses: taiki-e/install-action@4076c08d76dba979c11a7285295b0716c1d67908 # v2.87.15
         with:
           tool: cargo-fuzz@0.13.2
 
@@ -283,9 +283,13 @@ jobs:
               batch=$((batch + 1))
             done
           else
+            args=()
+            if [[ "$FUZZ_TARGET" == fuzz_age_* ]]; then
+              args+=(-max_len=9000 -timeout=10 -rss_limit_mb=2048)
+            fi
             cargo +nightly-2026-08-21 fuzz run \
               --target "$FUZZ_BUILD_TARGET" "$FUZZ_TARGET" -- \
-              -max_total_time="$CAMPAIGN_SECONDS"
+              -max_total_time="$CAMPAIGN_SECONDS" "${args[@]}"
           fi
 
       - name: Reject fuzz dependency lock drift
@@ -325,9 +329,9 @@ jobs:
             echo "Compile preflight: \`$PREFLIGHT_RESULT\`; campaign: \`$FUZZ_RESULT\`."
             echo
             if [ "$CAMPAIGN_MODE" = "release" ]; then
-              echo "All 40 targets require a new successful campaign or independently verified equivalent evidence."
+              echo "All 42 targets require a new successful campaign or independently verified equivalent evidence."
             else
-              echo "This short single-target diagnostic is strict, but is not v12 RC release evidence."
+              echo "This short single-target diagnostic is strict, but is not release evidence."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -344,8 +348,8 @@ jobs:
           if [ "$((SELECTED_COUNT + REUSED_COUNT))" -ne "$TARGET_COUNT" ]; then
             exit 1
           fi
-          if [ "$CAMPAIGN_MODE" = "release" ] && [ "$TARGET_COUNT" -ne 40 ]; then
-            echo "Release fuzz evidence must cover exactly 40 validated targets." >&2
+          if [ "$CAMPAIGN_MODE" = "release" ] && [ "$TARGET_COUNT" -ne 42 ]; then
+            echo "Release fuzz evidence must cover exactly 42 validated targets." >&2
             exit 1
           fi
 
@@ -357,7 +361,7 @@ jobs:
           python3 - <<'PYTHON'
           import json, os, pathlib
           report = json.loads(os.environ["EVIDENCE_PLAN"])
-          if report["candidate_sha"] != os.environ["GITHUB_SHA"] or report["total_targets"] != 40:
+          if report["candidate_sha"] != os.environ["GITHUB_SHA"] or report["total_targets"] != 42:
               raise SystemExit("Fuzz evidence plan does not match this candidate")
           report["execution_run_id"] = int(os.environ["GITHUB_RUN_ID"])
           report["execution_run_attempt"] = int(os.environ["GITHUB_RUN_ATTEMPT"])

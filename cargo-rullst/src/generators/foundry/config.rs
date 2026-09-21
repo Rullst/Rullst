@@ -291,6 +291,101 @@ mod tests {
         assert!(!parsed.env_vars.iter().any(|(name, _)| name == "APP_ENV"));
     }
 
+    fn usable_template() -> String {
+        generate_foundry_toml_template("demo")
+            .replace("CHANGE_ME_TO_A_SECURE_RANDOM_KEY", "local-test-fixture")
+    }
+
+    #[test]
+    fn deployment_hosts_accept_exact_dns_length_boundaries() {
+        let longest = format!(
+            "{}.{}.{}.{}",
+            "a".repeat(63),
+            "b".repeat(63),
+            "c".repeat(63),
+            "d".repeat(61),
+        );
+        assert_eq!(longest.len(), 253);
+        for domain in ["a", "A-b.example", "127.0.0.1", &"a".repeat(63), &longest] {
+            let mut config = parse_foundry_config(&usable_template()).unwrap();
+            config.domain = domain.to_owned();
+            config.host = domain.to_owned();
+            validate_foundry_config(&config).unwrap();
+        }
+    }
+
+    #[test]
+    fn deployment_rejects_invalid_domain_or_ssh_host_independently() {
+        let too_long = format!(
+            "{}.{}.{}.{}",
+            "a".repeat(63),
+            "b".repeat(63),
+            "c".repeat(63),
+            "d".repeat(62),
+        );
+        assert_eq!(too_long.len(), 254);
+        for domain in [
+            "",
+            ".example",
+            "example.",
+            "a..example",
+            "-a.example",
+            "a-.example",
+            "a_b.example",
+            "é.example",
+            "a b.example",
+            "a\n.example",
+            "a\0.example",
+            "https://example.com",
+            "example.com:443",
+            "user@example.com",
+            "[::1]",
+            "example.com/path",
+            "*.example",
+            "a;id",
+            "$(id)",
+            "-oProxyCommand=id",
+            &"a".repeat(64),
+            &too_long,
+        ] {
+            for field in ["app.domain", "server.host"] {
+                let mut config = parse_foundry_config(&usable_template()).unwrap();
+                match field {
+                    "app.domain" => config.domain = domain.to_owned(),
+                    _ => config.host = domain.to_owned(),
+                }
+                let error = validate_foundry_config(&config).unwrap_err();
+                assert!(
+                    matches!(error, FoundryConfigError::Invalid(ref message) if message.starts_with(field)),
+                    "{field} accepted or misclassified {domain:?}: {error}",
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn environment_preserves_toml_scalars_and_rejects_compound_values() {
+        let content = format!(
+            "{}\nRATIO = 1.25\nCOUNT = 3\nENABLED = false\n",
+            usable_template()
+        );
+        let config = parse_foundry_config(&content).unwrap();
+        validate_foundry_config(&config).unwrap();
+        for (key, expected) in [("RATIO", "1.25"), ("COUNT", "3"), ("ENABLED", "false")] {
+            assert!(
+                config
+                    .env_vars
+                    .contains(&(key.to_owned(), expected.to_owned()))
+            );
+        }
+        for value in ["[1, 2]", "{ nested = 1 }", "2026-09-20"] {
+            assert!(matches!(
+                parse_foundry_config(&format!("{}\nINVALID = {value}\n", usable_template())),
+                Err(FoundryConfigError::Invalid(_)),
+            ));
+        }
+    }
+
     #[test]
     fn parser_is_section_aware_and_validation_returns_typed_errors() {
         let content = generate_foundry_toml_template("demo").replace(

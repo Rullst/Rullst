@@ -1,0 +1,129 @@
+use super::{failure, page, proof::{Binding, Proof}, selection::Selection, service};
+use rullst::server::{Extension, Form, HeaderMap, IntoResponse, Redirect, Response, StatusCode};
+use rullst::security::{CsrfToken, CspNonce};
+use rullst_security::UserContext;
+use rullst_supervision::{Context, OpaqueId, Revision, Scope, SupervisionError as Error, exam::{Acknowledgement, ExamPolicy, SessionState, BrowserEvent, Collection, ObservationRequest}};
+use serde::Deserialize;
+
+async fn context(user_id: i32, user: &UserContext, selection: &Selection, review: bool, learning: bool) -> Result<(Context, Scope), Error> {
+    let actor = service::actor(user_id, user).await?;
+    let lesson = selection.lesson.ok_or(Error::InvalidInput)?;
+    crate::services::school_service::authorize_lesson(user, lesson).await.map_err(|_| Error::Forbidden)?;
+    let subject = if review { selection.subject.ok_or(Error::InvalidInput)? } else {
+        if selection.subject.is_some() || selection.after.is_some() { return Err(Error::InvalidInput); } user_id
+    };
+    if learning {
+        crate::services::learning_service::authorize_lesson(user_id, user, lesson).await.map_err(|_| Error::Forbidden)?;
+    }
+    let scope = service::subject_scope(&actor, subject, &format!("lesson:{lesson}")).await?;
+    Ok((actor, scope))
+}
+fn session_id(selection: &Selection) -> Result<OpaqueId, Error> {
+    OpaqueId::new(selection.session.as_deref().ok_or(Error::InvalidInput)?)
+}
+fn url(scope: &Scope, session: Option<&OpaqueId>) -> String {
+    let lesson = scope.resource().as_str().strip_prefix("lesson:").unwrap_or("");
+    format!("/supervision/exam?school={}&lesson={lesson}{}", scope.tenant().as_str(), session.map(|id| format!("&session={}",id.as_str())).unwrap_or_default())
+}
+
+pub(super) async fn show(Extension(user_id): Extension<i32>, Extension(user): Extension<UserContext>, Extension(selection): Extension<Selection>, Extension(csrf): Extension<CsrfToken>, Extension(nonce): Extension<CspNonce>, headers: HeaderMap) -> Response {
+    async fn render(user_id: i32, user: &UserContext, selection: &Selection, csrf: &str, nonce: &str, headers: &HeaderMap) -> Result<Response, Error> {
+        let (actor, scope) = context(user_id, user, selection, false, false).await?;
+        let latest = service::store().await?.latest_exam(&actor, &scope).await?;
+        if selection.session.is_none() && let Some(session) = &latest
+            && matches!(session.state(), SessionState::Active | SessionState::Paused) {
+            return Ok(Redirect::to(&url(&scope, Some(session.id()))).into_response());
+        }
+        if selection.session.is_none() {
+            crate::services::learning_service::authorize_lesson(user_id, user, selection.lesson.ok_or(Error::InvalidInput)?).await.map_err(|_| Error::Forbidden)?;
+        }
+        let session = if selection.session.is_some() { Some(service::store().await?.session(&actor, &scope, &session_id(selection)?).await?) } else { None };
+        let id = session.as_ref().map(|s| s.id().as_str()).unwrap_or("");
+        let revision = session.as_ref().or(latest.as_ref()).map(|s| s.revision().value()).unwrap_or(0);
+        let binding = Binding { actor: &actor, scope: &scope, session: id, kind: "exam" };
+        let proof = binding.issue(headers, revision)?;
+        Ok(page::exam(&scope, session.as_ref(), &url(&scope, session.as_ref().map(|s| s.id())), csrf, nonce, &proof)?.into_response())
+    }
+    match render(user_id, &user, &selection, csrf.as_str(), nonce.as_str(), &headers).await { Ok(response) => response, Err(error) => failure(error) }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum Action { Start, Pause, Resume, End }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ExamForm {
+    action: Action, revision: i64, issued_at: i64, proof: String, _token: String,
+    policy: Option<String>, notice: Option<String>, acknowledge: Option<String>, collection: Option<u16>,
+}
+impl ExamForm {
+    fn acknowledgement(&self, collection: Collection) -> Result<Acknowledgement, Error> {
+        if self.collection != Some(collection.bits()) { return Err(Error::Conflict); }
+        if self.policy.as_deref() != Some(service::config::POLICY) || self.notice.as_deref() != Some(service::config::NOTICE) { return Err(Error::Conflict); }
+        Acknowledgement::for_collection(service::config::POLICY, service::config::NOTICE, collection, self.acknowledge.as_deref() == Some("yes"))
+    }
+}
+pub(super) async fn submit(Extension(user_id): Extension<i32>, Extension(user): Extension<UserContext>, Extension(selection): Extension<Selection>, headers: HeaderMap, Form(form): Form<ExamForm>) -> Response {
+    async fn apply(user_id: i32, user: &UserContext, selection: &Selection, headers: &HeaderMap, form: ExamForm) -> Result<Response, Error> {
+        let learning = matches!(form.action, Action::Start | Action::Resume);
+        let (actor, scope) = context(user_id, user, selection, false, learning).await?;
+        let binding = Binding { actor: &actor, scope: &scope, session: selection.session.as_deref().unwrap_or(""), kind: "exam" };
+        binding.verify(headers, &Proof { revision: form.revision, issued_at: form.issued_at, proof: form.proof.clone() })?;
+        let store = service::store().await?;
+        let session = match form.action {
+            Action::Start => {
+                if selection.session.is_some() { return Err(Error::Conflict); }
+                store.start_exam(&actor, &scope, &ExamPolicy::new(service::config::POLICY, service::config::NOTICE, service::config::SESSION_SECONDS)?.with_collection(service::config::collection()?), &form.acknowledgement(service::config::collection()?)?, if form.revision == 0 { None } else { Some(Revision::new(form.revision)?) }).await?
+            },
+            Action::Pause => store.pause_exam(&actor, &scope, &session_id(selection)?, Revision::new(form.revision)?).await?,
+            Action::Resume => {
+                let id = session_id(selection)?;
+                let session = store.session(&actor, &scope, &id).await?;
+                if !session.collection().is_subset_of(service::config::collection()?) { return Err(Error::Conflict); }
+                store.resume_exam(&actor, &scope, &id, Revision::new(form.revision)?, &form.acknowledgement(session.collection())?).await?
+            },
+            Action::End => store.end_exam(&actor, &scope, &session_id(selection)?, Revision::new(form.revision)?).await?,
+        };
+        Ok(Redirect::to(&url(&scope, Some(session.id()))).into_response())
+    }
+    match apply(user_id, &user, &selection, &headers, form).await { Ok(response) => response, Err(error) => failure(error) }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum Observation { PageVisible, PageHidden, WindowFocused, WindowBlurred, CopyAttempt, CutAttempt, PasteAttempt, FullscreenEntered, FullscreenExited }
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct EventForm { revision: i64, issued_at: i64, proof: String, _token: String, sequence: i64, event: Observation }
+pub(super) async fn event(Extension(user_id): Extension<i32>, Extension(user): Extension<UserContext>, Extension(selection): Extension<Selection>, headers: HeaderMap, Form(form): Form<EventForm>) -> Response {
+    async fn record(user_id: i32, user: &UserContext, selection: &Selection, headers: &HeaderMap, form: EventForm) -> Result<(), Error> {
+        let (actor, scope) = context(user_id, user, selection, false, true).await?;
+        let id = session_id(selection)?;
+        Binding { actor: &actor, scope: &scope, session: id.as_str(), kind: "exam" }.verify(headers, &Proof { revision: form.revision, issued_at: form.issued_at, proof: form.proof })?;
+        let store = service::store().await?;
+        let session = store.session(&actor, &scope, &id).await?;
+        if session.policy().as_str() != service::config::POLICY || session.notice().as_str() != service::config::NOTICE || !session.collection().is_subset_of(service::config::collection()?) { return Err(Error::Conflict); }
+        let event = match form.event {
+            Observation::PageVisible => BrowserEvent::PageVisible, Observation::PageHidden => BrowserEvent::PageHidden,
+            Observation::WindowFocused => BrowserEvent::WindowFocused, Observation::WindowBlurred => BrowserEvent::WindowBlurred,
+            Observation::CopyAttempt => BrowserEvent::CopyAttempt, Observation::CutAttempt => BrowserEvent::CutAttempt,
+            Observation::PasteAttempt => BrowserEvent::PasteAttempt, Observation::FullscreenEntered => BrowserEvent::FullscreenEntered,
+            Observation::FullscreenExited => BrowserEvent::FullscreenExited,
+        };
+        store.record_browser(ObservationRequest::new(&actor, &scope, &id, Revision::new(form.revision)?, form.sequence)?, event).await?;
+        Ok(())
+    }
+    match record(user_id, &user, &selection, &headers, form).await { Ok(()) => StatusCode::NO_CONTENT.into_response(), Err(error) => failure(error) }
+}
+
+pub(super) async fn review(Extension(user_id): Extension<i32>, Extension(user): Extension<UserContext>, Extension(selection): Extension<Selection>) -> Response {
+    async fn read(user_id: i32, user: &UserContext, selection: &Selection) -> Result<Response, Error> {
+        let (actor, scope) = context(user_id, user, selection, true, false).await?;
+        let id = session_id(selection)?;
+        let store = service::store().await?;
+        let session = store.session(&actor, &scope, &id).await?;
+        let events = store.observations(&actor, &scope, &id, selection.after.unwrap_or(0), 50).await?;
+        Ok(page::review(&scope, &session, &events).into_response())
+    }
+    match read(user_id, &user, &selection).await { Ok(response) => response, Err(error) => failure(error) }
+}

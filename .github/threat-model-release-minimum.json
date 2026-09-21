@@ -21,6 +21,24 @@
       "marker": "TM-CORE-02"
     },
     {
+      "id": "CORE-02",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "lifecycle::tests::response_headers_do_not_complete_an_unconsumed_body",
+      "source": "rullst-core/src/lifecycle_tests.rs",
+      "marker": "TM-CORE-02"
+    },
+    {
+      "id": "CORE-02",
+      "crate": "rullst-core",
+      "target_kind": "lib",
+      "target": "lib",
+      "test_filter": "lifecycle::body::tests::streaming_frames_and_trailers_retain_admission_until_end",
+      "source": "rullst-core/src/lifecycle/body/tests.rs",
+      "marker": "TM-CORE-02"
+    },
+    {
       "id": "ORM-01",
       "crate": "rullst-orm",
       "target_kind": "lib",
@@ -54,6 +72,15 @@
       "target": "app_key_resolution",
       "test_filter": "app_key_resolution_is_fail_closed_and_durable",
       "source": "rullst-auth/tests/app_key_resolution.rs",
+      "marker": "TM-AUTH-02"
+    },
+    {
+      "id": "AUTH-02",
+      "crate": "rullst-auth",
+      "target_kind": "integration",
+      "target": "scaffold_app_key",
+      "test_filter": "public_env_example_key_cannot_encrypt_or_decrypt_sessions",
+      "source": "rullst-auth/tests/scaffold_app_key.rs",
       "marker": "TM-AUTH-02"
     },
     {
@@ -98,7 +125,7 @@
       "target_kind": "lib",
       "target": "lib",
       "test_filter": "auth::passkey::service::negative_path_tests::client_authenticator_and_credential_inputs_fail_closed",
-      "source": "rullst-auth/src/auth/passkey/service.rs",
+      "source": "rullst-auth/src/auth/passkey/service_negative_tests.rs",
       "marker": "TM-AUTH-05"
     },
     {

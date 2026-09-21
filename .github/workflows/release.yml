@@ -21,7 +21,7 @@ env:
 
 jobs:
   admit:
-    name: Admit exact protected-main release SHA
+    name: Admit exact protected release-line SHA
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -34,25 +34,15 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Require a semantic tag at the current main head
+      - name: Require matching version, tag and protected release-branch head
         env:
           RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
-            echo "Release tag must use vMAJOR.MINOR.PATCH or a SemVer prerelease."
-            exit 1
-          fi
-          git fetch --no-tags --force origin main:refs/remotes/origin/main
-          git cat-file -e "${GITHUB_SHA}^{commit}"
-          main_sha="$(git rev-parse refs/remotes/origin/main)"
-          if [ "$GITHUB_SHA" != "$main_sha" ]; then
-            echo "Release tag must resolve to the current origin/main head."
-            echo "tag=$GITHUB_SHA main=$main_sha"
-            exit 1
-          fi
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 .github/check-release-source.py
 
       - name: Test candidate and equivalent-input admission policy
         run: |
+          python3 .github/test-release-source.py
           python3 .github/test-check-release-admission.py
           python3 .github/test-fuzz-evidence-inputs.py
           python3 .github/test-fuzz-evidence.py
@@ -123,7 +113,7 @@ jobs:
           cache: false
 
       - name: Install cargo-audit for release evidence
-        uses: taiki-e/install-action@26e9283f268b880168bdbd2c545dfcd60ec2c6ab # v2.87.13
+        uses: taiki-e/install-action@4076c08d76dba979c11a7285295b0716c1d67908 # v2.87.15
         with:
           tool: cargo-audit
 
@@ -229,11 +219,7 @@ jobs:
               --arg version "$release_version" \
               -f .github/release-preflight.jq
 
-          cargo package \
-            --workspace \
-            --exclude rullst-blog-example \
-            --all-features \
-            --locked
+          bash .github/package-release.sh
 
       - name: Inspect packaged crate contents
         env:
@@ -403,12 +389,7 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           release_version="${RELEASE_TAG#v}"
-          cargo package \
-            --workspace \
-            --exclude rullst-blog-example \
-            --all-features \
-            --locked \
-            --no-verify
+          bash .github/package-release.sh --no-verify
           bash .github/audit-packages.sh "$release_version"
 
           while IFS= read -r crate; do

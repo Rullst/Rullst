@@ -19,6 +19,7 @@ pub(super) const RULLST_PACKAGES: &[&str] = &[
     "rullst-nexus",
     "rullst-orm",
     "rullst-orm-macros",
+    "rullst-privacy",
     "rullst-security",
     "rullst-studio",
 ];

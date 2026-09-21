@@ -66,6 +66,11 @@ cross-owner/tenant denial, missing records, bounded pagination and error respons
 that do not expose credentials or database details. Public demos and a compiling
 example are not substitutes for these application tests.
 
+The unpublished v13 [schema-first API candidate](typed-api.md) adds an explicit
+bounded OpenAPI profile, generated Rust codecs and a compiled TypeScript HTTP
+consumer. Its authenticated fixture proves the stated wire/ownership boundary;
+it does not close the broader CRUD/documentation programme below.
+
 ## What still needs improvement
 
 The existing chapters are useful but are not yet one complete, consistently
@@ -73,5 +78,5 @@ tested REST product walkthrough. A coherent CRUD example with JSON validation,
 typed error responses, pagination, authorization negatives and matching OpenAPI
 is still needed. Per-symbol reference reviews also need explicit feature,
 error, concurrency and migration coverage. The
-[API documentation plan](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#api-documentation-quality)
+[API documentation plan](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#api-documentation-quality)
 tracks that work separately from this navigation index.

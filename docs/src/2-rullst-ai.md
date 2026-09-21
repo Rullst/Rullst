@@ -26,18 +26,19 @@ also require a one-use approval bound to the exact payload.
 
 ## 1. Repository instructions for coding agents
 
-The Rullst repository maintains a root `AGENTS.md` for contributors. The current
-`cargo rullst new` scaffold does **not** copy `AGENTS.md`, `.ai-rules`, or
-tool-specific instruction files into an application. Add reviewed project-local
-instructions yourself when using an autonomous coding tool; do not assume the
-framework's repository policy applies to generated application code.
+The Rullst repository maintains its own contributor `AGENTS.md`. The v13 CLI
+candidate creates separate application instructions during `cargo rullst new`
+and preserves any existing project instructions during regeneration. The
+framework repository policy is not copied wholesale into applications.
 
-`cargo rullst generate:ai-context` can generate `.llms.txt` from recognized
-project dependencies and source directories. That snapshot can help a coding
-assistant navigate the application, but it is not an instruction-policy file
-and should be regenerated and reviewed after structural changes.
+`cargo rullst generate:ai-context` writes a bounded metadata inventory to
+`.llms.txt` and `.rullst/context-map.json`; `--check` verifies freshness without
+writing. Source bodies and configuration values are excluded. Read the
+[context guide](project-context.md) for the scope, limits and legacy migration.
+The generated instructions and inventory do not establish feature readiness or
+replace the application's authentication, privacy or deployment decisions.
 
-Example of the default content:
+Conventions to retain when adapting project instructions:
 ```markdown
 1. **Static Dispatch over Dynamic**: Prefer static dispatch (`impl Trait` or generics) over `dyn Trait` to ensure explicit concrete types for AI context tracking and optimization.
 2. **Explicit APIs**: Avoid hidden state. Every controller and middleware should be explicit in its arguments.

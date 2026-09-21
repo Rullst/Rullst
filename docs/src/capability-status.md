@@ -1,7 +1,7 @@
 # Simple capability status
 
-This is the compact view of Rullst's canonical M1–M39 programme. It is derived
-from the root [ROADMAP](../../ROADMAP.md); that roadmap and the
+This is the compact view of Rullst's canonical M1–M41 programme. It is derived
+from the root [ROADMAP](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md); that roadmap and the
 [capability ledger](capability-ledger.md) retain the evidence and limitations.
 The labels here deliberately do not turn partial foundations into completed
 features.
@@ -70,7 +70,7 @@ homologated.
 | M12 | Defence-in-depth security programme | 🟡 Still to implement — continuous/partial |
 | M13 | Audited PQC protocols and sandboxed Wasm extensions | ⏳ Still to implement — not started |
 | M14 | HTMX-first SSR and real Leptos/Dioxus interoperability | 🟡 Still to implement — partial |
-| M15 | Runtime queues/cache/scheduler plus brokered messaging | 🟡 Still to implement — bounded local messaging foundation; remote adapters open |
+| M15 | Runtime queues/cache/scheduler plus brokered messaging | 🟡 Still to implement — local foundation and admitted standalone Redis profile; other adapters open |
 | M16 | Wasm islands and `#[client_component]` protocol | 🟡 Still to implement — partial |
 | M17 | Realtime, object storage, media, and packages | 🟡 Still to implement — partial |
 | M18 | LiveView-style server-driven UI | 🟡 Still to implement — partial |
@@ -95,15 +95,24 @@ homologated.
 | M37 | Reviewable one-click error-console patch workflow | 🟡 Still to implement — partial |
 | M38 | Vendor-specific SQLite replica/synchronization profile | ⏳ Still to implement — not started |
 | M39 | Optional self-hosted `rullst-gateway` load balancer | ⏳ Still to implement — separate v13 research/foundation; no managed-cloud parity claim |
+| M40 | `rullst-labs` contracts and an isolated `rullst-labs-runner` | ⏳ Still to implement — separate v13 research/foundation; full offensive CTF arenas require external isolated infrastructure |
+| M41 | Privacy controls and proportional age assurance | 🟡 Unpublished foundation — policy, signed evidence, asynchronous replay, SQLite and PostgreSQL adapters; combined hosted acceptance, consumer journeys and broader privacy work remain open |
 
-Current planning snapshot: **5 implemented, 24 partial, and 9 not started**
-inside the 38-milestone web-framework horizon. M31 is excluded because it is a
-separately governed safety-critical programme. The weighted planning estimate
-is 44.7% complete and 55.3% remaining; this is not v12 release readiness and
-the 33 milestones without strict closure are not 33 blockers for v12.0. The
+Planning labels checked on 20 September 2026: **5 implemented, 25 partial, and
+10 not started** inside the 40-milestone framework programme. M31 is excluded
+because it is a separately governed safety-critical programme. The 35 milestones
+without strict closure have different sizes and overlap existing published
+capabilities; their count does not measure remaining engineering effort or
+release blockers. Assigning every partial row half credit would not establish
+a completion percentage. The
 [v12 stable record](v12.md) preserves the completed release identity, while the
-root roadmap assigns confirmed v12 defects to `12.0.x` maintenance and all
-additive capability work, research or major contracts to v13.
+root roadmap assigns compatible v12 fixes to maintenance and new capability
+work to v13 by default. The
+[safe update experience](https://github.com/Rullst/Rullst/blob/main/ROADMAP.md#safe-update-experience) is a top v13
+priority whose compatible opt-in 12.1.0 scope is already published. Version
+12.1 does not establish 12-to-13 migration acceptance. The
+[26 September delivery plan](v13-delivery-plan.md) selects concrete increments
+from this wider programme and records their acceptance requirements.
 
 ## Claims that are impossible as framework guarantees
 

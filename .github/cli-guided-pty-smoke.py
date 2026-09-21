@@ -87,7 +87,7 @@ for name, answers in [
         (app / "vendor/framework/src").mkdir(parents=True)
         (app / "Cargo.toml").write_text(
             '[package]\nname="guided-app"\nversion="0.1.0"\nedition="2024"\n'
-            f'[dependencies]\nrullst-core={{version="{version.split(".")[0]}",path="vendor/framework"}}\n'
+            f'[dependencies]\nrullst-core={{version="{version}",path="vendor/framework"}}\n'
         )
         (app / "vendor/framework/Cargo.toml").write_text(
             f'[package]\nname="rullst-core"\nversion="{version}"\nedition="2024"\n'
@@ -106,13 +106,15 @@ for name, answers in [
         env = dict(os.environ, XDG_CACHE_HOME=str(base), LOCALAPPDATA=str(base),
                    CARGO_NET_OFFLINE="true", RULLST_DISABLE_UPDATE_CHECK="true",
                    GUIDED_BUILD_MARKER=str(base / "executed"), TERM="xterm")
-        subprocess.run(["cargo", "generate-lockfile", "--offline"], cwd=app,
-                       env=env, check=True, capture_output=True)
+        resolution = subprocess.run(["cargo", "generate-lockfile", "--offline"], cwd=app,
+                                    env=env, capture_output=True, text=True)
+        assert resolution.returncode == 0, resolution.stderr
         original = (app / "Cargo.toml").read_bytes()
         lock = (app / "Cargo.lock").read_bytes()
         status, output, answered = terminal(
             ["update", "guided", "--to", version, "--scope", "project",
-             "--project", str(app), "--offline", "--timeout-seconds", "30"], env, answers)
+             "--project", str(app), "--offline", "--timeout-seconds", "30",
+             *(["--prerelease"] if "-" in version else [])], env, answers)
         assert answered == len(answers), output.decode()
         assert (status == 0) == (name != "failing-project"), output.decode()
         assert not (app / "target").exists()

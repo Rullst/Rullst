@@ -1,0 +1,77 @@
+use ring::hmac;
+use rullst::server::HeaderMap;
+use rullst_privacy::age_assurance::{AgeError, AgePolicy, ChallengeTokens, DeclarationGate, RiskLevel, SubjectBinding, __STORE_TYPE__};
+
+pub struct AgeGateState {
+    pub(super) policy: AgePolicy,
+    pub(super) tokens: ChallengeTokens,
+    pub(super) gate: DeclarationGate<__STORE_TYPE__>,
+    binding_key: hmac::Key,
+    tenant: Option<String>,
+}
+
+impl AgeGateState {
+    pub(super) async fn from_env() -> Result<Self, AgeError> {
+        let encoded = std::env::var("RULLST_AGE_KEY_HEX").map_err(|_| AgeError::InvalidConfiguration)?;
+        if encoded.len() != 64 {
+            return Err(AgeError::InvalidConfiguration);
+        }
+        let key = hex::decode(encoded).map_err(|_| AgeError::InvalidConfiguration)?;
+        let key_id = std::env::var("RULLST_AGE_KEY_ID").map_err(|_| AgeError::InvalidConfiguration)?;
+        let tokens = ChallengeTokens::new(key_id, &key)?;
+        let database = std::env::var("RULLST_AGE_REPLAY_DATABASE").map_err(|_| AgeError::InvalidConfiguration)?;
+        let store = __STORE_OPEN__;
+        Ok(Self {
+            policy: AgePolicy::new(__POLICY_VERSION__, RiskLevel::Low, __MINIMUM_AGE__ )?,
+            tokens,
+            gate: DeclarationGate::new(store)?,
+            binding_key: hmac::Key::new(hmac::HMAC_SHA256, &key),
+            tenant: __TENANT_CONFIG__,
+        })
+    }
+
+    pub(super) fn binding(&self, user_id: i32, headers: &HeaderMap, school: Option<&rullst::security::TenantContext>) -> Result<SubjectBinding, AgeError> {
+        let tenant = self.tenant(school)?;
+        if user_id <= 0 {
+            return Err(AgeError::BindingMismatch);
+        }
+        // user_id is supplied only by the existing authenticated User lookup.
+        let cookie = rullst::auth::extract_session_cookie(headers).ok_or(AgeError::BindingMismatch)?;
+        if cookie.is_empty() || cookie.len() > 4096 {
+            return Err(AgeError::BindingMismatch);
+        }
+        SubjectBinding::new(
+            self.reference(b"subject", &[tenant.as_bytes(), &user_id.to_be_bytes()]),
+            self.reference(b"tenant", &[tenant.as_bytes()]),
+            self.reference(b"session", &[tenant.as_bytes(), cookie.as_bytes()]),
+            __AUDIENCE__, "dashboard-view",
+        )
+    }
+
+    fn tenant<'a>(&'a self, school: Option<&'a rullst::security::TenantContext>) -> Result<&'a str, AgeError> {
+        let tenant = match (&self.tenant, school) {
+            (Some(tenant), None) => tenant.as_str(),
+            (None, Some(school)) => school.tenant_id.as_str(),
+            _ => return Err(AgeError::BindingMismatch),
+        };
+        if !super::selection::valid_school(tenant) { return Err(AgeError::BindingMismatch); }
+        Ok(tenant)
+    }
+
+    pub(super) fn form_action(&self, school: Option<&rullst::security::TenantContext>) -> Result<String, AgeError> {
+        let tenant = self.tenant(school)?;
+        Ok(if self.tenant.is_some() { "/dashboard".to_owned() }
+           else { format!("/dashboard?school={tenant}") })
+    }
+
+    fn reference(&self, field: &[u8], parts: &[&[u8]]) -> String {
+        let mut context = hmac::Context::with_key(&self.binding_key);
+        context.update(b"rullst.age-web-binding.v1\0");
+        context.update(field);
+        for part in parts {
+            context.update(&(part.len() as u64).to_be_bytes());
+            context.update(part);
+        }
+        hex::encode(context.sign().as_ref())
+    }
+}

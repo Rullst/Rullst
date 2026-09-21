@@ -59,7 +59,7 @@ class ReleaseAdmissionTests(unittest.TestCase):
         self.assertEqual(result, 0)
         verifier.assert_called_once()
         self.assertEqual(verifier.call_args.args[:4], ("Rullst/Rullst", SHA, "fixture", "https://api.github.com"))
-        self.assertEqual(len(verifier.call_args.args[4]), 41)
+        self.assertEqual(len(verifier.call_args.args[4]), 43)
         result, _ = self.exercise_candidate(False)
         self.assertEqual(result, 1)
 
@@ -140,6 +140,34 @@ class ReleaseAdmissionTests(unittest.TestCase):
                         {"total_count": len(jobs), "jobs": jobs}, required
                     )
                 )
+
+    def test_release_cannot_omit_or_skip_actual_labs_isolation(self) -> None:
+        policy = MODULE.load_object(SCRIPT.parent / "release-required-workflows.json")
+        _, requirements = MODULE.validate_policy(policy)
+        required = next(item.required_jobs for item in requirements if item.workflow == "ci.yml")
+        labs = "Isolated Labs acceptance (Linux)"
+        self.assertIn(labs, required)
+        others = [{"name": name, "conclusion": "success"} for name in required if name != labs]
+        for outcome in ("missing", "skipped", "failure", "cancelled", None, "success"):
+            jobs = others if outcome == "missing" else [*others, {"name": labs, "conclusion": outcome}]
+            with self.subTest(outcome=outcome):
+                self.assertEqual(MODULE.required_jobs_succeeded(
+                    {"total_count": len(jobs), "jobs": jobs}, required
+                ), outcome == "success")
+
+    def test_package_diagnostic_cannot_admit_a_release(self) -> None:
+        policy = MODULE.load_object(SCRIPT.parent / "release-required-workflows.json")
+        _, requirements = MODULE.validate_policy(policy)
+        required = next(item.required_jobs for item in requirements if item.workflow == "ci.yml")
+        jobs = [
+            {"name": "Verification scope", "conclusion": "success"},
+            {"name": "Code Quality & Format", "conclusion": "success"},
+            {"name": "Packaged distribution and installed CLI", "conclusion": "success"},
+        ]
+        self.assertIn("Packaged distribution and installed CLI", required)
+        self.assertFalse(MODULE.required_jobs_succeeded(
+            {"total_count": len(jobs), "jobs": jobs}, required
+        ))
 
     def test_policy_requires_full_manual_ci_and_unique_safe_workflows(self) -> None:
         valid_ci = {
@@ -236,6 +264,17 @@ class ReleaseAdmissionTests(unittest.TestCase):
                 ["audit.yml", *(item["workflow"] for item in manual_gates)]
             ),
         )
+
+    def test_v13_policy_requires_both_additional_privacy_targets(self):
+        policy = MODULE.load_object(SCRIPT.parent / "release-required-workflows.json")
+        branch, _ = MODULE.validate_policy(policy)
+        self.assertEqual(branch, "main")
+        fuzz = next(item for item in policy["workflows"] if item["workflow"] == "fuzzing.yml")
+        for target in ("Fuzz fuzz_age_challenge_token", "Fuzz fuzz_age_attestation"):
+            fuzz["required_jobs"].remove(target)
+            with self.assertRaisesRegex(SystemExit, "all 42 target jobs"):
+                MODULE.validate_policy(policy)
+            fuzz["required_jobs"].append(target)
 
 
 if __name__ == "__main__":

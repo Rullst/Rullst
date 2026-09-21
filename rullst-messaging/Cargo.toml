@@ -1,6 +1,6 @@
 [package]
 name = "rullst-messaging"
-version = "12.1.0"
+version = "13.0.0-alpha.1"
 authors = ["Rullst Core Team"]
 edition = "2024"
 rust-version = "1.96.0"
@@ -17,12 +17,14 @@ categories = ["asynchronous", "network-programming"]
 default = []
 sqlite = ["dep:aes-gcm", "dep:serde_json", "dep:sqlx", "dep:url", "dep:zeroize"]
 orm-outbox = ["dep:rullst-orm", "dep:serde_json"]
+redis-streams = ["dep:redis", "dep:url", "tokio/time"]
 
 [dependencies]
 aes-gcm = { version = "0.11.0", features = ["zeroize"], optional = true }
 serde = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"], optional = true }
 rullst-orm = { workspace = true, default-features = true, optional = true }
+redis = { workspace = true, features = ["tokio-rustls-comp", "tls-rustls-webpki-roots"], optional = true }
 sha2 = { workspace = true }
 sqlx = { workspace = true, features = ["runtime-tokio", "sqlite"], optional = true }
 thiserror = { workspace = true }

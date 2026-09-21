@@ -12,6 +12,17 @@ macro_rules! tutorial {
 }
 
 tutorial!(
+    private_object_storage,
+    "../../docs/src/private-object-storage.md"
+);
+tutorial!(
+    transactional_partial_updates,
+    "../../docs/src/transactional-partial-updates.md"
+);
+tutorial!(live_recovery, "../../docs/src/live-recovery.md");
+tutorial!(distributed_tracing, "../../docs/src/distributed-tracing.md");
+
+tutorial!(
     tutorial_01_hello_world,
     "../../docs/src/tutorials/01-hello-world.md"
 );
@@ -250,6 +261,12 @@ tutorial!(
     "../../docs/src/polyglot-persistence.md"
 );
 tutorial!(redis_guide, "../../docs/src/redis-guide.md");
+tutorial!(session_management, "../../docs/src/session-management.md");
+tutorial!(redis_messaging, "../../docs/src/redis-messaging.md");
+tutorial!(
+    shared_passkey_ceremonies,
+    "../../docs/src/shared-passkey-ceremonies.md"
+);
 tutorial!(framework_spec, "../../docs/src/spec.md");
 tutorial!(telemetry_guide, "../../docs/src/telemetry-guide.md");
 tutorial!(crate_ai, "../../docs/src/crates/ai.md");

@@ -41,6 +41,7 @@ test.db-shm
 test.db-wal
 .rullst_dev_key*
 *.wasm
+!rullst-labs-runner/tests/fixtures/checked_sum.wasm
 *.br
 *.zst  
  

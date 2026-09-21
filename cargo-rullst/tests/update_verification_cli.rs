@@ -57,6 +57,13 @@ fn invoke(base: &Path, downloads: &Path, bin: &Path) -> Output {
         ])
         .arg(downloads)
         .arg("--json")
+        .args(
+            (!semver::Version::parse(env!("CARGO_PKG_VERSION"))
+                .unwrap()
+                .pre
+                .is_empty())
+            .then_some("--prerelease"),
+        )
         .env("PATH", path)
         .env("XDG_CACHE_HOME", base)
         .env("LOCALAPPDATA", base)

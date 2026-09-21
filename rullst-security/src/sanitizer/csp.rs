@@ -2,7 +2,7 @@ use axum::{
     body::Body,
     http::{HeaderValue, Request, Response},
 };
-use rullst_core::security::{CspNonce, render_csp_policy};
+use rullst_core::security::{CspNonce, apply_referrer_policy, render_csp_policy};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -58,8 +58,8 @@ where
                 "x-content-type-options",
                 HeaderValue::from_static("nosniff"),
             );
-            headers.insert(
-                "referrer-policy",
+            apply_referrer_policy(
+                headers,
                 HeaderValue::from_static("strict-origin-when-cross-origin"),
             );
 
