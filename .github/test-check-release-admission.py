@@ -141,6 +141,20 @@ class ReleaseAdmissionTests(unittest.TestCase):
                     )
                 )
 
+    def test_release_cannot_omit_or_skip_actual_labs_isolation(self) -> None:
+        policy = MODULE.load_object(SCRIPT.parent / "release-required-workflows.json")
+        _, requirements = MODULE.validate_policy(policy)
+        required = next(item.required_jobs for item in requirements if item.workflow == "ci.yml")
+        labs = "Isolated Labs acceptance (Linux)"
+        self.assertIn(labs, required)
+        others = [{"name": name, "conclusion": "success"} for name in required if name != labs]
+        for outcome in ("missing", "skipped", "failure", "cancelled", None, "success"):
+            jobs = others if outcome == "missing" else [*others, {"name": labs, "conclusion": outcome}]
+            with self.subTest(outcome=outcome):
+                self.assertEqual(MODULE.required_jobs_succeeded(
+                    {"total_count": len(jobs), "jobs": jobs}, required
+                ), outcome == "success")
+
     def test_package_diagnostic_cannot_admit_a_release(self) -> None:
         policy = MODULE.load_object(SCRIPT.parent / "release-required-workflows.json")
         _, requirements = MODULE.validate_policy(policy)

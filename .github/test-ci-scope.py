@@ -125,7 +125,7 @@ class WorkflowGuardTests(unittest.TestCase):
         jobs = dict(zip(entries[1::2], entries[2::2]))
         runtime = {"check", "test", "strict-database-features", "redis-rate-limit",
                    "feature-boundaries", "threat-model-release-minimum", "versioned-ai-evals",
-                   "generated-release-access", "facade-composition", "msrv"}
+                   "generated-release-access", "facade-composition", "labs-isolation", "msrv"}
         distribution = {"native-cli-artifacts", "packaged-distribution"}
         self.assertEqual(set(jobs), runtime | distribution | {"scope", "site-validation", "quality-scorecard"})
         for name, body in jobs.items():

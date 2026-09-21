@@ -714,8 +714,9 @@ jobs:
     # A manual diagnostic is targeted evidence, never complete release evidence.
     needs: scope
     if: >-
-      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
-      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'labs-isolation')
+      !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'labs-isolation') &&
+      (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     permissions:
