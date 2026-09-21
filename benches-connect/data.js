@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789985441848,
+  "lastUpdate": 1790027660990,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -7067,6 +7067,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 379,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0ce3306d4e9dbdf749cad853a6eb259f38362215",
+          "message": "feat(v13): promote development and dependency updates to main",
+          "timestamp": "2026-09-21T18:33:38-03:00",
+          "tree_id": "4088a63ad5175eecd9f6049b7353becdb9cbf2fa",
+          "url": "https://github.com/Rullst/Rullst/commit/0ce3306d4e9dbdf749cad853a6eb259f38362215"
+        },
+        "date": 1790027660420,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 479,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
