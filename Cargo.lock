@@ -6927,7 +6927,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "wasmi",
- "wasmparser",
+ "wasmparser 0.259.0",
  "zeroize",
 ]
 
@@ -9699,7 +9699,7 @@ dependencies = [
  "wasmi_collections",
  "wasmi_core",
  "wasmi_ir",
- "wasmparser",
+ "wasmparser 0.228.0",
 ]
 
 [[package]]
@@ -9734,6 +9734,16 @@ name = "wasmparser"
 version = "0.228.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4abf1132c1fdf747d56bbc1bb52152400c70f336870f968b85e89ea422198ae3"
+dependencies = [
+ "bitflags 2.13.1",
+ "indexmap 2.14.1",
+]
+
+[[package]]
+name = "wasmparser"
+version = "0.259.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f7c12eac7bb587801590f6a67ff0bc84d0748513864b71108e4b311cc3df694"
 dependencies = [
  "bitflags 2.13.1",
  "indexmap 2.14.1",
