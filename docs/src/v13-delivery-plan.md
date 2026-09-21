@@ -55,9 +55,11 @@ The prioritized implementation sequence is:
    is one to two days for a bounded first journey and its tests, plus hosted CI;
    it is not a commitment to complete device-wide controls by 26 September.
 
-A provider adapter may enter this release only if its environment, protocol and
-acceptance evidence are ready in time. Its absence does not suspend independent
-framework work. The final privacy package scope must accurately identify every
+A provider adapter advertised as live-validated requires environment, protocol
+and acceptance evidence. The owner's later direction allows opt-in integrations
+with automated protocol evidence and explicit unvalidated-provider status; do
+not use personal/live libraries for testing. Provider availability does not
+suspend independent framework work. The final privacy package scope must accurately identify every
 supported method; unimplemented facial or provider methods cannot be advertised
 as functioning production verification. The package remains unpublished until
 its scoped consumer/state/API and release admission criteria pass.
@@ -372,6 +374,27 @@ LMS library tests and strict production Clippy/zero-panic checks, and all 376 CL
 library tests pass. These local results do not admit the package: full workspace
 regression, installed archives and hosted acceptance remain outstanding.
 
+PR #222 head `20a9fca7` subsequently passed 86 hosted checks with four declared
+skips and no unresolved review threads. Its independent packaged-distribution
+run `35534311217` also passed at that exact head. The supervision source merged
+normally into `v13` at `081c3805` on September 20, 21:14 UTC, preserving all 43
+required checks and administrator enforcement. This admits that source increment;
+stable package registration/publication and the final combined v13 campaign are
+still outstanding. The next shared-passkey candidate is under its own hosted
+campaign; the deployment/body and local diagnostic increments remain separate.
+
+The local deployment diagnostic passed seven executable contracts, including a
+generated SaaS, and two additional literal-parser/boundary contracts. All 376
+previous CLI unit tests passed; strict all-target CLI Clippy, book/local links
+and architecture checks passed. A bounded six-mutation decision sample was fully
+caught. Inspection also reproduced acceptance of the public `.env.example`
+application-key placeholder in Auth; explicit rejection now passes the runtime
+regression, 65 Auth unit tests and three key-resolution process contracts, with
+strict all-target Auth Clippy. These are local candidate results; hosted and
+installed-package acceptance remain outstanding. The corresponding stable-line
+backport still needs preparation and its own checks; published artifacts remain
+immutable.
+
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |
 | P0 | Published v12.1.0 corrections integrated without losing v13 work | Review conflicts; retain the stable runtime changes; pass the combined workspace tests, strict Clippy, format and feature/consumer checks. |
@@ -421,7 +444,8 @@ when its dependencies and verification capacity are ready.
 | M9 — Auth/session consistency | Durable account recovery and revocation exist. A separate optional PostgreSQL passkey-ceremony manager now binds tenant/account/session/RP and persists bounded single-use state. Real database, process/restart and Chromium virtual-authenticator checks pass locally. | Candidate under review; preserve credential-owner/revocation/counter CAS at the host. Full workspace, archive and hosted acceptance remain mandatory. See [the contract](shared-passkey-ceremonies.md). |
 | Transparent supervision | The owner has selected the proposed `rullst-supervision` as the first additional priority. Keep parental and exam policies distinct and reuse privacy primitives through explicit composition. | First conditional extension after required deliveries; a usable generated journey and browser/authorization tests precede package admission. Device-wide control remains separate. |
 | M27 — deployment acceptance with an existing proxy | The local two-process Caddy/Redis contract passes startup exclusion, readiness changes, streaming drain, shared-budget/outage enforcement, forged headers, CSRF/body limits and WebSocket origin/close behavior. It exposed and fixed early release of the ordinary HTTP body admission guard. | Candidate under review; full workspace and hosted admission remain mandatory. This is one loopback deployment fixture, not generated multi-replica Foundry, cross-host failover or a zero-downtime guarantee. See [deployment acceptance](deployment-acceptance.md). |
-| M10/M27 — cloud and VPS application protection | The local deployment candidate now exercises shared Redis budgets, forged forwarding metadata, security headers, CSRF and request-body limits. Read-only local configuration diagnostics remain conditional follow-up work. | Reuse Security/Core and the CLI; no new security crate is needed. Any new diagnostic needs bounded input, executable negative fixtures and secret-minimized output. No automatic firewall/SSH/cloud-account changes, host antivirus or volumetric DDoS guarantee. See the [deployment boundary](security-architecture.md#cloud-and-vps-deployments). |
+| M10/M27 — cloud and VPS application protection | The deployment candidate exercises shared Redis budgets, forged forwarding metadata, security headers, CSRF and request-body limits. A separate local `deploy:doctor` candidate now reuses Core validation with explicit environment sources, bounded inputs and redacted reports. | Reuse Security/Core and the CLI; no new security crate. Focused generated-CLI/negative tests and hosted/package acceptance remain required. No automatic firewall/SSH/cloud-account changes, host antivirus or volumetric DDoS guarantee. See the [diagnostic](deployment-diagnostic.md) and [deployment boundary](security-architecture.md#cloud-and-vps-deployments). |
+| LMS/Academy — managed private video | There is no Bunny integration in the current code. The owner raised Bunny Stream on September 20; it is selected for the next bounded design evaluation after the deployment diagnostic, ahead of a new gateway and broad Labs expansion. | Prioritize authorized uploads, tenant/course-owned asset records, short-lived playback authorization and signed processing notifications. Library configuration, direct-file protection, CDN versus embed tokens, token sharing/revocation windows and real provider/browser acceptance need explicit evidence. See the [managed-video candidate](managed-video-roadmap.md). |
 | M15 — remote messaging | Wire contracts, local durable state and the ORM outbox exist. Evaluate one remote broker adapter with real restart, redelivery and lease/idempotency evidence. | Conditional extension; select a broker and supported semantics first. Seven adapter names are not seven functioning integrations. |
 | M40 — Labs | The threat model and separate web-contract/runner roadmap are retained. The first candidate is a bounded job/grading/receipt contract with a deterministic local protocol fixture. | Conditional extension; contracts alone do not deliver code execution. A usable runner requires its own isolated deployment and adversarial acceptance. |
 | M39 — optional Rullst Gateway | No `rullst-gateway` crate or executable exists. Keep the separate opt-in proxy/load-balancer design from the master roadmap; readiness helpers and deployment templates do not implement it. | Lower priority than supervision, shared passkey state, deployment acceptance, one remote broker and bounded Labs work. Reconsider when a concrete self-hosted need justifies implementation and operations; no September 26 delivery commitment. |
@@ -511,6 +535,23 @@ to meet a line-count target.
 
 Dates below use Brasília time. Work may move earlier when its dependencies and
 checks are ready; slow external acceptance reduces scope, never test quality.
+
+The owner reconfirmed this calendar on September 20: prioritize remaining
+implementation through September 23 by user benefit, maintenance cost and
+acceptance capacity; reserve September 24–25 for validation/corrections and
+September 26 for final adjustments and protected publication. Local deployment
+configuration diagnostics are the next selected increment: they reuse existing
+CLI/Core contracts and help users catch deployment mistakes without requiring a
+new service. Remote messaging and Labs remain conditional on usable acceptance
+within the remaining window; increasing the crate count is not a priority.
+
+The owner subsequently requested no manual or real-provider account testing in
+this window, including the confirmed existing Bunny library. Continue automated
+local/hosted tests, disposable databases and protocol fixtures. Preserve required
+regression/security gates and report unvalidated provider interoperability
+explicitly; do not describe simulated acceptance as a live integration pass.
+New optional provider scope can be delivered with that stated limitation, rather
+than waiting for manual tests or using the owner's live resources.
 
 | Date | Checkpoint |
 | :--- | :--- |

@@ -60,6 +60,51 @@ browsing history, location, fingerprint or arbitrary payload collection. The
 consumer must show active/paused/ended state and stop sending after pause/end.
 No-JavaScript controls must still work without claiming visibility observations.
 
+## Proposed proctoring extensions (not implemented)
+
+The owner described a broader exam platform on September 20: focus/tab changes,
+copy attempts, camera presence and potential outside help through audio. The
+existing crate is named `rullst-supervision`; no `rullst-proctoring` package exists.
+Keep reusable session, authority, typed observation and reviewer-access contracts
+here, while the application selects disclosed exam rules and review workflows.
+
+The next bounded candidate is opt-in observation of focus loss/return, copy
+attempts within the exam page and fullscreen transitions. Browser visibility
+already exists, but the current event enum/store/consumer accepts only
+`PageVisible` and `PageHidden`: these extensions are not implemented by changing
+an application setting. New event kinds require explicit capability selection,
+a new disclosed policy/notice and fresh acknowledgement, strict payload/rate/
+retention limits and browser tests. Store event occurrence, not clipboard text,
+keystrokes or the contents of other windows. Accessibility tools, notifications
+and ordinary operating-system actions can produce these events legitimately.
+
+A normal web page cannot enumerate every open application/tab or observe
+system-wide clipboard activity. Window focus reports do not identify the other
+window. Screen capture is a separately permissioned user-selected surface, not
+an inventory of all windows. A separately installed client/extension would need
+its own permissions, threat model and platform acceptance.
+
+Camera/microphone capture and any inference belong in separate optional adapters,
+with explicit participant-visible permission and capture state, stopping/revoking
+collection, minimized retention and restricted review access. They must not be
+default dependencies or silently enabled by a framework update. A camera stream
+ending, low audio quality, no person detected or speech detected are different
+observations with different uncertainty; none automatically establishes cheating
+or outside answers. Generic suspicious-behavior scores, emotion/gaze-based intent
+claims and automatic grading/disciplinary decisions are not part of this design.
+
+For v13, evaluate the basic browser observations and an explicit extension
+boundary before camera/audio inference. The owner's no-manual/no-real-provider
+test preference retains automated protocol/browser tests; simulated detections
+cannot be advertised as a functioning camera/audio model. No new implementation
+or September 26 commitment is made by this extension proposal.
+
+Browser references: [page visibility](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API),
+[window focus loss](https://developer.mozilla.org/en-US/docs/Web/API/Window/blur_event),
+[page copy events](https://developer.mozilla.org/en-US/docs/Web/API/Element/copy_event),
+[camera/microphone permission](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia),
+and [screen capture](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia).
+
 ## Parental application restrictions
 
 An operator enrolls a learner and a server-selected access-policy resource into

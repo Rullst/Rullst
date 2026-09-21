@@ -75,6 +75,15 @@
       "marker": "TM-AUTH-02"
     },
     {
+      "id": "AUTH-02",
+      "crate": "rullst-auth",
+      "target_kind": "integration",
+      "target": "scaffold_app_key",
+      "test_filter": "public_env_example_key_cannot_encrypt_or_decrypt_sessions",
+      "source": "rullst-auth/tests/scaffold_app_key.rs",
+      "marker": "TM-AUTH-02"
+    },
+    {
       "id": "AUTH-04",
       "crate": "rullst-connect",
       "target_kind": "lib",
