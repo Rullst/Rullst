@@ -30,7 +30,7 @@ jobs:
   coverage:
     name: Generate Code Coverage
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     permissions:
       contents: read
@@ -55,12 +55,13 @@ jobs:
       - name: Install pinned coverage tools
         uses: taiki-e/install-action@26e9283f268b880168bdbd2c545dfcd60ec2c6ab # v2.87.13
         with:
-          tool: cargo-llvm-cov,cargo-nextest@0.9.137
+          tool: cargo-llvm-cov@0.9.1,cargo-nextest@0.9.137
 
       - name: Run cargo-llvm-cov (all features — parallel unit + integration)
         env:
           NEXTEST_PROFILE: coverage
         run: |
+          python3 .github/test-coverage-libraries.py
           cargo llvm-cov nextest --no-report --all-features --workspace --no-fail-fast
 
       - name: Preserve exact all-feature test execution evidence
@@ -121,6 +122,16 @@ jobs:
           python3 .github/check-privacy-postgres.py --coverage
           python3 .github/check-passkey-postgres.py --coverage
 
+      - name: Provision the reviewed disposable Labs host
+        run: bash .github/provision-labs-host.sh
+
+      - name: Measure the trusted controller with real isolated workloads
+        run: |
+          python3 .github/test-labs-measurement.py
+          # Preserve identical controller/worker bytes and collect only host
+          # counters. No profiler state or output path enters the sandbox.
+          bash .github/run-labs-coverage.sh
+
       - name: Generate merged coverage report
         run: |
           cargo llvm-cov report --json --summary-only \
@@ -139,6 +150,7 @@ jobs:
           path: |
             coverage-summary.json
             coverage.txt
+            target/labs-coverage-evidence.json
           if-no-files-found: error
           retention-days: 30
 
@@ -179,7 +191,7 @@ jobs:
       - name: Install pinned coverage tools
         uses: taiki-e/install-action@26e9283f268b880168bdbd2c545dfcd60ec2c6ab # v2.87.13
         with:
-          tool: cargo-llvm-cov,cargo-nextest@0.9.137
+          tool: cargo-llvm-cov@0.9.1,cargo-nextest@0.9.137
 
       - name: Run branch-instrumented workspace tests
         env:

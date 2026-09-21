@@ -7,6 +7,11 @@ title = "Rullst Framework Documentation"
 [rust]
 edition = "2024"
 
+[preprocessor.canonical-links]
+command = "python3 ../.github/mdbook-canonical-links.py"
+before = ["links"]
+source-revision = "v13"
+
 [output.html]
 git-repository-url = "https://github.com/Rullst/Rullst"
 edit-url-template = "https://github.com/Rullst/Rullst/edit/main/docs/{path}"

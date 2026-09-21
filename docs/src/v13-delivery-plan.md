@@ -430,14 +430,61 @@ installed-package acceptance remain outstanding. The corresponding stable-line
 backport still needs preparation and its own checks; published artifacts remain
 immutable.
 
+The next four source increments were merged into `v13`; their evidence is
+recorded individually below:
+
+- [PR #223](https://github.com/Rullst/Rullst/pull/223), shared PostgreSQL passkey
+  ceremonies, merged at `b354d67c`. The exact `15addc3d` candidate passed hosted
+  checks and [archive acceptance](https://github.com/Rullst/Rullst/actions/runs/35542202337).
+- [PR #224](https://github.com/Rullst/Rullst/pull/224), HTTP response-body draining
+  and the Caddy/Redis deployment contract, merged at `a4a3b3e6`. The exact
+  `2e348f96` candidate passed hosted checks and
+  [archive acceptance](https://github.com/Rullst/Rullst/actions/runs/35547984264).
+- [PR #225](https://github.com/Rullst/Rullst/pull/225), deployment diagnostics and
+  rejection of the public Auth key placeholder, merged at `873bc14a`. The exact
+  `45a573cc` candidate passed hosted checks. The archive job in
+  [run 35554979487](https://github.com/Rullst/Rullst/actions/runs/35554979487)
+  was skipped, so that run is **not archive acceptance**. Correctly selected
+  [exact-commit validation](https://github.com/Rullst/Rullst/actions/runs/35564762822)
+  subsequently passed on September 21 at 06:32 UTC, including the actual archive
+  audit, extracted consumers and all six installed-CLI blueprints. This repairs
+  that missing gate retrospectively.
+- [PR #226](https://github.com/Rullst/Rullst/pull/226), transparent exam
+  observations and bounded analysis adapters, merged at `bb71dad8`. The exact
+  `ae9b6d57` candidate passed 86 hosted checks. The archive job in
+  [run 35558912935](https://github.com/Rullst/Rullst/actions/runs/35558912935)
+  was skipped, so that run is **not archive acceptance**. The correctly selected
+  [exact-commit validation](https://github.com/Rullst/Rullst/actions/runs/35564765646)
+  subsequently passed on September 21 at 06:27 UTC, including the actual archive
+  audit, extracted consumers and all six installed-CLI blueprints. This repairs
+  that missing gate retrospectively.
+
+The September 21 audit found that these last two merges preceded their required
+installed-archive validation: a successful workflow was incorrectly credited
+despite its skipped archive job. Both gaps are now repaired by the actual
+exact-commit runs recorded above. These retrospective results do not erase the
+missed premerge gates; subsequent source admission requires checking the named
+archive job itself before integration.
+
+These merges do not publish packages or replace the final combined release
+campaign. Bunny subsequently passed its own source admission in
+[PR #227](https://github.com/Rullst/Rullst/pull/227): the exact `b21d52e7` candidate
+passed all 87 current checks, the actual
+[installed-archive job](https://github.com/Rullst/Rullst/actions/runs/35564717398),
+and review with no unresolved threads, then merged at `618655c1`.
+Labs remains an unpublished implementation candidate awaiting its own complete
+source admission. Stable-line backport preparation remains separate as well.
+
 The September 20 observation extension now adds selected browser categories,
 capture-status contracts and bounded analysis adapters to the supervision
 candidate. Its five generated CLI/composition/process contracts pass with real
 Chromium, alongside 378 CLI unit tests, isolated feature checks, strict Clippy
 and an offline simulated adapter example. A targeted nine-mutation guard sample
 is fully caught. No camera/audio model, automatic misconduct determination or
-live-provider validation is claimed. Full hosted workspace and archive acceptance
-of this extension remain required; see [the integration guide](supervision-observations.md).
+live-provider validation is claimed. Hosted workspace checks passed in PR #226;
+the missing archive gate subsequently passed as recorded above. The final
+release campaign remains required. See
+[the integration guide](supervision-observations.md).
 
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |
@@ -481,16 +528,16 @@ when its dependencies and verification capacity are ready.
 
 | Roadmap area | Starting point and next bounded increment | Scheduling boundary |
 | :--- | :--- | :--- |
-| M41 — privacy and age | Policy, signed attestations, SQLite and PostgreSQL replay adapters exist in the unpublished candidate. Admit their hosted evidence, then add an authenticated declaration path and enforceable purpose/rights effects in a consumer. | First product priority; provider availability does not block independent work. |
-| M11/M33 — SaaS entitlements | LMS already has application-owned course entitlements. Add a reusable typed plan gate and one generated SaaS enforcement journey; a public attribute macro needs its own design and compile tests. | Active P1 queue; do not imply that the entire billing programme is complete. |
-| M5/M29/M34 — API/SDK contracts | Scalar and the route-scanning OpenAPI generator exist, but scanning currently emits placeholder responses. Add a schema-backed supported API profile and one TypeScript target. | Active P1 queue; React, Dart and Swift targets follow the proven schema contract. |
-| M21 — Omni/Android | Version 12.1 configures application-owned signing; hosted Android CI already verifies signatures and the expected certificate. Bring that verification into the public CLI with exact artifact handling. | Active P1 queue; this closes a CLI gap, not physical-device or store acceptance. |
-| M9 — Auth/session consistency | Durable account recovery and revocation exist. A separate optional PostgreSQL passkey-ceremony manager now binds tenant/account/session/RP and persists bounded single-use state. Real database, process/restart and Chromium virtual-authenticator checks pass locally. | Candidate under review; preserve credential-owner/revocation/counter CAS at the host. Full workspace, archive and hosted acceptance remain mandatory. See [the contract](shared-passkey-ceremonies.md). |
-| Transparent supervision | The baseline passed hosted and archive acceptance in PR #222. On September 20 the owner explicitly prioritized its reusable exam-platform extension: exact selected collection, browser focus/clipboard/fullscreen observations and bounded local-or-remote analysis contracts. | Active candidate; retain transparent permissions, typed uncertain observations, manual review and no raw media retention. The new extension needs its own generated browser, workspace and archive acceptance. See the [integration boundary](supervision-observations.md). |
-| M27 — deployment acceptance with an existing proxy | The local two-process Caddy/Redis contract passes startup exclusion, readiness changes, streaming drain, shared-budget/outage enforcement, forged headers, CSRF/body limits and WebSocket origin/close behavior. It exposed and fixed early release of the ordinary HTTP body admission guard. | Candidate under review; full workspace and hosted admission remain mandatory. This is one loopback deployment fixture, not generated multi-replica Foundry, cross-host failover or a zero-downtime guarantee. See [deployment acceptance](deployment-acceptance.md). |
-| M10/M27 — cloud and VPS application protection | The deployment candidate exercises shared Redis budgets, forged forwarding metadata, security headers, CSRF and request-body limits. A separate local `deploy:doctor` candidate now reuses Core validation with explicit environment sources, bounded inputs and redacted reports. | Reuse Security/Core and the CLI; no new security crate. Focused generated-CLI/negative tests and hosted/package acceptance remain required. No automatic firewall/SSH/cloud-account changes, host antivirus or volumetric DDoS guarantee. See the [diagnostic](deployment-diagnostic.md) and [deployment boundary](security-architecture.md#cloud-and-vps-deployments). |
-| LMS/Academy — managed private video | The unpublished `rullst-media` candidate implements Bunny lifecycle management, resumable upload, authoritative processing, private playback and deletion with SQLite recovery. It includes an authenticated browser consumer, offline example and extracted-package checks; hosted acceptance and review remain outstanding. | Active implementation candidate; finish exact-head workspace/archive acceptance and review before widening the integration matrix. Live-account interoperability stays unvalidated. See the [managed-video candidate](managed-video-roadmap.md). |
-| M40 — Labs | Neither planned package exists yet. The contract/mock stage remains the first implementation checkpoint, followed by a real separately deployed runner for one supported exercise profile. | Next after the Bunny journey, ahead of remote brokers and a new gateway. Pursue usable execution and grading with isolated deployment and adversarial acceptance; do not call contracts alone a completed Labs product. Delivery by scope freeze remains conditional on that evidence. |
+| M41 — privacy and age | Hosted admission includes proportional policy, declarations, signed attestations, SQLite/PostgreSQL replay adapters, optional processing withdrawal and a scoped own-account profile export in generated consumers. | Preserve those admitted journeys in the final campaign. Initial package registration remains outstanding; live age providers and facial models remain outside the delivered scope. |
+| M11/M33 — SaaS entitlements | The typed current-state Capital gate and generated SaaS enforcement journey were admitted with PR #221. | Preserve current tenant/owner, plan and subscription checks during combined validation; the broader billing roadmap is not complete. |
+| M5/M29/M34 — API/SDK contracts | The bounded schema-first Rust/TypeScript API profile and real HTTP consumer were admitted with PR #221. | Retain schema/transport/ownership regression coverage. React, Dart and Swift targets remain follow-up work; route scanning does not supply typed response semantics. |
+| M21 — Omni/Android | CLI verification of the exact signed APK and configured certificate was admitted with PR #220 after hosted Android SDK acceptance. | Preserve the artifact/signature checks in the final campaign. Physical-device and store acceptance remain unvalidated. |
+| M9 — Auth/session consistency | PR #223 admitted optional PostgreSQL passkey ceremonies with tenant/account/session/RP binding, bounded single use, real database/process recovery and a Chromium virtual authenticator. | Preserve credential-owner/revocation/counter CAS at the host and repeat affected combined-release checks. See [the contract](shared-passkey-ceremonies.md). |
+| Transparent supervision | The baseline passed hosted and archive acceptance in PR #222. PR #226 merged the prioritized exam-platform extension after hosted checks; its missing archive gate subsequently passed in the exact-commit run recorded above. | Preserve transparent permissions, typed uncertain observations, manual review and no raw media retention in the final campaign. See the [integration boundary](supervision-observations.md). |
+| M27 — deployment acceptance with an existing proxy | PR #224 admitted the response-body lifetime correction and the real two-process Caddy/Redis contract for readiness, draining, shared budgets/outage, forwarding, CSRF/body limits and WebSocket behavior. | Preserve combined-release coverage. This loopback fixture does not establish generated multi-replica Foundry, cross-host failover or zero downtime. See [deployment acceptance](deployment-acceptance.md). |
+| M10/M27 — cloud and VPS application protection | PR #225 merged the offline `deploy:doctor` with explicit environment sources, bounded inputs, redacted reports and rejection of the public Auth key placeholder after hosted checks; its missing archive gate subsequently passed in the exact-commit run recorded above. | Preserve the installed-archive and diagnostic coverage in the final campaign and prepare the separate stable Auth backport. No automatic host/cloud changes or volumetric DDoS guarantee. See the [diagnostic](deployment-diagnostic.md) and [deployment boundary](security-architecture.md#cloud-and-vps-deployments). |
+| LMS/Academy — managed private video | PR #227 admitted the unpublished `rullst-media` candidate after hosted workspace/platform, browser and installed-archive acceptance. It implements Bunny lifecycle management, resumable upload, authoritative processing, private playback and deletion with SQLite recovery. | Preserve the supported journey in the final combined release campaign. Live-account interoperability stays unvalidated; release-inventory admission remains separate. See the [managed-video candidate](managed-video-roadmap.md). |
+| M40 — Labs | Unpublished `rullst-labs` and `rullst-labs-runner` candidates provide encrypted durable exercises/jobs, exact grading, cancellation/recovery/retention and a separate Linux Rust/Wasmi executor. The named profile passed 26 hosted journey checks at `a519c795`, including actual execution, compiler deadline/cleanup and recovery at full group capacity. | Finish current workspace/platform and extracted-package source admission. Independent isolation review and final release admission remain outstanding; the targeted Linux run is not complete release evidence. See the [recorded profile evidence](labs-first-profile.md#recorded-linux-acceptance). |
 | M15 — remote messaging | Wire contracts, local durable state and the ORM outbox exist. Evaluate one remote broker adapter with real restart, redelivery and lease/idempotency evidence. | Conditional extension after the selected Bunny and Labs journeys; select a broker and supported semantics first. Seven adapter names are not seven functioning integrations. |
 | M39 — optional Rullst Gateway | No `rullst-gateway` crate or executable exists. Keep the separate opt-in proxy/load-balancer design from the master roadmap; readiness helpers and deployment templates do not implement it. | Lower priority than supervision, shared passkey state, deployment acceptance, one remote broker and bounded Labs work. Reconsider when a concrete self-hosted need justifies implementation and operations; no September 26 delivery commitment. |
 | M1/M3/M7/M12 — adoption and assurance | Carry the compatible updater forward, add actual major-version migrations, improve generated guidance and connect new code to the relevant verification inventory. | Required adoption/security work plus bounded maintainer tooling; Verus begins with one production-linked pilot. |
@@ -584,12 +631,14 @@ The owner reconfirmed this calendar on September 20: prioritize remaining
 implementation through September 23 by user benefit, maintenance cost and
 acceptance capacity; reserve September 24–25 for validation/corrections and
 September 26 for final adjustments and protected publication. Local deployment
-configuration diagnostics and the supervision observation extension now have
-local candidates. The owner's subsequent direction selects the complete
+configuration diagnostics and the supervision observation extension are merged
+with hosted checks passed. Their archive gaps have now been repaired as recorded
+above.
+The owner's subsequent direction selects the complete
 supported Bunny journey next, followed by usable Labs execution and grading,
-before remote messaging or other optional expansion. Both still need their own
-implementation and acceptance within the remaining window; increasing the crate
-count is not a priority.
+before remote messaging or other optional expansion. Bunny has passed source
+admission; Labs implementation exists with its remaining source/release acceptance
+tracked above. Increasing the crate count is not a priority.
 
 The owner subsequently requested no manual or real-provider account testing in
 this window, including the confirmed existing Bunny library. Continue automated

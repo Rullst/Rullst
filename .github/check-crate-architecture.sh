@@ -50,3 +50,4 @@ if ! diff -u "$expected_path" "$actual_path"; then
 fi
 
 echo "The publishable workspace crate graph matches the reviewed architecture policy."
+python3 .github/check-labs-boundary.py "$metadata_path"

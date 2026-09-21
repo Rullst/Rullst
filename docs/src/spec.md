@@ -70,14 +70,76 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 
 ### v13 roadmap package boundaries
 
-The proposed [`rullst-labs`](rullst-labs-roadmap.md) library and separately
-deployed `rullst-labs-runner` are roadmap packages, not current workspace
-capabilities. The former owns trusted, versioned orchestration and grading
+The [`rullst-labs`](rullst-labs-roadmap.md) library and separately
+deployed `rullst-labs-runner` are unpublished implementation candidates whose
+source/release admission is outstanding. The named Linux execution journey has
+[targeted hosted evidence](labs-first-profile.md#recorded-linux-acceptance).
+The former owns trusted, versioned orchestration and grading
 contracts; the latter owns isolated execution. Neither may become a default
 framework dependency, execute learner code inside the HTTP process, or require
 the application to expose a container control socket. A complete offensive CTF
 arena is external, separately governed deployment infrastructure even when it
 uses Rullst identity, challenge, score and receipt contracts.
+
+The selected first Labs profile is a bounded Rust pure-function exercise,
+compiled with a pinned Rust toolchain to import-free WebAssembly and executed
+by a pinned Wasmi interpreter in a separate restricted Linux process. This is
+not a native Rullst server, Cargo dependency, WASI or arbitrary shell profile.
+`rullst-labs` must not depend on an executor or spawn submitted code. Its default
+surface is validated contracts; opt-in shared-local SQLite stores dedicated,
+encrypted job content with current application authorization, idempotent
+submission, cancellation, leased execution, retention and result reconciliation.
+It must not reuse the application's authentication/database secrets as job keys.
+
+Coverage measures the trusted controller through the same real isolated
+acceptance journey, preserving identical controller/worker executable hashes.
+A CI-only LLVM runtime hook initializes profile output only when the trusted
+host supplies its explicit path. Workers retain the exact cleared environment
+and never initialize or export counters. No extra mounts, descriptors or output
+permissions may weaken isolation. Ordinary and instrumented acceptance are
+distinct evidence; the hook must never enter a distributed runner.
+Keep both existing 90% line-coverage floors and include the new v13 application
+libraries in the framework-library aggregate; the runner remains counted in
+the whole repository as a separate executable.
+Controller keys require protected root/controller-owned ancestors and owned
+private regular files. Validate the opened no-follow descriptor and exact key
+length; a prior path metadata check alone does not bind the bytes read.
+
+The independently deployed runner accesses only that dedicated job plane and
+runner-owned tools. It must never give submitted code the job database, signing
+keys, application secrets, inherited environment or control sockets. The first
+Linux backend requires delegated cgroups v2, an unprivileged namespace launcher,
+at most 32 job/probe groups enforced by the delegated root's kernel descendant
+limit, and recovery of authenticated expired/cancelled attempts before a new
+preflight needs an empty group. Recovery never releases source or grants a grade.
+New source still requires successful live preflight and a current lease, plus
+restricted mounts/egress, no-new-privileges, syscall restrictions, a fully enforced
+Landlock filesystem policy and bounded
+compiler/interpreter resources. Both processes require observed enforcement. The compiler and interpreter must enter separate
+Landlock domains before source is released. Landlock does not mediate a process's
+own anonymous pipes through `/proc`; compiler-to-interpreter descriptor access
+must instead fail through the domain/ptrace boundary. The compiler's standard
+input/output are null during compilation, with only bounded diagnostics retained.
+The syscall policy permits only the `FIONBIO` ioctl request needed for Rust's
+captured linker pipes; other ioctl requests and all socket creation remain denied.
+Observed isolation and resource enforcement are
+mandatory: accepted configuration properties or a successful launcher exit do
+not prove the required boundary. Unsupported local/hosted environments fail
+closed, without a less restrictive execution fallback.
+
+Only an integrity-bound result matching the current job/lease, tenant, learner,
+exercise, grader, toolchain, source and execution profile may become a grade.
+Expected answers remain in the trusted grader; worker outputs are bounded data,
+not a passing-grade authority. Cancellation/expiry fence late results; worker
+loss never means success. Offline simulation is explicit and cannot establish
+execution evidence. Authorized course maintenance must expire queued submissions
+and remove their source without requiring a supported/available executor. It
+must not clear a running lease or infer teardown. Withdrawn exercise revisions
+may be removed only after every referencing job has been purged; immutable
+revision identifiers must not be reused after removal. See
+[the first-profile decision and threat model](labs-first-profile.md).
+Independent isolation review and the roadmap's adversarial acceptance remain
+required before any production-ready untrusted-code claim.
 
 ### v13 managed-video implementation boundary
 
@@ -530,7 +592,12 @@ checked-out/tagged commit at the current protected branch head, and every
 publishable inventory package at the tagged version before artifact builds.
 All declared automatic release workflows accept both maintained source lines.
 Required manual/native/security evidence and the protected crates.io approval
-remain separate mandatory gates. Fuzz evidence must come from the candidate's
+remain separate mandatory gates. Archive evidence requires the named archive
+job to succeed on the exact candidate; a green workflow with that job skipped
+is insufficient. Incompatible manual package selectors must fail explicitly.
+Observational CI reports may describe failed checks, but must stop on cancellation
+so an obsolete run cannot retain the concurrency slot needed by its replacement.
+Fuzz evidence must come from the candidate's
 release line and a source carrying that same policy; v12 results cannot be
 credited to v13 merely because they are recent. The existing immutable v12
 tags retain their original workflow and policy.

@@ -21,12 +21,17 @@ if [ "$candidate" = true ]; then
 import json, tomllib
 from pathlib import Path
 inventory = json.loads(Path('.github/release-order.json').read_text())
-for name in ('rullst-supervision', 'rullst-media'):
+for name in ('rullst-supervision', 'rullst-media', 'rullst-labs', 'rullst-labs-runner'):
     package = tomllib.loads(Path(name, 'Cargo.toml').read_text())['package']
     assert name not in inventory, 'remove candidate mode after release admission'
     assert package['name'] == name and package['publish'] is False
 PY
-  crates+=(rullst-supervision rullst-media)
+  crates+=(rullst-supervision rullst-media rullst-labs rullst-labs-runner)
+  # Cargo deliberately omits publish=false crates from its temporary registry.
+  # Resolve this unpublished candidate edge explicitly without admitting either
+  # crate. Packaged manifests still have registry dependencies; the separate
+  # consumer must replace this edge using only extracted archive bytes.
+  options+=(--config 'patch.crates-io.rullst-labs.path="rullst-labs"')
 fi
 arguments=()
 for crate in "${crates[@]}"; do arguments+=(--package "$crate"); done

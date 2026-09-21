@@ -93,6 +93,18 @@ else:
         self.assertEqual(output, "runtime_required=true")
         self.assertFalse((self.root / "api-called").exists())
 
+    def test_package_diagnostic_rejects_selectors_that_skip_the_archive_job(self):
+        for platform in ("ubuntu-latest", "windows-latest", "macos-latest", "", "all"):
+            result, output = self.execute(GITHUB_EVENT_NAME="workflow_dispatch",
+                                          RULLST_CI_SHARD="packaged-distribution",
+                                          RULLST_CI_PLATFORM=platform)
+            with self.subTest(platform=platform):
+                self.assertEqual(result.returncode, 0 if platform == "all" else 1)
+                self.assertTrue(all(line == "runtime_required=true" for line in output.splitlines()))
+                self.assertFalse((self.root / "api-called").exists())
+                if platform != "all":
+                    self.assertIn("require platform=all", result.stderr)
+
     def test_api_failure_retains_full_ci(self):
         result, output = self.execute(RULLST_SCOPE_API_FAIL="1")
         self.assertEqual(result.returncode, 0)
@@ -125,7 +137,7 @@ class WorkflowGuardTests(unittest.TestCase):
         jobs = dict(zip(entries[1::2], entries[2::2]))
         runtime = {"check", "test", "strict-database-features", "redis-rate-limit",
                    "feature-boundaries", "threat-model-release-minimum", "versioned-ai-evals",
-                   "generated-release-access", "facade-composition", "msrv"}
+                   "generated-release-access", "facade-composition", "labs-isolation", "msrv"}
         distribution = {"native-cli-artifacts", "packaged-distribution"}
         self.assertEqual(set(jobs), runtime | distribution | {"scope", "site-validation", "quality-scorecard"})
         for name, body in jobs.items():
@@ -147,6 +159,12 @@ class WorkflowGuardTests(unittest.TestCase):
                          "python3 .github/validate-site.py", "node .github/site-browser-smoke.mjs"):
             self.assertIn(required, site)
         self.assertIn("github.event_name != 'push'", jobs["quality-scorecard"])
+        scorecard_guard = jobs["quality-scorecard"].split("    if: >-\n", 1)[1].split("    needs:", 1)[0]
+        self.assertIn("!cancelled()", scorecard_guard)
+        self.assertNotIn("always()", scorecard_guard)
+        self.assertIn("RULLST_CI_SHARD: ${{ inputs.shard }}", jobs["scope"])
+        self.assertIn("RULLST_CI_PLATFORM: ${{ inputs.platform }}", jobs["scope"])
+        self.assertIn("inputs.shard != 'packaged-distribution' || inputs.platform == 'all'", jobs["check"])
 
 
 if __name__ == "__main__":

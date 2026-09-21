@@ -4,9 +4,13 @@ On September 20, 2026 the owner asked about Bunny.net video hosting and a native
 Rullst integration. The unpublished `rullst-media` candidate now implements the
 selected Bunny Stream lifecycle with opt-in HTTP and shared-local SQLite, an
 authenticated browser acceptance consumer and an executable offline example.
-It remains outside the framework facade and release inventory. Workspace CI,
-archive acceptance and review are still required; real Bunny interoperability
-has not been tested. Existing LMS fields do not automatically enable this service.
+It remains outside the framework facade and release inventory.
+[PR #227](https://github.com/Rullst/Rullst/pull/227) passed workspace/platform
+checks and the actual [installed-archive job](https://github.com/Rullst/Rullst/actions/runs/35564717398)
+at `b21d52e7692ffceec689223a04658a95156778a0`, then merged into `v13` at
+`618655c1` on September 21. The final release campaign remains separate; real
+Bunny interoperability has not been tested. Existing LMS fields do not
+automatically enable this service.
 
 A Bunny Stream integration is selected for implementation after the deployment
 diagnostic and supervision observation base. The owner's subsequent September

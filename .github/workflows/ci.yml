@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: Platform matrix for a diagnostic rerun; use all for release evidence
+        description: Platform matrix; packaged-distribution and release evidence require all
         required: true
         default: all
         type: choice
@@ -29,6 +29,7 @@ on:
           - cli-standard
           - cli-updates
           - packaged-distribution
+          - labs-isolation
           - cli-profiles-basic
           - cli-profiles-relational
           - cli-profiles-polyglot
@@ -78,11 +79,13 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Admit only source-equivalent v13 site pushes
+      - name: Validate diagnostic selectors and admit source-equivalent site pushes
         id: scope
         env:
           GH_TOKEN: ${{ github.token }}
           BASE_SHA: ${{ github.event.before || '' }}
+          RULLST_CI_SHARD: ${{ inputs.shard }}
+          RULLST_CI_PLATFORM: ${{ inputs.platform }}
         run: bash .github/plan-ci-scope.sh
 
   site-validation:
@@ -115,7 +118,13 @@ jobs:
 
   check:
     needs: scope
-    if: "!cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')"
+    # A manual Labs diagnostic has targeted formatting/Clippy in its own job.
+    # Full workspace quality remains required for PRs and complete release runs.
+    if: >-
+      !cancelled() &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard != 'labs-isolation') &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard != 'packaged-distribution' || inputs.platform == 'all') &&
+      (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     name: Code Quality & Format
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -161,7 +170,7 @@ jobs:
     # expensive cross-platform suite starts when the PR is ready for review.
     if: >-
       !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
-      (github.event_name != 'workflow_dispatch' || inputs.shard != 'packaged-distribution') &&
+      (github.event_name != 'workflow_dispatch' || (inputs.shard != 'packaged-distribution' && inputs.shard != 'labs-isolation')) &&
       (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     runs-on: ${{ matrix.os }}
     # Generated CLI applications are real independent Cargo workspaces. Keep
@@ -687,7 +696,10 @@ jobs:
           printf 'version=%s\n' "$candidate_version" >> "$GITHUB_OUTPUT"
 
       - name: Fetch locked dependencies for the isolated offline consumer
-        run: cargo fetch --locked --target x86_64-unknown-linux-gnu
+        # The archive consumer inspects its full dependency graph, including
+        # target-specific edges. A host-only fetch leaves that offline metadata
+        # check dependent on an accidentally warm foreign-platform cache.
+        run: cargo fetch --locked
 
       - name: Package and audit candidate archives without publication
         env:
@@ -702,12 +714,123 @@ jobs:
           CANDIDATE_VERSION: ${{ steps.inventory.outputs.version }}
         run: bash .github/test-packaged-distribution.sh "$CANDIDATE_VERSION" target/package --v13-candidates
 
+  labs-isolation:
+    name: Isolated Labs acceptance (Linux)
+    # Independent runtime evidence runs alongside workspace quality in full CI.
+    # A manual diagnostic is targeted evidence, never complete release evidence.
+    needs: scope
+    if: >-
+      !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'labs-isolation') &&
+      (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+    steps:
+      - name: Checkout candidate without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up content-addressed compiler cache
+        uses: mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba # v0.0.11
+        with:
+          version: v0.17.0
+          disable_annotations: true
+
+      - name: Set up framework build toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@ecabd13d1c56bd1345c230e542e9144811ad706f # v2.0.0
+        with:
+          rustflags: "-D warnings"
+          build-warnings: ""
+          components: rustfmt, clippy
+          cache: false
+
+      - name: Check formatting and targeted quality for the manual Labs diagnostic
+        if: github.event_name == 'workflow_dispatch' && inputs.shard == 'labs-isolation'
+        run: |
+          cargo fmt --all --check
+          cargo clippy --locked -p rullst-labs -p rullst-labs-runner --all-features --all-targets -- -D warnings
+
+      - name: Provision the reviewed disposable Labs host
+        run: bash .github/provision-labs-host.sh
+
+      - name: Verify profiling stays outside the cleared worker environment
+        run: python3 .github/test-labs-measurement.py
+
+      - name: Build separate controller and application fixture
+        run: cargo build --locked -p rullst-labs -p rullst-labs-runner --all-features --bins --examples
+
+      - name: Prove the separate compiler domain blocks parent descriptor aliases
+        run: cargo test --locked -p rullst-labs-runner --test landlock_domains -- --ignored --exact independent_domains_block_interpreter_descriptors
+
+      - name: Prove pinned tool spawning preserves the no-sockets policy
+        run: cargo test --locked -p rullst-labs-runner --test seccomp_spawn -- --ignored --exact absolute_tool_spawn_preserves_socket_denial
+
+      - name: Require real isolated execution in an owned unprivileged service
+        env:
+          LABS_UNIT_SUFFIX: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          # The test creates children only under this disposable delegated unit.
+          # No global namespace/sysctl downgrade is allowed on unsupported hosts.
+          sudo systemd-run --wait --collect --pipe \
+            --unit="rullst-labs-acceptance-$LABS_UNIT_SUFFIX" \
+            --property="User=$(id -un)" --property="Group=$(id -gn)" \
+            --property=Delegate=yes --property=MemoryMax=3G \
+            --property=TasksMax=256 --property=RuntimeMaxSec=15min \
+            --setenv=RULLST_LABS_HOSTED_ACCEPTANCE=1 \
+            --working-directory="$PWD" \
+            /usr/bin/python3 .github/test-labs-isolation.py \
+            --runner "$PWD/target/debug/rullst-labs-runner" \
+            --app "$PWD/target/debug/examples/course_app" \
+            --toolchain "$(rustc +1.96.0 --print sysroot)" \
+            --launcher /usr/lib/rullst-labs-ci/bwrap --evidence "$PWD/target/labs-evidence.json"
+
+      - name: Retain minimized execution evidence without fixture keys or source
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: labs-isolation-${{ github.sha }}
+          path: target/labs-evidence.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Install pinned measurement tool for the manual Labs diagnostic
+        if: github.event_name == 'workflow_dispatch' && inputs.shard == 'labs-isolation'
+        uses: taiki-e/install-action@26e9283f268b880168bdbd2c545dfcd60ec2c6ab # v2.87.13
+        with:
+          tool: cargo-llvm-cov@0.9.1
+
+      - name: Measure the controller through the real isolated journey
+        if: github.event_name == 'workflow_dispatch' && inputs.shard == 'labs-isolation'
+        run: |
+          rustup component add llvm-tools-preview
+          bash .github/run-labs-coverage.sh
+          cargo llvm-cov report --json --summary-only --output-path target/labs-coverage-summary.json
+
+      - name: Retain the scoped controller coverage diagnostic
+        if: github.event_name == 'workflow_dispatch' && inputs.shard == 'labs-isolation'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: labs-controller-coverage-${{ github.sha }}
+          path: |
+            target/labs-coverage-evidence.json
+            target/labs-coverage-summary.json
+          if-no-files-found: error
+          retention-days: 14
+
   quality-scorecard:
     name: Evidence quality scorecard (observational)
     # The scorecard's verification dimension requires the full OS matrix. A
     # Linux-only post-merge push must not silently inherit cross-platform credit.
+    # Report failures, but never hold a replaced run's concurrency slot after
+    # cancellation. An always() job can survive normal workflow cancellation.
     if: >-
-      always() && github.event_name != 'push' &&
+      !cancelled() && github.event_name != 'push' &&
       (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
       (github.event_name != 'workflow_dispatch' || (inputs.platform == 'all' && inputs.shard == 'all'))
     needs:

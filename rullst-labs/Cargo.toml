@@ -1,0 +1,35 @@
+[package]
+name = "rullst-labs"
+version = "13.0.0-alpha.1"
+edition = "2024"
+rust-version = "1.96.0"
+authors = ["Rullst Core Team"]
+description = "Explicit exercise, authorization and durable grading contracts for Rullst Labs"
+license = "MIT"
+repository = "https://github.com/Rullst/Rullst"
+readme = "README.md"
+publish = false
+
+[features]
+default = []
+sqlite = ["dep:sqlx", "dep:ring", "dep:tokio"]
+receipt-signing = ["dep:ring"]
+
+[dependencies]
+thiserror = { workspace = true }
+serde = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+sha2 = { workspace = true }
+hex = { workspace = true }
+zeroize = { workspace = true }
+sqlx = { workspace = true, features = ["runtime-tokio", "sqlite"], optional = true }
+ring = { workspace = true, features = ["std"], optional = true }
+tokio = { workspace = true, features = ["rt", "time"], optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tempfile = "3"
+
+[[example]]
+name = "course_app"
+required-features = ["sqlite"]

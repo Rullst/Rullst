@@ -1,7 +1,8 @@
 # Rullst Labs and isolated runner roadmap
 
-> **Status:** v13 research and design proposal. Neither package described here
-> exists in the workspace yet, and this document is not evidence that Rullst can
+> **Status:** v13 implementation candidate; the first-profile decision is recorded,
+> and the named Linux journey has [targeted hosted evidence](labs-first-profile.md#recorded-linux-acceptance).
+> Complete source/release admission and independent review remain outstanding. This document is not evidence that Rullst can
 > safely execute untrusted code in production.
 
 Rullst should make interactive programming exercises, deterministic graders and
@@ -11,16 +12,18 @@ control plane from the untrusted execution plane.
 
 ## Package and deployment boundaries
 
-Both packages are planned for the Rullst monorepo so their contracts,
+Both unpublished packages are implementation candidates in the Rullst monorepo so their contracts,
 compatibility tests, security reviews and versioning can evolve together. They
 must remain opt-in and must not become default dependencies of `rullst`.
 
 ### `rullst-labs`
 
-`rullst-labs` is a safe Rust library for the trusted application side. Its
-planned responsibilities are:
+`rullst-labs` is a safe Rust library for the trusted application side. The first
+candidate implements `Exercise`, `ExecutionLimits`, `Submission`, worker/receipt
+contracts and an optional encrypted shared-local SQLite job plane. Broader
+profile-independent contracts remain roadmap work. Its responsibilities are:
 
-- versioned `LabSpec`, `ExecutionPolicy`, request, receipt and grading types;
+- versioned exercise, bounded execution, request, receipt and grading types;
 - tenant-, learner- and submission-bound authorization inputs;
 - resource, language, toolchain, network and artifact policy validation;
 - idempotent submission orchestration, cancellation and result reconciliation;
@@ -34,7 +37,10 @@ permissions or treat an AI-generated assessment as authoritative evidence.
 
 `rullst-labs-runner` is a separately deployed binary/service for the untrusted
 execution plane. The singular name describes one runner service even when an
-installation operates many workers. Its planned responsibilities are:
+installation operates many workers. The first Linux Rust/Wasmi implementation
+requires actual namespaces/cgroups/seccomp/Landlock enforcement. The named Linux
+journey passed targeted hosted acceptance; broader admission and independent
+review remain outstanding. Its responsibilities are:
 
 - an authenticated, versioned and bounded request protocol;
 - queue leases, cancellation, retry, idempotency and stale-job recovery;
@@ -74,10 +80,12 @@ published. No backend may promise that arbitrary hostile code is risk-free.
 | Phase | Scope | Required evidence before promotion |
 | :--- | :--- | :--- |
 | 0 | Protocol, threat model, ADR, policy validation and offline mock | Contract, abuse-case and compatibility tests; no untrusted execution claim |
-| 1 | Wasmtime/component-model/WASI backend for suitable exercises | Filesystem, environment, clock, network, fuel/memory and output boundaries tested |
+| 1 | Restricted Wasm exercises; the selected first profile uses pinned Rust compilation and Wasmi in a separate restricted Linux process | Compiler and interpreter resource bounds, filesystem, environment, network, fuel/memory, output and recovery tested; WASI/component capabilities need their own later profile |
 | 2 | Rootless OCI backend for workloads that require native toolchains | Pinned runtime choice, kernel hardening, resource-exhaustion and escape regressions |
 | 3 | Optional microVM or independently operated cloud sandbox tier | External operational evidence, image provenance, isolation review and incident procedures |
 
+The [first-profile decision](labs-first-profile.md) selects a bounded Rust
+pure-function journey; native Rullst server exercises remain outside it.
 The first supported language pack should be Rust/Rullst. Additional languages
 must reuse the same policy and receipt contracts instead of adding ad-hoc shell
 execution paths.
@@ -180,7 +188,7 @@ must not be bundled into its claim.
 
 ## v13 delivery checklist
 
-- [ ] Complete the Phase 0 threat model and architecture decision record.
+- [x] Record the Phase 0 threat model and first-profile architecture decision; the named Linux journey now has targeted execution evidence, while independent review remains pending.
 - [ ] Stabilize the versioned request, policy, receipt and grader schemas.
 - [ ] Implement `rullst-labs` policy validation and deterministic mock backend.
 - [ ] Implement authenticated runner transport with idempotency and cancellation.
@@ -191,7 +199,8 @@ must not be bundled into its claim.
 - [ ] Document reference deployment, capacity planning and failure recovery.
 - [ ] Keep offensive CTF infrastructure experimental until independently reviewed.
 
-The packages join the Cargo workspace and the release-order manifest only after
-Phase 0 is approved. If the runner's security or operational lifecycle later
+The candidates belong to the Cargo workspace but remain `publish = false` and
+outside the release-order manifest until their separate admission requirements
+pass. If the runner's security or operational lifecycle later
 requires a separate repository, the versioned protocol must allow that move
 without coupling applications to its implementation.

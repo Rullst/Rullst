@@ -15,6 +15,7 @@
         "Evidence quality scorecard (observational)",
         "Facade shared-local recovery composition",
         "Generated release access boundaries",
+        "Isolated Labs acceptance (Linux)",
         "ORM strict-mysql",
         "ORM strict-postgres",
         "ORM strict-sqlite",

@@ -7,6 +7,10 @@ recovery of interrupted operations. It is **opt-in and not admitted for release*
 Real Bunny account, transcoding, CDN and player interoperability are **unvalidated**;
 automated acceptance uses local HTTP protocol fixtures and controlled browser media.
 
+[PR #227](https://github.com/Rullst/Rullst/pull/227) passed hosted workspace,
+platform and installed-archive source admission at `b21d52e7`. The final release
+campaign and provider interoperability remain separate requirements.
+
 ## Features and executable example
 
 | Features | Available surface |
