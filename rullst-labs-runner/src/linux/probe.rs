@@ -37,6 +37,20 @@ pub(super) fn launcher_failure(stderr: &str) -> Option<&'static str> {
                 || message.starts_with("setting up gid map")
             {
                 "labs-preflight:launcher-id-map"
+            } else if message.starts_with("loopback:") {
+                "labs-preflight:launcher-loopback"
+            } else if message.starts_with("cannot open /proc/sys/user/max_user_namespaces")
+                || message.starts_with("sysctl user.max_user_namespaces")
+                || message.starts_with("unshare user ns")
+                || message.starts_with("creation of new user namespaces was not disabled")
+            {
+                "labs-preflight:launcher-userns-lock"
+            } else if message.starts_with("prctl(")
+                || message.contains("capset")
+                || message.contains("capability")
+                || message.contains("capabilities")
+            {
+                "labs-preflight:launcher-privileges"
             } else if message.starts_with("execvp ") {
                 "labs-preflight:launcher-exec"
             } else if message.starts_with("Unknown option") || message.starts_with("--") {
@@ -44,8 +58,16 @@ pub(super) fn launcher_failure(stderr: &str) -> Option<&'static str> {
             } else if message.contains("mount")
                 || message.contains("remount")
                 || message.contains("root bind")
+                || message.starts_with("pivot_root")
             {
                 "labs-preflight:launcher-mount"
+            } else if message.starts_with("Creating newroot")
+                || message.starts_with("Creating oldroot")
+                || message.starts_with("Can't chdir")
+                || message.starts_with("chdir ")
+                || message.contains("directory")
+            {
+                "labs-preflight:launcher-layout"
             } else {
                 "labs-preflight:namespace-launcher"
             },

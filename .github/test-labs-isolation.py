@@ -116,7 +116,7 @@ def accept(args, directory, groups):
     if preflight.returncode:
         allowed = {'labs-preflight:configuration', 'labs-preflight:execution-boundary', 'labs-preflight:launch', 'labs-preflight:cgroup', 'labs-preflight:seccomp', 'labs-preflight:worker-probes', 'labs-preflight:landlock', 'labs-preflight:namespace-launcher'}
         allowed.update('labs-preflight:' + phase for phase in ('privileges', 'uid-map', 'limits', 'mounts', 'network', 'workspace', 'descriptors', 'environment', 'compiler', 'namespaces'))
-        allowed.update('labs-preflight:' + phase for phase in ('namespace-permission', 'namespace-create', 'launcher-id-map', 'launcher-exec', 'launcher-options', 'launcher-mount'))
+        allowed.update('labs-preflight:' + phase for phase in ('namespace-permission', 'namespace-create', 'launcher-id-map', 'launcher-exec', 'launcher-options', 'launcher-mount', 'launcher-loopback', 'launcher-userns-lock', 'launcher-privileges', 'launcher-layout'))
         for line in preflight.stderr.decode('utf-8', errors='replace').splitlines():
             if line in allowed:
                 print(line, flush=True)

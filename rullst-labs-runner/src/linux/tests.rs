@@ -12,6 +12,43 @@ const ADD: &[u8] = &[
     111, 108, 118, 101, 0, 0, 10, 9, 1, 7, 0, 32, 0, 32, 1, 124, 11,
 ];
 #[test]
+fn launcher_diagnostics_expose_only_closed_categories_without_raw_details() {
+    for (message, category) in [
+        (
+            "loopback: Failed RTM_NEWADDR: Operation not permitted",
+            "launcher-loopback",
+        ),
+        (
+            "cannot open /proc/sys/user/max_user_namespaces: Permission denied",
+            "launcher-userns-lock",
+        ),
+        (
+            "creation of new user namespaces was not disabled as requested",
+            "launcher-userns-lock",
+        ),
+        (
+            "prctl(PR_SET_NO_NEW_PRIVS) failed: Operation not permitted",
+            "launcher-privileges",
+        ),
+        (
+            "Creating newroot failed: Permission denied",
+            "launcher-layout",
+        ),
+        ("pivot_root(/newroot): Permission denied", "launcher-mount"),
+        ("execvp /sensitive-path: Permission denied", "launcher-exec"),
+        ("unrecognized /sensitive-path", "namespace-launcher"),
+    ] {
+        assert_eq!(
+            probe::launcher_failure(&format!("bwrap: {message}\n")),
+            Some(format!("labs-preflight:{category}").as_str())
+        );
+    }
+    assert_eq!(
+        probe::launcher_failure("student-output: /sensitive-path"),
+        None
+    );
+}
+#[test]
 fn validated_fixed_wasm_has_the_exact_rust_profile_abi_and_values() {
     let result = engine::evaluate(
         ADD,
