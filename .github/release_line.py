@@ -1,11 +1,13 @@
-"""Explicit release-major/branch binding, including the immutable v12 policy."""
+"""Versioned release-major/branch bindings; historical policies stay immutable."""
 
 from __future__ import annotations
 
 import re
 
 
-BRANCHES = {12: "main", 13: "v13"}
+BRANCHES = {12: "v12", 13: "main"}
+LEGACY_BRANCHES = {12: "main", 13: "v13"}
+EVIDENCE_BRANCHES = frozenset((*BRANCHES.values(), *LEGACY_BRANCHES.values()))
 # Reviewed release surfaces. Expanding one line never reinterprets old tags.
 FUZZ_TARGET_COUNTS = {12: 40, 13: 42}
 VERSION = re.compile(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?")
@@ -22,9 +24,10 @@ def policy_line(policy: dict) -> tuple[int, str]:
         # Existing v12 policy remains readable without reinterpreting old tags.
         return 12, "main"
     major = policy.get("required_major")
-    if (schema != 3 or type(major) is not int or major not in BRANCHES
-            or branch != BRANCHES[major]):
-        raise ValueError("release policy must bind major 12 to main or major 13 to v13")
+    branches = LEGACY_BRANCHES if schema == 3 else BRANCHES
+    if (schema not in (3, 4) or type(major) is not int or major not in branches
+            or branch != branches[major]):
+        raise ValueError("release policy must match its versioned major/branch binding")
     return major, branch
 
 

@@ -2,7 +2,7 @@ name: Omni Android Compile
 
 on:
   push:
-    branches: [main, v13]
+    branches: [main, v12, v13]
     paths:
       - "cargo-rullst/src/cli.rs"
       - "cargo-rullst/src/generators/desktop/**"
@@ -16,7 +16,7 @@ on:
       - ".github/check-android-signing.py"
       - ".github/test-check-android-signing.py"
   pull_request:
-    branches: [main, v13]
+    branches: [main, v12, v13]
     paths:
       - "cargo-rullst/src/cli.rs"
       - "cargo-rullst/src/generators/desktop/**"

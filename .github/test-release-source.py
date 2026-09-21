@@ -29,7 +29,7 @@ class ReleaseSourceTests(unittest.TestCase):
         self.git("config", "user.email", "fixture@example.invalid")
         self.git("config", "commit.gpgsign", "false")
         self.git("config", "core.hooksPath", "/dev/null")
-        self.policy = {"schema_version": 3, "required_major": 13, "required_branch": "v13"}
+        self.policy = {"schema_version": 4, "required_major": 13, "required_branch": "main"}
         (self.root / ".github").mkdir()
         (self.root / "rullst").mkdir()
         (self.root / ".github/release-required-workflows.json").write_text(json.dumps(self.policy))
@@ -40,7 +40,7 @@ class ReleaseSourceTests(unittest.TestCase):
         self.git("commit", "--quiet", "-m", "test(release): source fixture")
         self.sha = self.git("rev-parse", "HEAD")
         self.git("tag", "v13.0.0")
-        self.state = {"name": "v13", "protected": True, "commit": {"sha": self.sha}}
+        self.state = {"name": "main", "protected": True, "commit": {"sha": self.sha}}
 
     def git(self, *args):
         return subprocess.check_output(["git", *args], cwd=self.root, stderr=subprocess.PIPE, text=True).strip()
@@ -51,7 +51,20 @@ class ReleaseSourceTests(unittest.TestCase):
     def test_matching_protected_source_and_packages_are_accepted(self):
         self.validate()
 
-    def test_declared_push_workflows_cover_main_and_v13(self):
+    def test_v12_maintenance_source_requires_its_own_head_and_version(self):
+        policy = {"schema_version": 4, "required_major": 12, "required_branch": "v12"}
+        (self.root / ".github/release-required-workflows.json").write_text(json.dumps(policy))
+        self.manifest.write_text('[package]\nname="rullst"\nversion="12.1.1"\n')
+        self.git("add", ".")
+        self.git("commit", "--quiet", "-m", "test(release): maintenance fixture")
+        self.sha = self.git("rev-parse", "HEAD")
+        self.git("tag", "v12.1.1")
+        self.state = {"name": "v12", "protected": True, "commit": {"sha": self.sha}}
+        self.validate(tag="v12.1.1")
+        with self.assertRaises(ValueError):
+            self.validate({**self.state, "name": "main"}, tag="v12.1.1")
+
+    def test_declared_push_workflows_cover_active_and_transitional_lines(self):
         directory = SCRIPT.parent
         policy = json.loads((directory / "release-required-workflows.json").read_text())
         for requirement in policy["workflows"]:
@@ -62,10 +75,11 @@ class ReleaseSourceTests(unittest.TestCase):
             with self.subTest(workflow=requirement["workflow"]):
                 self.assertEqual(len(filters), 2, "review push and PR trigger layout")
                 for value in filters:
-                    self.assertEqual({part.strip(' \"\'') for part in value.split(',')}, {"main", "v13"})
+                    self.assertEqual({part.strip(' \"\'') for part in value.split(',')}, {"main", "v12", "v13"})
 
     def test_wrong_branch_unprotected_or_stale_head_are_rejected(self):
-        for state in ({**self.state, "name": "main"}, {**self.state, "protected": False},
+        for state in ({**self.state, "name": "v13"}, {**self.state, "name": "v12"},
+                      {**self.state, "protected": False},
                       {**self.state, "protected": "true"},
                       {**self.state, "commit": {"sha": "a" * 40}}):
             with self.subTest(state=state), self.assertRaises(ValueError):
@@ -97,11 +111,26 @@ class ReleaseSourceTests(unittest.TestCase):
             with self.subTest(tag=tag), self.assertRaises(ValueError):
                 self.validate(tag=tag)
 
-    def test_legacy_policy_is_only_v12_main(self):
+    def test_historical_bindings_remain_unchanged(self):
         self.assertEqual(policy_line({"schema_version": 2, "required_branch": "main"}), (12, "main"))
+        for major, branch in ((12, "main"), (13, "v13")):
+            self.assertEqual(policy_line({"schema_version": 3, "required_major": major,
+                                          "required_branch": branch}), (major, branch))
+
+    def test_current_bindings_are_major_specific(self):
+        for major, branch in ((12, "v12"), (13, "main")):
+            policy = {"schema_version": 4, "required_major": major, "required_branch": branch}
+            self.assertEqual(policy_line(policy), (major, branch))
+            self.assertEqual(tagged_version(f"v{major}.2.0", policy), f"{major}.2.0")
+            for other in ("topic", "v13", "main" if major == 12 else "v12"):
+                with self.subTest(major=major, branch=other), self.assertRaises(ValueError):
+                    policy_line({**policy, "required_branch": other})
+
+    def test_invalid_policy_schema_or_major_is_rejected(self):
         for policy in ({"schema_version": 2, "required_branch": "v13"},
                        {**self.policy, "required_major": 12},
-                       {**self.policy, "required_branch": "main"},
+                       {**self.policy, "schema_version": 5},
+                       {**self.policy, "required_branch": "v13"},
                        {**self.policy, "required_major": True},
                        {**self.policy, "required_major": 14}):
             with self.subTest(policy=policy), self.assertRaises(ValueError):

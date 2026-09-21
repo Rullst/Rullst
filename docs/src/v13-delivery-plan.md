@@ -6,6 +6,15 @@ historical roadmap fits the remaining week. The [SST](spec.md) governs APIs and
 architecture; the [roadmap](roadmap.md) retains work outside this release window.
 No deadline waives a security or publication gate.
 
+## Source-line transition approved on 21 September
+
+The owner approved development on `main`, stable maintenance on `v12`, and
+retention of the Pages branch. Stable source `184bc1f7` is preserved on `v12`;
+`main`/`v12` now have the 43-check protected profile. Source promotion, versioned
+release-branch rules and Dependabot routing still need candidate CI and normal
+PR admission. The six-feature PR retains its existing source while this work
+is prepared separately. No tag or published crate is changed.
+
 ## Approved delivery sequence
 
 The release owner approved this scope on 20 September 2026 UTC: a first-party,

@@ -2,9 +2,9 @@ name: Documentation
 
 on:
   push:
-    branches: [main, v13]
+    branches: [main, v12, v13]
   pull_request:
-    branches: [main, v13]
+    branches: [main, v12, v13]
   schedule:
     - cron: "23 7 * * 1"
   workflow_dispatch:

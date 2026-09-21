@@ -8,6 +8,15 @@ current supported-version table in [`SECURITY.md`](../../SECURITY.md) remains
 authoritative for releases that are actually available; a version in the
 workspace is not a supported release merely because its manifest exists.
 
+## Source branches
+
+`main` develops the next major release (currently the unpublished v13).
+`v12` receives compatible maintenance for the supported 12.x line. Select a
+published version for application dependencies; a branch name is not a release.
+The transitional `v13` integration branch is retained until its tested changes
+have entered `main` through the protected review path. Existing release tags
+and crates.io archives are unchanged.
+
 ## Semantic Versioning contract
 
 Rullst follows Cargo Semantic Versioning for stable releases:

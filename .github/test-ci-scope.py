@@ -48,6 +48,8 @@ if os.environ.get("RULLST_SCOPE_API_FAIL"):
 run = json.loads((root / "run.json").read_text())
 endpoint = sys.argv[-1]
 if "/workflows/ci.yml/runs?" in endpoint:
+    if "branch=" + run["head_branch"] + "&" not in endpoint:
+        sys.exit(2)
     print(json.dumps({"workflow_runs": [run]}))
 elif "/jobs?" in endpoint:
     print(json.dumps([json.loads((root / "jobs.json").read_text())]))
@@ -77,8 +79,8 @@ else:
         report = json.loads((self.root / "site-ci-admission.json").read_text())
         self.assertFalse(report["release_evidence_eligible"])
 
-    def test_pr_main_manual_and_foreign_repositories_never_query_for_reuse(self):
-        for changes in ({"GITHUB_EVENT_NAME": "pull_request"}, {"GITHUB_REF": "refs/heads/main"},
+    def test_pr_maintenance_manual_and_foreign_repositories_never_query_for_reuse(self):
+        for changes in ({"GITHUB_EVENT_NAME": "pull_request"}, {"GITHUB_REF": "refs/heads/v12"},
                         {"GITHUB_EVENT_NAME": "workflow_dispatch"},
                         {"GITHUB_REPOSITORY": "fork/Rullst"}):
             with self.subTest(changes=changes):
@@ -86,6 +88,16 @@ else:
                 self.assertEqual(result.returncode, 0)
                 self.assertTrue(all(line == "runtime_required=true" for line in output.splitlines()))
                 self.assertFalse((self.root / "api-called").exists())
+
+    def test_main_requires_its_own_exact_runtime_receipt(self):
+        result, output = self.execute(GITHUB_REF="refs/heads/main")
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(output, "runtime_required=true")
+        self.run_record["head_branch"] = "main"
+        (self.root / "output").unlink()
+        result, output = self.execute(GITHUB_REF="refs/heads/main")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(output, "runtime_required=false")
 
     def test_missing_history_or_invalid_sha_is_full(self):
         result, output = self.execute(BASE_SHA="f" * 40)
@@ -151,11 +163,11 @@ class WorkflowGuardTests(unittest.TestCase):
             with self.subTest(job=name):
                 guard = jobs[name].split("    runs-on:", 1)[0]
                 for clause in ("needs: scope", "!cancelled()", "github.event_name != 'push'",
-                               "github.ref != 'refs/heads/v13'", "needs.scope.result != 'success'",
+                               "github.ref != 'refs/heads/v13'", "github.ref != 'refs/heads/main'", "needs.scope.result != 'success'",
                                "needs.scope.outputs.runtime_required != 'false'"):
                     self.assertIn(clause, guard)
         site = jobs["site-validation"]
-        for required in ("github.event_name == 'push'", "refs/heads/v13", "mdbook build docs",
+        for required in ("github.event_name == 'push'", "refs/heads/v13", "refs/heads/main", "mdbook build docs",
                          "python3 .github/validate-site.py", "node .github/site-browser-smoke.mjs"):
             self.assertIn(required, site)
         self.assertIn("github.event_name != 'push'", jobs["quality-scorecard"])

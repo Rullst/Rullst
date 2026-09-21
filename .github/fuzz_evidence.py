@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 
 from fuzz_evidence_inputs import DOC_REVIEW, ROOT, SHA, FuzzSurfaceChanged, Snapshot, digest
-from release_line import BRANCHES
+from release_line import EVIDENCE_BRANCHES
 
 SECONDS = 19_800
 MAX_AGE = timedelta(days=7)
@@ -41,7 +41,7 @@ class GitHub:
             raise ValueError("fuzz evidence accepts the GitHub.com API only")
         if not token:
             raise ValueError("GITHUB_TOKEN is required")
-        if branch not in BRANCHES.values():
+        if branch not in EVIDENCE_BRANCHES:
             raise ValueError("unsupported fuzz evidence release branch")
         self.repository, self.token, self.api = repository, token, api
         self.branch = branch
@@ -81,7 +81,7 @@ def eligible_run(run: dict, repository: str, now: datetime, branch: str = "main"
         return (type(run.get("id")) is int and run["id"] > 0
                 and type(run.get("run_attempt")) is int and run["run_attempt"] > 0
                 and isinstance(run.get("head_sha"), str) and SHA.fullmatch(run["head_sha"]) is not None
-                and branch in BRANCHES.values() and run.get("head_branch") == branch
+                and branch in EVIDENCE_BRANCHES and run.get("head_branch") == branch
                 and run.get("event") == "workflow_dispatch"
                 and run.get("path") == WORKFLOW
                 and run.get("repository", {}).get("full_name") == repository

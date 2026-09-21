@@ -268,7 +268,7 @@ class ReleaseAdmissionTests(unittest.TestCase):
     def test_v13_policy_requires_both_additional_privacy_targets(self):
         policy = MODULE.load_object(SCRIPT.parent / "release-required-workflows.json")
         branch, _ = MODULE.validate_policy(policy)
-        self.assertEqual(branch, "v13")
+        self.assertEqual(branch, "main")
         fuzz = next(item for item in policy["workflows"] if item["workflow"] == "fuzzing.yml")
         for target in ("Fuzz fuzz_age_challenge_token", "Fuzz fuzz_age_attestation"):
             fuzz["required_jobs"].remove(target)

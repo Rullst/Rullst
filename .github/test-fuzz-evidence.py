@@ -93,6 +93,15 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(report["selected"], [])
         self.assertEqual(report["release_branch"], "v13")
 
+    def test_v12_maintenance_cannot_borrow_main_development_evidence(self):
+        self.candidate.release_branch = "v12"
+        self.github.branch = "v12"
+        self.assertEqual(self.plan()["selected"], INVENTORY)
+        self.github.items[0]["head_branch"] = "v12"
+        self.assertEqual(self.plan()["selected"], INVENTORY)
+        with patch.object(Source, "release_branch", "v12"):
+            self.assertEqual(self.plan()["selected"], [])
+
     def test_api_selection_must_match_candidate_policy_even_for_a_full_campaign(self):
         self.github.branch = "v13"
         with self.assertRaises(ValueError):
@@ -301,7 +310,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
                     "PREFLIGHT_RESULT": preflight, "FUZZ_RESULT": fuzz, "TARGETS_RESULT": targets}
                 result = subprocess.run(["bash", "-euo", "pipefail", "-c", script],
                                         env=env, capture_output=True, text=True)
-                self.assertEqual(result.returncode, expected, (env, result.stderr))
+                self.assertEqual(result.returncode, expected, ((selected, reused, preflight, fuzz, targets), result.stderr))
 
 
 if __name__ == "__main__":

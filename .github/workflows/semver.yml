@@ -2,9 +2,9 @@ name: SemVer Checks
 
 on:
   push:
-    branches: [main, v13]
+    branches: [main, v12, v13]
   pull_request:
-    branches: [main, v13]
+    branches: [main, v12, v13]
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
 

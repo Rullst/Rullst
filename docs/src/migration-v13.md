@@ -1,7 +1,7 @@
 # Preparing an application for v13
 
 **The current source is `13.0.0-alpha.1`, not a published stable v13 release.**
-Stable v12.1.0 remains on `main`. The development packages use the same v13
+Stable v12.1.0 maintenance lives on `v12`; `main` develops v13. The development packages use the same v13
 version and internal requirements. `rullst-privacy` joins the candidate package
 inventory with explicit `privacy-*` umbrella features; ownership, packaged
 consumer acceptance and publication remain prerequisites for registry use. Do not request v13 artifacts from

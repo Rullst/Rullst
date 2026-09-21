@@ -34,9 +34,10 @@
 
 > **This is the unreleased v13 development branch.** Its starting point is the
 > published v12.1.0 source plus its documentation closeout; a branch name is not a
-> v13 release. The badges and installation commands below describe stable v12,
-> not verified v13 readiness. `main` remains the v12 maintenance line; `v5` is
-> no longer maintained. [v13 priorities](https://github.com/Rullst/Rullst/blob/v13/ROADMAP.md#v13-execution-priorities)
+> v13 release. Installation commands below select stable v12; source CI badges
+> describe development `main`, not published-release readiness. The stable
+> maintenance branch is [`v12`](https://github.com/Rullst/Rullst/tree/v12);
+> `v5` is no longer maintained. [v13 priorities](ROADMAP.md#v13-execution-priorities)
 > · [v12 release record](https://rullst.github.io/Rullst/book/v12.html)
 > · [Compatibility policy](https://rullst.github.io/Rullst/book/compatibility-policy.html).
 
@@ -256,7 +257,7 @@ certification of every application built with the framework.
   Badges are pinned to the <code>main</code> branch; they report the latest matching run, not a certification or deployment guarantee.
 </p>
 
-| Continuous or change-aware gate | v12 `main` status | Actual scope |
+| Continuous or change-aware gate | Development `main` status | Actual scope |
 | :--- | :---: | :--- |
 | **Rust CI** | [![Rust CI](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=main&style=flat-square&label=Rust%20CI)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml?query=branch%3Amain) | Format, all-target/all-feature Clippy, tests on Linux/macOS/Windows, Cargo-aware doctests sourced from all 52 public tutorials, strict DB boundaries, feature boundaries, generated-code checks, and MSRV 1.96.0. |
 | **Declared MSRV** | [![MSRV 1.96.0](https://img.shields.io/badge/MSRV-1.96.0-f74c00?style=flat-square&logo=rust)](https://rullst.github.io/Rullst/book/compatibility-policy.html) | Every publishable v12 manifest declares Rust 1.96.0 and CI runs an explicit workspace all-feature check with that toolchain. |
@@ -298,11 +299,11 @@ green main gates:
 | [OWASP ZAP](https://github.com/Rullst/Rullst/actions/workflows/dast-zap.yml) | Manual baseline over three release surfaces: generated REST API and complete LMS are blocking with no ignored alerts; the deliberately CDN-backed blog showcase remains an explicitly informational boundary. |
 | [Kani](https://github.com/Rullst/Rullst/actions/workflows/kani.yml), [Miri](https://github.com/Rullst/Rullst/actions/workflows/miri.yml), [mutation testing](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml), [cargo-udeps](https://github.com/Rullst/Rullst/actions/workflows/udeps.yml) | Manual or scheduled research signals: selected Kani/Miri scopes are strict, while mutation and unused-dependency findings remain explicitly informational. |
 | [v13 Verus pilot](https://github.com/Rullst/Rullst/blob/v13/.github/workflows/verus.yml) | Optional production-linked age-policy proof with pinned tooling and three negative controls. Hosted registration/acceptance remains pending; no framework-wide correctness claim. |
-| [GitHub Pages](https://github.com/Rullst/Rullst/actions/workflows/pages.yml) | Deploys the v12 documentation from `main`; it is not a code-quality gate. |
+| [GitHub Pages](https://github.com/Rullst/Rullst/actions/workflows/pages.yml) | Deploys development documentation from `main`; it is not a code-quality gate. |
 | [Release and provenance](https://github.com/Rullst/Rullst/actions/workflows/release.yml) | Exact version tags only: full verification, package-all, evidence bundle, checksums, GitHub build-provenance attestation, changelog-derived release notes, and ordered crates.io publication. This does **not** claim a project-wide SLSA level or independent certification. |
 
 Scheduled events use the repository's default branch, so scheduled and
-continuous v12 evidence now refer to `main`. The recommended required-check
+continuous development evidence refer to `main`; stable v12 has its own branch. The recommended required-check
 profile and the exact scope of all
 39 workflow definitions in this source branch are documented in
 [WORKFLOWS.md](https://github.com/Rullst/Rullst/blob/v13/WORKFLOWS.md). The additional

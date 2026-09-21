@@ -2,9 +2,9 @@ name: Rust CI
 
 on:
   push:
-    branches: [ main, v13 ]
+    branches: [main, v12, v13]
   pull_request:
-    branches: [ main, v13 ]
+    branches: [main, v12, v13]
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
     inputs:
@@ -91,7 +91,7 @@ jobs:
   site-validation:
     name: Verify site-only presentation
     needs: scope
-    if: github.event_name == 'push' && github.ref == 'refs/heads/v13' && needs.scope.outputs.runtime_required == 'false'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/v13' || github.ref == 'refs/heads/main') && needs.scope.outputs.runtime_required == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -124,7 +124,7 @@ jobs:
       !cancelled() &&
       (github.event_name != 'workflow_dispatch' || inputs.shard != 'labs-isolation') &&
       (github.event_name != 'workflow_dispatch' || inputs.shard != 'packaged-distribution' || inputs.platform == 'all') &&
-      (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
+      (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     name: Code Quality & Format
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -171,7 +171,7 @@ jobs:
     if: >-
       !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
       (github.event_name != 'workflow_dispatch' || (inputs.shard != 'packaged-distribution' && inputs.shard != 'labs-isolation')) &&
-      (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
+      (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     runs-on: ${{ matrix.os }}
     # Generated CLI applications are real independent Cargo workspaces. Keep
     # them in isolated shards so their compile contracts run concurrently
@@ -317,7 +317,7 @@ jobs:
   strict-database-features:
     needs: scope
     if: >-
-      !cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
       (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: ORM ${{ matrix.feature }}
     runs-on: ubuntu-latest
@@ -396,7 +396,7 @@ jobs:
   storage-s3:
     needs: scope
     if: >-
-      !cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
       (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Private S3 storage contracts
     runs-on: ubuntu-latest
@@ -426,7 +426,7 @@ jobs:
   redis-rate-limit:
     needs: scope
     if: >-
-      !cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
       (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Redis live contracts
     runs-on: ubuntu-latest
@@ -491,7 +491,7 @@ jobs:
   feature-boundaries:
     needs: scope
     if: >-
-      !cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
       (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Public feature boundaries (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
@@ -523,7 +523,7 @@ jobs:
   threat-model-release-minimum:
     needs: scope
     if: >-
-      !cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
       (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Threat-model release-negative minimum (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
@@ -578,7 +578,7 @@ jobs:
   versioned-ai-evals:
     needs: scope
     if: >-
-      !cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
       (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Versioned deterministic AI evals
     runs-on: ubuntu-latest
@@ -606,7 +606,7 @@ jobs:
   generated-release-access:
     needs: scope
     if: >-
-      !cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
       (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Generated release access boundaries
     runs-on: ubuntu-latest
@@ -637,7 +637,7 @@ jobs:
   facade-composition:
     needs: scope
     if: >-
-      !cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
       (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Facade shared-local recovery composition
     runs-on: ubuntu-latest
@@ -665,7 +665,7 @@ jobs:
   msrv:
     needs: scope
     if: >-
-      !cancelled() && (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
       (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Check MSRV (Rust 1.96.0)
     runs-on: ubuntu-latest
@@ -766,7 +766,7 @@ jobs:
     if: >-
       !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
       (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'labs-isolation') &&
-      (github.event_name != 'push' || github.ref != 'refs/heads/v13' || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
+      (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false')
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     permissions:

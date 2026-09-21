@@ -588,11 +588,15 @@ enforce them on original lesson/progress routes before package admission.
 
 ### Versioned release-branch boundary
 
-The v13 preparation policy binds major 13 to `v13`; major 12 remains bound to
-`main`. The source-admission gate requires a canonical matching tag, the exact
+Release policy schema 4 binds major 13 to development `main` and major 12 to
+maintenance `v12`. Schemas 2 and 3 retain their historical bindings; no existing
+tag or receipt is reinterpreted. `v13` remains a transitional integration branch
+until its admitted source is promoted through a protected PR to `main`.
+The source-admission gate requires a canonical matching tag, the exact
 checked-out/tagged commit at the current protected branch head, and every
 publishable inventory package at the tagged version before artifact builds.
-All declared automatic release workflows accept both maintained source lines.
+All declared automatic release workflows accept both maintained source lines
+and the transitional `v13` branch.
 Required manual/native/security evidence and the protected crates.io approval
 remain separate mandatory gates. Archive evidence requires the named archive
 job to succeed on the exact candidate; a green workflow with that job skipped

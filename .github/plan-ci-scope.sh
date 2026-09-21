@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Initial admission is deliberately limited to v13 push feedback, never release/PR runs.
+# Initial admission is deliberately limited to development-line push feedback, never release/PR runs.
 set -euo pipefail
 
 runtime_required=true
@@ -20,7 +20,7 @@ if [[ "${GITHUB_EVENT_NAME:-}" == workflow_dispatch &&
   exit 1
 fi
 
-if [[ "${GITHUB_EVENT_NAME:-}" != push || "${GITHUB_REF:-}" != refs/heads/v13 ||
+if [[ "${GITHUB_EVENT_NAME:-}" != push || ( "${GITHUB_REF:-}" != refs/heads/v13 && "${GITHUB_REF:-}" != refs/heads/main ) ||
       "${GITHUB_REPOSITORY:-}" != Rullst/Rullst ]]; then
   exit 0
 fi
@@ -33,6 +33,7 @@ if [[ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]]; then
   exit 0
 fi
 
+scope_branch="${GITHUB_REF#refs/heads/}"
 scope_dir="$(mktemp -d "$RUNNER_TEMP/rullst-ci-scope.XXXXXX")"
 # Run policy helpers from the prior committed source, in isolated Python mode;
 # a candidate must not weaken its own admission decision. A missing old helper
@@ -43,7 +44,7 @@ for helper in admit-site-only.py plan-verification.py report-ci-timings.py; do
   fi
 done
 if ! gh api --hostname github.com \
-  "repos/Rullst/Rullst/actions/workflows/ci.yml/runs?branch=v13&event=push&head_sha=$BASE_SHA&status=success&per_page=5" \
+  "repos/Rullst/Rullst/actions/workflows/ci.yml/runs?branch=$scope_branch&event=push&head_sha=$BASE_SHA&status=success&per_page=5" \
   > "$scope_dir/runs.json"; then
   exit 0
 fi
@@ -66,7 +67,7 @@ fi
 if ! jq -n --slurpfile run "$scope_dir/run.json" --slurpfile jobs "$scope_dir/jobs.json" \
   '{run: $run[0], jobs: $jobs[0]}' |
   python3 -I "$scope_dir/admit-site-only.py" --base "$BASE_SHA" --head "$GITHUB_SHA" \
-    --branch v13 --repo "$PWD" > "$RUNNER_TEMP/site-ci-admission.json"; then
+    --branch "$scope_branch" --repo "$PWD" > "$RUNNER_TEMP/site-ci-admission.json"; then
   exit 0
 fi
 if jq -e '.schema == "rullst.site-ci-admission.v1" and .runtime_required == false and
@@ -76,7 +77,7 @@ if jq -e '.schema == "rullst.site-ci-admission.v1" and .runtime_required == fals
 fi
 {
   echo '### Development-only site admission'
-  echo 'Manual runs, pull requests, main and publication requirements remain unchanged.'
+  echo 'Manual runs, pull requests, v12 and publication requirements remain unchanged.'
   echo '```json'
   jq '.' "$RUNNER_TEMP/site-ci-admission.json"
   echo '```'
