@@ -7,15 +7,21 @@ window still apply. Contracts and an offline simulation are intermediate work.
 
 ## Recorded Linux acceptance
 
-On September 21, [run 35563203800](https://github.com/Rullst/Rullst/actions/runs/35563203800)
-passed at `3ba267c272aee9d42d6aa4da4b2ee33f0653ddea` on disposable Ubuntu 24.04
-with the pinned Rust 1.96 profile. Its minimized artifact records 25 checks:
+On September 21, [run 35565291103](https://github.com/Rullst/Rullst/actions/runs/35565291103)
+passed at `a519c795b2af8b5cfc67b2bc12d5dbad0408c9d7` on disposable Ubuntu 24.04
+with the pinned Rust 1.96 profile. Its minimized artifact records 26 checks:
 actual isolation, compiler descriptor denial, shared kernel group capacity,
 compilation/grading, ownership/idempotency, wrong answers, fuel/stack/memory
 boundaries, compiler errors, filesystem/environment/import/output denial, fresh
-guest state, cancellation, controller loss, recovery at full group capacity,
+guest state, compiler deadline/cleanup, cancellation, controller loss, recovery at full group capacity,
 competing controllers and terminal source removal. Separate real Landlock and
 seccomp regressions also passed. No live provider account was used.
+
+The compiler-deadline case observes a real compiler before requiring the
+controller's own five-second deadline to cancel the attempt and remove its
+entire group; neither an application cancellation nor a test-owned kill can
+satisfy it. Excess compiler output must produce the bounded resource-limit
+outcome, and retained diagnostics may not exceed the protocol byte limit.
 
 This targeted run is evidence for that source revision and named host/profile.
 Complete current workspace/platform and extracted-package admission, the final
@@ -65,6 +71,12 @@ runner service. Application authorization never follows from a client-provided
 learner, course or provider identifier. File possession/configuration is not a
 student capability. Neither signed requests nor an AI evaluation can weaken the
 execution policy or manufacture a passing result.
+
+Content and receipt keys require private regular files owned by the controller
+under protected canonical ancestors. The controller validates the opened
+descriptor, rejects symlinks and non-regular files without blocking on a FIFO,
+and requires exactly 32 bytes. File permissions alone do not protect a key
+whose parent directory lets another local user replace it.
 
 ## Mandatory Linux execution boundary
 
