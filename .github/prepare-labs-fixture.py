@@ -56,11 +56,18 @@ def prepare(directory, runner, toolchain, launcher, cgroups):
         raise ValueError('insufficient user-available disk headroom for the disposable fixture')
     directory.mkdir(mode=0o700)
     rootfs = directory / 'rootfs'
+    executable_files = {
+        Path('runner'),
+        Path('toolchain/bin/rustc'),
+        Path('toolchain/lib/rustlib/x86_64-unknown-linux-gnu/bin/rust-lld'),
+        # execve also requires execute permission on the ELF interpreter.
+        Path('runtime/lib64/ld-linux-x86-64.so.2'),
+    }
     for relative, source in files.items():
         target = rootfs / relative
         target.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
         shutil.copyfile(source, target)
-        target.chmod(0o755 if relative in (Path('runner'), Path('toolchain/bin/rustc'), Path('toolchain/lib/rustlib/x86_64-unknown-linux-gnu/bin/rust-lld')) else 0o644)
+        target.chmod(0o755 if relative in executable_files else 0o644)
     for path in [rootfs, *rootfs.rglob('*')]:
         if path.is_dir():
             path.chmod(0o755)
