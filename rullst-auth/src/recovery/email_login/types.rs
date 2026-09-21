@@ -1,21 +1,6 @@
+pub use super::super::{AuthClock as EmailLoginClock, SystemAuthClock as SystemEmailLoginClock};
 use super::*;
-use std::time::{SystemTime, UNIX_EPOCH};
 use url::Url;
-
-/// A trusted server clock, never a timestamp from a request or email link.
-pub trait EmailLoginClock: Send + Sync {
-    fn now(&self) -> Result<u64, RecoveryError>;
-}
-
-pub struct SystemEmailLoginClock;
-impl EmailLoginClock for SystemEmailLoginClock {
-    fn now(&self) -> Result<u64, RecoveryError> {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|elapsed| elapsed.as_secs())
-            .map_err(|_| RecoveryError::InvalidAction)
-    }
-}
 
 /// Independently generated browser secret. Keep it in a Secure, HttpOnly,
 /// SameSite cookie; never add it to the email or the link. Redemption requires

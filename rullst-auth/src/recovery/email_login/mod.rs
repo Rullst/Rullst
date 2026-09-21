@@ -2,7 +2,7 @@
 //! The host owns tenant authorization, MFA policy, CSRF, secure cookies and
 //! no-store/no-referrer responses. GET/HEAD must never invoke redemption.
 
-mod connection;
+use super::connection;
 mod delivery;
 mod flow;
 mod guard;

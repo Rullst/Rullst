@@ -54,6 +54,12 @@ accounts and opaque sessions; they do not enable email login on accounts or
 replace tenant/MFA policy. Hosted source/package admission remains pending; see
 [the email-login contract](email-login.md).
 
+The scoped API-token candidate adds Auth `api-tokens-sqlite` /
+`api-tokens-postgres` and facade `auth-api-tokens-sqlite` /
+`auth-api-tokens-postgres`. They enable the corresponding recovery backend only;
+email login, JWT and OAuth remain independent. See the
+[API-token contract](api-tokens.md) for current admission and boundaries.
+
 ## Umbrella crate: `rullst`
 
 The default `rullst` dependency enables `orm` and `queue-sqlite`. Applications

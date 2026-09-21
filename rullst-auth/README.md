@@ -69,6 +69,17 @@ SQLite shares one local file; PostgreSQL shares one authoritative writable serve
 See the [email-login contract](../docs/src/email-login.md) for limits, retention,
 Mail composition, process/browser evidence and pending hosted admission.
 
+## API token candidate (v13)
+
+Optional `api-tokens-sqlite` / `api-tokens-postgres` supplies owner-managed opaque
+credentials with literal scopes, bounded lifetime, atomic revision-based rotation
+and authoritative SQL revocation. Only HMAC digests are stored. Account-epoch
+changes invalidate older credentials. The Core machine-route adapter requires
+an Authorization bearer and preserves the security baseline; applications still
+enforce current tenant membership and resource permissions. See the
+[API-token contract](../docs/src/api-tokens.md) for setup, operational limits,
+restart/HTTP evidence and pending hosted admission.
+
 ## WebAuthn/passkeys
 
 `PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges,

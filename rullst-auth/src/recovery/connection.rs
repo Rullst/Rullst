@@ -33,7 +33,7 @@ pub(super) async fn open(
                 let statements: &[&'static str] = if postgres {
                     &[
                         "SET search_path = public, pg_temp",
-                        "SET application_name = 'rullst-email-login-v1'",
+                        "SET application_name = 'rullst-auth-state-v1'",
                         "SET synchronous_commit = on",
                         "SET statement_timeout = '5s'",
                         "SET lock_timeout = '5s'",
@@ -65,7 +65,7 @@ pub(super) async fn open(
     ))
 }
 
-#[cfg(feature = "email-login-postgres")]
+#[cfg(any(feature = "email-login-postgres", feature = "api-tokens-postgres"))]
 fn configure_postgres(url: &mut Url) -> Result<(), RecoveryError> {
     let mut seen = BTreeSet::new();
     if url.query_pairs().any(|(key, _)| {
@@ -114,12 +114,12 @@ fn configure_postgres(url: &mut Url) -> Result<(), RecoveryError> {
     Ok(())
 }
 
-#[cfg(not(feature = "email-login-postgres"))]
+#[cfg(not(any(feature = "email-login-postgres", feature = "api-tokens-postgres")))]
 fn configure_postgres(_: &mut Url) -> Result<(), RecoveryError> {
     Err(RecoveryError::Configuration)
 }
 
-#[cfg(feature = "email-login-sqlite")]
+#[cfg(any(feature = "email-login-sqlite", feature = "api-tokens-sqlite"))]
 fn configure_sqlite(url: &mut Url, initialize: bool) -> Result<(), RecoveryError> {
     if url.scheme() != "sqlite" || url.host_str().is_some() {
         return Err(RecoveryError::Configuration);
@@ -153,7 +153,7 @@ fn configure_sqlite(url: &mut Url, initialize: bool) -> Result<(), RecoveryError
     Ok(())
 }
 
-#[cfg(not(feature = "email-login-sqlite"))]
+#[cfg(not(any(feature = "email-login-sqlite", feature = "api-tokens-sqlite")))]
 fn configure_sqlite(_: &mut Url, _: bool) -> Result<(), RecoveryError> {
     Err(RecoveryError::Configuration)
 }
@@ -163,7 +163,7 @@ fn configure_sqlite(_: &mut Url, _: bool) -> Result<(), RecoveryError> {
 mod tests {
     use super::*;
 
-    #[cfg(feature = "email-login-postgres")]
+    #[cfg(any(feature = "email-login-postgres", feature = "api-tokens-postgres"))]
     #[test]
     fn remote_transport_cannot_disable_certificate_or_hostname_verification() {
         for address in [
@@ -190,7 +190,7 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "email-login-sqlite")]
+    #[cfg(any(feature = "email-login-sqlite", feature = "api-tokens-sqlite"))]
     #[test]
     fn volatile_ambiguous_and_unknown_sqlite_options_fail_before_connecting() {
         for address in [

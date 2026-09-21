@@ -23,6 +23,8 @@ passkey-postgres = ["dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls"]
 recovery-postgres = ["dep:sqlx", "sqlx/any", "sqlx/postgres", "sqlx/tls-rustls"]
 email-login-sqlite = ["recovery-sqlite"]
 email-login-postgres = ["recovery-postgres"]
+api-tokens-sqlite = ["recovery-sqlite"]
+api-tokens-postgres = ["recovery-postgres"]
 
 [dependencies]
 rullst-core = { workspace = true }

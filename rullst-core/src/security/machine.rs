@@ -11,7 +11,7 @@ use subtle::ConstantTimeEq;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum MachineAuthentication {
-    /// Explicit authorization header compared against the configured credential.
+    /// Explicit authorization header checked by a credential or current-state verifier.
     Bearer,
     /// Provider-specific cryptographic signature and freshness verification.
     SignedWebhook,
@@ -37,8 +37,8 @@ pub enum MachineEndpointError {
     Unauthorized,
 }
 
-/// Host-owned cryptographic verifier for signed webhooks or transport-authenticated
-/// mTLS identities. Implementations must fail closed, bind the exact request,
+/// Host-owned verifier for authoritative bearer credentials, signed webhooks or
+/// transport-authenticated mTLS identities. Implementations must fail closed, bind the exact request,
 /// and enforce provider freshness/replay policy where applicable. Never accept
 /// a browser-supplied header as proof of a client certificate.
 ///
@@ -84,6 +84,22 @@ impl MachineEndpoint {
             path.into(),
             MachineAuthentication::Bearer,
             Credential::Bearer(digest(token.as_bytes())),
+        )
+    }
+
+    /// Registers an exact machine route with an authoritative bearer verifier.
+    /// The verifier must require one Authorization header and validate current
+    /// revocation/scope state. Ambient browser credentials remain rejected.
+    pub fn verified_bearer(
+        method: Method,
+        path: impl Into<String>,
+        verifier: impl MachineRequestVerifier + 'static,
+    ) -> Result<Self, MachineEndpointError> {
+        Self::new(
+            method,
+            path.into(),
+            MachineAuthentication::Bearer,
+            Credential::Verified(Arc::new(verifier)),
         )
     }
 

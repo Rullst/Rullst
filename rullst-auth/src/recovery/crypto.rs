@@ -20,7 +20,12 @@ impl std::fmt::Debug for SecretToken {
 }
 
 impl SecretToken {
-    #[cfg(any(feature = "email-login-sqlite", feature = "email-login-postgres"))]
+    #[cfg(any(
+        feature = "email-login-sqlite",
+        feature = "email-login-postgres",
+        feature = "api-tokens-sqlite",
+        feature = "api-tokens-postgres"
+    ))]
     pub(super) fn from_encoded(value: &str) -> Result<Self, RecoveryError> {
         if value.len() != 43
             || URL_SAFE_NO_PAD

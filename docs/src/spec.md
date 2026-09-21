@@ -711,6 +711,60 @@ and extracted-package consumers. Production credentials and live inbox delivery
 remain outside the owner's authorized testing scope. The existing reset journey
 keeps its separate behavior and must retain its regression evidence.
 
+### v13 application API-token implementation contract
+
+The third owner-selected increment is a separate optional Auth lifecycle for
+opaque application API tokens, with SQLite shared-local and PostgreSQL shared
+state. It must compose the authoritative recovery account epoch and private
+database connection safeguards without enabling email-login, JWT or OAuth by
+default. Provider credentials and browser-session tokens are separate purposes.
+
+Issuance requires a current password-authentication proof from the same account
+registry plus the host's tenant/MFA/permission approval. An immutable server
+namespace and literal scope allowlist bound every token. Requested scopes are
+nonempty, bounded and exact (no wildcards); the application intersects its
+current account permissions before issuance and checks current tenant/resource
+authorization on every domain request. A client-supplied namespace or subject
+never establishes authority. API tokens cannot mint other tokens through this
+management API.
+
+Return a random 256-bit secret once, with a separate opaque management ID and
+an unmistakable versioned prefix; persist only a purpose/namespace-bound HMAC.
+Store bounded labels, literal scopes, expiry and revision, without IP, user-agent
+or usage history. Enforce a per-namespace row quota, at most 20 active tokens per
+account, and a configured maximum lifetime no greater than 30 days. Verification
+must read authoritative state, validate the account epoch, exact required scope
+subset and trusted time, and fail on missing/unavailable/revoked state. Never
+cache a positive verification as a replacement for these checks.
+
+Owner-only inventory, idempotent revocation and atomic compare-and-swap rotation
+are required. Rotation keeps the management ID and scopes, advances the revision,
+replaces the secret and may renew only within the configured lifetime. A stale
+rotation cannot overwrite a newer credential or revive a revoked token. Deleting
+a token is authoritative revocation: caller-selected IDs cannot recreate it.
+Account epoch changes invalidate all older tokens. Concurrent checks have a
+documented database linearization point; already authorized external work cannot
+be recalled or made atomic with a later revocation.
+
+Reuse verified remote TLS, bounded private pools/SQL deadlines, durable storage
+checks, namespace configuration binding and persisted clock observations. An
+uncertain issuance/rotation returns no credential, and restart, expiry during
+lock waits, rollback, foreign-account management, scope escalation, token-purpose
+confusion and concurrent rotation/revocation need executable evidence. Document
+backup anti-rollback and host-owned authorization boundaries. Full workspace,
+native protocol/process, authenticated HTTP and extracted-package admission are
+required before a supported feature claim; no external provider accounts are
+needed or authorized.
+
+HTTP composition adds an explicit Core `MachineEndpoint::verified_bearer`
+constructor using the existing exact-route `MachineRequestVerifier` contract.
+Auth supplies a verifier that requires one Authorization bearer header, reads
+current token state and inserts a redacted principal. It never accepts cookies,
+origin-bearing browser requests or URL tokens as machine authentication. The
+existing static bearer constructor retains its behavior; only an authenticated
+exact method/path receives the machine CSRF exception, with WAF/headers retained.
+
+
 ### v12 audit correction invariants
 
 **12.1 account mail:** `rullst-mail::ActionLink` validates an exact

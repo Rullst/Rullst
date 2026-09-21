@@ -81,9 +81,10 @@ The prioritized implementation sequence is:
 ## Additional priorities approved on 21 September
 
 After the six-feature source admission, the owner selected the following two
-deliveries for implementation through September 23. They are **planned**, not
-implemented or release-admitted. Finish the current combined PR #238 admission
-and carry necessary fixes forward while independent implementation progresses.
+deliveries for implementation through September 23. PR #238 passed source
+admission and was merged into `main` at `0ce3306d`; the v12 maintenance line is
+preserved. Consent and email login are candidates in PR #239, with full hosted
+and extracted-package admission still pending. Neither is release-admitted.
 
 | Order | Selected delivery | Required acceptance |
 | :--- | :--- | :--- |
@@ -113,6 +114,14 @@ separate candidate.
 | 3 | Durable recurring schedules across application instances | Coordinate recurring occurrences through authoritative storage and leased dispatch into the existing queue/outbox. Define missed-run policy, cancellation, restart, stale-worker fencing and idempotent occurrence keys. Current per-process cron and delayed queue jobs are foundations; neither proves exactly-once external effects. |
 | 4 | Durable outgoing application webhooks | Deliver application events to explicitly approved destinations with signatures, bounded retries and inspectable terminal failure. Compose the existing outbox, destination/SSRF policy and idempotency contracts; incoming payment-webhook verification is a different capability. |
 | 5 | Resumable multipart uploads for private S3-compatible storage | Support larger attachments and interrupted uploads with bounded parts, authenticated tenant/object ownership, checksums, completion/abort and orphan cleanup. Extend the existing private-object adapter; this is separate from Bunny Stream resumable video uploads and requires native protocol evidence. |
+
+The API-token item now has a local implementation candidate with exact scopes,
+owner-only management, revision-based rotation, account-epoch invalidation,
+SQLite/PostgreSQL authoritative checks and a Core machine-route verifier.
+Local SQLite, native PostgreSQL, fresh-process/database-restart and HTTP
+contracts passed, including the extracted facade/Auth/Core archives. Full
+workspace, coverage, security and hosted package admission remain required;
+see the [API-token contract](api-tokens.md).
 
 Execution order may respond to measured implementation and validation cost. Do not replace
 full journeys with mock-only placeholders to increase the feature count. Keep

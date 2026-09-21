@@ -222,6 +222,34 @@ append_package_patches "$login_dir/Cargo.toml"
 python3 "$repository_root/.github/check-auth-recovery-postgres.py" \
   --suite email-login --manifest-path "$login_dir/Cargo.toml"
 
+# Verify token lifecycle and exact-route HTTP policy through extracted packages,
+# including independent processes and an actual PostgreSQL service restart.
+api_dir="$work_dir/api-token-consumer"
+mkdir -p "$api_dir/tests/api_tokens"
+{
+  printf '[package]\nname = "rullst-packaged-api-tokens"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
+  printf '[features]\ndefault = ["api-tokens-sqlite", "api-tokens-postgres"]\napi-tokens-sqlite = []\napi-tokens-postgres = []\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["auth-api-tokens-sqlite", "auth-api-tokens-postgres"] }\n' "$version"
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "process", "io-std"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "any", "sqlite", "postgres", "tls-rustls-ring"] }\n'
+  printf 'tempfile = "3"\nurl = "2.5.8"\nrand = "0.10.1"\naxum = "0.8.9"\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
+} > "$api_dir/Cargo.toml"
+for test in api_token_contract api_token_http api_token_restart; do
+  cp "$repository_root/rullst-auth/tests/$test.rs" "$api_dir/tests/$test.rs"
+done
+cp "$repository_root/rullst-auth/tests/api_tokens/"*.rs "$api_dir/tests/api_tokens/"
+python3 - "$api_dir/tests" <<'API_PY'
+from pathlib import Path
+import sys
+for source in Path(sys.argv[1]).rglob('*.rs'):
+    source.write_text(source.read_text().replace('rullst_auth::', 'rullst::auth::').replace('rullst_core::', 'rullst::'))
+API_PY
+append_package_patches "$api_dir/Cargo.toml"
+"$cargo_bin" generate-lockfile --manifest-path "$api_dir/Cargo.toml" --offline
+"$cargo_bin" test --manifest-path "$api_dir/Cargo.toml" --offline --locked
+python3 "$repository_root/.github/check-auth-recovery-postgres.py" \
+  --suite api-tokens --manifest-path "$api_dir/Cargo.toml"
+
 storage_dir="$work_dir/storage-consumer"
 mkdir -p "$storage_dir/tests"
 {
