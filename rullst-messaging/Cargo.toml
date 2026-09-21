@@ -21,6 +21,8 @@ redis-streams = ["dep:redis", "dep:url", "tokio/time"]
 
 schedules-postgres = ["dep:subtle","dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls", "dep:url", "dep:aes-gcm", "dep:zeroize", "dep:serde_json", "dep:chrono", "dep:cron", "dep:getrandom", "tokio/time"]
 
+webhooks = ["sqlite", "dep:reqwest", "dep:hmac", "dep:base64", "tokio/net", "tokio/time"]
+
 [dependencies]
 aes-gcm = { version = "0.11.0", features = ["zeroize"], optional = true }
 serde = { workspace = true, features = ["std"] }
@@ -42,5 +44,11 @@ getrandom = { version = "0.4.2", optional = true }
 
 subtle = { workspace = true, optional = true }
 
+reqwest = { workspace = true, features = ["rustls"], optional = true }
+hmac = { workspace = true, optional = true }
+base64 = { workspace = true, optional = true }
+
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "process", "io-std", "io-util"] }
+rcgen = { version = "=0.14.10", default-features = false, features = ["aws_lc_rs", "pem", "zeroize"] }
+tokio-rustls = { version = "0.26.4", default-features = false, features = ["aws_lc_rs", "tls12"] }

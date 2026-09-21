@@ -25,6 +25,8 @@ mod trace;
 mod traits;
 mod types;
 mod validation;
+#[cfg(feature = "webhooks")]
+pub mod webhooks;
 mod wire;
 
 pub use admin::{DeadLetter, DeadLetterQuery, PurgeReceipt, PurgeRequest};

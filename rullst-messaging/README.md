@@ -201,3 +201,17 @@ See the [recurring-publication guide](https://github.com/Rullst/Rullst/blob/main
 for clock/calendar semantics, runtime roles, host authorization and at-least-once
 boundaries. This is a local unpublished candidate; full hosted source/package
 admission remains outstanding.
+
+## v13 outgoing-webhook candidate
+
+The optional `webhooks` feature composes the encrypted SQLite broker with one
+immutable approved HTTPS destination, HMAC-SHA256 sender/receiver contracts,
+DNS/address checks pinned to the connection, bounded retry/dead-letter state,
+cancellation and terminal retention. Independent processes share one local file;
+remote/multi-host webhook state is outside this profile. Facade consumers select
+`messaging-webhooks`; no default Messaging dependency changes.
+
+The [outgoing-webhook guide](https://github.com/Rullst/Rullst/blob/main/docs/src/outgoing-webhooks.md)
+documents host authorization, receiver replay protection, storage custody and
+protocol details. Native owned HTTP/TLS and process-restart tests passed locally;
+full hosted source/package admission remains outstanding.

@@ -300,6 +300,33 @@ append_package_patches "$recurring_dir/Cargo.toml"
 "$cargo_bin" test --manifest-path "$recurring_dir/Cargo.toml" --offline --locked
 python3 "$repository_root/.github/check-recurring-postgres.py" --manifest-path "$recurring_dir/Cargo.toml"
 
+webhooks_dir="$work_dir/webhooks-consumer"
+mkdir -p "$webhooks_dir/tests/webhook"
+{
+  printf '[package]\nname = "rullst-packaged-webhooks"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
+  printf '[features]\ndefault = ["webhooks"]\nwebhooks = []\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["messaging-webhooks"] }\n' "$version"
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "process", "io-std", "io-util", "net"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "sqlite"] }\n'
+  printf 'uuid = { version = "1", features = ["v4"] }\nbase64 = "0.23.0"\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
+  printf 'reqwest = { version = "0.13.5", default-features = false, features = ["rustls"] }\n'
+  printf 'tokio-rustls = { version = "0.26.4", default-features = false, features = ["aws_lc_rs", "tls12"] }\n'
+  printf 'rcgen = { version = "=0.14.10", default-features = false, features = ["aws_lc_rs", "pem", "zeroize"] }\n'
+} > "$webhooks_dir/Cargo.toml"
+for test in webhook_contract webhook_restart; do
+  cp "$repository_root/rullst-messaging/tests/$test.rs" "$webhooks_dir/tests/$test.rs"
+done
+cp "$repository_root/rullst-messaging/tests/webhook/"*.rs "$webhooks_dir/tests/webhook/"
+python3 - "$webhooks_dir/tests" <<'WEBHOOKS_PY'
+from pathlib import Path
+import sys
+for source in Path(sys.argv[1]).rglob('*.rs'):
+    source.write_text(source.read_text().replace('rullst_messaging::', 'rullst::messaging::'))
+WEBHOOKS_PY
+append_package_patches "$webhooks_dir/Cargo.toml"
+"$cargo_bin" generate-lockfile --manifest-path "$webhooks_dir/Cargo.toml" --offline
+"$cargo_bin" test --manifest-path "$webhooks_dir/Cargo.toml" --offline --locked
+
 storage_dir="$work_dir/storage-consumer"
 mkdir -p "$storage_dir/tests"
 {

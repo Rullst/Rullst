@@ -97,6 +97,7 @@ rullst = { version = "12.1.0", default-features = false }
 | `messaging` | no | Native bounded broker-neutral messaging contracts and the deterministic process-local broker |
 | `messaging-sqlite` | no | `messaging` plus fixed-schema durable local SQLite publication, lease, retry/DLQ, ACK and idempotency state |
 | `messaging-schedules-postgres` | no | v13 candidate: encrypted PostgreSQL recurring-publication outbox and fenced relay into an explicitly selected broker; no default SQLite/ORM |
+| `messaging-webhooks` | no | v13 candidate: encrypted shared-local SQLite outgoing outbox, immutable HTTPS destination, signed exact bytes, fenced retries and minimized terminal inspection |
 | `messaging-orm-outbox` | no | `messaging` and `orm` plus the static relational outbox-to-broker relay; the publish/ACK crash window remains at-least-once |
 | `mailer` | no | Compatibility alias for `mail-smtp`; prefer `mail-smtp` in new manifests |
 | `queue-redis` | no | Redis dependency and Core's Redis queue backend |

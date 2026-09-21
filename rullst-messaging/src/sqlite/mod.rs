@@ -7,6 +7,8 @@ mod publish;
 mod schema;
 mod storage;
 mod transaction;
+#[cfg(feature = "webhooks")]
+mod webhooks;
 
 use crate::{
     AckToken, BrokerConfig, Clock, DeadLetter, DeadLetterQuery, Delivery, FailureCode,

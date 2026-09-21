@@ -37,6 +37,7 @@
   - [Scoped API tokens](api-tokens.md)
 - [Shared mail suppression](shared-mail-suppression.md)
 - [Durable recurring publications](recurring-publications.md)
+- [Durable outgoing webhooks](outgoing-webhooks.md)
 - [Redis Streams Messaging](redis-messaging.md)
 - [Recoverable Live UI](live-recovery.md)
 - [Distributed Operation Tracing](distributed-tracing.md)

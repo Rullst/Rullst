@@ -139,6 +139,17 @@ Messaging all-feature regression and strict Clippy passed; extracted archive
 consumers passed the native journey. Full hosted admission remains required;
 see [durable recurring publications](recurring-publications.md).
 
+The outgoing-webhook item has a local Messaging candidate with an encrypted
+SQLite outbox, approved destinations, fresh DNS validation and address pinning,
+exact-body HMAC signatures, bounded retry/manual recovery and permanent
+cancellation. Owned HTTP/TLS and fresh-process journeys passed receiver
+deduplication after lost responses, untrusted certificates, redirect/private
+address denial, SQL failure, retention and delivery uncertainty. These journeys
+also passed through extracted facade/Messaging archives. A reproduced SQLite
+lock-contention defect was corrected: lease deadlines are sampled after acquiring
+the write lock. Full hosted admission remains required; see
+[durable outgoing webhooks](outgoing-webhooks.md).
+
 Execution order may respond to measured implementation and validation cost. Do not replace
 full journeys with mock-only placeholders to increase the feature count. Keep
 September 24–25 for combined validation and September 26 for final adjustments

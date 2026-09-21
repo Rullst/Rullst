@@ -850,6 +850,54 @@ acceptance includes independent instances/processes, real PostgreSQL rollback,
 restart and restricted roles, cancellation/lease races, durable broker consumption,
 publication-before-ACK replay and extracted-package/facade consumers.
 
+### v13 durable outgoing-webhook implementation contract
+
+The sixth owner-selected increment extends Messaging behind opt-in `webhooks`
+and facade `messaging-webhooks`. Compose the existing encrypted SQLite broker
+as a private durable outbox rather than adding a second queue. The first profile
+supports independent processes sharing one local database file; remote/multi-host
+webhook state remains separate. Do not change default dependencies. App-domain
+SQL transactions and this outbox are distinct; applications needing atomic
+domain publication must bridge from their existing transactional outbox.
+
+One server-approved immutable destination, signing identity, delivery window
+and bounded policy belong to each server-owned namespace. Persist an encrypted
+control publication with a fixed idempotency key: configuration/secret drift
+must conflict, not redirect queued data. Never expose this private broker or
+purge/subscribe to its control topic. Freeze bounded JSON bytes and event kind;
+retries keep the stable message ID and exact body. The host authorizes publishing,
+inspection, cancellation and manual retry before selecting the namespace.
+
+Production accepts only explicitly configured HTTPS destinations, with verified
+TLS, no proxies/redirects, bounded timeouts and fresh public-address resolution
+pinned to the actual connection. Deny private, loopback, link-local, multicast,
+reserved, documentation and transition address ranges, including mixed DNS
+answers. An explicit literal-loopback development mode and deterministic offline
+mode may support owned fixtures; production configuration rejects both. Empty or
+mock signing credentials select offline delivery, never a network fallback.
+
+Sign exact body bytes, stable ID, kind, key ID and attempt timestamp with a
+purpose-separated HMAC-SHA256 contract. Provide strict constant-time receiver
+verification with bounded time skew; receivers must also store processed IDs
+and authorize the event. Do not claim signatures prevent replay by themselves.
+Keep signing/storage keys separate and redact credentials, URL, payload and
+response bodies from Debug/errors/terminal inspection.
+
+Use bounded attempts/backoff and an immutable delivery window. Revalidate the
+actual SQL lease immediately before external dispatch, after DNS work. A late
+worker cannot acknowledge/retry/revive another worker's claim or cancelled work.
+Acceptance before an uncertain ACK remains an at-least-once condition; preserve
+the accepted HTTP status/ID and retry the same identity. Retry transient failures,
+terminally reject redirects and permanent failures, and expose bounded minimized
+terminal inspection, explicit retry within the original window, cancellation
+and terminal retention. Retention must not delete active work or control state.
+The host owns disciplined trusted time, persistent disk/backup policy, receiver
+deduplication, endpoint approval and worker supervision. Native acceptance must
+include actual HTTP/TLS protocol fixtures, SSRF/redirect/signature/replay negatives,
+independent instances/process restart, SQL cancellation/outage/lease contention,
+retry/dead-letter/retention and extracted-package/facade consumers. Real provider
+accounts are not required or implied.
+
 ### v13 SQLite messaging lock-time correction
 
 Before composing outgoing webhooks, real lock-contention tests demonstrated
