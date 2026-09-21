@@ -34,8 +34,9 @@ never browser timestamps, and maintain a reliable deployment clock.
 
 ## Inventory and logout
 
-Each account has at most 20 sessions. `active_sessions` returns only current,
-unexpired sessions with a management ID, expiry, optional creation time, optional
+Each account has at most 20 sessions. `active_sessions` returns only unexpired
+sessions matching the current account version, with a management ID, expiry,
+optional creation time, optional
 display label and a current-session marker. The ID is a purpose-separated keyed
 digest and cannot authenticate as the session. Debug output hides IDs and labels.
 
@@ -76,9 +77,10 @@ Operator database/backups/encryption and retention scheduling remain deployment
 responsibilities; do not expose this maintenance API as a public endpoint.
 
 Session creation, verification, management and retention operations have a
-ten-second database-operation deadline. Unavailable or inconsistent storage never
-grants access. A timeout or lost commit acknowledgement does not prove that a
-write rolled back: query authoritative state before reporting its outcome.
+ten-second database-operation deadline. Storage failures remain errors rather
+than authentication success; inventory also rejects out-of-bounds metadata.
+A timeout or lost commit acknowledgement does not prove that a write rolled
+back: query authoritative state before reporting its outcome.
 Already-authorized in-flight requests are not recalled by logout; long-lived
 WebSockets and other identity systems need their own revalidation policy.
 
