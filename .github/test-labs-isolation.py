@@ -136,6 +136,10 @@ def accept(args, directory, groups):
         assert 'error' in app.request('alice', {'Status': {'id': 'correct'}}, {'tenant': 'other-school', 'course': 'rust'})
         assert run_runner(runner, config_path).returncode == 0
         correct = app.success('alice', {'Status': {'id': 'correct'}})
+        if correct['state'] != 'Completed' or correct.get('result', {}).get('Graded', {}).get('passed') != 2:
+            # Only this fixed public addition fixture is diagnosed. Never print
+            # arbitrary worker stderr, submitted source or fixture credentials.
+            print('trusted-addition-fixture-feedback:', json.dumps({'state': correct['state'], 'result': correct['result']}, ensure_ascii=True)[:16384], flush=True)
         assert correct['state'] == 'Completed' and correct['result']['Graded']['passed'] == 2
         assert 'Experimental' in correct['result']['Graded']['evidence']
         assert not any(secret in json.dumps(correct) for secret in ('private-one', 'expected', 'a+b'))
