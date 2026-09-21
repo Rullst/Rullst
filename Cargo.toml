@@ -92,7 +92,7 @@ redis = { version = "1.7.0", default-features = false }
 jsonwebtoken = { version = "11", default-features = false, features = ["aws_lc_rs", "use_pem"] }
 lettre = { version = "0.11.22", default-features = false }
 opentelemetry = { version = "0.32.0", default-features = false }
-opentelemetry-otlp = { version = "0.32.0", default-features = false }
+opentelemetry-otlp = { version = "0.33.0", default-features = false }
 opentelemetry_sdk = { version = "0.32.1", default-features = false }
 tracing-opentelemetry = { version = "0.33.0", default-features = false }
 zeroize = "1.8.2"
