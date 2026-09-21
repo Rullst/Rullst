@@ -255,6 +255,7 @@ tutorial!(
     "../../docs/src/polyglot-persistence.md"
 );
 tutorial!(redis_guide, "../../docs/src/redis-guide.md");
+tutorial!(session_management, "../../docs/src/session-management.md");
 tutorial!(
     shared_passkey_ceremonies,
     "../../docs/src/shared-passkey-ceremonies.md"

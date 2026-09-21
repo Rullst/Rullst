@@ -8,6 +8,7 @@
 
 mod crypto;
 mod outbox;
+mod sessions;
 mod store;
 mod transactions;
 
@@ -15,6 +16,7 @@ pub use crypto::{
     RecoveryLocale, RecoveryNotice, RecoveryNoticeKind, RecoverySecrets, SecretToken,
 };
 pub use outbox::{ClaimedRecoveryNotice, RecoveryDeliveryFailure, RecoveryOutboxSnapshot};
+pub use sessions::{ActiveSession, SessionId, SessionLabel};
 pub use store::{AuthenticatedRecoveryAccount, SqlRecoveryStore};
 
 /// Failures contain no recipient, credential, database URL or provider response.

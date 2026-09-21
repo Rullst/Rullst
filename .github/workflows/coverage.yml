@@ -122,6 +122,9 @@ jobs:
           python3 .github/check-privacy-postgres.py --coverage
           python3 .github/check-passkey-postgres.py --coverage
 
+      - name: Measure PostgreSQL recovery and cross-process session revocation
+        run: python3 .github/check-auth-recovery-postgres.py --coverage
+
       - name: Measure private S3 access and service restart contracts
         run: bash .github/test-storage-s3-live.sh --coverage
 

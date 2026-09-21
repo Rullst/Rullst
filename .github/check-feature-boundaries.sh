@@ -168,6 +168,8 @@ rullst|redis
 rullst|offline-sync
 rullst|storage-s3
 rullst|auth
+rullst|auth-sessions-sqlite
+rullst|auth-sessions-postgres
 rullst|mail-smtp
 rullst|mailer
 rullst|mail

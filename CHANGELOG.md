@@ -29,6 +29,16 @@ A prepared version section does not establish that its tag or crates exist.
   Hosted source/release admission and real provider-account interoperability
   remain pending; see the [storage contract](docs/src/private-object-storage.md).
 
+### Active-session management candidate
+
+- Extend opt-in Auth recovery stores with account-owned session inventory,
+  selective/all-other logout, bounded explicit labels, additive metadata and
+  expired-session retention. Preserve the current token while fencing stale
+  authentication proofs during logout of siblings. Add session-only facade
+  features, independent-process HTTP checks, PostgreSQL restart/deadline tests
+  and an extracted-package consumer. Hosted source/release admission remains
+  pending; see the [session contract](docs/src/session-management.md).
+
 ### CI tooling
 
 - Reject manual archive selectors that would skip the requested package gate.

@@ -46,6 +46,18 @@ fn round_trip(user_id: i32) -> Result<i32, AuthError> {
 }
 ```
 
+## Active-session management candidate (v13)
+
+With `recovery-sqlite` or `recovery-postgres`, `SqlRecoveryStore` can list the
+current account's active opaque sessions, revoke one sibling or revoke all
+others while preserving the current session. Explicit display labels are
+bounded; no device fingerprint, IP address or activity history is collected.
+Run the additive schema migration and verify SQL state on every request.
+Encrypted-only cookies and independent JWTs do not adopt this policy implicitly.
+Hosted source/package admission is pending; see the
+[session contract](../docs/src/session-management.md) for retention, deadlines,
+tenant boundaries and automated evidence.
+
 ## WebAuthn/passkeys
 
 `PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges,
