@@ -79,6 +79,10 @@ and these exact trees from already trusted installed tools. The hosted acceptanc
 helper runs inside its own delegated unprivileged systemd service and never
 modifies global namespace policy. These test helpers do not deploy a production
 runner or enroll a real provider/account.
+On the disposable Ubuntu CI host, a checksum-reviewed distro AppArmor profile
+authorizes only a root-owned private launcher copy and denies capabilities to
+its children. The global user-namespace restriction remains enabled; the runner
+does not install policy or reconfigure the developer's machine.
 
 ## Results and failure recovery
 

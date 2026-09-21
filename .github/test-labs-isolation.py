@@ -143,7 +143,8 @@ def accept(args, directory, groups):
         cases = [
             ('wrong-answer', 'pub fn solve(a:i64,b:i64)->i64 { a-b }', 'WrongAnswer'),
             ('fuel', 'pub fn solve(_:i64,_:i64)->i64 { loop {} }', {'Trapped': 'Fuel'}),
-            ('memory', 'pub fn solve(_:i64,_:i64)->i64 { let data=vec![1u8;67108864]; data[0] as i64 }', {'Trapped': 'Memory'}),
+            ('memory', 'pub fn solve(_:i64,_:i64)->i64 { let data=std::hint::black_box(vec![1u8;67108864]); data[0] as i64 }', {'Trapped': 'Memory'}),
+            ('recursion', '#[inline(never)] fn recurse(n:u64)->u64 { if n==0 {0} else {std::hint::black_box(recurse(n-1)).wrapping_add(n)} } pub fn solve(_:i64,_:i64)->i64 { recurse(std::hint::black_box(10000)) as i64 }', {'Trapped': 'Stack'}),
         ]
         for name, code, feedback in cases:
             app.success('alice', {'Submit': {'submission': submission(name, code)}})
@@ -157,6 +158,8 @@ def accept(args, directory, groups):
         for name, code in [
             ('compiler-errors', 'pub fn solve(_:i64,_:i64)->i64 { missing_symbol }'),
             ('host-files-denied', 'const SECRET: &str=include_str!("/etc/passwd"); pub fn solve(_:i64,_:i64)->i64 { SECRET.len() as i64 }'),
+            ('proc-descriptors-denied', 'const SECRET: &[u8]=include_bytes!("/proc/self/fd/1"); pub fn solve(_:i64,_:i64)->i64 { SECRET.len() as i64 }'),
+            ('cgroup-files-denied', 'const SECRET: &str=include_str!("/limits/cgroup.procs"); pub fn solve(_:i64,_:i64)->i64 { SECRET.len() as i64 }'),
             ('environment-denied', 'const SECRET: &str=env!("RULLST_LABS_FORBIDDEN_SECRET"); pub fn solve(_:i64,_:i64)->i64 { SECRET.len() as i64 }'),
             ('imports-denied', '#[link(wasm_import_module="host")] unsafe extern "C" { fn forbidden(a:i64)->i64; } pub fn solve(a:i64,_:i64)->i64 { unsafe { forbidden(a) } }'),
             ('compiler-output-bounded', 'compile_error!("' + 'x' * 12000 + '"); pub fn solve(_:i64,_:i64)->i64 { 0 }'),
@@ -170,6 +173,13 @@ def accept(args, directory, groups):
                 assert 'submission.rs' in text and '\x1b' not in text
             checks.append(name)
             print('passed:', name, flush=True)
+
+        # A new guest instance for each grader case must reset mutable state.
+        isolated_state = 'static mut COUNT:i64=0; pub fn solve(a:i64,b:i64)->i64 { unsafe { COUNT+=1; a+b+COUNT-1 } }'
+        app.success('alice', {'Submit': {'submission': submission('case-state', isolated_state)}})
+        assert run_runner(runner, config_path).returncode == 0
+        assert app.success('alice', {'Status': {'id': 'case-state'}})['result']['Graded']['passed'] == 2
+        checks.append('fresh-guest-state-for-each-case')
 
         # A deliberately expensive constant expression is compiled only by the
         # isolated worker. Observe a real compiler in its bounded group, cancel

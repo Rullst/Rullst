@@ -93,6 +93,15 @@ namespace launch failed. Those probes are evidence of an unsupported environment
 not permission to remove network restrictions or execute learner code there.
 Automated acceptance must provision a supported disposable Linux host explicitly.
 
+The Ubuntu 24.04 acceptance host needs an AppArmor namespace permission for its
+trusted launcher. The hosted test provisions a root-owned private copy of the
+distro Bubblewrap executable and a separately named, checksum-reviewed copy of
+Ubuntu's `bwrap-userns-restrict` profile, attached only to that launcher path.
+Its child profile denies capabilities. This setup is confined to the disposable
+host; it never disables AppArmor or changes a global namespace sysctl. The runner
+still requires its own namespace, capability, seccomp, Landlock and cgroup probes.
+Ordinary workstations are not reconfigured by the runner or local test suite.
+
 ## Integrity, grading and recovery
 
 An immutable request binds protocol/profile version, tenant, course, learner,
