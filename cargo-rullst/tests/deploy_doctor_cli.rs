@@ -379,12 +379,15 @@ fn links_special_files_and_non_unicode_environment_are_rejected() {
             .success()
     );
     assert!(!run(root, &["--config", "nested"]).0.status.success());
-    rustix::fs::mkfifoat(
-        rustix::fs::CWD,
-        root.join("Rullst.toml"),
-        rustix::fs::Mode::RUSR,
-    )
-    .unwrap();
+    // rustix's mkfifoat is not exported on Apple platforms. The POSIX fixture
+    // utility also exercises a real FIFO there, without unsafe test FFI.
+    assert!(
+        std::process::Command::new("mkfifo")
+            .arg(root.join("Rullst.toml"))
+            .status()
+            .unwrap()
+            .success()
+    );
     assert!(!run(root, &[]).0.status.success());
     fs::remove_file(root.join("Rullst.toml")).unwrap();
     let output = command(root)
