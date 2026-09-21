@@ -161,6 +161,10 @@ that a canceled database operation rolled back. Limits bound this handler, not
 all process memory or aggregate users across replicas. Use ingress/per-account
 rate limits for repeated reconnects and infrastructure-level abuse controls.
 
+Oversized frames terminate the connection before domain actions. Rejecting the
+payload at the transport limit can reset TCP before a close frame reaches the
+peer; clients must not depend on receiving an application close code in that case.
+
 Application persistence and shared revision/permission authority are required
 for restart or cross-replica recovery. Neither this handler nor the browser
 persists domain state. Keep revision epochs consistent when restoring backups.

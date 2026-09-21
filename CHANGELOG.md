@@ -80,6 +80,9 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### CI tooling
 
+- Isolate partial-update integration tests in separate processes with checked
+  SQLite initialization. Verify Live's oversized-frame rejection across TCP
+  resets while retaining domain-state and connection-admission assertions.
 - Reject manual archive selectors that would skip the requested package gate.
   Prepare the complete locked dependency graph before offline archive consumers
   inspect cross-platform dependencies. Let cancelled observational scorecards
