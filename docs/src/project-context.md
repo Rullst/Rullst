@@ -59,5 +59,7 @@ recognized generated outputs and never replaces project instructions.
 
 Current local fixtures exercise deterministic output, stale checks, malformed
 configuration, private-value omission, source limits, links, output conflicts,
-legacy migration and real project/scaffold commands. Combined hosted acceptance
-is tracked in the [v13 delivery plan](v13-delivery-plan.md).
+legacy migration and real project/scaffold commands. Combined hosted and
+installed-archive acceptance passed in
+[PR #221](https://github.com/Rullst/Rullst/pull/221); final release evidence is
+tracked separately in the [v13 delivery plan](v13-delivery-plan.md).

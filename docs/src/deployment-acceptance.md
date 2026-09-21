@@ -2,8 +2,10 @@
 
 This v13 candidate exercises two independent Rullst application processes behind
 a digest-pinned Caddy proxy and an owned Redis server. The local contract passes, alongside 242 Core and 163 Security library tests,
-strict lints and five detected body-lifetime mutations. These are bounded checks;
-full workspace and hosted admission are still required. It is a deployment test
+strict lints and five detected body-lifetime mutations. Hosted workspace and
+installed-archive checks subsequently passed in
+[PR #224](https://github.com/Rullst/Rullst/pull/224); the final release campaign
+remains separate. It is a deployment test
 and reference boundary, not a new load-balancer crate or an automatic cloud/VPS
 deployment feature. Foundry's generated production configuration remains separate.
 

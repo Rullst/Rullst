@@ -72,7 +72,7 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M6** | ORM: Active Record, repository pattern, seeders, and Turso/libSQL vision | `[~] Partial` *(SQLx foundations and the bounded Turso-primary Hrana transport/matrix exist; relation/hook/auto-diff parity and transparent synchronization do not)* | v13 |
 | **M7** | Edge/data: portable Wasm request/response runtime, distributed data, and autonomous upgrades | `[~] Partial` *(worth the portable edge runtime; distributed replication should use vendor-specific semantics, and autonomous upgrades are not worth enabling without signed artifacts, rollback, and operator approval)* | v13 research |
 | **M8** | ORM/AI: intent-based modeling and self-optimizing production indexes | `[ ] Not implemented` *(worth an advisory, explain-and-approve implementation — automatic production DDL without review is not worth the operational risk)* | v13 research |
-| **M9** | Auth: local auth, OAuth/OIDC, TOTP, passkeys, and WebAuthn | `[~] Partial` *(bounded application JWT policy and shared local revocation exist; complete refresh/recovery/session flows, shared passkey challenges and normative WebAuthn conformance remain incomplete)* | v13 |
+| **M9** | Auth: local auth, OAuth/OIDC, TOTP, passkeys, and WebAuthn | `[~] Partial` *(bounded application JWT policy, shared local revocation and opt-in PostgreSQL passkey ceremonies exist with hosted/database/browser evidence; complete refresh/recovery/session flows and normative WebAuthn conformance remain incomplete)* | v13 |
 | **M10** | Security utilities: mail, DTO validation, rate limiting, and Shield | `[~] Partial` *(worth completing — local controls and mail transports exist, while distributed rate limiting and some provider invariants require real backends and conformance tests)* | v13 |
 | **M11** | SaaS: hardened Nexus, Omni vision, billing, and entitlements | `[~] Partial` *(worth building in bounded modules — Nexus and billing foundations exist, but Omni, uniform live gateway coverage, and declarative entitlements are not complete)* | v13+ |
 | **M12** | Defense in depth: RASP/WAF, Vault, honeypots, HMAC audit, secure headers, Login Jail, DLP, TOTP, fingerprinting, CLI inspection, and Threat Radar | `[~] Partial` *(worth continuous hardening — concrete controls exist, but they do not prove universal OWASP coverage, zero leakage, external intelligence, or certification)* | Continuous |
@@ -80,11 +80,11 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M14** | Frontend: HTMX-first SSR and Leptos/Dioxus interoperability | `[~] Partial` *(worth improving — HTMX/HTML support is real, while the current Leptos/Dioxus types are compatibility wrappers rather than full framework integrations; “zero bundle” is a selectable architecture, not a universal guarantee)* | v13 |
 | **M15** | Runtime: queues, cache, scheduler, multi-stage Docker, and brokered messaging | `[~] Partial` *(bounded Core Memory/SQLite/Redis foundations plus `rullst-messaging` envelopes, idempotency, groups, leases, retry/DLQ, deterministic broker, contract suite and durable local SQLite state exist; remote codec/replication and RabbitMQ, Kafka, Redis Streams, NATS, SQS/SNS, GCP Pub/Sub and Pulsar adapters do not)* | Foundation v12; remote adapters v13+ |
 | **M16** | Wasm islands and `#[client_component]` | `[~] Partial` *(the bounded `#[server_function]` transport is now implemented over `rullst.client` v1 with a generated Axum route, Wasm caller, compile diagnostics and native/Wasm/scaffold evidence; island hydration, packaging, real-browser interoperability and a stable component ABI remain open)* | v13 |
-| **M17** | Real-time, object storage, media, and `cargo rullst pkg` | `[~] Partial` *(worth modular expansion — WebSocket/SSE and local storage foundations exist; S3/R2, image processing, and a production package-registry contract do not)* | v13+ |
+| **M17** | Real-time, object storage, media, and `cargo rullst pkg` | `[~] Partial` *(WebSocket/SSE and local storage foundations exist. The unpublished Bunny Stream lifecycle passed hosted/browser/archive source acceptance in PR #227; real provider/CDN interoperability remains unvalidated. S3/R2, image processing and a production package-registry contract remain open)* | v13+ |
 | **M18** | LiveView-style server-driven UI and `make:live` | `[~] Partial` *(worth hardening — a WebSocket component loop exists, but auth, reconnect, backpressure, diff semantics, and browser E2E coverage remain)* | v13 |
 | **M19** | AI/telemetry: Radar, agent tool schemas, spans, and Prometheus `/metrics` | `[x] Implemented (bounded)` — local telemetry and export surfaces exist; unavailable sources must remain unavailable rather than becoming invented values | v12 hardening |
 | **M20** | Persistence: zero-copy event streaming and immutable ledger engine | `[ ] Not implemented` *(interesting but lower priority — worth implementing only after defining persistence, consistency, recovery, and verification semantics; the HMAC audit chain is not a distributed ledger)* | v13 research |
-| **M21** | Omni-frontend protocol and mobile hypermedia bridge | `[~] Partial` *(the web-first Tauri shell, shared `rullst.client` v1 envelope and bounded native offline-state foundation exist; v13 must make signed Android distribution a first Omni hardening milestone with guided application-owned keystores, exact artifact selection, `apksigner` verification, debug/release separation and fail-closed rejection of unsigned release APKs. Platform persistence/secure keys, concrete network/background orchestration, native capabilities, physical-device evidence and store publication remain open)* | v13 research |
+| **M21** | Omni-frontend protocol and mobile hypermedia bridge | `[~] Partial` *(the web-first Tauri shell, shared `rullst.client` v1 envelope and bounded native offline-state foundation exist; v13 adds exact release-APK selection, application-owned signing certificates and fail-closed SDK verification, with hosted signed-APK evidence in PR #220. Platform persistence/secure keys, concrete network/background orchestration, native capabilities, physical-device evidence and store publication remain open)* | v13 research |
 | **M22** | Agentic DevOps and autonomous infrastructure provisioning | `[~] Partial` *(worth keeping as human-reviewed recommendations — telemetry advice exists; unattended infrastructure mutation is not worth enabling by default without preview, scoped credentials, audit, rollback, and policy)* | v13 |
 | **M23** | Polymorphic core and auto-healing runtime/database | `[~] Partial` *(worth keeping as diagnostics — a schema-error suggestion helper exists; automatic code/schema mutation is not worth enabling by default without validated plans, approval, and rollback)* | v13 |
 | **M24** | Embedded IoT: `no_std` frames and an Ed25519 OTA manifest gate | `[~] Partial` *(the frame/MQTT-PUBLISH/CoAP-request encoders, verification foundation and durable-counter CAS adapter contract exist; download, a hardware-backed store, flashing, boot slots, HSM/PQC, and transport interoperability do not)* | v12 foundation / v13 integrations |
@@ -96,15 +96,15 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M30** | Tonic/gRPC and Protobuf scaffolding | `[~] Partial` *(worth finishing — `make:grpc` emits a starting service, but a distinct supported `rullst-grpc` crate and generated-project conformance matrix do not yet exist)* | v13 |
 | **M31** | Aerospace, autonomous vehicles, robotics, and defense (`rullst-orbit` / `rullst-auto`) | `[ ] Not implemented` *(extraordinary, but not worth placing inside the web-framework Core; consider a separate safety-critical project only after hardware, standards, certification, and governance exist)* | Separate future program |
 | **M32** | Architecture: first-class Axum/Tower escape hatches and precise proc-macro diagnostics | `[x] Implemented (bounded)` — router conversion/interoperability and `syn::Error` diagnostics exist; continue compatibility tests | v12 hardening |
-| **M33** | SaaS: `#[rullst::gate]` and `GateGuard` declarative entitlements | `[ ] Not implemented` *(worth implementing for SaaS only if enforcement is server-side, tenant-bound, auditable, and independent of hidden UI controls)* | v13 |
-| **M34** | Multi-target SDK generator for TypeScript, React, Dart, and Swift | `[ ] Not implemented` *(worth implementing from one canonical typed API schema; multiplying AST heuristics across languages is not worth the drift)* | v13+ |
+| **M33** | SaaS: `#[rullst::gate]` and `GateGuard` declarative entitlements | `[~] Bounded foundation` *(typed current-state plan authorization and its authenticated SaaS consumer passed PR #221; the proposed attribute/guard syntax and broader declarative entitlement model remain open)* | v13 |
+| **M34** | Multi-target SDK generator for TypeScript, React, Dart, and Swift | `[~] Bounded TypeScript profile` *(one explicit OpenAPI 3.1 profile generates Rust codecs and a strict TypeScript HTTP client, with hosted consumer/archive acceptance in PR #221; React, Dart, Swift and broader schemas remain open)* | v13+ |
 | **M35** | Distributed OpenTelemetry trace-waterfall visualizer in Studio | `[~] Partial` *(worth implementing — Studio has trace surfaces, but a distributed OTel waterfall needs real ingestion, clock/skew handling, sampling metadata, and unavailable states)* | v13+ |
 | **M36** | Natural-language-to-SQL Studio data copilot | `[ ] Not implemented` *(worth a read-only, explainable assistant with schema allowlists, parameterization, preview, limits, and approval; autonomous production writes are not worth the risk)* | v13 research |
 | **M37** | One-click AI error-console autofix | `[~] Partial` *(worth retaining as a local, reviewable patch workflow — an autofix endpoint exists, but autonomous edits need diff preview, workspace confinement, audit, tests, and rollback)* | v13 |
 | **M38** | In-memory/local-NVMe SQLite read replicas with background synchronization | `[ ] Not implemented` *(worth vendor-specific adapters when demanded; generic “transparent replication” is not worth claiming because consistency and failover semantics belong to the selected database)* | v13 research |
 | **M39** | Optional self-hosted Rullst Gateway and load balancer | `[ ] Not implemented` *(worth a phased v13 design as a separate opt-in `rullst-gateway` crate/binary, preferably on a maintained proxy foundation such as Pingora. It should consume explicit readiness/drain signals and begin with bounded upstream selection, health checks, WebSocket forwarding and telemetry. It must not live inside `rullst-core` or claim parity with a managed global cloud service, whose network, DDoS controls, multi-zone operations and SLA are external infrastructure.)* | v13 research/foundation |
-| **M40** | Isolated programming labs and learning-game execution | `[ ] Not implemented` *(worth a phased v13 design as opt-in `rullst-labs` contracts plus a separately deployed `rullst-labs-runner`. The web process must never execute learner code or receive a container control socket. Full offensive CTF arenas require independently operated, isolated infrastructure; see the dedicated roadmap.)* | v13 research/foundation |
-| **M41** | Privacy defaults and proportional age assurance | `[~] Initial foundation` *(opt-in unpublished `rullst-privacy` age policies, signed evidence, asynchronous replay claims, trusted-clock rechecks, shared-local SQLite and optional PostgreSQL storage across application hosts with focused real-database tests; native declarations, versioned optional consent and generated SaaS/LMS preference/profile-export journeys have focused evidence. The package candidate adds optional facade features and archive acceptance; combined package admission, live age providers, guardian verification, broader rights/retention and reviewed regional profiles remain open. See the [privacy roadmap](docs/src/privacy-age-assurance-roadmap.md). No automatic worldwide compliance claim.)* | v13 P0 |
+| **M40** | Isolated programming labs and learning-game execution | `[~] Experimental implementation` *(unpublished `rullst-labs` contracts and a separately deployed Linux Rust/Wasmi runner provide durable submissions, grading, cancellation and recovery. The named profile passed 26 isolated checks, native tests and installed-archive acceptance; complete PR admission and independent isolation review remain pending. The web process never executes learner code or receives a container control socket. Broader language packs and offensive CTF infrastructure remain separate; see the dedicated roadmap.)* | v13 research/foundation |
+| **M41** | Privacy defaults and proportional age assurance | `[~] Initial foundation` *(opt-in unpublished `rullst-privacy` age policies, signed evidence, asynchronous replay claims, trusted-clock rechecks, shared-local SQLite and optional PostgreSQL storage across application hosts with focused real-database tests; native declarations, versioned optional consent and generated SaaS/LMS preference/profile-export journeys have focused evidence. The package candidate adds optional facade features and passed hosted/archive source acceptance in PR #221; initial package registration, final release admission, live age providers, guardian verification, broader rights/retention and reviewed regional profiles remain open. See the [privacy roadmap](docs/src/privacy-age-assurance-roadmap.md). No automatic worldwide compliance claim.)* | v13 P0 |
 
 ## Quantified planning horizon through v13
 
@@ -113,7 +113,7 @@ programme**. It includes v13 research and v13+ ambitions, not just features
 selected for 13.0.0 by 26 September. It measures neither release readiness nor
 the percentage of implementation effort already completed.
 
-The label counts below were checked on 20 September 2026 against M1–M41. They include
+The label counts below were checked on 21 September 2026 against M1–M41. They include
 v12 hardening, continuous, next-SemVer, v13 and v13-research rows. M31 is excluded
 because the tracker explicitly assigns aerospace/autonomous/defence work to a
 separately governed future programme rather than the general v12/v13 framework suite.
@@ -123,8 +123,8 @@ decompose these canonical milestones, so a raw sum would double-count work.
 | State | Milestones | Share of the 40-milestone horizon |
 | :--- | ---: | ---: |
 | `[x]` bounded completion | **5** | **12.5%** |
-| `[~]` useful but incomplete foundation | **25** | **62.5%** |
-| `[ ]` not implemented | **10** | **25.0%** |
+| `[~]` useful but incomplete foundation | **28** | **70.0%** |
+| `[ ]` not implemented | **7** | **17.5%** |
 | **Total in the framework programme** | **40** | **100%** |
 
 There are **35 milestones without strict closure (87.5% of the labels)**. A
@@ -380,20 +380,20 @@ links its immutable source and successful release evidence. New capability
 work now belongs to v13; compatible security fixes remain eligible for v12
 maintenance.
 
-The v13 branch already contains an earlier v12 baseline and its separate Labs
-proposal and planning commits. The subsequent 12.1.0 integration is tracked in
-[PR #218](https://github.com/Rullst/Rullst/pull/218); it has not yet been admitted
-to the protected v13 branch at this checkpoint. Keep subsequent applicable
-stable fixes synchronized through reviewed changes. A development branch name
-alone does not prove that it includes later fixes.
+[PR #218](https://github.com/Rullst/Rullst/pull/218) admitted the published
+12.1.0 baseline and the SQLite/PostgreSQL replay foundation to protected `v13`
+at `7f48d882`. Subsequent source admissions are recorded individually in the
+[delivery plan](docs/src/v13-delivery-plan.md). Keep later applicable stable
+fixes synchronized through reviewed changes; a development branch name alone
+does not prove that it includes them.
 
 The published **12.1.0** source at `b62390b4` and its documentation closeout
-are carried into this v13 integration: account mail, one-time Stripe contracts,
+were carried into that v13 integration: account mail, one-time Stripe contracts,
 machine endpoints, strict driver isolation, native CLI installation and project
 update/recovery join the earlier SaaS and Android corrections. The unpublished
 age-assurance package and v13 Labs/privacy/Verus plans remain separate.
-Integration requires its own CI evidence; stable-release results do not certify
-the combined v13 source.
+Each later increment requires its own CI evidence; stable-release results do
+not certify the combined v13 source.
 
 The [delivery plan through 26 September 2026](docs/src/v13-delivery-plan.md)
 selects the bounded release priorities, acceptance criteria and feature-freeze
@@ -410,7 +410,7 @@ into shipped claims.
 | **P1 — Omni application delivery** | Predictable desktop/mobile builds, diagnostics and installation guidance | Detect SDK/toolchain/signing/identifier/version/ABI mistakes, distinguish unsigned build output from installable signed packages, and test lifecycle, navigation and interrupted networks. Device and store acceptance need their own evidence. |
 | **P1 — coherent application contracts** | One clear path for sessions, ownership, tenant context and typed client APIs | Consolidate existing Auth/Core/Security boundaries, complete selected session/passkey flows and validate API/SDK serialization. Preserve explicit configuration and negative authorization tests. |
 | **P2 — interactive learning products** | Server-authoritative progress, gamification and isolated programming exercises | Build on the current LMS scaffolds; version grading rules, persist idempotent results and prove tenant isolation. Follow the existing v13 `rullst-labs`/`rullst-labs-runner` proposal; untrusted execution stays outside the web process. |
-| **First conditional extension — transparent supervision** | Proposed optional `rullst-supervision`, with distinct exam/learner and parental modules, selected by the owner as the first addition if the required v13 work finishes with sufficient acceptance capacity | Deliver a generated LMS journey with independently authorized guardians/reviewers, visible sessions, explicit permissions, revocation, bounded events/retention and application-side restrictions. Automated client observations do not prove misconduct or justify automatic penalties. Device-wide controls and camera inference require separate platform contracts; see the [delivery plan](docs/src/v13-delivery-plan.md) and [SST boundary](docs/src/spec.md#conditional-v13-supervision-crate). |
+| **First conditional extension — transparent supervision** | Unpublished optional `rullst-supervision` now implements bounded exam/learner and parental contracts, a generated LMS journey and transparent observations; PRs #222/#226 and the repaired archive gate provide source evidence | Deliver a generated LMS journey with independently authorized guardians/reviewers, visible sessions, explicit permissions, revocation, bounded events/retention and application-side restrictions. Automated client observations do not prove misconduct or justify automatic penalties. Device-wide controls and camera inference require separate platform contracts; see the [delivery plan](docs/src/v13-delivery-plan.md) and [SST boundary](docs/src/spec.md#conditional-v13-supervision-crate). |
 | **P3 — selected integrations** | One complete real-provider or broker journey at a time | Add an adapter only with a concrete product need, protocol/failure tests, documented limits and an available acceptance environment. Gateway/load-balancer research remains opt-in rather than blocking the core release. |
 
 This is an execution order, not a promise that the entire historical backlog

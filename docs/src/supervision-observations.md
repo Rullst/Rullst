@@ -162,8 +162,12 @@ all nine selected authorization/restriction mutations, including a regression
 for current-revision attempts against paused and ended sessions. This is a
 bounded sample, not a whole-crate mutation score.
 
-Full hosted workspace and installed-archive acceptance are required for this
-extension before release; no live provider/model test is claimed.
+The extension passed hosted workspace checks in
+[PR #226](https://github.com/Rullst/Rullst/pull/226). Its initially skipped archive
+gate subsequently passed in
+[exact-commit validation](https://github.com/Rullst/Rullst/actions/runs/35564765646).
+The [delivery plan](v13-delivery-plan.md) records that retrospective repair.
+The final release campaign remains required; no live provider/model test is claimed.
 
 Browser boundaries follow [Page Visibility](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API),
 [focus events](https://developer.mozilla.org/en-US/docs/Web/API/Window/blur_event),

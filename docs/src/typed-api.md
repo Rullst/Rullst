@@ -157,4 +157,6 @@ from a pinned lockfile, then executes the client against a disposable Rust HTTP
 server. It covers Unicode, optional/null semantics, input/output validation,
 query duplicates, cross-owner/unauthenticated denial and transport faults.
 The test's fixed identities are fixtures, not a production authentication service.
-Combined hosted admission and deployment-specific browser acceptance remain pending.
+The combined source passed hosted and installed-archive acceptance in
+[PR #221](https://github.com/Rullst/Rullst/pull/221). The final release campaign
+and deployment-specific browser acceptance remain separate requirements.

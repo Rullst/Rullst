@@ -14,13 +14,18 @@ A prepared version section does not establish that its tag or crates exist.
 - Make age verification and replay claims asynchronous, with trusted server-clock
   checks before and after storage. Deny expiry, rollback, cancellation and
   uncertain storage outcomes; production still rejects mocks and local memory.
-- Add optional shared-local SQLite replay state with serialized claim/quota/expiry
-  transactions, persisted configuration and clock metadata, and nonce digests.
-  Retain no photos or birth dates. Live providers, multi-host storage and global
-  privacy compliance remain outside this foundation; the crate stays unpublished.
+- Add optional shared-local SQLite and authoritative PostgreSQL replay state
+  with serialized claim/quota/expiry transactions, persisted configuration and
+  clock metadata, and nonce digests. Retain no photos or birth dates. Live age
+  providers, verified guardianship and automatic global privacy compliance
+  remain outside the unpublished package; see the v13 source inventory below.
 
 ### CI tooling
 
+- Reject manual archive selectors that would skip the requested package gate.
+  Prepare the complete locked dependency graph before offline archive consumers
+  inspect cross-platform dependencies. Let cancelled observational scorecards
+  release their workflow concurrency slot while retaining reports after failures.
 - Prepare the v13 release line with explicit major/branch/tag/package binding,
   protected-head admission, automatic checks on both maintained branches and
   fuzz provenance confined to the candidate's release line. Keep the protected
@@ -81,6 +86,8 @@ This section describes the v13 source train. It does not announce a crates.io
 publication or admit a stable v13 release. See the
 [delivery plan](docs/src/v13-delivery-plan.md) and
 [adoption guide](docs/src/migration-v13.md) for current evidence and boundaries.
+The inventory includes subsequent source increments through September 21;
+the development version remains unpublished.
 
 - Set the existing sixteen release packages and internal requirements to the
   explicit development version. Migration catalog v2 admits reviewed 12.1→13
@@ -97,8 +104,31 @@ publication or admit a stable v13 release. See the
   authenticated challenge transport, SQLite/PostgreSQL replay state, optional
   versioned consent/withdrawal, and opt-in generated SaaS/LMS profile journeys.
   No facial engine, live age provider or automatic global legal-compliance claim.
-- Track transparent learner/exam/parental supervision as the first conditional
-  extension. This checkpoint does not introduce a supervision crate.
+- Add the unpublished `rullst-supervision` candidate with explicit collection
+  acknowledgement, scoped/revocable authority, shared-local SQLite state and
+  an opt-in generated LMS journey. Typed browser/capture observations and bounded
+  camera-presence/audio-activity adapter contracts support human review; no media
+  model, device-wide surveillance or automatic misconduct verdict is included.
+- Add optional PostgreSQL passkey ceremonies with tenant/account/session/RP
+  binding, single use, bounded durable state, database/process recovery and
+  Chromium virtual-authenticator evidence. Credential ownership, revocation and
+  counter updates remain explicit application responsibilities.
+- Retain HTTP requests through response-body completion during graceful drain.
+  Exercise readiness, draining, shared budgets and browser/proxy boundaries with
+  two real application processes behind Caddy and Redis. Add the bounded offline
+  `deploy:doctor` and reject the public example application-key placeholder.
+  These controls do not certify or automatically modify a cloud/VPS deployment.
+- Add the unpublished `rullst-media` candidate for Bunny Stream asset lifecycle,
+  resumable upload, processing reconciliation, private playback and deletion,
+  with SQLite recovery and authenticated HTTP/browser consumers. Real provider
+  and CDN interoperability remain unvalidated; existing LMS fields do not enable
+  this opt-in service automatically.
+- Add unpublished `rullst-labs` orchestration and a separate experimental Linux
+  Rust/Wasmi runner for bounded pure-function exercises. Encrypted durable jobs,
+  signed receipts, exact grading, cancellation, recovery and retention have
+  automated execution/consumer evidence. The application never executes learner
+  code. Independent isolation review and final release admission remain pending;
+  neither a general Rust/Rullst hosting service nor production readiness is claimed.
 - Gate generated SaaS billing reports on current reconciled subscription state,
   authenticated ownership and explicit paid plans. Reject mock, stale, expired,
   revoked or mismatched state; retain application-owned billing reconciliation.

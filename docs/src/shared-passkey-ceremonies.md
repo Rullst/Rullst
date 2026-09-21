@@ -1,8 +1,9 @@
 # Shared passkey ceremonies
 
-This v13 implementation candidate passes local real-PostgreSQL and Chromium
-contracts. Full workspace, isolated-archive and hosted acceptance are still
-required; it is not a WebAuthn conformance claim. The existing synchronous
+This unpublished v13 implementation passed real-PostgreSQL and Chromium
+contracts, hosted workspace checks and isolated-archive acceptance in
+[PR #223](https://github.com/Rullst/Rullst/pull/223). The final release campaign
+remains separate; this is not a WebAuthn conformance claim. The existing synchronous
 `PasskeyAuth` API retains its process-local, single-use challenges. The existing
 SQLite credential registry persists credentials and counter CAS, not ceremonies.
 
