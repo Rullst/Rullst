@@ -9,6 +9,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Dependency refresh candidate
+
+- Update the workspace and affected fuzz locks for jsonwebtoken 11.1.0,
+  syn 3.0.6, rustix 1.1.5, ammonia 4.2.0 and the compatible pinned
+  aws-smithy-types 1.6.4. Preserve the Rust 1.96 MSRV, SES feature boundary
+  and historical SemVer baseline constraint. Actual Labs isolation and the
+  full hosted campaign must pass before this candidate is admitted.
+- Refresh immutable CodeQL, Rust toolchain installer, tool installer,
+  TruffleHog wrapper and Codecov Action references together across v13 workflows.
+
 ### Unpublished v13 privacy foundation
 
 - Make age verification and replay claims asynchronous, with trusted server-clock
