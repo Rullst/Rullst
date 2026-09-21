@@ -24,6 +24,34 @@ pub(super) const CATEGORIES: &[&str] = &[
     "labs-preflight:compiler",
     "labs-preflight:namespaces",
 ];
+/// Stable categories from the reviewed launcher, never its raw paths/messages.
+pub(super) fn launcher_failure(stderr: &str) -> Option<&'static str> {
+    stderr.lines().find_map(|line| {
+        let message = line.strip_prefix("bwrap: ")?;
+        Some(
+            if message.starts_with("No permissions to creating new namespace") {
+                "labs-preflight:namespace-permission"
+            } else if message.starts_with("Creating new namespace failed") {
+                "labs-preflight:namespace-create"
+            } else if message.starts_with("setting up uid map")
+                || message.starts_with("setting up gid map")
+            {
+                "labs-preflight:launcher-id-map"
+            } else if message.starts_with("execvp ") {
+                "labs-preflight:launcher-exec"
+            } else if message.starts_with("Unknown option") || message.starts_with("--") {
+                "labs-preflight:launcher-options"
+            } else if message.contains("mount")
+                || message.contains("remount")
+                || message.contains("root bind")
+            {
+                "labs-preflight:launcher-mount"
+            } else {
+                "labs-preflight:namespace-launcher"
+            },
+        )
+    })
+}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Observation {

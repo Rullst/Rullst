@@ -167,11 +167,7 @@ impl Session {
                         .find(|category| line == *category)
                 })
                 .next_back();
-            Ok(category.or_else(|| {
-                text.lines()
-                    .any(|line| line.starts_with("bwrap:"))
-                    .then_some("labs-preflight:namespace-launcher")
-            }))
+            Ok(category.or_else(|| probe::launcher_failure(&text)))
         });
         Ok(Self {
             group: Some(group),

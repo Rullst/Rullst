@@ -29,6 +29,9 @@ Every attempt requires:
 - Pinned regular, non-shared-writable tools/runtime files; a read-only root,
   isolated `/proc`, read-only limits and a 64 MiB disposable workspace. No host
   home, application files, database, secret environment or control sockets.
+  Files and canonical ancestors must be root/controller-owned. Shared-writable
+  ancestors are rejected except protected sticky parents such as `/tmp`; the
+  tool trees themselves cannot be shared-writable.
 - Reviewed seccomp restrictions and fully enforced Landlock ABI v3 filesystem
   rights. After trusted preflight, descendants cannot reopen `/proc` or cgroup
   files. Only the fixed tool/runtime tree can execute; the workspace cannot.

@@ -65,6 +65,11 @@ untrusted input into the worker:
 - A minimal read-only toolchain/runtime tree, a fresh bounded workspace and
   explicit descriptors. No host home, D-Bus/container sockets, job-store mount,
   writable toolchain/cache, application files or metadata endpoint reachability.
+  Tool files/directories and their canonical ancestors must be owned by root or
+  the dedicated controller UID. Shared-writable ancestors are refused except
+  sticky parents protecting the next owned component; tool trees themselves
+  must never be shared-writable. Host administrators/controller ownership remain
+  trusted, and digest checks do not replace trusted installation or custody.
 - After trusted preflight inspection, require fully enforced Landlock filesystem
   restrictions (ABI v3 rights) for fixed tools, runtime files and the bounded
   workspace. Deny new `/proc`/cgroup opens to compiler/interpreter descendants;

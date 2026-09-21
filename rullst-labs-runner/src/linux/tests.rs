@@ -64,6 +64,32 @@ fn bundle_identity_binds_paths_bytes_and_refuses_symlinks_or_writable_shared_too
     assert!(config::hash_tree(dir.path()).is_err());
 }
 #[test]
+fn pinned_artifacts_require_trusted_ancestors_as_well_as_read_only_files() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+    let parent = dir.path().join("tools");
+    std::fs::create_dir(&parent).unwrap();
+    std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let file = parent.join("artifact");
+    std::fs::write(&file, b"abc").unwrap();
+    std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o444)).unwrap();
+    assert_eq!(
+        config::hash_file(&file).unwrap().as_str(),
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    );
+    std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o777)).unwrap();
+    assert!(config::hash_file(&file).is_err());
+    assert!(config::hash_tree(&parent).is_err());
+    // A sticky ancestor protects an owned file from another UID's replacement,
+    // but a shared directory is still not admitted as the actual tool tree.
+    std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o1777)).unwrap();
+    assert!(config::hash_file(&file).is_ok());
+    assert!(config::hash_tree(&parent).is_err());
+    std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(config::hash_tree(&parent).is_ok());
+}
+
+#[test]
 fn launcher_has_fixed_read_only_boundaries_and_no_host_environment_or_command_string() {
     let command = bootstrap::command(
         Path::new("/trusted/bwrap"),
