@@ -15,6 +15,10 @@ tutorial!(
     private_object_storage,
     "../../docs/src/private-object-storage.md"
 );
+tutorial!(
+    transactional_partial_updates,
+    "../../docs/src/transactional-partial-updates.md"
+);
 tutorial!(live_recovery, "../../docs/src/live-recovery.md");
 tutorial!(distributed_tracing, "../../docs/src/distributed-tracing.md");
 

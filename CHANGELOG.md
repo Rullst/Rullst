@@ -68,6 +68,16 @@ A prepared version section does not establish that its tag or crates exist.
   mismatch and OTLP/HTTP endpoint handling. Hosted source/package admission
   remains pending; see [the profile and migration](docs/src/distributed-tracing.md).
 
+### Transactional partial-update candidate
+
+- Merge selected values into the current tenant-bound row within a savepoint,
+  reuse the full save lifecycle and expose explicit `save_with_tx`.
+- Preserve caller state on rejected operations and include audit/post-commit
+  effects. Full-row SQL, object refresh and audit-context migration are documented
+  in [the candidate guide](docs/src/transactional-partial-updates.md).
+- Local native database, cancellation, cache/Scout and extracted-consumer
+  checks passed; full hosted admission remains pending.
+
 ### CI tooling
 
 - Reject manual archive selectors that would skip the requested package gate.

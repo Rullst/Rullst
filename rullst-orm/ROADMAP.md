@@ -10,6 +10,15 @@
 Rullst ORM aims for an inspectable, AI-friendly Active Record experience while
 retaining Rust typing, explicit escape hatches and parameterized values.
 
+## Unpublished v13 candidate
+
+[Transactional partial updates](../docs/src/transactional-partial-updates.md)
+merge selected values into the current scoped row and reuse the normal save
+lifecycle, including audit and post-commit cache/Scout/observer effects. This
+adds explicit transaction support and refreshes the caller model only after
+operation success. Full-row SQL and enclosing-rollback behavior require the
+linked migration review; archive and hosted admission are pending.
+
 ## Implemented foundations
 
 - Active Record models via `#[derive(Orm)]` and repository abstractions.

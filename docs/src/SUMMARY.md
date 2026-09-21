@@ -143,6 +143,7 @@
 
 # 📦 Crates Ecosystem
 - [rullst-orm](crates/orm.md)
+  - [Transactional partial updates](transactional-partial-updates.md)
 - [rullst-connect](crates/connect.md)
 - [rullst-messaging](crates/messaging.md)
 - [rullst-mail](crates/mail.md)

@@ -32,6 +32,7 @@ pub async fn exercise(record: &mut Record) -> Result<(), rullst_orm::Error> {
     let _ = Record::query().where_like("name", "%fixture%").limit(3).get().await?;
     let mut transaction = Orm::begin_transaction().await?;
     record.save_with_tx(&mut transaction).await?;
+    record.update_partial().name("patched".into()).save_with_tx(&mut transaction).await?;
     let _ = Record::find_with_tx(record.id, &mut transaction).await?;
     transaction.rollback().await?;
     record.delete().await

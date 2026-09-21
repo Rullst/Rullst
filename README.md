@@ -46,8 +46,9 @@ inventory, explicit source evaluation and reviewed application updates.
 
 The current development candidates include [private S3/R2 files](docs/src/private-object-storage.md),
 [session management](docs/src/session-management.md), [Redis messaging](docs/src/redis-messaging.md)
-[recoverable Live UI](docs/src/live-recovery.md) and
-[distributed tracing](docs/src/distributed-tracing.md). Their guides distinguish
+[recoverable Live UI](docs/src/live-recovery.md),
+[distributed tracing](docs/src/distributed-tracing.md) and
+[transactional partial updates](docs/src/transactional-partial-updates.md). Their guides distinguish
 local acceptance from pending hosted and release admission; these additions are
 not part of the published v12.1.0 package.
 

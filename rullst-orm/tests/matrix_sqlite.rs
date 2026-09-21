@@ -5,6 +5,7 @@
 ))]
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
+mod partial_update_contract;
 mod support;
 
 use rullst_orm::schema::{Blueprint, Schema};
@@ -58,4 +59,5 @@ async fn strict_sqlite_crud_uses_the_sqlite_pool_and_dialect() {
     );
 
     support::exercise_outbox().await;
+    partial_update_contract::exercise().await;
 }

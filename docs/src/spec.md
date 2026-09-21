@@ -1195,6 +1195,37 @@ while portability and semantic review remain the model author's responsibility.
   revisions fail closed. Bulk builders still do not synthesize per-row history,
   and durable external export remains an explicit outbox/application contract.
 
+### 5.4.1. Transactional partial-update candidate (under validation)
+
+* `update_partial().save()` and its new explicit `save_with_tx(...)` variant
+  merge selected typed values into the current persisted row within a savepoint.
+  PostgreSQL and MySQL lock that row with `FOR UPDATE`; SQLite retains its
+  transaction/locking semantics and can reject contended read-to-write upgrades.
+  Missing rows and cross-tenant model handles fail before mutation.
+* The merged model uses the normal generated save lifecycle, including policy,
+  hooks, observers, encrypted fields, atomic audit entries and post-commit
+  cache/Scout/observer effects. This is a logical partial change implemented
+  through a full-row save, not a selected-column SQL optimization. Existing
+  model hooks can transform that candidate under the normal save contract.
+* The caller's object is replaced with the fresh merged model only after the
+  operation succeeds. A direct save waits for its transaction commit; an
+  explicit or task-scoped save reflects the transaction's tentative state, so
+  the caller must discard/reload it if the enclosing transaction rolls back.
+  A `PostCommit` failure does not undo a durable direct save. An ambiguous
+  database commit error requires reconciliation rather than blind replay.
+* An empty builder remains a no-op. A failed policy, hook, SQL write or audit
+  rolls back the operation's savepoint and discards its pending effects. This
+  allows a managed outer transaction to catch that failure and continue.
+  Strict post-commit timing requires `Orm::transaction` or the owned direct
+  path; a raw SQLx transaction retains the documented observation limitation.
+* Unselected persisted values and relation fields in the caller's object are
+  refreshed from the database representation. Unsubmitted edits on that object
+  do not become an implicit patch. This is not an expected-version comparison:
+  callers needing conflict rejection must still supply their domain revision
+  contract. Local SQLite/PostgreSQL/MySQL, cancellation, cache/Scout and
+  extracted-facade journeys pass; full hosted workspace/platform/package
+  admission remains pending.
+
 ### 5.5. Process-Local Post-Commit Contract
 
 * `Orm::transaction` and direct generated model `save()`/`delete()` operations

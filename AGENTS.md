@@ -18,7 +18,7 @@ The Rullst framework is organized into decoupled, high-performance crates:
 | Crate | Responsibilities |
 | :--- | :--- |
 | **`rullst-core`** | Runtime-only-by-default server, Tokio integration, `routes!`, queues/realtime, `RadarSnapshot`, and `SpanCollector`; ORM/SQLite queue support is feature-gated. |
-| **`rullst-orm`** | Parameterized SQLx database pool, Active Record & Repository patterns, dynamic schema inspector. |
+| **`rullst-orm`** | Parameterized SQLx database pool, Active Record & Repository patterns, dynamic schema inspector, and a v13 transactional partial-update candidate under validation; see the SST for full-row persistence and rollback semantics. |
 | **`rullst-auth`** | Argon2 password hashing, encrypted session management, passkeys and an optional v13 shared PostgreSQL ceremony candidate, RBAC helpers, and OAuth2/OIDC re-exports. |
 | **`rullst-security`** | RASP/WAF defense-in-depth, strict secure headers, Login Jail, DLP, honeypots, RBAC, and security telemetry. |
 | **`rullst-ai`** | Provider-agnostic LLM client (Gemini, OpenAI, Claude, DeepSeek, Ollama), prompt injection filter, PII masking. |

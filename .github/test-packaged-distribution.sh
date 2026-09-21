@@ -216,6 +216,21 @@ cp "$repository_root/.github/fixtures/distributed-tracing-facade.rs" "$tracing_d
 append_package_patches "$tracing_dir/Cargo.toml"
 "$cargo_bin" test --manifest-path "$tracing_dir/Cargo.toml" --offline --test telemetry_facade
 
+partial_dir="$work_dir/partial-update-consumer"
+mkdir -p "$partial_dir/tests"
+{
+  printf '[package]\nname = "rullst-packaged-partial-update"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["strict-sqlite"] }\n' "$version"
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }\nsqlx = { version = "0.9.0", default-features = false }\ntracing = "0.1.44"\n'
+  cat <<'TOML'
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("redis"))'] }
+TOML
+} > "$partial_dir/Cargo.toml"
+cp "$repository_root/.github/fixtures/partial-update-facade.rs" "$partial_dir/tests/partial_update.rs"
+append_package_patches "$partial_dir/Cargo.toml"
+"$cargo_bin" test --manifest-path "$partial_dir/Cargo.toml" --offline --test partial_update
+
 cli_package="$packages_dir/cargo-rullst-${version}"
 if [ ! -f "$cli_package/Cargo.lock" ]; then
   echo "The packaged cargo-rullst archive must include Cargo.lock."
