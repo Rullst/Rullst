@@ -21,7 +21,7 @@ env:
 
 jobs:
   admit:
-    name: Admit exact protected-main release SHA
+    name: Admit exact protected release-line SHA
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -34,25 +34,15 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Require a semantic tag at the current main head
+      - name: Require matching version, tag and protected release-branch head
         env:
           RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]; then
-            echo "Release tag must use vMAJOR.MINOR.PATCH or a SemVer prerelease."
-            exit 1
-          fi
-          git fetch --no-tags --force origin main:refs/remotes/origin/main
-          git cat-file -e "${GITHUB_SHA}^{commit}"
-          main_sha="$(git rev-parse refs/remotes/origin/main)"
-          if [ "$GITHUB_SHA" != "$main_sha" ]; then
-            echo "Release tag must resolve to the current origin/main head."
-            echo "tag=$GITHUB_SHA main=$main_sha"
-            exit 1
-          fi
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 .github/check-release-source.py
 
       - name: Test candidate and equivalent-input admission policy
         run: |
+          python3 .github/test-release-source.py
           python3 .github/test-check-release-admission.py
           python3 .github/test-fuzz-evidence-inputs.py
           python3 .github/test-fuzz-evidence.py

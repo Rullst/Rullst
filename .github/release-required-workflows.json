@@ -1,6 +1,7 @@
 {
-  "schema_version": 2,
-  "required_branch": "main",
+  "schema_version": 4,
+  "required_major": 12,
+  "required_branch": "v12",
   "workflows": [
     { "workflow": "architecture.yml", "event": "push" },
     { "workflow": "audit.yml", "event": "push" },

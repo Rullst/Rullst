@@ -22,8 +22,11 @@ memory-safe, or compliant with a regulation.
 
 ## Mainline execution model
 
-The v12 dashboard and its automatic status badges are pinned to `main`. The
-continuous workflows accept pushes to `main` and pull requests targeting it,
+The v12 dashboard and its automatic status badges are pinned to `v12`.
+`main` develops v13. Current stable push/PR workflows accept `v12`;
+historical references below to v12 on `main` describe the pre-transition
+release evidence and must not be used as fresh maintenance acceptance. The
+continuous workflows accept pushes and pull requests targeting `main` or `v12`,
 and expose `workflow_dispatch` where a safe rerun is useful. Superseded runs of
 these workflows are cancelled per workflow and ref so rapid development does
 not spend runner capacity proving an obsolete commit.
@@ -102,7 +105,8 @@ are blocked in this UI fixture; this is not live-provider, WebKit/Firefox,
 hardware-device, or WCAG certification. No extra Rust compilation matrix is added.
 
 GitHub executes `schedule` events from the repository's default branch, so
-scheduled and continuous v12 evidence now share the active `main` source line.
+scheduled checks now follow development on `main`; stable `v12` evidence
+comes from its own push/PR and explicitly dispatched runs.
 Tag publication remains deliberately unavailable through a manual button.
 
 ## Manual and periodic execution map
@@ -125,7 +129,7 @@ The workflows below run **only when requested manually**:
 | Workflow | Evidence | RC interpretation |
 | :--- | :--- | :--- |
 | `dast-zap.yml` | OWASP ZAP baseline against a release blog showcase plus fresh generated REST API and complete LMS applications | REST/LMS warnings and failures block unless an exact rule ID is versioned as `INFO` with a local explanation in `.zap/`; those configs are passed explicitly to the pinned scanner and unlisted warnings remain live. The showcase is informational because it deliberately uses third-party presentation assets; reports and application logs are retained. This remains representative, not universal deployment coverage. |
-| `fuzzing.yml` | All 40 declared libFuzzer targets from the validated shared inventory | **Required v12 release evidence:** release mode validates all 40 targets and independently verifies reusable input-equivalent evidence; packages with remaining targets run locked compilation preflights and new 5.5-hour campaigns; target-specific corpora are restored and saved, while failure reproducers are retained. Dependency-lock drift fails preflight, campaign and corpus jobs. The proc-macro parser uses strict processes of at most 30 minutes sharing one corpus, which bounds sanitizer RSS without weakening the total budget. Original reused results must be at most seven days old, come from an ancestor on `main`, and prove the complete budget. The final candidate still runs the evidence boundary and publication independently recomputes all 40 results. [Reuse policy](docs/src/fuzz-evidence.md). A strict five-minute single-target diagnostic accelerates correction feedback but is explicitly ineligible as release evidence. This is bounded evidence, not proof for every input. |
+| `fuzzing.yml` | All 40 declared libFuzzer targets from the validated shared inventory | **Required v12 release evidence:** release mode validates all 40 targets and independently verifies reusable input-equivalent evidence; packages with remaining targets run locked compilation preflights and new 5.5-hour campaigns; target-specific corpora are restored and saved, while failure reproducers are retained. Dependency-lock drift fails preflight, campaign and corpus jobs. The proc-macro parser uses strict processes of at most 30 minutes sharing one corpus, which bounds sanitizer RSS without weakening the total budget. Original reused results must be at most seven days old, come from an ancestor on the candidate's `v12` release line, and prove the complete budget. The final candidate still runs the evidence boundary and publication independently recomputes all 40 results. [Reuse policy](docs/src/fuzz-evidence.md). A strict five-minute single-target diagnostic accelerates correction feedback but is explicitly ineligible as release evidence. This is bounded evidence, not proof for every input. |
 | `kani.yml` | Twenty named bounded formal harnesses in ten supported runtime/library packages | **Required v12 release evidence for the declared harnesses:** every proof has an isolated strict matrix job. Rullst itself stays on stable Rust 1.98.1 with a Rust 1.96 MSRV; only the separately built Kani verifier uses its pinned `nightly-2026-08-01` compiler (`rustc 1.99.0-nightly`) because the latest stable Kani bundle's Rust 1.93 compiler cannot compile the framework. The proc-macro-only `rullst-macros` target remains unsupported by Kani and is covered by compile-pass/fail and generated-project evidence instead. |
 | `miri.yml` | Randomized-layout Miri execution over 15 named pure-Rust/default-feature scopes | **Required v12 release evidence for the declared scopes:** every selected scope is strict. This nightly-only interpreter uses pinned `nightly-2026-08-21` (`rustc 1.100.0-nightly`); it does not change the project's stable toolchain or MSRV. Native FFI, OS syscall, network/provider, umbrella re-export, and example-application boundaries are excluded explicitly rather than emitted as tolerated errors. |
 | `mutants.yml` | A source-bound discovered inventory, eighty lossless shards with at most four running concurrently, their artifacts and a strict aggregate | Informational: a cheap all-feature `--list --json` preflight records the selected source's complete unique inventory before runners start; every shard then uses that release surface, and aggregation requires every reviewed candidate to receive exactly one classification before reporting the conservative caught percentage. A targeted mode retests one validated production Rust file after a correction; it does not replace the complete campaign. Recovery modes accept only the repository-reviewed campaign policy, bind the source/run/branch/tool/inventory digest, bisect explicitly authorized failed fragments, reuse immutable successful artifacts and emit a content-addressed aggregate. Missed/time-out exit codes remain findings, while a broken baseline, incomplete artifact set, preflight/classification mismatch, invalid invocation or cargo-mutants internal failure fails the workflow. The v12 campaign completed 14,391/14,391 classifications in run `34761010296`; “pass” does not mean every mutant was killed. |
@@ -283,7 +287,13 @@ defaults disabled and every public feature enabled. A partial hand-maintained
 feature allowlist therefore cannot make a monorepo-only integration appear
 release-ready.
 
-## Recommended `main` branch-protection profile
+## Stable `v12` branch-protection profile
+
+On 21 September 2026 the `v12` branch was preserved at stable source `184bc1f7`.
+Its protection was read back with 43 required GitHub Actions checks, a current
+base, administrator enforcement, conversation resolution and no force pushes
+or deletion. These settings do not certify the pending maintenance workflow PR.
+
 
 Require every job emitted by the following workflows before merging into
 `main`: Rust CI, GitHub Actions Lint, Documentation, End-to-End Smoke Tests, Cargo Audit,

@@ -2,9 +2,9 @@ name: Cargo Audit
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main, v12]
   pull_request:
-    branches: [ "main" ]
+    branches: [main, v12]
   workflow_dispatch:
   schedule:
     - cron: '0 8 * * *'

@@ -1,11 +1,10 @@
 version: 2
+# Main develops v13; v12 receives compatible stable maintenance.
+# This configuration takes effect from the repository default branch.
 updates:
-  # Enable Cargo updates for the Rust workspace
   - package-ecosystem: "cargo"
     directory: "/"
-    # Dependency PRs target the actively maintained v12 integration line.
-    # The frozen v5 branch receives no routine dependency updates.
-    target-branch: "main"
+    target-branch: "v12"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -15,27 +14,24 @@ updates:
     labels:
       - "dependencies"
       - "rust"
-    # Group minor and patch updates together in a single PR to reduce noise.
-    # Breaking (major) updates will still be individual PRs.
     groups:
       safe-updates:
         update-types:
           - "minor"
           - "patch"
-
   - package-ecosystem: "github-actions"
     directory: "/"
-    # Action updates belong to the actively maintained v12 integration line.
-    # The frozen v5 branch receives no routine workflow maintenance.
-    target-branch: "main"
+    target-branch: "v12"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "08:00"
       timezone: "America/Sao_Paulo"
-    # CodeQL init/analyze/upload-sarif are one versioned toolchain. Updating
-    # them together also avoids duplicate CI for separate sub-action PRs.
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    # Review/test the tools together, including all CodeQL sub-actions.
     groups:
-      codeql-toolchain:
+      ci-tools:
         patterns:
-          - "github/codeql-action*"
+          - "*"

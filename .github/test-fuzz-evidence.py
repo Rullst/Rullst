@@ -18,6 +18,7 @@ from fuzz_evidence_inputs import ROOT
 NOW = datetime(2026, 9, 19, 15, tzinfo=timezone.utc)
 SHA = "a" * 40
 INVENTORY = json.loads((ROOT / ".github/fuzz-targets.json").read_text())
+TARGET_COUNT = len(INVENTORY)
 
 
 class Source:
@@ -25,6 +26,7 @@ class Source:
     inventory = INVENTORY
     contract = "execution"
     global_hash = "shared"
+    release_branch = "main"
     packages = {item["dir"] for item in INVENTORY}
     def __init__(self, sha=SHA, root=ROOT):
         self.sha = sha
@@ -60,6 +62,7 @@ def jobs_fixture(run_id=1):
 
 class FakeGitHub:
     repository = "Rullst/Rullst"
+    branch = "main"
     def __init__(self):
         self.items = [run_fixture()]
         self.job_sets = {1: jobs_fixture()}
@@ -79,10 +82,57 @@ class EvidenceTests(unittest.TestCase):
     def plan(self):
         return evidence.plan(self.candidate, self.github, NOW)
 
+    def test_v13_evidence_cannot_be_borrowed_from_main(self):
+        self.candidate.release_branch = "v13"
+        self.github.branch = "v13"
+        self.assertEqual(len(self.plan()["selected"]), len(INVENTORY))
+        self.github.items[0]["head_branch"] = "v13"
+        # The source itself must carry the matching release-line policy.
+        self.assertEqual(len(self.plan()["selected"]), len(INVENTORY))
+        with patch.object(Source, "release_branch", "v13"):
+            report = self.plan()
+        self.assertEqual(report["selected"], [])
+        self.assertEqual(report["release_branch"], "v13")
+
+    def test_v12_maintenance_cannot_borrow_main_development_evidence(self):
+        self.candidate.release_branch = "v12"
+        self.github.branch = "v12"
+        self.assertEqual(self.plan()["selected"], INVENTORY)
+        self.github.items[0]["head_branch"] = "v12"
+        self.assertEqual(self.plan()["selected"], INVENTORY)
+        with patch.object(Source, "release_branch", "v12"):
+            self.assertEqual(self.plan()["selected"], [])
+
+    def test_api_selection_must_match_candidate_policy_even_for_a_full_campaign(self):
+        self.github.branch = "v13"
+        with self.assertRaises(ValueError):
+            self.plan()
+        with self.assertRaises(ValueError):
+            evidence.plan(self.candidate, self.github, NOW, force_full=True)
+
+    def test_a_pre_expansion_campaign_requires_fresh_execution_not_borrowed_evidence(self):
+        with patch.object(evidence, "Snapshot", side_effect=evidence.FuzzSurfaceChanged("legacy surface")):
+            report = self.plan()
+        self.assertEqual(report["selected"], INVENTORY)
+        self.assertEqual(report["reused"], [])
+        self.assertEqual(report["considered"], [])
+        # Malformed history is not silently generalized into this exception.
+        with patch.object(evidence, "Snapshot", side_effect=ValueError("bad history")):
+            with self.assertRaisesRegex(ValueError, "bad history"):
+                self.plan()
+
+    def test_github_query_uses_only_the_selected_release_branch(self):
+        github = evidence.GitHub("Rullst/Rullst", "fixture", branch="v13")
+        with patch.object(github, "get", return_value={"workflow_runs": []}) as get:
+            self.assertEqual(github.runs(), [])
+        self.assertIn("branch=v13", get.call_args.args[0])
+        with self.assertRaises(ValueError):
+            evidence.GitHub("Rullst/Rullst", "fixture", branch="feature")
+
     def test_all_targets_reuse_original_jobs_and_keep_source_provenance(self):
         report = self.plan()
         self.assertEqual(report["selected"], [])
-        self.assertEqual(len(report["reused"]), 40)
+        self.assertEqual(len(report["reused"]), TARGET_COUNT)
         self.assertTrue(all(item["source_sha"] == SHA and item["run_id"] == 1
                             and item["run_attempt"] == 1 for item in report["reused"]))
 
@@ -91,7 +141,7 @@ class EvidenceTests(unittest.TestCase):
         report = self.plan()
         self.assertEqual(len(report["selected"]), 4)
         self.assertEqual({item["dir"] for item in report["selected"]}, {"rullst-mail/fuzz"})
-        self.assertEqual(len(report["reused"]), 36)
+        self.assertEqual(len(report["reused"]), TARGET_COUNT - 4)
 
     def test_new_partial_campaign_combines_only_actual_jobs_with_old_equivalent_jobs(self):
         self.candidate.changed.add("rullst-mail/fuzz")
@@ -112,9 +162,9 @@ class EvidenceTests(unittest.TestCase):
             self.assertEqual(item["run_id"], 2 if item["dir"] == "rullst-mail/fuzz" else 1)
 
     def test_no_prior_evidence_or_force_full_selects_every_target(self):
-        self.assertEqual(len(evidence.plan(self.candidate, self.github, NOW, force_full=True)["selected"]), 40)
+        self.assertEqual(len(evidence.plan(self.candidate, self.github, NOW, force_full=True)["selected"]), TARGET_COUNT)
         self.github.items = []
-        self.assertEqual(len(self.plan()["selected"]), 40)
+        self.assertEqual(len(self.plan()["selected"]), len(INVENTORY))
 
     def test_short_diagnostic_skipped_or_missing_targets_are_never_credited(self):
         baseline = jobs_fixture()
@@ -152,20 +202,20 @@ class EvidenceTests(unittest.TestCase):
                 run = run_fixture()
                 run[key] = value
                 self.github.items = [run]
-                self.assertEqual(len(self.plan()["selected"]), 40)
+                self.assertEqual(len(self.plan()["selected"]), len(INVENTORY))
 
     def test_unrelated_commit_or_execution_change_requires_fresh_evidence(self):
         with patch.object(Source, "ancestor_of", return_value=False):
-            self.assertEqual(len(self.plan()["selected"]), 40)
+            self.assertEqual(len(self.plan()["selected"]), len(INVENTORY))
         self.candidate.contract = "different toolchain or command"
-        self.assertEqual(len(self.plan()["selected"]), 40)
+        self.assertEqual(len(self.plan()["selected"]), len(INVENTORY))
 
     def test_incomplete_failed_or_missing_boundary_cannot_authorize_reuse(self):
         for state in ("failure", "cancelled", "skipped"):
             self.github.job_sets[1][0]["conclusion"] = state
-            self.assertEqual(len(self.plan()["selected"]), 40)
+            self.assertEqual(len(self.plan()["selected"]), len(INVENTORY))
         self.github.job_sets[1] = jobs_fixture()[1:]
-        self.assertEqual(len(self.plan()["selected"]), 40)
+        self.assertEqual(len(self.plan()["selected"]), len(INVENTORY))
 
     def test_newer_matching_failure_blocks_older_success(self):
         newer = run_fixture(2)
@@ -186,7 +236,7 @@ class EvidenceTests(unittest.TestCase):
         receipt = run_fixture(2)
         self.github.items.append(receipt)
         self.github.job_sets[2] = [jobs_fixture()[0]]
-        self.assertEqual(len(self.plan()["selected"]), 40)
+        self.assertEqual(len(self.plan()["selected"]), len(INVENTORY))
 
     def test_duplicate_job_names_and_truncated_api_jobs_fail_closed(self):
         self.github.job_sets[1].append(self.github.job_sets[1][-1])
@@ -223,7 +273,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
                 "plan = json.loads(os.environ['FIXTURE_PLAN'])\n"
                 "pathlib.Path(sys.argv[sys.argv.index('--output')+1]).write_text(json.dumps(plan))\n"
                 "pathlib.Path('args.json').write_text(json.dumps(sys.argv[1:]))\n")
-            for count, force in ((0, False), (4, False), (40, True)):
+            for count, force in ((0, False), (4, False), (TARGET_COUNT, True)):
                 plan = {"selected": INVENTORY[:count], "reused": INVENTORY[count:]}
                 output = root / "outputs"
                 output.unlink(missing_ok=True)
@@ -236,8 +286,8 @@ class WorkflowBoundaryTests(unittest.TestCase):
                 values = dict(line.split("=", 1) for line in output.read_text().splitlines())
                 self.assertEqual(json.loads(values["matrix"]), {"include": INVENTORY[:count]})
                 self.assertEqual(values["selected_count"], str(count))
-                self.assertEqual(values["target_count"], "40")
-                self.assertEqual(values["reused_count"], str(40-count))
+                self.assertEqual(values["target_count"], str(TARGET_COUNT))
+                self.assertEqual(values["reused_count"], str(TARGET_COUNT-count))
                 self.assertEqual(values["campaign_seconds"], "19800")
                 self.assertEqual("--force-full" in json.loads((root / "args.json").read_text()), force)
 
@@ -247,13 +297,13 @@ class WorkflowBoundaryTests(unittest.TestCase):
         script = textwrap.dedent(step.split("        run: |\n", 1)[1].split("\n      - name:", 1)[0])
         with tempfile.TemporaryDirectory(prefix="rullst-fuzz-boundary-") as directory:
             for selected, reused, preflight, fuzz, targets, expected in (
-                (40, 0, "success", "success", "success", 0),
-                (4, 36, "success", "success", "success", 0),
-                (0, 40, "skipped", "skipped", "success", 0),
-                (4, 36, "success", "failure", "success", 1),
-                (4, 36, "skipped", "skipped", "success", 1),
-                (0, 40, "skipped", "skipped", "failure", 1),
-                (0, 39, "skipped", "skipped", "success", 1),
+                (TARGET_COUNT, 0, "success", "success", "success", 0),
+                (4, TARGET_COUNT - 4, "success", "success", "success", 0),
+                (0, TARGET_COUNT, "skipped", "skipped", "success", 0),
+                (4, TARGET_COUNT - 4, "success", "failure", "success", 1),
+                (4, TARGET_COUNT - 4, "skipped", "skipped", "success", 1),
+                (0, TARGET_COUNT, "skipped", "skipped", "failure", 1),
+                (0, TARGET_COUNT - 1, "skipped", "skipped", "success", 1),
             ):
                 env = os.environ | {"GITHUB_STEP_SUMMARY": str(Path(directory) / "summary.md"),
                     "CAMPAIGN_MODE": "release", "TARGET_COUNT": str(selected + reused),
@@ -261,7 +311,7 @@ class WorkflowBoundaryTests(unittest.TestCase):
                     "PREFLIGHT_RESULT": preflight, "FUZZ_RESULT": fuzz, "TARGETS_RESULT": targets}
                 result = subprocess.run(["bash", "-euo", "pipefail", "-c", script],
                                         env=env, capture_output=True, text=True)
-                self.assertEqual(result.returncode, expected, (env, result.stderr))
+                self.assertEqual(result.returncode, expected, ((selected, reused, preflight, fuzz, targets), result.stderr))
 
 
 if __name__ == "__main__":

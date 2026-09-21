@@ -2,9 +2,9 @@ name: "CodeQL SAST"
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main, v12]
   pull_request:
-    branches: [ "main" ]
+    branches: [main, v12]
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
   schedule:

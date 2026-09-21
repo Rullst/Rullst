@@ -1,5 +1,8 @@
 # Security Policy 🛡️
 
+`v12` is the protected stable maintenance branch; `main` develops the next
+major release. Existing tags and published archives remain unchanged.
+
 ## Supported Versions
 
 Rullst adopts Semantic Versioning for each published crate. This policy is
