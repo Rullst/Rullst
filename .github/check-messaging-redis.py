@@ -4,13 +4,14 @@ import argparse
 import os
 from pathlib import Path
 import re
+import secrets
 import subprocess
 import tempfile
 import time
 import uuid
 
 IMAGE = "redis:7.4-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf"
-PASSWORD = "fixture-redis-messaging-only"
+PASSWORD = secrets.token_hex(32)
 
 
 def ready(name):
@@ -76,6 +77,7 @@ def main():
         ready(name)
         env = dict(os.environ, RULLST_MESSAGING_TEST_REDIS_URL=endpoint(name),
                    RULLST_MESSAGING_TEST_REDIS_TLS_URL=endpoint(name, True),
+                   RULLST_MESSAGING_TEST_REDIS_PASSWORD=PASSWORD,
                    RULLST_MESSAGING_TEST_REDIS_CA=str(certificate_dir / "ca.pem"))
         command = ["cargo", "llvm-cov", "--no-report"] if args.coverage else ["cargo", "test"]
         command += ["--locked", "-p", "rullst-messaging", "--features", "redis-streams,orm-outbox",

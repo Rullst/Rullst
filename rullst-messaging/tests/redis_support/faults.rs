@@ -97,7 +97,7 @@ async fn wrong_credentials_timeout_and_clock_regression_never_fall_back() {
         "fixture-generation",
         endpoint(),
         "default",
-        "incorrect-fixture-password",
+        uuid::Uuid::new_v4().simple().to_string(),
     )
     .unwrap()
     .allow_loopback_for_tests()
@@ -111,7 +111,7 @@ async fn wrong_credentials_timeout_and_clock_regression_never_fall_back() {
         "fixture-generation",
         endpoint(),
         "default",
-        PASSWORD,
+        password(),
     )
     .unwrap();
     assert!(RedisBroker::connect(plain).await.is_err());

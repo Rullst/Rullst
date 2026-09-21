@@ -13,7 +13,7 @@ async fn verified_tls_rejects_untrusted_roots_and_wrong_hostnames() {
         "fixture-generation",
         url.replace("127.0.0.1", "localhost"),
         "default",
-        PASSWORD,
+        password(),
     )
     .unwrap();
     assert!(
@@ -46,7 +46,7 @@ async fn verified_tls_rejects_untrusted_roots_and_wrong_hostnames() {
         "fixture-generation",
         url,
         "default",
-        PASSWORD,
+        password(),
     )
     .unwrap()
     .with_ca_certificate(ca)
