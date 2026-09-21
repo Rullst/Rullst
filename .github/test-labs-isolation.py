@@ -188,9 +188,13 @@ def accept(args, directory, groups):
             assert run_runner(runner, config_path).returncode == 0
             view = app.success('alice', {'Status': {'id': name}})
             assert view['state'] == 'Failed' and 'Rejected' in view['result'], (name, view['state'])
+            diagnostics = view['result']['Rejected']['diagnostics']
+            assert diagnostics is None or len(diagnostics.encode('utf-8')) <= 8192, name
             if name == 'compiler-errors':
                 text = view['result']['Rejected']['diagnostics']
                 assert 'submission.rs' in text and '\x1b' not in text
+            if name == 'compiler-output-bounded':
+                assert view['result']['Rejected']['failure'] == 'ResourceLimit'
             checks.append(name)
             print('passed:', name, flush=True)
 
@@ -207,6 +211,28 @@ def accept(args, directory, groups):
             assert view['result']['Graded']['passed'] == 2, (name, view['result']['Graded']['cases'])
             checks.append(name)
             print('passed:', name, flush=True)
+
+        # No application cancellation or test-owned kill: the controller's own
+        # five-second deadline must fence and clean a compiler that stays busy.
+        app.success('alice', {'Submit': {'submission': submission('compile-deadline', STRESS, 'stress')}})
+        started = time.monotonic()
+        child = subprocess.Popen([str(runner), 'run-once', str(config_path)], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        controllers.append(child)
+        observed = False
+        while child.poll() is None:
+            observed = observed or compiler_running(groups)
+            if time.monotonic() - started > 20:
+                raise RuntimeError('compiler wall deadline did not stop the owned controller')
+            time.sleep(0.05)
+        _, stderr = child.communicate(timeout=5)
+        assert observed and child.returncode != 0, 'real compilation must reach its deadline'
+        assert stderr.strip() == b'lab permission or execution expired', 'expected only the closed deadline error'
+        assert time.monotonic() - started >= 5, 'a startup error cannot prove deadline enforcement'
+        final = app.success('alice', {'Status': {'id': 'compile-deadline'}})
+        assert final['state'] == 'Cancelled' and not final['cleanup_pending'] and final['result'] is None
+        assert not any(path.is_dir() for path in groups.iterdir())
+        checks.append('compiler-wall-deadline-and-cleanup')
+        print('passed: compiler-wall-deadline-and-cleanup', flush=True)
 
         # A deliberately expensive constant expression is compiled only by the
         # isolated worker. Observe a real compiler in its bounded group, cancel
