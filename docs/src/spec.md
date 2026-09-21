@@ -90,6 +90,15 @@ surface is validated contracts; opt-in shared-local SQLite stores dedicated,
 encrypted job content with current application authorization, idempotent
 submission, cancellation, leased execution, retention and result reconciliation.
 It must not reuse the application's authentication/database secrets as job keys.
+
+Coverage measures the trusted controller through the same real isolated
+acceptance journey, using a private instrumented controller outside the worker's
+mounted tree. The mounted compiler/interpreter binary stays uninstrumented;
+profiler paths, environment variables and output permissions must never weaken
+its isolation policy. Ordinary and instrumented acceptance are distinct evidence.
+Keep both existing 90% line-coverage floors and include the new v13 application
+libraries in the framework-library aggregate; the runner remains counted in
+the whole repository as a separate executable.
 Controller keys require protected root/controller-owned ancestors and owned
 private regular files. Validate the opened no-follow descriptor and exact key
 length; a prior path metadata check alone does not bind the bytes read.

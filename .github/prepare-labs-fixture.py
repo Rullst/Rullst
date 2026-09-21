@@ -13,7 +13,17 @@ import shutil
 import subprocess
 
 
-def prepare(directory, runner, toolchain, launcher, cgroups):
+def copy_controller(directory, source):
+    """Copy a trusted measurement build outside every worker-mounted tree."""
+    destination = directory / 'controller'
+    with source.resolve(strict=True).open('rb') as input_file:
+        with destination.open('xb') as output:
+            shutil.copyfileobj(input_file, output)
+            os.fchmod(output.fileno(), 0o755)
+    return destination
+
+
+def prepare(directory, runner, toolchain, launcher, cgroups, controller=None):
     directory = directory.absolute()
     if directory.exists():
         raise ValueError("fixture destination must not exist")
@@ -75,7 +85,8 @@ def prepare(directory, runner, toolchain, launcher, cgroups):
         fd = os.open(directory / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, 'wb') as output:
             output.write(os.urandom(32))
-    described = subprocess.check_output([str(runner), 'describe-profile', str(rootfs), str(launcher), str(cgroups), str(directory / 'receipt-seed')], timeout=30)
+    describing_runner = copy_controller(directory, controller) if controller is not None else runner
+    described = subprocess.check_output([str(describing_runner), 'describe-profile', str(rootfs), str(launcher), str(cgroups), str(directory / 'receipt-seed')], timeout=30)
     linux = json.loads(described)
     config = {'linux': linux, 'plane': {'database': str(directory / 'jobs.sqlite'), 'namespace': 'isolated-acceptance', 'max_jobs': 128, 'max_exercises': 32, 'content_key': str(directory / 'content-key'), 'receipt_seed': str(directory / 'receipt-seed')}}
     config_path = directory / 'runner.json'

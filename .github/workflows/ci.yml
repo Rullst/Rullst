@@ -757,34 +757,11 @@ jobs:
           cargo fmt --all --check
           cargo clippy --locked -p rullst-labs -p rullst-labs-runner --all-features --all-targets -- -D warnings
 
-      - name: Install pinned exercise toolchain and namespace launcher
-        run: |
-          rustup toolchain install 1.96.0 --profile minimal --target wasm32-unknown-unknown
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends bubblewrap
-          df -h . /tmp
+      - name: Provision the reviewed disposable Labs host
+        run: bash .github/provision-labs-host.sh
 
-      - name: Provision the private launcher AppArmor profile on this disposable host
-        run: |
-          # Ubuntu restricts unprofiled user namespaces. Authorize only the
-          # private trusted launcher; preserve child capability denial and all
-          # mandatory runner probes. Never disable global AppArmor/sysctls.
-          test "$(sysctl -n kernel.apparmor_restrict_unprivileged_userns)" = 1
-          profile_dir=$(mktemp -d)
-          (cd "$profile_dir" && apt-get download apparmor-profiles)
-          dpkg-deb --extract "$profile_dir"/apparmor-profiles_*.deb "$profile_dir/extracted"
-          python3 .github/prepare-labs-host.py \
-            "$profile_dir/extracted/usr/share/apparmor/extra-profiles/bwrap-userns-restrict" \
-            "$profile_dir/rullst-labs-ci"
-          # Hosted images deliberately make /opt shared-writable. Keep the
-          # launcher below protected system ancestors; never relax custody.
-          stat -c '%u:%a %n' / /usr /usr/lib
-          test ! -e /usr/lib/rullst-labs-ci
-          test ! -e /etc/apparmor.d/rullst-labs-ci
-          sudo install -d -m 0755 /usr/lib/rullst-labs-ci
-          sudo install -m 0755 /usr/bin/bwrap /usr/lib/rullst-labs-ci/bwrap
-          sudo install -m 0644 "$profile_dir/rullst-labs-ci" /etc/apparmor.d/rullst-labs-ci
-          sudo apparmor_parser --add /etc/apparmor.d/rullst-labs-ci
+      - name: Verify instrumented-controller custody
+        run: python3 .github/test-labs-measurement.py
 
       - name: Build separate controller and application fixture
         run: cargo build --locked -p rullst-labs -p rullst-labs-runner --all-features --bins --examples
@@ -819,6 +796,30 @@ jobs:
         with:
           name: labs-isolation-${{ github.sha }}
           path: target/labs-evidence.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Install pinned measurement tool for the manual Labs diagnostic
+        if: github.event_name == 'workflow_dispatch' && inputs.shard == 'labs-isolation'
+        uses: taiki-e/install-action@26e9283f268b880168bdbd2c545dfcd60ec2c6ab # v2.87.13
+        with:
+          tool: cargo-llvm-cov@0.9.1
+
+      - name: Measure the controller through the real isolated journey
+        if: github.event_name == 'workflow_dispatch' && inputs.shard == 'labs-isolation'
+        run: |
+          rustup component add llvm-tools-preview
+          bash .github/run-labs-coverage.sh "$PWD/target/debug/rullst-labs-runner"
+          cargo llvm-cov report --json --summary-only --output-path target/labs-coverage-summary.json
+
+      - name: Retain the scoped controller coverage diagnostic
+        if: github.event_name == 'workflow_dispatch' && inputs.shard == 'labs-isolation'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: labs-controller-coverage-${{ github.sha }}
+          path: |
+            target/labs-coverage-evidence.json
+            target/labs-coverage-summary.json
           if-no-files-found: error
           retention-days: 14
 

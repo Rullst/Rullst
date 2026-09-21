@@ -13,7 +13,7 @@ from typing import Any
 
 FRAMEWORK_SOURCE = re.compile(
     r"(?:^|/)rullst(?:-(?:ai|auth|capital|connect|core|iot|mail|messaging|"
-    r"nexus|orm|security|studio))?/src/"
+    r"nexus|orm|security|studio|privacy|supervision|media|labs))?/src/"
 )
 
 

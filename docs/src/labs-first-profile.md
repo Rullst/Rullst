@@ -28,6 +28,15 @@ Complete current workspace/platform and extracted-package admission, the final
 release campaign and independent isolation review remain separate requirements.
 It does not prove every adversarial case or every deployment environment.
 
+Coverage must also measure the trusted controller's lifecycle paths. The
+instrumented fixture uses a separate private controller and retains the ordinary
+worker binary and all namespace, environment, filesystem and resource checks.
+Only trusted host processes write profiler data outside the sandbox; the worker
+does not receive profiling variables or a host output directory. These counters
+are merged with ordinary workspace coverage, without changing either 90% floor.
+The scoped manual `labs-isolation` measurement diagnoses that path and cannot
+replace the complete coverage or release campaign.
+
 ## Supported journey
 
 An authorized instructor creates an immutable exercise revision with a bounded
