@@ -2,7 +2,7 @@ name: Benchmark Regression
 
 on:
   push:
-    # v12 benchmark history is built from the active mainline.
+    # Rolling benchmark history follows the active development mainline.
     branches: [main]
   workflow_dispatch:
   schedule:
