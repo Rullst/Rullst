@@ -850,6 +850,18 @@ acceptance includes independent instances/processes, real PostgreSQL rollback,
 restart and restricted roles, cancellation/lease races, durable broker consumption,
 publication-before-ACK replay and extracted-package/facade consumers.
 
+### v13 SQLite messaging lock-time correction
+
+Before composing outgoing webhooks, real lock-contention tests demonstrated
+that SQLite broker operations sampled time before `BEGIN IMMEDIATE`: an ACK
+could be accepted after its lease expired while waiting, and a new claim could
+already be expired on acquisition. Publication, claim, ACK, retry and dead-letter
+operations must sample trusted time after acquiring their write transaction.
+Retry availability and new lease duration start from that admitted instant.
+Expired workers fail with `LeaseExpired`; their work remains recoverable. This
+correction preserves public API/schema and does not add persistent clock
+anti-rollback or change at-least-once delivery semantics.
+
 ### v12 audit correction invariants
 
 **12.1 account mail:** `rullst-mail::ActionLink` validates an exact
