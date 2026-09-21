@@ -123,6 +123,15 @@ fn filters() -> Result<[BpfProgram; 2], Error> {
     ];
     let mut rules: BTreeMap<i64, Vec<SeccompRule>> =
         allowed.into_iter().map(|call| (call, vec![])).collect();
+    // Rust's captured linker output toggles nonblocking pipe reads through
+    // FIONBIO. Permit only that request, never arbitrary device-control ioctls.
+    let nonblocking =
+        SeccompCondition::new(1, SeccompCmpArgLen::Qword, SeccompCmpOp::Eq, libc::FIONBIO)
+            .map_err(|_| Error::Configuration)?;
+    rules.insert(
+        libc::SYS_ioctl,
+        vec![SeccompRule::new(vec![nonblocking]).map_err(|_| Error::Configuration)?],
+    );
     // No additional namespaces, ptrace attachment or cgroup placement through
     // clone; process/thread creation remains subject to the hard pids controller.
     let forbidden = (libc::CLONE_NEWTIME

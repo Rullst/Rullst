@@ -100,6 +100,8 @@ Landlock domains before source is released. Landlock does not mediate a process'
 own anonymous pipes through `/proc`; compiler-to-interpreter descriptor access
 must instead fail through the domain/ptrace boundary. The compiler's standard
 input/output are null during compilation, with only bounded diagnostics retained.
+The syscall policy permits only the `FIONBIO` ioctl request needed for Rust's
+captured linker pipes; other ioctl requests and all socket creation remain denied.
 Observed isolation and resource enforcement are
 mandatory: accepted configuration properties or a successful launcher exit do
 not prove the required boundary. Unsupported local/hosted environments fail

@@ -46,6 +46,13 @@ fn restricted_tool_spawn_child() {
     assert_eq!(error.raw_os_error(), Some(libc::EPERM));
     let error = std::os::unix::net::UnixStream::pair().unwrap_err();
     assert_eq!(error.raw_os_error(), Some(libc::EPERM));
+    let (reader, _writer) = std::io::pipe().unwrap();
+    rustix::io::ioctl_fionbio(&reader, true).unwrap();
+    rustix::io::ioctl_fionbio(&reader, false).unwrap();
+    assert_eq!(
+        rustix::io::ioctl_fionread(&reader).unwrap_err(),
+        rustix::io::Errno::PERM
+    );
 
     // The same owned executable and environment work with an absolute path.
     let status = Command::new(&executable)
@@ -57,4 +64,18 @@ fn restricted_tool_spawn_child() {
         .status()
         .unwrap();
     assert!(status.success());
+
+    // rustc captures both linker streams with wait_with_output, which needs
+    // nonblocking pipe reads on Linux, unlike the null-stream status probe.
+    let output = Command::new(&executable)
+        .env("PATH", directory)
+        .arg("--list")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(
+        String::from_utf8(output.stdout)
+            .unwrap()
+            .contains("restricted_tool_spawn_child")
+    );
 }

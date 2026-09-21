@@ -87,6 +87,11 @@ untrusted input into the worker:
   changed-`PATH` spawn fallback uses a socket pair, so a bare linker name would
   fail under the unchanged no-sockets policy. A real seccomp regression verifies
   absolute-path spawning while socket-pair creation remains denied.
+  Rust's captured linker streams also require `ioctl(FIONBIO)` to toggle
+  nonblocking reads on existing descriptors. The filter permits that exact
+  request only; it does not grant device-control ioctls or socket creation.
+  A real filter regression captures both child streams and verifies another
+  ioctl request is still denied. The namespace exposes no device-control handles.
 - Structural Wasm validation, bounded compilation, memory/stack/table/fuel
   limits, no guest imports and bounded, normalized output. No deserialization
   of untrusted native/precompiled engine caches.
@@ -171,6 +176,8 @@ follows from the contracts or this decision.
 - [Linux cgroups v2](https://docs.kernel.org/admin-guide/cgroup-v2.html)
 - [Landlock Rust bindings and enforcement status](https://docs.rs/landlock/0.4.7/landlock/)
 - [Linux seccomp filter](https://docs.kernel.org/userspace-api/seccomp_filter.html)
+- [Rust 1.96 captured process output](https://github.com/rust-lang/rust/blob/1.96.0/library/std/src/sys/process/unix/common.rs)
+- [Rust 1.96 Linux nonblocking descriptor operation](https://github.com/rust-lang/rust/blob/1.96.0/library/std/src/sys/fd/unix.rs)
 
 Reviewed September 20, 2026. Runtime/toolchain updates require fresh policy and
 compatibility review; benchmark claims from runtime projects are not Rullst
