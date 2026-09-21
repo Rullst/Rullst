@@ -99,6 +99,8 @@ fn launcher_has_fixed_read_only_boundaries_and_no_host_environment_or_command_st
     let args: Vec<_> = command.get_args().map(|v| v.to_str().unwrap()).collect();
     for required in [
         "--unshare-all",
+        "--unshare-user",
+        "--unshare-cgroup",
         "--disable-userns",
         "--assert-userns-disabled",
         "--new-session",

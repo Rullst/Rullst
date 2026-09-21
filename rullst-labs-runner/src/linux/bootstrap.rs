@@ -20,6 +20,10 @@ pub(super) fn command(launcher: &Path, rootfs: &Path, group: &Path) -> Command {
     cmd.env_clear();
     cmd.args([
         "--unshare-all",
+        // --unshare-all uses the launcher's optional user/cgroup variants.
+        // --disable-userns requires an explicit mandatory --unshare-user.
+        "--unshare-user",
+        "--unshare-cgroup",
         "--disable-userns",
         "--assert-userns-disabled",
         "--die-with-parent",
