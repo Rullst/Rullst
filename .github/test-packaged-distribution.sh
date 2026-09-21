@@ -35,14 +35,16 @@ cleanup() {
 trap cleanup EXIT
 
 candidate=false
+media_candidate=false
 case "${3:-}" in
   "") ;;
-  --supervision-candidate)
+  --supervision-candidate|--v13-candidates)
     if jq -e 'index("rullst-supervision") != null' "$repository_root/.github/release-order.json" > /dev/null; then
       echo "Remove candidate mode after supervision enters the release inventory." >&2
       exit 1
     fi
     candidate=true
+    if [ "$3" = --v13-candidates ]; then media_candidate=true; fi
     ;;
   *) echo "Unknown packaged-distribution mode." >&2; exit 1 ;;
 esac
@@ -80,6 +82,10 @@ assert package["version"] == sys.argv[2]
 assert package["publish"] is False, "candidate rehearsal must remain unpublished"
 PYVERIFY
   "$cargo_bin" test --manifest-path "$candidate_source/Cargo.toml" --offline --locked --all-features
+fi
+
+if [ "$media_candidate" = true ]; then
+  bash "$repository_root/.github/test-media-package.sh" "$version" "$package_dir"
 fi
 
 toml_path() {

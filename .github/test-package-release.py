@@ -52,6 +52,39 @@ class PackageInventoryTests(unittest.TestCase):
             self.assertNotEqual(self.package(flag).returncode, 0)
             self.assertFalse(self.receipt.exists())
 
+    def test_v13_archive_rehearsal_requires_explicit_unpublished_candidates(self):
+        for name in ('rullst-supervision', 'rullst-media'):
+            (self.root / name).mkdir()
+            (self.root / name / 'Cargo.toml').write_text(f'[package]\nname="{name}"\nversion="13.0.0-alpha.1"\npublish=false\n')
+        self.assertEqual(self.package('--no-verify', '--v13-candidates').returncode, 0)
+        args = json.loads(self.receipt.read_text())
+        self.assertIn('rullst-media', args)
+        self.assertIn('rullst-supervision', args)
+        self.assertNotIn('--v13-candidates', args)
+        self.receipt.unlink()
+        (self.root / 'rullst-media/Cargo.toml').write_text('[package]\nname="rullst-media"\npublish=true\n')
+        self.assertNotEqual(self.package('--v13-candidates').returncode, 0)
+        self.assertFalse(self.receipt.exists())
+
+    def test_v13_candidate_audit_does_not_accept_partial_or_extra_inventory(self):
+        self.inventory.write_text('["rullst-core"]')
+        license_text = (ROOT / 'LICENSE').read_bytes()
+        (self.root / 'LICENSE').write_bytes(license_text)
+        archives = self.root / 'packages'
+        archives.mkdir()
+        args = ['bash', str(ROOT / '.github/audit-packages.sh'), '13.0.0-alpha.1', str(archives), '--v13-candidates']
+        for name in ('rullst-core', 'rullst-supervision', 'rullst-media'):
+            with tarfile.open(archives / f'{name}-13.0.0-alpha.1.crate', 'w:gz') as archive:
+                for path, content in {'LICENSE': license_text, 'Cargo.toml': b'[package]\n', 'README.md': b'Fixture\n', 'src/lib.rs': b'// fixture\n'}.items():
+                    info = tarfile.TarInfo(f'{name}-13.0.0-alpha.1/{path}')
+                    info.size = len(content)
+                    archive.addfile(info, io.BytesIO(content))
+            if name != 'rullst-media':
+                self.assertNotEqual(subprocess.run(args, cwd=self.root, capture_output=True).returncode, 0)
+        self.assertEqual(subprocess.run(args, cwd=self.root, capture_output=True).returncode, 0)
+        self.inventory.write_text('["rullst-core","rullst-media"]')
+        self.assertNotEqual(subprocess.run(args, cwd=self.root, capture_output=True).returncode, 0)
+
     def test_candidate_audit_is_explicit_and_never_default_release_admission(self):
         self.inventory.write_text('["rullst-core"]')
         license_text = (ROOT / "LICENSE").read_bytes()
