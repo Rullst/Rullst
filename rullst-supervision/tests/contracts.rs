@@ -62,3 +62,60 @@ fn parental_policy_bounds_courses_and_absolute_windows() {
     assert!(CoursePolicy::new(["a"], 0, i64::MAX).is_err());
     assert!(CoursePolicy::new(Vec::<String>::new(), 0, 2_592_000).is_ok());
 }
+
+#[cfg(feature = "exam")]
+#[test]
+fn collection_selection_and_request_bindings_are_bounded_and_inspectable_without_storage() {
+    use rullst_supervision::exam::{Capability, Collection, ObservationRequest};
+    assert_eq!(Collection::visibility_only().bits(), 1);
+    assert_eq!(Collection::new(Capability::ALL).unwrap().bits(), 511);
+    assert!(Collection::from_bits(512).is_err());
+    assert!(Collection::new([Capability::Visibility, Capability::Visibility]).is_err());
+    assert_eq!(Collection::none().capabilities().count(), 0);
+    let actor = Context::new("school", "learner").unwrap();
+    let scope = Scope::new("school", "learner", "exam").unwrap();
+    let session = OpaqueId::new("session").unwrap();
+    let revision = Revision::new(7).unwrap();
+    assert!(ObservationRequest::new(&actor, &scope, &session, revision, 0).is_err());
+    let request = ObservationRequest::new(&actor, &scope, &session, revision, 1).unwrap();
+    assert_eq!(request.context(), &actor);
+    assert_eq!(request.scope(), &scope);
+    assert_eq!(request.session(), &session);
+    assert_eq!(request.revision(), revision);
+    assert_eq!(request.sequence(), 1);
+}
+
+#[cfg(feature = "analysis")]
+#[test]
+fn borrowed_media_contract_checks_format_and_size_and_withholds_debug_contents() {
+    use rullst_supervision::analysis::{
+        AnalysisKind, AnalysisOptions, AnalyzerDescriptor, MediaSample, SampleFormat,
+    };
+    for format in [
+        SampleFormat::JpegFrame,
+        SampleFormat::PngFrame,
+        SampleFormat::Pcm16LeMono16Khz,
+    ] {
+        assert!(MediaSample::new(format, &[]).is_err());
+    }
+    assert!(MediaSample::new(SampleFormat::JpegFrame, b"wrong-header").is_err());
+    assert!(MediaSample::new(SampleFormat::PngFrame, b"wrong-header").is_err());
+    assert!(MediaSample::new(SampleFormat::Pcm16LeMono16Khz, &[0]).is_err());
+    assert!(MediaSample::new(SampleFormat::Pcm16LeMono16Khz, &vec![0; 160002]).is_err());
+    assert!(MediaSample::new(SampleFormat::Pcm16LeMono16Khz, &vec![0; 160000]).is_ok());
+    let mut image = vec![0; 1024 * 1024 + 1];
+    image[..3].copy_from_slice(&[255, 216, 255]);
+    assert!(MediaSample::new(SampleFormat::JpegFrame, &image).is_err());
+    assert!(MediaSample::new(SampleFormat::JpegFrame, &image[..1024 * 1024]).is_ok());
+    let png = MediaSample::new(SampleFormat::PngFrame, b"\x89PNG\r\n\x1a\nprivate-marker").unwrap();
+    assert_eq!(png.kind(), AnalysisKind::CameraPresence);
+    assert_eq!(png.format(), SampleFormat::PngFrame);
+    assert!(!format!("{png:?}").contains("private-marker"));
+    assert!(AnalyzerDescriptor::new("", "v1", AnalysisKind::CameraPresence, true).is_err());
+    assert!(AnalysisOptions::new(0).is_err());
+    assert!(AnalysisOptions::new(16).is_err());
+    let options = AnalysisOptions::new(15).unwrap();
+    assert_eq!(options.timeout_seconds(), 15);
+    assert!(!options.permits_simulation());
+    assert!(options.allow_simulated_for_testing().permits_simulation());
+}

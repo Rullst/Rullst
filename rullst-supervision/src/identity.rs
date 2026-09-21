@@ -67,7 +67,7 @@ impl Context {
     pub fn actor(&self) -> &OpaqueId {
         &self.actor
     }
-    #[cfg(feature = "sqlite")]
+    #[cfg(feature = "exam")]
     pub(crate) fn require_subject(&self, scope: &Scope) -> Result<(), Error> {
         if self.tenant != scope.tenant || self.actor != scope.subject {
             return Err(Error::Forbidden);

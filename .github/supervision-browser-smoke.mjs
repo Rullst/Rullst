@@ -1,4 +1,5 @@
 // Real generated LMS HTTP/CSP/session/forms; no provider and no synthetic server.
+import './supervision-collector-tests.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -55,8 +56,8 @@ try {
   const { targetId } = await call('Target.createTarget', { url: 'about:blank' });
   const { sessionId } = await call('Target.attachToTarget', { targetId, flatten: true });
   const send = (method, params) => call(method, params, sessionId);
-  const evaluate = async expression => {
-    const result = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+  const evaluate = async (expression, userGesture = false) => {
+    const result = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true, userGesture });
     assert(!result.exceptionDetails, 'browser evaluation failed'); return result.result.value;
   };
   const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -78,6 +79,7 @@ try {
   await send('Page.enable'); await send('Runtime.enable'); await send('Network.enable');
   const reports = [];
   const accepted = new Set();
+  const reportNames = new Map();
   handlers.set('Runtime.exceptionThrown', () => failures.push('uncaught page exception'));
   handlers.set('Network.requestWillBeSent', params => {
     if (!params.request.url.startsWith(origin + '/')) failures.push('non-origin page request');
@@ -85,7 +87,8 @@ try {
       assert(reports.length < 32, 'bounded browser event fixture');
       const fields = new URLSearchParams(params.request.postData);
       assert.deepEqual([...fields.keys()].sort(), ['_token','event','issued_at','proof','revision','sequence'].sort());
-      assert(['page_hidden','page_visible'].includes(fields.get('event')));
+      assert(['page_hidden','page_visible','window_focused','window_blurred','copy_attempt','cut_attempt','paste_attempt','fullscreen_entered','fullscreen_exited'].includes(fields.get('event')));
+      reportNames.set(params.requestId, fields.get('event'));
       reports.push(params.requestId);
     }
   });
@@ -121,6 +124,15 @@ try {
   };
   await toggle();
   await waitFor(async () => accepted.size > 0, 'real visibility report accepted');
+  // Copy a selected sentinel using a real browser command: no text enters reports.
+  await evaluate(`const node = document.createElement('p'); node.id = 'copy-sentinel'; node.textContent = 'PRIVATE-COPY-MARKER'; document.body.append(node); const range = document.createRange(); range.selectNodeContents(node); getSelection().removeAllRanges(); getSelection().addRange(range); true`);
+  assert.equal(await evaluate("document.execCommand('copy')", true), true);
+  await waitFor(async () => [...accepted].some(id => reportNames.get(id) === 'copy_attempt'), 'clipboard occurrence accepted');
+  assert(await evaluate('document.getElementById("visibility-report").dataset.collection === "15"'));
+  await evaluate("document.documentElement.requestFullscreen().then(() => true)", true);
+  await waitFor(async () => [...accepted].some(id => reportNames.get(id) === 'fullscreen_entered'), 'fullscreen entry accepted');
+  await evaluate("document.exitFullscreen().then(() => true)");
+  await waitFor(async () => [...accepted].some(id => reportNames.get(id) === 'fullscreen_exited'), 'fullscreen exit accepted');
   assert.equal(await evaluate('window.supervisionCaptureCalls'), 0);
   assert(await evaluate('getComputedStyle(document.querySelector("#visibility-report")).display === "none"'));
   await press('button[value=pause]'); await waitState('Paused');
@@ -129,7 +141,7 @@ try {
   await press('button[value=end]'); await waitState('Ended');
   const afterEnd = reports.length; await toggle(); assert.equal(reports.length, afterEnd, 'no reports after end');
   assert.equal(await evaluate('window.supervisionCaptureCalls'), 0); assert.deepEqual(failures, []);
-  console.log('Supervision browser: real visibility, minimal payload, pause/resume/end, no capture or external request passed');
+  console.log('Supervision browser: real visibility/clipboard/fullscreen, minimal payload, pause/resume/end, no capture or external request passed');
   await call('Browser.close');
 } finally {
   clearTimeout(deadline); socket?.close();

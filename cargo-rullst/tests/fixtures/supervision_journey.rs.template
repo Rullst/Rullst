@@ -54,9 +54,13 @@ async fn transparent_sessions_and_parental_rules_on_original_routes() {
     let shown = request(&app,start,Some(&learner),None,None,None).await;
     assert_eq!(shown.status(),StatusCode::OK); assert_eq!(shown.headers()["cache-control"],"no-store");
     let initial = text(shown).await; let (csrf,fields) = form(&initial);
-    let start_form = format!("{fields}&action=start&policy=exam-v1&notice=notice-v1&acknowledge=yes");
+    let start_form = format!("{fields}&action=start&policy=exam-v1&notice=notice-v1&collection=15&acknowledge=yes");
     assert_eq!(request(&app,start,Some(&learner),None,None,Some(start_form.clone())).await.status(),StatusCode::FORBIDDEN);
     assert_eq!(request(&app,start,Some(&learner),Some(&csrf),None,Some(start_form.replace("&acknowledge=yes",""))).await.status(),StatusCode::FORBIDDEN);
+    assert_eq!(value(&initial,"collection"),"15");
+    for bad in [start_form.replace("&collection=15",""), start_form.replace("&collection=15","&collection=1")] {
+        assert_eq!(request(&app,start,Some(&learner),Some(&csrf),None,Some(bad)).await.status(),StatusCode::CONFLICT);
+    }
     let rotated = rullst::auth::encrypt_session(1,&key).unwrap();
     assert_eq!(request(&app,start,Some(&rotated),Some(&csrf),None,Some(start_form.clone())).await.status(),StatusCode::FORBIDDEN);
     let oversized = format!("_token={csrf}&proof={}","x".repeat(20000));
@@ -74,11 +78,18 @@ async fn transparent_sessions_and_parental_rules_on_original_routes() {
     assert_eq!(request(&app,&event_url,Some(&learner),Some(&csrf),None,Some(format!("{report}&payload=unexpected"))).await.status(),StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(request(&app,&event_url,Some(&learner),Some(&csrf),None,Some(report.clone())).await.status(),StatusCode::NO_CONTENT);
     assert_eq!(request(&app,&event_url,Some(&learner),Some(&csrf),None,Some(report)).await.status(),StatusCode::CONFLICT);
+    for (index,event) in ["window_blurred","copy_attempt","cut_attempt","paste_attempt","fullscreen_entered","fullscreen_exited"].iter().enumerate() {
+        tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+        let observation = format!("{fields}&sequence={}&event={event}",index+2);
+        assert_eq!(request(&app,&event_url,Some(&learner),Some(&csrf),None,Some(observation)).await.status(),StatusCode::NO_CONTENT);
+    }
+    let forbidden = format!("{fields}&sequence=8&event=person_detected");
+    assert_eq!(request(&app,&event_url,Some(&learner),Some(&csrf),None,Some(forbidden)).await.status(),StatusCode::UNPROCESSABLE_ENTITY);
     let review_url = format!("/supervision/review?school=academy-demo&subject=1&lesson=1&session={session_id}");
     assert_eq!(request(&app,&review_url,Some(&reviewer),None,None,None).await.status(),StatusCode::FORBIDDEN);
     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs() as i64;
     let grant = operator(serde_json::json!({"operation":"grant","subject":1,"delegate":3,"action":"exam_review","lesson":1,"expires_at":now+3600}));
-    let review = request(&app,&review_url,Some(&reviewer),None,None,None).await; assert_eq!(review.status(),StatusCode::OK); assert!(text(review).await.contains("Page hidden"));
+    let review = request(&app,&review_url,Some(&reviewer),None,None,None).await; assert_eq!(review.status(),StatusCode::OK); assert!(text(review).await.contains("page hidden"));
     operator(serde_json::json!({"operation":"revoke","subject":1,"delegate":3,"action":"exam_review","lesson":1,"revision":revision(&grant)}));
     assert_eq!(request(&app,&review_url,Some(&reviewer),None,None,None).await.status(),StatusCode::FORBIDDEN);
     assert_eq!(request(&app,&session_url,Some(&learner),Some(&csrf),None,Some(format!("{fields}&action=pause"))).await.status(),StatusCode::SEE_OTHER);
@@ -86,7 +97,7 @@ async fn transparent_sessions_and_parental_rules_on_original_routes() {
     let paused = text(request(&app,&session_url,Some(&learner),None,None,None).await).await;
     assert!(!paused.contains("id=\"visibility-report\"")); let (csrf,fields) = form(&paused);
     assert_eq!(request(&app,&session_url,Some(&learner),Some(&csrf),None,Some(format!("{fields}&action=end"))).await.status(),StatusCode::SEE_OTHER);
-    assert_eq!(request(&app,&session_url,Some(&learner),Some(&csrf),None,Some(format!("{fields}&action=resume&policy=exam-v1&notice=notice-v1&acknowledge=yes"))).await.status(),StatusCode::CONFLICT);
+    assert_eq!(request(&app,&session_url,Some(&learner),Some(&csrf),None,Some(format!("{fields}&action=resume&policy=exam-v1&notice=notice-v1&collection=15&acknowledge=yes"))).await.status(),StatusCode::CONFLICT);
     assert_eq!(request(&app,start,Some(&learner),Some(&value(&initial,"_token")),None,Some(start_form.clone())).await.status(),StatusCode::CONFLICT);
     assert_eq!(request(&app,"/lessons/1/play",Some(&learner),None,Some("academy-demo"),None).await.status(),StatusCode::OK);
     let progress = format!("_token={csrf}&progress_percent=10&idempotency_key=allowed-supervision-progress");

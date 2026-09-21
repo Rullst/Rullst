@@ -19,6 +19,14 @@ pub(crate) fn command() -> Command {
             "Add explicit transparent supervision to the full SQLite LMS (unpublished v13 preview)",
         )
         .arg(
+            Arg::new("browser-observations")
+                .long("browser-observations")
+                .default_value("visibility")
+                .help(
+                    "Disclosed comma-separated categories: visibility,focus,clipboard,fullscreen",
+                ),
+        )
+        .arg(
             Arg::new("supervision-source")
                 .long("supervision-source")
                 .required(true)
@@ -65,7 +73,14 @@ pub(crate) fn run(args: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     let lifetime = *args
         .get_one::<u32>("session-seconds")
         .ok_or_else(|| invalid("missing lifetime"))?;
-    files::apply(&plan(&root, source, policy, notice, retention, lifetime)?)?;
+    let collection = browser_collection(
+        args.get_one::<String>("browser-observations")
+            .map(String::as_str)
+            .unwrap_or("visibility"),
+    )?;
+    files::apply(&plan(
+        &root, source, policy, notice, retention, lifetime, collection,
+    )?)?;
     println!(
         "Supervision installed. Read SUPERVISION.md: initialize the private store and form key before startup; independently verify authority before administrative provisioning."
     );
@@ -79,6 +94,7 @@ fn plan(
     notice: &str,
     retention: u32,
     lifetime: u32,
+    collection: u16,
 ) -> Result<Vec<Edit>, Box<dyn std::error::Error>> {
     for value in [policy, notice] {
         if value.is_empty()
@@ -281,6 +297,7 @@ fn plan(
             .replace("__POLICY__", &format!("{policy:?}"))
             .replace("__NOTICE__", &format!("{notice:?}"))
             .replace("__RETENTION__", &retention.to_string())
+            .replace("__COLLECTION__", &collection.to_string())
             .replace("__LIFETIME__", &lifetime.to_string());
         edits.push(Edit::create(
             root.join(path),
@@ -296,4 +313,25 @@ fn plan(
         include_str!("README.md.template").to_owned(),
     )?);
     Ok(edits)
+}
+
+fn browser_collection(value: &str) -> Result<u16, io::Error> {
+    if value.is_empty() || value.len() > 64 {
+        return Err(invalid("select supported browser observation categories"));
+    }
+    let mut bits = 0;
+    for name in value.split(',') {
+        let bit = match name {
+            "visibility" => 1,
+            "focus" => 2,
+            "clipboard" => 4,
+            "fullscreen" => 8,
+            _ => return Err(invalid("unsupported browser observation category")),
+        };
+        if bits & bit != 0 {
+            return Err(invalid("duplicate browser observation category"));
+        }
+        bits |= bit;
+    }
+    Ok(bits)
 }

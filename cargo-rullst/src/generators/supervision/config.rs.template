@@ -4,8 +4,15 @@ pub const POLICY: &str = __POLICY__;
 pub const NOTICE: &str = __NOTICE__;
 pub const RETENTION_SECONDS: u32 = __RETENTION__;
 pub const SESSION_SECONDS: u32 = __LIFETIME__;
+pub const COLLECTION_BITS: u16 = __COLLECTION__;
+
+pub fn collection() -> Result<rullst_supervision::exam::Collection, Error> {
+    if COLLECTION_BITS > 15 { return Err(Error::Configuration); }
+    rullst_supervision::exam::Collection::from_bits(COLLECTION_BITS).map_err(|_| Error::Configuration)
+}
 
 pub fn settings() -> Result<(PathBuf, StoreConfig), Error> {
+    collection()?;
     let path = std::env::var_os("RULLST_SUPERVISION_DATABASE").filter(|v| !v.is_empty()).ok_or(Error::Configuration)?;
     let epoch = std::env::var("RULLST_SUPERVISION_EPOCH").map_err(|_| Error::Configuration)?;
     let limits = Limits::new(1024, 256, 8192, 512)?.event_budget(256, 1)?;

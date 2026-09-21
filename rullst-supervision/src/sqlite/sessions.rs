@@ -2,7 +2,7 @@ use super::{SqliteSupervision, storage, transaction::Operation};
 use crate::{
     AuthorityAction, Clock, Context, OpaqueId, Revision, Scope, SupervisionError as Error,
     clock::MAX_TIME,
-    exam::{Acknowledgement, ExamPolicy, Session, SessionState},
+    exam::{Acknowledgement, Collection, ExamPolicy, Session, SessionState},
 };
 use ring::rand::SecureRandom;
 
@@ -19,7 +19,7 @@ impl<C: Clock> SqliteSupervision<C> {
         previous: Option<Revision>,
     ) -> Result<Session, Error> {
         context.require_subject(scope)?;
-        acknowledgement.matches(policy.version(), policy.notice())?;
+        acknowledgement.matches(policy.version(), policy.notice(), policy.collection())?;
         let mut op = self.begin().await?;
         if policy.lifetime_seconds() > op.config.session_lifetime {
             return Err(Error::InvalidInput);
@@ -71,6 +71,8 @@ impl<C: Clock> SqliteSupervision<C> {
             scope: scope.clone(),
             policy: policy.version().clone(),
             notice: policy.notice().clone(),
+            collection: policy.collection(),
+            initial_collection: policy.collection(),
             state: SessionState::Active,
             revision,
             started_at: op.now,
@@ -80,9 +82,9 @@ impl<C: Clock> SqliteSupervision<C> {
             last_event_at: None,
             event_count: 0,
         };
-        sqlx::query("INSERT INTO rullst_supervision_sessions (id,tenant,subject,resource,policy,notice,state,revision,started_at,expires_at,retain_until,sequence,last_event_at,event_count) VALUES (?,?,?,?,?,?,1,?,?,?,?,0,NULL,0)")
+        sqlx::query("INSERT INTO rullst_supervision_sessions (id,tenant,subject,resource,policy,notice,collection,initial_collection,state,revision,started_at,expires_at,retain_until,sequence,last_event_at,event_count) VALUES (?,?,?,?,?,?,?,?,1,?,?,?,?,0,NULL,0)")
             .bind(session.id.as_str()).bind(scope.tenant().as_str()).bind(scope.subject().as_str()).bind(scope.resource().as_str())
-            .bind(session.policy.as_str()).bind(session.notice.as_str()).bind(revision.value()).bind(op.now).bind(expires_at).bind(retain_until)
+            .bind(session.policy.as_str()).bind(session.notice.as_str()).bind(i64::from(session.collection.bits())).bind(i64::from(session.initial_collection.bits())).bind(revision.value()).bind(op.now).bind(expires_at).bind(retain_until)
             .execute(&mut *op.tx).await.map_err(storage)?;
         op.until(expires_at)?;
         op.finish().await?;
@@ -201,9 +203,11 @@ impl<C: Clock> SqliteSupervision<C> {
             return Err(Error::Conflict);
         }
         if next == SessionState::Active {
-            acknowledgement
-                .ok_or(Error::InvalidInput)?
-                .matches(&session.policy, &session.notice)?;
+            acknowledgement.ok_or(Error::InvalidInput)?.matches(
+                &session.policy,
+                &session.notice,
+                session.collection,
+            )?;
         }
         session.revision = op.next_revision()?;
         session.state = next;
@@ -275,15 +279,19 @@ impl<C: Clock> Operation<'_, C> {
             i64,
             i64,
             i64,
+            i64,
+            i64,
             Option<i64>,
             i64,
         );
-        let row: Option<Row> = sqlx::query_as("SELECT substr(policy,1,129),substr(notice,1,129),state,revision,started_at,expires_at,retain_until,sequence,last_event_at,event_count FROM rullst_supervision_sessions WHERE id=? AND tenant=? AND subject=? AND resource=?")
+        let row: Option<Row> = sqlx::query_as("SELECT substr(policy,1,129),substr(notice,1,129),collection,initial_collection,state,revision,started_at,expires_at,retain_until,sequence,last_event_at,event_count FROM rullst_supervision_sessions WHERE id=? AND tenant=? AND subject=? AND resource=?")
             .bind(id.as_str()).bind(scope.tenant().as_str()).bind(scope.subject().as_str()).bind(scope.resource().as_str())
             .fetch_optional(&mut *self.tx).await.map_err(storage)?;
         let Some((
             policy,
             notice,
+            collection,
+            initial_collection,
             state,
             revision,
             started_at,
@@ -296,7 +304,16 @@ impl<C: Clock> Operation<'_, C> {
         else {
             return Err(Error::Forbidden);
         };
-        if started_at < 0
+        let collection = u16::try_from(collection)
+            .ok()
+            .and_then(|bits| Collection::from_bits(bits).ok())
+            .ok_or(Error::Configuration)?;
+        let initial_collection = u16::try_from(initial_collection)
+            .ok()
+            .and_then(|bits| Collection::from_bits(bits).ok())
+            .ok_or(Error::Configuration)?;
+        if !collection.is_subset_of(initial_collection)
+            || started_at < 0
             || started_at > self.now
             || expires_at <= started_at
             || expires_at - started_at > self.config.session_lifetime
@@ -326,6 +343,8 @@ impl<C: Clock> Operation<'_, C> {
             scope: scope.clone(),
             policy: OpaqueId::new(policy).map_err(|_| Error::Configuration)?,
             notice: OpaqueId::new(notice).map_err(|_| Error::Configuration)?,
+            collection,
+            initial_collection,
             state,
             revision: self.check_revision(revision)?,
             started_at,

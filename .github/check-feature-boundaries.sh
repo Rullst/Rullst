@@ -134,7 +134,9 @@ rullst-supervision|
 rullst-supervision|exam
 rullst-supervision|parental
 rullst-supervision|exam,parental
+rullst-supervision|analysis
 rullst-supervision|sqlite
+rullst-supervision|sqlite,analysis
 
 # Umbrella boundaries exposed to generated applications.
 rullst|orm

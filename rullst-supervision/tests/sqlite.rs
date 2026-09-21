@@ -76,10 +76,15 @@ async fn fixture() -> (tempfile::TempDir, SqliteSupervision<TestClock>, TestCloc
     (temp, store, clock)
 }
 
+#[cfg(feature = "analysis")]
+#[path = "sqlite_cases/analysis.rs"]
+mod analysis;
 #[path = "sqlite_cases/concurrency.rs"]
 mod concurrency;
 #[path = "sqlite_cases/exams.rs"]
 mod exams;
+#[path = "sqlite_cases/observations.rs"]
+mod observations;
 #[path = "sqlite_cases/parental.rs"]
 mod parental;
 #[path = "sqlite_cases/storage.rs"]

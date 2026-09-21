@@ -6,7 +6,7 @@ verified guardianship service, device controller or legal-compliance claim.
 
 ## Package and integration boundary
 
-The separate crate has optional `exam`, `parental` and `sqlite` features. The
+The separate crate has optional `exam`, `parental`, `sqlite` and `analysis` features. The
 SQLite adapter selects both domain modules; neither the crate nor storage becomes
 a Core/default dependency. Its first backend uses a concrete adapter generic
 over a trusted server clock, with real SQLite and deterministic clocks in tests.
@@ -39,7 +39,7 @@ forms from matching a recreated grant or policy after bounded cleanup.
 ## Visible exam sessions
 
 The learner explicitly starts collection for a server-selected resource and
-acknowledges exact policy/notice versions. Session IDs are random. The learner
+acknowledges exact policy/notice versions and the selected collection categories. Session IDs are random. The learner
 can pause, resume with fresh acknowledgement or end collection. End is terminal;
 every transition uses the displayed revision, and lifetime is at most eight
 hours. Starting also compares the last retained session revision atomically;
@@ -47,7 +47,9 @@ a form from before a pause/end cannot silently start a new session. Generated
 forms expire well before the minimum session retention. Session access is tenant/subject bound; existing course/assessment access
 must still be checked by the application.
 
-Only `PageVisible` and `PageHidden` events are accepted. Each binds a session,
+Visibility remains the default. Explicit selection also supports browser focus,
+clipboard occurrence and fullscreen events, capture status and optional adapter
+findings. Each observation binds a session,
 its current revision and the exact next client sequence. Unknown, repeated,
 out-of-order, paused, ended, expired and over-budget submissions are rejected.
 Receipt time comes from the server; event rate and stored counts are bounded.
@@ -60,50 +62,18 @@ browsing history, location, fingerprint or arbitrary payload collection. The
 consumer must show active/paused/ended state and stop sending after pause/end.
 No-JavaScript controls must still work without claiming visibility observations.
 
-## Proposed proctoring extensions (not implemented)
+## Observation extension candidate
 
-The owner described a broader exam platform on September 20: focus/tab changes,
-copy attempts, camera presence and potential outside help through audio. The
-existing crate is named `rullst-supervision`; no `rullst-proctoring` package exists.
-Keep reusable session, authority, typed observation and reviewer-access contracts
-here, while the application selects disclosed exam rules and review workflows.
+The September 20 extension keeps the implementation in `rullst-supervision`.
+There is no separate `rullst-proctoring` crate. It adds exact collection selection,
+typed browser/capture observations and bounded camera-presence/audio-activity
+adapter orchestration. The [integration guide](supervision-observations.md) covers
+the APIs, source attribution, cancellation, schema transition and test boundaries.
 
-The next bounded candidate is opt-in observation of focus loss/return, copy
-attempts within the exam page and fullscreen transitions. Browser visibility
-already exists, but the current event enum/store/consumer accepts only
-`PageVisible` and `PageHidden`: these extensions are not implemented by changing
-an application setting. New event kinds require explicit capability selection,
-a new disclosed policy/notice and fresh acknowledgement, strict payload/rate/
-retention limits and browser tests. Store event occurrence, not clipboard text,
-keystrokes or the contents of other windows. Accessibility tools, notifications
-and ordinary operating-system actions can produce these events legitimately.
-
-A normal web page cannot enumerate every open application/tab or observe
-system-wide clipboard activity. Window focus reports do not identify the other
-window. Screen capture is a separately permissioned user-selected surface, not
-an inventory of all windows. A separately installed client/extension would need
-its own permissions, threat model and platform acceptance.
-
-Camera/microphone capture and any inference belong in separate optional adapters,
-with explicit participant-visible permission and capture state, stopping/revoking
-collection, minimized retention and restricted review access. They must not be
-default dependencies or silently enabled by a framework update. A camera stream
-ending, low audio quality, no person detected or speech detected are different
-observations with different uncertainty; none automatically establishes cheating
-or outside answers. Generic suspicious-behavior scores, emotion/gaze-based intent
-claims and automatic grading/disciplinary decisions are not part of this design.
-
-For v13, evaluate the basic browser observations and an explicit extension
-boundary before camera/audio inference. The owner's no-manual/no-real-provider
-test preference retains automated protocol/browser tests; simulated detections
-cannot be advertised as a functioning camera/audio model. No new implementation
-or September 26 commitment is made by this extension proposal.
-
-Browser references: [page visibility](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API),
-[window focus loss](https://developer.mozilla.org/en-US/docs/Web/API/Window/blur_event),
-[page copy events](https://developer.mozilla.org/en-US/docs/Web/API/Element/copy_event),
-[camera/microphone permission](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia),
-and [screen capture](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia).
+The generated consumer observes only selected events on its own page. It cannot
+enumerate every open window/application or recognize outside answers. The host
+owns media capture permission, a local or remote model, accessibility alternatives
+and human review; the framework includes no detector or automatic penalty.
 
 ## Parental application restrictions
 
@@ -172,7 +142,8 @@ The explicit command is available only with the matching local unpublished sourc
 ```bash
 cargo rullst make:supervision --supervision-source /path/to/rullst-supervision \
   --policy-version exam-v1 --notice-version notice-v1 \
-  --retention-seconds 3600 --session-seconds 3600
+  --retention-seconds 3600 --session-seconds 3600 \
+  --browser-observations visibility,focus,clipboard,fullscreen
 ```
 
 It recognizes the complete SQLite LMS authentication and learning service before
@@ -181,19 +152,21 @@ outputs or ambiguous CSRF routing require manual integration. It adds a shared
 learning-service gate, scoped SSR controls, a local `supervision-admin` binary and
 `SUPERVISION.md`; neither startup nor a browser can provision its own authority.
 A separate nonzero form key binds authenticated cookie, actor, school, learner,
-resource, policy/notice and revision. Forms expire after five minutes, shorter
+resource, configured categories, policy/notice and revision. Forms expire after five minutes, shorter
 than retained session metadata. An active/paused session is recovered when the
 learner reopens its start page, rather than replaced by another session.
 
-The browser collector sends only visibility changes, without automatic renewal
-or heartbeats. It stops locally on pause/end submission, page exit, form/session
+The browser collector sends only selected event occurrences, without automatic
+renewal or heartbeats. Visibility alone remains the command default. A queue of
+at most sixteen waiting events preserves order with one request in flight; an
+overflow stops collection, clears the queue and asks for a state reload. It stops locally on pause/end submission, page exit, form/session
 expiry or a failed report. Other open pages learn of revocation through rejection;
 server state prevents acceptance after a completed pause/end. Own pause/end and
 state reads remain possible after learning restrictions change, provided school
 membership and lesson binding remain valid. New starts/resumes/reports require
 current learning access.
 
-Focused local acceptance now passes the real CLI/operator process, authenticated
+The earlier visibility-only baseline passed the real CLI/operator process, authenticated
 HTTP journey and Chromium. The browser exercises keyboard start/pause/end with
 JavaScript disabled, then real tab visibility, minimal request fields,
 pause/resume/end and absence of capture or external page requests. HTTP negatives
@@ -205,14 +178,15 @@ both installation orders preserve application guidance and refreshed AI context.
 The generated application also passes all fourteen original LMS library tests
 and strict production Clippy, including the zero-panic lints. The added gate
 preserves already-authorized administrative progress corrections while denying
-restricted learner progress writes. All 376 CLI library tests pass locally.
-Twenty-one crate tests pass locally. A focused mutation run of the changed
+restricted learner progress writes. Its 376 CLI library tests passed locally.
+That baseline had twenty-one crate tests passing locally. A focused mutation run of the changed
 start/latest-session paths catches all six executable mutations; three attempted
 `Default` replacements do not compile because sessions deliberately have no
 `Default`. The earlier scoped-authority run caught twenty mutations with one
 non-compiling replacement. These bounded samples are not a whole-crate mutation
-score. Full workspace regression, the installed-archive rehearsal and hosted
-release gates remain outstanding.
+score. The baseline subsequently passed its hosted checks and archive rehearsal and
+was merged in PR #222. New observation-extension evidence must be collected
+separately; that earlier pass does not validate these new APIs.
 
 The distribution diagnostic audits and extracts the unpublished supervision
 archive explicitly and feeds that extracted source to the installed CLI. Normal

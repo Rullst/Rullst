@@ -54,6 +54,41 @@ The prioritized implementation sequence is:
    for combined acceptance and publication. The preliminary engineering estimate
    is one to two days for a bounded first journey and its tests, plus hosted CI;
    it is not a commitment to complete device-wide controls by 26 September.
+9. **Subsequent September 20 direction: finish usable journeys before opening
+   more optional implementation streams.** After the current deployment and
+   supervision implementations, prioritize Bunny Stream private course video,
+   then Labs with an actual isolated exercise/grading path. A signing helper or
+   mock-only Labs contract is an intermediate checkpoint, not either product's
+   completion. Remote brokers, a new gateway and expansion of the Verus pilot
+   follow these journeys; mandatory fixes and release checks retain precedence.
+
+## Depth before additional optional features
+
+The owner asked to pursue a complete, comprehensive implementation of Bunny
+and Labs before moving to other new capabilities. Finish the supported user
+journey, its failure/recovery paths, integration documentation and executable
+acceptance before widening the provider, language or backend matrix. This
+changes priority and the intended outcome; it is not evidence that either
+implementation exists or a promise to finish both by the 26th. The feature
+freeze and validation dates remain unchanged.
+
+| Order | Intended usable outcome | Completion boundary |
+| :--- | :--- | :--- |
+| 1 — Bunny Stream | An instructor manages a course-owned video through creation, authorized resumable upload, processing, publication, metadata changes, withdrawal and deletion; an entitled learner obtains and renews private playback access. | Complete the selected provider lifecycle, durable ownership/state, notification reconciliation, retry/recovery paths, application/browser consumer, automated protocol tests and operations guidance. Live-account interoperability remains unvalidated under the owner's no-live-testing constraint. See the [detailed scope](managed-video-roadmap.md#completion-target-before-another-optional-integration). |
+| 2 — Labs | An instructor defines a versioned exercise and grader; an authorized learner submits, executes and receives a bounded result through a separately deployed runner, with cancellation and recovery. | Complete the contract stage, then pursue one named isolated backend and a supported exercise/toolchain profile with actual execution, deterministic grading, isolation and failure tests. Contracts and a mock alone do not complete this outcome. See the [delivery target](rullst-labs-roadmap.md#v13-usable-journey-target). |
+
+Divide implementation into small reviewable commits and PRs without declaring
+the journey complete early. While hosted checks run, advance related
+documentation, recovery tests and packaging. Move implementation effort to the
+next journey after the preceding supported lifecycle and focused acceptance
+pass; required hosted admission may continue independently. Do not open an
+unrelated optional feature while useful completion work remains.
+
+If a journey cannot meet its acceptance by the evening of September 23, report
+the precise unfinished behavior and keep it out of the stable supported scope.
+An independently useful contract package may remain explicitly experimental,
+but cannot be presented as a completed execution product. Preserve the reserved
+validation days and the isolation, provider-evidence and publication requirements.
 
 A provider adapter advertised as live-validated requires environment, protocol
 and acceptance evidence. The owner's later direction allows opt-in integrations
@@ -395,6 +430,15 @@ installed-package acceptance remain outstanding. The corresponding stable-line
 backport still needs preparation and its own checks; published artifacts remain
 immutable.
 
+The September 20 observation extension now adds selected browser categories,
+capture-status contracts and bounded analysis adapters to the supervision
+candidate. Its five generated CLI/composition/process contracts pass with real
+Chromium, alongside 378 CLI unit tests, isolated feature checks, strict Clippy
+and an offline simulated adapter example. A targeted nine-mutation guard sample
+is fully caught. No camera/audio model, automatic misconduct determination or
+live-provider validation is claimed. Full hosted workspace and archive acceptance
+of this extension remain required; see [the integration guide](supervision-observations.md).
+
 | Priority | Deliverable | Acceptance before calling it complete |
 | :--- | :--- | :--- |
 | P0 | Published v12.1.0 corrections integrated without losing v13 work | Review conflicts; retain the stable runtime changes; pass the combined workspace tests, strict Clippy, format and feature/consumer checks. |
@@ -442,12 +486,12 @@ when its dependencies and verification capacity are ready.
 | M5/M29/M34 — API/SDK contracts | Scalar and the route-scanning OpenAPI generator exist, but scanning currently emits placeholder responses. Add a schema-backed supported API profile and one TypeScript target. | Active P1 queue; React, Dart and Swift targets follow the proven schema contract. |
 | M21 — Omni/Android | Version 12.1 configures application-owned signing; hosted Android CI already verifies signatures and the expected certificate. Bring that verification into the public CLI with exact artifact handling. | Active P1 queue; this closes a CLI gap, not physical-device or store acceptance. |
 | M9 — Auth/session consistency | Durable account recovery and revocation exist. A separate optional PostgreSQL passkey-ceremony manager now binds tenant/account/session/RP and persists bounded single-use state. Real database, process/restart and Chromium virtual-authenticator checks pass locally. | Candidate under review; preserve credential-owner/revocation/counter CAS at the host. Full workspace, archive and hosted acceptance remain mandatory. See [the contract](shared-passkey-ceremonies.md). |
-| Transparent supervision | The owner has selected the proposed `rullst-supervision` as the first additional priority. Keep parental and exam policies distinct and reuse privacy primitives through explicit composition. | First conditional extension after required deliveries; a usable generated journey and browser/authorization tests precede package admission. Device-wide control remains separate. |
+| Transparent supervision | The baseline passed hosted and archive acceptance in PR #222. On September 20 the owner explicitly prioritized its reusable exam-platform extension: exact selected collection, browser focus/clipboard/fullscreen observations and bounded local-or-remote analysis contracts. | Active candidate; retain transparent permissions, typed uncertain observations, manual review and no raw media retention. The new extension needs its own generated browser, workspace and archive acceptance. See the [integration boundary](supervision-observations.md). |
 | M27 — deployment acceptance with an existing proxy | The local two-process Caddy/Redis contract passes startup exclusion, readiness changes, streaming drain, shared-budget/outage enforcement, forged headers, CSRF/body limits and WebSocket origin/close behavior. It exposed and fixed early release of the ordinary HTTP body admission guard. | Candidate under review; full workspace and hosted admission remain mandatory. This is one loopback deployment fixture, not generated multi-replica Foundry, cross-host failover or a zero-downtime guarantee. See [deployment acceptance](deployment-acceptance.md). |
 | M10/M27 — cloud and VPS application protection | The deployment candidate exercises shared Redis budgets, forged forwarding metadata, security headers, CSRF and request-body limits. A separate local `deploy:doctor` candidate now reuses Core validation with explicit environment sources, bounded inputs and redacted reports. | Reuse Security/Core and the CLI; no new security crate. Focused generated-CLI/negative tests and hosted/package acceptance remain required. No automatic firewall/SSH/cloud-account changes, host antivirus or volumetric DDoS guarantee. See the [diagnostic](deployment-diagnostic.md) and [deployment boundary](security-architecture.md#cloud-and-vps-deployments). |
-| LMS/Academy — managed private video | There is no Bunny integration in the current code. The owner raised Bunny Stream on September 20; it is selected for the next bounded design evaluation after the deployment diagnostic, ahead of a new gateway and broad Labs expansion. | Prioritize authorized uploads, tenant/course-owned asset records, short-lived playback authorization and signed processing notifications. Library configuration, direct-file protection, CDN versus embed tokens, token sharing/revocation windows and real provider/browser acceptance need explicit evidence. See the [managed-video candidate](managed-video-roadmap.md). |
-| M15 — remote messaging | Wire contracts, local durable state and the ORM outbox exist. Evaluate one remote broker adapter with real restart, redelivery and lease/idempotency evidence. | Conditional extension; select a broker and supported semantics first. Seven adapter names are not seven functioning integrations. |
-| M40 — Labs | The threat model and separate web-contract/runner roadmap are retained. The first candidate is a bounded job/grading/receipt contract with a deterministic local protocol fixture. | Conditional extension; contracts alone do not deliver code execution. A usable runner requires its own isolated deployment and adversarial acceptance. |
+| LMS/Academy — managed private video | There is no Bunny integration in the current code. Following the deployment diagnostic and supervision observation base, the owner's latest direction prioritizes a complete private-course-video lifecycle, including management, upload, processing, playback and deletion. | First next optional implementation; complete its supported lifecycle, recovery, consumer and automated protocol acceptance before widening the integration matrix. Live-account interoperability stays unvalidated. See the [managed-video candidate](managed-video-roadmap.md). |
+| M40 — Labs | Neither planned package exists yet. The contract/mock stage remains the first implementation checkpoint, followed by a real separately deployed runner for one supported exercise profile. | Next after the Bunny journey, ahead of remote brokers and a new gateway. Pursue usable execution and grading with isolated deployment and adversarial acceptance; do not call contracts alone a completed Labs product. Delivery by scope freeze remains conditional on that evidence. |
+| M15 — remote messaging | Wire contracts, local durable state and the ORM outbox exist. Evaluate one remote broker adapter with real restart, redelivery and lease/idempotency evidence. | Conditional extension after the selected Bunny and Labs journeys; select a broker and supported semantics first. Seven adapter names are not seven functioning integrations. |
 | M39 — optional Rullst Gateway | No `rullst-gateway` crate or executable exists. Keep the separate opt-in proxy/load-balancer design from the master roadmap; readiness helpers and deployment templates do not implement it. | Lower priority than supervision, shared passkey state, deployment acceptance, one remote broker and bounded Labs work. Reconsider when a concrete self-hosted need justifies implementation and operations; no September 26 delivery commitment. |
 | M1/M3/M7/M12 — adoption and assurance | Carry the compatible updater forward, add actual major-version migrations, improve generated guidance and connect new code to the relevant verification inventory. | Required adoption/security work plus bounded maintainer tooling; Verus begins with one production-linked pilot. |
 
@@ -540,10 +584,12 @@ The owner reconfirmed this calendar on September 20: prioritize remaining
 implementation through September 23 by user benefit, maintenance cost and
 acceptance capacity; reserve September 24–25 for validation/corrections and
 September 26 for final adjustments and protected publication. Local deployment
-configuration diagnostics are the next selected increment: they reuse existing
-CLI/Core contracts and help users catch deployment mistakes without requiring a
-new service. Remote messaging and Labs remain conditional on usable acceptance
-within the remaining window; increasing the crate count is not a priority.
+configuration diagnostics and the supervision observation extension now have
+local candidates. The owner's subsequent direction selects the complete
+supported Bunny journey next, followed by usable Labs execution and grading,
+before remote messaging or other optional expansion. Both still need their own
+implementation and acceptance within the remaining window; increasing the crate
+count is not a priority.
 
 The owner subsequently requested no manual or real-provider account testing in
 this window, including the confirmed existing Bunny library. Continue automated
@@ -556,8 +602,8 @@ than waiting for manual tests or using the owner's live resources.
 | Date | Checkpoint |
 | :--- | :--- |
 | 20 September | Close v12.1 documentation, admit the integration baseline, settle privacy/storage API decisions and prepare the v13 release/branch policy. |
-| 21–22 September | Implement and test PostgreSQL/age/privacy consumers; advance the active SaaS/API/Omni increments as dependencies and verification capacity permit. Maintain migration fixtures with each API change. Decide any optional provider inclusion by the end of the 22nd based on available sandbox evidence. |
-| 23 September | Close accepted product increments, generated guidance and documentation; evaluate Auth/broker/Labs extensions and the small Verus pilot against remaining acceptance capacity. Freeze feature scope by the evening. |
+| 21–22 September | Admit and repair the existing candidates; prioritize completing the Bunny lifecycle, then the Labs execution/grading journey as dependencies and verification capacity permit. Maintain migration fixtures and automated acceptance with each API change. Assess provider scope by the end of the 22nd using automated protocol evidence, without live-account testing. |
+| 23 September | Close supported product journeys, recovery paths, generated guidance and documentation. Resolve the Bunny/Labs acceptance boundaries before considering another optional implementation. Freeze feature scope by the evening. |
 | 24 September | Run the complete candidate verification campaign, including required native matrices, fuzzing, Miri, Kani and sanitizers. Preserve explicit evidence boundaries and start long jobs early. |
 | 25 September | Repair findings, invalidate and repeat affected evidence, test packaged consumers and rehearse the complete publication transaction. |
 | 26 September | Buffer for final failures, review and protected publication. Publish stable only with all mandatory criteria satisfied; otherwise report the exact blockers and an honestly scoped candidate. |

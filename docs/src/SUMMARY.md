@@ -27,6 +27,7 @@
 - [Rullst Labs & Isolated Runner Roadmap](rullst-labs-roadmap.md)
 - [Privacy & Proportional Age Assurance](privacy-age-assurance-roadmap.md)
 - [Transparent Exam & Parental Supervision](supervision.md)
+- [Exam observation integration](supervision-observations.md)
 - [Shared Passkey Ceremony Contract](shared-passkey-ceremonies.md)
 - [Two-Replica Deployment Acceptance](deployment-acceptance.md)
 - [Verus Verification Pilot for v13](verus-roadmap.md)

@@ -135,6 +135,49 @@ Before either package can be described as production-ready for untrusted code:
 - letting an LLM decide security policy or authoritative grading; and
 - store, certification or platform guarantees that require external evidence.
 
+## v13 usable journey target
+
+On September 20 the owner prioritized completing Bunny Stream and then Labs
+before opening more optional implementation streams. Phase 0 remains necessary
+for architecture and protocol review, but contracts and a mock are an
+intermediate milestone. The intended Labs outcome is a usable exercise and
+grading journey through a separately deployed runner:
+
+1. An authorized instructor defines a versioned exercise, exact toolchain/grader
+   revision and execution policy; tenant and learner permissions are checked by
+   the trusted application before submission and result access.
+2. An authorized learner submits bounded input to a durable, idempotent job.
+   Retries cannot silently create a new execution or apply a result twice.
+3. One named isolated backend executes the supported exercise profile with
+   explicit resource, filesystem, environment, network and output limits. The
+   initial candidate is the Phase 1 Wasm backend; supported Rust exercise and
+   compilation requirements must be demonstrated before advertising a language
+   pack. Rust/Rullst native server exercises are not implied by Wasm support.
+4. The runner returns an integrity-bound receipt with exact grader revision,
+   outcomes and bounded diagnostics. Validate request/result binding and reject
+   stale, cross-tenant, forged or incompatible results before applying them.
+5. Cancellation, timeout, duplicate delivery, worker restart/loss, cleanup and
+   reconciliation have executable recovery tests. Retention and deletion cover
+   source, workspaces, outputs and artifacts rather than only the job record.
+6. A focused application consumer exercises submission, status, cancellation
+   and result access. Package/deployment guides explain installation, supported
+   platforms, capacity limits, required configuration and failure recovery.
+
+Use real automated disposable-runner tests for execution and isolation; no
+manual or paid provider account is required to develop those fixtures. Local
+disk/build limits still apply, so use hosted acceptance for large runtime builds.
+Passing protocol mocks alone cannot establish isolation. The production-ready
+criteria above, including independent review of the selected backend, remain
+distinct requirements; automated tests do not substitute for that evidence.
+
+The September 23 feature freeze and September 24–26 validation/publication
+window remain unchanged. Pursue this outcome before other optional features,
+but do not promise the full runner before its acceptance evidence exists. If
+incomplete at freeze, retain an explicit experimental boundary and carry the
+missing journey forward. Additional languages, OCI/microVM backends and full
+CTF infrastructure do not block completion of a supported first profile and
+must not be bundled into its claim.
+
 ## v13 delivery checklist
 
 - [ ] Complete the Phase 0 threat model and architecture decision record.

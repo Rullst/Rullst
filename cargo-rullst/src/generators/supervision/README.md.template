@@ -69,16 +69,24 @@ Own session state and pause/end controls remain available after learning access
 is restricted, provided current school membership and lesson binding still hold.
 Starting, resuming and reporting require current learning access. Paused/ended
 states cannot accept reports. Forms bind actor, cookie session, school, learner,
-resource, policy, notice and revision and expire after five minutes. A failed or
+resource, configured categories, policy, notice and revision and expire after five minutes. A failed or
 cancelled write may have committed: reload state before retrying.
 
-Only this page's visibility transitions are reported, at most one per second,
+Only the selected categories on this page are reported: visibility by default;
+`--browser-observations visibility,focus,clipboard,fullscreen` selects all four
+at generation time. Start/resume acknowledgement binds exact categories; browser
+permission for camera/audio is separate and never requested by this generator.
+Copy/cut/paste reports contain no clipboard contents. Focus cannot identify other
+windows, and fullscreen events do not force fullscreen or establish integrity.
+Reports are limited to at most one per second,
 256 per session and 8192 stored across all tenants. Dropped/forged reports are
 expected; they never establish misconduct or change grades. Forms work without
-JavaScript, with no visibility reports. Submission of pause/end stops local
+JavaScript, with no browser reports. Submission of pause/end stops local
 collection immediately; the server transition must still succeed. A different
 tab can attempt a report until it learns of the change, but committed state
-changes reject it. There are no background heartbeats or automatic renewal.
+changes reject it. The collector serializes requests with at most sixteen queued occurrences;
+overflow stops collection and clears the queue. There are no background
+heartbeats or automatic renewal.
 Five-minute form expiry stops local collection until the page is reloaded.
 
 The configured event retention and maximum session lifetime are shown to the
@@ -96,3 +104,11 @@ feature quiesced and a new independently retained epoch; restoring an old file
 with its old epoch can restore revoked authority. No automatic rollback detection,
 OS/device control, recurring schedules, screen-time accounting or camera analysis
 is provided. Review course policies and relationship evidence periodically.
+
+The unpublished observation extension uses schema v2. Schema v1 is refused;
+there is no automatic migration, acknowledgement upgrade or deletion. Quiesce
+the old preview, retain/expire its state under the existing retention policy and
+prepare a separately named private v2 store with a new independently retained
+epoch. Independently re-establish grants/restrictions before allowing protected
+learning; a fresh store has no enrolled parental restrictions. Do not just change
+the epoch against an old file or delete state to bypass the refusal.
