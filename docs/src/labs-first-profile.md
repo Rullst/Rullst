@@ -7,15 +7,18 @@ window still apply. Contracts and an offline simulation are intermediate work.
 
 ## Recorded Linux acceptance
 
-On September 21, [run 35565291103](https://github.com/Rullst/Rullst/actions/runs/35565291103)
-passed at `a519c795b2af8b5cfc67b2bc12d5dbad0408c9d7` on disposable Ubuntu 24.04
+On September 21, [run 35582398251](https://github.com/Rullst/Rullst/actions/runs/35582398251)
+passed at `977e40a31393b6403c960919b9ea72c54813ef5a` on disposable Ubuntu 24.04
 with the pinned Rust 1.96 profile. Its minimized artifact records 26 checks:
 actual isolation, compiler descriptor denial, shared kernel group capacity,
 compilation/grading, ownership/idempotency, wrong answers, fuel/stack/memory
 boundaries, compiler errors, filesystem/environment/import/output denial, fresh
 guest state, compiler deadline/cleanup, cancellation, controller loss, recovery at full group capacity,
 competing controllers and terminal source removal. Separate real Landlock and
-seccomp regressions also passed. No live provider account was used.
+seccomp regressions also passed. The same run repeated all 26 checks with
+instrumentation and generated the scoped controller coverage report. Both
+ordinary and instrumented artifacts preserve the named profile and outstanding
+independent-review boundary. No live provider account was used.
 
 The compiler-deadline case observes a real compiler before requiring the
 controller's own five-second deadline to cancel the attempt and remove its

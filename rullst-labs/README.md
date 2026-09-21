@@ -1,8 +1,8 @@
 # Rullst Labs
 
 Unpublished v13 implementation candidate for trusted exercise orchestration and
-exact grading. The named Linux journey passed [targeted hosted acceptance](https://github.com/Rullst/Rullst/actions/runs/35563203800)
-at `3ba267c2`; complete source/release admission and independent isolation review
+exact grading. The named Linux journey passed [targeted hosted acceptance](https://github.com/Rullst/Rullst/actions/runs/35582398251)
+at `977e40a3`; complete source/release admission and independent isolation review
 remain outstanding. Neither the candidate name nor a signed
 receipt establishes production readiness.
 

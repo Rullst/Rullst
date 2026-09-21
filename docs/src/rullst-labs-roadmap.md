@@ -188,16 +188,22 @@ must not be bundled into its claim.
 
 ## v13 delivery checklist
 
-- [x] Record the Phase 0 threat model and first-profile architecture decision; the named Linux journey now has targeted execution evidence, while independent review remains pending.
-- [ ] Stabilize the versioned request, policy, receipt and grader schemas.
-- [ ] Implement `rullst-labs` policy validation and deterministic mock backend.
-- [ ] Implement authenticated runner transport with idempotency and cancellation.
-- [ ] Select and prove the Phase 1 Wasm backend against adversarial fixtures.
-- [ ] Evaluate the Phase 2 rootless OCI backend without exposing a control socket.
-- [ ] Add Rust/Rullst compile, test and lint language packs with pinned toolchains.
-- [ ] Add tenant isolation, minimized audit and retention/deletion evidence.
-- [ ] Document reference deployment, capacity planning and failure recovery.
-- [ ] Keep offensive CTF infrastructure experimental until independently reviewed.
+Checked items describe the implemented first-profile candidate, not stable
+publication or production readiness. Broader schemas/backends retain their own
+acceptance requirements.
+
+- [x] Record the Phase 0 threat model and first-profile architecture decision.
+- [x] Implement bounded versioned exercise/request/worker/receipt types and decoding for the selected profile.
+- [x] Implement policy validation and an explicit simulation that cannot produce real execution evidence.
+- [x] Implement application-authorized shared-local SQLite transport, encrypted content, idempotency, fenced leases and cancellation.
+- [x] Exercise the pinned Rust-to-Wasm/Wasmi Linux profile against the named hosted execution and denial fixtures.
+- [x] Exercise tenant/learner denial, minimized results, terminal source removal and bounded retention.
+- [x] Document candidate host preparation, shared kernel capacity, protected keys and failure recovery.
+- [ ] Finish current workspace/platform and extracted-package source admission.
+- [ ] Complete independent isolation review and final release/package admission.
+- [ ] Evaluate rootless OCI or microVM backends as separate later profiles.
+- [ ] Add native Rust/Rullst application, general Cargo, test and lint language packs; the pure-function profile does not provide them.
+- [ ] Reconsider offensive CTF infrastructure only through its separately governed experimental deployment and review.
 
 The candidates belong to the Cargo workspace but remain `publish = false` and
 outside the release-order manifest until their separate admission requirements
