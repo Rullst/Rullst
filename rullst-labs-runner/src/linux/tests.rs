@@ -201,6 +201,7 @@ fn ordinary_directory_cannot_impersonate_a_delegated_cgroup() {
 #[test]
 fn key_loading_requires_an_owned_private_regular_file_with_exact_length() {
     let dir = tempfile::tempdir().unwrap();
+    std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
     let file = dir.path().join("seed");
     std::fs::write(&file, [9u8; 32]).unwrap();
     std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600)).unwrap();
@@ -210,6 +211,25 @@ fn key_loading_requires_an_owned_private_regular_file_with_exact_length() {
     std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o644)).unwrap();
     assert!(service::read_key(&file).is_err());
     std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600)).unwrap();
+    std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o777)).unwrap();
+    assert!(service::read_key(&file).is_err());
+    std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+    assert_eq!(*service::read_key(&file).unwrap(), [9u8; 32]);
     std::fs::write(&file, [9u8; 33]).unwrap();
     assert!(service::read_key(&file).is_err());
+
+    let fifo = dir.path().join("key-fifo");
+    rustix::fs::mkfifoat(
+        rustix::fs::CWD,
+        &fifo,
+        rustix::fs::Mode::RUSR | rustix::fs::Mode::WUSR,
+    )
+    .unwrap();
+    let (send, receive) = std::sync::mpsc::channel();
+    let reader = std::thread::spawn(move || send.send(service::read_key(&fifo).is_err()));
+    assert_eq!(
+        receive.recv_timeout(std::time::Duration::from_secs(2)),
+        Ok(true)
+    );
+    reader.join().unwrap().unwrap();
 }

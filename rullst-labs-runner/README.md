@@ -71,7 +71,9 @@ The operator supplies a private configuration with `linux` and `plane` objects.
 `linux` contains canonical `rootfs`, `launcher`, `cgroups` paths and the pinned
 `LinuxExperimental` profile. `plane` contains the dedicated database path,
 namespace/capacities and paths to separate 32-byte content and receipt keys.
-Key files must be owned private regular files, mode 0600. The application receives
+Key files must be owned private regular files, mode 0600, under protected
+root/controller-owned ancestors. Loading refuses symlinks, validates the opened
+descriptor and requires exactly 32 bytes. The application receives
 the content key and pinned public verification key; only the controller receives
 the signing seed. Neither secret enters the untrusted worker.
 

@@ -90,6 +90,9 @@ surface is validated contracts; opt-in shared-local SQLite stores dedicated,
 encrypted job content with current application authorization, idempotent
 submission, cancellation, leased execution, retention and result reconciliation.
 It must not reuse the application's authentication/database secrets as job keys.
+Controller keys require protected root/controller-owned ancestors and owned
+private regular files. Validate the opened no-follow descriptor and exact key
+length; a prior path metadata check alone does not bind the bytes read.
 
 The independently deployed runner accesses only that dedicated job plane and
 runner-owned tools. It must never give submitted code the job database, signing

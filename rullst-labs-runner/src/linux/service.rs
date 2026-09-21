@@ -8,7 +8,7 @@ use rullst_labs::{
 use serde::{Deserialize, Serialize};
 use std::{
     io::Read,
-    os::unix::fs::MetadataExt,
+    os::unix::fs::{MetadataExt, OpenOptionsExt},
     path::{Path, PathBuf},
 };
 
@@ -158,7 +158,15 @@ async fn reconcile(
     Ok(())
 }
 pub(super) fn read_key(path: &Path) -> Result<zeroize::Zeroizing<[u8; 32]>, Error> {
-    let meta = std::fs::symlink_metadata(path).map_err(|_| Error::Configuration)?;
+    super::config::trusted_ancestors(path)?;
+    // Bind validation to the actual descriptor, never a check-then-open path.
+    // Nonblocking open also refuses a replaced FIFO without waiting for a peer.
+    let mut file = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK | libc::O_CLOEXEC)
+        .open(path)
+        .map_err(|_| Error::Configuration)?;
+    let meta = file.metadata().map_err(|_| Error::Configuration)?;
     if !meta.is_file()
         || meta.uid() != rustix::process::getuid().as_raw()
         || meta.mode() & 0o7077 != 0
@@ -167,9 +175,12 @@ pub(super) fn read_key(path: &Path) -> Result<zeroize::Zeroizing<[u8; 32]>, Erro
         return Err(Error::Configuration);
     }
     let mut key = zeroize::Zeroizing::new([0u8; 32]);
-    std::fs::File::open(path)
-        .and_then(|mut file| file.read_exact(key.as_mut()))
+    file.read_exact(key.as_mut())
         .map_err(|_| Error::Configuration)?;
+    let mut extra = [0u8; 1];
+    if file.read(&mut extra).map_err(|_| Error::Configuration)? != 0 {
+        return Err(Error::Configuration);
+    }
     Ok(key)
 }
 pub(super) fn nonce() -> Result<Reference, Error> {

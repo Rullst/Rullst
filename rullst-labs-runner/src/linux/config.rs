@@ -137,7 +137,7 @@ fn trusted_directory(path: &Path) -> Result<(), Error> {
 /// Files are not immutable to other users if they can replace an ancestor.
 /// Sticky shared ancestors such as /tmp are allowed only with trusted ownership:
 /// the next owned component cannot be renamed/unlinked by another local UID.
-fn trusted_ancestors(path: &Path) -> Result<(), Error> {
+pub(super) fn trusted_ancestors(path: &Path) -> Result<(), Error> {
     if !path.is_absolute() || path.canonicalize().map_err(|_| Error::Configuration)? != path {
         return Err(Error::Configuration);
     }
