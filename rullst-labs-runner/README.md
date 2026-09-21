@@ -1,8 +1,9 @@
 # Rullst Labs Runner
 
-Unpublished experimental v13 candidate. The controller/worker implementation and
-local contract tests exist; real isolated acceptance, independent security review
-and release admission remain outstanding. Do not present this as a production
+Unpublished experimental v13 candidate. The named Linux journey passed
+[targeted hosted acceptance](https://github.com/Rullst/Rullst/actions/runs/35563203800)
+at `3ba267c2`; complete source/release admission and independent security review
+remain outstanding. Do not present this as a production
 sandbox or a general Rust/Rullst application hosting service.
 
 This package is a separately deployed Linux x86-64 executable. It must never be a

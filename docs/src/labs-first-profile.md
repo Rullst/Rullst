@@ -1,9 +1,26 @@
 # Labs first execution profile: decision and threat model
 
 Status: implementation decision for an **unpublished experimental candidate**.
-No runner acceptance, independent security review or production readiness is
-claimed by this document. The September 23 freeze and September 24–26 validation
+The named Linux journey has hosted evidence below; independent security review
+and production readiness are not claimed. The September 23 freeze and September 24–26 validation
 window still apply. Contracts and an offline simulation are intermediate work.
+
+## Recorded Linux acceptance
+
+On September 21, [run 35563203800](https://github.com/Rullst/Rullst/actions/runs/35563203800)
+passed at `3ba267c272aee9d42d6aa4da4b2ee33f0653ddea` on disposable Ubuntu 24.04
+with the pinned Rust 1.96 profile. Its minimized artifact records 25 checks:
+actual isolation, compiler descriptor denial, shared kernel group capacity,
+compilation/grading, ownership/idempotency, wrong answers, fuel/stack/memory
+boundaries, compiler errors, filesystem/environment/import/output denial, fresh
+guest state, cancellation, controller loss, recovery at full group capacity,
+competing controllers and terminal source removal. Separate real Landlock and
+seccomp regressions also passed. No live provider account was used.
+
+This targeted run is evidence for that source revision and named host/profile.
+Complete current workspace/platform and extracted-package admission, the final
+release campaign and independent isolation review remain separate requirements.
+It does not prove every adversarial case or every deployment environment.
 
 ## Supported journey
 

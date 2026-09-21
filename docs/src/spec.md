@@ -72,7 +72,9 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 
 The [`rullst-labs`](rullst-labs-roadmap.md) library and separately
 deployed `rullst-labs-runner` are unpublished implementation candidates whose
-acceptance is outstanding. The former owns trusted, versioned orchestration and grading
+source/release admission is outstanding. The named Linux execution journey has
+[targeted hosted evidence](labs-first-profile.md#recorded-linux-acceptance).
+The former owns trusted, versioned orchestration and grading
 contracts; the latter owns isolated execution. Neither may become a default
 framework dependency, execute learner code inside the HTTP process, or require
 the application to expose a container control socket. A complete offensive CTF

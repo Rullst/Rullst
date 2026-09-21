@@ -1,7 +1,8 @@
 # Rullst Labs and isolated runner roadmap
 
 > **Status:** v13 implementation candidate; the first-profile decision is recorded,
-> but execution acceptance remains outstanding. This document is not evidence that Rullst can
+> and the named Linux journey has [targeted hosted evidence](labs-first-profile.md#recorded-linux-acceptance).
+> Complete source/release admission and independent review remain outstanding. This document is not evidence that Rullst can
 > safely execute untrusted code in production.
 
 Rullst should make interactive programming exercises, deterministic graders and
@@ -37,8 +38,9 @@ permissions or treat an AI-generated assessment as authoritative evidence.
 `rullst-labs-runner` is a separately deployed binary/service for the untrusted
 execution plane. The singular name describes one runner service even when an
 installation operates many workers. The first Linux Rust/Wasmi implementation
-requires actual namespaces/cgroups/seccomp/Landlock enforcement; its hostile-input
-acceptance and independent review remain outstanding. Its responsibilities are:
+requires actual namespaces/cgroups/seccomp/Landlock enforcement. The named Linux
+journey passed targeted hosted acceptance; broader admission and independent
+review remain outstanding. Its responsibilities are:
 
 - an authenticated, versioned and bounded request protocol;
 - queue leases, cancellation, retry, idempotency and stale-job recovery;
@@ -186,7 +188,7 @@ must not be bundled into its claim.
 
 ## v13 delivery checklist
 
-- [x] Record the Phase 0 threat model and first-profile architecture decision; execution evidence and independent review remain pending.
+- [x] Record the Phase 0 threat model and first-profile architecture decision; the named Linux journey now has targeted execution evidence, while independent review remains pending.
 - [ ] Stabilize the versioned request, policy, receipt and grader schemas.
 - [ ] Implement `rullst-labs` policy validation and deterministic mock backend.
 - [ ] Implement authenticated runner transport with idempotency and cancellation.
@@ -197,7 +199,8 @@ must not be bundled into its claim.
 - [ ] Document reference deployment, capacity planning and failure recovery.
 - [ ] Keep offensive CTF infrastructure experimental until independently reviewed.
 
-The packages join the Cargo workspace and the release-order manifest only after
-Phase 0 is approved. If the runner's security or operational lifecycle later
+The candidates belong to the Cargo workspace but remain `publish = false` and
+outside the release-order manifest until their separate admission requirements
+pass. If the runner's security or operational lifecycle later
 requires a separate repository, the versioned protocol must allow that move
 without coupling applications to its implementation.
