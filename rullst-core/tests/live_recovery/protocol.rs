@@ -5,7 +5,7 @@ use std::time::Duration;
 use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream, connect_async,
     tungstenite::{
-        Message,
+        Error, Message,
         client::IntoClientRequest,
         http::{Request, header},
     },
@@ -52,12 +52,16 @@ async fn connect(server: &Server, token: &str) -> Socket {
 }
 
 async fn frame(socket: &mut Socket) -> Message {
+    try_frame(socket).await.unwrap()
+}
+
+async fn try_frame(socket: &mut Socket) -> Result<Message, Error> {
     tokio::time::timeout(Duration::from_secs(3), async {
         loop {
-            match socket.next().await.unwrap().unwrap() {
-                Message::Ping(bytes) => socket.send(Message::Pong(bytes)).await.unwrap(),
+            match socket.next().await.expect("peer closed without a frame")? {
+                Message::Ping(bytes) => socket.send(Message::Pong(bytes)).await?,
                 Message::Pong(_) => (),
-                message => return message,
+                message => return Ok(message),
             }
         }
     })
@@ -253,19 +257,32 @@ async fn action_budget_and_lifetime_are_enforced_even_for_responsive_peers() {
 
 #[tokio::test]
 async fn binary_and_oversized_frames_never_reach_domain_mutations() {
-    let server = Server::start("sqlite::memory:", 0).await;
+    let server = Server::with_limits("sqlite::memory:", 0, 1, 32, Duration::from_secs(120)).await;
     for rejected in [
         Message::Binary(vec![0; 16].into()),
         Message::Text("x".repeat(16385).into()),
     ] {
         let mut socket = connect(&server, app::TEACHER).await;
         snapshot(&mut socket, "0", "recovered").await;
+        let oversized = matches!(&rejected, Message::Text(_));
         socket.send(rejected).await.unwrap();
-        let Message::Close(Some(close)) = frame(&mut socket).await else {
-            panic!("invalid frame must close");
-        };
-        assert_eq!(u16::from(close.code), 4400);
+        match try_frame(&mut socket).await {
+            Ok(Message::Close(Some(close))) => assert_eq!(u16::from(close.code), 4400),
+            // Rejecting a frame before reading its oversized payload can reset TCP
+            // (observed on Windows). Do not require a deliverable close handshake
+            // after a transport-level rejection, or accept this for a binary frame.
+            Err(Error::Io(error))
+                if oversized && error.kind() == std::io::ErrorKind::ConnectionReset => {}
+            Err(Error::Protocol(
+                tokio_tungstenite::tungstenite::error::ProtocolError::ResetWithoutClosingHandshake,
+            )) if oversized => {}
+            other => panic!("invalid frame must terminate the connection: {other:?}"),
+        }
     }
+    // The single admission permit must be released, with no domain mutation.
+    let mut recovered = connect(&server, app::TEACHER).await;
+    snapshot(&mut recovered, "0", "recovered").await;
+    recovered.close(None).await.unwrap();
     let count: i64 = sqlx::query_scalar("SELECT value FROM counters WHERE tenant=?")
         .bind("school-a")
         .fetch_one(&server.pool)
