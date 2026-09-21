@@ -11,8 +11,14 @@ install -m 0755 .github/labs-profile-linker.sh "$measurement_dir/linker"
 
 # External-test integration documented by cargo-llvm-cov. Preserve existing
 # profiles from the workspace/default/DB suites; never clean them here.
-cargo llvm-cov show-env --sh > "$measurement_dir/coverage-env.sh"
+# show-env defaults to Cargo's ordinary target, whereas standalone coverage
+# commands use its llvm-cov-target child. Share the latter with the existing
+# workspace campaign and the report command that runs outside this shell.
+coverage_target=$(cargo metadata --no-deps --locked --offline --format-version 1 | \
+  python3 -c 'import json,sys; from pathlib import Path; print(Path(json.load(sys.stdin)["target_directory"]) / "llvm-cov-target")')
+CARGO_TARGET_DIR="$coverage_target" cargo llvm-cov show-env --sh > "$measurement_dir/coverage-env.sh"
 source "$measurement_dir/coverage-env.sh"
+test "$CARGO_LLVM_COV_TARGET_DIR" = "$coverage_target"
 # Explicit target flags also invalidate an ordinary cached executable. Changing
 # RUSTC_WRAPPER alone does not necessarily make Cargo rebuild an existing target.
 cargo rustc --locked -p rullst-labs-runner --bin rullst-labs-runner \
