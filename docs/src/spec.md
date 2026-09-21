@@ -72,8 +72,10 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 
 The [`rullst-labs`](rullst-labs-roadmap.md) library and separately
 deployed `rullst-labs-runner` are unpublished implementation candidates whose
-source/release admission is outstanding. The named Linux execution journey has
-[targeted hosted evidence](labs-first-profile.md#recorded-linux-acceptance).
+source admission passed in PR #228. Final release admission and independent
+isolation review remain outstanding. The named Linux execution journey and
+remaining patch-coverage gap have
+[recorded hosted evidence](labs-first-profile.md#recorded-linux-acceptance).
 The former owns trusted, versioned orchestration and grading
 contracts; the latter owns isolated execution. Neither may become a default
 framework dependency, execute learner code inside the HTTP process, or require

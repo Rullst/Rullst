@@ -472,8 +472,15 @@ campaign. Bunny subsequently passed its own source admission in
 passed all 87 current checks, the actual
 [installed-archive job](https://github.com/Rullst/Rullst/actions/runs/35564717398),
 and review with no unresolved threads, then merged at `618655c1`.
-Labs remains an unpublished implementation candidate awaiting its own complete
-source admission. Stable-line backport preparation remains separate as well.
+[PR #228](https://github.com/Rullst/Rullst/pull/228) subsequently admitted Labs
+source at `278a115b`. Candidate `977e40a3` passed all 24 native shards, 43
+branch-required checks, actual isolated execution, the actual installed-archive
+job and both 90% whole/library coverage floors. Its non-required Codecov patch
+check remained at 83.45936%, below its 90% target; the
+[profile evidence](labs-first-profile.md#recorded-linux-acceptance) records this
+limitation without exporting worker profiles or relaxing isolation. Independent
+isolation review and final release admission remain outstanding. Stable-line
+backport preparation remains separate as well.
 
 The September 20 observation extension now adds selected browser categories,
 capture-status contracts and bounded analysis adapters to the supervision
@@ -537,7 +544,7 @@ when its dependencies and verification capacity are ready.
 | M27 — deployment acceptance with an existing proxy | PR #224 admitted the response-body lifetime correction and the real two-process Caddy/Redis contract for readiness, draining, shared budgets/outage, forwarding, CSRF/body limits and WebSocket behavior. | Preserve combined-release coverage. This loopback fixture does not establish generated multi-replica Foundry, cross-host failover or zero downtime. See [deployment acceptance](deployment-acceptance.md). |
 | M10/M27 — cloud and VPS application protection | PR #225 merged the offline `deploy:doctor` with explicit environment sources, bounded inputs, redacted reports and rejection of the public Auth key placeholder after hosted checks; its missing archive gate subsequently passed in the exact-commit run recorded above. | Preserve the installed-archive and diagnostic coverage in the final campaign and prepare the separate stable Auth backport. No automatic host/cloud changes or volumetric DDoS guarantee. See the [diagnostic](deployment-diagnostic.md) and [deployment boundary](security-architecture.md#cloud-and-vps-deployments). |
 | LMS/Academy — managed private video | PR #227 admitted the unpublished `rullst-media` candidate after hosted workspace/platform, browser and installed-archive acceptance. It implements Bunny lifecycle management, resumable upload, authoritative processing, private playback and deletion with SQLite recovery. | Preserve the supported journey in the final combined release campaign. Live-account interoperability stays unvalidated; release-inventory admission remains separate. See the [managed-video candidate](managed-video-roadmap.md). |
-| M40 — Labs | Unpublished `rullst-labs` and `rullst-labs-runner` candidates provide encrypted durable exercises/jobs, exact grading, cancellation/recovery/retention and a separate Linux Rust/Wasmi executor. The named profile passed 26 ordinary and 26 instrumented hosted journey checks at `977e40a3`, including actual execution, compiler deadline/cleanup and recovery at full group capacity; the scoped coverage report was also generated. | Finish current workspace/platform and extracted-package source admission. Independent isolation review and final release admission remain outstanding; the targeted Linux run is not complete release evidence. See the [recorded profile evidence](labs-first-profile.md#recorded-linux-acceptance). |
+| M40 — Labs | Unpublished `rullst-labs` and `rullst-labs-runner` candidates provide encrypted durable exercises/jobs, exact grading, cancellation/recovery/retention and a separate Linux Rust/Wasmi executor. The named profile passed 26 ordinary and 26 instrumented hosted journey checks at `977e40a3`, including actual execution, compiler deadline/cleanup and recovery at full group capacity; the scoped coverage report was also generated. | PR #228 passed workspace/platform and actual extracted-package source admission, plus both 90% coverage floors. The non-required patch-coverage gap, independent isolation review and final release admission remain outstanding. See the [recorded profile evidence](labs-first-profile.md#recorded-linux-acceptance). |
 | M15 — remote messaging | Wire contracts, local durable state and the ORM outbox exist. Evaluate one remote broker adapter with real restart, redelivery and lease/idempotency evidence. | Conditional extension after the selected Bunny and Labs journeys; select a broker and supported semantics first. Seven adapter names are not seven functioning integrations. |
 | M39 — optional Rullst Gateway | No `rullst-gateway` crate or executable exists. Keep the separate opt-in proxy/load-balancer design from the master roadmap; readiness helpers and deployment templates do not implement it. | Lower priority than supervision, shared passkey state, deployment acceptance, one remote broker and bounded Labs work. Reconsider when a concrete self-hosted need justifies implementation and operations; no September 26 delivery commitment. |
 | M1/M3/M7/M12 — adoption and assurance | Carry the compatible updater forward, add actual major-version migrations, improve generated guidance and connect new code to the relevant verification inventory. | Required adoption/security work plus bounded maintainer tooling; Verus begins with one production-linked pilot. |
@@ -637,8 +644,9 @@ above.
 The owner's subsequent direction selects the complete
 supported Bunny journey next, followed by usable Labs execution and grading,
 before remote messaging or other optional expansion. Bunny has passed source
-admission; Labs implementation exists with its remaining source/release acceptance
-tracked above. Increasing the crate count is not a priority.
+admission; Labs has now passed source admission with its remaining quality,
+independent-review and release requirements tracked above. Increasing the crate
+count is not a priority.
 
 The owner subsequently requested no manual or real-provider account testing in
 this window, including the confirmed existing Bunny library. Continue automated

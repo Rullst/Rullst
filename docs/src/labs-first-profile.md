@@ -26,8 +26,30 @@ entire group; neither an application cancellation nor a test-owned kill can
 satisfy it. Excess compiler output must produce the bounded resource-limit
 outcome, and retained diagnostics may not exceed the protocol byte limit.
 
-This targeted run is evidence for that source revision and named host/profile.
-Complete current workspace/platform and extracted-package admission, the final
+[PR #228](https://github.com/Rullst/Rullst/pull/228) subsequently passed source
+admission on the same head and merged into `v13` at `278a115b`:
+
+- [Native CI](https://github.com/Rullst/Rullst/actions/runs/35583180166)
+  passed all 24 test shards across Linux, macOS and Windows, strict Clippy,
+  formatting, database contracts and the evidence scorecard. All 43
+  branch-required checks passed; CodeQL reported no open alerts on the PR.
+- The actual [installed-archive job](https://github.com/Rullst/Rullst/actions/runs/35583179745)
+  audited 21 archives, exercised extracted Media/Labs contracts and the
+  independent application consumer, installed CLI `13.0.0-alpha.1` and compiled
+  all six blueprints. The application consumer has no executor dependency.
+- [Combined coverage](https://github.com/Rullst/Rullst/actions/runs/35583179992)
+  passed both exact 90% floors: 101,088/112,148 whole-repository lines
+  (90.1380%) and 72,607/79,958 framework-library lines (90.8064%). The PR
+  checkout tree equals the candidate's tree.
+
+Codecov's separate, non-required patch check still reports **83.45936% against
+its 90% target**, with 525 changed lines unmeasured. Compiler, worker and probe
+paths account for much of that gap: their sandbox counters deliberately are not
+exported. Passing isolated acceptance does not establish which missing lines
+ran. Preserve this quality limitation for follow-up without weakening isolation,
+excluding production paths or claiming that every check passed.
+
+This evidence applies to that source revision and named host/profile. The final
 release campaign and independent isolation review remain separate requirements.
 It does not prove every adversarial case or every deployment environment.
 
