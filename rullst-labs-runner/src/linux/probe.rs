@@ -18,7 +18,7 @@ pub(super) const CATEGORIES: &[&str] = &[
     "labs-preflight:landlock-restrict",
     "labs-preflight:landlock-enforcement",
     "labs-preflight:landlock-proc-denial",
-    "labs-preflight:landlock-fd-denial",
+    "labs-preflight:compiler-domain",
     "labs-preflight:landlock-cgroup-denial",
     "labs-preflight:privileges",
     "labs-preflight:uid-map",
@@ -124,8 +124,8 @@ fn number(path: &str) -> Result<u64, Error> {
         .parse()
         .map_err(|_| Error::Unsupported)
 }
-pub(super) fn inspect() -> Result<Observation, Error> {
-    eprintln!("labs-preflight:privileges");
+pub(super) fn inspect(control_fds: &[i32], report: bool) -> Result<Observation, Error> {
+    stage("labs-preflight:privileges", report);
     let status = read_text("/proc/self/status", 16384)?;
     for (name, value) in [
         ("NoNewPrivs:", "1"),
@@ -143,7 +143,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
     // Bubblewrap's --disable-userns deliberately creates a second user
     // namespace; its one-ID map can therefore map 0 to its parent namespace's
     // 0. The controller independently checks a different user namespace inode.
-    eprintln!("labs-preflight:uid-map");
+    stage("labs-preflight:uid-map", report);
     let uid_map = read_text("/proc/self/uid_map", 1024)?;
     let mapping: Vec<u64> = uid_map
         .split_whitespace()
@@ -153,7 +153,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
     if !matches!(mapping.as_slice(), [0, _, 1]) {
         return Err(Error::Unsupported);
     }
-    eprintln!("labs-preflight:limits");
+    stage("labs-preflight:limits", report);
     let fs = rustix::fs::statfs("/limits").map_err(|_| Error::Unsupported)?;
     if fs.f_type != libc::CGROUP2_SUPER_MAGIC {
         return Err(Error::Unsupported);
@@ -179,7 +179,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
     if memory_max != MEMORY || swap_max != 0 || pids_max != PIDS || cpu_max != CPU {
         return Err(Error::Unsupported);
     }
-    eprintln!("labs-preflight:mounts");
+    stage("labs-preflight:mounts", report);
     for path in [
         "/home",
         "/root",
@@ -192,7 +192,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
             return Err(Error::Unsupported);
         }
     }
-    eprintln!("labs-preflight:network");
+    stage("labs-preflight:network", report);
     let denied = std::net::TcpStream::connect_timeout(
         &std::net::SocketAddr::from(([169, 254, 169, 254], 80)),
         std::time::Duration::from_millis(100),
@@ -207,17 +207,18 @@ pub(super) fn inspect() -> Result<Observation, Error> {
     {
         return Err(Error::Unsupported);
     }
-    eprintln!("labs-preflight:workspace");
+    stage("labs-preflight:workspace", report);
+    let workspace_probe = format!("/work/probe-{}", std::process::id());
     let mut file = std::fs::OpenOptions::new()
         .create_new(true)
         .write(true)
-        .open("/work/probe")
+        .open(&workspace_probe)
         .map_err(|_| Error::Unsupported)?;
     file.write_all(b"bounded-workspace-probe")
         .map_err(|_| Error::Unsupported)?;
     drop(file);
-    std::fs::remove_file("/work/probe").map_err(|_| Error::Unsupported)?;
-    eprintln!("labs-preflight:descriptors");
+    std::fs::remove_file(&workspace_probe).map_err(|_| Error::Unsupported)?;
+    stage("labs-preflight:descriptors", report);
     // The directory iterator may own a descriptor for /proc/self/fd itself.
     for entry in std::fs::read_dir("/proc/self/fd").map_err(|_| Error::Unsupported)? {
         let entry = entry.map_err(|_| Error::Unsupported)?;
@@ -228,6 +229,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
             .parse::<u32>()
             .map_err(|_| Error::Unsupported)?;
         if fd > 2
+            && !control_fds.contains(&(fd as i32))
             && !std::fs::read_link(entry.path())
                 .map_err(|_| Error::Unsupported)?
                 .to_string_lossy()
@@ -236,9 +238,9 @@ pub(super) fn inspect() -> Result<Observation, Error> {
             return Err(Error::Unsupported);
         }
     }
-    eprintln!("labs-preflight:environment");
+    stage("labs-preflight:environment", report);
     validate_environment(std::env::vars_os())?;
-    eprintln!("labs-preflight:compiler");
+    stage("labs-preflight:compiler", report);
     let mut compiler = std::process::Command::new("/toolchain/bin/rustc")
         .arg("--version")
         .stdin(std::process::Stdio::null())
@@ -260,7 +262,7 @@ pub(super) fn inspect() -> Result<Observation, Error> {
     {
         return Err(Error::Unsupported);
     }
-    eprintln!("labs-preflight:namespaces");
+    stage("labs-preflight:namespaces", report);
     Ok(Observation {
         namespaces: namespaces()?,
         syscall_policy: super::syscalls::fingerprint()?,
@@ -301,5 +303,11 @@ pub(super) fn validate_environment(
         Ok(())
     } else {
         Err(Error::Unsupported)
+    }
+}
+
+pub(super) fn stage(category: &str, report: bool) {
+    if report {
+        eprintln!("{category}");
     }
 }

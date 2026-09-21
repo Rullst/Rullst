@@ -70,11 +70,17 @@ untrusted input into the worker:
   sticky parents protecting the next owned component; tool trees themselves
   must never be shared-writable. Host administrators/controller ownership remain
   trusted, and digest checks do not replace trusted installation or custody.
-- After trusted preflight inspection, require fully enforced Landlock filesystem
+- Before source is released, require fully enforced Landlock filesystem
   restrictions (ABI v3 rights) for fixed tools, runtime files and the bounded
-  workspace. Deny new `/proc`/cgroup opens to compiler/interpreter descendants;
-  in particular a compiler must not reopen the worker's output descriptors
-  through `/proc`. Inherited descriptors are checked before untrusted input.
+  workspace. Spawn the trusted compiler helper before the interpreter applies
+  Landlock, then restrict each in a separate domain. The helper checks its own
+  actual OS boundary and denied access to its parent's descriptors/memory before
+  acknowledging readiness. Only then may the interpreter receive source. Regular
+  `/proc` and cgroup files are denied by the filesystem policy; the kernel does
+  not mediate a process's own anonymous pipes through `/proc`, so cross-process
+  protection must use Landlock's ptrace/domain hierarchy. Compiler stdin/stdout
+  become null at exec; only capped stderr diagnostics return. Inherited
+  descriptors are checked against the exact owned protocol handles.
 - Reviewed syscall restrictions in addition to namespaces; no extra privileges
   or unbounded resource allowance on unsupported kernels/platforms.
 - Structural Wasm validation, bounded compilation, memory/stack/table/fuel
@@ -101,6 +107,11 @@ Its child profile denies capabilities. This setup is confined to the disposable
 host; it never disables AppArmor or changes a global namespace sysctl. The runner
 still requires its own namespace, capability, seccomp, Landlock and cgroup probes.
 Ordinary workstations are not reconfigured by the runner or local test suite.
+
+The domain split addresses the kernel's documented [special-filesystem
+limitation](https://docs.kernel.org/userspace-api/landlock.html#special-filesystems).
+A failed denial probe blocks source release; removing that probe without a
+replacement boundary is not an acceptable compatibility fix.
 
 ## Integrity, grading and recovery
 

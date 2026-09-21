@@ -114,10 +114,10 @@ def accept(args, directory, groups):
     # group-writable Cargo target file left by a developer's umask.
     preflight = subprocess.run([str(runner), 'doctor', str(config_path)], capture_output=True, timeout=40)
     if preflight.returncode:
-        allowed = {'labs-preflight:configuration', 'labs-preflight:execution-boundary', 'labs-preflight:launch', 'labs-preflight:cgroup', 'labs-preflight:seccomp', 'labs-preflight:worker-probes', 'labs-preflight:landlock', 'labs-preflight:namespace-launcher'}
+        allowed = {'labs-preflight:configuration', 'labs-preflight:execution-boundary', 'labs-preflight:launch', 'labs-preflight:cgroup', 'labs-preflight:seccomp', 'labs-preflight:worker-probes', 'labs-preflight:landlock', 'labs-preflight:compiler-domain', 'labs-preflight:namespace-launcher'}
         allowed.update('labs-preflight:' + phase for phase in ('privileges', 'uid-map', 'limits', 'mounts', 'network', 'workspace', 'descriptors', 'environment', 'compiler', 'namespaces'))
         allowed.update('labs-preflight:' + phase for phase in ('namespace-permission', 'namespace-create', 'launcher-id-map', 'launcher-exec', 'launcher-options', 'launcher-mount', 'launcher-loopback', 'launcher-userns-lock', 'launcher-privileges', 'launcher-layout'))
-        allowed.update('labs-preflight:landlock-' + phase for phase in ('create', 'rules', 'restrict', 'enforcement', 'proc-denial', 'fd-denial', 'cgroup-denial'))
+        allowed.update('labs-preflight:landlock-' + phase for phase in ('create', 'rules', 'restrict', 'enforcement', 'proc-denial', 'cgroup-denial'))
         for line in preflight.stderr.decode('utf-8', errors='replace').splitlines():
             if line in allowed:
                 print(line, flush=True)
@@ -125,7 +125,7 @@ def accept(args, directory, groups):
     doctor = json.loads(preflight.stdout)
     app = Application(args.app, directory / 'application.json')
     controllers = []
-    checks = ['actual-isolation-preflight']
+    checks = ['actual-isolation-preflight', 'compiler-parent-descriptors-denied']
     try:
         for name, wall in [('sum', 10), ('stress', 5)]:
             app.success('teacher', {'Register': {'exercise': exercise(name, wall)}})
@@ -159,7 +159,7 @@ def accept(args, directory, groups):
         for name, code in [
             ('compiler-errors', 'pub fn solve(_:i64,_:i64)->i64 { missing_symbol }'),
             ('host-files-denied', 'const SECRET: &str=include_str!("/etc/passwd"); pub fn solve(_:i64,_:i64)->i64 { SECRET.len() as i64 }'),
-            ('proc-descriptors-denied', 'const SECRET: &[u8]=include_bytes!("/proc/self/fd/1"); pub fn solve(_:i64,_:i64)->i64 { SECRET.len() as i64 }'),
+            ('proc-status-denied', 'const SECRET: &[u8]=include_bytes!("/proc/self/status"); pub fn solve(_:i64,_:i64)->i64 { SECRET.len() as i64 }'),
             ('cgroup-files-denied', 'const SECRET: &str=include_str!("/limits/cgroup.procs"); pub fn solve(_:i64,_:i64)->i64 { SECRET.len() as i64 }'),
             ('environment-denied', 'const SECRET: &str=env!("RULLST_LABS_FORBIDDEN_SECRET"); pub fn solve(_:i64,_:i64)->i64 { SECRET.len() as i64 }'),
             ('imports-denied', '#[link(wasm_import_module="host")] unsafe extern "C" { fn forbidden(a:i64)->i64; } pub fn solve(a:i64,_:i64)->i64 { unsafe { forbidden(a) } }'),

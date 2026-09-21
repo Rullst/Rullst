@@ -33,8 +33,11 @@ Every attempt requires:
   ancestors are rejected except protected sticky parents such as `/tmp`; the
   tool trees themselves cannot be shared-writable.
 - Reviewed seccomp restrictions and fully enforced Landlock ABI v3 filesystem
-  rights. After trusted preflight, descendants cannot reopen `/proc` or cgroup
-  files. Only the fixed tool/runtime tree can execute; the workspace cannot.
+  rights. The compiler and interpreter enter separate domains before source is
+  released; mandatory probes deny the compiler access to its parent’s descriptor
+  aliases and memory. Regular `/proc` and cgroup files are denied. Own anonymous
+  pipes are a kernel exception; compiler stdin/stdout become null at exec.
+  Only the fixed tool/runtime tree can execute; the workspace cannot.
 - Actual namespace, resource, capability, filesystem, descriptor, compiler and
   network-denial observations before accepting student-controlled input.
 - Bounded compilation/output/artifact/translation, store/table/stack/fuel limits,

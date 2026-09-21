@@ -1,7 +1,12 @@
 #[test]
 fn unsupported_direct_worker_never_requests_or_executes_student_input() {
+    assert_refused(&["__worker"]);
+    assert_refused(&["__compiler", &std::process::id().to_string()]);
+}
+
+fn assert_refused(arguments: &[&str]) {
     let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_rullst-labs-runner"))
-        .arg("__worker")
+        .args(arguments)
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())

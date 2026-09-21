@@ -95,7 +95,12 @@ keys, application secrets, inherited environment or control sockets. The first
 Linux backend requires delegated cgroups v2, an unprivileged namespace launcher,
 restricted mounts/egress, no-new-privileges, syscall restrictions, a fully enforced
 Landlock filesystem policy and bounded
-compiler/interpreter resources. Observed isolation and resource enforcement are
+compiler/interpreter resources. Both processes require observed enforcement. The compiler and interpreter must enter separate
+Landlock domains before source is released. Landlock does not mediate a process's
+own anonymous pipes through `/proc`; compiler-to-interpreter descriptor access
+must instead fail through the domain/ptrace boundary. The compiler's standard
+input/output are null during compilation, with only bounded diagnostics retained.
+Observed isolation and resource enforcement are
 mandatory: accepted configuration properties or a successful launcher exit do
 not prove the required boundary. Unsupported local/hosted environments fail
 closed, without a less restrictive execution fallback.

@@ -782,6 +782,9 @@ jobs:
       - name: Build separate controller and application fixture
         run: cargo build --locked -p rullst-labs -p rullst-labs-runner --all-features --bins --examples
 
+      - name: Prove the separate compiler domain blocks parent descriptor aliases
+        run: cargo test --locked -p rullst-labs-runner --test landlock_domains -- --ignored --exact independent_domains_block_interpreter_descriptors
+
       - name: Require real isolated execution in an owned unprivileged service
         env:
           LABS_UNIT_SUFFIX: ${{ github.run_id }}-${{ github.run_attempt }}

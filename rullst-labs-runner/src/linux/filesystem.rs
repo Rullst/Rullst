@@ -33,7 +33,7 @@ pub(super) fn fingerprint() -> Result<ContentHash, Error> {
         .collect();
     Ok(ContentHash::of(
         &serde_json::to_vec(&(
-            "RullstLabsLandlockFs-v1",
+            "RullstLabsLandlockFs-v2-independent-compiler",
             3,
             AccessFs::from_all(ABI::V3).bits(),
             description,
@@ -42,42 +42,64 @@ pub(super) fn fingerprint() -> Result<ContentHash, Error> {
     ))
 }
 /// Apply after trusted /proc/cgroup inspection but BEFORE reading source. The
-/// compiler can no longer reopen the worker's descriptors/memory via /proc.
+/// compiler requires its separate domain to deny the interpreter's anonymous
+/// descriptors; filesystem rules alone do not mediate those special inodes.
 /// Only fixed tools can execute; /work is writable but not executable.
-pub(super) fn enforce() -> Result<ContentHash, Error> {
-    eprintln!("labs-preflight:landlock-create");
+pub(super) fn enforce(report: bool) -> Result<ContentHash, Error> {
+    super::probe::stage("labs-preflight:landlock-create", report);
     let mut ruleset = Ruleset::default()
         .set_compatibility(CompatLevel::HardRequirement)
         .handle_access(AccessFs::from_all(ABI::V3))
         .map_err(|_| Error::Unsupported)?
         .create()
         .map_err(|_| Error::Unsupported)?;
-    eprintln!("labs-preflight:landlock-rules");
+    super::probe::stage("labs-preflight:landlock-rules", report);
     for (path, access) in rules() {
         let fd = PathFd::new(path).map_err(|_| Error::Unsupported)?;
         ruleset = ruleset
             .add_rule(PathBeneath::new(fd, access))
             .map_err(|_| Error::Unsupported)?;
     }
-    eprintln!("labs-preflight:landlock-restrict");
+    super::probe::stage("labs-preflight:landlock-restrict", report);
     let status = ruleset.restrict_self().map_err(|_| Error::Unsupported)?;
-    eprintln!("labs-preflight:landlock-enforcement");
+    super::probe::stage("labs-preflight:landlock-enforcement", report);
     if status.ruleset != RulesetStatus::FullyEnforced || !status.no_new_privs {
         return Err(Error::Unsupported);
     }
     for (denied, category) in [
         ("/proc/self/status", "labs-preflight:landlock-proc-denial"),
-        ("/proc/self/fd/1", "labs-preflight:landlock-fd-denial"),
         (
             "/limits/memory.max",
             "labs-preflight:landlock-cgroup-denial",
         ),
     ] {
-        eprintln!("{category}");
+        super::probe::stage(category, report);
         if !matches!(std::fs::File::open(denied),Err(error) if error.raw_os_error()==Some(libc::EACCES))
         {
             return Err(Error::Unsupported);
         }
     }
     fingerprint()
+}
+
+/// Ptrace-sensitive proc entries require the target to be in our domain or a
+/// descendant. A compiler in a separate Landlock domain must not reach its
+/// interpreter parent, including anonymous pipes that filesystem rules ignore.
+pub(super) fn deny_parent_access(parent: u32) -> Result<(), Error> {
+    if rustix::process::getppid().is_none_or(|pid| pid.as_raw_pid() as u32 != parent) {
+        return Err(Error::Unsupported);
+    }
+    for entry in ["fd/0", "fd/1", "fd/2", "mem", "ns/mnt"] {
+        let path = format!("/proc/{parent}/{entry}");
+        if !matches!(std::fs::File::open(path), Err(error) if matches!(error.raw_os_error(), Some(libc::EACCES | libc::EPERM)))
+        {
+            return Err(Error::Unsupported);
+        }
+    }
+    let path = format!("/proc/{parent}/task/{parent}/fd/1");
+    if !matches!(std::fs::File::open(path), Err(error) if matches!(error.raw_os_error(), Some(libc::EACCES | libc::EPERM)))
+    {
+        return Err(Error::Unsupported);
+    }
+    Ok(())
 }
