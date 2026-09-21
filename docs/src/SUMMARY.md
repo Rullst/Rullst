@@ -35,6 +35,7 @@
 - [Active Sessions and Remote Logout](session-management.md)
 - [Redis Streams Messaging](redis-messaging.md)
 - [Recoverable Live UI](live-recovery.md)
+- [Distributed Operation Tracing](distributed-tracing.md)
 - [Verus Verification Pilot for v13](verus-roadmap.md)
 - [SaaS Findings: v12.1 & v13 Triage](saas-v12-1-v13-triage.md)
 - [⚡ Redis Architecture, Caching & Distributed Queues](redis-guide.md)

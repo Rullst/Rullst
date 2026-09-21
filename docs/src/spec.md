@@ -761,6 +761,39 @@ This permits evaluation outside the repository without silently mixing release
 trains, but generated absolute path dependencies remain non-portable until the
 matching immutable release is published.
 
+### Distributed operation tracing candidate (v13, under validation)
+
+The fifth approved September increment extends Core/facade's optional
+`telemetry` capability, using the maintained OpenTelemetry SDK and OTLP/HTTP
+protobuf transport. The existing process-local `SpanCollector` and authenticated
+Studio ingestion remain separate interfaces. A new explicit configuration must
+select service and bounded operation labels, a trusted collector, bounded queue,
+batch and export deadlines, and an owned flush/shutdown lifecycle. It must not
+infer user identity or authorization from trace identifiers.
+
+Context propagation accepts canonical nonzero W3C version-00 `traceparent` only
+after an explicit upstream trust decision. Untrusted ingress starts a new trace;
+arbitrary baggage and vendor tracestate are not propagated by this minimized
+profile. An actual independent producer/consumer journey must preserve parent
+relationships through the existing Messaging carrier and reach a disposable
+standard collector. Export only bounded approved operation/service names,
+trace/span relationships, timing, kind and status; omit application attributes,
+events, error descriptions, SQL, tokens, bodies and ambient resource metadata.
+This profile does not sanitize other tracing/logging layers.
+
+Export must run outside request execution with a compatible SDK processor/client,
+bounded response handling and no redirects or ambient proxies. Production uses
+verified HTTPS; literal-loopback HTTP is an explicit test/local-collector choice.
+Remote failure never falls back to a fake success. Malformed propagation, queue
+pressure, unavailable/slow collectors, TLS denial, exact package consumption and
+flush/shutdown require executable evidence. Sampling, retention, collector access,
+durability, availability and deployment operations remain host responsibilities;
+trace delivery is best effort, not an audit ledger or application transaction.
+The implementation and actual collector/TLS/process evidence are documented in
+[the tracing guide](distributed-tracing.md). Hosted source/package admission is
+pending. Legacy initialization uses compatible threaded export and the corrected
+OTLP/HTTP endpoint; it retains its separate general logging/metadata policy.
+
 ### Recoverable Live UI candidate (v13, under validation)
 
 The fourth approved September increment extends `rullst-core::live` with a

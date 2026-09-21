@@ -103,6 +103,13 @@ homologation, or hardware can follow the
 
 ## Connect, real-time, queues, storage, and data
 
+The optional v13 [distributed tracing candidate](distributed-tracing.md) links
+approved operations across processes through explicit trusted parent context
+and minimized bounded OTLP export. A standard TLS collector and separate
+Messaging processes passed local acceptance. Hosted source/package admission
+is pending; collector retention/operations and Studio's separate ingestion/viewer
+remain distinct responsibilities.
+
 | Capability or former claim | Current status | Recommendation and reason |
 |---|---|---|
 | OAuth2/OIDC/social-login providers | **Implemented (keep as Connect's current identity)** | Continue issuer, redirect, JWKS rotation, offline-fixture, and negative-token contract testing. |

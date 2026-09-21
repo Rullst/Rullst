@@ -259,6 +259,10 @@ jobs:
           --test live_recovery -- --ignored --exact
           chromium_recovers_across_disconnects_and_process_restart --nocapture
 
+      - name: Exercise distributed propagation against a standard TLS collector
+        if: runner.os == 'Linux' && matrix.shard == 'workspace'
+        run: python3 .github/check-distributed-tracing.py
+
       - name: Exercise guided update in a real terminal
         if: runner.os == 'Linux' && (matrix.shard == 'cli-standard' || matrix.shard == 'cli-updates')
         run: python3 .github/cli-guided-pty-smoke.py target/debug/cargo-rullst

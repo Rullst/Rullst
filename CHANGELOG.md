@@ -58,6 +58,16 @@ A prepared version section does not establish that its tag or crates exist.
   and scaffolds remain separate; hosted source/package admission is pending.
   See [the adoption and limits guide](docs/src/live-recovery.md).
 
+### Distributed tracing candidate
+
+- Add opt-in Core/facade `telemetry::distributed` with explicit parent trust,
+  operation-label approval, minimized OTLP protobuf export, bounded transport
+  and an owned flush/shutdown lifecycle. Validate separate Messaging processes
+  against a standard TLS collector, including ancestry, failures and queue
+  pressure. Repair legacy initialization's async-client/threaded-processor
+  mismatch and OTLP/HTTP endpoint handling. Hosted source/package admission
+  remains pending; see [the profile and migration](docs/src/distributed-tracing.md).
+
 ### CI tooling
 
 - Reject manual archive selectors that would skip the requested package gate.

@@ -11,6 +11,11 @@
   forwarding, and message-free typed failures. Identity and domain policy stay
   server-owned.
 - **Runtime Telemetry:** Exposes process/runtime snapshots and tracing-span collection for consumers such as Rullst Studio.
+- **Distributed Tracing Candidate (v13):** Optional `telemetry::distributed`
+  adds explicit parent trust, approved operation labels, minimized OTLP export
+  and an owned lifecycle. Independent Messaging processes and a standard TLS
+  collector passed local acceptance; hosted source/package admission is pending.
+  See [the profile](../docs/src/distributed-tracing.md).
 - **Recoverable Live UI Candidate (v13):** Explicitly mounted typed views add
   current authorization, complete snapshots, transactional revision conflicts
   and bounded WebSocket recovery. The included browser module never replays

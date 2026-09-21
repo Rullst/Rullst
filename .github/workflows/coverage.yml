@@ -139,6 +139,9 @@ jobs:
           --test live_recovery -- --ignored --exact
           chromium_recovers_across_disconnects_and_process_restart --nocapture
 
+      - name: Measure distributed propagation with a standard TLS collector
+        run: python3 .github/check-distributed-tracing.py --coverage
+
       - name: Measure remote messaging, TLS and Redis restart contracts
         run: python3 .github/check-messaging-redis.py --coverage
 

@@ -135,7 +135,7 @@ getrandom = { version = "0.4.2", features = ["wasm_js"] }
 
 [dev-dependencies]
 tempfile = "3"
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "process", "io-util"] }
 rullst-connect = { workspace = true, features = ["axum-session"] }
 tower-sessions = "0.15"
 futures-util = "0.3.32"
