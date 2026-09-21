@@ -765,6 +765,43 @@ existing static bearer constructor retains its behavior; only an authenticated
 exact method/path receives the machine CSRF exception, with WAF/headers retained.
 
 
+### v13 shared PostgreSQL mail-suppression implementation contract
+
+The fourth owner-selected increment extends Mail's existing suppression traits
+with an optional PostgreSQL store and facade feature. It must preserve verified
+event replay binding, conflict rejection, monotonic reason precedence, immutable
+recipient/event quotas and final pre-dispatch checks through `SuppressionGuard`.
+It is not a new transport and must not change default Mail/SQLite features.
+
+Each instance selects an immutable server-owned namespace, quotas and a strong
+secret HMAC key. Persist purpose/namespace-bound keyed recipient/event identifiers
+and event fingerprints, not raw recipient addresses, provider event IDs, message
+bodies or delivery history. Keep only the authoritative reason/provider and
+first/last observation times needed by the existing record contract. Configuration
+and key drift fail closed. A namespace chosen in a request is never authority;
+the host authenticates tenant membership and verified provider events before
+selecting the corresponding store/driver. Memory remains the explicit offline
+test implementation; production database failures cannot silently use it.
+
+Provide explicit deployment initialization and ordinary startup without DDL or
+missing-state repair. Runtime operates without schema mutation privileges, on
+one authoritative writable PostgreSQL database with verified remote TLS,
+permanent tables, durable commit settings, bounded pools/waits and whole-operation
+deadlines. Serialize event application, lookup and retention through the
+namespace control row. Atomically record replay evidence and recipient state;
+cancellation, conflicting events or quota failures must not leave partial state.
+Recheck persisted server time and storage durability before reporting outcomes.
+
+Retention may prune replay identifiers after the host-selected provider replay
+window, but never remove recipient suppression as a side effect. Lookup/storage
+faults block delivery. Check immediately before dispatch, while documenting
+that a suppression committed after that check cannot recall in-flight external
+mail. This does not promise exactly-once provider delivery, inbox acceptance,
+backup anti-rollback, automatic failover, legal compliance or automatic opt-in
+after a complaint. Required evidence includes independent pools/processes,
+concurrent replay/conflicts/quotas, rollback/cancellation, restricted roles,
+service restart, real guard/worker composition and extracted-package consumers.
+
 ### v12 audit correction invariants
 
 **12.1 account mail:** `rullst-mail::ActionLink` validates an exact

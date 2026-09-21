@@ -123,6 +123,13 @@ contracts passed, including the extracted facade/Auth/Core archives. Full
 workspace, coverage, security and hosted package admission remain required;
 see the [API-token contract](api-tokens.md).
 
+The shared mail-suppression item has a local PostgreSQL candidate with keyed
+recipient/event identifiers, namespace-bound configuration, atomic replay/quota
+enforcement and the existing final-dispatch guard. Native independent-pool,
+restricted-role, failure/cancellation, worker/tenant and process/database-restart
+contracts passed, including the extracted facade/Mail/Core archive consumer.
+Full hosted admission remains required; see [shared mail suppression](shared-mail-suppression.md).
+
 Execution order may respond to measured implementation and validation cost. Do not replace
 full journeys with mock-only placeholders to increase the feature count. Keep
 September 24–25 for combined validation and September 26 for final adjustments

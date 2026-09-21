@@ -250,6 +250,31 @@ append_package_patches "$api_dir/Cargo.toml"
 python3 "$repository_root/.github/check-auth-recovery-postgres.py" \
   --suite api-tokens --manifest-path "$api_dir/Cargo.toml"
 
+mail_pg_dir="$work_dir/mail-postgres-consumer"
+mkdir -p "$mail_pg_dir/tests/suppression_postgres"
+{
+  printf '[package]\nname = "rullst-packaged-mail-postgres"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
+  printf '[features]\ndefault = ["postgres"]\npostgres = []\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["mail-postgres"] }\n' "$version"
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "process", "io-std"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "tls-rustls-ring"] }\n'
+  printf 'url = "2.5.8"\nrand = "0.10.1"\nasync-trait = "0.1"\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
+} > "$mail_pg_dir/Cargo.toml"
+for test in postgres_suppression postgres_suppression_restart; do
+  cp "$repository_root/rullst-mail/tests/$test.rs" "$mail_pg_dir/tests/$test.rs"
+done
+cp "$repository_root/rullst-mail/tests/suppression_postgres/"*.rs "$mail_pg_dir/tests/suppression_postgres/"
+python3 - "$mail_pg_dir/tests" <<'MAIL_PG_PY'
+from pathlib import Path
+import sys
+for source in Path(sys.argv[1]).rglob('*.rs'):
+    source.write_text(source.read_text().replace('rullst_mail::', 'rullst::mail::').replace('rullst_core::', 'rullst::'))
+MAIL_PG_PY
+append_package_patches "$mail_pg_dir/Cargo.toml"
+"$cargo_bin" generate-lockfile --manifest-path "$mail_pg_dir/Cargo.toml" --offline
+"$cargo_bin" test --manifest-path "$mail_pg_dir/Cargo.toml" --offline --locked
+python3 "$repository_root/.github/check-mail-postgres.py" --manifest-path "$mail_pg_dir/Cargo.toml"
+
 storage_dir="$work_dir/storage-consumer"
 mkdir -p "$storage_dir/tests"
 {

@@ -91,6 +91,7 @@ rullst = { version = "12.1.0", default-features = false }
 | `auth-passkey-postgres` | no | Optional v13 account/session-bound PostgreSQL passkey ceremony candidate; host credential-counter CAS remains required |
 | `mail` | no | `rullst-mail` with HTTP/offline transports and no SMTP dependency |
 | `mail-sqlite` | no | `mail` plus bounded shared-local SQLite recipient suppression and provider-event replay evidence |
+| `mail-postgres` | no | v13 candidate: shared PostgreSQL suppression with keyed identifiers, authoritative dispatch checks and independent quotas |
 | `mail-smtp` | no | `mail` plus the optional SMTP transport |
 | `mail-aws-ses` | no | `mail` plus native SES v2 delivery signed by the official AWS SDK |
 | `messaging` | no | Native bounded broker-neutral messaging contracts and the deterministic process-local broker |
@@ -294,6 +295,7 @@ Default features: none. HTTP mail providers remain available without SMTP.
 | `aws-ses` | Official AWS SES v2 SDK, regional SigV4, temporary/rotating credential providers and native attachments/CID; AWS account readiness and inbox delivery remain external |
 | `capital-invoice` | Capital's native invoice PDF plus the final-payment-bound delivery bridge; durable outbox claiming remains application-owned |
 | `sqlite` | File-backed shared-local suppression state with exact provider-event replay binding and immutable quotas; webhook authentication, encryption and multi-host replication remain application-owned |
+| `postgres` | v13 candidate: namespaced suppression on one authoritative writable PostgreSQL database; independent of SQLite. See [shared mail suppression](shared-mail-suppression.md) for initialization, runtime grants, retention and pending admission |
 
 ### `rullst-auth`
 

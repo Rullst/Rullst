@@ -8,6 +8,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 mod memory;
 pub use memory::InMemorySuppressionStore;
+#[cfg(feature = "postgres")]
+mod postgres;
+#[cfg(feature = "postgres")]
+pub use postgres::{PostgresSuppressionConfig, PostgresSuppressionStore, SuppressionKey};
 #[cfg(feature = "sqlite")]
 mod sqlite;
 #[cfg(feature = "sqlite")]
@@ -49,7 +53,7 @@ impl SuppressionReason {
         }
     }
 
-    #[cfg(feature = "sqlite")]
+    #[cfg(any(feature = "sqlite", feature = "postgres"))]
     pub(crate) fn from_rank(rank: i64) -> Result<Self, SuppressionError> {
         match rank {
             1 => Ok(Self::Manual),

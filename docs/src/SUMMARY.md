@@ -35,6 +35,7 @@
 - [Active Sessions and Remote Logout](session-management.md)
   - [Email login](email-login.md)
   - [Scoped API tokens](api-tokens.md)
+- [Shared mail suppression](shared-mail-suppression.md)
 - [Redis Streams Messaging](redis-messaging.md)
 - [Recoverable Live UI](live-recovery.md)
 - [Distributed Operation Tracing](distributed-tracing.md)

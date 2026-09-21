@@ -116,6 +116,7 @@ rullst-capital|quota-sql
 rullst-capital|webhook-sql
 rullst-mail|mail-smtp
 rullst-mail|sqlite
+rullst-mail|postgres
 rullst-auth|jwt
 rullst-auth|sqlite
 rullst-auth|passkey-postgres
@@ -185,6 +186,7 @@ rullst|mailer
 rullst|mail
 rullst|mail-aws-ses
 rullst|mail-sqlite
+rullst|mail-postgres
 rullst|messaging
 rullst|messaging-sqlite
 rullst|messaging-redis
