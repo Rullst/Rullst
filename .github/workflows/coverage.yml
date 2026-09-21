@@ -128,6 +128,9 @@ jobs:
       - name: Measure private S3 access and service restart contracts
         run: bash .github/test-storage-s3-live.sh --coverage
 
+      - name: Measure remote messaging, TLS and Redis restart contracts
+        run: python3 .github/check-messaging-redis.py --coverage
+
       - name: Provision the reviewed disposable Labs host
         run: bash .github/provision-labs-host.sh
 

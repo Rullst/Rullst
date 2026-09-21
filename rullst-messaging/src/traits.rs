@@ -8,7 +8,7 @@ use crate::{
 use std::future::Future;
 use std::time::Duration;
 
-/// Broker operations shared by deterministic fixtures and future remote adapters.
+/// Broker operations shared by local fixtures, durable stores and remote adapters.
 ///
 /// Delivery is at least once. A handler can finish its external effect and lose its lease before
 /// acknowledgement, so consumers must use the envelope ID or a stable domain key carried in the

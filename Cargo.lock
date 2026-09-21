@@ -6386,6 +6386,7 @@ dependencies = [
  "tokio-rustls",
  "tokio-util",
  "url",
+ "webpki-roots",
  "xxhash-rust",
 ]
 
@@ -6983,6 +6984,7 @@ name = "rullst-messaging"
 version = "13.0.0-alpha.1"
 dependencies = [
  "aes-gcm",
+ "redis",
  "rullst-orm",
  "serde",
  "serde_json",

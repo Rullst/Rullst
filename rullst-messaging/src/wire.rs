@@ -1,4 +1,4 @@
-//! Canonical bounded wire representation for future broker adapters.
+//! Canonical bounded wire representation for broker adapters.
 
 use crate::model::StoredEnvelopeParts;
 use crate::validation::{
@@ -25,8 +25,7 @@ const MAX_WIRE_OVERHEAD: usize = FIXED_BYTES
 
 /// Version-1 canonical binary codec for broker-neutral message envelopes.
 ///
-/// This codec is a local interoperability contract for future adapters, not a
-/// claim that any remote broker protocol is currently implemented. Decoding is
+/// This codec is an interoperability contract, not a transport by itself. Decoding is
 /// bound by the supplied broker configuration, requires its exact namespace,
 /// rejects unknown versions/trailing bytes/non-canonical header order, and
 /// revalidates every public value before allocating the payload.

@@ -185,6 +185,16 @@ cp "$repository_root/.github/fixtures/session-facade.rs" "$session_dir/tests/ses
 append_package_patches "$session_dir/Cargo.toml"
 "$cargo_bin" test --manifest-path "$session_dir/Cargo.toml" --offline --test session_facade
 
+messaging_redis_dir="$work_dir/messaging-redis-consumer"
+mkdir -p "$messaging_redis_dir/tests"
+{
+  printf '[package]\nname = "rullst-packaged-messaging-redis"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["messaging-redis"] }\n' "$version"
+} > "$messaging_redis_dir/Cargo.toml"
+cp "$repository_root/.github/fixtures/messaging-redis-facade.rs" "$messaging_redis_dir/tests/messaging_redis_facade.rs"
+append_package_patches "$messaging_redis_dir/Cargo.toml"
+"$cargo_bin" test --manifest-path "$messaging_redis_dir/Cargo.toml" --offline --test messaging_redis_facade
+
 cli_package="$packages_dir/cargo-rullst-${version}"
 if [ ! -f "$cli_package/Cargo.lock" ]; then
   echo "The packaged cargo-rullst archive must include Cargo.lock."

@@ -29,6 +29,15 @@ A prepared version section does not establish that its tag or crates exist.
   Hosted source/release admission and real provider-account interoperability
   remain pending; see the [storage contract](docs/src/private-object-storage.md).
 
+### Remote messaging candidate
+
+- Add optional `redis-streams` Messaging and facade `messaging-redis` profiles:
+  canonical Redis log, Rullst-owned bounded groups and expiring ACK capabilities,
+  exact publication replay, retry/DLQ, explicit retention and server-time fencing.
+  Validate TLS, partial-write quarantine, timeout replay, an ORM outbox and actual
+  AOF restart against a disposable service. Hosted source/package admission is
+  pending; [the contract](docs/src/redis-messaging.md) states deployment limits.
+
 ### Active-session management candidate
 
 - Extend opt-in Auth recovery stores with account-owned session inventory,
