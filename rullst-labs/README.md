@@ -45,13 +45,19 @@ A lost worker first requires a fenced attempt and confirmed whole-group teardown
 boundary. Only then may a controller deliberately request one bounded retry.
 The supplied first controller cancels abandoned work after cleanup by default.
 
+Schedule `expire_queued` with current course-management authorization to clear
+expired queued source even if the runner is unavailable. It never clears a
+running lease or claims worker teardown. `purge_terminal` later removes eligible
+status records. `remove_exercise` permits removing a withdrawn grader only after
+all referencing jobs have been purged; do not reuse removed revision IDs.
+
 Use a dedicated random content key and a separate controller signing seed. The
 application receives only the controller's pinned public key. The untrusted worker
 receives neither key, the database nor expected answers. Keep these resources
 separate from application identity/session credentials and database state.
 
 The `course_app` example is a runnable **local operator** application fixture for
-registration/submission/status/cancel/withdrawal. Its stdin-selected actor and
+registration/submission/status/cancel/withdrawal and authorized retention. Its stdin-selected actor and
 small fixture policy are not web authentication. A web application must supply
 its real authorization and protected transport. This example never starts an
 executor; the independently deployed runner consumes the shared job plane.

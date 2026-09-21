@@ -7,7 +7,7 @@ repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 work_dir="$(mktemp -d "${TMPDIR:-/tmp}/rullst-media-package.XXXXXX")"
 trap 'rm -rf -- "$work_dir"' EXIT
 python3 - "$package_dir" "$version" "$work_dir" "$repository_root" <<'PY'
-import json, sys, tarfile, tomllib
+import json, os, sys, tarfile, tomllib
 from pathlib import Path
 archives, version, temporary, repository = map(Path, sys.argv[1:])
 version = str(version)
@@ -25,6 +25,9 @@ with tarfile.open(archive_path, 'r:gz') as archive:
         assert member.isfile() or member.isdir()
     archive.extractall(temporary, filter='data')
 source = temporary / name
+for path in source.rglob('*'):
+    if path.is_file():
+        os.utime(path, None)
 manifest = tomllib.loads((source / 'Cargo.toml').read_text())
 assert manifest['package']['name'] == 'rullst-media'
 assert manifest['package']['version'] == version and manifest['package']['publish'] is False

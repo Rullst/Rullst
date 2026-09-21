@@ -105,7 +105,12 @@ exercise, grader, toolchain, source and execution profile may become a grade.
 Expected answers remain in the trusted grader; worker outputs are bounded data,
 not a passing-grade authority. Cancellation/expiry fence late results; worker
 loss never means success. Offline simulation is explicit and cannot establish
-execution evidence. See [the first-profile decision and threat model](labs-first-profile.md).
+execution evidence. Authorized course maintenance must expire queued submissions
+and remove their source without requiring a supported/available executor. It
+must not clear a running lease or infer teardown. Withdrawn exercise revisions
+may be removed only after every referencing job has been purged; immutable
+revision identifiers must not be reused after removal. See
+[the first-profile decision and threat model](labs-first-profile.md).
 Independent isolation review and the roadmap's adversarial acceptance remain
 required before any production-ready untrusted-code claim.
 

@@ -112,6 +112,10 @@ there is no exactly-once external side-effect claim. Retention covers encrypted
 source, workspaces, artifacts, diagnostics and result/idempotency tombstones.
 Restored state needs clock/configuration/lease reconciliation, not silent reuse
 of stale authority. Operators own encrypted backups and physical storage erasure.
+Authorized application maintenance expires queued source independently of runner
+availability, without touching leased work. A withdrawn grader can be removed
+only after all referencing job records have passed retention and been purged.
+Removed immutable revision identifiers must not be reused.
 
 ## Adversarial acceptance required
 

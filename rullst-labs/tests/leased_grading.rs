@@ -40,6 +40,59 @@ fn receipt(key: &ReceiptSigner, output: WorkerOutput, teardown: Teardown) -> Sig
     .unwrap()
 }
 #[tokio::test]
+async fn failed_controller_fences_immediately_and_old_attempt_cannot_stop_a_retry() {
+    let f = Fixture::new(1).await;
+    f.store
+        .submit(&f.policy, &id("alice"), &scope(), submission("one"))
+        .await
+        .unwrap();
+    let first = f.store.claim_next().await.unwrap().unwrap();
+    let cleanup = f.store.abandon_attempt(&first).await.unwrap();
+    assert_eq!(
+        f.store.lease_status(&first).await.unwrap(),
+        LeaseStatus::Stop
+    );
+    assert_eq!(
+        f.store
+            .complete_simulation(first.scope(), first.id(), &output(&first, 579))
+            .await
+            .unwrap_err(),
+        LabError::Conflict
+    );
+    let queued = f
+        .store
+        .reconcile_simulation_cleanup(&cleanup, true)
+        .await
+        .unwrap();
+    assert_eq!(queued.state, JobState::Queued);
+    let second = f.store.claim_next().await.unwrap().unwrap();
+    assert_ne!(
+        first.input().binding().nonce,
+        second.input().binding().nonce
+    );
+    assert_eq!(
+        f.store.abandon_attempt(&first).await.unwrap_err(),
+        LabError::Conflict
+    );
+    assert_eq!(
+        f.store.lease_status(&second).await.unwrap(),
+        LeaseStatus::Active
+    );
+    let cleanup = f.store.abandon_attempt(&second).await.unwrap();
+    let terminal = f
+        .store
+        .reconcile_simulation_cleanup(&cleanup, false)
+        .await
+        .unwrap();
+    assert_eq!(terminal.state, JobState::Cancelled);
+    assert!(!terminal.cleanup_pending && terminal.result.is_none());
+    assert_eq!(
+        f.store.abandon_attempt(&second).await.unwrap_err(),
+        LabError::Conflict
+    );
+    f.store.close().await;
+}
+#[tokio::test]
 async fn one_lease_and_exact_trusted_grading_without_worker_answers_or_authoritative_pass_flag() {
     let f = Fixture::new(2).await;
     f.store
@@ -255,6 +308,18 @@ async fn pinned_receipt_key_exact_binding_and_teardown_control_experimental_grad
         LabError::Uncertain
     );
     let signed = receipt(&key, output, Teardown::Confirmed);
+    let mut noncanonical = serde_json::to_value(&signed).unwrap();
+    noncanonical["signature"] =
+        serde_json::json!(noncanonical["signature"].as_str().unwrap().to_uppercase());
+    // Direct serde users must satisfy the same encoding invariant as from_bytes.
+    let noncanonical: SignedReceipt = serde_json::from_value(noncanonical).unwrap();
+    assert_eq!(
+        f.store
+            .complete(job.scope(), job.id(), &noncanonical)
+            .await
+            .unwrap_err(),
+        LabError::Integrity
+    );
     assert_eq!(
         f.store
             .complete(other.scope(), other.id(), &signed)

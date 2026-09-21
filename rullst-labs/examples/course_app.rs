@@ -38,6 +38,9 @@ enum Operation {
     Status { id: Reference },
     Cancel { id: Reference, revision: i64 },
     Withdraw { exercise: ExerciseRef },
+    ExpireQueued { limit: u32 },
+    PurgeTerminal { min_age_seconds: u32, limit: u32 },
+    RemoveExercise { exercise: ExerciseRef },
 }
 struct LocalOperatorPolicy;
 impl Authorization for LocalOperatorPolicy {
@@ -205,6 +208,21 @@ async fn process(store: &SqliteLabs, request: Request) -> Result<serde_json::Val
                 )
                 .await?;
             Ok(json!({"withdrawn":true}))
+        }
+        Operation::ExpireQueued { limit } => Ok(
+            json!({"expired": store.expire_queued(&LocalOperatorPolicy, &actor, &scope, limit).await?}),
+        ),
+        Operation::PurgeTerminal {
+            min_age_seconds,
+            limit,
+        } => Ok(
+            json!({"removed": store.purge_terminal(&LocalOperatorPolicy, &actor, &scope, min_age_seconds, limit).await?}),
+        ),
+        Operation::RemoveExercise { exercise } => {
+            store
+                .remove_exercise(&LocalOperatorPolicy, &actor, &scope, &exercise)
+                .await?;
+            Ok(json!({"removed":true}))
         }
     }
 }

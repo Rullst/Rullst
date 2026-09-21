@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="${1:?usage: test-packaged-distribution.sh VERSION [PACKAGE_DIR] [--supervision-candidate]}"
+version="${1:?usage: test-packaged-distribution.sh VERSION [PACKAGE_DIR] [--supervision-candidate|--v13-candidates]}"
 package_dir="${2:-target/package}"
 cargo_bin="${CARGO:-cargo}"
 
@@ -67,12 +67,16 @@ for crate in "${crates[@]}"; do
   fi
   tar -xzf "$archive" -C "$packages_dir"
 done
+# Archives normalize source timestamps. Preserve their bytes while preventing
+# stale source reuse when an operator supplies a cached CARGO_TARGET_DIR.
+find "$packages_dir" -type f -exec touch {} +
 
 if [ "$candidate" = true ]; then
   candidate_archive="$package_dir/rullst-supervision-${version}.crate"
   # The caller must audit the complete archive set before extraction.
   tar -xzf "$candidate_archive" -C "$packages_dir"
   candidate_source="$packages_dir/rullst-supervision-${version}"
+  find "$candidate_source" -type f -exec touch {} +
   python3 - "$candidate_source/Cargo.toml" "$version" <<'PYVERIFY'
 import sys, tomllib
 from pathlib import Path
@@ -86,6 +90,7 @@ fi
 
 if [ "$media_candidate" = true ]; then
   bash "$repository_root/.github/test-media-package.sh" "$version" "$package_dir"
+  bash "$repository_root/.github/test-labs-package.sh" "$version" "$package_dir"
 fi
 
 toml_path() {
