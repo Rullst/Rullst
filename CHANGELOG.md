@@ -20,6 +20,15 @@ A prepared version section does not establish that its tag or crates exist.
   providers, verified guardianship and automatic global privacy compliance
   remain outside the unpublished package; see the v13 source inventory below.
 
+### Private object storage candidate
+
+- Prepare an opt-in `storage-s3` Core/facade adapter for private S3/R2 files,
+  explicit credentials, bounded transfers, tenant namespaces and signed GET
+  grants. Add deterministic offline mode, protocol failure tests, a disposable
+  S3 service with restart/signature checks and an extracted-package consumer.
+  Hosted source/release admission and real provider-account interoperability
+  remain pending; see the [storage contract](docs/src/private-object-storage.md).
+
 ### CI tooling
 
 - Reject manual archive selectors that would skip the requested package gate.

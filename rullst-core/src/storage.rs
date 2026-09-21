@@ -4,6 +4,10 @@ use std::path::{Component, Path, PathBuf};
 
 mod tenant;
 pub use tenant::TenantStorage;
+#[cfg(feature = "storage-s3")]
+pub mod cloud;
+mod operations;
+pub use operations::ObjectMetadata;
 
 /// Strongly-typed error domain for Rullst Storage operations.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
@@ -27,6 +31,22 @@ pub enum StorageError {
     /// The selected backend or operation is not implemented by this build.
     #[error("Unsupported storage operation: {0}")]
     Unsupported(String),
+
+    /// A bounded cloud storage operation failed without exposing its request.
+    #[cfg(feature = "storage-s3")]
+    #[error(transparent)]
+    Cloud(cloud::CloudError),
+}
+
+#[cfg(feature = "storage-s3")]
+impl From<cloud::CloudError> for StorageError {
+    fn from(error: cloud::CloudError) -> Self {
+        if error == cloud::CloudError::NotFound {
+            Self::NotFound("cloud object".to_string())
+        } else {
+            Self::Cloud(error)
+        }
+    }
 }
 
 impl From<std::io::Error> for StorageError {
@@ -68,6 +88,8 @@ pub enum StorageDriver {
 #[derive(Debug, Clone)]
 pub struct Storage {
     driver: StorageDriver,
+    #[cfg(feature = "storage-s3")]
+    cloud: Option<std::sync::Arc<cloud::CloudClient>>,
 }
 
 impl Storage {
@@ -77,6 +99,8 @@ impl Storage {
             driver: StorageDriver::Local {
                 base_path: base_path.into(),
             },
+            #[cfg(feature = "storage-s3")]
+            cloud: None,
         }
     }
 
@@ -87,6 +111,8 @@ impl Storage {
                 bucket: bucket.into(),
                 region: region.into(),
             },
+            #[cfg(feature = "storage-s3")]
+            cloud: None,
         }
     }
 
@@ -97,11 +123,20 @@ impl Storage {
                 bucket: bucket.into(),
                 account_id: account_id.into(),
             },
+            #[cfg(feature = "storage-s3")]
+            cloud: None,
         }
     }
 
     /// Put binary payload to target path
     pub async fn put(&self, relative_path: &str, bytes: &[u8]) -> Result<(), StorageError> {
+        #[cfg(feature = "storage-s3")]
+        if let Some(cloud) = &self.cloud {
+            return cloud
+                .put(relative_path, bytes)
+                .await
+                .map_err(StorageError::from);
+        }
         match &self.driver {
             StorageDriver::Local { base_path } => {
                 LocalDriver::new(base_path).put(relative_path, bytes).await
@@ -117,6 +152,10 @@ impl Storage {
 
     /// Retrieve binary payload from target path
     pub async fn get(&self, relative_path: &str) -> Result<Vec<u8>, StorageError> {
+        #[cfg(feature = "storage-s3")]
+        if let Some(cloud) = &self.cloud {
+            return cloud.get(relative_path).await.map_err(StorageError::from);
+        }
         match &self.driver {
             StorageDriver::Local { base_path } => {
                 LocalDriver::new(base_path).get(relative_path).await
@@ -132,6 +171,12 @@ impl Storage {
 
     /// Public URL resolution helper for uploaded asset
     pub fn url(&self, relative_path: &str) -> Result<String, StorageError> {
+        #[cfg(feature = "storage-s3")]
+        if self.cloud.is_some() {
+            return Err(StorageError::Unsupported(
+                "private cloud storage requires an explicit signed download".to_string(),
+            ));
+        }
         let relative_path = normalized_object_key(relative_path)?;
         match &self.driver {
             StorageDriver::Local { base_path } => Ok(format!(

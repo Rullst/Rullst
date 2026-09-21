@@ -514,6 +514,27 @@ column is a requirement, not a description of code already present.
 
 ## Coverage of the wider roadmap
 
+### Additional increments approved on September 21
+
+The owner approved the following order after the Bunny/Labs source work. Finish
+each supported journey and its acceptance before expanding its advertised scope.
+These are implementation priorities, not evidence of completed deliveries or a
+promise that every increment fits before feature freeze.
+
+| Order | Increment | Completion boundary |
+| :---: | :--- | :--- |
+| 1 | Private S3/R2 storage in existing Core/facade APIs | Upload, download, metadata, deletion and temporary private GET grants; current tenant/owner authorization, bounded failures, an independent disposable S3 service and an extracted-package consumer. See [the candidate contract](private-object-storage.md). |
+| 2 | Active-session inventory and effective revocation in Auth | Authenticated inventory, expiration, selective logout and logout of other sessions with rejection by actual request verification across processes. Preserve account/tenant isolation, recovery and fail-closed storage behavior. |
+| 3 | One remote Messaging adapter | Select one broker and map its supported semantics explicitly. Prove publication acknowledgement, restart/redelivery, competing consumers, retry/DLQ and outbox composition against a disposable broker. |
+| 4 | Reconnection and recovery for server-driven real-time interfaces | Preserve authorization across reconnects, bound queued events and slow consumers, and demonstrate recovery without silent event/state corruption in real browser/server tests. |
+| 5 | Operation tracing across processes | Propagate and validate bounded trace context through an actual producer/consumer journey, with minimized metadata and an interoperable collection/export path. Define trust and retention boundaries. |
+| 6 | An application-driven ORM increment | Audit existing application cases before selecting the concrete missing behavior. Record its API/database contract, implement it and verify relevant database protocols and an independent consumer. A generic “ORM improved” claim does not complete this row. |
+
+After this approved round, report the delivered scope and remaining time to the
+owner before selecting another round. September 24–25 remain reserved for
+combined validation; September 26 remains the conditional final-adjustment and
+publication day. Publication is excluded from the current implementation goal.
+
 The [master roadmap](../../ROADMAP.md#executive-milestone-tracker) owns the current
 status of the framework milestones and the separately governed M31 programme.
 Its milestones differ substantially in scope and remaining effort; counting

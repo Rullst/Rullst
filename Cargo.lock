@@ -6826,6 +6826,8 @@ version = "13.0.0-alpha.1"
 dependencies = [
  "aes-gcm",
  "async-trait",
+ "aws-credential-types",
+ "aws-sigv4",
  "axum",
  "base64 0.23.1",
  "chrono",
@@ -6844,6 +6846,7 @@ dependencies = [
  "opentelemetry_sdk",
  "rand 0.10.2",
  "redis",
+ "reqwest",
  "ring",
  "rullst-macros",
  "rullst-orm",

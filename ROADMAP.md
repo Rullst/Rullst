@@ -80,7 +80,7 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M14** | Frontend: HTMX-first SSR and Leptos/Dioxus interoperability | `[~] Partial` *(worth improving — HTMX/HTML support is real, while the current Leptos/Dioxus types are compatibility wrappers rather than full framework integrations; “zero bundle” is a selectable architecture, not a universal guarantee)* | v13 |
 | **M15** | Runtime: queues, cache, scheduler, multi-stage Docker, and brokered messaging | `[~] Partial` *(bounded Core Memory/SQLite/Redis foundations plus `rullst-messaging` envelopes, idempotency, groups, leases, retry/DLQ, deterministic broker, contract suite and durable local SQLite state exist; remote codec/replication and RabbitMQ, Kafka, Redis Streams, NATS, SQS/SNS, GCP Pub/Sub and Pulsar adapters do not)* | Foundation v12; remote adapters v13+ |
 | **M16** | Wasm islands and `#[client_component]` | `[~] Partial` *(the bounded `#[server_function]` transport is now implemented over `rullst.client` v1 with a generated Axum route, Wasm caller, compile diagnostics and native/Wasm/scaffold evidence; island hydration, packaging, real-browser interoperability and a stable component ABI remain open)* | v13 |
-| **M17** | Real-time, object storage, media, and `cargo rullst pkg` | `[~] Partial` *(WebSocket/SSE and local storage foundations exist. The unpublished Bunny Stream lifecycle passed hosted/browser/archive source acceptance in PR #227; real provider/CDN interoperability remains unvalidated. S3/R2, image processing and a production package-registry contract remain open)* | v13+ |
+| **M17** | Real-time, object storage, media, and `cargo rullst pkg` | `[~] Partial` *(WebSocket/SSE and local storage foundations exist. The unpublished Bunny Stream lifecycle passed hosted/browser/archive source acceptance in PR #227; real provider/CDN interoperability remains unvalidated. Optional S3/R2 private operations are a candidate awaiting hosted source/package admission and provider interoperability; image processing and a production package-registry contract remain open)* | v13+ |
 | **M18** | LiveView-style server-driven UI and `make:live` | `[~] Partial` *(worth hardening — a WebSocket component loop exists, but auth, reconnect, backpressure, diff semantics, and browser E2E coverage remain)* | v13 |
 | **M19** | AI/telemetry: Radar, agent tool schemas, spans, and Prometheus `/metrics` | `[x] Implemented (bounded)` — local telemetry and export surfaces exist; unavailable sources must remain unavailable rather than becoming invented values | v12 hardening |
 | **M20** | Persistence: zero-copy event streaming and immutable ledger engine | `[ ] Not implemented` *(interesting but lower priority — worth implementing only after defining persistence, consistency, recovery, and verification semantics; the HMAC audit chain is not a distributed ledger)* | v13 research |
@@ -272,9 +272,12 @@ contains the more detailed evidence and acceptance boundaries.
   and common contract foundation;
   add providers only after their delivery semantics pass provider-specific
   restart and fault evidence).*
-- **S3, Cloudflare R2, and image resizing** *(not implemented — worth isolated
-  optional storage/media crates with official signing, multipart/retry semantics,
-  strict path/pixel limits, deterministic mocks, and fuzzing).*
+- **S3 and Cloudflare R2** *(candidate under validation — the optional Core/facade
+  `storage-s3` feature implements bounded private object operations with official
+  signing, explicit credentials and deterministic mocks. Hosted source/package
+  admission and actual provider interoperability remain outstanding; see the
+  [supported contract](docs/src/private-object-storage.md). Multipart streaming
+  and image resizing remain future increments).*
 - **Mailgun, Brevo, MailerSend, Plunk, and Scaleway transports** *(not implemented
   — worth demand-driven adapters only when each has a maintainer and passes the
   shared offline/live mail contract suite).*
@@ -311,8 +314,8 @@ contains the more detailed evidence and acceptance boundaries.
 
 ### Phase 0 — containment and truthful boundaries
 
-- Keep live Fiscal, unfinished IoT integrations, S3/R2, Alipay, and other absent
-  provider paths fail-closed with typed `Unsupported` results.
+- Keep live Fiscal, unfinished IoT integrations, unconfigured S3/R2, Alipay, and
+  other absent provider paths fail-closed with typed `Unsupported` results.
 - Keep Nexus fail-closed, generated credentials absent, production configuration
   validated, webhook secrets mandatory, local storage confined, and the release
   workflow blocked until its dependency order and evidence agree.

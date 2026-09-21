@@ -34,6 +34,12 @@
   requests, times them out, and detects stalled cursors. Applications still own
   Keychain/Keystore access, atomic platform persistence, authenticated HTTP,
   retry, and background scheduling.
+- **Private Object Storage Candidate (v13):** The optional `storage-s3` feature
+  adds bounded S3/R2 upload, download, metadata, deletion and short-lived signed
+  GET URLs to the existing storage and tenant APIs. Configuration is explicit;
+  offline credentials select a bounded deterministic store. Source/package
+  admission is pending, and owner-account interoperability is unvalidated.
+  See the [candidate contract](../docs/src/private-object-storage.md).
 
 ## 🚀 Usage
 

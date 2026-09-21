@@ -12,6 +12,11 @@ macro_rules! tutorial {
 }
 
 tutorial!(
+    private_object_storage,
+    "../../docs/src/private-object-storage.md"
+);
+
+tutorial!(
     tutorial_01_hello_world,
     "../../docs/src/tutorials/01-hello-world.md"
 );

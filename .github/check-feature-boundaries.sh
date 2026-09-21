@@ -95,6 +95,7 @@ rullst-core|queue-sqlite
 rullst-core|queue-redis
 rullst-core|cache-redis
 rullst-core|offline-sync
+rullst-core|storage-s3
 rullst-core|telemetry
 rullst-messaging|sqlite
 rullst-messaging|orm-outbox
@@ -165,6 +166,7 @@ rullst|queue-redis
 rullst|cache-redis
 rullst|redis
 rullst|offline-sync
+rullst|storage-s3
 rullst|auth
 rullst|mail-smtp
 rullst|mailer
