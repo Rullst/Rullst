@@ -15,6 +15,7 @@ tutorial!(
     private_object_storage,
     "../../docs/src/private-object-storage.md"
 );
+tutorial!(live_recovery, "../../docs/src/live-recovery.md");
 
 tutorial!(
     tutorial_01_hello_world,

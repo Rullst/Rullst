@@ -11,6 +11,11 @@
   forwarding, and message-free typed failures. Identity and domain policy stay
   server-owned.
 - **Runtime Telemetry:** Exposes process/runtime snapshots and tracing-span collection for consumers such as Rullst Studio.
+- **Recoverable Live UI Candidate (v13):** Explicitly mounted typed views add
+  current authorization, complete snapshots, transactional revision conflicts
+  and bounded WebSocket recovery. The included browser module never replays
+  uncertain mutations. Local protocol/Chromium restart acceptance passed;
+  hosted source/package admission is pending. See [adoption and limits](../docs/src/live-recovery.md).
 - **Lifecycle-aware Readiness:** An opt-in process lifecycle gates new requests
   during startup, dependency unavailability, and graceful drain. It accepts at
   most 32 immutable component labels and exposes counts—not labels or errors—on

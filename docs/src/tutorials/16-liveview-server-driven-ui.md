@@ -4,6 +4,12 @@ Build a per-connection Rust component that receives JSON events and sends
 rendered HTML over WebSockets. The browser still needs the HTMX WebSocket
 extension (or a compatible client transport).
 
+This tutorial documents the legacy per-connection API. For the unpublished v13
+candidate with explicit authorization, revision conflicts, bounded reconnection
+and recovery after process restart, use [Recoverable Live UI](../live-recovery.md).
+Its browser module and application trait are separate; `make:live` does not
+automatically supply that contract.
+
 ---
 
 ## 🛠️ Step 1: Scaffold a LiveComponent
@@ -19,7 +25,7 @@ This creates `src/live/counter_component.rs`.
 ## 💻 Step 2: Implement the Component Lifecycle
 
 The following controller fragment expects the generated
-`crate::live::counter_component` module from Step 2:
+`crate::live::counter_component` module from Step 1:
 
 ```rust
 use async_trait::async_trait;

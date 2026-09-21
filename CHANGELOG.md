@@ -48,6 +48,16 @@ A prepared version section does not establish that its tag or crates exist.
   and an extracted-package consumer. Hosted source/release admission remains
   pending; see the [session contract](docs/src/session-management.md).
 
+### Recoverable Live UI candidate
+
+- Add explicit Core/facade `live::recovery` with mandatory authorization,
+  complete snapshots, transactional revision conflicts and bounded WebSocket
+  admission, operations and lifetimes. Its same-origin browser module recovers
+  state without replaying uncertain mutations. Actual protocol and Chromium
+  tests include revocation, disconnect and process restart. Legacy components
+  and scaffolds remain separate; hosted source/package admission is pending.
+  See [the adoption and limits guide](docs/src/live-recovery.md).
+
 ### CI tooling
 
 - Reject manual archive selectors that would skip the requested package gate.

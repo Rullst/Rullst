@@ -761,6 +761,35 @@ This permits evaluation outside the repository without silently mixing release
 trains, but generated absolute path dependencies remain non-portable until the
 matching immutable release is published.
 
+### Recoverable Live UI candidate (v13, under validation)
+
+The fourth approved September increment extends `rullst-core::live` with a
+separate opt-in typed recovery API, preserving the legacy component interface.
+An application-bound tenant/account/component scope and mandatory static-dispatch
+authorization callback must be checked before upgrading, before actions and
+outputs, and periodically while connected. Exact browser origin and protocol
+validation supplement, rather than replace, application authentication.
+
+The v1 transport sends bounded complete server snapshots on initial connection,
+reconnection and conflicts. Commands carry a bounded correlation ID and expected
+revision; the host must check that revision atomically with its persistent domain
+write. The client must not queue or automatically replay mutations after uncertain
+disconnects. Recovery converges to authoritative application state, not replay of
+every missed transient event. Browser/server buffers, admitted connections,
+callbacks, sends, session lifetime and event counts must be bounded. Expired or
+revoked access closes the session without exposing a new snapshot.
+
+A small optional same-origin browser module and real browser/server tests must
+prove reconnect convergence, action conflict, session/tenant denial, revocation,
+bounded malformed/slow peers and recovery after an application restart. Domain
+persistence, transactional revision checks, HTML escaping, authorization policy,
+replication and proxy configuration remain explicit application responsibilities.
+No automatic durability or upgrade of legacy `LiveComponent` code is implied.
+The implementation and its local protocol/Chromium acceptance are recorded in
+[the recovery guide](live-recovery.md). Hosted workspace/platform/package
+admission remains pending. The API uses complete snapshots; it does not imply
+DOM diffing, broadcast of other clients' changes or automatic event replay.
+
 ### Remote messaging candidate (v13, under development)
 
 The first remote adapter is an opt-in Redis Streams profile in the existing
