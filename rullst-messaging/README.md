@@ -188,3 +188,16 @@ record, so retention policy must be chosen deliberately.
 
 See the [crate roadmap](https://github.com/Rullst/Rullst/blob/v12.1.0/rullst-messaging/ROADMAP.md) and the
 [brokered messaging tutorial](https://github.com/Rullst/Rullst/blob/main/docs/src/tutorials/49-brokered-messaging.md).
+
+## v13 recurring-publication candidate
+
+The optional `schedules-postgres` feature adds an encrypted PostgreSQL occurrence
+outbox, UTC calendar definitions, bounded catch-up/coalescing, fenced leases,
+cancellation, retry and terminal retention. It relays into `MessageBroker`;
+Core's process-local scheduler remains independent. Facade consumers select
+`messaging-schedules-postgres`. This feature alone enables neither SQLite nor ORM.
+
+See the [recurring-publication guide](https://github.com/Rullst/Rullst/blob/main/docs/src/recurring-publications.md)
+for clock/calendar semantics, runtime roles, host authorization and at-least-once
+boundaries. This is a local unpublished candidate; full hosted source/package
+admission remains outstanding.

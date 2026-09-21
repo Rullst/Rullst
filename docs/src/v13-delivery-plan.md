@@ -130,6 +130,15 @@ restricted-role, failure/cancellation, worker/tenant and process/database-restar
 contracts passed, including the extracted facade/Mail/Core archive consumer.
 Full hosted admission remains required; see [shared mail suppression](shared-mail-suppression.md).
 
+The durable recurring-publication item has a local Messaging candidate with
+PostgreSQL coordination, encrypted frozen occurrences, bounded UTC catch-up and
+coalescing, cancellation, fenced retries and metadata retention. Native tests
+passed real SQL rollback/lock deadlines, restricted roles, competing instances,
+fresh processes/database restart and durable broker replay after lost ACK.
+Messaging all-feature regression and strict Clippy passed; extracted archive
+consumers passed the native journey. Full hosted admission remains required;
+see [durable recurring publications](recurring-publications.md).
+
 Execution order may respond to measured implementation and validation cost. Do not replace
 full journeys with mock-only placeholders to increase the feature count. Keep
 September 24–25 for combined validation and September 26 for final adjustments

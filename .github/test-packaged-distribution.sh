@@ -275,6 +275,31 @@ append_package_patches "$mail_pg_dir/Cargo.toml"
 "$cargo_bin" test --manifest-path "$mail_pg_dir/Cargo.toml" --offline --locked
 python3 "$repository_root/.github/check-mail-postgres.py" --manifest-path "$mail_pg_dir/Cargo.toml"
 
+recurring_dir="$work_dir/recurring-consumer"
+mkdir -p "$recurring_dir/tests/recurring"
+{
+  printf '[package]\nname = "rullst-packaged-recurring"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
+  printf '[features]\ndefault = ["schedules-postgres", "sqlite"]\nschedules-postgres = []\nsqlite = []\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["messaging-schedules-postgres", "messaging-sqlite"] }\n' "$version"
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "process", "io-std", "io-util"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "tls-rustls-ring"] }\n'
+  printf 'url = "2.5.8"\nuuid = { version = "1", features = ["v4"] }\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
+} > "$recurring_dir/Cargo.toml"
+for test in recurring_contract recurring_restart; do
+  cp "$repository_root/rullst-messaging/tests/$test.rs" "$recurring_dir/tests/$test.rs"
+done
+cp "$repository_root/rullst-messaging/tests/recurring/"*.rs "$recurring_dir/tests/recurring/"
+python3 - "$recurring_dir/tests" <<'RECURRING_PY'
+from pathlib import Path
+import sys
+for source in Path(sys.argv[1]).rglob('*.rs'):
+    source.write_text(source.read_text().replace('rullst_messaging::', 'rullst::messaging::'))
+RECURRING_PY
+append_package_patches "$recurring_dir/Cargo.toml"
+"$cargo_bin" generate-lockfile --manifest-path "$recurring_dir/Cargo.toml" --offline
+"$cargo_bin" test --manifest-path "$recurring_dir/Cargo.toml" --offline --locked
+python3 "$repository_root/.github/check-recurring-postgres.py" --manifest-path "$recurring_dir/Cargo.toml"
+
 storage_dir="$work_dir/storage-consumer"
 mkdir -p "$storage_dir/tests"
 {

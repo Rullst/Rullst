@@ -369,6 +369,7 @@ jobs:
             strict-postgres)
               RULLST_EMAIL_LOGIN_BROWSER_TESTS=1 python3 .github/check-auth-recovery-postgres.py
               python3 .github/check-mail-postgres.py
+              python3 .github/check-recurring-postgres.py
               python3 .github/check-privacy-postgres.py
               RULLST_PASSKEY_BROWSER_TESTS=1 python3 .github/check-passkey-postgres.py
               cargo test -p rullst-orm --no-default-features \

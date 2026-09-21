@@ -6991,12 +6991,16 @@ name = "rullst-messaging"
 version = "13.0.0-alpha.1"
 dependencies = [
  "aes-gcm",
+ "chrono",
+ "cron",
+ "getrandom 0.4.3",
  "redis",
  "rullst-orm",
  "serde",
  "serde_json",
  "sha2 0.11.0",
  "sqlx",
+ "subtle",
  "thiserror 2.0.20",
  "tokio",
  "tracing",

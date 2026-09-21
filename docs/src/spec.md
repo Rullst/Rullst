@@ -802,6 +802,54 @@ after a complaint. Required evidence includes independent pools/processes,
 concurrent replay/conflicts/quotas, rollback/cancellation, restricted roles,
 service restart, real guard/worker composition and extracted-package consumers.
 
+### v13 durable recurring-publication implementation contract
+
+The fifth owner-selected increment belongs to the existing Messaging crate as
+optional `schedules-postgres`, with an explicit facade feature. It coordinates
+bounded UTC cron occurrences across instances through one authoritative PostgreSQL
+database and relays them to the existing static `MessageBroker` contract. Core's
+process-local `Scheduler` retains its API and behavior. A broker publication is
+not proof of handler completion or an exactly-once external effect.
+
+Require a server-owned namespace, immutable limits and explicit encrypted storage
+keys. Schedule names are bounded application configuration, not tenant authority.
+The host authenticates authoring/inspection/cancellation and selects the correct
+namespace and broker. Creation is idempotent for the same immutable definition;
+conflicting reuse fails. An edit requires cancellation and a new schedule name,
+with immutable generation identities protecting retained occurrence keys.
+
+Use the cron crate's five-field projection in UTC (weekday 1=Sun through 7=Sat,
+calendar-day and weekday restrictions intersect; names are accepted), with a
+one-minute minimum resolution, bounded
+definitions/payloads, explicit first-after time and explicit missed-run policy.
+Bounded catch-up emits the oldest due occurrences within the caller's tick budget;
+coalescing emits one oldest outstanding occurrence and advances after the observed
+current time. Advancing the schedule and persisting frozen occurrence content
+must be atomic. Storage quota exhaustion cannot silently discard due occurrences.
+
+Persist definitions and occurrence content using authenticated encryption bound
+to namespace, schedule generation and occurrence identity. Do not silently adopt
+plaintext storage. Lease ownership, attempts, retry deadlines and terminal state
+are authoritative SQL data. Leases are unpredictable and exactly fenced; stale
+workers cannot acknowledge/retry/revive a cancelled or superseded occurrence.
+Broker requests use deterministic purpose-separated occurrence idempotency keys,
+and retries preserve exact content. Recheck a live lease immediately before
+publication and acknowledge only after successful broker acceptance. If acceptance
+precedes an uncertain ACK, retain evidence of acceptance and reconcile/retry the
+same key. A cancellation after the final check cannot recall an in-flight broker
+request; consumers must deduplicate/authorize at their side-effect boundary.
+
+Expose bounded inventory/terminal inspection, explicit failed-occurrence retry,
+permanent cancellation and retention of terminal rows only. Automatic attempts
+and the delivery window are bounded. Deadlines, clock rollback, namespace/key
+drift and non-durable/unavailable state fail closed. Reuse verified TLS, bounded
+pools/SQL deadlines, explicit initialization and runtime without DDL privileges.
+Document UTC-only behavior, unchanged per-process cron, broker deduplication
+retention, backup/failover obligations and host-owned authorization. Required
+acceptance includes independent instances/processes, real PostgreSQL rollback,
+restart and restricted roles, cancellation/lease races, durable broker consumption,
+publication-before-ACK replay and extracted-package/facade consumers.
+
 ### v12 audit correction invariants
 
 **12.1 account mail:** `rullst-mail::ActionLink` validates an exact

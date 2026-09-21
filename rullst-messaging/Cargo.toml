@@ -15,9 +15,11 @@ categories = ["asynchronous", "network-programming"]
 
 [features]
 default = []
-sqlite = ["dep:aes-gcm", "dep:serde_json", "dep:sqlx", "dep:url", "dep:zeroize"]
+sqlite = ["sqlx/sqlite", "dep:aes-gcm", "dep:serde_json", "dep:sqlx", "dep:url", "dep:zeroize"]
 orm-outbox = ["dep:rullst-orm", "dep:serde_json"]
 redis-streams = ["dep:redis", "dep:url", "tokio/time"]
+
+schedules-postgres = ["dep:subtle","dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls", "dep:url", "dep:aes-gcm", "dep:zeroize", "dep:serde_json", "dep:chrono", "dep:cron", "dep:getrandom", "tokio/time"]
 
 [dependencies]
 aes-gcm = { version = "0.11.0", features = ["zeroize"], optional = true }
@@ -26,7 +28,7 @@ serde_json = { workspace = true, features = ["std"], optional = true }
 rullst-orm = { workspace = true, default-features = true, optional = true }
 redis = { workspace = true, features = ["tokio-rustls-comp", "tls-rustls-webpki-roots"], optional = true }
 sha2 = { workspace = true }
-sqlx = { workspace = true, features = ["runtime-tokio", "sqlite"], optional = true }
+sqlx = { workspace = true, features = ["runtime-tokio"], optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["sync"] }
 tracing = { workspace = true }
@@ -34,5 +36,11 @@ url = { version = "2.5.8", optional = true }
 uuid = { workspace = true, features = ["v4"] }
 zeroize = { workspace = true, optional = true }
 
+chrono = { workspace = true, features = ["std"], optional = true }
+cron = { version = "0.17.0", optional = true }
+getrandom = { version = "0.4.2", optional = true }
+
+subtle = { workspace = true, optional = true }
+
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "process", "io-std", "io-util"] }

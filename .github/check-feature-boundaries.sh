@@ -98,6 +98,7 @@ rullst-core|offline-sync
 rullst-core|storage-s3
 rullst-core|telemetry
 rullst-messaging|sqlite
+rullst-messaging|schedules-postgres
 rullst-messaging|redis-streams
 rullst-messaging|orm-outbox
 rullst-connect|axum
@@ -189,6 +190,7 @@ rullst|mail-sqlite
 rullst|mail-postgres
 rullst|messaging
 rullst|messaging-sqlite
+rullst|messaging-schedules-postgres
 rullst|messaging-redis
 rullst|messaging-orm-outbox
 rullst|privacy
