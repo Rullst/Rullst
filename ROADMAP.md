@@ -402,6 +402,13 @@ selects the bounded release priorities, acceptance criteria and feature-freeze
 dates. It preserves this wider roadmap and does not turn planned capabilities
 into shipped claims.
 
+On September 21, the owner selected shared PostgreSQL consent and single-use
+email login links as the next two implementation priorities through September
+23. The [additional-priorities section](docs/src/v13-delivery-plan.md#additional-priorities-approved-on-21-september)
+records their acceptance boundaries and five further candidates awaiting
+selection. These entries do not claim implementation or expand the validation
+and publication dates.
+
 | Order | Outcome | Acceptance boundary |
 | :--- | :--- | :--- |
 | **P0 — verification efficiency** | Shorter local and hosted feedback, with measured cold/warm build and queue times | Compare test inventories; select affected crates and their consumers; preserve broad scheduled/release checks and a full-run fallback for unknown changes. Bind reusable evidence to source, dependencies, tools and policy. Prove that security, workflow, manifest and generator changes cannot silently skip required checks. |

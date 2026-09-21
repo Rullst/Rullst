@@ -78,6 +78,39 @@ The prioritized implementation sequence is:
    completion. Remote brokers, a new gateway and expansion of the Verus pilot
    follow these journeys; mandatory fixes and release checks retain precedence.
 
+## Additional priorities approved on 21 September
+
+After the six-feature source admission, the owner selected the following two
+deliveries for implementation through September 23. They are **planned**, not
+implemented or release-admitted. Finish the current combined PR #238 admission
+and carry necessary fixes forward while independent implementation progresses.
+
+| Order | Selected delivery | Required acceptance |
+| :--- | :--- | :--- |
+| 1 | Shared PostgreSQL consent in `rullst-privacy` | Preserve purpose/version binding, exact-revision grants, withdrawal precedence, clock checks and durable tombstones across independent application pools. Add explicit initialization, restricted-role operation, bounded waits, concurrency/cancellation/restart tests, opt-in facade features and a documented consumer. Keep database restore/failover obligations explicit. |
+| 2 | Single-use email login links in `rullst-auth`, composed with `rullst-mail` | Complete issuance, delivery and deliberate redemption into the existing authenticated session lifecycle. Require purpose-separated secret tokens, durable atomic consumption, expiry, tenant/account binding, bounded abuse controls, enumeration-resistant responses and safe redirects. Email scanners must not consume credentials merely by following a GET. Test replay races, mail/storage failures, stale accounts and session invalidation with deterministic delivery fixtures. |
+
+The owner also requested five further candidates. The list below is an ordered
+backlog for selection after the two priorities, **not approval or a promise to
+implement all five before the freeze**. The previously discussed metadata-only
+Studio messaging inspector remains a separate candidate.
+
+| Priority | Additional candidate | User benefit and required boundary |
+| :--- | :--- | :--- |
+| 1 | Scoped, revocable application API tokens | Let integrations access explicit tenant/account permissions without borrowing browser sessions. Store token digests, bound scopes and lifetime, support revocation/rotation, and test cross-tenant denial and concurrent revocation. Existing provider credentials and application JWT helpers do not implement this lifecycle. |
+| 2 | Shared PostgreSQL mail suppression | Let independent mail workers honor the same hard-bounce, complaint and explicit suppression state. Extend the current Memory/SQLite contract with atomic event replay handling, minimized state, restart/concurrency evidence and a final pre-delivery check; actual provider inbox acceptance remains separate. |
+| 3 | Durable recurring schedules across application instances | Coordinate recurring occurrences through authoritative storage and leased dispatch into the existing queue/outbox. Define missed-run policy, cancellation, restart, stale-worker fencing and idempotent occurrence keys. Current per-process cron and delayed queue jobs are foundations; neither proves exactly-once external effects. |
+| 4 | Durable outgoing application webhooks | Deliver application events to explicitly approved destinations with signatures, bounded retries and inspectable terminal failure. Compose the existing outbox, destination/SSRF policy and idempotency contracts; incoming payment-webhook verification is a different capability. |
+| 5 | Resumable multipart uploads for private S3-compatible storage | Support larger attachments and interrupted uploads with bounded parts, authenticated tenant/object ownership, checksums, completion/abort and orphan cleanup. Extend the existing private-object adapter; this is separate from Bunny Stream resumable video uploads and requires native protocol evidence. |
+
+Selection depends on measured implementation and validation cost. Do not replace
+full journeys with mock-only placeholders to increase the feature count. Keep
+September 24–25 for combined validation and September 26 for final adjustments
+and separately authorized publication. No owner/provider account tests are
+authorized; disposable local services and deterministic protocol fixtures remain
+available. Architectural/API decisions must be recorded in the SST as each
+candidate becomes implementation work.
+
 ## Depth before additional optional features
 
 The owner asked to pursue a complete, comprehensive implementation of Bunny
