@@ -290,13 +290,11 @@ pub async fn leaderboard(
         .get(&cache_key)
         .await
         .map_err(|error| ScoreError::Cache(error.to_string()))?
+        && let Ok(mut entries) = serde_json::from_str::<Vec<LeaderboardEntry>>(&payload)
+        && valid_cached_leaderboard(&entries, course_id, season_key)
     {
-        if let Ok(mut entries) = serde_json::from_str::<Vec<LeaderboardEntry>>(&payload) {
-            if valid_cached_leaderboard(&entries, course_id, season_key) {
-                entries.truncate(limit);
-                return Ok(entries);
-            }
-        }
+        entries.truncate(limit);
+        return Ok(entries);
     }
     let query = match rullst::db::Orm::driver()? {
         "postgres" => "SELECT * FROM leaderboard_entries WHERE course_id = $1 AND season_key = $2 ORDER BY score DESC, updated_at ASC, user_id ASC LIMIT 100",

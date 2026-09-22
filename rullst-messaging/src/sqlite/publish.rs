@@ -12,8 +12,8 @@ use super::transaction::{finish, storage_error};
 impl<C: Clock> SqliteBroker<C> {
     pub(super) async fn publish_inner(&self, request: PublishRequest) -> Result<PublishReceipt> {
         request.validate_payload(self.config.max_payload_bytes())?;
-        let now = self.now()?;
         let mut connection = self.begin_write("begin publication").await?;
+        let now = self.now()?;
         let result = self
             .publish_in_transaction(&mut connection, request, now)
             .await;

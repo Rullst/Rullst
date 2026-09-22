@@ -50,6 +50,9 @@ or startup failure. `run_with_shutdown` accepts a caller-owned trigger for
 embedded supervisors and deterministic tests. The lifecycle does not run
 dependency probes, coordinate replicas, authorize users, or guarantee load
 balancer propagation.
+Admission lasts through ordinary HTTP response body completion, error or drop,
+including streaming data/trailers. It does not prove client receipt or account
+for upgraded connections and detached tasks; supervisors own their shutdown.
 
 ## ✨ Core Features & Subsystems
 

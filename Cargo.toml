@@ -54,6 +54,7 @@ cargo-rullst = { version = "12.1.0", path = "cargo-rullst" }
 tokio = { version = "1.52.3", default-features = false }
 axum = { version = "0.8.9", features = ["macros", "ws"] }
 http = "1.5.0"
+http-body = "1.1.0"
 serde = { version = "1.0.228", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.150", default-features = false }
 jsonschema = { version = "=0.56.0", default-features = false }

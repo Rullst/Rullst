@@ -199,6 +199,19 @@ This permits evaluation outside the repository without silently mixing release
 trains, but generated absolute path dependencies remain non-portable until the
 matching immutable release is published.
 
+### 12.1.1 compatible maintenance invariants
+
+The unpublished maintenance candidate retains the v12 public APIs, database
+schemas and Rust 1.96.0 MSRV. Application-key validation rejects the public
+scaffold placeholders after trimming and case normalization; it does not rotate
+keys or rewrite application configuration.
+
+SQLite broker operations sample trusted time after acquiring `BEGIN IMMEDIATE`.
+Publication, claim, ACK, retry and dead-letter must not use a timestamp captured
+before lock contention. Retry availability and new leases start at admission;
+expired workers return `LeaseExpired` and remain recoverable. Clock rollback
+protection and at-least-once delivery semantics are unchanged.
+
 ### Shared-local facade composition invariant
 
 The umbrella features `auth-sqlite`, `capital-quota-sql`, `oauth-sqlite`,
@@ -336,6 +349,10 @@ PostgreSQL/MySQL contention evidence also remains open.
   before Axum waits for accepted requests and then becomes stopped. Dependency
   checks/timeouts, component updates, replica consensus, load-balancer timing,
   authorization and the deployment termination deadline remain host contracts.
+  Request admission remains held through ordinary HTTP body completion, error
+  or drop, including streamed data and trailers. Returning headers alone does
+  not complete a nonempty body. This does not track upgraded connections,
+  detached work or client acknowledgement; supervisors own those lifetimes.
 * **Default Dynamic Cache Boundary:** `headers_middleware` supplies
   `Cache-Control: no-store` only when the handler has not already selected an
   explicit cache policy. Versioned public/static responses can therefore opt

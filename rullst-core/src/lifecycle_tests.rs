@@ -122,6 +122,34 @@ async fn drain_rejects_new_requests_and_waits_for_an_admitted_one() {
 }
 
 #[tokio::test]
+async fn response_headers_do_not_complete_an_unconsumed_body() {
+    // TM-CORE-02: a returned response can still own unfinished application work.
+    let lifecycle = ApplicationLifecycle::new();
+    lifecycle.mark_ready().unwrap();
+    let app = apply_lifecycle(
+        Router::new().route("/body", get(|| async { "accepted response" })),
+        lifecycle.clone(),
+    );
+    let response = app
+        .oneshot(HttpRequest::get("/body").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    lifecycle.begin_draining().unwrap();
+    assert!(matches!(
+        lifecycle.wait_for_drain(Duration::from_millis(1)).await,
+        Err(ApplicationLifecycleError::DrainTimedOut { in_flight: 1 })
+    ));
+    let bytes = to_bytes(response.into_body(), 1024).await.unwrap();
+    assert_eq!(bytes.as_ref(), b"accepted response");
+    lifecycle
+        .wait_for_drain(Duration::from_millis(100))
+        .await
+        .unwrap();
+    assert_eq!(lifecycle.in_flight_requests(), 0);
+}
+
+#[tokio::test]
 async fn probes_bypass_application_admission_without_exposing_components() {
     let lifecycle = ApplicationLifecycle::with_required_components(["private-db"]).unwrap();
     let app = apply_lifecycle(

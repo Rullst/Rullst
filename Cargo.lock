@@ -6824,6 +6824,7 @@ dependencies = [
  "dotenvy",
  "getrandom 0.4.3",
  "http 1.5.0",
+ "http-body 1.1.0",
  "js-sys",
  "libloading",
  "opentelemetry",

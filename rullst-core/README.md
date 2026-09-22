@@ -80,6 +80,10 @@ For orchestrated deployments, construct `ApplicationLifecycle`, mount
 `Server::with_lifecycle`. The server marks startup complete after binding,
 begins drain before Axum waits for accepted requests, and marks startup failure
 or termination as stopped. `run_with_shutdown` permits a caller-owned trigger.
+Admission follows the ordinary response body through completion, error or drop,
+including streamed data/trailers. It does not prove client receipt or track
+upgraded connections. `wait_for_drain` is bounded; supervisors separately own
+process kill deadlines and application WebSocket/background-task termination.
 The process-local registry does not probe dependencies, authorize application
 requests, coordinate replicas, or guarantee load-balancer propagation.
 
