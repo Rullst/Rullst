@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790027588859,
+  "lastUpdate": 1790051339153,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -11459,6 +11459,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4593,
             "range": "± 83",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f543ed5326029f8e4fbf0693dd7faab9288a526",
+          "message": "feat(v13): add durable access, delivery and private upload flows (#239)",
+          "timestamp": "2026-09-22T01:10:18-03:00",
+          "tree_id": "abbbade92b9794e04099125da476b7edbc69d66f",
+          "url": "https://github.com/Rullst/Rullst/commit/9f543ed5326029f8e4fbf0693dd7faab9288a526"
+        },
+        "date": 1790051338697,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1038,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 830,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1881,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4006,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
