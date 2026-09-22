@@ -188,3 +188,30 @@ record, so retention policy must be chosen deliberately.
 
 See the [crate roadmap](https://github.com/Rullst/Rullst/blob/v12.1.0/rullst-messaging/ROADMAP.md) and the
 [brokered messaging tutorial](https://github.com/Rullst/Rullst/blob/main/docs/src/tutorials/49-brokered-messaging.md).
+
+## v13 recurring-publication candidate
+
+The optional `schedules-postgres` feature adds an encrypted PostgreSQL occurrence
+outbox, UTC calendar definitions, bounded catch-up/coalescing, fenced leases,
+cancellation, retry and terminal retention. It relays into `MessageBroker`;
+Core's process-local scheduler remains independent. Facade consumers select
+`messaging-schedules-postgres`. This feature alone enables neither SQLite nor ORM.
+
+See the [recurring-publication guide](https://github.com/Rullst/Rullst/blob/main/docs/src/recurring-publications.md)
+for clock/calendar semantics, runtime roles, host authorization and at-least-once
+boundaries. This is a local unpublished candidate; full hosted source/package
+admission remains outstanding.
+
+## v13 outgoing-webhook candidate
+
+The optional `webhooks` feature composes the encrypted SQLite broker with one
+immutable approved HTTPS destination, HMAC-SHA256 sender/receiver contracts,
+DNS/address checks pinned to the connection, bounded retry/dead-letter state,
+cancellation and terminal retention. Independent processes share one local file;
+remote/multi-host webhook state is outside this profile. Facade consumers select
+`messaging-webhooks`; no default Messaging dependency changes.
+
+The [outgoing-webhook guide](https://github.com/Rullst/Rullst/blob/main/docs/src/outgoing-webhooks.md)
+documents host authorization, receiver replay protection, storage custody and
+protocol details. Native owned HTTP/TLS and process-restart tests passed locally;
+full hosted source/package admission remains outstanding.

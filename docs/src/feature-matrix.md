@@ -26,7 +26,47 @@ feature cannot silently escape the matrix. See
 [`check-feature-boundaries.sh`](../../.github/check-feature-boundaries.sh) for
 the exact individual checks.
 
+## Unpublished v13 privacy additions
+
+The v13 candidate adds `rullst-privacy` as an optional seventeenth release
+package. These features are absent from published 12.1.0; use the matching v13
+source until its package and release admission complete. They do not change
+default dependencies or select application policies automatically.
+
+| Umbrella feature | Standalone privacy feature | Contract |
+| :--- | :--- | :--- |
+| `privacy` | None | Independent empty base |
+| `privacy-age` | `age-assurance` | Proportional age-policy contracts |
+| `privacy-challenge-tokens` | `challenge-tokens` | Authenticated server challenge transport |
+| `privacy-sqlite` | `sqlite` | Shared-local age replay protection |
+| `privacy-postgres` | `postgres` | Age replay protection on one authoritative PostgreSQL database |
+| `privacy-consent` | `consent` | Purpose/version choices and effective withdrawal |
+| `privacy-consent-sqlite` | `consent-sqlite` | Shared-local consent state |
+| `privacy-consent-postgres` | `consent-postgres` | New candidate for shared consent across application hosts; independent of age assurance |
+
+See the [privacy package guide](../../rullst-privacy/README.md) for initialization,
+runtime roles, data minimization, backup/failover obligations and acceptance.
+
+The local email-login candidate adds Auth `email-login-sqlite` and
+`email-login-postgres`, with facade `auth-email-login-sqlite` /
+`auth-email-login-postgres`. These optional paths reuse authoritative recovery
+accounts and opaque sessions; they do not enable email login on accounts or
+replace tenant/MFA policy. Hosted source/package admission remains pending; see
+[the email-login contract](email-login.md).
+
+The scoped API-token candidate adds Auth `api-tokens-sqlite` /
+`api-tokens-postgres` and facade `auth-api-tokens-sqlite` /
+`auth-api-tokens-postgres`. They enable the corresponding recovery backend only;
+email login, JWT and OAuth remain independent. See the
+[API-token contract](api-tokens.md) for current admission and boundaries.
+
 ## Umbrella crate: `rullst`
+
+The unpublished private-storage candidate adds Core/facade `storage-multipart`,
+which selects `storage-s3`, bounded XML parsing and checkpoint key zeroization.
+It enables no database, queue or default feature. See
+[private multipart uploads](private-multipart-uploads.md) for server-mediated
+parts, encrypted resumable checkpoints, cleanup responsibilities and admission.
 
 The default `rullst` dependency enables `orm` and `queue-sqlite`. Applications
 that only need the HTTP runtime can opt out:
@@ -57,10 +97,13 @@ rullst = { version = "12.1.0", default-features = false }
 | `auth-passkey-postgres` | no | Optional v13 account/session-bound PostgreSQL passkey ceremony candidate; host credential-counter CAS remains required |
 | `mail` | no | `rullst-mail` with HTTP/offline transports and no SMTP dependency |
 | `mail-sqlite` | no | `mail` plus bounded shared-local SQLite recipient suppression and provider-event replay evidence |
+| `mail-postgres` | no | v13 candidate: shared PostgreSQL suppression with keyed identifiers, authoritative dispatch checks and independent quotas |
 | `mail-smtp` | no | `mail` plus the optional SMTP transport |
 | `mail-aws-ses` | no | `mail` plus native SES v2 delivery signed by the official AWS SDK |
 | `messaging` | no | Native bounded broker-neutral messaging contracts and the deterministic process-local broker |
 | `messaging-sqlite` | no | `messaging` plus fixed-schema durable local SQLite publication, lease, retry/DLQ, ACK and idempotency state |
+| `messaging-schedules-postgres` | no | v13 candidate: encrypted PostgreSQL recurring-publication outbox and fenced relay into an explicitly selected broker; no default SQLite/ORM |
+| `messaging-webhooks` | no | v13 candidate: encrypted shared-local SQLite outgoing outbox, immutable HTTPS destination, signed exact bytes, fenced retries and minimized terminal inspection |
 | `messaging-orm-outbox` | no | `messaging` and `orm` plus the static relational outbox-to-broker relay; the publish/ACK crash window remains at-least-once |
 | `mailer` | no | Compatibility alias for `mail-smtp`; prefer `mail-smtp` in new manifests |
 | `queue-redis` | no | Redis dependency and Core's Redis queue backend |
@@ -260,6 +303,7 @@ Default features: none. HTTP mail providers remain available without SMTP.
 | `aws-ses` | Official AWS SES v2 SDK, regional SigV4, temporary/rotating credential providers and native attachments/CID; AWS account readiness and inbox delivery remain external |
 | `capital-invoice` | Capital's native invoice PDF plus the final-payment-bound delivery bridge; durable outbox claiming remains application-owned |
 | `sqlite` | File-backed shared-local suppression state with exact provider-event replay binding and immutable quotas; webhook authentication, encryption and multi-host replication remain application-owned |
+| `postgres` | v13 candidate: namespaced suppression on one authoritative writable PostgreSQL database; independent of SQLite. See [shared mail suppression](shared-mail-suppression.md) for initialization, runtime grants, retention and pending admission |
 
 ### `rullst-auth`
 

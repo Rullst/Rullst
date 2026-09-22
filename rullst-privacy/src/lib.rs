@@ -6,6 +6,9 @@
 #![forbid(unsafe_code)]
 #![cfg_attr(feature = "age-assurance", doc = include_str!("../README.md"))]
 
+#[cfg(any(feature = "postgres", feature = "consent-postgres"))]
+mod postgres_connection;
+
 #[cfg(feature = "age-assurance")]
 pub mod age_assurance;
 

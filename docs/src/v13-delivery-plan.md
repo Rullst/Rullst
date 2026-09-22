@@ -78,6 +78,178 @@ The prioritized implementation sequence is:
    completion. Remote brokers, a new gateway and expansion of the Verus pilot
    follow these journeys; mandatory fixes and release checks retain precedence.
 
+## Additional priorities approved on 21 September
+
+After the six-feature source admission, the owner selected the following two
+deliveries for implementation through September 23. PR #238 passed source
+admission and was merged into `main` at `0ce3306d`; the v12 maintenance line is
+preserved. Consent and email login are candidates in PR #239, with full hosted
+and extracted-package admission still pending. Neither is release-admitted.
+
+| Order | Selected delivery | Required acceptance |
+| :--- | :--- | :--- |
+| 1 | Shared PostgreSQL consent in `rullst-privacy` | Preserve purpose/version binding, exact-revision grants, withdrawal precedence, clock checks and durable tombstones across independent application pools. Add explicit initialization, restricted-role operation, bounded waits, concurrency/cancellation/restart tests, opt-in facade features and a documented consumer. Keep database restore/failover obligations explicit. |
+| 2 | Single-use email login links in `rullst-auth`, composed with `rullst-mail` | Complete issuance, delivery and deliberate redemption into the existing authenticated session lifecycle. Require purpose-separated secret tokens, durable atomic consumption, expiry, tenant/account binding, bounded abuse controls, enumeration-resistant responses and safe redirects. Email scanners must not consume credentials merely by following a GET. Test replay races, mail/storage failures, stale accounts and session invalidation with deterministic delivery fixtures. |
+
+The email-login item now has a local Auth/Mail candidate: explicit account opt-in,
+independent browser/email secrets, atomic opaque-session creation, durable
+SQLite/PostgreSQL state, fenced encrypted delivery and deterministic localized
+Mail templates. Local SQLite, native PostgreSQL, Chromium, fresh-process,
+database-restart and extracted-facade Auth/Mail contracts passed. Hosted
+source/package/coverage admission is still required. See the
+[email-login contract](email-login.md). No owner-provider accounts were used.
+
+The owner subsequently approved the five additional items below as the next
+implementation queue after the two priorities, emphasizing security throughout.
+All seven are targeted through September 23; completion still requires the
+advertised behavior and its acceptance evidence. Report any unfinished item
+before the freeze instead of silently including it in the supported release.
+The previously discussed metadata-only Studio messaging inspector remains a
+separate candidate.
+
+| Priority | Additional candidate | User benefit and required boundary |
+| :--- | :--- | :--- |
+| 1 | Scoped, revocable application API tokens | Let integrations access explicit tenant/account permissions without borrowing browser sessions. Store token digests, bound scopes and lifetime, support revocation/rotation, and test cross-tenant denial and concurrent revocation. Existing provider credentials and application JWT helpers do not implement this lifecycle. |
+| 2 | Shared PostgreSQL mail suppression | Let independent mail workers honor the same hard-bounce, complaint and explicit suppression state. Extend the current Memory/SQLite contract with atomic event replay handling, minimized state, restart/concurrency evidence and a final pre-delivery check; actual provider inbox acceptance remains separate. |
+| 3 | Durable recurring schedules across application instances | Coordinate recurring occurrences through authoritative storage and leased dispatch into the existing queue/outbox. Define missed-run policy, cancellation, restart, stale-worker fencing and idempotent occurrence keys. Current per-process cron and delayed queue jobs are foundations; neither proves exactly-once external effects. |
+| 4 | Durable outgoing application webhooks | Deliver application events to explicitly approved destinations with signatures, bounded retries and inspectable terminal failure. Compose the existing outbox, destination/SSRF policy and idempotency contracts; incoming payment-webhook verification is a different capability. |
+| 5 | Resumable multipart uploads for private S3-compatible storage | Support larger attachments and interrupted uploads with bounded parts, authenticated tenant/object ownership, checksums, completion/abort and orphan cleanup. Extend the existing private-object adapter; this is separate from Bunny Stream resumable video uploads and requires native protocol evidence. |
+
+The API-token item now has a local implementation candidate with exact scopes,
+owner-only management, revision-based rotation, account-epoch invalidation,
+SQLite/PostgreSQL authoritative checks and a Core machine-route verifier.
+Local SQLite, native PostgreSQL, fresh-process/database-restart and HTTP
+contracts passed, including the extracted facade/Auth/Core archives. Full
+workspace, coverage, security and hosted package admission remain required;
+see the [API-token contract](api-tokens.md).
+
+The shared mail-suppression item has a local PostgreSQL candidate with keyed
+recipient/event identifiers, namespace-bound configuration, atomic replay/quota
+enforcement and the existing final-dispatch guard. Native independent-pool,
+restricted-role, failure/cancellation, worker/tenant and process/database-restart
+contracts passed, including the extracted facade/Mail/Core archive consumer.
+Full hosted admission remains required; see [shared mail suppression](shared-mail-suppression.md).
+
+The durable recurring-publication item has a local Messaging candidate with
+PostgreSQL coordination, encrypted frozen occurrences, bounded UTC catch-up and
+coalescing, cancellation, fenced retries and metadata retention. Native tests
+passed real SQL rollback/lock deadlines, restricted roles, competing instances,
+fresh processes/database restart and durable broker replay after lost ACK.
+Messaging all-feature regression and strict Clippy passed; extracted archive
+consumers passed the native journey. Full hosted admission remains required;
+see [durable recurring publications](recurring-publications.md).
+
+The outgoing-webhook item has a local Messaging candidate with an encrypted
+SQLite outbox, approved destinations, fresh DNS validation and address pinning,
+exact-body HMAC signatures, bounded retry/manual recovery and permanent
+cancellation. Owned HTTP/TLS and fresh-process journeys passed receiver
+deduplication after lost responses, untrusted certificates, redirect/private
+address denial, SQL failure, retention and delivery uncertainty. These journeys
+also passed through extracted facade/Messaging archives. A reproduced SQLite
+lock-contention defect was corrected: lease deadlines are sampled after acquiring
+the write lock. Full hosted admission remains required; see
+[durable outgoing webhooks](outgoing-webhooks.md).
+
+The private multipart item now has a local Core/facade candidate with encrypted
+object/tenant-bound resumable checkpoints, exact-size SHA-256-checked parts,
+remote receipt reconciliation, completion uncertainty and bounded abort/cleanup.
+Owned S3 tests passed independent clients, process/service restart and both
+endpoint profiles; HTTP failure tests reject tampering, foreign resources, DTDs,
+oversized XML, redirects and embedded errors under HTTP 200. Checkpoints require
+durable application retention/CAS; provider lifecycle expiration handles uploads
+whose initiation response was lost. Full hosted admission remains required; see
+[private multipart uploads](private-multipart-uploads.md).
+
+All seven now have local implementation candidates. This does not freeze their
+APIs or admit their combined source for release. The next priority is integrated
+validation and corrections, followed by targeted security work on the newly
+exposed trust boundaries when capacity remains before September 24.
+
+The September 21 dependency refresh includes `aws-sigv4` 1.5.3 (with its
+Smithy runtime API patch) in the multipart S3 evidence, and updates the Labs
+structural parser to `wasmparser` 0.259.0. Its byte offsets now use a wider range;
+checked subtraction preserves the existing 65,536-byte function-body limit.
+A parse-only boundary regression and the ordinary runner tests/strict Clippy
+passed locally. The Wasmi executor remains pinned to 2.0.0 with its own validator;
+hosted isolation and package admission still apply to the changed runner.
+
+New OpenTelemetry 0.33 proposals remain pending compatible adapter evidence.
+The current [`tracing-opentelemetry` 0.33 manifest](https://docs.rs/crate/tracing-opentelemetry/0.33.0/source/Cargo.toml)
+depends on OpenTelemetry 0.32; a registry probe found no 0.34 adapter release at
+this observation. Do not treat those five bot PRs as integrated or combine
+incompatible public types. The next default-branch Dependabot configuration groups
+the OpenTelemetry and tracing adapter family into one reviewed proposal, without
+ignoring updates or weakening required checks. Recheck upstream availability
+before the validation freeze. The v12 maintenance proposals remain separate,
+with the same family grouping to avoid incompatible individual updates.
+
+### Repository housekeeping on September 21
+
+`main` already contains the v13 promotion from PR #238; `v12` is the stable
+maintenance line and `gh-pages` serves the site. The obsolete `v13` reference
+(`d246ea07`) was retired after proving it is an ancestor of `main` (`0ce3306d`).
+Fourteen additional remote feature references were removed only after confirming
+their complete history remains in `main` or the consolidated PR #239. Local
+worktrees and unique local commits were retained. Both maintained branches now
+require the existing 43 checks, CodeQL Rust and JavaScript analyses, and the
+separate `CodeQL` findings check from GitHub's security app (46 in total).
+
+Dependabot PRs #244 and #247 are superseded by the AWS and Wasm parser changes
+in PR #239; this is consolidation, not a claim of admitted updates. Individual
+OpenTelemetry PRs #241–243, #245–246 and #248–250 are closed as incompatible
+pending the coordinated adapter upgrade described above. Registry inspection
+still finds `tracing-opentelemetry` 0.33.0 as the latest stable adapter, requiring
+OpenTelemetry 0.32. No OpenTelemetry 0.33 adoption is claimed. Compatible v12
+maintenance updates are consolidated in PR #240, preserving #251's complete
+history. Its SES constraint check now expects the 1.6.4 pin while retaining the
+historical 12.0.0 SemVer baseline's separate 1.6.3 guard. The combined maintenance
+commit requires its own complete CI and SemVer results before merge.
+
+Scorecard's binary finding points to the trusted `checked_sum.wasm` test vector,
+not application code. Rebuilding its adjacent Rust source with pinned Rust 1.96
+reproduced every byte; the required Labs acceptance job now repeats that check.
+The scanner annotation records test data without suppressing SARIF output.
+The historical SAST finding persisted in Scorecard run `35675329836`, reporting
+15/30 despite verified successful CodeQL checks on all three PR heads associated
+with the sampled 30 commits: #228 (`977e40a3`, six commits), #236 (`54821688`,
+15 commits), and #238 (`87a3bdbf`, nine commits). Both REST check runs and GraphQL
+check suites report success. Scorecard v5.5.0 reads only the first 30 check
+suites; #228's CodeQL suite is 32nd, demonstrating incomplete detection. The
+exact remaining discrepancy is not established. The alert is classified as a
+false positive for this reviewed snapshot; it does not imply that every
+intermediate commit was scanned independently. Required CodeQL jobs now enforce
+both language analyses for future PR admission. Scanner output remains enabled.
+
+The first combined PR #239 campaign exposed a Redis TLS provider-selection
+panic and omitted public-guide doctest registrations. The corrected Redis
+adapter preserves an installed provider and installs ring only when none exists;
+the actual Redis/TLS/restart suite and strict targeted Clippy pass locally.
+All three newly registered guide examples compile with their real features.
+Windows Labs initialization also returned `Storage` after about three seconds.
+The unchanged store passed both its local four-test suite and the fresh Windows
+workspace run at `5c6a8136`; the original transient cause is not established.
+Redis/TLS, strict quality, coverage, isolated Labs and the actual archive/installed
+CLI campaign `35676290050` also passed on that snapshot. Other jobs were still
+pending, so this is not full-source or release admission.
+
+The same snapshot's successful CodeQL analysis workflow produced two high-severity
+XSS findings (#348 and #349) in the test-only email-login HTTP fixture. All dynamic
+HTML attribute values now use Core's HTML escaping function. The Chromium test
+parses both actual rendered forms with hostile quote/tag/handler input and checks
+that field values round-trip without injected elements or event handlers, in
+addition to the original SQLite/PostgreSQL sign-in, CSRF, replay and logout
+journeys. The findings remain open until the new source is scanned. The CI
+observer now checks the separate security result and PR-ref alerts; success of
+the analysis workflow alone never counts as a clean security scan.
+
+Execution order may respond to measured implementation and validation cost. Do not replace
+full journeys with mock-only placeholders to increase the feature count. Keep
+September 24–25 for combined validation and September 26 for final adjustments
+and separately authorized publication. No owner/provider account tests are
+authorized; disposable local services and deterministic protocol fixtures remain
+available. Architectural/API decisions must be recorded in the SST as each
+candidate becomes implementation work.
+
 ## Depth before additional optional features
 
 The owner asked to pursue a complete, comprehensive implementation of Bunny

@@ -15,6 +15,15 @@ updates:
       - "dependencies"
       - "rust"
     groups:
+      # These crates share public types; update their adapter family together.
+      opentelemetry-family:
+        patterns:
+          - "opentelemetry*"
+          - "tracing-opentelemetry"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
       safe-updates:
         update-types:
           - "minor"
@@ -48,6 +57,14 @@ updates:
       - "dependencies"
       - "rust"
     groups:
+      opentelemetry-family:
+        patterns:
+          - "opentelemetry*"
+          - "tracing-opentelemetry"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
       safe-updates:
         update-types:
           - "minor"

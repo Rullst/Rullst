@@ -164,6 +164,169 @@ append_package_patches "$privacy_dir/Cargo.toml"
 "$cargo_bin" test --manifest-path "$privacy_dir/Cargo.toml" --offline \
   --test privacy_facade
 
+# Exercise the PostgreSQL public facade against the extracted archives, using
+# the same independent-pool/fault/restart contracts as the source package.
+consent_dir="$work_dir/consent-postgres-consumer"
+mkdir -p "$consent_dir/tests/consent"
+{
+  printf '[package]\nname = "rullst-packaged-consent"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
+  printf '[features]\ndefault = ["consent", "consent-postgres"]\nconsent = []\nconsent-postgres = []\nconsent-sqlite = []\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["privacy-consent-postgres"] }\n' "$version"
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "sync", "time"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "tls-rustls-ring"] }\n'
+} > "$consent_dir/Cargo.toml"
+cp "$repository_root/rullst-privacy/tests/consent.rs" "$consent_dir/tests/consent.rs"
+cp "$repository_root/rullst-privacy/tests/consent/adapter_failures.rs" "$consent_dir/tests/consent/adapter_failures.rs"
+cp -R "$repository_root/rullst-privacy/tests/consent/postgres" "$consent_dir/tests/consent/postgres"
+python3 - "$consent_dir/tests/consent.rs" <<'PY'
+from pathlib import Path
+import sys
+source = Path(sys.argv[1])
+text = source.read_text()
+assert 'use rullst_privacy::consent::*;' in text
+source.write_text(text.replace('use rullst_privacy::consent::*;', 'use rullst::privacy::consent::*;'))
+PY
+append_package_patches "$consent_dir/Cargo.toml"
+"$cargo_bin" generate-lockfile --manifest-path "$consent_dir/Cargo.toml" --offline
+"$cargo_bin" test --manifest-path "$consent_dir/Cargo.toml" --offline --locked --test consent
+python3 "$repository_root/.github/check-privacy-postgres.py" \
+  --suite consent --manifest-path "$consent_dir/Cargo.toml"
+
+# Email-login contracts run through only the extracted facade/auth archives.
+login_dir="$work_dir/email-login-consumer"
+mkdir -p "$login_dir/tests/email_login"
+{
+  printf '[package]\nname = "rullst-packaged-email-login"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
+  printf '[features]\ndefault = ["email-login-sqlite", "email-login-postgres"]\nemail-login-sqlite = []\nemail-login-postgres = []\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["auth-email-login-sqlite", "auth-email-login-postgres", "mail"] }\n' "$version"
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "process", "io-std"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "any", "sqlite", "postgres", "tls-rustls-ring"] }\n'
+  printf 'tempfile = "3"\nurl = "2.5.8"\nrand = "0.10.1"\nchrono = "0.4.45"\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
+} > "$login_dir/Cargo.toml"
+cp "$repository_root/.github/fixtures/email-login-mail-facade.rs" "$login_dir/tests/email_login_mail.rs"
+for test in email_login_contract email_login_restart; do
+  cp "$repository_root/rullst-auth/tests/$test.rs" "$login_dir/tests/$test.rs"
+done
+for test in support lifecycle failures locking limits postgres; do
+  cp "$repository_root/rullst-auth/tests/email_login/$test.rs" "$login_dir/tests/email_login/$test.rs"
+done
+python3 - "$login_dir/tests" <<'LOGIN_PY'
+from pathlib import Path
+import sys
+for source in Path(sys.argv[1]).rglob('*.rs'):
+    source.write_text(source.read_text().replace('rullst_auth::', 'rullst::auth::'))
+LOGIN_PY
+append_package_patches "$login_dir/Cargo.toml"
+"$cargo_bin" generate-lockfile --manifest-path "$login_dir/Cargo.toml" --offline
+"$cargo_bin" test --manifest-path "$login_dir/Cargo.toml" --offline --locked
+python3 "$repository_root/.github/check-auth-recovery-postgres.py" \
+  --suite email-login --manifest-path "$login_dir/Cargo.toml"
+
+# Verify token lifecycle and exact-route HTTP policy through extracted packages,
+# including independent processes and an actual PostgreSQL service restart.
+api_dir="$work_dir/api-token-consumer"
+mkdir -p "$api_dir/tests/api_tokens"
+{
+  printf '[package]\nname = "rullst-packaged-api-tokens"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
+  printf '[features]\ndefault = ["api-tokens-sqlite", "api-tokens-postgres"]\napi-tokens-sqlite = []\napi-tokens-postgres = []\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["auth-api-tokens-sqlite", "auth-api-tokens-postgres"] }\n' "$version"
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "process", "io-std"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "any", "sqlite", "postgres", "tls-rustls-ring"] }\n'
+  printf 'tempfile = "3"\nurl = "2.5.8"\nrand = "0.10.1"\naxum = "0.8.9"\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
+} > "$api_dir/Cargo.toml"
+for test in api_token_contract api_token_http api_token_restart; do
+  cp "$repository_root/rullst-auth/tests/$test.rs" "$api_dir/tests/$test.rs"
+done
+cp "$repository_root/rullst-auth/tests/api_tokens/"*.rs "$api_dir/tests/api_tokens/"
+python3 - "$api_dir/tests" <<'API_PY'
+from pathlib import Path
+import sys
+for source in Path(sys.argv[1]).rglob('*.rs'):
+    source.write_text(source.read_text().replace('rullst_auth::', 'rullst::auth::').replace('rullst_core::', 'rullst::'))
+API_PY
+append_package_patches "$api_dir/Cargo.toml"
+"$cargo_bin" generate-lockfile --manifest-path "$api_dir/Cargo.toml" --offline
+"$cargo_bin" test --manifest-path "$api_dir/Cargo.toml" --offline --locked
+python3 "$repository_root/.github/check-auth-recovery-postgres.py" \
+  --suite api-tokens --manifest-path "$api_dir/Cargo.toml"
+
+mail_pg_dir="$work_dir/mail-postgres-consumer"
+mkdir -p "$mail_pg_dir/tests/suppression_postgres"
+{
+  printf '[package]\nname = "rullst-packaged-mail-postgres"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
+  printf '[features]\ndefault = ["postgres"]\npostgres = []\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["mail-postgres"] }\n' "$version"
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "process", "io-std"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "tls-rustls-ring"] }\n'
+  printf 'url = "2.5.8"\nrand = "0.10.1"\nasync-trait = "0.1"\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
+} > "$mail_pg_dir/Cargo.toml"
+for test in postgres_suppression postgres_suppression_restart; do
+  cp "$repository_root/rullst-mail/tests/$test.rs" "$mail_pg_dir/tests/$test.rs"
+done
+cp "$repository_root/rullst-mail/tests/suppression_postgres/"*.rs "$mail_pg_dir/tests/suppression_postgres/"
+python3 - "$mail_pg_dir/tests" <<'MAIL_PG_PY'
+from pathlib import Path
+import sys
+for source in Path(sys.argv[1]).rglob('*.rs'):
+    source.write_text(source.read_text().replace('rullst_mail::', 'rullst::mail::').replace('rullst_core::', 'rullst::'))
+MAIL_PG_PY
+append_package_patches "$mail_pg_dir/Cargo.toml"
+"$cargo_bin" generate-lockfile --manifest-path "$mail_pg_dir/Cargo.toml" --offline
+"$cargo_bin" test --manifest-path "$mail_pg_dir/Cargo.toml" --offline --locked
+python3 "$repository_root/.github/check-mail-postgres.py" --manifest-path "$mail_pg_dir/Cargo.toml"
+
+recurring_dir="$work_dir/recurring-consumer"
+mkdir -p "$recurring_dir/tests/recurring"
+{
+  printf '[package]\nname = "rullst-packaged-recurring"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
+  printf '[features]\ndefault = ["schedules-postgres", "sqlite"]\nschedules-postgres = []\nsqlite = []\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["messaging-schedules-postgres", "messaging-sqlite"] }\n' "$version"
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "process", "io-std", "io-util"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "postgres", "tls-rustls-ring"] }\n'
+  printf 'url = "2.5.8"\nuuid = { version = "1", features = ["v4"] }\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
+} > "$recurring_dir/Cargo.toml"
+for test in recurring_contract recurring_restart; do
+  cp "$repository_root/rullst-messaging/tests/$test.rs" "$recurring_dir/tests/$test.rs"
+done
+cp "$repository_root/rullst-messaging/tests/recurring/"*.rs "$recurring_dir/tests/recurring/"
+python3 - "$recurring_dir/tests" <<'RECURRING_PY'
+from pathlib import Path
+import sys
+for source in Path(sys.argv[1]).rglob('*.rs'):
+    source.write_text(source.read_text().replace('rullst_messaging::', 'rullst::messaging::'))
+RECURRING_PY
+append_package_patches "$recurring_dir/Cargo.toml"
+"$cargo_bin" generate-lockfile --manifest-path "$recurring_dir/Cargo.toml" --offline
+"$cargo_bin" test --manifest-path "$recurring_dir/Cargo.toml" --offline --locked
+python3 "$repository_root/.github/check-recurring-postgres.py" --manifest-path "$recurring_dir/Cargo.toml"
+
+webhooks_dir="$work_dir/webhooks-consumer"
+mkdir -p "$webhooks_dir/tests/webhook"
+{
+  printf '[package]\nname = "rullst-packaged-webhooks"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
+  printf '[features]\ndefault = ["webhooks"]\nwebhooks = []\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["messaging-webhooks"] }\n' "$version"
+  printf 'tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "process", "io-std", "io-util", "net"] }\n'
+  printf 'sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "sqlite"] }\n'
+  printf 'uuid = { version = "1", features = ["v4"] }\nbase64 = "0.23.0"\nserde = { version = "1", features = ["derive"] }\nserde_json = "1"\n'
+  printf 'reqwest = { version = "0.13.5", default-features = false, features = ["rustls"] }\n'
+  printf 'tokio-rustls = { version = "0.26.4", default-features = false, features = ["aws_lc_rs", "tls12"] }\n'
+  printf 'rcgen = { version = "=0.14.10", default-features = false, features = ["aws_lc_rs", "pem", "zeroize"] }\n'
+} > "$webhooks_dir/Cargo.toml"
+for test in webhook_contract webhook_restart; do
+  cp "$repository_root/rullst-messaging/tests/$test.rs" "$webhooks_dir/tests/$test.rs"
+done
+cp "$repository_root/rullst-messaging/tests/webhook/"*.rs "$webhooks_dir/tests/webhook/"
+python3 - "$webhooks_dir/tests" <<'WEBHOOKS_PY'
+from pathlib import Path
+import sys
+for source in Path(sys.argv[1]).rglob('*.rs'):
+    source.write_text(source.read_text().replace('rullst_messaging::', 'rullst::messaging::'))
+WEBHOOKS_PY
+append_package_patches "$webhooks_dir/Cargo.toml"
+"$cargo_bin" generate-lockfile --manifest-path "$webhooks_dir/Cargo.toml" --offline
+"$cargo_bin" test --manifest-path "$webhooks_dir/Cargo.toml" --offline --locked
+
 storage_dir="$work_dir/storage-consumer"
 mkdir -p "$storage_dir/tests"
 {
@@ -173,6 +336,29 @@ mkdir -p "$storage_dir/tests"
 cp "$repository_root/.github/fixtures/storage-facade.rs" "$storage_dir/tests/storage_facade.rs"
 append_package_patches "$storage_dir/Cargo.toml"
 "$cargo_bin" test --manifest-path "$storage_dir/Cargo.toml" --offline --test storage_facade
+
+multipart_dir="$work_dir/multipart-consumer"
+mkdir -p "$multipart_dir/tests"
+{
+  printf '[package]\nname = "rullst-packaged-multipart"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
+  printf '[features]\ndefault = ["storage-s3", "storage-multipart"]\nstorage-s3 = []\nstorage-multipart = []\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["storage-multipart"] }\n' "$version"
+  printf 'base64 = "0.23"\nring = "0.17"\nserde_json = "1"\naxum = "0.8"\nreqwest = { version = "0.13", default-features = false, features = ["rustls"] }\n'
+  printf 'tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "time"] }\n'
+} > "$multipart_dir/Cargo.toml"
+for test in storage_multipart storage_multipart_failures storage_multipart_live storage_s3_live; do
+  cp "$repository_root/rullst-core/tests/$test.rs" "$multipart_dir/tests/$test.rs"
+done
+python3 - "$multipart_dir/tests" <<'MULTIPART_PY'
+import sys
+from pathlib import Path
+for source in Path(sys.argv[1]).glob('*.rs'):
+    source.write_text(source.read_text().replace('rullst_core::', 'rullst::'))
+MULTIPART_PY
+append_package_patches "$multipart_dir/Cargo.toml"
+"$cargo_bin" generate-lockfile --manifest-path "$multipart_dir/Cargo.toml" --offline
+"$cargo_bin" test --manifest-path "$multipart_dir/Cargo.toml" --offline --locked
+bash "$repository_root/.github/test-storage-s3-live.sh" --manifest-path "$multipart_dir/Cargo.toml"
 
 session_dir="$work_dir/session-consumer"
 mkdir -p "$session_dir/tests"

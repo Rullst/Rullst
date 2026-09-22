@@ -15,12 +15,18 @@ mod model;
 mod outbox_relay;
 #[cfg(feature = "redis-streams")]
 mod redis_streams;
+#[cfg(feature = "schedules-postgres")]
+pub mod schedules;
 #[cfg(feature = "sqlite")]
 mod sqlite;
+#[cfg(any(feature = "sqlite", feature = "schedules-postgres"))]
+mod storage_keys;
 mod trace;
 mod traits;
 mod types;
 mod validation;
+#[cfg(feature = "webhooks")]
+pub mod webhooks;
 mod wire;
 
 pub use admin::{DeadLetter, DeadLetterQuery, PurgeReceipt, PurgeRequest};
@@ -36,7 +42,9 @@ pub use outbox_relay::{OrmOutboxRelay, OrmOutboxRelayError, OutboxRelayReceipt};
 #[cfg(feature = "redis-streams")]
 pub use redis_streams::{RedisBroker, RedisBrokerConfig};
 #[cfg(feature = "sqlite")]
-pub use sqlite::{MessagingKeyring, MessagingStorageKey, SqliteBroker};
+pub use sqlite::SqliteBroker;
+#[cfg(any(feature = "sqlite", feature = "schedules-postgres"))]
+pub use storage_keys::{MessagingKeyring, MessagingStorageKey};
 pub use trace::TraceContext;
 pub use traits::{MessageAdmin, MessageBroker};
 pub use types::{

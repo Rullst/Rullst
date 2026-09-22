@@ -20,6 +20,17 @@ application's recipient/tenant policy remain separate responsibilities.
 
 ---
 
+## Shared suppression candidate (v13)
+
+Optional `postgres` adds `PostgresSuppressionStore` to the existing guard and
+event contracts. Independent instances share authoritative recipient suppression
+and replay state. Addresses/event IDs are stored as keyed identifiers, quota and
+configuration drift fail closed, and ordinary startup needs no DDL privileges.
+Install the correctly scoped guard in every sending process and worker; it is
+not enabled automatically. See the [shared suppression contract](../docs/src/shared-mail-suppression.md)
+for setup, retention, provider-authentication boundaries, restart/worker evidence
+and pending hosted/package admission. The facade feature is `mail-postgres`.
+
 ## ✨ Features
 
 - **🛡️ Typed failures:** production delivery paths return `MailError`; malformed messages and provider configuration fail closed.

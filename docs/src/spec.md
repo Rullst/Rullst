@@ -371,6 +371,26 @@ requires quiesced processing, reconciled withdrawals and fresh purpose versions.
 Deployment retention/restore review and hosted acceptance remain required
 before release admission.
 
+The owner-selected PostgreSQL consent increment is under implementation; it is
+not yet source-admitted. Its separate `consent-postgres` feature exposes
+`PostgresConsentStore::initialize` for deployment bootstrap and `connect` for
+ordinary runtime access. Both accept a connection string and immutable capacity.
+One authoritative writable database owns the fixed `rullst_consent` schema.
+Explicit initialization serializes concurrent bootstrap without resetting
+existing state. A private bounded pool enforces verified TLS for remote TCP,
+fixed name resolution, synchronous commits and bounded acquisition/SQL waits.
+Every read/update validates permanent WAL-logged tables and locks the metadata
+row, serializing clock observations, quota and revision changes across hosts.
+Withdrawals remain durable tombstones; no expiry/capacity cleanup removes them.
+Stored subjects remain domain-separated digests. Replication fencing, clock
+synchronization, hardware durability and stale-backup reconciliation remain
+deployment obligations. The facade feature `privacy-consent-postgres` must not
+enable age assurance or add a database dependency to default builds. The
+existing CLI privacy consumer remains explicitly SQLite until separately
+extended; an ordinary typed application can use the PostgreSQL store directly.
+Disposable-database concurrency, restricted-role, cancellation, clock, restart,
+consumer and hosted acceptance are required before completion is claimed.
+
 The opt-in `make:privacy` consumer mounts authenticated preferences,
 an explicitly optional personalized greeting and an own-account JSON export
 inside the starter's existing CSRF/header/security boundary. It composes
@@ -643,6 +663,253 @@ and cross-store denial, independent-process request verification, restart,
 expiry, password recovery, concurrent revocation and fail-closed storage errors.
 Source/package admission passed in PR #236; final release admission remains separate.
 
+### v13 email-login implementation contract
+
+The owner-selected email-login increment is a local candidate pending hosted
+source/package admission; see [the operational contract](email-login.md). It must stay
+explicitly optional in Auth, with SQLite shared-local and PostgreSQL shared
+state profiles composed with the existing authoritative recovery account/session
+registry. It must not turn a password-reset token into a login credential or
+silently enable email login for every existing account.
+
+The selected journey requires an explicit server-configured application/tenant
+namespace and account opt-in established through existing authenticated account
+proof plus the host's tenant/MFA policy. The application resolves membership and
+ordinary authorization; namespace strings from URLs are never authority. Email
+access alone does not satisfy a stronger authentication requirement.
+
+Issuance generates separate random 256-bit emailed and browser-held secrets,
+binds their digests to the account, namespace and current authentication epoch,
+and queues a minimized encrypted notice atomically. Known, unknown, disabled and
+throttled accounts receive the same public acknowledgement. Storage, account and
+request limits must remain bounded. Tokens expire after a fixed 15-minute
+lifetime and are invalidated by replacement, account-policy changes or a changed
+authentication epoch. Database time observations and post-storage expiry checks
+must prevent rollback or long lock waits from authenticating stale evidence.
+
+GET/HEAD requests may render the landing page but never consume a token or mint
+a session. Redemption requires deliberate CSRF-protected POST, the matching
+browser-held secret and the current configured context. Token consumption and
+creation of the existing revocable opaque session must commit in one database
+transaction. Any uncertain outcome returns no authentication credential.
+The session retains existing limits, inventory, logout and epoch revocation.
+
+Landing and destination URLs are explicit server configuration, with HTTPS in
+production, no request-derived host/redirect and no third-party page content.
+Responses require no-store and no-referrer protections; secret-bearing URLs,
+cookies and messages must not enter logs. A fenced encrypted delivery outbox
+supports bounded retries and stable delivery identifiers, with a dedicated Mail
+security template and deterministic delivery fixtures. An email scanner's GET
+must not invalidate the user's login. These token and prefetch choices draw on
+[OWASP's URL-token guidance](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html#url-tokens)
+and [Supabase's documented prefetch behavior](https://supabase.com/docs/guides/auth/auth-email-templates#email-prefetching).
+
+Required acceptance includes both relational backends, concurrent redemption,
+account/namespace/browser mismatch, account-policy and password-reset races,
+outbox failure/retry, session limits, server restart, a real HTTP/browser journey
+and extracted-package consumers. Production credentials and live inbox delivery
+remain outside the owner's authorized testing scope. The existing reset journey
+keeps its separate behavior and must retain its regression evidence.
+
+### v13 application API-token implementation contract
+
+The third owner-selected increment is a separate optional Auth lifecycle for
+opaque application API tokens, with SQLite shared-local and PostgreSQL shared
+state. It must compose the authoritative recovery account epoch and private
+database connection safeguards without enabling email-login, JWT or OAuth by
+default. Provider credentials and browser-session tokens are separate purposes.
+
+Issuance requires a current password-authentication proof from the same account
+registry plus the host's tenant/MFA/permission approval. An immutable server
+namespace and literal scope allowlist bound every token. Requested scopes are
+nonempty, bounded and exact (no wildcards); the application intersects its
+current account permissions before issuance and checks current tenant/resource
+authorization on every domain request. A client-supplied namespace or subject
+never establishes authority. API tokens cannot mint other tokens through this
+management API.
+
+Return a random 256-bit secret once, with a separate opaque management ID and
+an unmistakable versioned prefix; persist only a purpose/namespace-bound HMAC.
+Store bounded labels, literal scopes, expiry and revision, without IP, user-agent
+or usage history. Enforce a per-namespace row quota, at most 20 active tokens per
+account, and a configured maximum lifetime no greater than 30 days. Verification
+must read authoritative state, validate the account epoch, exact required scope
+subset and trusted time, and fail on missing/unavailable/revoked state. Never
+cache a positive verification as a replacement for these checks.
+
+Owner-only inventory, idempotent revocation and atomic compare-and-swap rotation
+are required. Rotation keeps the management ID and scopes, advances the revision,
+replaces the secret and may renew only within the configured lifetime. A stale
+rotation cannot overwrite a newer credential or revive a revoked token. Deleting
+a token is authoritative revocation: caller-selected IDs cannot recreate it.
+Account epoch changes invalidate all older tokens. Concurrent checks have a
+documented database linearization point; already authorized external work cannot
+be recalled or made atomic with a later revocation.
+
+Reuse verified remote TLS, bounded private pools/SQL deadlines, durable storage
+checks, namespace configuration binding and persisted clock observations. An
+uncertain issuance/rotation returns no credential, and restart, expiry during
+lock waits, rollback, foreign-account management, scope escalation, token-purpose
+confusion and concurrent rotation/revocation need executable evidence. Document
+backup anti-rollback and host-owned authorization boundaries. Full workspace,
+native protocol/process, authenticated HTTP and extracted-package admission are
+required before a supported feature claim; no external provider accounts are
+needed or authorized.
+
+HTTP composition adds an explicit Core `MachineEndpoint::verified_bearer`
+constructor using the existing exact-route `MachineRequestVerifier` contract.
+Auth supplies a verifier that requires one Authorization bearer header, reads
+current token state and inserts a redacted principal. It never accepts cookies,
+origin-bearing browser requests or URL tokens as machine authentication. The
+existing static bearer constructor retains its behavior; only an authenticated
+exact method/path receives the machine CSRF exception, with WAF/headers retained.
+
+
+### v13 shared PostgreSQL mail-suppression implementation contract
+
+The fourth owner-selected increment extends Mail's existing suppression traits
+with an optional PostgreSQL store and facade feature. It must preserve verified
+event replay binding, conflict rejection, monotonic reason precedence, immutable
+recipient/event quotas and final pre-dispatch checks through `SuppressionGuard`.
+It is not a new transport and must not change default Mail/SQLite features.
+
+Each instance selects an immutable server-owned namespace, quotas and a strong
+secret HMAC key. Persist purpose/namespace-bound keyed recipient/event identifiers
+and event fingerprints, not raw recipient addresses, provider event IDs, message
+bodies or delivery history. Keep only the authoritative reason/provider and
+first/last observation times needed by the existing record contract. Configuration
+and key drift fail closed. A namespace chosen in a request is never authority;
+the host authenticates tenant membership and verified provider events before
+selecting the corresponding store/driver. Memory remains the explicit offline
+test implementation; production database failures cannot silently use it.
+
+Provide explicit deployment initialization and ordinary startup without DDL or
+missing-state repair. Runtime operates without schema mutation privileges, on
+one authoritative writable PostgreSQL database with verified remote TLS,
+permanent tables, durable commit settings, bounded pools/waits and whole-operation
+deadlines. Serialize event application, lookup and retention through the
+namespace control row. Atomically record replay evidence and recipient state;
+cancellation, conflicting events or quota failures must not leave partial state.
+Recheck persisted server time and storage durability before reporting outcomes.
+
+Retention may prune replay identifiers after the host-selected provider replay
+window, but never remove recipient suppression as a side effect. Lookup/storage
+faults block delivery. Check immediately before dispatch, while documenting
+that a suppression committed after that check cannot recall in-flight external
+mail. This does not promise exactly-once provider delivery, inbox acceptance,
+backup anti-rollback, automatic failover, legal compliance or automatic opt-in
+after a complaint. Required evidence includes independent pools/processes,
+concurrent replay/conflicts/quotas, rollback/cancellation, restricted roles,
+service restart, real guard/worker composition and extracted-package consumers.
+
+### v13 durable recurring-publication implementation contract
+
+The fifth owner-selected increment belongs to the existing Messaging crate as
+optional `schedules-postgres`, with an explicit facade feature. It coordinates
+bounded UTC cron occurrences across instances through one authoritative PostgreSQL
+database and relays them to the existing static `MessageBroker` contract. Core's
+process-local `Scheduler` retains its API and behavior. A broker publication is
+not proof of handler completion or an exactly-once external effect.
+
+Require a server-owned namespace, immutable limits and explicit encrypted storage
+keys. Schedule names are bounded application configuration, not tenant authority.
+The host authenticates authoring/inspection/cancellation and selects the correct
+namespace and broker. Creation is idempotent for the same immutable definition;
+conflicting reuse fails. An edit requires cancellation and a new schedule name,
+with immutable generation identities protecting retained occurrence keys.
+
+Use the cron crate's five-field projection in UTC (weekday 1=Sun through 7=Sat,
+calendar-day and weekday restrictions intersect; names are accepted), with a
+one-minute minimum resolution, bounded
+definitions/payloads, explicit first-after time and explicit missed-run policy.
+Bounded catch-up emits the oldest due occurrences within the caller's tick budget;
+coalescing emits one oldest outstanding occurrence and advances after the observed
+current time. Advancing the schedule and persisting frozen occurrence content
+must be atomic. Storage quota exhaustion cannot silently discard due occurrences.
+
+Persist definitions and occurrence content using authenticated encryption bound
+to namespace, schedule generation and occurrence identity. Do not silently adopt
+plaintext storage. Lease ownership, attempts, retry deadlines and terminal state
+are authoritative SQL data. Leases are unpredictable and exactly fenced; stale
+workers cannot acknowledge/retry/revive a cancelled or superseded occurrence.
+Broker requests use deterministic purpose-separated occurrence idempotency keys,
+and retries preserve exact content. Recheck a live lease immediately before
+publication and acknowledge only after successful broker acceptance. If acceptance
+precedes an uncertain ACK, retain evidence of acceptance and reconcile/retry the
+same key. A cancellation after the final check cannot recall an in-flight broker
+request; consumers must deduplicate/authorize at their side-effect boundary.
+
+Expose bounded inventory/terminal inspection, explicit failed-occurrence retry,
+permanent cancellation and retention of terminal rows only. Automatic attempts
+and the delivery window are bounded. Deadlines, clock rollback, namespace/key
+drift and non-durable/unavailable state fail closed. Reuse verified TLS, bounded
+pools/SQL deadlines, explicit initialization and runtime without DDL privileges.
+Document UTC-only behavior, unchanged per-process cron, broker deduplication
+retention, backup/failover obligations and host-owned authorization. Required
+acceptance includes independent instances/processes, real PostgreSQL rollback,
+restart and restricted roles, cancellation/lease races, durable broker consumption,
+publication-before-ACK replay and extracted-package/facade consumers.
+
+### v13 durable outgoing-webhook implementation contract
+
+The sixth owner-selected increment extends Messaging behind opt-in `webhooks`
+and facade `messaging-webhooks`. Compose the existing encrypted SQLite broker
+as a private durable outbox rather than adding a second queue. The first profile
+supports independent processes sharing one local database file; remote/multi-host
+webhook state remains separate. Do not change default dependencies. App-domain
+SQL transactions and this outbox are distinct; applications needing atomic
+domain publication must bridge from their existing transactional outbox.
+
+One server-approved immutable destination, signing identity, delivery window
+and bounded policy belong to each server-owned namespace. Persist an encrypted
+control publication with a fixed idempotency key: configuration/secret drift
+must conflict, not redirect queued data. Never expose this private broker or
+purge/subscribe to its control topic. Freeze bounded JSON bytes and event kind;
+retries keep the stable message ID and exact body. The host authorizes publishing,
+inspection, cancellation and manual retry before selecting the namespace.
+
+Production accepts only explicitly configured HTTPS destinations, with verified
+TLS, no proxies/redirects, bounded timeouts and fresh public-address resolution
+pinned to the actual connection. Deny private, loopback, link-local, multicast,
+reserved, documentation and transition address ranges, including mixed DNS
+answers. An explicit literal-loopback development mode and deterministic offline
+mode may support owned fixtures; production configuration rejects both. Empty or
+mock signing credentials select offline delivery, never a network fallback.
+
+Sign exact body bytes, stable ID, kind, key ID and attempt timestamp with a
+purpose-separated HMAC-SHA256 contract. Provide strict constant-time receiver
+verification with bounded time skew; receivers must also store processed IDs
+and authorize the event. Do not claim signatures prevent replay by themselves.
+Keep signing/storage keys separate and redact credentials, URL, payload and
+response bodies from Debug/errors/terminal inspection.
+
+Use bounded attempts/backoff and an immutable delivery window. Revalidate the
+actual SQL lease immediately before external dispatch, after DNS work. A late
+worker cannot acknowledge/retry/revive another worker's claim or cancelled work.
+Acceptance before an uncertain ACK remains an at-least-once condition; preserve
+the accepted HTTP status/ID and retry the same identity. Retry transient failures,
+terminally reject redirects and permanent failures, and expose bounded minimized
+terminal inspection, explicit retry within the original window, cancellation
+and terminal retention. Retention must not delete active work or control state.
+The host owns disciplined trusted time, persistent disk/backup policy, receiver
+deduplication, endpoint approval and worker supervision. Native acceptance must
+include actual HTTP/TLS protocol fixtures, SSRF/redirect/signature/replay negatives,
+independent instances/process restart, SQL cancellation/outage/lease contention,
+retry/dead-letter/retention and extracted-package/facade consumers. Real provider
+accounts are not required or implied.
+
+### v13 SQLite messaging lock-time correction
+
+Before composing outgoing webhooks, real lock-contention tests demonstrated
+that SQLite broker operations sampled time before `BEGIN IMMEDIATE`: an ACK
+could be accepted after its lease expired while waiting, and a new claim could
+already be expired on acquisition. Publication, claim, ACK, retry and dead-letter
+operations must sample trusted time after acquiring their write transaction.
+Retry availability and new lease duration start from that admitted instant.
+Expired workers fail with `LeaseExpired`; their work remains recoverable. This
+correction preserves public API/schema and does not add persistent clock
+anti-rollback or change at-least-once delivery semantics.
+
 ### v12 audit correction invariants
 
 **12.1 account mail:** `rullst-mail::ActionLink` validates an exact
@@ -843,6 +1110,11 @@ The initial profile targets a dedicated standalone Redis 7.4+ database with
 verified TLS outside an explicit literal-loopback test mode. Exact configuration
 and an application-supplied deployment generation bind persisted namespaces;
 provisioning is explicit and normal connection must not recreate lost state.
+The TLS adapter preserves an installed Rustls process provider and otherwise
+installs ring before Redis creates its client, avoiding implicit-provider panics
+when dependency features enable multiple providers. Applications requiring a
+different provider install it before broker startup; trust and hostname checks
+remain mandatory.
 Lua mutations are isolated but do not roll back on runtime errors: a persistent
 in-progress marker must quarantine partial changes rather than silently continue.
 Bounded batches, retained bytes, subscriptions, operation deadlines and admission
@@ -1075,6 +1347,44 @@ fixtures, bounded failure/expiry tests and a real disposable S3-compatible
 service. Those tests do not establish interoperability with owner accounts,
 provider configuration or regional legal compliance. Source/package admission
 passed in PR #236; final release admission remains separate.
+
+#### Resumable multipart candidate (unpublished, admission pending)
+
+The separate opt-in `storage-multipart` extends this adapter with server-mediated
+initiation, exact-size SHA-256-checked parts, bounded remote reconciliation,
+completion and abort. A server-owned `MultipartKey` seals resumable checkpoints
+with AES-256-GCM under a versioned purpose and exact endpoint/bucket/region/mock
+profile/object binding (including the ephemeral instance in mock mode). Each
+operation reopens the checkpoint and checks policy;
+tenant wrappers derive that object only from the authenticated namespace. The
+application must still authorize the current subject/object and serialize or CAS
+checkpoint updates. A checkpoint is sensitive recovery state, never identity,
+membership, malware clearance or permission to publish an object.
+
+The initial scope fixes total length, part size (5–64 MiB), at most 256 parts
+and a lifetime of one minute through seven days. Part bytes match a caller-supplied
+SHA-256 before signing the exact payload with SigV4. ETags are opaque provider
+receipts, not content hashes. Checkpoints retain receipts; resume lists provider
+parts and reports missing/mismatched receipts for explicit re-upload. Completion
+requires every consecutive receipt and rejects an embedded XML error even under
+HTTP 200. A provider marker and exact length support explicit reconciliation of
+lost completion responses, without guessing from object existence alone.
+
+Only one part is buffered per call; applications bound concurrent calls. Responses
+are byte/node bounded, prohibit DTDs and validate exact root/resource identity.
+No public ACL, direct browser upload or ambient endpoint is introduced. Existing
+ordinary-object download limits still apply to large completed objects. New
+objects may replace a same-name object as with `put`; applications must allocate
+fresh private/quarantine names and withhold reads until scanning and authorization.
+
+Abort remains available for expired, authentic checkpoints and checks provider
+absence; concurrent in-flight writes can require another abort. Retain cleanup
+records durably and provision provider lifecycle expiration for abandoned uploads,
+including initiation whose response was lost before an upload ID was obtained.
+No application database, global sweeper, bucket provisioning or durable revocation
+of checkpoints is implied. The offline backend has explicit bounded in-memory
+state; native disposable S3, process/service restart, forged checkpoints, tenant
+isolation, response failures and extracted consumers are required evidence.
 
 ## 🗄️ 5. Active Record ORM & Schema Engine (`rullst-orm`)
 

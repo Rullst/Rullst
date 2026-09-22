@@ -6,7 +6,20 @@
 //! Mount request/consume endpoints behind independent ingress abuse controls,
 //! secure headers, CSRF and no-store/referrer-policy protections.
 
+#[cfg(any(feature = "api-tokens-sqlite", feature = "api-tokens-postgres"))]
+pub mod api_tokens;
+mod clock;
+pub use clock::{AuthClock, SystemAuthClock};
+#[cfg(any(
+    feature = "email-login-sqlite",
+    feature = "email-login-postgres",
+    feature = "api-tokens-sqlite",
+    feature = "api-tokens-postgres"
+))]
+mod connection;
 mod crypto;
+#[cfg(any(feature = "email-login-sqlite", feature = "email-login-postgres"))]
+pub mod email_login;
 mod outbox;
 mod sessions;
 mod store;

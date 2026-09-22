@@ -64,41 +64,57 @@ impl SqlRecoveryStore {
             return Err(RecoveryError::InvalidInput);
         }
         let now = timestamp(now)?;
-        let token = SecretToken::generate()?;
-        let digest = self.keys.digest("session", token.expose());
         let mut tx = self.pool.begin().await?;
         self.lock_writes(&mut tx).await?;
+        let token = self
+            .insert_session(&mut tx, account, now, lifetime_seconds, label)
+            .await?;
+        tx.commit().await?;
+        Ok(token)
+    }
+
+    // Caller holds lock_writes and validates its authentication proof, time and
+    // lifetime. Email login consumes its one-use challenge in this same transaction.
+    pub(super) async fn insert_session(
+        &self,
+        tx: &mut Transaction<'_, Any>,
+        account: &AuthenticatedRecoveryAccount,
+        now: i64,
+        lifetime_seconds: u32,
+        label: Option<SessionLabel>,
+    ) -> Result<SecretToken, RecoveryError> {
+        let token = SecretToken::generate()?;
+        let digest = self.keys.digest("session", token.expose());
         let current: Option<i64> = sqlx::query_scalar(
             "SELECT session_version FROM rullst_recovery_accounts WHERE subject = $1",
         )
         .bind(&account.subject)
-        .fetch_optional(&mut *tx)
+        .fetch_optional(&mut **tx)
         .await?;
         if current != Some(account.version) {
             return Err(RecoveryError::InvalidAction);
         }
         sqlx::query("DELETE FROM rullst_recovery_session_details WHERE token_digest IN (SELECT token_digest FROM rullst_recovery_sessions WHERE subject = $1 AND expires_at <= $2)")
-            .bind(&account.subject).bind(now).execute(&mut *tx).await?;
+            .bind(&account.subject).bind(now).execute(&mut **tx).await?;
         sqlx::query("DELETE FROM rullst_recovery_sessions WHERE subject = $1 AND expires_at <= $2")
             .bind(&account.subject)
             .bind(now)
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await?;
         let count: i64 =
             sqlx::query_scalar("SELECT COUNT(*) FROM rullst_recovery_sessions WHERE subject = $1")
                 .bind(&account.subject)
-                .fetch_one(&mut *tx)
+                .fetch_one(&mut **tx)
                 .await?;
         if count >= MAX_SESSIONS {
             return Err(RecoveryError::Limited);
         }
         sqlx::query("INSERT INTO rullst_recovery_sessions (token_digest, subject, session_version, expires_at) VALUES ($1, $2, $3, $4)")
             .bind(&digest).bind(&account.subject).bind(account.version).bind(now + i64::from(lifetime_seconds))
-            .execute(&mut *tx).await?;
+            .execute(&mut **tx).await?;
         sqlx::query("INSERT INTO rullst_recovery_session_details (token_digest, created_at, label) VALUES ($1, $2, $3)")
             .bind(&digest).bind(now).bind(label.as_ref().map_or("", SessionLabel::as_str))
-            .execute(&mut *tx).await?;
-        tx.commit().await?;
+            .execute(&mut **tx).await?;
         Ok(token)
     }
 

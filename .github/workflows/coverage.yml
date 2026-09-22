@@ -125,6 +125,12 @@ jobs:
       - name: Measure PostgreSQL recovery and cross-process session revocation
         run: python3 .github/check-auth-recovery-postgres.py --coverage
 
+      - name: Measure shared PostgreSQL mail suppression and dispatch boundaries
+        run: python3 .github/check-mail-postgres.py --coverage
+
+      - name: Measure recurring publication, broker recovery and server restart contracts
+        run: python3 .github/check-recurring-postgres.py --coverage
+
       - name: Measure private S3 access and service restart contracts
         run: bash .github/test-storage-s3-live.sh --coverage
 

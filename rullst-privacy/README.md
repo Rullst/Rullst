@@ -22,6 +22,7 @@ The native `rullst::privacy` facade is available with explicit features:
 | `privacy-postgres` | `postgres` age replay storage |
 | `privacy-consent` | `consent` |
 | `privacy-consent-sqlite` | `consent-sqlite` |
+| `privacy-consent-postgres` | `consent-postgres` |
 
 Enabling a feature does not select a policy, create state or mount routes.
 The standalone package remains independent of Core and the umbrella.
@@ -81,6 +82,62 @@ restore/reconcile withdrawals and move every active purpose to a fresh notice
 version before resuming. No automatic erasure or backup rollback detection is
 claimed. A failed/cancelled bootstrap may leave a partial file for explicit
 operator recovery; normal startup must not remove it.
+
+### PostgreSQL consent across application hosts
+
+The optional `consent-postgres` feature supplies `PostgresConsentStore`
+independently of age assurance. It uses one authoritative writable PostgreSQL
+database and a fixed `rullst_consent` schema. This is a new implementation
+candidate; final hosted and package admission remain pending.
+
+- Run `initialize(url, capacity)` with a deployment role to create an absent
+  schema or validate the existing one. Concurrent initializers serialize;
+  incompatible capacity or partial/corrupt state is never reset or repaired.
+- Use `connect(url, capacity)` during application startup. The runtime role
+  needs schema `USAGE`, `SELECT, UPDATE` on `metadata`, and
+  `SELECT, INSERT, UPDATE` on `choices`. It needs no DDL or `DELETE` privilege.
+- Each read/update locks the metadata row and uses a synchronous transaction
+  for clock, revision and quota decisions. Permanent WAL-logged tables, `fsync`,
+  full-page writes and writable-primary status are checked. The private pool
+  has four connections and five-second pool/statement/lock limits; applications
+  still need an overall operation deadline.
+- Remote TCP requires certificate/hostname-verified TLS even if the URL asks
+  for weaker transport. Loopback/local sockets permit disposable development
+  databases. Errors and database statement logs omit connection credentials.
+- Capacity is global across this schema, from 1 to 100,000 distinct
+  subject/tenant/purpose combinations. Expired records and withdrawal tombstones
+  are never evicted. All application hosts must read the same authoritative
+  state; caching an affirmative result across processing actions is unsupported.
+- Operators own synchronized clocks, durable hardware, replication/failover
+  fencing and backup reconciliation. A stale restore or asynchronous replica
+  promotion can revive old grants. Quiesce optional processing, reconcile
+  withdrawals and change purpose versions before resuming after rollback.
+
+The CLI's `make:privacy` consumer still selects shared-local SQLite. An
+application can select this PostgreSQL adapter explicitly without changing its
+ordinary authentication, tenant authorization or CSRF boundary:
+
+```rust,no_run
+# #[cfg(feature = "consent-postgres")]
+# async fn postgres_example(database_url: String) -> Result<(), rullst_privacy::consent::ConsentError> {
+use rullst_privacy::consent::*;
+// Deployment initializes once. Application startup only connects.
+let store = PostgresConsentStore::connect(database_url, 10_000).await?;
+let gate = ConsentGate::new(store)?;
+// Resolve both opaque references from authenticated server state.
+let subject = ConsentSubject::new("account-ref", "tenant-ref")?;
+let purpose = ConsentPurpose::new("optional-digest", "notice-v1")?;
+if gate.allows(&subject, &purpose).await? {
+    // Perform this one optional action, with ordinary domain authorization.
+}
+// A separately authenticated, CSRF-protected withdrawal request:
+gate.withdraw(&subject, &purpose).await?;
+# Ok(())
+# }
+```
+
+The same `current`, `choose` and `withdraw` contract below applies to either
+durable adapter. Existing SQLite data is not silently migrated to PostgreSQL.
 
 ```rust,no_run
 # #[cfg(feature = "consent-sqlite")]
@@ -413,10 +470,12 @@ basis require their own review. This library cannot certify worldwide compliance
 Run `cargo test -p rullst-privacy --all-features` and
 `cargo clippy -p rullst-privacy --all-features --all-targets -- -D warnings`.
 Run `python3 .github/check-privacy-postgres.py` from the workspace root for the
-mandatory real PostgreSQL contract. It creates only its own disposable loopback
-database, exercises the explicitly ignored database test and a fresh client
-process, interrupts/restarts that server and checks persisted consumption again.
-The standard suite compiles that test but does not provide its database evidence.
+mandatory real PostgreSQL contracts. It creates only its own disposable loopback
+database, exercises the explicitly ignored replay and consent tests with fresh
+client processes, interrupts/restarts the server and checks retained nonce
+consumption, withdrawals, revisions and clock state. `--suite age` or
+`--suite consent` selects a focused diagnostic; the default runs both.
+The standard suite compiles those tests but does not provide database evidence.
 CI's strict PostgreSQL job runs the wrapper; coverage uses its `--coverage` mode.
 The suite covers policy strength, method capability, signatures, context/policy
 swaps, expiry before/after storage, cancellation, clock rollback, independent

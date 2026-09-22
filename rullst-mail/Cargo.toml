@@ -22,7 +22,8 @@ default = []
 mail-smtp = ["dep:lettre"]
 aws-ses = ["dep:aws-sdk-sesv2", "dep:aws-smithy-types"]
 capital-invoice = ["dep:rullst-capital", "rullst-capital/invoice-pdf"]
-sqlite = ["dep:sqlx", "dep:url"]
+sqlite = ["dep:sqlx", "sqlx/sqlite", "dep:url"]
+postgres = ["dep:sqlx", "sqlx/postgres", "sqlx/tls-rustls", "dep:url"]
 
 [dependencies]
 rullst-core = { workspace = true }
@@ -44,7 +45,7 @@ aws-sdk-sesv2 = { workspace = true, optional = true }
 # Keep fresh consumer resolution compatible until the SDK/JSON train is upgraded
 # together and its re-exported API has passed SemVer and native SES checks.
 aws-smithy-types = { version = "=1.6.4", default-features = false, optional = true }
-sqlx = { workspace = true, optional = true, features = ["sqlite", "runtime-tokio"] }
+sqlx = { workspace = true, optional = true, features = ["runtime-tokio"] }
 url = { version = "2.5.8", optional = true }
 
 [dev-dependencies]

@@ -3,12 +3,16 @@
 
 mod gate;
 mod memory;
+#[cfg(feature = "consent-postgres")]
+mod postgres;
 #[cfg(feature = "consent-sqlite")]
 mod sqlite;
 mod state;
 
 pub use gate::{ConsentClock, ConsentGate, SystemConsentClock};
 pub use memory::MemoryConsentStore;
+#[cfg(feature = "consent-postgres")]
+pub use postgres::PostgresConsentStore;
 #[cfg(feature = "consent-sqlite")]
 pub use sqlite::SqliteConsentStore;
 pub use state::{
@@ -94,4 +98,23 @@ fn valid_ref(value: &str) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':'))
+}
+
+#[cfg(any(feature = "consent-sqlite", feature = "consent-postgres"))]
+fn scope_digest(subject: &ConsentSubject, purpose: &str) -> ring::digest::Digest {
+    let mut digest = ring::digest::Context::new(&ring::digest::SHA256);
+    digest.update(b"rullst.optional-consent-scope.v1\0");
+    for value in [subject.tenant_ref(), subject.subject_ref(), purpose] {
+        digest.update(&(value.len() as u64).to_be_bytes());
+        digest.update(value.as_bytes());
+    }
+    digest.finish()
+}
+
+#[cfg(any(feature = "consent-sqlite", feature = "consent-postgres"))]
+fn validate_capacity(capacity: usize) -> Result<(), ConsentError> {
+    if !(1..=100_000).contains(&capacity) {
+        return Err(ConsentError::InvalidConfiguration);
+    }
+    Ok(())
 }

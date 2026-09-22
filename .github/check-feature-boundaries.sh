@@ -96,8 +96,11 @@ rullst-core|queue-redis
 rullst-core|cache-redis
 rullst-core|offline-sync
 rullst-core|storage-s3
+rullst-core|storage-multipart
 rullst-core|telemetry
 rullst-messaging|sqlite
+rullst-messaging|schedules-postgres
+rullst-messaging|webhooks
 rullst-messaging|redis-streams
 rullst-messaging|orm-outbox
 rullst-connect|axum
@@ -116,16 +119,22 @@ rullst-capital|quota-sql
 rullst-capital|webhook-sql
 rullst-mail|mail-smtp
 rullst-mail|sqlite
+rullst-mail|postgres
 rullst-auth|jwt
 rullst-auth|sqlite
 rullst-auth|passkey-postgres
 rullst-auth|recovery-sqlite
 rullst-auth|recovery-postgres
+rullst-auth|email-login-sqlite
+rullst-auth|email-login-postgres
+rullst-auth|api-tokens-sqlite
+rullst-auth|api-tokens-postgres
 
 # Privacy candidate: preserve the database-free base graph.
 rullst-privacy|
 rullst-privacy|consent
 rullst-privacy|consent-sqlite
+rullst-privacy|consent-postgres
 rullst-privacy|age-assurance
 rullst-privacy|challenge-tokens
 rullst-privacy|sqlite
@@ -168,16 +177,24 @@ rullst|cache-redis
 rullst|redis
 rullst|offline-sync
 rullst|storage-s3
+rullst|storage-multipart
 rullst|auth
 rullst|auth-sessions-sqlite
 rullst|auth-sessions-postgres
+rullst|auth-email-login-sqlite
+rullst|auth-email-login-postgres
+rullst|auth-api-tokens-sqlite
+rullst|auth-api-tokens-postgres
 rullst|mail-smtp
 rullst|mailer
 rullst|mail
 rullst|mail-aws-ses
 rullst|mail-sqlite
+rullst|mail-postgres
 rullst|messaging
 rullst|messaging-sqlite
+rullst|messaging-schedules-postgres
+rullst|messaging-webhooks
 rullst|messaging-redis
 rullst|messaging-orm-outbox
 rullst|privacy
@@ -187,6 +204,7 @@ rullst|privacy-sqlite
 rullst|privacy-postgres
 rullst|privacy-consent
 rullst|privacy-consent-sqlite
+rullst|privacy-consent-postgres
 rullst|auth-jwt
 rullst|auth-sqlite
 rullst|auth-passkey-postgres

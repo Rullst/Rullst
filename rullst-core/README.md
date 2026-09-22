@@ -48,8 +48,14 @@
   adds bounded S3/R2 upload, download, metadata, deletion and short-lived signed
   GET URLs to the existing storage and tenant APIs. Configuration is explicit;
   offline credentials select a bounded deterministic store. Source/package
-  admission is pending, and owner-account interoperability is unvalidated.
+  admission passed in PR #236; release admission and owner-account interoperability
+  remain outstanding.
   See the [candidate contract](../docs/src/private-object-storage.md).
+- **Resumable Private Upload Candidate (v13):** Separate `storage-multipart`
+  adds exact-size parts, SHA-256 checks, encrypted tenant/object-bound recovery
+  records, completion reconciliation and abort. Native disposable S3 restart and
+  adversarial protocol tests passed locally; full hosted admission remains required.
+  See [private multipart uploads](../docs/src/private-multipart-uploads.md).
 
 ## 🚀 Usage
 

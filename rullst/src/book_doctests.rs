@@ -16,6 +16,15 @@ tutorial!(
     "../../docs/src/private-object-storage.md"
 );
 tutorial!(
+    private_multipart_uploads,
+    "../../docs/src/private-multipart-uploads.md"
+);
+tutorial!(outgoing_webhooks, "../../docs/src/outgoing-webhooks.md");
+tutorial!(
+    recurring_publications,
+    "../../docs/src/recurring-publications.md"
+);
+tutorial!(
     transactional_partial_updates,
     "../../docs/src/transactional-partial-updates.md"
 );

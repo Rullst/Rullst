@@ -49,7 +49,8 @@ pub(super) fn validate(bytes: &[u8], limits: &ExecutionLimits) -> Result<(), Err
             Payload::DataSection(data) if data.count() <= 64 => (),
             Payload::CodeSectionStart { count, .. } if count <= 256 => (),
             Payload::CodeSectionEntry(body) => {
-                if body.range().len() > 65536 {
+                let range = body.range();
+                if range.end.checked_sub(range.start).ok_or_else(bad)? > 65536 {
                     return Err(bad());
                 }
                 let mut count = 0u32;
@@ -67,4 +68,38 @@ pub(super) fn validate(bytes: &[u8], limits: &ExecutionLimits) -> Result<(), Err
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn leb(mut value: u32, bytes: &mut Vec<u8>) {
+        loop {
+            let next = (value & 0x7f) as u8;
+            value >>= 7;
+            bytes.push(next | if value > 0 { 0x80 } else { 0 });
+            if value == 0 {
+                return;
+            }
+        }
+    }
+
+    #[test]
+    fn parser_offset_upgrade_preserves_the_exact_function_body_limit() {
+        // Parse only: no submitted code is compiled or executed by this regression.
+        for size in [65536u32, 65537] {
+            let mut module = b"\0asm\x01\0\0\0\x01\x04\x01\x60\0\0\x03\x02\x01\0".to_vec();
+            let mut code = vec![1];
+            leb(size, &mut code);
+            code.push(0); // local declaration count
+            code.extend(std::iter::repeat_n(1, size as usize - 2)); // nop
+            code.push(0x0b); // end
+            module.push(10);
+            leb(code.len() as u32, &mut module);
+            module.extend(code);
+            let limits = ExecutionLimits::new(10, 10000, 64).unwrap();
+            assert_eq!(validate(&module, &limits).is_ok(), size == 65536);
+        }
+    }
 }

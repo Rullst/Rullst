@@ -44,6 +44,19 @@ pub(super) fn headers(
     body: &[u8],
     now: SystemTime,
 ) -> Result<HeaderMap, CloudError> {
+    headers_with_extra(config, region, method, url, body, now, HeaderMap::new())
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn headers_with_extra(
+    config: &CloudStorageConfig,
+    region: &str,
+    method: &Method,
+    url: &Url,
+    body: &[u8],
+    now: SystemTime,
+    mut headers: HeaderMap,
+) -> Result<HeaderMap, CloudError> {
     check_expiry(config, now)?;
     let identity = config.credentials.credentials.clone().into();
     let mut settings = settings();
@@ -57,18 +70,21 @@ pub(super) fn headers(
         .build()
         .map_err(|_| CloudError::Signing)?
         .into();
-    let mut headers = HeaderMap::new();
-    if *method == Method::PUT {
+    if *method == Method::PUT && !headers.contains_key(reqwest::header::CONTENT_TYPE) {
         headers.insert(
             reqwest::header::CONTENT_TYPE,
             HeaderValue::from_static("application/octet-stream"),
         );
     }
-    let signable_headers: &[(&str, &str)] = if *method == Method::PUT {
-        &[("content-type", "application/octet-stream")]
-    } else {
-        &[]
-    };
+    let signable_headers: Vec<_> = headers
+        .iter()
+        .map(|(name, value)| {
+            Ok((
+                name.as_str(),
+                value.to_str().map_err(|_| CloudError::Signing)?,
+            ))
+        })
+        .collect::<Result<_, CloudError>>()?;
     // Never give upload bytes to the signer's optional raw-body trace formatter.
     let digest = ring::digest::digest(&ring::digest::SHA256, body);
     let mut checksum = String::with_capacity(64);

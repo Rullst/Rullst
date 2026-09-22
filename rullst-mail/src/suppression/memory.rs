@@ -104,7 +104,7 @@ impl MutableSuppressionStore for InMemorySuppressionStore {
     }
 }
 
-fn merge_record(
+pub(super) fn merge_record(
     existing: Option<&SuppressionRecord>,
     event: &SuppressionEvent,
 ) -> SuppressionRecord {

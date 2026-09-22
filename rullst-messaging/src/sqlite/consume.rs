@@ -14,9 +14,10 @@ type LeaseRow = (String, String, i64, i64, i64);
 
 impl<C: Clock> SqliteBroker<C> {
     pub(super) async fn receive_inner(&self, request: ReceiveRequest) -> Result<Vec<Delivery>> {
+        let mut connection = self.begin_write("begin receive").await?;
+        // The lease starts after contention, using the time at actual claim admission.
         let now = self.now()?;
         let expires_at_ms = add_millis(now, request.lease_millis())?;
-        let mut connection = self.begin_write("begin receive").await?;
         let result = self
             .receive_in_transaction(&mut connection, request, now, expires_at_ms)
             .await;
@@ -145,8 +146,8 @@ impl<C: Clock> SqliteBroker<C> {
     }
 
     pub(super) async fn ack_inner(&self, token: &AckToken) -> Result<()> {
-        let now = self.now()?;
         let mut connection = self.begin_write("begin acknowledgement").await?;
+        let now = self.now()?;
         let result = async {
             let lease = load_lease(&mut connection, self.config.namespace().as_str(), token)
                 .await?
@@ -187,9 +188,9 @@ impl<C: Clock> SqliteBroker<C> {
         failure_code: FailureCode,
     ) -> Result<RetryDisposition> {
         let delay_millis = retry_millis(delay)?;
+        let mut connection = self.begin_write("begin retry").await?;
         let now = self.now()?;
         let available_at_ms = add_millis(now, delay_millis)?;
-        let mut connection = self.begin_write("begin retry").await?;
         let result = async {
             let lease = load_lease(&mut connection, self.config.namespace().as_str(), token)
                 .await?
@@ -243,8 +244,8 @@ impl<C: Clock> SqliteBroker<C> {
         token: &AckToken,
         failure_code: FailureCode,
     ) -> Result<()> {
-        let now = self.now()?;
         let mut connection = self.begin_write("begin dead letter").await?;
+        let now = self.now()?;
         let result = async {
             let lease = load_lease(&mut connection, self.config.namespace().as_str(), token)
                 .await?

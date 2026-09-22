@@ -367,7 +367,9 @@ jobs:
         run: |
           case "$STRICT_DATABASE_FEATURE" in
             strict-postgres)
-              python3 .github/check-auth-recovery-postgres.py
+              RULLST_EMAIL_LOGIN_BROWSER_TESTS=1 python3 .github/check-auth-recovery-postgres.py
+              python3 .github/check-mail-postgres.py
+              python3 .github/check-recurring-postgres.py
               python3 .github/check-privacy-postgres.py
               RULLST_PASSKEY_BROWSER_TESTS=1 python3 .github/check-passkey-postgres.py
               cargo test -p rullst-orm --no-default-features \
@@ -803,6 +805,9 @@ jobs:
 
       - name: Provision the reviewed disposable Labs host
         run: bash .github/provision-labs-host.sh
+
+      - name: Reproduce the trusted Wasm fixture from reviewed source
+        run: bash .github/check-labs-fixture.sh
 
       - name: Verify profiling stays outside the cleared worker environment
         run: python3 .github/test-labs-measurement.py

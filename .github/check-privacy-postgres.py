@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise age replay state on an owned PostgreSQL server, including restart."""
+"""Exercise privacy state on an owned PostgreSQL server, including restart."""
 
 import argparse
 import os
@@ -8,6 +8,7 @@ import secrets
 import subprocess
 import time
 import uuid
+from pathlib import Path
 
 
 IMAGE = "postgres@sha256:29342cb52157b098821961d2c14eec3c019071f56a5d559e990cf07cf541ea9b"
@@ -39,7 +40,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--coverage", action="store_true",
                         help="accumulate profiles with cargo llvm-cov --no-report")
+    parser.add_argument("--suite", choices=("all", "age", "consent"), default="all")
+    parser.add_argument("--manifest-path", type=Path,
+                        help="external consent consumer, using only extracted packages")
     args = parser.parse_args()
+    if args.manifest_path is not None and (args.suite != "consent" or args.coverage):
+        parser.error("external package consumers require --suite consent without --coverage")
     name = "rullst-privacy-contract-" + uuid.uuid4().hex
     started = False
     try:
@@ -59,12 +65,23 @@ def main() -> None:
             "RULLST_PRIVACY_RESTART_NONCE": secrets.token_hex(32),
             "RULLST_PRIVACY_POSTGRES_PHASE": "exercise",
         })
-        command = (["cargo", "llvm-cov", "--no-report"] if args.coverage else ["cargo", "test"])
-        command += ["--locked", "-p", "rullst-privacy",
-                   "--no-default-features", "--features", "postgres",
-                   "--test", "age_assurance", "--", "--ignored", "--exact",
-                   "postgres::shared_replay_contract", "--nocapture"]
-        subprocess.run(command, env=env, check=True, timeout=1800)
+        commands = []
+        for suite, feature, target, contract in [
+            ("age", "postgres", "age_assurance", "shared_replay_contract"),
+            ("consent", "consent-postgres", "consent", "shared_consent_contract"),
+        ]:
+            if args.suite not in ("all", suite):
+                continue
+            command = (["cargo", "llvm-cov", "--no-report"] if args.coverage else ["cargo", "test"])
+            if args.manifest_path is None:
+                command += ["--locked", "-p", "rullst-privacy",
+                            "--no-default-features", "--features", feature]
+            else:
+                command += ["--locked", "--offline", "--manifest-path", str(args.manifest_path)]
+            command += ["--test", target, "--", "--ignored", "--exact",
+                        "postgres::" + contract, "--nocapture"]
+            commands.append(command)
+            subprocess.run(command, env=env, check=True, timeout=1800)
         # Keep the owned container's storage, but interrupt the database process.
         # This is a server-restart contract, not a physical power-loss test.
         subprocess.run(["docker", "restart", "--time", "0", name],
@@ -73,7 +90,8 @@ def main() -> None:
         # Docker can reassign an ephemeral host port when restarting a container.
         env["RULLST_PRIVACY_TEST_POSTGRES_URL"] = database_url(name)
         env["RULLST_PRIVACY_POSTGRES_PHASE"] = "restart"
-        subprocess.run(command, env=env, check=True, timeout=1800)
+        for command in commands:
+            subprocess.run(command, env=env, check=True, timeout=1800)
     except (subprocess.SubprocessError, RuntimeError):
         if started:
             subprocess.run(["docker", "logs", "--tail", "60", name],

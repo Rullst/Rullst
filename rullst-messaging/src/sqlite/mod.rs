@@ -7,6 +7,8 @@ mod publish;
 mod schema;
 mod storage;
 mod transaction;
+#[cfg(feature = "webhooks")]
+mod webhooks;
 
 use crate::{
     AckToken, BrokerConfig, Clock, DeadLetter, DeadLetterQuery, Delivery, FailureCode,
@@ -20,8 +22,8 @@ use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
 
+use crate::MessagingKeyring;
 use storage::StorageProfile;
-pub use storage::{MessagingKeyring, MessagingStorageKey};
 
 /// Durable local broker backed by a fixed, versioned SQLite schema.
 ///

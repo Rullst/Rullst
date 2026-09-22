@@ -7,6 +7,13 @@ unit vector. Only these fixed fixtures run in local interpreter unit tests;
 adversarial submissions use the isolated acceptance harness. The compiled fixture
 contains Rust standard-library code; its MIT notice is in `RUST-LICENSE-MIT`.
 
+The required Labs acceptance job runs `.github/check-labs-fixture.sh` to rebuild
+and compare every byte before acceptance. This fixture is not a production
+executable or a downloaded student submission. OpenSSF Scorecard detects its
+binary format; `.github/scorecard.yml` records the test-only purpose without
+filtering scanner output. SHA-256 of the reviewed fixture:
+`b89aa864df353309d8b8bdbcddd061d93c28d5c08a902ed779e261f2a6bc765c`.
+
 Regenerate from the repository root:
 
 ```sh
