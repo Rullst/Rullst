@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790051536327,
+  "lastUpdate": 1790067573208,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -10619,6 +10619,60 @@ window.BENCHMARK_DATA = {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 13,
             "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 30,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "88027f6a03a934dfd80f24bdeb15798e18b40a23",
+          "message": "feat(release): prepare v13 packages and maintenance plan\n\nFinalize ordinary package inventory, archive consumers, compatible dependency updates and maintenance documentation.",
+          "timestamp": "2026-09-22T05:37:43-03:00",
+          "tree_id": "fdc8652b92143d8f18e7c913d3477c6052702633",
+          "url": "https://github.com/Rullst/Rullst/commit/88027f6a03a934dfd80f24bdeb15798e18b40a23"
+        },
+        "date": 1790067572730,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5337,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 722,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 0",
             "unit": "ns/iter"
           },
           {
