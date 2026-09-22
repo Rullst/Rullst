@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790027660990,
+  "lastUpdate": 1790051410224,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -7097,6 +7097,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 479,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9f543ed5326029f8e4fbf0693dd7faab9288a526",
+          "message": "feat(v13): add durable access, delivery and private upload flows (#239)",
+          "timestamp": "2026-09-22T01:10:18-03:00",
+          "tree_id": "abbbade92b9794e04099125da476b7edbc69d66f",
+          "url": "https://github.com/Rullst/Rullst/commit/9f543ed5326029f8e4fbf0693dd7faab9288a526"
+        },
+        "date": 1790051409751,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 539,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
