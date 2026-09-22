@@ -43,7 +43,7 @@ aws-sdk-sesv2 = { workspace = true, optional = true }
 # Smithy JSON 0.63 cannot compile with the Document changes in types 1.7.
 # Keep fresh consumer resolution compatible until the SDK/JSON train is upgraded
 # together and its re-exported API has passed SemVer and native SES checks.
-aws-smithy-types = { version = "=1.6.3", default-features = false, optional = true }
+aws-smithy-types = { version = "=1.6.4", default-features = false, optional = true }
 sqlx = { workspace = true, optional = true, features = ["sqlite", "runtime-tokio"] }
 url = { version = "2.5.8", optional = true }
 
