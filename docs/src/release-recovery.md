@@ -1,4 +1,4 @@
-# v12 partial-publication and recovery runbook
+# Partial-publication and recovery runbook
 
 This runbook covers an interrupted multi-crate publication. A crates.io upload
 is irreversible: a version can be yanked but cannot be deleted or replaced with
@@ -146,7 +146,8 @@ verification.
 
 Recovery is complete only when:
 
-- all 16 expected versions are indexed with retained checksums;
+- every version in the tagged release inventory is indexed with its retained
+  checksum (16 packages for v12; 19 in the current v13 candidate);
 - a clean consumer resolves only registry packages and compiles;
 - documentation/index pages are reachable;
 - the incident timeline and any yanks/replacements are recorded;

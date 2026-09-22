@@ -6,6 +6,13 @@ historical roadmap fits the remaining week. The [SST](spec.md) governs APIs and
 architecture; the [roadmap](roadmap.md) retains work outside this release window.
 No deadline waives a security or publication gate.
 
+The owner asked about an alpha-first release on September 22. The current
+`13.0.0-alpha.1` source version supports that evaluation path: consumers opt in
+explicitly and APIs may change before stable v13. Alpha, beta and RC labels do
+not waive the applicable verification, ownership or protected-publication
+checks. Choosing a prerelease label does not authorize an upload; stable
+`13.0.0` still requires its own readiness decision.
+
 ## Source-line transition approved on 21 September
 
 The owner approved development on `main`, stable maintenance on `v12`, and
@@ -18,9 +25,9 @@ have the same strict, admin-enforced 43-check protected profile.
 The six-feature source was admitted in PR #236 as recorded below.
 [PR #238](https://github.com/Rullst/Rullst/pull/238) combines that source with
 all six Dependabot updates and the `13 → main`, `12 → v12` transition. Its exact
-combined source still requires workspace/platform, coverage, security and
-extracted-package admission before a normal protected merge. No tag or
-published crate is changed.
+combined source passed workspace/platform, coverage, security and
+extracted-package admission and merged normally at `0ce3306d`. No tag or
+published crate changed.
 
 ## Approved delivery sequence
 
@@ -974,8 +981,9 @@ nor cached compilation is a release result.
 
 Before tagging, check every package/internal requirement, lockfile, release
 order, architecture edge, feature forwarding, CLI version string, documentation
-link and supported-platform claim. Include `rullst-privacy` in publication only
-after its advertised package scope meets its gates and its ownership/trusted
+link and supported-platform claim. Include the new `rullst-privacy`,
+`rullst-supervision` and `rullst-media` packages in publication only after their
+advertised package scopes meet their gates and their ownership/trusted
 publisher configuration is ready. Confirm 12.1→13 consumer behavior, authenticated
 native assets, attestations and the protected deployment approval. Published
 12.1.0 tags and archives remain immutable.

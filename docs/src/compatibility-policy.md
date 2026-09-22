@@ -29,8 +29,10 @@ Rullst follows Cargo Semantic Versioning for stable releases:
   include migration notes and compatibility tests.
 - **Major (`X.y.z`)** releases may contain breaking changes. Each known break
   must be listed in the changelog and migration guide.
-- **Prereleases** such as `12.0.0-rc.1` are public evaluation artifacts. Their
-  APIs may still change in a later RC, and users must opt in explicitly.
+- **Prereleases** such as `13.0.0-alpha.1` are public evaluation artifacts. Their
+  APIs may still change in a later alpha, beta or RC, and users must opt in
+  explicitly. Published prerelease archives are immutable, just like stable
+  releases; fixes require a new version.
 
 The compatibility surface includes documented public Rust APIs, public Cargo
 feature names, CLI command and flag identifiers, supported configuration keys,
