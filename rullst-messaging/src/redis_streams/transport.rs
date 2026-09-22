@@ -18,6 +18,15 @@ const COMMON: &str = include_str!("scripts/common.lua");
 impl Remote {
     pub(super) async fn open(config: RedisBrokerConfig, provision: bool) -> Result<Self> {
         let info = config.connection_info()?;
+        if matches!(info.addr(), redis::ConnectionAddr::TcpTls { .. })
+            && rustls::crypto::CryptoProvider::get_default().is_none()
+        {
+            // Redis builds its TLS configuration from the process provider.
+            // Feature unification can enable both ring and aws-lc-rs, making
+            // Rustls' implicit selection panic. Preserve an application choice;
+            // if another thread installs first, its provider remains in force.
+            let _ = rustls::crypto::ring::default_provider().install_default();
+        }
         let client = match &config.ca_certificate {
             Some(certificate) => Client::build_with_tls(
                 info,

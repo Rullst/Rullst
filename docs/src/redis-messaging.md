@@ -49,6 +49,11 @@ supported. URL credentials, fragments, query options and insecure TLS overrides
 are rejected. TLS validates the certificate and hostname. `with_ca_certificate`
 accepts an explicit PEM trust bundle up to 64 KiB; it preserves hostname checks.
 The normal trust roots come from the maintained Redis client's WebPKI profile.
+For TLS connections, the adapter preserves an installed Rustls process provider;
+if none exists, it installs the ring provider before Redis builds its TLS client.
+Applications requiring another provider must install it before opening the broker.
+This avoids implicit-provider panics when dependencies enable multiple providers;
+certificate, hostname and trust-root validation remain required.
 The host owns credential rotation and secret storage. Diagnostics redact endpoint,
 password, deployment generation, payload, header values and ACK capabilities.
 

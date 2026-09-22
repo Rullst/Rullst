@@ -20,7 +20,11 @@ namespace once during deployment. `connect` requires existing state and never
 repairs missing tables or changes namespace quotas. Both take an explicit clock;
 use `SystemClock` in production. No database failure falls back to memory.
 
-```rust,ignore
+```rust,no_run
+# #[cfg(feature = "messaging-schedules-postgres")]
+# async fn schedule<B: rullst::messaging::MessageBroker>(database_url: String,
+#     key_bytes: [u8; 32], first_after_ms: i64, payload: Vec<u8>, broker: B)
+#     -> Result<(), Box<dyn std::error::Error>> {
 use rullst::messaging::{MessagingKeyring, MessagingStorageKey, SystemClock};
 use rullst::messaging::schedules::{
     MissedRunPolicy, PostgresRecurringStore, RecurringConfig,
@@ -40,6 +44,8 @@ store.tick(20).await?;
 for lease in store.claim(20).await? {
     store.relay(&lease, &broker).await?;
 }
+# Ok(())
+# }
 ```
 
 The application supplies the worker loop and its shutdown/backoff policy. Calls

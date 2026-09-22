@@ -1,0 +1,14 @@
+# Context only: this does not filter SARIF results or disable a check.
+# The sole checked-in executable fixture is rebuilt byte-for-byte in Labs CI.
+# See rullst-labs-runner/tests/fixtures/README.md for source, compiler and license.
+annotations:
+  - checks:
+      - binary-artifacts
+    reasons:
+      - reason: test-data
+  # The September 21 review matched all 30 sampled commits to successful CodeQL
+  # checks on PR heads #228, #236 and #238. See v13-delivery-plan.md.
+  - checks:
+      - sast
+    reasons:
+      - reason: not-detected

@@ -7012,6 +7012,7 @@ dependencies = [
  "redis",
  "reqwest",
  "rullst-orm",
+ "rustls",
  "serde",
  "serde_json",
  "sha2 0.11.0",

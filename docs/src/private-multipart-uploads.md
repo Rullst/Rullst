@@ -14,6 +14,8 @@ tenant. Raw `Storage::multipart` is an operator-level API for an already-approve
 complete object key. A checkpoint does not authenticate its presenter.
 
 ```rust,no_run
+# #[cfg(feature = "storage-multipart")]
+# mod example {
 use rullst::{TenantStorage, storage::cloud::multipart::{
     MultipartKey, MultipartLimits, MultipartStorage,
 }};
@@ -28,6 +30,7 @@ fn uploader(tenant: &TenantStorage, independent_key: String)
     )?;
     Ok(tenant.multipart("quarantine/server-allocated-unique-name", key, limits)?)
 }
+# }
 ```
 
 Use the existing explicit `CloudStorageConfig` and its `require_production`

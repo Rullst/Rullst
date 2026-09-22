@@ -806,6 +806,9 @@ jobs:
       - name: Provision the reviewed disposable Labs host
         run: bash .github/provision-labs-host.sh
 
+      - name: Reproduce the trusted Wasm fixture from reviewed source
+        run: bash .github/check-labs-fixture.sh
+
       - name: Verify profiling stays outside the cleared worker environment
         run: python3 .github/test-labs-measurement.py
 

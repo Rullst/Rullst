@@ -20,7 +20,11 @@ arbitrary request URL as an approved destination. An authenticated management
 endpoint must retain ownership checks and the normal CSRF/WAF/secure-header
 baseline. The library does not add HTTP management routes or grant authority.
 
-```rust,ignore
+```rust,no_run
+# #[cfg(feature = "messaging-webhooks")]
+# async fn deliver(database_url: String, encoded_signing_key: String,
+#     storage_key_bytes: [u8; 32], json_bytes: Vec<u8>)
+#     -> Result<(), Box<dyn std::error::Error>> {
 use rullst::messaging::{MessagingKeyring, MessagingStorageKey, SystemClock};
 use rullst::messaging::webhooks::{
     WebhookConfig, WebhookDestination, WebhookOutbox, WebhookSigningKey,
@@ -38,6 +42,8 @@ let storage = MessagingKeyring::new(
 let outbox = WebhookOutbox::open(database_url, config, signing, storage, SystemClock).await?;
 outbox.enqueue("completion/42/v1", "course.completed", json_bytes).await?;
 let outcome = outbox.dispatch_next("worker-1").await?;
+# Ok(())
+# }
 ```
 
 `encoded_signing_key` is canonical unpadded base64url for exactly 32 CSPRNG bytes.

@@ -57,6 +57,14 @@ updates:
       - "dependencies"
       - "rust"
     groups:
+      opentelemetry-family:
+        patterns:
+          - "opentelemetry*"
+          - "tracing-opentelemetry"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
       safe-updates:
         update-types:
           - "minor"

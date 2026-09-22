@@ -180,7 +180,54 @@ this observation. Do not treat those five bot PRs as integrated or combine
 incompatible public types. The next default-branch Dependabot configuration groups
 the OpenTelemetry and tracing adapter family into one reviewed proposal, without
 ignoring updates or weakening required checks. Recheck upstream availability
-before the validation freeze; the v12 maintenance proposals remain separate.
+before the validation freeze. The v12 maintenance proposals remain separate,
+with the same family grouping to avoid incompatible individual updates.
+
+### Repository housekeeping on September 21
+
+`main` already contains the v13 promotion from PR #238; `v12` is the stable
+maintenance line and `gh-pages` serves the site. The obsolete `v13` reference
+(`d246ea07`) was retired after proving it is an ancestor of `main` (`0ce3306d`).
+Fourteen additional remote feature references were removed only after confirming
+their complete history remains in `main` or the consolidated PR #239. Local
+worktrees and unique local commits were retained. Both maintained branches now
+require the existing 43 checks plus CodeQL Rust and JavaScript analyses.
+
+Dependabot PRs #244 and #247 are superseded by the AWS and Wasm parser changes
+in PR #239; this is consolidation, not a claim of admitted updates. Individual
+OpenTelemetry PRs #241–243, #245–246 and #248–250 are closed as incompatible
+pending the coordinated adapter upgrade described above. Registry inspection
+still finds `tracing-opentelemetry` 0.33.0 as the latest stable adapter, requiring
+OpenTelemetry 0.32. No OpenTelemetry 0.33 adoption is claimed. Compatible v12
+maintenance updates are consolidated in PR #240, preserving #251's complete
+history. Its SES constraint check now expects the 1.6.4 pin while retaining the
+historical 12.0.0 SemVer baseline's separate 1.6.3 guard. The combined maintenance
+commit requires its own complete CI and SemVer results before merge.
+
+Scorecard's binary finding points to the trusted `checked_sum.wasm` test vector,
+not application code. Rebuilding its adjacent Rust source with pinned Rust 1.96
+reproduced every byte; the required Labs acceptance job now repeats that check.
+The scanner annotation records test data without suppressing SARIF output.
+The historical SAST finding persisted in Scorecard run `35675329836`, reporting
+15/30 despite verified successful CodeQL checks on all three PR heads associated
+with the sampled 30 commits: #228 (`977e40a3`, six commits), #236 (`54821688`,
+15 commits), and #238 (`87a3bdbf`, nine commits). Both REST check runs and GraphQL
+check suites report success. Scorecard v5.5.0 reads only the first 30 check
+suites; #228's CodeQL suite is 32nd, demonstrating incomplete detection. The
+exact remaining discrepancy is not established. The alert is classified as a
+false positive for this reviewed snapshot; it does not imply that every
+intermediate commit was scanned independently. Required CodeQL jobs now enforce
+both language analyses for future PR admission. Scanner output remains enabled.
+
+The first combined PR #239 campaign exposed a Redis TLS provider-selection
+panic and omitted public-guide doctest registrations. The corrected Redis
+adapter preserves an installed provider and installs ring only when none exists;
+the actual Redis/TLS/restart suite and strict targeted Clippy pass locally.
+All three newly registered guide examples compile with their real features.
+Windows Labs initialization also returned `Storage` after about three seconds;
+the same unchanged store passes its local four-test suite. Its Windows cause
+is still unconfirmed and the fresh hosted workspace run remains required.
+No full-source or release admission is inferred from these targeted results.
 
 Execution order may respond to measured implementation and validation cost. Do not replace
 full journeys with mock-only placeholders to increase the feature count. Keep
