@@ -53,7 +53,7 @@ pub async fn submit(
     Extension(context): Extension<UserContext>,
     Json(payload): Json<AssignmentSubmissionPayload>,
 ) -> Response {
-    let now_epoch = match unix_now() { Ok(value) => value, Err(response) => return response };
+    let now_epoch = match unix_now() { Ok(value) => value, Err(response) => return response.into_response() };
     let input = AssignmentSubmissionInput {
         submission_key: payload.submission_key,
         assignment_id,
@@ -72,7 +72,7 @@ pub async fn grade(
     Extension(context): Extension<UserContext>,
     Json(payload): Json<AssignmentGradePayload>,
 ) -> Response {
-    let now_epoch = match unix_now() { Ok(value) => value, Err(response) => return response };
+    let now_epoch = match unix_now() { Ok(value) => value, Err(response) => return response.into_response() };
     let input = AssignmentGradeInput {
         grading_key: payload.grading_key,
         submission_id,
@@ -94,7 +94,7 @@ pub async fn correct_grade(
     Extension(context): Extension<UserContext>,
     Json(payload): Json<AssignmentGradeCorrectionPayload>,
 ) -> Response {
-    let now_epoch = match unix_now() { Ok(value) => value, Err(response) => return response };
+    let now_epoch = match unix_now() { Ok(value) => value, Err(response) => return response.into_response() };
     let input = AssignmentGradeCorrectionInput {
         correction_key: payload.correction_key,
         assignment_grade_id,
@@ -165,10 +165,10 @@ fn correction_error(error: AssignmentGradeCorrectionError) -> Response {
     }
 }
 
-fn unix_now() -> Result<i64, Response> {
+fn unix_now() -> Result<i64, StatusCode> {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).ok()
         .and_then(|elapsed| i64::try_from(elapsed.as_secs()).ok())
-        .ok_or_else(|| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)
 }
 "##;
 

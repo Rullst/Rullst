@@ -9,6 +9,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+## [12.1.1] - 2026-09-22 (unpublished candidate)
+
+Prepared on `v12` for compatibility validation and a separate defensive review.
+No tag or crates.io publication is established by this section. See the
+[candidate review plan](docs/src/v12-1-1-review.md) for scope and acceptance.
+
+### Fixed
+
+- Reject public scaffold application-key placeholders consistently in Auth.
+  Valid application keys retain the existing API; replacing an example key
+  requires application-controlled session renewal.
+- Hold Core lifecycle admission through ordinary HTTP body completion, error
+  or cancellation, including streaming data/trailers. Drain remains bounded;
+  upgraded connections and detached work need separate supervision.
+- Evaluate SQLite Messaging publication/lease/retry timestamps after write-lock
+  admission so contention cannot authorize an expired ACK, retry or dead-letter.
+- Correct strict-Clippy diagnostics in generated LMS code while preserving its
+  existing public signatures and response behavior.
+
+### Maintenance
+
+- Make executable update-discovery cache fixtures follow the current CLI version
+  and verify both entry points report that version. Preserve downgrade rejection
+  and all cache validity, offline, no-write and authority assertions.
+
+- Highlight Rullst Academy in the README navigation and a dedicated section: a
+  learning platform built with Rullst to teach Rust, Rullst and other technologies.
+- Carry the compatible dependency/tool updates already reviewed in PR #240 and
+  include Dependabot #252 (SES 1.136.0 and compatible AWS dependencies) and #255
+  (immutable `taiki-e/install-action` 2.87.16 pins). Preserve the Smithy types
+  1.6.4 constraint and Rust 1.96.0 MSRV.
+- Set all sixteen packages/internal requirements to 12.1.1 and synchronize all
+  ten fuzz locks. Existing 12.1.0 publication receipts remain unchanged.
+- Fetch the complete graph for offline package consumers, release canceled
+  observational scorecards and add an archive-only CI diagnostic without
+  replacing the full matrix, native artifacts or publication gates.
+
 ## [12.1.0] - 2026-09-20
 
 Published on September 20 UTC (September 19 in Brasília); see the

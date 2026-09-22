@@ -40,12 +40,12 @@ fn error_response(error: PublicationError) -> Response {
     }
 }
 
-fn unix_now() -> Result<i64, Response> {
+fn unix_now() -> Result<i64, StatusCode> {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .ok()
         .and_then(|elapsed| i64::try_from(elapsed.as_secs()).ok())
-        .ok_or_else(|| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
 pub async fn draft(
@@ -84,7 +84,7 @@ pub async fn review(
 ) -> Response {
     let now_epoch = match unix_now() {
         Ok(value) => value,
-        Err(response) => return response,
+        Err(response) => return response.into_response(),
     };
     match review_version_at(&context, version_id, payload.activate_at_epoch, now_epoch).await {
         Ok(receipt) => Json(receipt).into_response(),

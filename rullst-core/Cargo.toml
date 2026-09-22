@@ -1,6 +1,6 @@
 [package]
 name = "rullst-core"
-version = "12.1.0"
+version = "12.1.1"
 authors = ["Rullst Core Team"]
 edition = "2024"
 rust-version = "1.96.0"
@@ -47,6 +47,7 @@ opentelemetry = { workspace = true, optional = true }
 opentelemetry-otlp = { workspace = true, optional = true, features = ["reqwest-client", "http-proto", "reqwest-rustls"] }
 opentelemetry_sdk = { workspace = true, optional = true, features = ["rt-tokio"] }
 axum = { workspace = true, features = ["macros", "ws"] }
+http-body = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time", "fs", "io-util", "sync", "net", "signal"] }
 rullst-orm = { workspace = true, optional = true }
 sqlx = { workspace = true, features = ["runtime-tokio", "macros"], optional = true }

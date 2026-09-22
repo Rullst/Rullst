@@ -65,3 +65,11 @@ dead letters, cleanup, tenant/topic authorization and destination idempotency.
 
 Continue with the [brokered messaging tutorial](../tutorials/49-brokered-messaging.md)
 or inspect the [crate roadmap](https://github.com/Rullst/Rullst/blob/main/rullst-messaging/ROADMAP.md).
+
+## SQLite deadlines under contention
+
+The 12.1.1 candidate samples broker time after acquiring its SQLite write lock.
+A worker whose lease expires while waiting cannot ACK, retry or dead-letter the
+message. Newly admitted claims retain their full lease duration, and publication
+and retry timestamps use admission time. This preserves the existing API and
+schema; it does not add clock rollback protection or exactly-once delivery.

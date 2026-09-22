@@ -5,6 +5,15 @@ Updating dependencies or the CLI does not rewrite generated application files, m
 databases or redeploy the Azure examples. Keep the existing application and
 lockfile, generate a separate comparison project, and review the changes below.
 
+## Preparing for the 12.1.1 patch
+
+The [unpublished 12.1.1 candidate](v12-1-1-review.md) preserves the 12.1.0 API,
+database schema and Rust 1.96.0 MSRV. Applications using public scaffold keys
+must replace them with unique secure secrets; changing a session-encryption key
+requires session renewal. HTTP drain now accounts for unfinished response
+bodies, and SQLite message leases use the time after acquiring the write lock.
+Existing generated LMS files are not rewritten by a dependency update.
+
 ## Account mail and machine requests
 
 The [account-mail guide](account-mail-v12-1.md) describes the opt-in durable

@@ -28,6 +28,7 @@ on:
           - workspace
           - cli-standard
           - cli-updates
+          - packaged-distribution
           - cli-profiles-basic
           - cli-profiles-relational
           - cli-profiles-polyglot
@@ -105,7 +106,9 @@ jobs:
     name: Run Tests (${{ matrix.os }} / ${{ matrix.shard }})
     # Draft PRs still receive the faster format/Clippy feedback above. The
     # expensive cross-platform suite starts when the PR is ready for review.
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    if: >-
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'workflow_dispatch' || inputs.shard != 'packaged-distribution')
     runs-on: ${{ matrix.os }}
     # Generated CLI applications are real independent Cargo workspaces. Keep
     # them in isolated shards so their compile contracts run concurrently
@@ -548,8 +551,8 @@ jobs:
   packaged-distribution:
     name: Packaged distribution and installed CLI
     # Exercise the actual archives before a tag or any registry publication.
-    # Diagnostic subsets and automatic development runs do not claim this proof.
-    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'all' && inputs.shard == 'all'
+    # An archive-only diagnostic proves these packages, not the full matrix.
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'all' && (inputs.shard == 'all' || inputs.shard == 'packaged-distribution')
     needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 180
@@ -587,7 +590,8 @@ jobs:
           printf 'version=%s\n' "$candidate_version" >> "$GITHUB_OUTPUT"
 
       - name: Fetch locked dependencies for the isolated offline consumer
-        run: cargo fetch --locked --target x86_64-unknown-linux-gnu
+        # Offline archive metadata resolves target-specific edges too.
+        run: cargo fetch --locked
 
       - name: Package and audit candidate archives without publication
         env:
@@ -606,8 +610,9 @@ jobs:
     name: Evidence quality scorecard (observational)
     # The scorecard's verification dimension requires the full OS matrix. A
     # Linux-only post-merge push must not silently inherit cross-platform credit.
+    # A canceled run must release its concurrency slot, including this report.
     if: >-
-      always() && github.event_name != 'push' &&
+      !cancelled() && github.event_name != 'push' &&
       (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
       (github.event_name != 'workflow_dispatch' || (inputs.platform == 'all' && inputs.shard == 'all'))
     needs:

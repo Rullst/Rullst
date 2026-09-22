@@ -35,6 +35,7 @@ fn valid_language_tag(value: &str) -> bool {
         && value.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
 }
 
+#[expect(clippy::too_many_arguments, reason = "Preserve the generated LMS API used by existing applications.")]
 pub fn lesson_player_page(
     title: &str,
     media_kind: &str,

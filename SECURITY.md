@@ -11,6 +11,10 @@ whether an exact package version has been published. Source in a branch or an
 unpublished tag is not a distributed release by itself. The current published
 maintenance release is [12.1.0](https://github.com/Rullst/Rullst/releases/tag/v12.1.0).
 
+The `v12` source prepares **12.1.1** for validation and defensive review. It is
+not published; its [review plan](docs/src/v12-1-1-review.md) does not replace
+12.1.0's immutable release evidence or claim that pending checks have passed.
+
 | Version | Supported | Status |
 | :--- | :---: | :--- |
 | **12.x** | :white_check_mark: | Current supported stable line; latest maintenance release: 12.1.0. |

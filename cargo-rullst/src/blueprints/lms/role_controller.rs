@@ -42,12 +42,12 @@ fn error_response(error: RoleError) -> Response {
     }
 }
 
-fn unix_now() -> Result<i64, Response> {
+fn unix_now() -> Result<i64, StatusCode> {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .ok()
         .and_then(|elapsed| i64::try_from(elapsed.as_secs()).ok())
-        .ok_or_else(|| StatusCode::INTERNAL_SERVER_ERROR.into_response())
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
 pub async fn grant(
@@ -81,7 +81,7 @@ pub async fn revoke(
 ) -> Response {
     let observed_at_epoch = match unix_now() {
         Ok(value) => value,
-        Err(response) => return response,
+        Err(response) => return response.into_response(),
     };
     match revoke_role_at(
         &context,
