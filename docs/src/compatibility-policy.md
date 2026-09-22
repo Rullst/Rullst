@@ -10,12 +10,36 @@ workspace is not a supported release merely because its manifest exists.
 
 ## Source branches
 
-`main` develops the next major release (currently the unpublished v13).
-`v12` receives compatible maintenance for the supported 12.x line. Select a
-published version for application dependencies; a branch name is not a release.
-The transitional `v13` integration branch was retired after its tested changes
-entered `main` through the protected review path. Existing release tags
-and crates.io archives are unchanged.
+The permanent branches are `main` (unpublished v13 development), `v12`
+(supported 12.x maintenance) and `gh-pages` (generated site/benchmark data).
+Use short-lived feature, fix and Dependabot branches with a pull request to the
+appropriate protected base. Remove those temporary branches after their changes
+are integrated; a superseded PR must identify the replacement preserving its
+changes. The former `v13` integration branch is retired. Historical releases
+remain available through immutable tags and crates.io archives.
+
+Select a published version for application dependencies; a branch name is not
+a release. Stable and development branches have independent commit histories:
+ahead/behind counts are not a measure of security, freshness or missing fixes.
+Do not reset or merge whole release trains merely to make those counters zero.
+
+### Carrying fixes between maintained lines
+
+Every stable maintenance fix must be assessed for `main`. Before closing its
+maintenance item, record the linked forward-port PR, the commit where the fix
+already exists, or a specific reason it does not apply. Carry the regression
+and relevant documentation with the fix, adapt it to the destination API and
+run that branch's required checks before integration. Conversely, evaluate
+confirmed v13 fixes for the existing v12 surface without importing new v13
+features or breaking the stable API/MSRV.
+
+Versions, release records, feature inventories and branch-specific documentation
+stay appropriate to each release train. Dependency updates require the same
+assessment, but resolve and validate each branch's own graph; do not copy a
+whole lockfile across diverged workspaces. Prefer a linked, focused port over a
+blanket merge. A briefly pending port must stay explicitly tracked rather than
+being hidden by commit counts. This policy does not establish an indefinite LTS
+commitment or alter the support window below.
 
 ## Semantic Versioning contract
 
