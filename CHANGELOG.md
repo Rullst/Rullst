@@ -30,6 +30,8 @@ No tag or crates.io publication is established by this section. See the
 
 ### Maintenance
 
+- Highlight Rullst Academy in the README navigation and a dedicated section: a
+  learning platform built with Rullst to teach Rust, Rullst and other technologies.
 - Carry the compatible dependency/tool updates already reviewed in PR #240 and
   include Dependabot #252 (SES 1.136.0 and compatible AWS dependencies) and #255
   (immutable `taiki-e/install-action` 2.87.16 pins). Preserve the Smithy types

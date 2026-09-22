@@ -27,6 +27,7 @@
 
 <p align="center">
   <a href="https://rullst.github.io/Rullst/book/start-here.html"><strong>Start building</strong></a> ·
+  <a href="https://academy.rullst.win/"><strong>Learn at Rullst Academy</strong></a> ·
   <a href="#live-examples"><strong>Try live examples</strong></a> ·
   <a href="https://rullst.github.io/Rullst/book/"><strong>Documentation</strong></a> ·
   <a href="https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md"><strong>Contribute</strong></a>
@@ -40,6 +41,16 @@
 The `v12` branch is preparing **12.1.1**, an unpublished maintenance candidate.
 The [review plan](docs/src/v12-1-1-review.md) records its compatible fixes and
 required validation; **12.1.0 remains the published baseline**.
+
+## 🎓 Rullst Academy — built with Rullst to teach Rullst
+
+[Rullst Academy](https://academy.rullst.win/) is a free learning platform built
+with the Rullst framework. Learn Rust, Rullst and other technologies through
+short lessons and practical projects, with learning paths covering Git/GitHub,
+web development, databases and more. Explore the Academy in Portuguese, English
+or Spanish.
+
+**[Start learning at Rullst Academy ↗](https://academy.rullst.win/)**
 
 ## 🚀 Start building
 
