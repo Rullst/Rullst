@@ -3,6 +3,8 @@
 mod client;
 mod config;
 mod mock;
+#[cfg(feature = "storage-multipart")]
+pub mod multipart;
 mod signing;
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]

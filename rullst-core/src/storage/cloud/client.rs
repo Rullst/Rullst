@@ -9,14 +9,14 @@ use std::{
 };
 
 pub(crate) struct CloudClient {
-    config: CloudStorageConfig,
-    endpoint: Url,
-    bucket: String,
-    region: String,
-    backend: Backend,
+    pub(super) config: CloudStorageConfig,
+    pub(super) endpoint: Url,
+    pub(super) bucket: String,
+    pub(super) region: String,
+    pub(super) backend: Backend,
 }
 
-enum Backend {
+pub(super) enum Backend {
     Live(reqwest::Client),
     Mock(MockStore),
 }
@@ -122,7 +122,7 @@ impl CloudClient {
     pub(crate) async fn get(&self, key: &str) -> Result<Vec<u8>, CloudError> {
         signing::validate_key(key)?;
         if let Backend::Mock(store) = &self.backend {
-            return store.get(key);
+            return store.get(key, self.config.max_object_bytes);
         }
         tokio::time::timeout(self.config.timeout, async {
             let mut response = self.request(Method::GET, key, &[]).await?;

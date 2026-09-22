@@ -1343,6 +1343,44 @@ service. Those tests do not establish interoperability with owner accounts,
 provider configuration or regional legal compliance. Source/package admission
 passed in PR #236; final release admission remains separate.
 
+#### Resumable multipart candidate (unpublished, admission pending)
+
+The separate opt-in `storage-multipart` extends this adapter with server-mediated
+initiation, exact-size SHA-256-checked parts, bounded remote reconciliation,
+completion and abort. A server-owned `MultipartKey` seals resumable checkpoints
+with AES-256-GCM under a versioned purpose and exact endpoint/bucket/region/mock
+profile/object binding (including the ephemeral instance in mock mode). Each
+operation reopens the checkpoint and checks policy;
+tenant wrappers derive that object only from the authenticated namespace. The
+application must still authorize the current subject/object and serialize or CAS
+checkpoint updates. A checkpoint is sensitive recovery state, never identity,
+membership, malware clearance or permission to publish an object.
+
+The initial scope fixes total length, part size (5–64 MiB), at most 256 parts
+and a lifetime of one minute through seven days. Part bytes match a caller-supplied
+SHA-256 before signing the exact payload with SigV4. ETags are opaque provider
+receipts, not content hashes. Checkpoints retain receipts; resume lists provider
+parts and reports missing/mismatched receipts for explicit re-upload. Completion
+requires every consecutive receipt and rejects an embedded XML error even under
+HTTP 200. A provider marker and exact length support explicit reconciliation of
+lost completion responses, without guessing from object existence alone.
+
+Only one part is buffered per call; applications bound concurrent calls. Responses
+are byte/node bounded, prohibit DTDs and validate exact root/resource identity.
+No public ACL, direct browser upload or ambient endpoint is introduced. Existing
+ordinary-object download limits still apply to large completed objects. New
+objects may replace a same-name object as with `put`; applications must allocate
+fresh private/quarantine names and withhold reads until scanning and authorization.
+
+Abort remains available for expired, authentic checkpoints and checks provider
+absence; concurrent in-flight writes can require another abort. Retain cleanup
+records durably and provision provider lifecycle expiration for abandoned uploads,
+including initiation whose response was lost before an upload ID was obtained.
+No application database, global sweeper, bucket provisioning or durable revocation
+of checkpoints is implied. The offline backend has explicit bounded in-memory
+state; native disposable S3, process/service restart, forged checkpoints, tenant
+isolation, response failures and extracted consumers are required evidence.
+
 ## 🗄️ 5. Active Record ORM & Schema Engine (`rullst-orm`)
 
 ### 5.1. Model Definition & CRUD

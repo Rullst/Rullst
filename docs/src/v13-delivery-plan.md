@@ -150,6 +150,21 @@ lock-contention defect was corrected: lease deadlines are sampled after acquirin
 the write lock. Full hosted admission remains required; see
 [durable outgoing webhooks](outgoing-webhooks.md).
 
+The private multipart item now has a local Core/facade candidate with encrypted
+object/tenant-bound resumable checkpoints, exact-size SHA-256-checked parts,
+remote receipt reconciliation, completion uncertainty and bounded abort/cleanup.
+Owned S3 tests passed independent clients, process/service restart and both
+endpoint profiles; HTTP failure tests reject tampering, foreign resources, DTDs,
+oversized XML, redirects and embedded errors under HTTP 200. Checkpoints require
+durable application retention/CAS; provider lifecycle expiration handles uploads
+whose initiation response was lost. Full hosted admission remains required; see
+[private multipart uploads](private-multipart-uploads.md).
+
+All seven now have local implementation candidates. This does not freeze their
+APIs or admit their combined source for release. The next priority is integrated
+validation and corrections, followed by targeted security work on the newly
+exposed trust boundaries when capacity remains before September 24.
+
 Execution order may respond to measured implementation and validation cost. Do not replace
 full journeys with mock-only placeholders to increase the feature count. Keep
 September 24–25 for combined validation and September 26 for final adjustments

@@ -32,6 +32,7 @@
 - [Shared Passkey Ceremony Contract](shared-passkey-ceremonies.md)
 - [Two-Replica Deployment Acceptance](deployment-acceptance.md)
 - [Private S3/R2 Object Storage](private-object-storage.md)
+- [Resumable private multipart uploads](private-multipart-uploads.md)
 - [Active Sessions and Remote Logout](session-management.md)
   - [Email login](email-login.md)
   - [Scoped API tokens](api-tokens.md)

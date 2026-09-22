@@ -96,6 +96,7 @@ rullst-core|queue-redis
 rullst-core|cache-redis
 rullst-core|offline-sync
 rullst-core|storage-s3
+rullst-core|storage-multipart
 rullst-core|telemetry
 rullst-messaging|sqlite
 rullst-messaging|schedules-postgres
@@ -176,6 +177,7 @@ rullst|cache-redis
 rullst|redis
 rullst|offline-sync
 rullst|storage-s3
+rullst|storage-multipart
 rullst|auth
 rullst|auth-sessions-sqlite
 rullst|auth-sessions-postgres

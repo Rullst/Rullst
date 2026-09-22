@@ -62,6 +62,12 @@ email login, JWT and OAuth remain independent. See the
 
 ## Umbrella crate: `rullst`
 
+The unpublished private-storage candidate adds Core/facade `storage-multipart`,
+which selects `storage-s3`, bounded XML parsing and checkpoint key zeroization.
+It enables no database, queue or default feature. See
+[private multipart uploads](private-multipart-uploads.md) for server-mediated
+parts, encrypted resumable checkpoints, cleanup responsibilities and admission.
+
 The default `rullst` dependency enables `orm` and `queue-sqlite`. Applications
 that only need the HTTP runtime can opt out:
 

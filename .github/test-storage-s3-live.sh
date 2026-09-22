@@ -2,17 +2,22 @@
 set -euo pipefail
 
 test_command=(cargo test)
-if [[ "${1:-}" == --coverage && "$#" -eq 1 ]]; then
-  test_command=(cargo llvm-cov --no-report)
-elif [[ "$#" -ne 0 ]]; then
-  echo 'Usage: test-storage-s3-live.sh [--coverage]' >&2
-  exit 1
-fi
+test_scope=(-p rullst-core --no-default-features --features storage-multipart)
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+    --coverage) test_command=(cargo llvm-cov --no-report); shift ;;
+    --manifest-path)
+      if [[ "$#" -lt 2 ]]; then exit 1; fi
+      test_scope=(--manifest-path "$2"); shift 2 ;;
+    *) echo 'Usage: test-storage-s3-live.sh [--coverage] [--manifest-path PATH]' >&2; exit 1 ;;
+  esac
+done
 
 # Independent S3 implementation; this image is a disposable test fixture only.
 # Garage v2.4.1, Linux amd64 manifest from the upstream dxflrs/garage image.
 image='dxflrs/garage@sha256:0d7c74fc8ca6fef68a5a941c0e7558c8b1e92ba3588fa7505400e1350456c796'
 fixture_dir="$(mktemp -d)"
+export RULLST_MULTIPART_TEST_CHECKPOINT="$fixture_dir/multipart-checkpoints.json"
 container_id=''
 cleanup() {
   if [[ -n "$container_id" ]]; then docker rm --force "$container_id" >/dev/null 2>&1 || true; fi
@@ -39,11 +44,21 @@ root_domain = ".s3.localhost"
 PY
 mkdir "$fixture_dir/data"
 
+# Docker can reassign a dynamically published port on restart. Keep the approved
+# endpoint stable so resumable checkpoints retain their exact resource binding.
+s3_fixture_port="$(python3 - <<'PY'
+import socket
+with socket.socket() as listener:
+    listener.bind(('127.0.0.1', 0))
+    print(listener.getsockname()[1])
+PY
+)"
+
 container_id="$(docker run --detach --read-only --cap-drop ALL \
   --user "$(id -u):$(id -g)" \
   --security-opt no-new-privileges --memory 384m --cpus 1 --pids-limit 128 \
   --tmpfs /tmp:rw,noexec,nosuid,size=128m \
-  --publish 127.0.0.1::3900 \
+  --publish "127.0.0.1:$s3_fixture_port:3900" \
   --mount "type=bind,src=$fixture_dir/garage.toml,dst=/etc/garage.toml,readonly" \
   --mount "type=bind,src=$fixture_dir/data,dst=/data" \
   --env GARAGE_DEFAULT_ACCESS_KEY=GK11111111111111111111111111111111 \
@@ -67,11 +82,17 @@ wait_ready() {
 }
 wait_ready
 
-"${test_command[@]}" --locked -p rullst-core --no-default-features --features storage-s3 \
+"${test_command[@]}" --locked "${test_scope[@]}" \
   --test storage_s3_live -- --ignored --exact \
   private_object_journey_rejects_unsigned_tampered_and_expired_grants
 
+"${test_command[@]}" --locked "${test_scope[@]}" \
+  --test storage_multipart_live -- --ignored --exact multipart_native_prepare_restart
+
 docker restart "$container_id" >/dev/null
 wait_ready
-"${test_command[@]}" --locked -p rullst-core --no-default-features --features storage-s3 \
+"${test_command[@]}" --locked "${test_scope[@]}" \
   --test storage_s3_live -- --ignored --exact private_objects_persist_after_service_restart
+
+"${test_command[@]}" --locked "${test_scope[@]}" \
+  --test storage_multipart_live -- --ignored --exact multipart_native_resume_after_service_and_process_restart

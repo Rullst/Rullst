@@ -337,6 +337,29 @@ cp "$repository_root/.github/fixtures/storage-facade.rs" "$storage_dir/tests/sto
 append_package_patches "$storage_dir/Cargo.toml"
 "$cargo_bin" test --manifest-path "$storage_dir/Cargo.toml" --offline --test storage_facade
 
+multipart_dir="$work_dir/multipart-consumer"
+mkdir -p "$multipart_dir/tests"
+{
+  printf '[package]\nname = "rullst-packaged-multipart"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n'
+  printf '[features]\ndefault = ["storage-s3", "storage-multipart"]\nstorage-s3 = []\nstorage-multipart = []\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["storage-multipart"] }\n' "$version"
+  printf 'base64 = "0.23"\nring = "0.17"\nserde_json = "1"\naxum = "0.8"\nreqwest = { version = "0.13", default-features = false, features = ["rustls"] }\n'
+  printf 'tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "time"] }\n'
+} > "$multipart_dir/Cargo.toml"
+for test in storage_multipart storage_multipart_failures storage_multipart_live storage_s3_live; do
+  cp "$repository_root/rullst-core/tests/$test.rs" "$multipart_dir/tests/$test.rs"
+done
+python3 - "$multipart_dir/tests" <<'MULTIPART_PY'
+import sys
+from pathlib import Path
+for source in Path(sys.argv[1]).glob('*.rs'):
+    source.write_text(source.read_text().replace('rullst_core::', 'rullst::'))
+MULTIPART_PY
+append_package_patches "$multipart_dir/Cargo.toml"
+"$cargo_bin" generate-lockfile --manifest-path "$multipart_dir/Cargo.toml" --offline
+"$cargo_bin" test --manifest-path "$multipart_dir/Cargo.toml" --offline --locked
+bash "$repository_root/.github/test-storage-s3-live.sh" --manifest-path "$multipart_dir/Cargo.toml"
+
 session_dir="$work_dir/session-consumer"
 mkdir -p "$session_dir/tests"
 {
