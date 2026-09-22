@@ -59,6 +59,14 @@ verification credit. Run `ci.yml` manually on a final `main` candidate to
 produce the exact-SHA release scorecard. Manual diagnostic runs may select one
 operating system and one test shard; those deliberately do not produce a
 full-matrix scorecard and do not replace final-candidate evidence.
+The manual `packaged-distribution` diagnostic requires `platform=all` and runs
+strict quality checks plus actual archive/installed-consumer validation. It
+skips the general test matrix and native artifact builds and does not generate
+a full-matrix scorecard. Its success proves only those executed jobs; normal
+ready-PR and full manual gates remain unchanged. Offline archive inspection
+fetches the complete locked graph, including foreign-target edges. Canceled
+runs do not retain an observational scorecard concurrency slot.
+
 The manual `cli-updates` diagnostic selects discovery/cache/artifact tests,
 isolated project preparation/verification and legacy upgrade process fixtures.
 It does not replace the complete `cli-standard` shard in release matrices.

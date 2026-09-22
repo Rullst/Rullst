@@ -37,6 +37,10 @@
 > `v5` line is no longer maintained. [Release record](https://rullst.github.io/Rullst/book/v12.html)
 > · [Compatibility policy](https://rullst.github.io/Rullst/book/compatibility-policy.html).
 
+The `v12` branch is preparing **12.1.1**, an unpublished maintenance candidate.
+The [review plan](docs/src/v12-1-1-review.md) records its compatible fixes and
+required validation; **12.1.0 remains the published baseline**.
+
 ## 🚀 Start building
 
 Generate a project, choose a blueprint and database, then start the development loop:
