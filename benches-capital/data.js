@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790051742707,
+  "lastUpdate": 1790067781778,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -8159,6 +8159,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/9f543ed5326029f8e4fbf0693dd7faab9288a526"
         },
         "date": 1790051742253,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "88027f6a03a934dfd80f24bdeb15798e18b40a23",
+          "message": "feat(release): prepare v13 packages and maintenance plan\n\nFinalize ordinary package inventory, archive consumers, compatible dependency updates and maintenance documentation.",
+          "timestamp": "2026-09-22T05:37:43-03:00",
+          "tree_id": "fdc8652b92143d8f18e7c913d3477c6052702633",
+          "url": "https://github.com/Rullst/Rullst/commit/88027f6a03a934dfd80f24bdeb15798e18b40a23"
+        },
+        "date": 1790067781303,
         "tool": "cargo",
         "benches": [
           {
