@@ -165,6 +165,23 @@ APIs or admit their combined source for release. The next priority is integrated
 validation and corrections, followed by targeted security work on the newly
 exposed trust boundaries when capacity remains before September 24.
 
+The September 21 dependency refresh includes `aws-sigv4` 1.5.3 (with its
+Smithy runtime API patch) in the multipart S3 evidence, and updates the Labs
+structural parser to `wasmparser` 0.259.0. Its byte offsets now use a wider range;
+checked subtraction preserves the existing 65,536-byte function-body limit.
+A parse-only boundary regression and the ordinary runner tests/strict Clippy
+passed locally. The Wasmi executor remains pinned to 2.0.0 with its own validator;
+hosted isolation and package admission still apply to the changed runner.
+
+New OpenTelemetry 0.33 proposals remain pending compatible adapter evidence.
+The current [`tracing-opentelemetry` 0.33 manifest](https://docs.rs/crate/tracing-opentelemetry/0.33.0/source/Cargo.toml)
+depends on OpenTelemetry 0.32; a registry probe found no 0.34 adapter release at
+this observation. Do not treat those five bot PRs as integrated or combine
+incompatible public types. The next default-branch Dependabot configuration groups
+the OpenTelemetry and tracing adapter family into one reviewed proposal, without
+ignoring updates or weakening required checks. Recheck upstream availability
+before the validation freeze; the v12 maintenance proposals remain separate.
+
 Execution order may respond to measured implementation and validation cost. Do not replace
 full journeys with mock-only placeholders to increase the feature count. Keep
 September 24–25 for combined validation and September 26 for final adjustments
