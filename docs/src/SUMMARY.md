@@ -9,6 +9,7 @@
 - [v12 Stable Release Audit](v12-release-audit.md)
 - [v13 Delivery Plan & Evidence](v13-delivery-plan.md)
 - [Sustainable v12 Maintenance & v13 Priorities](v13-priorities.md)
+- [v13 Maintenance Scope & Extension Strategy](v13-maintenance-scope.md)
 - [Website Maintenance & Privacy Boundaries](website-maintenance.md)
 - [Rullst Academy Product Programme](rullst-academy.md)
 - [💡 The Rullst Philosophy](philosophy.md)
