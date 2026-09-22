@@ -102,7 +102,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install pinned documentation builder
-        uses: taiki-e/install-action@4076c08d76dba979c11a7285295b0716c1d67908 # v2.87.15
+        uses: taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3 # v2.87.16
         with:
           tool: mdbook@0.5.4
       - name: Set up browser-test runtime
@@ -850,7 +850,7 @@ jobs:
 
       - name: Install pinned measurement tool for the manual Labs diagnostic
         if: github.event_name == 'workflow_dispatch' && inputs.shard == 'labs-isolation'
-        uses: taiki-e/install-action@4076c08d76dba979c11a7285295b0716c1d67908 # v2.87.15
+        uses: taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3 # v2.87.16
         with:
           tool: cargo-llvm-cov@0.9.1
 
