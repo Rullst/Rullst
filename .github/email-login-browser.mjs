@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 let input = '';
 for await (const chunk of process.stdin) { input += chunk; assert(Buffer.byteLength(input) <= 16384); }
-const { origin } = JSON.parse(input);
+const { origin, escaping } = JSON.parse(input);
 assert(/^http:\/\/localhost:\d+$/.test(origin));
 const profile = await mkdtemp(join(tmpdir(), 'rullst-email-login-browser-'));
 const chrome = spawn(process.env.CHROME_BIN || 'google-chrome', [
@@ -74,6 +74,17 @@ try {
   });
   await send('Page.navigate', {url:origin + '/'});
   await waitFor(() => evaluate("!!document.getElementById('request')"), 'request form');
+  // Parse the actual Rust-rendered pages: hostile attribute values stay data.
+  // DOMParser keeps this adversarial probe inert; assertions inspect structure.
+  for (const html of escaping.pages) {
+    const parsed = await evaluate(`(() => {
+      const doc = new DOMParser().parseFromString(${JSON.stringify(html)}, 'text/html');
+      return {values: [...doc.querySelectorAll('input')].map(input => input.value),
+        forms: doc.querySelectorAll('form').length,
+        injected: doc.querySelectorAll('script,img,svg,iframe,[onerror],[onfocus]').length};
+    })()`);
+    assert.deepEqual(parsed, {values: [escaping.payload, escaping.payload], forms: 1, injected: 0});
+  }
   const press = async id => {
     await evaluate(`document.getElementById(${JSON.stringify(id)}).focus(); true`);
     await send('Input.dispatchKeyEvent', {type:'keyDown',key:' ',code:'Space',windowsVirtualKeyCode:32});
@@ -123,7 +134,7 @@ try {
   assert.equal(await evaluate("fetch('/dashboard').then(r=>r.status)"),401);
   assert(requests.includes('/request') && requests.includes('/consume') && requests.includes('/logout'));
   assert.deepEqual(failures,[]);
-  console.log('Email login browser: prefetch-safe GET/HEAD, explicit CSRF POST, browser binding, secure opaque session, tenant isolation, replay and logout passed');
+  console.log('Email login browser: attribute escaping, prefetch-safe GET/HEAD, explicit CSRF POST, browser binding, secure opaque session, tenant isolation, replay and logout passed');
   await call('Browser.close');
 } finally {
   clearTimeout(deadline); socket?.close();

@@ -191,7 +191,8 @@ maintenance line and `gh-pages` serves the site. The obsolete `v13` reference
 Fourteen additional remote feature references were removed only after confirming
 their complete history remains in `main` or the consolidated PR #239. Local
 worktrees and unique local commits were retained. Both maintained branches now
-require the existing 43 checks plus CodeQL Rust and JavaScript analyses.
+require the existing 43 checks, CodeQL Rust and JavaScript analyses, and the
+separate `CodeQL` findings check from GitHub's security app (46 in total).
 
 Dependabot PRs #244 and #247 are superseded by the AWS and Wasm parser changes
 in PR #239; this is consolidation, not a claim of admitted updates. Individual
@@ -224,10 +225,22 @@ panic and omitted public-guide doctest registrations. The corrected Redis
 adapter preserves an installed provider and installs ring only when none exists;
 the actual Redis/TLS/restart suite and strict targeted Clippy pass locally.
 All three newly registered guide examples compile with their real features.
-Windows Labs initialization also returned `Storage` after about three seconds;
-the same unchanged store passes its local four-test suite. Its Windows cause
-is still unconfirmed and the fresh hosted workspace run remains required.
-No full-source or release admission is inferred from these targeted results.
+Windows Labs initialization also returned `Storage` after about three seconds.
+The unchanged store passed both its local four-test suite and the fresh Windows
+workspace run at `5c6a8136`; the original transient cause is not established.
+Redis/TLS, strict quality, coverage, isolated Labs and the actual archive/installed
+CLI campaign `35676290050` also passed on that snapshot. Other jobs were still
+pending, so this is not full-source or release admission.
+
+The same snapshot's successful CodeQL analysis workflow produced two high-severity
+XSS findings (#348 and #349) in the test-only email-login HTTP fixture. All dynamic
+HTML attribute values now use Core's HTML escaping function. The Chromium test
+parses both actual rendered forms with hostile quote/tag/handler input and checks
+that field values round-trip without injected elements or event handlers, in
+addition to the original SQLite/PostgreSQL sign-in, CSRF, replay and logout
+journeys. The findings remain open until the new source is scanned. The CI
+observer now checks the separate security result and PR-ref alerts; success of
+the analysis workflow alone never counts as a clean security scan.
 
 Execution order may respond to measured implementation and validation cost. Do not replace
 full journeys with mock-only placeholders to increase the feature count. Keep

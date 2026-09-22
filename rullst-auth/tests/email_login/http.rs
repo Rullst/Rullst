@@ -11,6 +11,7 @@ use axum::{
 };
 use rullst_core::{
     config::{Environment, SecurityConfig},
+    html::escape_str,
     security::{CsrfToken, TenantMembership, apply_security_baseline},
 };
 use serde::Deserialize;
@@ -49,10 +50,32 @@ fn cookie(headers: &HeaderMap, key: &str) -> Result<String, StatusCode> {
 fn fail(_: RecoveryError) -> StatusCode {
     StatusCode::UNAUTHORIZED
 }
+fn request_form(csrf: &str, email: &str) -> Html<String> {
+    Html(format!(
+        "<!doctype html><title>Email login</title>\
+         <form method=post action=/request>\
+         <input type=hidden name=_token value=\"{}\">\
+         <input name=email value=\"{}\">\
+         <button id=request>Send sign-in link</button></form>",
+        escape_str(csrf),
+        escape_str(email),
+    ))
+}
+fn confirmation_form(csrf: &str, token: &str) -> Html<String> {
+    Html(format!(
+        "<!doctype html><title>Confirm sign-in</title>\
+         <form method=post action=/consume>\
+         <input type=hidden name=_token value=\"{}\">\
+         <input type=hidden name=token value=\"{}\">\
+         <button id=confirm>Confirm sign-in</button></form>",
+        escape_str(csrf),
+        escape_str(token),
+    ))
+}
 async fn start(State(app): State<App>, Extension(csrf): Extension<CsrfToken>) -> Response {
     let browser = BrowserBinding::generate().unwrap();
     *app.browser.lock().await = Some(browser.expose_cookie().to_owned());
-    let mut response = Html(format!("<!doctype html><title>Email login</title><form method=post action=/request><input type=hidden name=_token value=\"{}\"><input name=email value=\"{}\"><button id=request>Send sign-in link</button></form>",csrf.as_str(),app.email)).into_response();
+    let mut response = request_form(csrf.as_str(), &app.email).into_response();
     response.headers_mut().append(
         header::SET_COOKIE,
         format!(
@@ -97,7 +120,7 @@ async fn landing(
         return Err(StatusCode::BAD_REQUEST);
     }
     let csrf = csrf.as_ref().map_or("", |csrf| csrf.as_str());
-    Ok(Html(format!("<!doctype html><title>Confirm sign-in</title><form method=post action=/consume><input type=hidden name=_token value=\"{csrf}\"><input type=hidden name=token value=\"{}\"><button id=confirm>Confirm sign-in</button></form>",credential.token)).into_response())
+    Ok(confirmation_form(csrf, &credential.token).into_response())
 }
 async fn consume(
     State(app): State<App>,
@@ -267,11 +290,22 @@ pub async fn run(url: &str) {
         .kill_on_drop(true)
         .spawn()
         .unwrap();
+    // Exercise the renderers below their validation boundary too: browser DOM
+    // parsing must preserve attribute data without creating nodes/handlers.
+    let payload = "\"'><img src=x onerror=alert(1)><script>alert(2)</script>& café";
+    let escaping = serde_json::json!({
+        "payload": payload,
+        "pages": [request_form(payload, payload).0, confirmation_form(payload, payload).0],
+    });
     child
         .stdin
         .take()
         .unwrap()
-        .write_all(serde_json::json!({"origin":origin}).to_string().as_bytes())
+        .write_all(
+            serde_json::json!({"origin":origin,"escaping":escaping})
+                .to_string()
+                .as_bytes(),
+        )
         .await
         .unwrap();
     let result = tokio::time::timeout(
