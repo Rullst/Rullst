@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790051249730,
+  "lastUpdate": 1790067280730,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -18623,6 +18623,78 @@ window.BENCHMARK_DATA = {
             "name": "mask_pii/phone_field",
             "value": 1088,
             "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 155,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 138,
+            "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "88027f6a03a934dfd80f24bdeb15798e18b40a23",
+          "message": "feat(release): prepare v13 packages and maintenance plan\n\nFinalize ordinary package inventory, archive consumers, compatible dependency updates and maintenance documentation.",
+          "timestamp": "2026-09-22T05:37:43-03:00",
+          "tree_id": "fdc8652b92143d8f18e7c913d3477c6052702633",
+          "url": "https://github.com/Rullst/Rullst/commit/88027f6a03a934dfd80f24bdeb15798e18b40a23"
+        },
+        "date": 1790067280260,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 28,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 215,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 76,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 165,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 298,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 1081,
+            "range": "± 41",
             "unit": "ns/iter"
           },
           {
