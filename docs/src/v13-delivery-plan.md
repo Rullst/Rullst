@@ -1,10 +1,13 @@
-# v13 delivery plan through 26 September 2026
+# v13 delivery plan and evidence
 
-**Engineering target: a reviewable, tested v13 release by 26 September 2026,
-America/Sao_Paulo.** This is a bounded delivery plan, not a claim that the entire
-historical roadmap fits the remaining week. The [SST](spec.md) governs APIs and
-architecture; the [roadmap](roadmap.md) retains work outside this release window.
-No deadline waives a security or publication gate.
+**Direction revised on September 22:** maintain stable v12.1 and continue v13
+according to product value, evidence and available resources. The owner no
+longer requires publication by September 26; it is a review/handoff point, and
+work may continue in later sessions. The earlier calendar below is retained as
+history, not a release obligation. The [priority proposal](v13-priorities.md)
+classifies all 41 master milestones without requiring the entire roadmap for
+13.0.0. The [SST](spec.md) governs APIs and architecture; no deadline or alpha
+label waives a security or publication gate.
 
 The owner asked about an alpha-first release on September 22. The current
 `13.0.0-alpha.1` source version supports that evaluation path: consumers opt in
@@ -931,6 +934,11 @@ release window. Keep changes modular; avoid unrelated mass refactoring merely
 to meet a line-count target.
 
 ## Calendar and scope control
+
+**Superseded deadline:** the owner revised this calendar on September 22.
+September 26 is no longer a required publication date. Use the checkpoints
+below as the original sequencing record; prioritize stable maintenance and
+completed, tested journeys under the [revised plan](v13-priorities.md).
 
 Dates below use Brasília time. Work may move earlier when its dependencies and
 checks are ready; slow external acceptance reduces scope, never test quality.

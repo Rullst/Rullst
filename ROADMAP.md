@@ -30,6 +30,17 @@ Target windows are planning intentions, not release guarantees. Promotion to
 `[x]` requires code, focused tests, truthful documentation, and the release gates
 at the end of this document.
 
+**September 22 direction:** stable v12.1 maintenance takes priority over
+publishing v13 to meet a date. September 26 is a review/handoff point, and
+development may continue in later sessions. The
+[investment proposal](docs/src/v13-priorities.md) groups M1–M41 into 25 themes to
+invest in or maintain and 16 to defer until justified, including M31's separate
+programme. It preserves the historical ideas; it does not require every theme
+for 13.0.0 or remove maintenance from already supported capabilities.
+The same proposal flags twelve existing themes with a separate high-maintenance
+marker and offers eight bounded follow-up subtasks. Those overlap the original
+themes and are not added again to the milestone count.
+
 ## Audit of the detailed crate roadmaps
 
 The per-crate roadmaps are intentionally preserved as detailed design backlogs.
@@ -403,10 +414,10 @@ age-assurance package and v13 Labs/privacy/Verus plans remain separate.
 Each later increment requires its own CI evidence; stable-release results do
 not certify the combined v13 source.
 
-The [delivery plan through 26 September 2026](docs/src/v13-delivery-plan.md)
-selects the bounded release priorities, acceptance criteria and feature-freeze
-dates. It preserves this wider roadmap and does not turn planned capabilities
-into shipped claims.
+The [delivery plan and evidence](docs/src/v13-delivery-plan.md) retains the
+bounded acceptance criteria and original calendar. The September 22
+[priority revision](docs/src/v13-priorities.md) removes a mandatory publication
+date. Neither document turns planned capabilities into shipped claims.
 
 On September 21, the owner selected shared PostgreSQL consent and single-use
 email login links as the next two implementation priorities through September
@@ -568,8 +579,8 @@ v12-to-v13 automation requires v13's published migration catalog and tested
 application fixtures; the same-major restriction of the current `upgrade`
 command must not be silently removed. Reserve incompatible changes for v13.
 
-After this bounded minor is implemented, validated and released, concentrate
-new capability work on v13, with v12 maintenance by exception. The website
+Continue new capability work on v13 while actively maintaining the supported
+v12 line with reviewed compatible fixes and dependency updates. The website
 redesign is a separate documentation delivery, not a reason to bump framework
 versions or postpone verification work. This plan neither bumps package
 versions nor authorizes publication, and it does not claim that any major
@@ -613,7 +624,7 @@ or label unimplemented v13 contracts as available in v12.
 | Version | Status | Honest scope |
 | :--- | :---: | :--- |
 | **v12.0.0** | `[x] Published stable` | Tag `v12.0.0` at `eb11f892` completed the protected release workflow and published all sixteen packages on September 15, 2026. |
-| **v12.x** | `[~] Maintenance if needed` | Preserve published releases; separately review important compatible fixes when necessary. |
+| **v12.x** | `[~] Active stable maintenance` | Preserve published releases; prioritize reviewed compatible fixes and dependency updates. Patch releases must retain the supported compiler and public contracts. |
 | **v12.1.0** | `[x] Published compatible minor` | All sixteen packages were published from `b62390b4` on 20 September 2026 UTC. Guided CLI/project updates, SaaS/Nexus fixes, account mail and the other bounded contracts are recorded with immutable source and registry evidence in the [publication record](docs/src/v12.md#1210-published-maintenance-release). |
 | **v13.x** | `[ ] Next feature line` | Compatible and breaking improvements move together into the next deliberate cycle: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 
