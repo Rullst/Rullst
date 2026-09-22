@@ -1,8 +1,9 @@
-# Explicit supervision preview
+# Explicit supervision integration
 
-This unpublished opt-in supports only the full SQLite LMS. Its local path
-dependency is deliberate until the package passes admission. No deployment,
-verified family relationship or legal compliance is implied.
+This opt-in supports only the full SQLite LMS. A stable CLI pins the exact
+matching registry package; a prerelease CLI requires an explicitly selected
+matching local source. Neither mode establishes a deployment, verified family
+relationship or legal compliance.
 
 Before startup, configure `RULLST_SUPERVISION_DATABASE` as a private absolute file
 path in a trusted directory, `RULLST_SUPERVISION_EPOCH` as an independently retained

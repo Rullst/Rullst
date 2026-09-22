@@ -27,6 +27,7 @@
 
 <p align="center">
   <a href="https://rullst.github.io/Rullst/book/start-here.html"><strong>Start building</strong></a> ·
+  <a href="https://academy.rullst.win/"><strong>Learn at Rullst Academy</strong></a> ·
   <a href="#live-examples"><strong>Try live examples</strong></a> ·
   <a href="https://rullst.github.io/Rullst/book/"><strong>Documentation</strong></a> ·
   <a href="https://github.com/Rullst/Rullst/blob/main/CONTRIBUTING.md"><strong>Contribute</strong></a>
@@ -51,8 +52,25 @@ The current development candidates include [private S3/R2 files](docs/src/privat
 [distributed tracing](docs/src/distributed-tracing.md) and
 [transactional partial updates](docs/src/transactional-partial-updates.md). The six increments passed
 [hosted and extracted-package source admission](docs/src/v13-delivery-plan.md#six-increment-source-admission-on-september-21).
-Combined dependency validation and final release admission remain separate;
-these additions are not part of the published v12.1.0 package.
+The next seven increments add [shared consent](rullst-privacy/README.md),
+[email login](docs/src/email-login.md), [API tokens](docs/src/api-tokens.md),
+[shared mail suppression](docs/src/shared-mail-suppression.md),
+[recurring publication](docs/src/recurring-publications.md),
+[outgoing webhooks](docs/src/outgoing-webhooks.md) and
+[multipart uploads](docs/src/private-multipart-uploads.md). Their combined source
+and dependency validation passed [PR #239](https://github.com/Rullst/Rullst/pull/239).
+Final release admission remains separate; these additions are not part of the
+published v12.1.0 package.
+
+## 🎓 Rullst Academy — built with Rullst to teach Rullst
+
+[Rullst Academy](https://academy.rullst.win/) is a free learning platform built
+with the Rullst framework. Learn Rust, Rullst and other technologies through
+short lessons and practical projects, with learning paths covering Git/GitHub,
+web development, databases and more. Explore the Academy in Portuguese, English
+or Spanish.
+
+**[Start learning at Rullst Academy ↗](https://academy.rullst.win/)**
 
 ## 🚀 Start building
 
@@ -203,7 +221,9 @@ production data or guarantee compatibility with an unreleased major version.
 
 ## 🏛️ Explore the ecosystem
 
-Sixteen publishable crates share one release train. Select what your application
+The published v12.1 release contains sixteen crates. The v13 publication candidate
+contains nineteen, adding Privacy, Supervision and Media; Labs and its separate
+runner remain experimental and outside that inventory. Select what your application
 needs; detailed feature and provider boundaries live in the
 [specification](https://rullst.github.io/Rullst/book/spec.html).
 

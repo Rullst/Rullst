@@ -64,10 +64,14 @@ one-time token is therefore an explicit, bounded exception, not a permanent
 fallback. See the official [crates.io Trusted Publishing announcement](https://blog.rust-lang.org/2025/07/11/crates-io-development-update-2025-07/)
 and [Cargo publishing rules](https://doc.rust-lang.org/cargo/reference/publishing.html).
 
-### v13 privacy package registration
+### v13 package registration
 
-The unpublished packaging candidate adds `rullst-privacy` to the release
-inventory. Its owner endpoint returned 404 on 20 September 2026. The current
+The unpublished packaging candidate adds `rullst-privacy`, `rullst-supervision`
+and `rullst-media` to the release inventory. All three owner endpoints returned
+404 on September 22, 2026, while the other sixteen names retained the expected
+owner. They are the only names in the reviewed initial-registration allowlist.
+This enables ownership diagnostics, not publication: the ordinary release
+workflow still refuses unregistered names. The current
 [crates.io documentation](https://crates.io/docs/trusted-publishing) still requires
 an API token for the first publication. Package/consumer acceptance must precede
 an explicitly reviewed initial publication of real crate content; an empty

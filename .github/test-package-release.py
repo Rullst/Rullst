@@ -53,7 +53,8 @@ class PackageInventoryTests(unittest.TestCase):
             self.assertFalse(self.receipt.exists())
 
     def test_v13_archive_rehearsal_requires_explicit_unpublished_candidates(self):
-        for name in ('rullst-supervision', 'rullst-media', 'rullst-labs', 'rullst-labs-runner'):
+        self.inventory.write_text('["rullst-macros","rullst-core","rullst-supervision","rullst-media"]')
+        for name in ('rullst-labs', 'rullst-labs-runner'):
             (self.root / name).mkdir()
             (self.root / name / 'Cargo.toml').write_text(f'[package]\nname="{name}"\nversion="13.0.0-alpha.1"\npublish=false\n')
         self.assertEqual(self.package('--no-verify', '--v13-candidates').returncode, 0)
@@ -63,14 +64,16 @@ class PackageInventoryTests(unittest.TestCase):
         self.assertIn('rullst-labs-runner', args)
         self.assertIn('patch.crates-io.rullst-labs.path="rullst-labs"', args)
         self.assertIn('rullst-supervision', args)
+        self.assertEqual(args.count('rullst-supervision'), 1)
+        self.assertEqual(args.count('rullst-media'), 1)
         self.assertNotIn('--v13-candidates', args)
         self.receipt.unlink()
-        (self.root / 'rullst-media/Cargo.toml').write_text('[package]\nname="rullst-media"\npublish=true\n')
+        (self.root / 'rullst-labs/Cargo.toml').write_text('[package]\nname="rullst-labs"\npublish=true\n')
         self.assertNotEqual(self.package('--v13-candidates').returncode, 0)
         self.assertFalse(self.receipt.exists())
 
     def test_v13_candidate_audit_does_not_accept_partial_or_extra_inventory(self):
-        self.inventory.write_text('["rullst-core"]')
+        self.inventory.write_text('["rullst-core","rullst-supervision","rullst-media"]')
         license_text = (ROOT / 'LICENSE').read_bytes()
         (self.root / 'LICENSE').write_bytes(license_text)
         archives = self.root / 'packages'
@@ -85,8 +88,27 @@ class PackageInventoryTests(unittest.TestCase):
             if name != 'rullst-labs-runner':
                 self.assertNotEqual(subprocess.run(args, cwd=self.root, capture_output=True).returncode, 0)
         self.assertEqual(subprocess.run(args, cwd=self.root, capture_output=True).returncode, 0)
-        self.inventory.write_text('["rullst-core","rullst-media"]')
+        self.inventory.write_text('["rullst-core","rullst-supervision","rullst-media","rullst-labs"]')
         self.assertNotEqual(subprocess.run(args, cwd=self.root, capture_output=True).returncode, 0)
+
+    def test_default_release_packages_supervision_and_media_without_labs(self):
+        self.inventory.write_text('["rullst-core","rullst-supervision","rullst-media"]')
+        for name in ('rullst-labs', 'rullst-labs-runner'):
+            (self.root / name).mkdir()
+            (self.root / name / 'Cargo.toml').write_text(f'[package]\nname="{name}"\npublish=false\n')
+        self.assertEqual(self.package().returncode, 0)
+        args = json.loads(self.receipt.read_text())
+        self.assertEqual(args, ['package', '--package', 'rullst-core', '--package',
+                               'rullst-supervision', '--package', 'rullst-media',
+                               '--all-features', '--locked'])
+
+    def test_labs_cannot_enter_rehearsal_through_release_inventory(self):
+        for name in ('rullst-labs', 'rullst-labs-runner'):
+            (self.root / name).mkdir()
+            (self.root / name / 'Cargo.toml').write_text(f'[package]\nname="{name}"\npublish=false\n')
+        self.inventory.write_text('["rullst-core","rullst-labs"]')
+        self.assertNotEqual(self.package('--v13-candidates').returncode, 0)
+        self.assertFalse(self.receipt.exists())
 
     def test_candidate_audit_is_explicit_and_never_default_release_admission(self):
         self.inventory.write_text('["rullst-core"]')

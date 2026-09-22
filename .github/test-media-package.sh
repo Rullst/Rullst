@@ -11,7 +11,7 @@ import json, os, sys, tarfile, tomllib
 from pathlib import Path
 archives, version, temporary, repository = map(Path, sys.argv[1:])
 version = str(version)
-assert 'rullst-media' not in json.loads((repository / '.github/release-order.json').read_text())
+assert 'rullst-media' in json.loads((repository / '.github/release-order.json').read_text())
 name = f'rullst-media-{version}'
 archive_path = archives / f'{name}.crate'
 assert 0 < archive_path.stat().st_size <= 10 * 1024 * 1024
@@ -30,7 +30,8 @@ for path in source.rglob('*'):
         os.utime(path, None)
 manifest = tomllib.loads((source / 'Cargo.toml').read_text())
 assert manifest['package']['name'] == 'rullst-media'
-assert manifest['package']['version'] == version and manifest['package']['publish'] is False
+assert manifest['package']['version'] == version
+assert manifest['package'].get('publish') in (None, True, ['crates-io'])
 assert (source / 'LICENSE').read_bytes() == (repository / 'LICENSE').read_bytes()
 assert 'web/bunny-upload.mjs' in (source / 'src/lib.rs').read_text()
 consumer = temporary / 'consumer'

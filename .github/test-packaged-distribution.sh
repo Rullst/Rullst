@@ -35,16 +35,25 @@ cleanup() {
 trap cleanup EXIT
 
 candidate=false
-media_candidate=false
+labs_candidate=false
+supervision_included=false
 case "${3:-}" in
   "") ;;
-  --supervision-candidate|--v13-candidates)
+  --supervision-candidate)
     if jq -e 'index("rullst-supervision") != null' "$repository_root/.github/release-order.json" > /dev/null; then
       echo "Remove candidate mode after supervision enters the release inventory." >&2
       exit 1
     fi
     candidate=true
-    if [ "$3" = --v13-candidates ]; then media_candidate=true; fi
+    ;;
+  --v13-candidates)
+    for name in rullst-labs rullst-labs-runner; do
+      if jq -e --arg name "$name" 'index($name) != null' "$repository_root/.github/release-order.json" > /dev/null; then
+        echo "Remove Labs candidate mode after release admission." >&2
+        exit 1
+      fi
+    done
+    labs_candidate=true
     ;;
   *) echo "Unknown packaged-distribution mode." >&2; exit 1 ;;
 esac
@@ -75,21 +84,29 @@ if [ "$candidate" = true ]; then
   candidate_archive="$package_dir/rullst-supervision-${version}.crate"
   # The caller must audit the complete archive set before extraction.
   tar -xzf "$candidate_archive" -C "$packages_dir"
+fi
+if [ "$candidate" = true ] || jq -e 'index("rullst-supervision") != null' "$repository_root/.github/release-order.json" > /dev/null; then
+  supervision_included=true
   candidate_source="$packages_dir/rullst-supervision-${version}"
   find "$candidate_source" -type f -exec touch {} +
-  python3 - "$candidate_source/Cargo.toml" "$version" <<'PYVERIFY'
+  python3 - "$candidate_source/Cargo.toml" "$version" "$candidate" <<'PYVERIFY'
 import sys, tomllib
 from pathlib import Path
 package = tomllib.loads(Path(sys.argv[1]).read_text())["package"]
 assert package["name"] == "rullst-supervision"
 assert package["version"] == sys.argv[2]
-assert package["publish"] is False, "candidate rehearsal must remain unpublished"
+if sys.argv[3] == 'true':
+    assert package["publish"] is False, "candidate rehearsal must remain unpublished"
+else:
+    assert package.get('publish') in (None, True, ['crates-io']), "release package must be publishable"
 PYVERIFY
   "$cargo_bin" test --manifest-path "$candidate_source/Cargo.toml" --offline --locked --all-features
 fi
 
-if [ "$media_candidate" = true ]; then
+if jq -e 'index("rullst-media") != null' "$repository_root/.github/release-order.json" > /dev/null; then
   bash "$repository_root/.github/test-media-package.sh" "$version" "$package_dir"
+fi
+if [ "$labs_candidate" = true ]; then
   bash "$repository_root/.github/test-labs-package.sh" "$version" "$package_dir"
 fi
 
@@ -476,7 +493,7 @@ for blueprint in "${blueprints[@]}"; do
         --minimum-age 18 --policy-version archive-v1 --replay-store sqlite
       "$rullst_bin" make:privacy --blueprint "$blueprint" "${tenant_args[@]}" \
         --purpose-version archive-v1 --validity-seconds 3600
-      if [[ "$blueprint" == lms && "$candidate" == true ]]; then
+      if [[ "$blueprint" == lms && "$supervision_included" == true ]]; then
         "$rullst_bin" make:supervision --supervision-source "$candidate_source" --policy-version archive-v1 --notice-version archive-v1 --retention-seconds 3600 --session-seconds 600
       fi
       "$rullst_bin" generate:ai-context --check

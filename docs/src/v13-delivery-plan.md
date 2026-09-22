@@ -83,8 +83,9 @@ The prioritized implementation sequence is:
 After the six-feature source admission, the owner selected the following two
 deliveries for implementation through September 23. PR #238 passed source
 admission and was merged into `main` at `0ce3306d`; the v12 maintenance line is
-preserved. Consent and email login are candidates in PR #239, with full hosted
-and extracted-package admission still pending. Neither is release-admitted.
+preserved. Consent and email login joined the other five increments in PR #239,
+which passed combined hosted and extracted-package source admission on September
+22 and merged at `9f543ed5`. Final release acceptance remains separate.
 
 | Order | Selected delivery | Required acceptance |
 | :--- | :--- | :--- |
@@ -95,8 +96,8 @@ The email-login item now has a local Auth/Mail candidate: explicit account opt-i
 independent browser/email secrets, atomic opaque-session creation, durable
 SQLite/PostgreSQL state, fenced encrypted delivery and deterministic localized
 Mail templates. Local SQLite, native PostgreSQL, Chromium, fresh-process,
-database-restart and extracted-facade Auth/Mail contracts passed. Hosted
-source/package/coverage admission is still required. See the
+database-restart and extracted-facade Auth/Mail contracts passed. Combined hosted
+source/package/coverage admission passed in PR #239. See the
 [email-login contract](email-login.md). No owner-provider accounts were used.
 
 The owner subsequently approved the five additional items below as the next
@@ -160,10 +161,9 @@ durable application retention/CAS; provider lifecycle expiration handles uploads
 whose initiation response was lost. Full hosted admission remains required; see
 [private multipart uploads](private-multipart-uploads.md).
 
-All seven now have local implementation candidates. This does not freeze their
-APIs or admit their combined source for release. The next priority is integrated
-validation and corrections, followed by targeted security work on the newly
-exposed trust boundaries when capacity remains before September 24.
+All seven passed combined source admission in PR #239. This does not freeze their
+APIs or admit a crates.io release. The next priorities are package readiness,
+targeted security review and corrections before September 24.
 
 The September 21 dependency refresh includes `aws-sigv4` 1.5.3 (with its
 Smithy runtime API patch) in the multipart S3 evidence, and updates the Labs
@@ -171,7 +171,8 @@ structural parser to `wasmparser` 0.259.0. Its byte offsets now use a wider rang
 checked subtraction preserves the existing 65,536-byte function-body limit.
 A parse-only boundary regression and the ordinary runner tests/strict Clippy
 passed locally. The Wasmi executor remains pinned to 2.0.0 with its own validator;
-hosted isolation and package admission still apply to the changed runner.
+hosted isolation and package source admission subsequently passed in PR #239.
+Independent isolation review and final release acceptance remain outstanding.
 
 New OpenTelemetry 0.33 proposals remain pending compatible adapter evidence.
 The current [`tracing-opentelemetry` 0.33 manifest](https://docs.rs/crate/tracing-opentelemetry/0.33.0/source/Cargo.toml)
@@ -195,7 +196,7 @@ require the existing 43 checks, CodeQL Rust and JavaScript analyses, and the
 separate `CodeQL` findings check from GitHub's security app (46 in total).
 
 Dependabot PRs #244 and #247 are superseded by the AWS and Wasm parser changes
-in PR #239; this is consolidation, not a claim of admitted updates. Individual
+in PR #239; those compatible updates passed source admission. Individual
 OpenTelemetry PRs #241–243, #245–246 and #248–250 are closed as incompatible
 pending the coordinated adapter upgrade described above. Registry inspection
 still finds `tracing-opentelemetry` 0.33.0 as the latest stable adapter, requiring
@@ -203,7 +204,8 @@ OpenTelemetry 0.32. No OpenTelemetry 0.33 adoption is claimed. Compatible v12
 maintenance updates are consolidated in PR #240, preserving #251's complete
 history. Its SES constraint check now expects the 1.6.4 pin while retaining the
 historical 12.0.0 SemVer baseline's separate 1.6.3 guard. The combined maintenance
-commit requires its own complete CI and SemVer results before merge.
+commit passed all 46 protected checks and complete CI/SemVer workflows. PR #240
+merged normally into `v12` at `6dde0cb1` on September 22; no package was published.
 
 Scorecard's binary finding points to the trusted `checked_sum.wasm` test vector,
 not application code. Rebuilding its adjacent Rust source with pinned Rust 1.96
@@ -238,7 +240,8 @@ HTML attribute values now use Core's HTML escaping function. The Chromium test
 parses both actual rendered forms with hostile quote/tag/handler input and checks
 that field values round-trip without injected elements or event handlers, in
 addition to the original SQLite/PostgreSQL sign-in, CSRF, replay and logout
-journeys. The findings remain open until the new source is scanned. The CI
+journeys. CodeQL confirmed both findings fixed on head `7776ccda`, with zero open
+PR alerts. The CI
 observer now checks the separate security result and PR-ref alerts; success of
 the analysis workflow alone never counts as a clean security scan.
 
@@ -249,6 +252,50 @@ and separately authorized publication. No owner/provider account tests are
 authorized; disposable local services and deterministic protocol fixtures remain
 available. Architectural/API decisions must be recorded in the SST as each
 candidate becomes implementation work.
+
+## Seven-increment source admission and package preparation on September 22
+
+[PR #239](https://github.com/Rullst/Rullst/pull/239) merged into protected `main`
+at `9f543ed5326029f8e4fbf0693dd7faab9288a526`. Its admitted head `7776ccda` and
+GitHub test merge `3a84b107` have identical tree `abbbade9`.
+
+- All 46 protected requirements and 24 PR workflows passed. Additional S3 and
+  isolated Labs jobs passed, both review threads were resolved and CodeQL had
+  zero open PR alerts.
+- [Coverage](https://github.com/Rullst/Rullst/actions/runs/35680761156) passed both
+  unchanged 90% floors: 108639/120114 whole-repository lines (90.4466%) and
+  80139/87903 governed library lines (91.1675%, 627 files). Downloaded nextest
+  evidence records 2744 all-feature cases in 234 suites with no failures, errors
+  or skips. Default/browser/database profiles ran separately.
+- [Archive acceptance](https://github.com/Rullst/Rullst/actions/runs/35680800044)
+  audited 21 diagnostic archives, exercised archive-only consumers and compiled
+  all six blueprints with the installed CLI. Diagnostic archives do not establish
+  release eligibility for the four packages then excluded from publication.
+
+The next publication-configuration candidate adds standalone `rullst-supervision`
+and `rullst-media` to the synchronized inventory (19 packages). Both preserve
+empty default features and explicit application authorization. Their archive
+consumers and the generated LMS supervision journey now run in the ordinary
+release rehearsal, without the diagnostic flag. The CLI upgrade inventory includes
+both names. Supervision's stable CLI generator pins the matching registry
+version; prerelease evaluation still requires the matching local source and rejects absent or wrong
+source before applying edits. The reviewed initial-registration allowlist
+contains Privacy, Supervision and Media; the registry ownership check still rejects another owner.
+A read-only crates.io check on September 22 found all three names unregistered.
+The normal release workflow still rejects unregistered names; the allowlist does
+not enable a bootstrap credential path. No initial registration, tag, release
+approval or publication has occurred.
+
+`rullst-labs` and `rullst-labs-runner` remain `publish = false`, outside the release
+inventory and available only through explicit diagnostic packaging. Their
+independent isolation-review requirement is unchanged. The publication changes
+require their own hosted campaign and actual archive acceptance; previous-source
+results above do not admit them. Bunny account/CDN acceptance remains unvalidated.
+
+The framework README now highlights the separately maintained Rullst Academy.
+Its public landing page returned HTTP 200 on September 22 and describes free
+Rust/Rullst and broader technology learning in Portuguese, English and Spanish.
+This is a product link, not validation of private accounts or application flows.
 
 ## Depth before additional optional features
 

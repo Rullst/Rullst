@@ -1,8 +1,8 @@
 # Compatibility, MSRV, deprecation, and support policy
 
 This policy applies to the packages in the [release inventory](../../.github/release-order.json):
-16 published packages in v12.1 and 17 candidates in the unpublished v13 train,
-including `rullst-privacy`. They are released as one synchronized release train
+16 published packages in v12.1 and 19 candidates in the unpublished v13 train,
+including `rullst-privacy`, `rullst-supervision` and `rullst-media`. They are released as one synchronized release train
 even when a user depends on only one crate. The
 current supported-version table in [`SECURITY.md`](../../SECURITY.md) remains
 authoritative for releases that are actually available; a version in the
@@ -13,8 +13,8 @@ workspace is not a supported release merely because its manifest exists.
 `main` develops the next major release (currently the unpublished v13).
 `v12` receives compatible maintenance for the supported 12.x line. Select a
 published version for application dependencies; a branch name is not a release.
-The transitional `v13` integration branch is retained until its tested changes
-have entered `main` through the protected review path. Existing release tags
+The transitional `v13` integration branch was retired after its tested changes
+entered `main` through the protected review path. Existing release tags
 and crates.io archives are unchanged.
 
 ## Semantic Versioning contract

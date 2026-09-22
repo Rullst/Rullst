@@ -140,6 +140,8 @@ cargo publish -p rullst-capital
 cargo publish -p rullst-mail
 cargo publish -p rullst-auth
 cargo publish -p rullst-privacy
+cargo publish -p rullst-supervision
+cargo publish -p rullst-media
 
 # Step 4: Visual Dashboards & Admin Interfaces
 cargo publish -p rullst-nexus
