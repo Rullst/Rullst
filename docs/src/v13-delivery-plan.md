@@ -299,6 +299,14 @@ independent isolation-review requirement is unchanged. The publication changes
 require their own hosted campaign and actual archive acceptance; previous-source
 results above do not admit them. Bunny account/CDN acceptance remains unvalidated.
 
+This candidate also incorporates the newly opened Dependabot PRs
+[#253](https://github.com/Rullst/Rullst/pull/253) and
+[#254](https://github.com/Rullst/Rullst/pull/254): SES 1.136.0 and compatible AWS
+runtime updates, tokio-rustls 0.26.5, and immutable install-action 2.87.16 pins.
+Their declared Rust requirements stay below the 1.96 MSRV; the combined
+platform, feature and archive campaign is still required. The corresponding
+v12 PRs #252 and #255 require their own maintained-line compatibility checks.
+
 The framework README now highlights the separately maintained Rullst Academy.
 Its public landing page returned HTTP 200 on September 22 and describes free
 Rust/Rullst and broader technology learning in Portuguese, English and Spanish.
