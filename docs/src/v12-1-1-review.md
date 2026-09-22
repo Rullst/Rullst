@@ -14,19 +14,22 @@ development. No new v13 capability is included in this patch release.
 | Messaging | Sample trusted time after acquiring the SQLite write transaction. A worker cannot acknowledge an expired lease after waiting for the lock. | `rullst-messaging/tests/sqlite_deadlines.rs`: ACK/retry/dead-letter expiry, full new-claim duration, publication and retry admission timestamps. |
 | Generated LMS | Keep existing controller errors and generated public signatures compatible while correcting strict-Clippy diagnostics. | Existing materialized LMS tests and generated application compilation; narrow argument-count expectations preserve existing APIs. |
 | Dependencies | Include the compatible maintenance refresh already merged in PR #240, plus the SES update from #252 and immutable CI tool pins from #255. | Locked all-feature builds, SES protocol tests, advisory checks, MSRV and SemVer jobs. |
+| CLI verification | Bind advisory-cache fixtures and both CLI entry-point version assertions to the actual package version. | `cargo-rullst/tests/update_discovery_cli.rs`: private cache reuse, invalid/expired/yanked rejection, no writes or installation authority and executable versions. |
 | Verification | Release canceled observational scorecards promptly; fetch the full locked graph before offline archive inspection; permit an archive-only diagnostic. | Workflow lint plus the actual archive-consumer run. A diagnostic never substitutes for the full PR matrix or native-artifact evidence. |
 
 Selected upstream sources are Auth `7fa83fbf` (prepared v12 patch `3891999e`),
-Core `4dfac0ce` (only the existing lifecycle correction), Messaging `2629d349`
-and generated LMS `92c8aa06`. The Core deployment example and unrelated v13
-features are deliberately outside this backport. The Redis Streams TLS and
+Core `4dfac0ce` (only the existing lifecycle correction), Messaging `2629d349`,
+generated LMS `92c8aa06` and CLI test fixtures `d97f3511` (tests only). The Core
+deployment example and unrelated v13 features are deliberately outside this backport. The Redis Streams TLS and
 new Android artifact-verification fixes depend on v13-only implementations and
 are not imported into the v12 API surface.
 
 All sixteen publication packages and their internal version requirements are
 12.1.1. Workspace and ten fuzz-package locks must resolve without modification.
 The CLI reports its package version through `CARGO_PKG_VERSION`; historical
-12.1.0 fixtures and publication receipts retain their original identity.
+12.1.0 artifact fixtures and publication receipts retain their original identity.
+Executable discovery fixtures derive their eligible target from the current
+package version so a version bump cannot turn a cache check into a downgrade.
 
 ## Compatibility and application action
 

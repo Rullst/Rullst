@@ -30,6 +30,10 @@ No tag or crates.io publication is established by this section. See the
 
 ### Maintenance
 
+- Make executable update-discovery cache fixtures follow the current CLI version
+  and verify both entry points report that version. Preserve downgrade rejection
+  and all cache validity, offline, no-write and authority assertions.
+
 - Highlight Rullst Academy in the README navigation and a dedicated section: a
   learning platform built with Rullst to teach Rust, Rullst and other technologies.
 - Carry the compatible dependency/tool updates already reviewed in PR #240 and

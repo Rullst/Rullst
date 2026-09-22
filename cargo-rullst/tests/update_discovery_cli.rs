@@ -14,6 +14,27 @@ fn run(args: &[&str]) -> std::process::Output {
 }
 
 #[test]
+fn both_entry_points_report_the_actual_cli_source_version() {
+    for (executable, arguments) in [
+        (env!("CARGO_BIN_EXE_cargo-rullst"), vec!["--version"]),
+        (
+            env!("CARGO_BIN_EXE_cargo-rullst"),
+            vec!["rullst", "--version"],
+        ),
+        (env!("CARGO_BIN_EXE_rullst"), vec!["--version"]),
+    ] {
+        let output = Command::new(executable).args(arguments).output().unwrap();
+        assert!(output.status.success());
+        let stdout = std::str::from_utf8(&output.stdout).unwrap();
+        assert_eq!(
+            stdout.trim(),
+            format!("rullst {}", env!("CARGO_PKG_VERSION"))
+        );
+        assert!(output.stderr.is_empty());
+    }
+}
+
+#[test]
 fn help_lists_update_without_removing_the_legacy_upgrade_command() {
     let output = run(&["--help"]);
     assert!(output.status.success());
@@ -113,6 +134,12 @@ mod private_cache {
         time::{SystemTime, UNIX_EPOCH},
     };
 
+    fn stable_target() -> String {
+        let mut version = semver::Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
+        version.pre = semver::Prerelease::EMPTY;
+        version.to_string()
+    }
+
     fn fixture(body: &str, age: u64) -> tempfile::TempDir {
         let temp = tempfile::tempdir().unwrap();
         fs::set_permissions(temp.path(), fs::Permissions::from_mode(0o700)).unwrap();
@@ -147,8 +174,9 @@ mod private_cache {
 
     #[test]
     fn offline_report_revalidates_metadata_without_granting_authority_or_writing() {
-        let body = r#"{"versions":[{"crate":"cargo-rullst","num":"12.1.0","yanked":false,"rust_version":"1.96"}]}"#;
-        let temp = fixture(body, 20);
+        let target = stable_target();
+        let body = serde_json::json!({"versions":[{"crate":"cargo-rullst","num":target,"yanked":false,"rust_version":"1.96"}]}).to_string();
+        let temp = fixture(&body, 20);
         let path = temp.path().join("rullst-update-v1/catalog-v1");
         let before = fs::read(&path).unwrap();
         let output = cached_run(&temp, &[]);
@@ -160,7 +188,7 @@ mod private_cache {
         let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
         assert_eq!(report["metadata_source"], "private-cache");
         assert!(report["metadata_age_seconds"].as_u64().unwrap() >= 20);
-        assert_eq!(report["target"]["version"], "12.1.0");
+        assert_eq!(report["target"]["version"], target);
         assert_eq!(report["target"]["rust_version"], "1.96.0");
         assert!(
             report["authority"]
@@ -177,23 +205,26 @@ mod private_cache {
             1
         );
         // Metadata is selected again for this request, not a cached decision.
-        let rejected = cached_run(&temp, &["--to", "13.0.0", "--allow-major"]);
+        let mut unavailable = semver::Version::parse(&target).unwrap();
+        unavailable.major += 1;
+        let rejected = cached_run(&temp, &["--to", &unavailable.to_string(), "--allow-major"]);
         assert!(!rejected.status.success());
         assert!(String::from_utf8_lossy(&rejected.stderr).contains("exact release is unavailable"));
     }
 
     #[test]
     fn expired_malformed_and_yanked_cache_cannot_substitute_for_an_exact_target() {
+        let target = stable_target();
+        let yanked =
+            serde_json::json!({"versions":[{"crate":"cargo-rullst","num":target,"yanked":true}]})
+                .to_string();
         for (body, age) in [
             (r#"{"versions":[]}"#, 6 * 3600),
             ("not-json", 0),
-            (
-                r#"{"versions":[{"crate":"cargo-rullst","num":"12.1.0","yanked":true}]}"#,
-                0,
-            ),
+            (yanked.as_str(), 0),
         ] {
             let temp = fixture(body, age);
-            let output = cached_run(&temp, &["--to", "12.1.0"]);
+            let output = cached_run(&temp, &["--to", &target]);
             assert!(!output.status.success());
             assert!(output.stdout.is_empty());
             assert!(
