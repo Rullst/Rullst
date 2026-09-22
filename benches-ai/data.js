@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790051652761,
+  "lastUpdate": 1790067690724,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -9395,6 +9395,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 705,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "88027f6a03a934dfd80f24bdeb15798e18b40a23",
+          "message": "feat(release): prepare v13 packages and maintenance plan\n\nFinalize ordinary package inventory, archive consumers, compatible dependency updates and maintenance documentation.",
+          "timestamp": "2026-09-22T05:37:43-03:00",
+          "tree_id": "fdc8652b92143d8f18e7c913d3477c6052702633",
+          "url": "https://github.com/Rullst/Rullst/commit/88027f6a03a934dfd80f24bdeb15798e18b40a23"
+        },
+        "date": 1790067690246,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1707,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 376,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 720,
+            "range": "± 20",
             "unit": "ns/iter"
           }
         ]
