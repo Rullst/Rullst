@@ -9,6 +9,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### v13 package preparation
+
+- Include standalone Supervision and Media in the 19-package publication
+  candidate, with their extracted consumers and LMS supervision journey in the
+  ordinary archive checks. Labs and its runner remain outside publication.
+- Let the stable CLI generate a pinned registry Supervision dependency;
+  prerelease evaluation still requires explicitly supplied matching source.
+  Include Supervision and Media in the CLI upgrade inventory.
+- Highlight Rullst Academy in the framework README and document alpha
+  evaluation, immutable prereleases and recovery of the selected package set.
+- Integrate the new Dependabot candidates for SES 1.136.0, its compatible AWS
+  runtime dependencies, tokio-rustls 0.26.5 and pinned install-action 2.87.16.
+  Combined hosted verification and publication remain pending.
+
 ### Dependency refresh candidate
 
 - Update the workspace and affected fuzz locks for jsonwebtoken 11.1.0,

@@ -15,6 +15,7 @@ pub(super) const RULLST_PACKAGES: &[&str] = &[
     "rullst-iot",
     "rullst-macros",
     "rullst-mail",
+    "rullst-media",
     "rullst-messaging",
     "rullst-nexus",
     "rullst-orm",
@@ -22,6 +23,7 @@ pub(super) const RULLST_PACKAGES: &[&str] = &[
     "rullst-privacy",
     "rullst-security",
     "rullst-studio",
+    "rullst-supervision",
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]

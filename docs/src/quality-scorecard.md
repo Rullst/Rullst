@@ -91,6 +91,24 @@ is separate evidence and does not increase this report's score.
 
 ## Maintaining the score
 
+The September 22 package-preparation candidate adds Supervision and Media to
+the nineteen-package scorecard inventory while retaining every earlier ceiling.
+Each new package starts with the same conservative **85/100 ceiling** as Privacy:
+API 19, verification 23, security 19, documentation 14 and operations 10.
+The 90-point RC planning floor and 95-point local target remain unchanged.
+These are reviewed policy limits, not awarded scores or independent audits.
+
+Supervision's evidence covers its optional domain contracts, shared-local
+SQLite state, minimized browser observations and generated LMS consumer. It
+does not verify guardianship, infer cheating as fact or control other device
+applications. Media's evidence covers the Bunny lifecycle, protocol failures,
+browser upload, durable recovery and an extracted consumer; actual Bunny/CDN
+interoperability and application entitlement policy remain outside that evidence.
+Both withhold operations credit for ordinary-release archive acceptance, first
+registry registration and deployment recovery. Their current hosted gates must
+pass before the report can award the applicable dimensions. Labs remains outside
+the publication scorecard and retains its separate isolation acceptance.
+
 For every relevant change, retain the commit and workflow result, identify
 which gates and evidence changed, and report capability progress separately.
 New source does not inherit the stable release's score automatically.

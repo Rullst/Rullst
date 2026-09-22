@@ -1,4 +1,4 @@
-# v12 partial-publication and recovery runbook
+# Partial-publication and recovery runbook
 
 This runbook covers an interrupted multi-crate publication. A crates.io upload
 is irreversible: a version can be yanked but cannot be deleted or replaced with
@@ -64,10 +64,14 @@ one-time token is therefore an explicit, bounded exception, not a permanent
 fallback. See the official [crates.io Trusted Publishing announcement](https://blog.rust-lang.org/2025/07/11/crates-io-development-update-2025-07/)
 and [Cargo publishing rules](https://doc.rust-lang.org/cargo/reference/publishing.html).
 
-### v13 privacy package registration
+### v13 package registration
 
-The unpublished packaging candidate adds `rullst-privacy` to the release
-inventory. Its owner endpoint returned 404 on 20 September 2026. The current
+The unpublished packaging candidate adds `rullst-privacy`, `rullst-supervision`
+and `rullst-media` to the release inventory. All three owner endpoints returned
+404 on September 22, 2026, while the other sixteen names retained the expected
+owner. They are the only names in the reviewed initial-registration allowlist.
+This enables ownership diagnostics, not publication: the ordinary release
+workflow still refuses unregistered names. The current
 [crates.io documentation](https://crates.io/docs/trusted-publishing) still requires
 an API token for the first publication. Package/consumer acceptance must precede
 an explicitly reviewed initial publication of real crate content; an empty
@@ -142,7 +146,8 @@ verification.
 
 Recovery is complete only when:
 
-- all 16 expected versions are indexed with retained checksums;
+- every version in the tagged release inventory is indexed with its retained
+  checksum (16 packages for v12; 19 in the current v13 candidate);
 - a clean consumer resolves only registry packages and compiles;
 - documentation/index pages are reachable;
 - the incident timeline and any yanks/replacements are recorded;

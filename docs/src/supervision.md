@@ -1,8 +1,10 @@
 # Transparent exam and parental supervision
 
-**Status: unpublished implementation in progress.** This contract defines the
-first `rullst-supervision` increment. It is not an available production feature,
-verified guardianship service, device controller or legal-compliance claim.
+**Status: unpublished v13 release candidate.** The implemented contract and
+observation extension passed combined source/archive acceptance in PR #239. The
+package is included in the release inventory, pending initial registration and
+final release acceptance. It supplies no verified guardianship, device-wide
+control or legal-compliance certification.
 
 ## Package and integration boundary
 
@@ -135,9 +137,12 @@ resuming. No automatic rollback or failover claim is made.
   installed-archive consumer before registry inclusion. Phase completion means
   the named behavior and tests exist; no mock-only package admission.
 
-## Generated preview being validated
+## Generated LMS integration
 
-The explicit command is available only with the matching local unpublished source:
+The current prerelease CLI requires the matching local source. A stable CLI
+selects the exact matching registry version when `--supervision-source` is
+omitted; an explicit path must still match the package identity and CLI version.
+Neither mode enables supervision by default or upgrades an existing store.
 
 ```bash
 cargo rullst make:supervision --supervision-source /path/to/rullst-supervision \
@@ -190,8 +195,8 @@ hosted checks in PR #226 and retrospective exact-commit archive validation;
 the [delivery plan](v13-delivery-plan.md) records the original skipped gate and
 its repair. Neither source increment replaces the final release campaign.
 
-The distribution diagnostic audits and extracts the unpublished supervision
-archive explicitly and feeds that extracted source to the installed CLI. Normal
-release packaging now selects exactly `.github/release-order.json`, rather than
-all workspace members. Candidate mode does not add supervision to publication
-and must be removed when the package is admitted to that inventory.
+Normal release packaging selects exactly `.github/release-order.json`, which
+now includes Supervision. Its archive tests and generated LMS journey run in
+the ordinary installed-CLI rehearsal. The current prerelease rehearsal feeds
+only audited extracted source to the CLI; it never resolves an unpublished
+registry version. Labs retains a separate diagnostic-only package mode.

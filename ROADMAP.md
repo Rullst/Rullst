@@ -30,6 +30,17 @@ Target windows are planning intentions, not release guarantees. Promotion to
 `[x]` requires code, focused tests, truthful documentation, and the release gates
 at the end of this document.
 
+**September 22 direction:** stable v12.1 maintenance takes priority over
+publishing v13 to meet a date. September 26 is a review/handoff point, and
+development may continue in later sessions. The
+[investment proposal](docs/src/v13-priorities.md) groups M1–M41 into 25 themes to
+invest in or maintain and 16 to defer until justified, including M31's separate
+programme. It preserves the historical ideas; it does not require every theme
+for 13.0.0 or remove maintenance from already supported capabilities.
+The same proposal flags twelve existing themes with a separate high-maintenance
+marker and offers eight bounded follow-up subtasks. Those overlap the original
+themes and are not added again to the milestone count.
+
 ## Audit of the detailed crate roadmaps
 
 The per-crate roadmaps are intentionally preserved as detailed design backlogs.
@@ -48,7 +59,7 @@ contains the evidence boundary and recommendation for the highest-risk claims.
 | [`rullst-mail`](rullst-mail/ROADMAP.md) | Core REST/SMTP/log/memory/mock drivers, failover, bounded attachment/CID serialization, scheduling foundations, mandatory security/deliverability pipeline, deterministic mocks, tenant resolution, tracking tokens, factories, background worker integration, opt-in bounded attachment inspection, shared-local SQLite suppression and minimized delivery observations. Version 12.1 adds Resend/Svix feedback verification and ACS Managed Identity, SendPulse, Mailjet and Mailtrap transports with explicit protocol boundaries. | A checked item does not prove provider acceptance or inbox delivery; provider limits may be tighter, the local inspector is not antivirus/CDR, and other provider feedback adapters plus multi-host suppression remain open. Compile-time mailables/CSS inlining, inbound MIME, AI dunning, DMARC/DKIM/S-MIME and Studio Mail Radar are not implemented; additional providers require a shared contract suite. |
 | [`rullst-messaging`](rullst-messaging/ROADMAP.md) | Bounded envelopes and wire/trace codec, idempotent publication, competing consumers, leases/retry/DLQ, deterministic local broker, encrypted-content SQLite state and opt-in ORM outbox relay. | The standalone Redis Streams candidate has TLS/restart/fault/outbox evidence and passed hosted source/package admission in PR #236; see [its contract](docs/src/redis-messaging.md). Other remote brokers and replication/failover remain roadmap work. Local durability does not provide cross-system exactly-once delivery. |
 | [`rullst-nexus`](rullst-nexus/ROADMAP.md) | Fail-closed admin construction, generated metadata/forms, CRUD/search/pagination/batch actions, opt-in trusted-context tenant scope and transaction-coupled mutation audit. | Host authentication/tenant resolution, global-model/custom-route policy, immutable external audit, custom dashboards and a visual SQL builder remain application or roadmap work. |
-| [`rullst-orm`](rullst-orm/ROADMAP.md) | SQLx pools/dialects, Active Record/repository/query/schema foundations, fail-closed tenant scopes, strict DB modes, transactions, relations/soft deletes, audit/privacy, typed Turso primary, bounded MongoDB/DuckDB/SurrealDB adapters, Qdrant vectors and Redis native structures. | The [transactional partial-update candidate](docs/src/transactional-partial-updates.md) has local native/archive-consumer evidence and awaits full hosted admission. Several historical `[x]` entries remain partial or absent: transparent edge replication, universal external-search durability, autonomous schema/index changes, automatic graph traversal, Wasm drivers and PQC. The 45 historical claims are preserved in the [immutable v12 audit](https://github.com/Rullst/Rullst/blob/v12.0.0/docs/src/v12.md); the current capability ledger owns their boundaries. |
+| [`rullst-orm`](rullst-orm/ROADMAP.md) | SQLx pools/dialects, Active Record/repository/query/schema foundations, fail-closed tenant scopes, strict DB modes, transactions, relations/soft deletes, audit/privacy, typed Turso primary, bounded MongoDB/DuckDB/SurrealDB adapters, Qdrant vectors and Redis native structures. | The [transactional partial-update candidate](docs/src/transactional-partial-updates.md) passed native/archive-consumer and full hosted source admission in PRs #236 and #239. Several historical `[x]` entries remain partial or absent: transparent edge replication, universal external-search durability, autonomous schema/index changes, automatic graph traversal, Wasm drivers and PQC. The 45 historical claims are preserved in the [immutable v12 audit](https://github.com/Rullst/Rullst/blob/v12.0.0/docs/src/v12.md); the current capability ledger owns their boundaries. |
 | [`rullst-security`](rullst-security/ROADMAP.md) | Bounded honeypot, sanitizer/CSP, RBAC, HMAC audit chain, RASP/DLP, AES-GCM vault, headers, applied Login Jail tarpit, TOTP with SVG QR, CSWSH origin policy, strict JSON/log guards, file-backed SRI, CEF formatting, compatible unsigned and opt-in HMAC-chained bounded local SIEM journals, timing/prompt filters and fail-closed CLI evidence/SBOM/doctor tools. | “Autonomous”, live reputation/external SIEM delivery, A+ guarantees, zero-leak/zero-latency, certification and total OWASP/memory-safety claims are not established. Trusted whole-tail checkpoints, spool compaction/remote acknowledgement, CSRF WebSocket tickets/frame crypto, distributed rate limits/audit sinks, KMS/rotation, adaptive WAF, SQL firewall and all PQC/kernel/Wasm containment items remain partial or absent. |
 | [`rullst-studio`](rullst-studio/ROADMAP.md) | Verified-loopback developer UI, SQLx browser, supplied-OpenAPI playground, bounded queue history, ER diagrams, flags/config, authenticated trace ingestion, query heuristics and metadata-only Memory/Redis cache inspection. | Durable/OTLP trace storage, shared operator authorization, cross-process flag invalidation, Redis queue inspection and general database writes remain open. Query heuristics do not prove every N+1 or performance defect. |
 
@@ -103,7 +114,7 @@ code, tests, provider/hardware environment, and operational semantics exist.
 | **M37** | One-click AI error-console autofix | `[~] Partial` *(worth retaining as a local, reviewable patch workflow — an autofix endpoint exists, but autonomous edits need diff preview, workspace confinement, audit, tests, and rollback)* | v13 |
 | **M38** | In-memory/local-NVMe SQLite read replicas with background synchronization | `[ ] Not implemented` *(worth vendor-specific adapters when demanded; generic “transparent replication” is not worth claiming because consistency and failover semantics belong to the selected database)* | v13 research |
 | **M39** | Optional self-hosted Rullst Gateway and load balancer | `[ ] Not implemented` *(worth a phased v13 design as a separate opt-in `rullst-gateway` crate/binary, preferably on a maintained proxy foundation such as Pingora. It should consume explicit readiness/drain signals and begin with bounded upstream selection, health checks, WebSocket forwarding and telemetry. It must not live inside `rullst-core` or claim parity with a managed global cloud service, whose network, DDoS controls, multi-zone operations and SLA are external infrastructure.)* | v13 research/foundation |
-| **M40** | Isolated programming labs and learning-game execution | `[~] Experimental implementation` *(unpublished `rullst-labs` contracts and a separately deployed Linux Rust/Wasmi runner provide durable submissions, grading, cancellation and recovery. The named profile passed 26 isolated checks, native tests and installed-archive acceptance; complete PR admission and independent isolation review remain pending. The web process never executes learner code or receives a container control socket. Broader language packs and offensive CTF infrastructure remain separate; see the dedicated roadmap.)* | v13 research/foundation |
+| **M40** | Isolated programming labs and learning-game execution | `[~] Experimental implementation` *(unpublished `rullst-labs` contracts and a separately deployed Linux Rust/Wasmi runner provide durable submissions, grading, cancellation and recovery. The named profile passed 26 isolated checks, native tests and installed-archive acceptance; source admission passed in PRs #228 and #239; independent isolation review and final release acceptance remain pending. The web process never executes learner code or receives a container control socket. Broader language packs and offensive CTF infrastructure remain separate; see the dedicated roadmap.)* | v13 research/foundation |
 | **M41** | Privacy defaults and proportional age assurance | `[~] Initial foundation` *(opt-in unpublished `rullst-privacy` age policies, signed evidence, asynchronous replay claims, trusted-clock rechecks, shared-local SQLite and optional PostgreSQL storage across application hosts with focused real-database tests; native declarations, versioned optional consent and generated SaaS/LMS preference/profile-export journeys have focused evidence. The package candidate adds optional facade features and passed hosted/archive source acceptance in PR #221; initial package registration, final release admission, live age providers, guardian verification, broader rights/retention and reviewed regional profiles remain open. See the [privacy roadmap](docs/src/privacy-age-assurance-roadmap.md). No automatic worldwide compliance claim.)* | v13 P0 |
 
 ## Quantified planning horizon through v13
@@ -136,6 +147,12 @@ a release implements a particular percentage of the entire framework vision.
 
 Progress toward 13.0.0 is tracked through concrete deliverables and their
 acceptance evidence in the [dated delivery plan](docs/src/v13-delivery-plan.md).
+The September 22 publication candidate includes standalone Supervision and
+Media alongside Privacy, for nineteen packages. Initial registry registration
+and final release acceptance are still required; Labs and its runner remain
+experimental and outside the publication inventory. Compatible roadmap
+expansions can continue in 13.1 and later minors; they are not automatically
+deferred to a new major.
 Checking these labels does not constitute a fresh implementation audit of every
 underlying capability. Provider accounts,
 physical hardware, store acceptance, fiscal homologation, independent audits
@@ -397,10 +414,10 @@ age-assurance package and v13 Labs/privacy/Verus plans remain separate.
 Each later increment requires its own CI evidence; stable-release results do
 not certify the combined v13 source.
 
-The [delivery plan through 26 September 2026](docs/src/v13-delivery-plan.md)
-selects the bounded release priorities, acceptance criteria and feature-freeze
-dates. It preserves this wider roadmap and does not turn planned capabilities
-into shipped claims.
+The [delivery plan and evidence](docs/src/v13-delivery-plan.md) retains the
+bounded acceptance criteria and original calendar. The September 22
+[priority revision](docs/src/v13-priorities.md) removes a mandatory publication
+date. Neither document turns planned capabilities into shipped claims.
 
 On September 21, the owner selected shared PostgreSQL consent and single-use
 email login links as the next two implementation priorities through September
@@ -562,8 +579,8 @@ v12-to-v13 automation requires v13's published migration catalog and tested
 application fixtures; the same-major restriction of the current `upgrade`
 command must not be silently removed. Reserve incompatible changes for v13.
 
-After this bounded minor is implemented, validated and released, concentrate
-new capability work on v13, with v12 maintenance by exception. The website
+Continue new capability work on v13 while actively maintaining the supported
+v12 line with reviewed compatible fixes and dependency updates. The website
 redesign is a separate documentation delivery, not a reason to bump framework
 versions or postpone verification work. This plan neither bumps package
 versions nor authorizes publication, and it does not claim that any major
@@ -607,7 +624,7 @@ or label unimplemented v13 contracts as available in v12.
 | Version | Status | Honest scope |
 | :--- | :---: | :--- |
 | **v12.0.0** | `[x] Published stable` | Tag `v12.0.0` at `eb11f892` completed the protected release workflow and published all sixteen packages on September 15, 2026. |
-| **v12.x** | `[~] Maintenance if needed` | Preserve published releases; separately review important compatible fixes when necessary. |
+| **v12.x** | `[~] Active stable maintenance` | Preserve published releases; prioritize reviewed compatible fixes and dependency updates. Patch releases must retain the supported compiler and public contracts. |
 | **v12.1.0** | `[x] Published compatible minor` | All sixteen packages were published from `b62390b4` on 20 September 2026 UTC. Guided CLI/project updates, SaaS/Nexus fixes, account mail and the other bounded contracts are recorded with immutable source and registry evidence in the [publication record](docs/src/v12.md#1210-published-maintenance-release). |
 | **v13.x** | `[ ] Next feature line` | Compatible and breaking improvements move together into the next deliberate cycle: generated-project coverage, auth/session consolidation, typed SDKs, selected adapters, security-stack consolidation and research-heavy architecture all require fresh acceptance boundaries. |
 

@@ -1,4 +1,4 @@
-//! Explicit unpublished full-LMS/SQLite consumer. All edits are planned first.
+//! Explicit full-LMS/SQLite consumer. All edits are planned first.
 use super::{consumer_files as files, consumer_support};
 use clap::{Arg, ArgMatches, Command};
 use files::Edit;
@@ -6,7 +6,8 @@ use std::{
     io,
     path::{Path, PathBuf},
 };
-use toml_edit::{Array, DocumentMut, InlineTable, Item, Value};
+use toml_edit::{DocumentMut, Item, Value};
+mod dependency;
 mod routing;
 
 fn invalid(message: &str) -> io::Error {
@@ -15,9 +16,7 @@ fn invalid(message: &str) -> io::Error {
 
 pub(crate) fn command() -> Command {
     Command::new("make:supervision")
-        .about(
-            "Add explicit transparent supervision to the full SQLite LMS (unpublished v13 preview)",
-        )
+        .about("Add explicit transparent supervision to the full SQLite LMS")
         .arg(
             Arg::new("browser-observations")
                 .long("browser-observations")
@@ -29,7 +28,7 @@ pub(crate) fn command() -> Command {
         .arg(
             Arg::new("supervision-source")
                 .long("supervision-source")
-                .required(true)
+                .help("Matching local supervision crate; required with a prerelease CLI")
                 .value_parser(clap::value_parser!(PathBuf)),
         )
         .arg(
@@ -58,9 +57,7 @@ pub(crate) fn command() -> Command {
 
 pub(crate) fn run(args: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
     let root = std::env::current_dir()?;
-    let source = args
-        .get_one::<PathBuf>("supervision-source")
-        .ok_or_else(|| invalid("missing source"))?;
+    let source = args.get_one::<PathBuf>("supervision-source");
     let policy = args
         .get_one::<String>("policy-version")
         .ok_or_else(|| invalid("missing policy"))?;
@@ -79,7 +76,13 @@ pub(crate) fn run(args: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
             .unwrap_or("visibility"),
     )?;
     files::apply(&plan(
-        &root, source, policy, notice, retention, lifetime, collection,
+        &root,
+        source.map(PathBuf::as_path),
+        policy,
+        notice,
+        retention,
+        lifetime,
+        collection,
     )?)?;
     println!(
         "Supervision installed. Read SUPERVISION.md: initialize the private store and form key before startup; independently verify authority before administrative provisioning."
@@ -89,7 +92,7 @@ pub(crate) fn run(args: &ArgMatches) -> Result<(), Box<dyn std::error::Error>> {
 
 fn plan(
     root: &Path,
-    source: &Path,
+    source: Option<&Path>,
     policy: &str,
     notice: &str,
     retention: u32,
@@ -112,22 +115,7 @@ fn plan(
         return Err(invalid("invalid retention or lifetime").into());
     }
     consumer_support::recognized_auth(root, "lms")?;
-    let source = source.canonicalize()?;
-    let package: toml::Value = toml::from_str(&files::read(&source.join("Cargo.toml"))?)?;
-    if package
-        .get("package")
-        .and_then(|p| p.get("name"))
-        .and_then(toml::Value::as_str)
-        != Some("rullst-supervision")
-        || package
-            .get("package")
-            .and_then(|p| p.get("version"))
-            .and_then(toml::Value::as_str)
-            != Some(env!("CARGO_PKG_VERSION"))
-        || !source.join("src/sqlite/mod.rs").is_file()
-    {
-        return Err(invalid("source must be the supervision package matching this CLI").into());
-    }
+    let supervision_dependency = dependency::select(source, env!("CARGO_PKG_VERSION"))?;
     let manifest_path = root.join("Cargo.toml");
     let original = files::read(&manifest_path)?;
     let mut manifest: DocumentMut = original.parse()?;
@@ -162,25 +150,8 @@ fn plan(
         )
         .into());
     }
-    let mut dependency = InlineTable::new();
-    dependency.insert(
-        "path",
-        Value::from(
-            source
-                .to_str()
-                .ok_or_else(|| invalid("source path must be UTF-8"))?,
-        ),
-    );
-    dependency.insert(
-        "version",
-        Value::from(format!("={}", env!("CARGO_PKG_VERSION"))),
-    );
-    dependency.insert("default-features", Value::from(false));
-    dependency.insert(
-        "features",
-        Value::Array(["sqlite"].into_iter().collect::<Array>()),
-    );
-    manifest["dependencies"]["rullst-supervision"] = Item::Value(Value::InlineTable(dependency));
+    manifest["dependencies"]["rullst-supervision"] =
+        Item::Value(Value::InlineTable(supervision_dependency));
     for (name, version) in [("ring", "0.17"), ("hex", "0.4"), ("chrono", "0.4")] {
         if manifest["dependencies"].get(name).is_none() {
             manifest["dependencies"][name] = toml_edit::value(version);

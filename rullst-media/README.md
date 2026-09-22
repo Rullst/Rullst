@@ -3,7 +3,9 @@
 Unpublished v13 candidate for private course videos with Bunny Stream. The crate
 provides creation, metadata, resumable upload authorization, processing refresh,
 explicit publication, current-entitlement playback, withdrawal, deletion and
-recovery of interrupted operations. It is **opt-in and not admitted for release**.
+recovery of interrupted operations. It is **opt-in**, with its standalone package
+now included in the v13 release inventory. Initial crates.io registration and
+final release acceptance remain outstanding.
 Real Bunny account, transcoding, CDN and player interoperability are **unvalidated**;
 automated acceptance uses local HTTP protocol fixtures and controlled browser media.
 
@@ -26,9 +28,10 @@ temporary SQLite database and an explicit offline provider. It creates, publishe
 checks entitlement, withdraws and deletes a lesson, without network credentials.
 Its mock grants are deliberately unusable for browser playback/upload.
 
-There is no default Core/Auth/ORM dependency, framework facade feature, automatic
-blueprint modification or crates.io installation command for this candidate.
-Applications may use a reviewed local path dependency with `bunny` and `sqlite`.
+There is no default Core/Auth/ORM dependency, framework facade feature or automatic
+blueprint modification. Until publication, applications can evaluate a reviewed
+local path dependency with `bunny` and `sqlite`. The current `13.0.0-alpha.1` source
+is not an available stable crates.io release.
 
 ## Server composition
 

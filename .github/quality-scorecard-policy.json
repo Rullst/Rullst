@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "audit_date": "2026-09-20",
+  "audit_date": "2026-09-22",
   "dimensions": {
     "api_architecture": 20,
     "verification": 25,
@@ -158,6 +158,28 @@
         "docs/src/privacy-age-assurance-roadmap.md",
         "docs/src/quality-scorecard.md"
       ]
+    },
+    {
+      "name": "rullst-supervision",
+      "api_architecture": 19,
+      "verification": 23,
+      "security_failure_design": 19,
+      "documentation_dx": 14,
+      "operations_release": 10,
+      "specialist_gate": "none",
+      "finding": "Optional exam/parental contracts, minimized browser observations and shared-local SQLite state have ownership, retention, replay, restart and generated LMS evidence. The initial 85-point ceiling withholds operations credit for pending ordinary-release archive acceptance, first registry registration and deployment recovery. Signals are untrusted observations, not proof of cheating, verified guardianship or device-wide parental control; remote storage and authoritative media analysis remain external.",
+      "evidence": ["rullst-supervision/README.md", "rullst-supervision/tests", "cargo-rullst/src/generators/supervision", ".github/test-packaged-distribution.sh", "docs/src/supervision.md"]
+    },
+    {
+      "name": "rullst-media",
+      "api_architecture": 19,
+      "verification": 23,
+      "security_failure_design": 19,
+      "documentation_dx": 14,
+      "operations_release": 10,
+      "specialist_gate": "none",
+      "finding": "Optional Bunny lifecycle and shared-local SQLite state have authorization, protocol, bounded browser upload, notification reconciliation, restart and extracted-consumer evidence. The initial 85-point ceiling withholds operations credit for pending ordinary-release archive acceptance, first registry registration and deployment recovery. Live Bunny/CDN interoperability, entitlement policy and credential/backup operations remain unvalidated or host-owned; protocol fixtures do not establish provider acceptance.",
+      "evidence": ["rullst-media/README.md", "rullst-media/tests", "rullst-media/examples/private_course_video.rs", ".github/test-media-package.sh", "docs/src/managed-video-roadmap.md"]
     },
     {
       "name": "rullst-nexus",

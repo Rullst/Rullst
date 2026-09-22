@@ -84,18 +84,21 @@ verification gates to every contribution, regardless of authorship. See
 8. Ensure the full test suite passes.
 
 ## Branching Model
-- `main`: Protected v13 development and release source. Product work and
-  breaking changes target this branch; its contents are not published v12 APIs.
+
+- `main`: Protected v13 development. Product work and breaking changes target
+  this branch; its contents are not published v12 APIs.
 - `v12`: Protected 12.x maintenance. Compatible fixes, documentation and
   appropriate dependency updates target this branch.
-- `v13`: Transitional source reference retained while main-line admission
-  completes; new work targets `main`.
-- `v5`: Frozen historical source for the legacy v5 line. Do not target it with
-  routine fixes or dependency updates; released v5 consumers should pin the
-  immutable `v5.0.0` tag or crates.io artifact.
-- Feature and fix branches are short-lived and return to their selected base.
-- `gh-pages`: Generated site/benchmark data used by the Pages workflow; it is
-  not a framework development branch.
+- `gh-pages`: Generated site/benchmark data used by the Pages workflow.
+- Feature, fix and Dependabot branches are temporary and are removed after
+  integration or verified replacement. The former `v13` branch is retired;
+  legacy v5 consumers use the immutable `v5.0.0` tag or crates.io artifact.
+
+Carry every applicable stable fix into `main`, with its regression tests and a
+linked PR or an explicit already-present/not-applicable record. Branches may
+legitimately be both ahead and behind each other. Follow the
+[compatibility and cross-line maintenance policy](docs/src/compatibility-policy.md#carrying-fixes-between-maintained-lines)
+instead of forcing their histories or lockfiles to match.
 
 ## Documentation lifecycle
 

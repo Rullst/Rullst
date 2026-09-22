@@ -153,7 +153,11 @@ It has no Core/Auth/ORM runtime dependency and no default network/database featu
 Core is a test-only dependency for the real HTTP/browser security composition.
 `bunny` selects the reviewed HTTP/signature adapter; `sqlite` selects durable
 shared-local asset/operation state and static-dispatch application orchestration.
-No facade dependency or release-order admission is implied by scaffolding it.
+PRs #227 and #239 supply hosted source and extracted-package evidence. The
+standalone package now enters the v13 release inventory, without a facade
+dependency. The publication configuration requires its own hosted package
+validation, reviewed initial registration and final release acceptance. Actual
+Bunny account/CDN interoperability remains explicitly unvalidated.
 
 The host supplies authenticated actor/course membership and current management
 or playback entitlement through a checked authorization trait. Local asset IDs
@@ -554,9 +558,11 @@ as the first additional priority after the required v13 deliveries have been
 implemented and validated. `rullst-supervision` is now an unpublished implementation
 candidate with bounded domain contracts and shared-local SQLite state. Its
 local generated-consumer and Chromium journeys pass. The baseline also passed
-hosted checks and archive rehearsal in PR #222; the observation extension requires
-its own complete acceptance before admission;
-`publish = false` is retained.
+hosted checks and archive rehearsal in PR #222; the observation extension passed
+PR #226 and its retrospective archive check. The combined source passed PR #239.
+The package now enters the v13 release inventory with no default facade dependency.
+Its changed publication configuration still requires hosted package validation,
+reviewed initial registration and final release acceptance.
 
 Keep supervision policy/session/event and reviewer-access contracts separate
 from `rullst-privacy` age and consent primitives. Exam supervision and parental
@@ -590,6 +596,13 @@ with `BEGIN IMMEDIATE`, persist configuration, a clock high-water mark and a
 global revision counter, and enforce bounded quotas and retention. An opener
 must supply the independently retained deployment epoch. This detects epoch
 mismatch, not restoration of an old database with the same epoch.
+
+`make:supervision` remains an explicit full-SQLite-LMS opt-in. Stable CLI releases
+pin the supervision dependency to exactly their own version and disable default
+features. `--supervision-source` optionally selects a local crate with matching
+name/version and the SQLite module. A prerelease CLI requires that source path
+and fails before applying edits when it is absent; it must never resolve an
+unpublished registry candidate or silently substitute the stable v12 package.
 
 Only trusted operator provisioning can establish expiring `ExamReview` or
 `ParentalManage` authority after independent relationship verification. The host
@@ -1348,7 +1361,7 @@ service. Those tests do not establish interoperability with owner accounts,
 provider configuration or regional legal compliance. Source/package admission
 passed in PR #236; final release admission remains separate.
 
-#### Resumable multipart candidate (unpublished, admission pending)
+#### Resumable multipart candidate (source admitted, unpublished)
 
 The separate opt-in `storage-multipart` extends this adapter with server-mediated
 initiation, exact-size SHA-256-checked parts, bounded remote reconciliation,

@@ -24,15 +24,18 @@ Run the deterministic, explicitly simulated adapter example without credentials:
 cargo run -p rullst-supervision --example observation_adapter --features sqlite,analysis
 ```
 
-The [observation integration guide](../docs/src/supervision-observations.md)
+The [observation integration guide](https://rullst.github.io/Rullst/book/supervision-observations.html)
 explains selection, permission boundaries, adapter contracts and schema v2.
 Unpublished schema v1 requires a separately reviewed transition to a fresh store;
 opening it never upgrades, deletes or infers consent from existing records.
 
-The [design and acceptance boundary](../docs/src/supervision.md) records the
+The [design and acceptance boundary](https://rullst.github.io/Rullst/book/supervision.html) records the
 supported scope and generated-LMS/Chromium evidence. Source increments entered
 `v13` through PRs #222 and #226; the latter's missing premerge archive gate was
 repaired retrospectively, as recorded in the
-[delivery evidence](../docs/src/v13-delivery-plan.md). Final combined release
+[delivery evidence](https://rullst.github.io/Rullst/book/v13-delivery-plan.html). Final combined release
 and package-admission requirements remain separate.
-This package is not yet admitted for publication or production use.
+The standalone package is now included in the v13 release inventory. Initial
+crates.io registration and final release acceptance remain outstanding; the
+current `13.0.0-alpha.1` source is not a published stable release. Applications
+opt in explicitly; no default framework dependency is added.
