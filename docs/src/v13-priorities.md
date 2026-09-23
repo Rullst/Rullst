@@ -200,6 +200,24 @@ after checking overlap and documenting who will use and maintain it. A richer
 framework delivers reliable useful journeys; raw crate or checkbox counts are
 not the success criterion.
 
+## Comparative evaluation adopted on 23 September
+
+Use the [framework reference and evaluation plan](v13-framework-comparison.md)
+to study Loco/Laravel productivity, Django security/documentation and Axum
+composition, with other frameworks as targeted references. Measure development
+effort, failures, performance and maintenance on equivalent application
+journeys. This refines existing A themes and S1-S3; it does not add milestones
+or change the 25/16 counts.
+
+The 25 A themes are not prerequisites for the first comparison. After the active
+v12.1.1 maintenance work, start with a small usable SaaS journey, establish a
+baseline and use the findings to choose subsequent improvements. Broader
+evaluation can accompany later v13 checkpoints. Keep the same acceptance
+contracts, record unfavorable and inconclusive results, and distinguish
+AI-assisted measurements from independent user evidence. Only free resources
+and disposable offline fixtures are authorized; no superiority is established
+by this planning decision or the internal quality scorecard.
+
 ## What makes v13 ready
 
 Do not wait for all 41 themes, all 25 A themes or a percentage of this list.

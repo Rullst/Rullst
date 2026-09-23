@@ -17,6 +17,13 @@ does not change current package admission, publication inventory or v12.1.1.
 Earlier implementation queues below are historical where they imply broader
 expansion without the strategy's product, maintenance and acceptance criteria.
 
+**Evaluation direction adopted on September 23:** after the active v12.1.1
+maintenance admission, begin the [bounded comparison plan](v13-framework-comparison.md)
+with a usable application journey. The 25 A themes are investment priorities,
+not a requirement to finish every theme before measuring effort, failures,
+performance and maintenance. Use findings to select later work; this adds no
+release gate, paid resource, live-account test or claim of superiority.
+
 The owner asked about an alpha-first release on September 22. The current
 `13.0.0-alpha.1` source version supports that evaluation path: consumers opt in
 explicitly and APIs may change before stable v13. Alpha, beta and RC labels do

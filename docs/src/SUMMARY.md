@@ -10,6 +10,7 @@
 - [v13 Delivery Plan & Evidence](v13-delivery-plan.md)
 - [Sustainable v12 Maintenance & v13 Priorities](v13-priorities.md)
 - [v13 Maintenance Scope & Extension Strategy](v13-maintenance-scope.md)
+- [v13 Framework References & Comparative Evaluation](v13-framework-comparison.md)
 - [Website Maintenance & Privacy Boundaries](website-maintenance.md)
 - [Rullst Academy Product Programme](rullst-academy.md)
 - [💡 The Rullst Philosophy](philosophy.md)
