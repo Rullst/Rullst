@@ -74,7 +74,7 @@ campaign history. Its preliminary results do not automatically admit the
 public release branch.
 
 The exact old/new blobs for the maintenance changelog, SST and review document
-are recorded in `.github/fuzz-reviewed-maintenance-docs.json`. Third contents,
+are recorded in `.github/fuzz-reviewed-maintenance-docs.json`. Unreviewed contents,
 path/mode changes and deletion remain inputs. These files are not runtime
 inputs of the reviewed fuzz profiles; a recognized runtime inclusion prevents
 document normalization. The facade's executable fuzz-contract integration test
@@ -106,7 +106,7 @@ site files relative to `44902312`, without changing runtime source, build
 scripts, dependency manifests, fuzz harnesses, locks or execution commands.
 `.github/fuzz-reviewed-publication-docs.json` records the exact old/new Git blob
 IDs by path. Only those two contents, with their original regular-file mode,
-share an input identity; a third blob, removal, rename, mode change or new
+share an input identity; an unreviewed blob, removal, rename, mode change or new
 document remains an input change. This is not a documentation-directory
 exclusion. The review table itself is trusted policy included in the receipt's
 policy digest.
@@ -121,6 +121,39 @@ The exact changed contents were reviewed against these consumers. A new
 production consumer changes shared source and invalidates all targets.
 Package/readme audits, browser checks and doctests still validate the changed
 candidate; this exception only concerns the bounded fuzz campaign.
+
+### Reviewed 12.1.1 registry documentation migration
+
+The registry-readiness patch `e15d4cd8` changes seventeen Markdown files relative
+to `8025c213`: packaged README links, stable-version context, historical release
+wording and retained book anchors. It changes no runtime source, manifest,
+lockfile, build script, harness or execution command. All sixteen generated
+archives were checked for exact README contents, version and MSRV; the book and
+README link checks remain separate from fuzz evidence.
+
+`.github/fuzz-reviewed-registry-docs.json` records the two exact commits and
+old/new blob pairs. The policy explicitly permits only these seventeen paths
+and combines their frozen contents with earlier reviews. It preserves both
+original maintenance evidence and the newer Auth evidence without admitting
+later unreviewed Markdown edits. Path, mode, deletion, runtime inclusion and
+unreviewed consumer rules are unchanged. All review tables are included in the
+receipt's policy digest.
+
+The macro profile retains two exact `rullst-orm-macros` tree identities because
+that package's README link changed; its Rust source and manifest are identical.
+A third tree is not accepted. The AI source-context review also records the
+identity with its newly reviewed README removed from the potential-consumer
+inventory. The facade and Nexus profiles pin the exact potential consumers
+from the reviewed pre-Auth and post-Auth snapshots; both still consume Auth
+through their dependency graph, so the thirteen changed Auth targets remain
+ineligible for pre-Auth evidence. These are bounded trust-policy updates, not
+automatic inferences that every README is safe to ignore. Negative regression tests cover
+unreviewed document contents, malformed records, new paths, future macro source
+and metadata changes, and unknown runtime document consumers.
+
+Equivalent inputs only make evidence eligible. Full-duration original campaigns,
+provenance, the seven-day age limit and the final release evidence boundary are
+still required. A documentation-only change does not itself claim 40/40 coverage.
 
 ## Which results qualify
 

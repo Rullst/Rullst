@@ -2,7 +2,10 @@
   "schema_version": 1,
   "procedural_macros": {
     "rullst-macros": "1230e6a29c39580877c4151c6c53a92a89e1289f9edf61ddd81751096084057a",
-    "rullst-orm-macros": "04d8abaafa8a642b5d4cc5df5d17b1847ffc11877f787c508f1588bbfcf95b57"
+    "rullst-orm-macros": [
+      "04d8abaafa8a642b5d4cc5df5d17b1847ffc11877f787c508f1588bbfcf95b57",
+      "ca9518ab5f0e3fbb95cf9c7874a6f0108ed319b53d9226a3f0d072b4e0435f47"
+    ]
   },
   "doctest_modules": {
     "rullst/src/book_doctests.rs": {
@@ -22,7 +25,8 @@
   ],
   "source_contexts": {
     "rullst-ai/fuzz": [
-      "8b202e4912ce4b546f23768e2fa69d79878903bb282aaf6b4d83776fd091331d"
+      "8b202e4912ce4b546f23768e2fa69d79878903bb282aaf6b4d83776fd091331d",
+      "374d12aeef735678ce9cb3f81958b744716b9f0399a56748d6848df782bead17"
     ],
     "rullst-capital/fuzz": [
       "47bdd12e1f6ff8868282a26934ccf6c915420eb7e9da62b9acf6f3595aa5a75a"
@@ -44,6 +48,14 @@
     ],
     "rullst-studio/fuzz": [
       "72d1e6b5eb811c9d15ce4e668bd1156f237c395778c76dba3241bfdcc6ec078b"
+    ],
+    "rullst/fuzz": [
+      "3cd6a322827f0cbc7493d4ebd048f5c2076b68d9fab485e5d65459227b79c4fd",
+      "93068e787c0de2910d7b1015f16a345af3168af1903b48d862e2507a2894e5de"
+    ],
+    "rullst-nexus/fuzz": [
+      "2e78cce31e9b4bfb8d9045c67b60695ba8c597fd05c2762881420351f11b22af",
+      "9315c43b7094707fdc64c67e0b10aacf67498e718d5fe395ac808a6c67e22911"
     ]
   }
 }
