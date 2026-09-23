@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790066633046,
+  "lastUpdate": 1790134353253,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -19913,6 +19913,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2246,
             "range": "± 51",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "235a90550b46f6804c8b7aed8e2772603f9d89a3",
+          "message": "docs(roadmap): define v13 maintenance and extension scope (#258)",
+          "timestamp": "2026-09-23T00:25:47-03:00",
+          "tree_id": "b98d9a273428639fe9b17e81aac440b7d2a31d44",
+          "url": "https://github.com/Rullst/Rullst/commit/235a90550b46f6804c8b7aed8e2772603f9d89a3"
+        },
+        "date": 1790134351815,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 749,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 964,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 675,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2267,
+            "range": "± 49",
             "unit": "ns/iter"
           }
         ]
