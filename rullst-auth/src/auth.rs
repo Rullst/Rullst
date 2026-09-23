@@ -110,8 +110,8 @@ pub mod connect {
 pub fn parse_app_key_from_toml(toml_content: &str) -> Option<Vec<u8>> {
     for line in toml_content.lines() {
         let trimmed = line.trim();
-        if (trimmed.starts_with("app_key") || trimmed.starts_with("key"))
-            && let Some(val) = trimmed.split('=').nth(1)
+        if let Some((name, val)) = trimmed.split_once('=')
+            && matches!(name.trim(), "app_key" | "key")
         {
             return Some(val.trim().trim_matches('"').as_bytes().to_vec());
         }
@@ -140,6 +140,8 @@ pub fn validate_app_key(key: &[u8]) -> Result<(), AuthError> {
                 | "secret"
                 | "replace_with_your_32_char_random_key"
                 | "change_me_to_a_secure_random_key"
+                | "replace_with_a_strong_random_key"
+                | "replace-with-at-least-32-random-bytes"
         )
     {
         return Err(AuthError::MissingAppKey(

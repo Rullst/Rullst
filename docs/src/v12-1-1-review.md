@@ -9,7 +9,7 @@ development. No new v13 capability is included in this patch release.
 
 | Area | Maintenance change | Regression evidence to inspect |
 | :--- | :--- | :--- |
-| Auth | Reject public scaffold application-key placeholders after whitespace/case normalization, including encryption and decryption entry points. | `rullst-auth/tests/scaffold_app_key.rs`, existing key-validation and session tests. |
+| Auth | Reject every public scaffold/documentation application-key placeholder after whitespace/case normalization, including encryption, decryption and JWT entry points. Accept only exact `app_key` or legacy `key` names from `Rullst.toml`, not prefix collisions such as `key_id`. | `rullst-auth/tests/scaffold_app_key.rs`, `app_key_resolution.rs`, and existing key-validation and session tests. |
 | Core | Retain lifecycle admission until the ordinary HTTP response body finishes, errors or is dropped, instead of releasing it when headers return. | `rullst-core/src/lifecycle/body/tests.rs` and `lifecycle_tests.rs`: pending frames, data, trailers, cancellation, errors, empty/full bodies and bounded drain. |
 | Messaging | Sample trusted time after acquiring the SQLite write transaction. A worker cannot acknowledge an expired lease after waiting for the lock. | `rullst-messaging/tests/sqlite_deadlines.rs`: ACK/retry/dead-letter expiry, full new-claim duration, publication and retry admission timestamps. |
 | Generated LMS | Keep existing controller errors and generated public signatures compatible while correcting strict-Clippy diagnostics. | Existing materialized LMS tests and generated application compilation; narrow argument-count expectations preserve existing APIs. |
