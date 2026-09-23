@@ -1,7 +1,7 @@
 #![no_main]
+use axum::response::IntoResponse;
 use libfuzzer_sys::fuzz_target;
 use rullst::validation::ValidationError;
-use axum::response::IntoResponse;
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(s) = std::str::from_utf8(data) {
