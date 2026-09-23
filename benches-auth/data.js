@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790067372593,
+  "lastUpdate": 1790135082933,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -11555,6 +11555,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4099,
             "range": "± 30",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "235a90550b46f6804c8b7aed8e2772603f9d89a3",
+          "message": "docs(roadmap): define v13 maintenance and extension scope (#258)",
+          "timestamp": "2026-09-23T00:25:47-03:00",
+          "tree_id": "b98d9a273428639fe9b17e81aac440b7d2a31d44",
+          "url": "https://github.com/Rullst/Rullst/commit/235a90550b46f6804c8b7aed8e2772603f9d89a3"
+        },
+        "date": 1790135082508,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1038,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 828,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1890,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4086,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
