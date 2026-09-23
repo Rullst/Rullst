@@ -73,7 +73,15 @@ class DependencyScope:
         if macros != set(review["procedural_macros"]):
             raise UnprovenScope("procedural macro inventory changed")
         for directory in macros:
-            if tree_digest(snapshot.files, directory) != review["procedural_macros"][directory]:
+            reviewed = review["procedural_macros"][directory]
+            # Legacy profiles pin one tree. A reviewed metadata-only migration
+            # may retain two exact trees; no unreviewed macro tree is accepted.
+            trees = [reviewed] if isinstance(reviewed, str) else reviewed
+            if (not isinstance(trees, list) or not 1 <= len(trees) <= 2
+                    or any(not isinstance(t, str) or re.fullmatch(r"[0-9a-f]{64}", t) is None
+                           for t in trees) or len(set(trees)) != len(trees)):
+                raise ValueError("invalid reviewed procedural macro tree identity")
+            if tree_digest(snapshot.files, directory) not in trees:
                 raise UnprovenScope("procedural macro implementation requires review")
         self.macros = macros
         self.included_files = set()

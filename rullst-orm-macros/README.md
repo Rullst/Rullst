@@ -61,7 +61,7 @@ Generated mandatory scopes form separate `AND` groups around user filters;
 empty positive `IN` predicates remain false. Scalar projections and nested
 queries preserve identifier validation and the managed transaction context.
 Policy models reject bulk deletion rather than skipping per-row checks. See
-the [ORM query and transaction boundaries](https://github.com/Rullst/Rullst/blob/v12.1.0/rullst-orm/README.md#query-and-transaction-boundaries)
+the [ORM query and transaction boundaries](https://github.com/Rullst/Rullst/blob/v12.1.1/rullst-orm/README.md#query-and-transaction-boundaries)
 for the explicit raw-transaction and streaming limitations.
 
 ## Verification

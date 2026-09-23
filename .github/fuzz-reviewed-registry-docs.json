@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "before_commit": "8025c21336f832abdd921a03400e0f3bb68bebc6",
+  "after_commit": "d04de81afb04dc80c9e6b26c7abd2fd472aced30",
+  "blobs": {
+    "CHANGELOG.md": [
+      "1aee3083bd04a84678a8eb9cb1a6f5bcefcfbf60",
+      "5018d546d82049f215473202eab0ac6f8f9acf6b"
+    ],
+    "README.md": [
+      "c1b0b1e694a8a1dcdbe27184fa1ed5176c21ff04",
+      "105bcd57162e1ea798682aa2a61ab949ab631940"
+    ],
+    "RELEASE_GUIDE.md": [
+      "066523ac55ee0abb208b2c31b4bca828611e7161",
+      "6d76ee43f9b5619004bca609711ad7de676778bc"
+    ],
+    "SECURITY.md": [
+      "fd3764183dd10774bfd3c9844b44735c48721ead",
+      "3687b7d022b4380f86e22506e0bdd0d4180236ae"
+    ],
+    "docs/src/3-rullst-studio.md": [
+      "70a939a21b7c1ba5f7372d6e81d92d424d50c673",
+      "44f79683f8d5001591f8005cf2b8b8ab9f7ce3bb"
+    ],
+    "docs/src/4-rullst-nexus.md": [
+      "fd881cdbee9f98ecb34a59e8fef78d16792309c1",
+      "a827c101010fb885cefb1149375f6825705dfafc"
+    ],
+    "docs/src/migration-v12-1.md": [
+      "d84d0f50f903a330b175a7fb5418ed70c484f93b",
+      "953aa3a3a9764fc4084c90ed72c6364094b753e2"
+    ],
+    "docs/src/spec.md": [
+      "81c990b437ddfb8cc411c184f8130366c7946193",
+      "95de4fa3dbf8336d8da450c8af3e160e07de18d2"
+    ],
+    "docs/src/v12-1-1-review.md": [
+      "cb6b9ef458073f93d384b8da1d3e2f0fa379b23c",
+      "910c99c6d66095fc97d04346376a8cadd1493cfa"
+    ],
+    "docs/src/v12.md": [
+      "9fa796b5c86a0370785fdad6990a18882348ab34",
+      "f44876c4601336f58e130122fb10be0c00f1f830"
+    ],
+    "rullst-ai/README.md": [
+      "4a89e518aeb4c56a7e11a35ad8a247144b64971e",
+      "c125eb3ab8328b40a3490081312c232637b2221e"
+    ],
+    "rullst-capital/README.md": [
+      "ecd24c415ae572748a206589f76e5842c779461f",
+      "e063ce920aed3288ab5532b6fca27f8ba2774549"
+    ],
+    "rullst-connect/README.md": [
+      "e9f0bc26a487abb9f1272effe4d24e131582e17c",
+      "75ff711ce9912b83d232c05fa484418156c3f6f1"
+    ],
+    "rullst-core/README.md": [
+      "33219aa8aee9d0b4e0d68b926cb6dd911ccb3303",
+      "6b35dce9eda694fc38c61432e01b0faf66a5e4a7"
+    ],
+    "rullst-iot/README.md": [
+      "d7af970a8db98969fc314080b83bfc521e832480",
+      "351351f0de21b64ee4aa3c4dab97253e8410145d"
+    ],
+    "rullst-mail/README.md": [
+      "1aabc3149aa2196cf9a9bab07283c5f2b5936add",
+      "82a16aa5b31d6fc01f1e354ff6158dce5b8949c6"
+    ],
+    "rullst-messaging/README.md": [
+      "5bad4ff6178d304555a73f44067b569e33b31940",
+      "f66800a305138e4789d75ad0fa43cbdfe185ec4e"
+    ],
+    "rullst-nexus/README.md": [
+      "39bb6d7c129b64362a3c9f1a2b81ffaf4d4dd654",
+      "c4c4d4bf8c1a2819071496f445c0a5882003c5d1"
+    ],
+    "rullst-orm-macros/README.md": [
+      "a1dad7a51d096be4d94e31f081bf26f1f4f5b262",
+      "99cfb859d08d3c5db4eb1ebd94507037000fbc05"
+    ],
+    "rullst-orm/README.md": [
+      "70f60fa7bcb38efcc737f0ca8b4bb417e4358c7b",
+      "7a45a511399af9986a8b015568e0cdd8c49bdf69"
+    ],
+    "rullst-studio/README.md": [
+      "f8c96df056ed2676b37f7857c9f58299e3c7b146",
+      "101ba1d1d3657015da009eca71145405ade21cea"
+    ]
+  }
+}

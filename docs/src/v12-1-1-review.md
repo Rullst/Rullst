@@ -1,9 +1,11 @@
-# Rullst 12.1.1 candidate and defensive review
+# Rullst 12.1.1 maintenance preparation and defensive review
 
-This is an **unpublished maintenance candidate**, based on the protected `v12`
-line. It is not a release announcement or an assertion that pending checks have
-passed. Version 12.1.0 remains the published baseline; `main` remains v13
-development. No new v13 capability is included in this patch release.
+This document records the preparation and defensive-review requirements for the
+12.1.1 maintenance train, based on protected `v12` and the published 12.1.0
+baseline. The [release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md)
+and registry establish current publication status; a plan does not certify that
+its checks passed. `main` remains v13 development. No new v13 capability is
+included in this patch.
 
 ## Changes selected for review
 

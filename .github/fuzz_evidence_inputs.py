@@ -18,6 +18,7 @@ WORKFLOW = ".github/workflows/fuzzing.yml"
 INVENTORY = ".github/fuzz-targets.json"
 DOC_REVIEW = ".github/fuzz-reviewed-publication-docs.json"
 MAINTENANCE_DOC_REVIEW = ".github/fuzz-reviewed-maintenance-docs.json"
+REGISTRY_DOC_REVIEW = ".github/fuzz-reviewed-registry-docs.json"
 SHA = re.compile(r"[0-9a-f]{40}")
 
 
@@ -38,7 +39,7 @@ NON_INPUTS = frozenset({
     ".github/check-release-admission.py", ".github/test-check-release-admission.py",
     ".github/workflows/release.yml", ".github/workflows/workflow-lint.yml",
     ".github/fuzz_dependency_inputs.py", ".github/test-fuzz-dependency-inputs.py",
-    SCOPE_REVIEW, MAINTENANCE_DOC_REVIEW,
+    SCOPE_REVIEW, MAINTENANCE_DOC_REVIEW, REGISTRY_DOC_REVIEW,
     ".github/workflows/coverage.yml",
     ".github/test-fuzz-target-quality.py", "rullst/tests/fuzz_harness_contracts.rs",
 })
@@ -62,7 +63,7 @@ def dependency_scope_review() -> dict:
 
 
 def reviewed_document_blobs() -> dict[str, list[str]]:
-    """Read trusted policy for one reviewed docs patch, never ignore future edits."""
+    """Combine explicitly reviewed document contents; future edits remain inputs."""
     review = json.loads((ROOT / DOC_REVIEW).read_text())
     if (set(review) != {"schema_version", "before_commit", "after_commit", "blobs"}
             or review["schema_version"] != 1
@@ -92,7 +93,34 @@ def reviewed_document_blobs() -> dict[str, list[str]]:
         # A maintenance review must not silently supersede another exception.
         if path in review["blobs"]:
             raise ValueError("overlapping documentation reviews require explicit policy migration")
-    return review["blobs"] | maintenance["blobs"]
+    documents = review["blobs"] | maintenance["blobs"]
+    registry = json.loads((ROOT / REGISTRY_DOC_REVIEW).read_text())
+    # This is an explicit migration for the 12.1.1 registry README patch, not
+    # permission to ignore Markdown files or arbitrary future document edits.
+    allowed = {
+        "CHANGELOG.md", "README.md", "RELEASE_GUIDE.md", "SECURITY.md",
+        "docs/src/v12.md", "docs/src/migration-v12-1.md", "docs/src/3-rullst-studio.md",
+        "docs/src/4-rullst-nexus.md", "docs/src/spec.md", "docs/src/v12-1-1-review.md",
+        "rullst-ai/README.md", "rullst-capital/README.md", "rullst-connect/README.md",
+        "rullst-core/README.md", "rullst-iot/README.md", "rullst-mail/README.md",
+        "rullst-messaging/README.md", "rullst-nexus/README.md",
+        "rullst-orm-macros/README.md", "rullst-orm/README.md", "rullst-studio/README.md",
+    }
+    if (set(registry) != {"schema_version", "before_commit", "after_commit", "blobs"}
+            or registry["schema_version"] != 1
+            or any(not isinstance(registry[key], str) or SHA.fullmatch(registry[key]) is None
+                   for key in ("before_commit", "after_commit"))
+            or not isinstance(registry["blobs"], dict) or set(registry["blobs"]) != allowed):
+        raise ValueError("invalid registry documentation review")
+    for path, blobs in registry["blobs"].items():
+        if (not isinstance(blobs, list) or len(blobs) != 2
+                or any(not isinstance(oid, str) or SHA.fullmatch(oid) is None for oid in blobs)
+                or blobs[0] == blobs[1]):
+            raise ValueError("invalid reviewed registry documentation identity")
+        # Preserve the prior canonical blob and prior reviewed states so both
+        # original maintenance campaigns and newer Auth campaigns can qualify.
+        documents[path] = list(dict.fromkeys(documents.get(path, []) + blobs))
+    return documents
 
 
 def execution_contract(workflow: str) -> str:
@@ -204,11 +232,11 @@ class Snapshot:
         for path, (mode, oid) in sorted(self.files.items()):
             if path in NON_INPUTS or path == WORKFLOW:
                 continue
-            # Only the two explicitly reviewed contents are equivalent. Keep
-            # path/mode/deletion in the identity; any third blob is a new input.
+            # Only explicitly reviewed contents are equivalent. Keep path/mode/
+            # deletion in the identity; an unreviewed blob is a new input.
             if (path in reviewed_docs and mode == "100644" and oid in reviewed_docs[path]
                     and (scope is None or path not in scope.included_files)):
-                # A frozen document pair is not a blanket promise about future
+                # A frozen document review is not a blanket promise about future
                 # consumers. Unreviewed contexts also retain its actual bytes,
                 # including after their own new source campaign has succeeded.
                 unproven = scope.unproven_consumers if scope is not None else self.directories

@@ -201,7 +201,7 @@ matching immutable release is published.
 
 ### 12.1.1 compatible maintenance invariants
 
-The unpublished maintenance candidate retains the v12 public APIs, database
+The 12.1.1 maintenance change set retains the v12 public APIs, database
 schemas and Rust 1.96.0 MSRV. Application-key validation rejects the public
 scaffold/documentation placeholders after trimming and case normalization.
 Legacy `Rullst.toml` discovery accepts only exact `app_key` or `key` field names,

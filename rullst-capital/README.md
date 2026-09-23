@@ -531,7 +531,7 @@ increments the shared counter on SQLite, PostgreSQL, MySQL or MariaDB. For a
 relational create that must be atomic with accounting, open a transaction from
 `store.pool()`, call `reserve_with_transaction`, execute the domain insert on
 that same transaction and commit once. See the
-[SaaS billing tutorial](https://rullst.github.io/Rullst/book/tutorials/19-saas-billing-capital.html#8-enforce-one-shared-workspace-quota-before-creation)
+[SaaS billing tutorial](https://github.com/Rullst/Rullst/blob/v12.1.1/docs/src/tutorials/19-saas-billing-capital.md#8-enforce-one-shared-workspace-quota-before-creation)
 for the complete flow.
 
 Membership/authentication, tier persistence and webhook reconciliation,
@@ -648,7 +648,7 @@ driver.
 Persist and atomically claim `PaidInvoice::delivery_key()` in an application
 outbox before retryable delivery. The bridge does not infer webhook state or
 promise provider acceptance/exactly-once behavior. See the
-[SaaS billing tutorial](https://rullst.github.io/Rullst/book/tutorials/19-saas-billing-capital.html#4-render-and-deliver-the-invoice-only-after-final-success).
+[SaaS billing tutorial](https://github.com/Rullst/Rullst/blob/v12.1.1/docs/src/tutorials/19-saas-billing-capital.md#4-render-and-deliver-the-invoice-only-after-final-success).
 
 ### Initializing a Provider
 
@@ -685,7 +685,7 @@ async fn checkout_handler() -> Result<String, String> {
 
 ### Intercepting and Verifying Webhooks
 
-`rullst-capital` includes Axum and opt-in Actix Web middleware adapters over one canonical [`webhook` verifier](https://github.com/Rullst/Rullst/blob/main/rullst-capital/src/webhook.rs). Both bound the body, verify supported provider signatures, enforce timestamp freshness for Stripe, Paddle and Polar, reject duplicate Standard Webhooks envelope headers, restore the exact body, insert a normalized event, and reject replayed payloads through a bounded TTL store. Live Mercado Pago verification is unavailable through this body-only API. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by the production-safe entry points. The in-memory store now fails closed when full instead of discarding an unexpired replay proof.
+`rullst-capital` includes Axum and opt-in Actix Web middleware adapters over one canonical [`webhook` verifier](https://github.com/Rullst/Rullst/blob/v12.1.1/rullst-capital/src/webhook.rs). Both bound the body, verify supported provider signatures, enforce timestamp freshness for Stripe, Paddle and Polar, reject duplicate Standard Webhooks envelope headers, restore the exact body, insert a normalized event, and reject replayed payloads through a bounded TTL store. Live Mercado Pago verification is unavailable through this body-only API. Empty webhook secrets are configuration errors. `mock_*` secrets are explicit local fixtures and are rejected by the production-safe entry points. The in-memory store now fails closed when full instead of discarding an unexpired replay proof.
 
 The webhook route must receive a narrowly scoped CSRF exemption in the application router; never disable CSRF for browser routes. The exemption is safe only when this signature/freshness/replay middleware remains mandatory on that exact route. An outer blanket CSRF layer will reject legitimate provider callbacks before Capital can verify them.
 
@@ -721,7 +721,7 @@ For Actix Web, enable the crate's `actix` feature (or umbrella
 `web::Data<WebhookMiddlewareState>`. The state can bind an explicit provider
 through `WebhookMiddlewareState::production_with_provider`, avoiding global
 configuration. See the
-[payment guide](https://rullst.github.io/Rullst/book/payment-gateways-guide.html#actix-web-adapter)
+[payment guide](https://github.com/Rullst/Rullst/blob/v12.1.1/docs/src/payment-gateways-guide.md#actix-web-adapter)
 for a complete example.
 
 The default store is process-local. With `webhook-sql`,
@@ -788,7 +788,7 @@ Enable the crate's `nfse` feature (or umbrella `rullst/capital-nfse`) for the
 XSD, XMLDSig, protocol codec, and mTLS preparation APIs. The strict DPS builder
 and unmistakable offline mock remain available through the base Capital crate.
 
-The runnable [`nfse_v101_preview`](https://github.com/Rullst/Rullst/blob/v12.1.0/rullst-capital/examples/nfse_v101_preview.rs) example emits
+The runnable [`nfse_v101_preview`](https://github.com/Rullst/Rullst/blob/v12.1.1/rullst-capital/examples/nfse_v101_preview.rs) example emits
 the unsigned bounded DPS. When `RULLST_NFSE_XSD_DIR` points to an extracted
 official production package whose files match the pinned hashes, it validates
 the document before writing it:

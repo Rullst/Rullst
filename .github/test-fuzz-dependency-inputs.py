@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from fuzz_evidence_inputs import ROOT, Snapshot
+from fuzz_dependency_inputs import tree_digest
 
 
 class DependencyInputTests(unittest.TestCase):
@@ -79,6 +80,31 @@ class DependencyInputTests(unittest.TestCase):
 
     def reset(self):
         self.git("reset", "--hard", self.base.sha)
+
+    def test_two_reviewed_macro_trees_do_not_admit_future_metadata_or_source(self):
+        macro = "rullst-helper"
+        self.append(macro + "/Cargo.toml", "\n[lib]\nproc-macro=true\n")
+        self.write(macro + "/README.md", "original metadata\n")
+        first = self.snapshot()
+        self.assertIsNone(first.dependency_scope)
+        first_tree = tree_digest(first.files, macro)
+        self.review["procedural_macros"][macro] = first_tree
+        self.assertIsNotNone(Snapshot(first.sha, self.root).dependency_scope)
+        self.write(macro + "/README.md", "reviewed metadata\n")
+        second = self.snapshot()
+        self.assertIsNone(second.dependency_scope)
+        second_tree = tree_digest(second.files, macro)
+        self.review["procedural_macros"][macro] = [first_tree, second_tree]
+        for sha in (first.sha, second.sha):
+            self.assertIsNotNone(Snapshot(sha, self.root).dependency_scope)
+        for path in (macro + "/README.md", macro + "/src/lib.rs"):
+            self.git("reset", "--hard", second.sha)
+            self.write(path, "unreviewed next contents\n")
+            self.assertIsNone(self.snapshot().dependency_scope)
+        for invalid in ([], [first_tree, first_tree], [first_tree, second_tree, "a" * 64], ["invalid"], 42):
+            self.review["procedural_macros"][macro] = invalid
+            with self.assertRaises(ValueError):
+                Snapshot(first.sha, self.root)
 
     def test_auth_changes_reach_direct_optional_and_transitive_target_build_consumers(self):
         self.write("rullst-auth/src/lib.rs", "pub fn corrected_auth() {}\n")

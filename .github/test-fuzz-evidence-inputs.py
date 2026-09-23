@@ -8,7 +8,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from fuzz_evidence_inputs import ROOT, Snapshot, execution_contract, reviewed_document_blobs
+from fuzz_evidence_inputs import (ROOT, Snapshot, execution_contract, reviewed_document_blobs,
+                                  DOC_REVIEW, MAINTENANCE_DOC_REVIEW, REGISTRY_DOC_REVIEW)
 
 
 class InputTests(unittest.TestCase):
@@ -92,8 +93,10 @@ class InputTests(unittest.TestCase):
             before = self.run_git("hash-object", path)
             self.write(path, "reviewed publication documentation\n")
             after = self.run_git("hash-object", path)
+            self.write(path, "reviewed registry links\n")
+            registry = self.run_git("hash-object", path)
             self.write(path, "original documentation\n")
-            review[path] = [before, after]
+            review[path] = [before, after, registry]
         policy = patch("fuzz_evidence_inputs.reviewed_document_blobs", return_value=review)
         policy.start()
         self.addCleanup(policy.stop)
@@ -117,11 +120,13 @@ class InputTests(unittest.TestCase):
         return review
 
     def test_exact_reviewed_document_contents_preserve_all_package_inputs(self):
-        for path in self.document_review_fixture():
-            self.write(path, "reviewed publication documentation\n")
-        self.assertEqual(self.changed(), set())
+        review = self.document_review_fixture()
+        for contents in ("reviewed publication documentation\n", "reviewed registry links\n"):
+            for path in review:
+                self.write(path, contents)
+            self.assertEqual(self.changed(), set())
 
-    def test_third_document_blob_new_path_mode_and_deletion_invalidate_all(self):
+    def test_unreviewed_document_blob_new_path_mode_and_deletion_invalidate_all(self):
         review = self.document_review_fixture()
         for path in review:
             with self.subTest(path=path):
@@ -248,6 +253,43 @@ class InputTests(unittest.TestCase):
             Snapshot(self.commit(), self.root)
         with self.assertRaises(ValueError):
             Snapshot("--help", self.root)
+
+
+
+class DocumentPolicyTests(unittest.TestCase):
+    def test_registry_migration_preserves_all_explicitly_reviewed_contents(self):
+        combined = reviewed_document_blobs()
+        for name in (DOC_REVIEW, MAINTENANCE_DOC_REVIEW, REGISTRY_DOC_REVIEW):
+            review = json.loads((ROOT / name).read_text())
+            for path, blobs in review["blobs"].items():
+                self.assertTrue(set(blobs) <= set(combined[path]))
+        self.assertLessEqual(max(map(len, combined.values())), 4)
+
+    def test_registry_migration_rejects_unknown_paths_and_malformed_identities(self):
+        with tempfile.TemporaryDirectory(prefix="rullst-doc-policy-") as directory:
+            root = Path(directory)
+            (root / ".github").mkdir()
+            for name in (DOC_REVIEW, MAINTENANCE_DOC_REVIEW, REGISTRY_DOC_REVIEW):
+                (root / name).write_bytes((ROOT / name).read_bytes())
+            original = json.loads((root / REGISTRY_DOC_REVIEW).read_text())
+            for mutation in ("new-path", "missing-path", "invalid-hash", "duplicate", "third-blob", "commit"):
+                with self.subTest(mutation=mutation):
+                    review = json.loads(json.dumps(original))
+                    if mutation == "new-path":
+                        review["blobs"]["rullst-auth/src/auth.rs"] = ["a" * 40, "b" * 40]
+                    elif mutation == "missing-path":
+                        del review["blobs"]["README.md"]
+                    elif mutation == "invalid-hash":
+                        review["blobs"]["README.md"][0] = "invalid"
+                    elif mutation == "duplicate":
+                        review["blobs"]["README.md"][1] = review["blobs"]["README.md"][0]
+                    elif mutation == "third-blob":
+                        review["blobs"]["README.md"].append("a" * 40)
+                    else:
+                        review["after_commit"] = "main"
+                    (root / REGISTRY_DOC_REVIEW).write_text(json.dumps(review))
+                    with patch("fuzz_evidence_inputs.ROOT", root), self.assertRaises(ValueError):
+                        reviewed_document_blobs()
 
 
 if __name__ == "__main__":

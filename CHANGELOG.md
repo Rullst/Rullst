@@ -9,11 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
-## [12.1.1] - 2026-09-22 (unpublished candidate)
+## [12.1.1] - 2026-09-22 (maintenance change set)
 
-Prepared on `v12` for compatibility validation and a separate defensive review.
-No tag or crates.io publication is established by this section. See the
-[candidate review plan](docs/src/v12-1-1-review.md) for scope and acceptance.
+Compatible maintenance changes prepared on `v12` and subjected to defensive
+review. This section records the change set; the
+[release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md)
+establishes publication status and final evidence. See the
+[review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-1-review.md)
+for scope and acceptance.
 
 ### Fixed
 
@@ -33,6 +36,9 @@ No tag or crates.io publication is established by this section. See the
 
 ### Maintenance
 
+- Use absolute, versioned source/documentation links in all packaged READMEs;
+  distinguish stable v12 documentation and CI badges from v13 development, and
+  correct historical release wording without asserting a registry publication.
 - Refine fuzz evidence selection with a reviewed Auth dependency profile,
   preserving full-duration campaigns, provenance, expiry and fail-closed
   handling of unknown source consumers. Replace inert config/tenant/realtime

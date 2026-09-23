@@ -2,8 +2,8 @@
 
 [![Crates.io](https://img.shields.io/crates/v/rullst-connect.svg?style=for-the-badge&logo=rust)](https://crates.io/crates/rullst-connect)
 [![Downloads](https://img.shields.io/crates/d/rullst-connect.svg?style=for-the-badge)](https://crates.io/crates/rullst-connect)
-[![Documentation](https://img.shields.io/docsrs/rullst-connect?style=for-the-badge&logo=docs.rs)](https://docs.rs/rullst-connect)
-[![Build](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?style=for-the-badge&logo=github)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml)
+[![Documentation](https://img.shields.io/docsrs/rullst-connect?style=for-the-badge&logo=docs.rs)](https://docs.rs/rullst-connect/12.1.1)
+[![Build](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=v12&style=for-the-badge&logo=github)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml)
 [![License](https://img.shields.io/crates/l/rullst-connect?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 **Rullst Connect** is an elegant, async-first, and Developer Experience (DX) focused OAuth2 authentication library for Rust. It simplifies the integration of social logins into your Rust web applications, providing a standardized interface across multiple providers.
@@ -16,24 +16,24 @@ state of those checks for the referenced commit; they are not an absolute securi
 | Security Audit | Status | Description |
 | :--- | :---: | :--- |
 | **OpenSSF Scorecard** | [![OpenSSF Scorecard](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FRullst%2FRullst&query=%24.score&label=OpenSSF%20Scorecard&style=flat-square)](https://scorecard.dev/viewer/?uri=github.com/Rullst/Rullst) | Current public supply-chain practice score; not a security certification |
-| **Codecov** | [![Framework library coverage](https://codecov.io/github/Rullst/Rullst/branch/main/graph/badge.svg?component=framework_libraries)](https://codecov.io/gh/Rullst/Rullst) | Blocking 90% target for the measured framework-library scope; repository aggregate remains separately visible |
+| **Codecov** | [![Framework library coverage](https://codecov.io/github/Rullst/Rullst/branch/v12/graph/badge.svg?component=framework_libraries)](https://codecov.io/gh/Rullst/Rullst) | Blocking 90% target for the measured framework-library scope; repository aggregate remains separately visible |
 | **OpenSSF Best Practices** | [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13360/badge)](https://www.bestpractices.dev/projects/13360) | Current project badge from the official programme |
 | **Release Provenance** | [![Release](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/release.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/release.yml) | Provenance attestations for release artifacts; no SLSA level is claimed here |
-| **On-demand fuzzing** | [![Fuzzing](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/fuzzing.yml?branch=main&style=flat-square&label=Fuzzing)](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) | Manual time-bounded targets; no continuous OSS-Fuzz claim |
-| **Property tests** | [![Proptest](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/proptest.yml?branch=main&style=flat-square&label=Proptest)](https://github.com/Rullst/Rullst/actions/workflows/proptest.yml) | Scheduled/manual bounded invariant evidence |
-| **Miri research matrix** | [![Miri](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/miri.yml?branch=main&style=flat-square&label=Miri)](https://github.com/Rullst/Rullst/actions/workflows/miri.yml) | Manual bounded evidence; the selected client scope is strict, while network and provider paths remain outside Miri |
-| **Kani research harnesses** | [![Kani](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/kani.yml?branch=main&style=flat-square&label=Kani)](https://github.com/Rullst/Rullst/actions/workflows/kani.yml) | Manual bounded formal evidence, not proof of the complete protocol surface |
-| **CodeQL SAST** | [![CodeQL](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/codeql.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/codeql.yml) | Advanced semantic code analysis |
-| **Cargo Deny** | [![Cargo Deny](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/cargo-deny.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/cargo-deny.yml) | Banning unmaintained/vulnerable crates |
-| **Cargo Audit** | [![Cargo Audit](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/audit.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/audit.yml) | Continuous scanning for crate vulnerabilities |
-| **Benchmark CI** | [![Benchmark](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/bench.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Continuous performance regression testing |
-| **Cargo SemVer** | [![Semver Checks](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/semver.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/semver.yml) | Strict SemVer API breakage checks |
-| **Cargo Machete** | [![Machete](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/machete.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/machete.yml) | Detecting unused and bloated dependencies |
-| **Spellcheck CI** | [![Spellcheck](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/spellcheck.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/spellcheck.yml) | Automated typo detection across docs and code |
-| **Mutation Testing** | [![Mutants](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/mutants.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml) | Mutation testing for test suite robustness |
-| **Secret Scanning** | [![Trufflehog](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/trufflehog.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/trufflehog.yml) | Automated CI prevention of leaked credentials |
-| **Unsafe Policy** | [![Unsafe](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/unsafe-policy.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/unsafe-policy.yml) | Audits unsafe usage within the workflow's declared scope |
-| **Panic Policy** | [![Panics](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/zero-panics.yml?style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/zero-panics.yml) | Graceful error handling across the framework |
+| **On-demand fuzzing** | [![Fuzzing](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/fuzzing.yml?branch=v12&style=flat-square&label=Fuzzing)](https://github.com/Rullst/Rullst/actions/workflows/fuzzing.yml) | Manual time-bounded targets; no continuous OSS-Fuzz claim |
+| **Property tests** | [![Proptest](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/proptest.yml?branch=v12&style=flat-square&label=Proptest)](https://github.com/Rullst/Rullst/actions/workflows/proptest.yml) | Scheduled/manual bounded invariant evidence |
+| **Miri research matrix** | [![Miri](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/miri.yml?branch=v12&style=flat-square&label=Miri)](https://github.com/Rullst/Rullst/actions/workflows/miri.yml) | Manual bounded evidence; the selected client scope is strict, while network and provider paths remain outside Miri |
+| **Kani research harnesses** | [![Kani](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/kani.yml?branch=v12&style=flat-square&label=Kani)](https://github.com/Rullst/Rullst/actions/workflows/kani.yml) | Manual bounded formal evidence, not proof of the complete protocol surface |
+| **CodeQL SAST** | [![CodeQL](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/codeql.yml?branch=v12&style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/codeql.yml) | Advanced semantic code analysis |
+| **Cargo Deny** | [![Cargo Deny](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/cargo-deny.yml?branch=v12&style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/cargo-deny.yml) | Banning unmaintained/vulnerable crates |
+| **Cargo Audit** | [![Cargo Audit](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/audit.yml?branch=v12&style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/audit.yml) | Continuous scanning for crate vulnerabilities |
+| **Benchmark CI** | [![Benchmark](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/bench.yml?branch=v12&style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/bench.yml) | Continuous performance regression testing |
+| **Cargo SemVer** | [![Semver Checks](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/semver.yml?branch=v12&style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/semver.yml) | Strict SemVer API breakage checks |
+| **Cargo Machete** | [![Machete](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/machete.yml?branch=v12&style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/machete.yml) | Detecting unused and bloated dependencies |
+| **Spellcheck CI** | [![Spellcheck](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/spellcheck.yml?branch=v12&style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/spellcheck.yml) | Automated typo detection across docs and code |
+| **Mutation Testing** | [![Mutants](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/mutants.yml?branch=v12&style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/mutants.yml) | Mutation testing for test suite robustness |
+| **Secret Scanning** | [![Trufflehog](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/trufflehog.yml?branch=v12&style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/trufflehog.yml) | Automated CI prevention of leaked credentials |
+| **Unsafe Policy** | [![Unsafe](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/unsafe-policy.yml?branch=v12&style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/unsafe-policy.yml) | Audits unsafe usage within the workflow's declared scope |
+| **Panic Policy** | [![Panics](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/zero-panics.yml?branch=v12&style=flat-square&label=%20)](https://github.com/Rullst/Rullst/actions/workflows/zero-panics.yml) | Graceful error handling across the framework |
 
 ## ✨ Features
 
@@ -66,9 +66,9 @@ state of those checks for the referenced commit; they are not an absolute securi
   EdDSA ID tokens and JWKS.
 
 > 📚 **Important Documents:**
-> - [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md): See what's new.
+> - [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/v12.1.1/CHANGELOG.md): See what's new.
 > - [ISSUES](https://github.com/Rullst/Rullst/issues): Any issue? Please report.
-> - [AUDIT.md](https://github.com/Rullst/Rullst/blob/main/AUDIT.md): Repository audit record; current workflow evidence remains authoritative.
+> - [AUDIT.md](https://github.com/Rullst/Rullst/blob/v12.1.1/AUDIT.md): Repository audit record; current workflow evidence remains authoritative.
 
 ## 📦 Supported Providers
 
@@ -207,7 +207,7 @@ one-shot codes, optional nonce, S256 PKCE, EdDSA ID-token verification, JWKS and
 bearer-protected userinfo. The signing seed and credentials are predictable test
 material. Keep the listener on loopback; this is not a login UI, consent server,
 refresh-token service, federation implementation or conformance suite. See the
-[local OIDC testing tutorial](https://rullst.github.io/Rullst/book/tutorials/48-local-oidc-testing.html).
+[local OIDC testing tutorial](https://github.com/Rullst/Rullst/blob/v12.1.1/docs/src/tutorials/48-local-oidc-testing.md).
 
 ### Explicit corporate proxy
 
@@ -268,7 +268,7 @@ login deliberately invalidates the earlier tab. The application must configure
 a durable production session store, Secure/HttpOnly/SameSite cookies, TLS,
 registered redirect URLs, account-linking policy, and post-login session
 rotation. See the
-[server-bound OAuth/OIDC tutorial](https://rullst.github.io/Rullst/book/tutorials/42-server-bound-oauth-sessions.html).
+[server-bound OAuth/OIDC tutorial](https://github.com/Rullst/Rullst/blob/v12.1.1/docs/src/tutorials/42-server-bound-oauth-sessions.md).
 
 ### Safe profile serialization
 
@@ -454,7 +454,7 @@ cargo run --example axum_server
 train. Do not run `cargo release` or publish this crate manually. The protected,
 tag-only `release.yml` workflow verifies and publishes every crate in
 topological order after an exact `vX.Y.Z[-pre]` tag is approved. Follow the
-[root release guide](https://github.com/Rullst/Rullst/blob/main/RELEASE_GUIDE.md)
+[root release guide](https://github.com/Rullst/Rullst/blob/v12.1.1/RELEASE_GUIDE.md)
 and machine-readable `.github/release-order.json`.
 
 ## 🤝 Contributing
@@ -463,4 +463,4 @@ Feel free to open Issues and submit Pull Requests! Want to add a new provider? I
 
 ## 📄 License
 
-This project is licensed under the [MIT License](https://github.com/Rullst/Rullst/blob/main/LICENSE).
+This project is licensed under the [MIT License](https://github.com/Rullst/Rullst/blob/v12.1.1/LICENSE).

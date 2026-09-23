@@ -159,5 +159,5 @@ a packet helper. There are intentionally no aliases named `HsmDevice`,
   a concrete persistent anti-rollback storage implementation.
 - Bidirectional Digital Twin transport or Studio/Nexus device synchronization.
 
-See the [crate roadmap](https://github.com/Rullst/Rullst/blob/v12.1.0/rullst-iot/ROADMAP.md)
+See the [crate roadmap](https://github.com/Rullst/Rullst/blob/v12.1.1/rullst-iot/ROADMAP.md)
 for the remaining integration work.

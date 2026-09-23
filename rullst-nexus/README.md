@@ -4,11 +4,11 @@
 models. It provides server-rendered CRUD views, server-side field policies, RBAC enforcement,
 telemetry, and the optional AI assistant.
 
-The unreleased 12.1.0/v13 maintenance work fixes mobile drawer dismissal, keyboard
+The published 12.1.0 maintenance release fixes mobile drawer dismissal, keyboard
 focus and no-JavaScript navigation. Existing applications using the temporary
 `nexus_mobile_patch` HTML-rewriting workaround must remove that presentation
 patch when upgrading, while preserving their security layers. See the
-[mobile migration checklist](https://github.com/Rullst/Rullst/blob/main/docs/src/4-rullst-nexus.md#mobile-maintenance-in-1210-and-v13-unreleased).
+[mobile migration checklist](https://github.com/Rullst/Rullst/blob/v12.1.1/docs/src/4-rullst-nexus.md#mobile-maintenance-in-1210).
 
 When used through the `rullst` umbrella with its `orm` and `nexus` features,
 `#[derive(Nexus)]` generates metadata for named-field models. Primitive widgets
