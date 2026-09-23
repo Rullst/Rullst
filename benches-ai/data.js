@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790168957250,
+  "lastUpdate": 1790184568959,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -9539,6 +9539,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 716,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c62cc2429874f2ea6ce213ea97c2c2d807fb52d5",
+          "message": "docs(roadmap): record bounded v13 framework comparisons (#260)\n\ndocs(roadmap): plan bounded framework comparisons for v13",
+          "timestamp": "2026-09-23T14:05:06-03:00",
+          "tree_id": "4aeb6579e277c7131333a5fbf2bcb778fe63d75b",
+          "url": "https://github.com/Rullst/Rullst/commit/c62cc2429874f2ea6ce213ea97c2c2d807fb52d5"
+        },
+        "date": 1790184567656,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1094,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 236,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 481,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
