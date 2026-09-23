@@ -138,6 +138,11 @@ The first matrix should distinguish at least two profiles:
 
 A model may qualify for one profile without qualifying for the other.
 
+The [v13 framework comparison plan](v13-framework-comparison.md) reuses these
+metadata and acceptance principles for application journeys across frameworks.
+Keep model/workflow comparisons distinct from framework comparisons, disclose
+confounding factors and do not infer universal superiority from one trial.
+
 ### 5. Task-oriented documentation routing
 
 Add a short machine-readable and human-readable entry map that answers “which

@@ -48,6 +48,13 @@ and assess separate lifecycles for specialized extensions. This decision
 refines investment and compatibility planning; it neither removes current
 capabilities nor changes package admission or the v12.1.1 candidate.
 
+**September 23 evaluation direction:** the
+[framework comparison plan](docs/src/v13-framework-comparison.md) defines
+reference projects, equivalent application tasks and measurements of effort,
+failures, performance and maintenance. Begin a small baseline after active
+v12.1.1 maintenance rather than waiting for all 25 A themes. The plan refines
+existing priorities; it adds no milestone, release gate or superiority claim.
+
 ## Audit of the detailed crate roadmaps
 
 The per-crate roadmaps are intentionally preserved as detailed design backlogs.
