@@ -532,7 +532,7 @@ contract, not only at release time.** Distinguish the Rust framework API
 APIs. The existing REST quickstart intentionally covers one JSON endpoint;
 routing, authentication and Scalar/OpenAPI guidance live in separate chapters.
 More pages alone will not make those paths easier to discover or complete.
-The [v12 navigation index](https://github.com/Rullst/Rullst/blob/v13/docs/src/api-reference.md)
+The [v12 navigation index](https://github.com/Rullst/Rullst/blob/v12.1.1/docs/src/api-reference.md)
 now connects existing guides to exact-version crate references and identifies
 the remaining REST walkthrough gaps. This first navigation improvement is not
 completion of the reference and behavioral-example programme below.
