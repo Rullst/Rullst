@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790135155481,
+  "lastUpdate": 1790168707919,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -7187,6 +7187,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 544,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "24690054942c6c9b227fe0db0566920c42737115",
+          "message": "fix(auth): forward key validation and fuzz contracts to v13 (#261)",
+          "timestamp": "2026-09-23T09:45:03-03:00",
+          "tree_id": "875c0f8b8fb59ab3fcd8494520f1ce0d4640ac6a",
+          "url": "https://github.com/Rullst/Rullst/commit/24690054942c6c9b227fe0db0566920c42737115"
+        },
+        "date": 1790168707227,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 452,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
