@@ -124,7 +124,7 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   selected values into the locked current row and runs the full save lifecycle,
   including audit and post-commit effects. It refreshes the caller model after
   success and offers `save_with_tx`; review the full-row SQL and rollback
-  changes in [the migration guide](../docs/src/transactional-partial-updates.md).
+  changes in [the migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/transactional-partial-updates.md).
 - **Native Relational Enums**: `#[derive(Enum)]` owns one closed label mapping
   for SQLx, Serde and ORM values. `Blueprint::native_enum` emits a named,
   drift-checked PostgreSQL type with `strict-postgres`, inline MySQL/MariaDB

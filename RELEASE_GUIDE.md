@@ -12,6 +12,11 @@ the appropriate release line. A branch name is not a publication or a security c
 Official release artifacts remain crates.io packages and their matching
 immutable tags.
 
+The permanent branches are `main`, `v12` and `gh-pages`. Patch releases such as
+12.1.1 use tags, not additional permanent branches. Remove short-lived branches
+after protected integration. Assess every stable fix for a tested forward-port
+to `main`; see the [cross-line maintenance policy](docs/src/compatibility-policy.md#carrying-fixes-between-maintained-lines).
+
 The repository separates maintained releases, next-major work, historical
 source and generated site data:
 
@@ -19,8 +24,6 @@ source and generated site data:
 |--------|------------|------------------------|
 | `main` | Protected v13 development and release source | Only after an admitted release tag |
 | `v12` | Protected source for compatible 12.x maintenance | Only after its own approved release tag |
-| `v13` | Transitional source reference retained during main-line admission | No new releases from this branch under the current policy |
-| `v5` | Frozen source snapshot of the legacy v5 line | No; use the existing `v5.0.0` tag/crate |
 | `gh-pages` | Generated website/benchmark history used by Pages | No |
 | `feat/*`, `fix/*`, etc. | Short-lived reviewed work | Never directly |
 | `vX.Y.Z[-pre]` | Immutable source snapshot approved for release | Triggers the release workflow |
@@ -182,7 +185,8 @@ independent certification.
 
 ### Phase 4 — Continue v13 while maintaining v12
 
-The `main` branch develops v13. Start next-major work from that branch after
+The `main` branch develops v13; the former `v13` branch is retired. Start
+next-major work from `main` after
 reviewing its roadmap and differences from the published v12 source:
 
 ```powershell
@@ -286,6 +290,6 @@ git push origin v13.X.Y
 | `cargo-rullst` | Check `cargo-rullst/Cargo.toml` |
 | Current `main` line | Unpublished `13.0.0-alpha.1` development; a branch merge does not publish it |
 | Maintenance line | Protected `v12` for compatible 12.x fixes |
-| Legacy source | Frozen `v5` branch and immutable `v5.0.0` tag |
+| Legacy source | Immutable `v5.0.0` tag and published archive |
 | Published prerelease | `12.0.0-rc.1` / `v12.0.0-rc.1` |
-| Published stable | `12.1.0` / immutable `v12.1.0`; see the [publication record](docs/src/v12.md#1210-published-maintenance-release) |
+| Latest published stable | Check [crates.io](https://crates.io/crates/rullst) and the [maintained v12 record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md) |

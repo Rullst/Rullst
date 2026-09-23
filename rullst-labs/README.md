@@ -72,7 +72,7 @@ guest memory to 2–16 MiB and fuel to at most one million units per case.
 Native OS resource limits also cover compiler/translation work. No Cargo build
 scripts, extra packages, shell commands, WASI or native Rullst servers are included.
 
-The [runner](../rullst-labs-runner/README.md) requires observed namespaces,
+The [runner](https://github.com/Rullst/Rullst/blob/main/rullst-labs-runner/README.md) requires observed namespaces,
 cgroups v2, fixed read-only mounts, seccomp and a fully enforced Landlock policy.
 Unsupported environments refuse work; there is no weaker execution fallback.
 Independent security review and hostile-input acceptance are still required.

@@ -15,12 +15,12 @@
   adds explicit parent trust, approved operation labels, minimized OTLP export
   and an owned lifecycle. Independent Messaging processes and a standard TLS
   collector passed local acceptance; hosted source/package admission is pending.
-  See [the profile](../docs/src/distributed-tracing.md).
+  See [the profile](https://github.com/Rullst/Rullst/blob/main/docs/src/distributed-tracing.md).
 - **Recoverable Live UI Candidate (v13):** Explicitly mounted typed views add
   current authorization, complete snapshots, transactional revision conflicts
   and bounded WebSocket recovery. The included browser module never replays
   uncertain mutations. Local protocol/Chromium restart acceptance passed;
-  hosted source/package admission is pending. See [adoption and limits](../docs/src/live-recovery.md).
+  hosted source/package admission is pending. See [adoption and limits](https://github.com/Rullst/Rullst/blob/main/docs/src/live-recovery.md).
 - **Lifecycle-aware Readiness:** An opt-in process lifecycle gates new requests
   during startup, dependency unavailability, and graceful drain. It accepts at
   most 32 immutable component labels and exposes counts—not labels or errors—on
@@ -50,12 +50,12 @@
   offline credentials select a bounded deterministic store. Source/package
   admission passed in PR #236; release admission and owner-account interoperability
   remain outstanding.
-  See the [candidate contract](../docs/src/private-object-storage.md).
+  See the [candidate contract](https://github.com/Rullst/Rullst/blob/main/docs/src/private-object-storage.md).
 - **Resumable Private Upload Candidate (v13):** Separate `storage-multipart`
   adds exact-size parts, SHA-256 checks, encrypted tenant/object-bound recovery
   records, completion reconciliation and abort. Native disposable S3 restart and
   adversarial protocol tests passed locally; full hosted admission remains required.
-  See [private multipart uploads](../docs/src/private-multipart-uploads.md).
+  See [private multipart uploads](https://github.com/Rullst/Rullst/blob/main/docs/src/private-multipart-uploads.md).
 
 ## 🚀 Usage
 
