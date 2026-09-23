@@ -1022,6 +1022,28 @@ evidence that the current revision satisfies these contracts.
 These describe required behavior, not a declaration that every final release
 gate has passed. The audit records the current evidence and remaining work.
 
+### Application-key maintenance invariant (v12.1.1 candidate and v13)
+
+Application-key validation rejects public scaffold/documentation placeholders
+after trimming and case normalization. Legacy `Rullst.toml` discovery accepts
+only exact `app_key` or `key` field names, not fields sharing a prefix. It keeps
+the historical value before the next `=` so valid existing sessions remain
+readable; it does not rewrite configuration or silently rotate secrets.
+Prefer `APP_KEY` for new values containing `=`. Moving an existing TOML value
+must preserve its effective bytes or explicitly rotate the secret and invalidate
+sessions. Session operations and optional JWT signing-key construction reject
+the documented placeholders before accepting session/token processing.
+The maintenance correction is carried from v12 PR #259; release admission is
+separate from its presence in development source.
+
+The corresponding facade fuzz harnesses exercise real configuration parsing,
+authenticated session decryption/tamper rejection, tenant membership resolution
+and tenant-scoped realtime publication, with deterministic positive/negative
+controls. The realtime target does not exercise TCP/WebSocket frame decoding.
+Historical runs of the replaced no-op/weak-fixture harnesses are not evidence
+for these contracts. v13 campaign admission remains outstanding; the port does
+not import the v12-specific source-equivalence policy.
+
 ### Studio browser composition invariant (12.1.0)
 
 Studio browser composition in the published 12.1.0 maintenance release preserves

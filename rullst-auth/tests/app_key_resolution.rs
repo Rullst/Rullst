@@ -1,6 +1,7 @@
 use base64::{Engine as _, engine::general_purpose};
 use rullst_auth::{
-    AuthError, get_app_key, make_login_cookie, make_logout_cookie, validate_app_key,
+    AuthError, get_app_key, make_login_cookie, make_logout_cookie, parse_app_key_from_toml,
+    validate_app_key,
 };
 use std::{
     fs,
@@ -136,6 +137,49 @@ fn documented_placeholder_app_keys_are_rejected() {
         validate_app_key(b"mock_0123456789abcdefghijklmnopq"),
         Err(AuthError::MissingAppKey(_))
     ));
+}
+
+#[test]
+fn toml_app_key_parser_ignores_prefix_collisions() {
+    let configured = parse_app_key_from_toml(
+        "key_id = \"public-identifier-that-is-not-a-secret\"\n\
+         app_key = \"actual-application-secret\"\n",
+    );
+    assert_eq!(
+        configured.as_deref(),
+        Some(b"actual-application-secret".as_slice())
+    );
+
+    let configured = parse_app_key_from_toml(
+        "app_key_backup = \"stale-application-secret\"\n\
+         key = \"active-application-secret\"\n",
+    );
+    assert_eq!(
+        configured.as_deref(),
+        Some(b"active-application-secret".as_slice())
+    );
+}
+
+#[test]
+fn legacy_toml_values_keep_existing_sessions_readable() {
+    let existing_session = rullst_auth::encrypt_session(42, VALID_KEY.as_bytes())
+        .expect("legacy effective key should encrypt the session");
+
+    for name in ["app_key", "key"] {
+        for suffix in ["=", "==", "=legacy-suffix"] {
+            // 12.1.0 used only the value before the next '='. Changing this
+            // extraction would silently rotate existing applications' keys.
+            let configured =
+                parse_app_key_from_toml(&format!("{name} = \"{VALID_KEY}{suffix}\"\n"))
+                    .expect("legacy key field should be found");
+            assert_eq!(configured, VALID_KEY.as_bytes());
+            assert_eq!(
+                rullst_auth::decrypt_session(&existing_session, &configured)
+                    .expect("an existing session must remain readable"),
+                42
+            );
+        }
+    }
 }
 
 #[test]
