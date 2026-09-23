@@ -42,7 +42,7 @@ telemetry views from the sources explicitly supplied by the application.
 Add `rullst-studio` to your project:
 
 Install the exact stable train with
-`cargo add rullst-studio@12.1.0`.
+`cargo add rullst-studio@12.1.1`.
 
 ### Launching the Studio
 
@@ -59,13 +59,13 @@ The earlier `StudioLayer` embedded-production idea was never implemented.
 Keeping an authenticated shared Studio is worthwhile, but it needs its own
 explicit identity/RBAC/TLS policy before it can become a supported mode.
 
-**12.1.0 maintenance (unreleased):** the raw data-browser router now includes
+**Since the published 12.1.0 maintenance release:** the raw data-browser router now includes
 the same-origin CSS/client and an unconnected Cache page, including when nested
 under `/studio`. Published `12.0.0` omits those routes. An unconnected cache is
 reported as **Unavailable**, not fabricated telemetry. Existing applications
 must remove temporary asset/Cache `.route(...)` overrides before updating to
 avoid duplicate-route collisions; preserve their access-control layers. See the
-[migration checklist](https://github.com/Rullst/Rullst/blob/main/docs/src/3-rullst-studio.md#v1210-browser-composition-fix-unreleased).
+[migration checklist](https://github.com/Rullst/Rullst/blob/v12.1.1/docs/src/3-rullst-studio.md#v1210-browser-composition-fix).
 
 **CLI Launch:**
 
@@ -151,5 +151,5 @@ audit history, rollback, or a supported shared-production admin surface.
 ## 📚 Documentation
 
 For supported usage and security boundaries, see the
-**[Rullst Book](https://rullst.github.io/Rullst/book/)** and its
+**[Rullst Book](https://github.com/Rullst/Rullst/blob/v12.1.1/docs/src/SUMMARY.md)** and its
 capability ledger. A production/shared Studio mode is not currently supplied.

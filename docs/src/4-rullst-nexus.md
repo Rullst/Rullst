@@ -7,12 +7,14 @@ registered Rullst models.
 panel. Rullst builds CRUD, search, pagination, and batch routes from that
 registration; it does not discover an arbitrary database schema automatically.
 
-## Mobile maintenance in 12.1.0 and v13 (unreleased)
+<a id="mobile-maintenance-in-1210-and-v13-unreleased"></a>
+
+## Mobile maintenance in 12.1.0
 
 The [Portfolio report, issues 3 and 4](https://github.com/Rullst/examples/blob/0182464b68a5adaf89fca65af8dd00142d78ad49/docs/portfolio-errors-found.md)
 identified a drawer that could not be dismissed on small screens and a
-desktop-only Portfolio layout. The maintenance changes are **not in published
-12.0.0**:
+desktop-only Portfolio layout. The changes shipped in **12.1.0** and are absent from
+12.0.0:
 
 - Nexus supplies a close button, click/touch backdrop, Escape and link dismissal,
   focus containment and return, and synchronized `aria-expanded` state. Closed
