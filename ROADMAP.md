@@ -41,6 +41,13 @@ The same proposal flags twelve existing themes with a separate high-maintenance
 marker and offers eight bounded follow-up subtasks. Those overlap the original
 themes and are not added again to the milestone count.
 
+The owner also adopted the
+[v13 maintenance scope and extension strategy](docs/src/v13-maintenance-scope.md):
+retain common security and productivity foundations, limit Capital's expansion,
+and assess separate lifecycles for specialized extensions. This decision
+refines investment and compatibility planning; it neither removes current
+capabilities nor changes package admission or the v12.1.1 candidate.
+
 ## Audit of the detailed crate roadmaps
 
 The per-crate roadmaps are intentionally preserved as detailed design backlogs.

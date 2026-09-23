@@ -9,6 +9,14 @@ classifies all 41 master milestones without requiring the entire roadmap for
 13.0.0. The [SST](spec.md) governs APIs and architecture; no deadline or alpha
 label waives a security or publication gate.
 
+**Maintenance direction adopted on September 22:** follow the
+[maintenance scope and extension strategy](v13-maintenance-scope.md) for future
+v13 work. Preserve common application foundations, contain Capital's scope and
+assess independent lifecycles for specialized extensions. This planning decision
+does not change current package admission, publication inventory or v12.1.1.
+Earlier implementation queues below are historical where they imply broader
+expansion without the strategy's product, maintenance and acceptance criteria.
+
 The owner asked about an alpha-first release on September 22. The current
 `13.0.0-alpha.1` source version supports that evaluation path: consumers opt in
 explicitly and APIs may change before stable v13. Alpha, beta and RC labels do

@@ -20,6 +20,14 @@ row, publish, expand supported platforms or claim a permanent LTS programme.
 Actual release status and support remain governed by [SECURITY.md](../../SECURITY.md)
 and the [compatibility policy](compatibility-policy.md).
 
+The owner subsequently adopted the
+[crate maintenance and extension strategy](v13-maintenance-scope.md) on
+September 22. It turns the cost assessment into a direction for scoped
+investment: preserve common security/productivity contracts, contain Capital's
+provider and fiscal scope, and give specialized extensions explicit ownership
+and migration boundaries. It does not remove supported capabilities or change
+the v12.1.1 candidate. Specific restructuring remains follow-up work.
+
 ## Counting method
 
 The [canonical roadmap](../../ROADMAP.md#executive-milestone-tracker) contains
@@ -120,6 +128,11 @@ automatic worldwide legal compliance, zero leakage or general autonomous safe
 mutation are not future deliverables to promise at any budget.
 
 ## C — high maintenance cost, including existing implementations
+
+The adopted [crate-level decisions](v13-maintenance-scope.md#crate-level-investment-decisions)
+refine this theme-level assessment without changing its counts. Their
+[transition sequence](v13-maintenance-scope.md#transition-sequence-and-acceptance)
+governs future scope reductions and extractions.
 
 The source already contains at least a bounded implementation in each theme
 below. “Existing” includes unpublished v13 code and does not imply a complete
