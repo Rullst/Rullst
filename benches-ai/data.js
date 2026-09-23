@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790067690724,
+  "lastUpdate": 1790135401413,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -9443,6 +9443,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 720,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "235a90550b46f6804c8b7aed8e2772603f9d89a3",
+          "message": "docs(roadmap): define v13 maintenance and extension scope (#258)",
+          "timestamp": "2026-09-23T00:25:47-03:00",
+          "tree_id": "b98d9a273428639fe9b17e81aac440b7d2a31d44",
+          "url": "https://github.com/Rullst/Rullst/commit/235a90550b46f6804c8b7aed8e2772603f9d89a3"
+        },
+        "date": 1790135400955,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1667,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 382,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 705,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
