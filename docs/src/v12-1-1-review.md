@@ -46,6 +46,12 @@ Changing the key invalidates encrypted sessions made with the previous key;
 plan session renewal and application-specific recovery. A package update does
 not rotate a deployed secret.
 
+Exact `app_key` and `key` fields retain the legacy extraction of bytes before
+the next `=`. This prevents implicit key rotation for existing TOML values with
+padding or embedded delimiters. For new configurations prefer `APP_KEY` for
+values containing `=`; migration must preserve the old effective bytes or
+explicitly rotate the secret and renew sessions.
+
 Lifecycle-aware applications may now wait longer during drain because a returned
 HTTP response can still own a streaming body. The wait remains bounded. Client
 receipt, upgraded connections and detached jobs require application supervision.

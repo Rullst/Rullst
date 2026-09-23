@@ -161,6 +161,28 @@ fn toml_app_key_parser_ignores_prefix_collisions() {
 }
 
 #[test]
+fn legacy_toml_values_keep_existing_sessions_readable() {
+    let existing_session = rullst_auth::encrypt_session(42, VALID_KEY.as_bytes())
+        .expect("legacy effective key should encrypt the session");
+
+    for name in ["app_key", "key"] {
+        for suffix in ["=", "==", "=legacy-suffix"] {
+            // 12.1.0 used only the value before the next '='. Changing this
+            // extraction would silently rotate existing applications' keys.
+            let configured =
+                parse_app_key_from_toml(&format!("{name} = \"{VALID_KEY}{suffix}\"\n"))
+                    .expect("legacy key field should be found");
+            assert_eq!(configured, VALID_KEY.as_bytes());
+            assert_eq!(
+                rullst_auth::decrypt_session(&existing_session, &configured)
+                    .expect("an existing session must remain readable"),
+                42
+            );
+        }
+    }
+}
+
+#[test]
 fn app_key_resolution_child() {
     let Ok(case) = std::env::var(CHILD_CASE) else {
         return;

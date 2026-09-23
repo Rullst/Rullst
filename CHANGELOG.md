@@ -20,7 +20,8 @@ No tag or crates.io publication is established by this section. See the
 - Reject every public scaffold/documentation application-key placeholder
   consistently in Auth, and require exact `app_key` or legacy `key` names when
   reading `Rullst.toml` so prefix-colliding fields cannot become session keys.
-  Valid application keys retain the existing API; replacing an example key
+  Exact legacy fields retain their historical value extraction, including keys
+  containing `=`, so existing sessions stay readable. Replacing an example key
   requires application-controlled session renewal.
 - Hold Core lifecycle admission through ordinary HTTP body completion, error
   or cancellation, including streaming data/trailers. Drain remains bounded;

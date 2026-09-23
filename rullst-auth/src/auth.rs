@@ -107,10 +107,14 @@ pub mod connect {
 }
 
 /// Parses the application key from a given TOML content string.
+///
+/// This legacy parser keeps the value before the next `=` for compatibility
+/// with existing session keys. Prefer `APP_KEY` for values containing `=`.
 pub fn parse_app_key_from_toml(toml_content: &str) -> Option<Vec<u8>> {
     for line in toml_content.lines() {
         let trimmed = line.trim();
-        if let Some((name, val)) = trimmed.split_once('=')
+        let mut assignment = trimmed.split('=');
+        if let (Some(name), Some(val)) = (assignment.next(), assignment.next())
             && matches!(name.trim(), "app_key" | "key")
         {
             return Some(val.trim().trim_matches('"').as_bytes().to_vec());
