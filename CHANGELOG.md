@@ -9,6 +9,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Auth maintenance forward-port
+
+- Carry the application-key correction from the v12.1.1 candidate in PR #259
+  into v13: reject public scaffold/documentation placeholders and select only
+  exact legacy TOML key fields. Preserve the historical effective key bytes
+  for values containing `=` so existing valid sessions remain readable.
+  Regression tests cover field collisions, session continuity and rejection
+  before session/JWT processing. Neither release is published by this entry.
+- Carry the repaired Auth/configuration/tenant/realtime fuzz harnesses and their
+  deterministic contracts from PR #259. These now exercise production APIs;
+  earlier no-op or weak-fixture runs cannot establish their coverage. This
+  port does not import the v12-specific fuzz equivalence profile or claim a
+  completed v13 campaign; `ws_payload` exercises tenant-scoped realtime payloads,
+  not TCP/WebSocket frame decoding.
+
 ### v13 package preparation
 
 - Include standalone Supervision and Media in the 19-package publication

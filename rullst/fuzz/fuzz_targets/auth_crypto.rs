@@ -1,6 +1,6 @@
 #![no_main]
 use libfuzzer_sys::fuzz_target;
-use rullst::auth::{hash_password, verify_password, needs_rehash};
+use rullst::auth::{hash_password, needs_rehash, verify_password};
 
 fuzz_target!(|data: &[u8]| {
     if let Ok(s) = std::str::from_utf8(data) {
@@ -10,7 +10,7 @@ fuzz_target!(|data: &[u8]| {
                 let _ = needs_rehash(&hash);
             }
         }
-        
+
         // We only test needs_rehash for random strings, because verify_password
         // will attempt to allocate memory based on the `m=` parameter parsed from the
         // arbitrary fuzzer string, leading to trivial OOMs. In reality, the hash comes
