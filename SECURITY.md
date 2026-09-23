@@ -8,16 +8,17 @@ major release. Existing tags and published archives remain unchanged.
 Rullst adopts Semantic Versioning for each published crate. This policy is
 written for the v12 stable release line; crates.io remains authoritative for
 whether an exact package version has been published. Source in a branch or an
-unpublished tag is not a distributed release by itself. The current published
-maintenance release is [12.1.0](https://github.com/Rullst/Rullst/releases/tag/v12.1.0).
+unpublished tag is not a distributed release by itself. Check the latest stable
+patch on [crates.io](https://crates.io/crates/rullst) and the
+[maintained release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md).
 
-The `v12` source prepares **12.1.1** for validation and defensive review. It is
-not published; its [review plan](docs/src/v12-1-1-review.md) does not replace
-12.1.0's immutable release evidence or claim that pending checks have passed.
+The **12.1.1** [review plan](docs/src/v12-1-1-review.md) records the maintenance
+changes and required evidence. It neither replaces 12.1.0's immutable evidence
+nor establishes that a tag was published or pending checks passed.
 
 | Version | Supported | Status |
 | :--- | :---: | :--- |
-| **12.x** | :white_check_mark: | Current supported stable line; latest maintenance release: 12.1.0. |
+| **12.x** | :white_check_mark: | Current supported stable line; use its latest published stable patch. |
 | **13.x development** | :x: | Unreleased development work; no stable security-support commitment yet. |
 | **12.0.0-rc.1** | :x: | Immutable evaluation prerelease; migrate to the corresponding supported stable v12 line. |
 | **5.0.0** | :x: | Frozen legacy release; no routine maintenance. |
@@ -49,7 +50,7 @@ agreed channel through that contact. This policy does not publish an encryption 
 ### Coordinated Vulnerability Disclosure (CVD):
 * **Initial Response**: Critical reports within one business day and High reports within two business days.
 * **Triage & Patch Target**: Critical issues within 72 hours and High issues within seven calendar days. If that target cannot be met, the affected capability must be disabled or isolated, or a reviewed, expiring exception must be recorded.
-* **Attribution**: We publicly credit security researchers in our [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/main/CHANGELOG.md) and release advisories unless anonymity is requested.
+* **Attribution**: We publicly credit security researchers in our [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/v12/CHANGELOG.md) and release advisories unless anonymity is requested.
 
 The complete severity, ownership, mitigation, and temporary-exception policy is
 recorded in [Security advisory exceptions](docs/src/security-advisory-exceptions.md).
