@@ -124,15 +124,15 @@ candidate; this exception only concerns the bounded fuzz campaign.
 
 ### Reviewed 12.1.1 registry documentation migration
 
-The registry-readiness patch `e15d4cd8` changes seventeen Markdown files relative
-to `8025c213`: packaged README links, stable-version context, historical release
-wording and retained book anchors. It changes no runtime source, manifest,
+The registry-readiness documentation commits `e15d4cd8` and `d04de81a` change
+twenty-one Markdown files relative to `8025c213`: packaged README links, stable
+branch/version context, release/security records and retained book anchors. It changes no runtime source, manifest,
 lockfile, build script, harness or execution command. All sixteen generated
 archives were checked for exact README contents, version and MSRV; the book and
 README link checks remain separate from fuzz evidence.
 
 `.github/fuzz-reviewed-registry-docs.json` records the two exact commits and
-old/new blob pairs. The policy explicitly permits only these seventeen paths
+old/new blob pairs. The policy explicitly permits only these twenty-one paths
 and combines their frozen contents with earlier reviews. It preserves both
 original maintenance evidence and the newer Auth evidence without admitting
 later unreviewed Markdown edits. Path, mode, deletion, runtime inclusion and
