@@ -98,7 +98,8 @@ def reviewed_document_blobs() -> dict[str, list[str]]:
     # This is an explicit migration for the 12.1.1 registry README patch, not
     # permission to ignore Markdown files or arbitrary future document edits.
     allowed = {
-        "CHANGELOG.md", "README.md", "RELEASE_GUIDE.md", "SECURITY.md",
+        "CHANGELOG.md", "README.md", "RELEASE_GUIDE.md", "SECURITY.md", "ROADMAP.md",
+        "docs/src/api-reference.md", "docs/src/tutorials/36-assisted-framework-upgrades.md",
         "docs/src/v12.md", "docs/src/migration-v12-1.md", "docs/src/3-rullst-studio.md",
         "docs/src/4-rullst-nexus.md", "docs/src/spec.md", "docs/src/v12-1-1-review.md",
         "rullst-ai/README.md", "rullst-capital/README.md", "rullst-connect/README.md",

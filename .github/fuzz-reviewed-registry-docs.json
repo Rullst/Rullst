@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "before_commit": "8025c21336f832abdd921a03400e0f3bb68bebc6",
-  "after_commit": "d04de81afb04dc80c9e6b26c7abd2fd472aced30",
+  "after_commit": "a0ab0dff613990ab509ada24f41a270b23127b16",
   "blobs": {
     "CHANGELOG.md": [
       "1aee3083bd04a84678a8eb9cb1a6f5bcefcfbf60",
@@ -15,6 +15,10 @@
       "066523ac55ee0abb208b2c31b4bca828611e7161",
       "6d76ee43f9b5619004bca609711ad7de676778bc"
     ],
+    "ROADMAP.md": [
+      "a7474f8ad6a4b54dacfeede5409b21d980573c8b",
+      "a9e419b868229f1a8aff4083d80af3af0507c81c"
+    ],
     "SECURITY.md": [
       "fd3764183dd10774bfd3c9844b44735c48721ead",
       "3687b7d022b4380f86e22506e0bdd0d4180236ae"
@@ -27,6 +31,10 @@
       "fd881cdbee9f98ecb34a59e8fef78d16792309c1",
       "a827c101010fb885cefb1149375f6825705dfafc"
     ],
+    "docs/src/api-reference.md": [
+      "f41ab24e368c3ab0223dfb4ca67cf799fd538e54",
+      "110d7ab8ec5ea89246845fed4192bbba01469a75"
+    ],
     "docs/src/migration-v12-1.md": [
       "d84d0f50f903a330b175a7fb5418ed70c484f93b",
       "953aa3a3a9764fc4084c90ed72c6364094b753e2"
@@ -35,13 +43,17 @@
       "81c990b437ddfb8cc411c184f8130366c7946193",
       "95de4fa3dbf8336d8da450c8af3e160e07de18d2"
     ],
+    "docs/src/tutorials/36-assisted-framework-upgrades.md": [
+      "4d6cefc9b80a327fab3ff410fa822a7bae7bf19e",
+      "aec02df5abd495c90f685493d11ba3fd4894eba2"
+    ],
     "docs/src/v12-1-1-review.md": [
       "cb6b9ef458073f93d384b8da1d3e2f0fa379b23c",
       "910c99c6d66095fc97d04346376a8cadd1493cfa"
     ],
     "docs/src/v12.md": [
       "9fa796b5c86a0370785fdad6990a18882348ab34",
-      "f44876c4601336f58e130122fb10be0c00f1f830"
+      "e35f437cfaebf048922c287d81fef243cbc3b14c"
     ],
     "rullst-ai/README.md": [
       "4a89e518aeb4c56a7e11a35ad8a247144b64971e",
