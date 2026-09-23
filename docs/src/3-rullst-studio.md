@@ -127,7 +127,9 @@ exclude it from production features unless they are implementing and testing a
 separate authenticated administrator boundary. Built-in shared production
 access remains roadmap work, not a password environment-variable promise.
 
-## v12.1.0 browser composition fix (unreleased)
+<a id="v1210-browser-composition-fix-unreleased"></a>
+
+## v12.1.0 browser composition fix
 
 The [Portfolio issue report](https://github.com/Rullst/examples/blob/deb147f1b3cc75a84a804ceef64d69716916970f/docs/portfolio-errors-found.md)
 identified two omissions in the published `12.0.0` raw data-browser router:

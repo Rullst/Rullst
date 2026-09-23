@@ -27,7 +27,7 @@ event contracts. Independent instances share authoritative recipient suppression
 and replay state. Addresses/event IDs are stored as keyed identifiers, quota and
 configuration drift fail closed, and ordinary startup needs no DDL privileges.
 Install the correctly scoped guard in every sending process and worker; it is
-not enabled automatically. See the [shared suppression contract](../docs/src/shared-mail-suppression.md)
+not enabled automatically. See the [shared suppression contract](https://github.com/Rullst/Rullst/blob/main/docs/src/shared-mail-suppression.md)
 for setup, retention, provider-authentication boundaries, restart/worker evidence
 and pending hosted/package admission. The facade feature is `mail-postgres`.
 

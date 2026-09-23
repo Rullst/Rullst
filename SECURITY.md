@@ -5,8 +5,9 @@
 Rullst adopts Semantic Versioning for each published crate. This policy is
 written for the v12 stable release line; crates.io remains authoritative for
 whether an exact package version has been published. Source in a branch or an
-unpublished tag is not a distributed release by itself. The current published
-maintenance release is [12.1.0](https://github.com/Rullst/Rullst/releases/tag/v12.1.0).
+unpublished tag is not a distributed release by itself. Check the latest stable
+patch on [crates.io](https://crates.io/crates/rullst) and the
+[maintained release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md).
 
 `main` develops the next major release. Stable 12.x fixes belong to the protected
 [`v12` maintenance branch](https://github.com/Rullst/Rullst/tree/v12). Moving
@@ -15,7 +16,7 @@ existing crates.
 
 | Version | Supported | Status |
 | :--- | :---: | :--- |
-| **12.x** | :white_check_mark: | Current supported stable line; latest maintenance release: 12.1.0. |
+| **12.x** | :white_check_mark: | Current supported stable line; use its latest published stable patch. |
 | **13.x development** | :x: | Unreleased development work; no stable security-support commitment yet. |
 | **12.0.0-rc.1** | :x: | Immutable evaluation prerelease; migrate to the corresponding supported stable v12 line. |
 | **5.0.0** | :x: | Frozen legacy release; no routine maintenance. |

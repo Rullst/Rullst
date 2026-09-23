@@ -5,6 +5,15 @@ Updating dependencies or the CLI does not rewrite generated application files, m
 databases or redeploy the Azure examples. Keep the existing application and
 lockfile, generate a separate comparison project, and review the changes below.
 
+## Preparing for the 12.1.1 patch
+
+The [12.1.1 maintenance change set](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-1-review.md) preserves the 12.1.0 API,
+database schema and Rust 1.96.0 MSRV. Applications using public scaffold keys
+must replace them with unique secure secrets; changing a session-encryption key
+requires session renewal. HTTP drain now accounts for unfinished response
+bodies, and SQLite message leases use the time after acquiring the write lock.
+Existing generated LMS files are not rewritten by a dependency update.
+
 ## Account mail and machine requests
 
 The [account-mail guide](account-mail-v12-1.md) describes the opt-in durable
@@ -69,7 +78,7 @@ validate portal configuration; generated `BILLING.md` records this prerequisite.
 The new generated durable real-provider integration is Stripe-specific. Paddle
 and Polar expose typed adapter operations; their application persistence and
 event orchestration remain explicit. Consult the
-[complete provider matrix](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md#-supported-providers)
+[complete provider matrix](https://github.com/Rullst/Rullst/blob/v12.1.1/rullst-capital/README.md#-supported-providers)
 before enabling a method. Empty/`mock_*` credentials are deterministic local
 fixtures; mixed configuration must not silently produce a real-payment success.
 
@@ -117,6 +126,6 @@ application does not validate the framework's recurring subscription flow.
 The release additionally requires the full workspace all-feature tests, strict
 Clippy, formatting, package/consumer checks, coverage, SemVer/security checks and
 every workflow listed in `.github/release-required-workflows.json` at the exact
-main commit. Only then may the protected release pipeline publish the sixteen
+`v12` commit. Only then may the protected release pipeline publish the sixteen
 crates in `.github/release-order.json` and attach verified native CLI binaries.
 See [release recovery](release-recovery.md) for partial publication handling.

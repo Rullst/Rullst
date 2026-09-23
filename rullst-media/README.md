@@ -23,7 +23,7 @@ campaign and provider interoperability remain separate requirements.
 | `bunny,sqlite` | Complete supported private-video service composition |
 
 Run `cargo run -p rullst-media --example private_course_video --all-features`
-from this checkout. [The example](examples/private_course_video.rs) uses a real
+from this checkout. [The example](https://github.com/Rullst/Rullst/blob/main/rullst-media/examples/private_course_video.rs) uses a real
 temporary SQLite database and an explicit offline provider. It creates, publishes,
 checks entitlement, withdraws and deletes a lesson, without network credentials.
 Its mock grants are deliberately unusable for browser playback/upload.
@@ -62,7 +62,7 @@ is not an available stable crates.io release.
    Require authentication, CSRF, secure headers, WAF and ownership checks. Bind
    expected revisions for mutations; return minimized errors, not provider bodies.
    The full authenticated Core composition is exercised in
-   [the browser integration test](tests/browser.rs).
+   [the browser integration test](https://github.com/Rullst/Rullst/blob/main/rullst-media/tests/browser.rs).
 
 `create` uses a local creation ID bound to the original actor and metadata. Retain
 that ID for retries. `get` and cursor-based `list` require management permission;

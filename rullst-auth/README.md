@@ -55,7 +55,7 @@ bounded; no device fingerprint, IP address or activity history is collected.
 Run the additive schema migration and verify SQL state on every request.
 Encrypted-only cookies and independent JWTs do not adopt this policy implicitly.
 Hosted source/package admission is pending; see the
-[session contract](../docs/src/session-management.md) for retention, deadlines,
+[session contract](https://github.com/Rullst/Rullst/blob/main/docs/src/session-management.md) for retention, deadlines,
 tenant boundaries and automated evidence.
 
 ## Email login candidate (v13)
@@ -66,7 +66,7 @@ CSRF-protected POST consumes the link and creates an existing revocable opaque
 session in one transaction. GET/HEAD never authenticate. The application still
 owns tenant authorization, MFA policy, secure cookies and sensitive-URL logging.
 SQLite shares one local file; PostgreSQL shares one authoritative writable server.
-See the [email-login contract](../docs/src/email-login.md) for limits, retention,
+See the [email-login contract](https://github.com/Rullst/Rullst/blob/main/docs/src/email-login.md) for limits, retention,
 Mail composition, process/browser evidence and pending hosted admission.
 
 ## API token candidate (v13)
@@ -77,7 +77,7 @@ and authoritative SQL revocation. Only HMAC digests are stored. Account-epoch
 changes invalidate older credentials. The Core machine-route adapter requires
 an Authorization bearer and preserves the security baseline; applications still
 enforce current tenant membership and resource permissions. See the
-[API-token contract](../docs/src/api-tokens.md) for setup, operational limits,
+[API-token contract](https://github.com/Rullst/Rullst/blob/main/docs/src/api-tokens.md) for setup, operational limits,
 restart/HTTP evidence and pending hosted admission.
 
 ## WebAuthn/passkeys
@@ -108,7 +108,7 @@ The host still establishes registration authority, resolves the account, forward
 an optional authenticator user handle, and atomically persists current credential
 ownership/revocation/counter state before granting a session. The existing
 SQLite registry and the shared ceremony adapter are not one distributed
-transaction. See the [shared ceremony contract](../docs/src/shared-passkey-ceremonies.md)
+transaction. See the [shared ceremony contract](https://github.com/Rullst/Rullst/blob/main/docs/src/shared-passkey-ceremonies.md)
 for local evidence and outstanding hosted/archive acceptance. Neither adapter
 establishes normative WebAuthn conformance, manages replication/failover, or
 replaces application identity and device-ownership policy.
