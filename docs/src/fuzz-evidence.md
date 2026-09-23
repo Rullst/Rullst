@@ -1,7 +1,8 @@
 # Fuzz evidence reuse
 
-The release still requires coverage of all 40 declared targets. A successful
-`fuzzing.yml` run on the final `main` commit remains mandatory. In release mode,
+The v12 release still requires evidence for all 40 declared targets. A successful
+`fuzzing.yml` run on the final release-branch commit (`v12` for maintenance)
+remains mandatory. In release mode,
 the planner can credit an original successful campaign when its reviewed inputs
 match the candidate; only targets without eligible evidence execute again.
 `force_full: true` requests all 40 executions. Diagnostic mode remains a
@@ -15,9 +16,10 @@ the pinned execution environment, preflight and campaign commands, runner
 labels, tool/action versions, flags and each fuzz package's complete contents.
 Each of the ten separate fuzz workspaces retains its own dependency lockfile.
 
-Shared production source, normal/build dependencies, compiler configuration,
-the target inventory and unclassified files are global inputs: changing one
-invalidates every target. A change confined to one isolated fuzz package
+Production source without an admitted dependency profile, normal/build
+dependency manifests, compiler configuration, the target inventory and
+unclassified files remain global inputs: changing one invalidates every target.
+A change confined to one isolated fuzz package
 invalidates every sibling target in that package, including changes to its
 lockfile. Package isolation is conservative: unusual path dependencies, build
 scripts, includes and direct file/process/environment access make fuzz-package
@@ -36,6 +38,66 @@ including target-specific, normal and build dependencies, remains an input.
 The regular locked-resolution, all-feature CI and CodeQL checks still run on
 the changed candidate. New exclusions require a reviewed policy change and
 negative tests; they are not inferred from filenames.
+
+### Reviewed Auth dependency profile
+
+The v12.1.1 profile admits selective attribution of `rullst-auth` package
+contents. The planner resolves local Cargo paths, workspace inheritance,
+renamed dependencies and the transitive union of normal, build, development,
+optional and target-specific dependencies. It does not guess which individual
+functions a target might call. Auth changes therefore reach all twelve facade
+targets and the Nexus target, even when one of those targets calls another API.
+
+Cargo metadata alone cannot prove that a program never reads another package's
+files at runtime. `.github/fuzz-source-scope.json` also pins reviewed source
+contexts for the eight independent fuzz packages: their entire conservative
+local dependency closure, harnesses, locks, assets, paths, modes and root
+manifest. A changed or unreviewed context receives the Auth inputs as well.
+Passing a fresh campaign on that changed context does not approve a narrower
+scope for a later Auth change. New context identities require source review.
+The initial reviewed contexts have no harness path that reads Auth source as
+data; SQLite builder fixtures use their explicit in-memory initialization.
+
+Literal source inclusions add dependency edges. Local build scripts, unknown
+dependency replacement, dynamic or ambiguous source inclusions, changed Cargo
+configuration and unreviewed procedural macros restore global attribution.
+The exact existing doctest module and parent are pinned separately; this is
+not a blanket exclusion of Rust source. Other production crates retain global
+attribution until another profile is reviewed. Unknown layouts cannot silently
+receive selective credit.
+
+This profile can reduce the current Auth correction from 40 new campaigns to
+13, with up to 27 original campaigns reused **only if all provenance, age,
+completion and input checks below also pass**. It does not transfer evidence
+between repositories: a new private validation repository has no inherited
+campaign history. Its preliminary results do not automatically admit the
+public release branch.
+
+The exact old/new blobs for the maintenance changelog, SST and review document
+are recorded in `.github/fuzz-reviewed-maintenance-docs.json`. Third contents,
+path/mode changes and deletion remain inputs. These files are not runtime
+inputs of the reviewed fuzz profiles; a recognized runtime inclusion prevents
+document normalization. The facade's executable fuzz-contract integration test
+and coverage reporting workflow are reviewed control inputs, retained in their
+own checks rather than the runtime fingerprint. Private coverage runs retain
+the same threshold checks and GitHub artifacts without uploading to Codecov.
+
+### Harness quality
+
+Three historical facade harnesses only discarded their input; the session
+harness used a repeated-byte key rejected before token parsing. Their historical
+successful jobs establish execution of those old harnesses, not the intended
+functional coverage. The corrected config, tenant, session and realtime targets
+execute real APIs with deterministic positive/negative regression contracts.
+Session fuzzing uses a valid fixture key and checks authenticated round trips
+and nonce tampering; tenant tests require authenticated membership; realtime
+checks bound payloads and prevent delivery to another tenant. The realtime
+target does not claim to fuzz a TCP/WebSocket framing implementation.
+
+The current scheduler, release gate and workflow lint reject trivially empty or
+discard-only target bodies. This narrow structural check is not a semantic
+coverage proof; the four executable contracts and the actual fresh campaigns
+remain necessary. Changed harnesses never borrow their old campaign result.
 
 ### Reviewed v12.1 publication documentation
 
@@ -64,7 +126,8 @@ candidate; this exception only concerns the bounded fuzz campaign.
 
 The planner examines at most 30 recent runs and credits only original jobs:
 
-- The same repository, `main`, `workflow_dispatch`, and `fuzzing.yml` identity.
+- The same repository, versioned release branch, `workflow_dispatch`, and
+  `fuzzing.yml` identity.
 - A source commit that is the candidate or a Git ancestor of it.
 - A run created within the preceding seven days; reusing it does not renew age.
 - A completed successful workflow and evidence boundary, a successful package

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "7b2d2c54127008157286ceac29215687b4a9a2f6",
+  "blobs": {
+    "CHANGELOG.md": [
+      "5d1fa2c7ef47bed190132cc780e05d7eb60820b9",
+      "1aee3083bd04a84678a8eb9cb1a6f5bcefcfbf60"
+    ],
+    "docs/src/spec.md": [
+      "3a757655d555d6880d10bab5b153d5a966b87c64",
+      "81c990b437ddfb8cc411c184f8130366c7946193"
+    ],
+    "docs/src/v12-1-1-review.md": [
+      "79205b81526d0ba2d046a6890b4732d3e4ad2a9a",
+      "cb6b9ef458073f93d384b8da1d3e2f0fa379b23c"
+    ]
+  }
+}

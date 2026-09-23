@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "procedural_macros": {
+    "rullst-macros": "1230e6a29c39580877c4151c6c53a92a89e1289f9edf61ddd81751096084057a",
+    "rullst-orm-macros": "04d8abaafa8a642b5d4cc5df5d17b1847ffc11877f787c508f1588bbfcf95b57"
+  },
+  "doctest_modules": {
+    "rullst/src/book_doctests.rs": {
+      "blob": "92d0e6fe6b598f756e5b229baedb940169fd91cc",
+      "parent": "rullst/src/lib.rs",
+      "parent_blob": "aea6f56c69ca58181cbf83ba3c46e5bf868e475c"
+    }
+  },
+  "cargo_configs": {
+    ".cargo/config.toml": [
+      "100644",
+      "708a59d005a256dac1b585144ad8a410dba66a15"
+    ]
+  },
+  "scoped_packages": [
+    "rullst-auth"
+  ],
+  "source_contexts": {
+    "rullst-ai/fuzz": [
+      "8b202e4912ce4b546f23768e2fa69d79878903bb282aaf6b4d83776fd091331d"
+    ],
+    "rullst-capital/fuzz": [
+      "47bdd12e1f6ff8868282a26934ccf6c915420eb7e9da62b9acf6f3595aa5a75a"
+    ],
+    "rullst-connect/fuzz": [
+      "0ae2d05662e06c2a6b5c2957bb133674ae7b8e9b1f8408c27ea49743df92faf8"
+    ],
+    "rullst-iot/fuzz": [
+      "4d9fdeb49e9f9b63c0518033de2e39b64820a546a93a3fd2d19af5744e84889f"
+    ],
+    "rullst-mail/fuzz": [
+      "a8d21b16606067b7392f979b4d2561b8c68c8d8dbad236069d0af82cab9c1b5c"
+    ],
+    "rullst-orm/fuzz": [
+      "fb05faa0a7b209501a4d85834ae1ef5969e384cfee28976165d23aa9bddae39e"
+    ],
+    "rullst-security/fuzz": [
+      "983e231f36434d4a21906b9850f2439b044dd617798b1924039f8558e8e8ebd7"
+    ],
+    "rullst-studio/fuzz": [
+      "72d1e6b5eb811c9d15ce4e668bd1156f237c395778c76dba3241bfdcc6ec078b"
+    ]
+  }
+}

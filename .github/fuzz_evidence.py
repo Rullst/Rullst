@@ -13,7 +13,10 @@ import sys
 import urllib.parse
 import urllib.request
 
-from fuzz_evidence_inputs import DOC_REVIEW, ROOT, SHA, FuzzSurfaceChanged, Snapshot, digest
+from fuzz_evidence_inputs import (
+    DOC_REVIEW, MAINTENANCE_DOC_REVIEW, ROOT, SHA, SCOPE_REVIEW,
+    FuzzSurfaceChanged, Snapshot, digest,
+)
 from release_line import EVIDENCE_BRANCHES
 
 SECONDS = 19_800
@@ -188,7 +191,9 @@ def plan(candidate: Snapshot, github: GitHub, now: datetime | None = None,
             "policy_sha256": digest({name: (ROOT / name).read_text() for name in
                                       (".github/fuzz_evidence.py", ".github/fuzz_evidence_inputs.py",
                                        ".github/release_line.py", ".github/release-required-workflows.json",
-                                       DOC_REVIEW)})}
+                                       ".github/fuzz_dependency_inputs.py", SCOPE_REVIEW,
+                                       ".github/test-fuzz-target-quality.py",
+                                       DOC_REVIEW, MAINTENANCE_DOC_REVIEW)})}
 
 
 def write_report(report: dict, path: Path) -> None:

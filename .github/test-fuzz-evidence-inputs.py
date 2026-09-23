@@ -97,7 +97,23 @@ class InputTests(unittest.TestCase):
         policy = patch("fuzz_evidence_inputs.reviewed_document_blobs", return_value=review)
         policy.start()
         self.addCleanup(policy.stop)
+        # Documentation equivalence needs a reviewed source context as well as
+        # the two exact document blobs. Build a real bounded workspace fixture.
+        members = sorted({item["dir"].split("/")[0] for item in self.inventory} | {"rullst-core"})
+        self.write("Cargo.toml", "[workspace]\nmembers=" + json.dumps(members))
+        for member in members:
+            if not (self.root / member / "Cargo.toml").exists():
+                self.write(member + "/Cargo.toml", '[package]\nname="' + member + '"\nversion="1.0.0"\n')
+        dependency_review = {"schema_version": 1, "procedural_macros": {}, "doctest_modules": {},
+            "cargo_configs": {".cargo/config.toml": ["100644", self.run_git("hash-object", ".cargo/config.toml")]},
+            "scoped_packages": ["rullst-mail"], "source_contexts": {}}
+        scope_policy = patch("fuzz_evidence_inputs.dependency_scope_review", return_value=dependency_review)
+        scope_policy.start()
+        self.addCleanup(scope_policy.stop)
         self.base = Snapshot(self.commit(), self.root)
+        dependency_review["source_contexts"] = {directory: [digest] for directory, digest
+                                                in self.base.dependency_scope.contexts.items()}
+        self.base = Snapshot(self.base.sha, self.root)
         return review
 
     def test_exact_reviewed_document_contents_preserve_all_package_inputs(self):
@@ -129,6 +145,17 @@ class InputTests(unittest.TestCase):
         self.write("rullst-core/src/lib.rs", 'pub const TEXT: &str = include_str!("../../README.md");')
         self.write("README.md", "reviewed publication documentation\n")
         self.assertEqual(self.changed(), self.base.directories)
+
+    def test_reviewed_document_stays_an_input_to_unreviewed_runtime_consumers(self):
+        self.document_review_fixture()
+        self.write("rullst-iot/src/lib.rs",
+                   'pub fn read_doc() { let _ = std::fs::read("../README.md"); }')
+        self.base = Snapshot(self.commit(), self.root)
+        self.assertIn("rullst-iot/fuzz", self.base.dependency_scope.unproven_consumers)
+        # Even after the new reader has its own passing campaign, its actual
+        # document bytes cannot be normalized using the older source review.
+        self.write("README.md", "reviewed publication documentation\n")
+        self.assertEqual(self.changed(), {"rullst-iot/fuzz"})
 
     def test_every_package_harness_and_lock_invalidates_its_entire_package(self):
         for directory in self.base.directories:

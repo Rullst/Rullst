@@ -203,8 +203,13 @@ matching immutable release is published.
 
 The unpublished maintenance candidate retains the v12 public APIs, database
 schemas and Rust 1.96.0 MSRV. Application-key validation rejects the public
-scaffold placeholders after trimming and case normalization; it does not rotate
-keys or rewrite application configuration.
+scaffold/documentation placeholders after trimming and case normalization.
+Legacy `Rullst.toml` discovery accepts only exact `app_key` or `key` field names,
+not prefix-colliding fields; it does not rotate keys or rewrite application
+configuration. Exact legacy fields retain the historical value before the
+next `=` so already-issued sessions remain readable. `APP_KEY` is preferred
+for new values containing `=`; migrating an existing TOML value must retain
+its effective bytes or explicitly rotate the secret and invalidate sessions.
 
 SQLite broker operations sample trusted time after acquiring `BEGIN IMMEDIATE`.
 Publication, claim, ACK, retry and dead-letter must not use a timestamp captured

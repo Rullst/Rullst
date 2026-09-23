@@ -68,6 +68,8 @@ jobs:
       - name: Test fuzz evidence policy
         run: |
           python3 .github/test-fuzz-evidence-inputs.py
+          python3 .github/test-fuzz-dependency-inputs.py
+          python3 .github/test-fuzz-target-quality.py
           python3 .github/test-fuzz-evidence.py
 
       - name: Validate and export matrix

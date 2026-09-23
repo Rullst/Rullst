@@ -17,8 +17,11 @@ No tag or crates.io publication is established by this section. See the
 
 ### Fixed
 
-- Reject public scaffold application-key placeholders consistently in Auth.
-  Valid application keys retain the existing API; replacing an example key
+- Reject every public scaffold/documentation application-key placeholder
+  consistently in Auth, and require exact `app_key` or legacy `key` names when
+  reading `Rullst.toml` so prefix-colliding fields cannot become session keys.
+  Exact legacy fields retain their historical value extraction, including keys
+  containing `=`, so existing sessions stay readable. Replacing an example key
   requires application-controlled session renewal.
 - Hold Core lifecycle admission through ordinary HTTP body completion, error
   or cancellation, including streaming data/trailers. Drain remains bounded;
@@ -29,6 +32,15 @@ No tag or crates.io publication is established by this section. See the
   existing public signatures and response behavior.
 
 ### Maintenance
+
+- Refine fuzz evidence selection with a reviewed Auth dependency profile,
+  preserving full-duration campaigns, provenance, expiry and fail-closed
+  handling of unknown source consumers. Replace inert config/tenant/realtime
+  harnesses and exercise authenticated session decoding with a valid fixture
+  key, deterministic regression contracts and retained seed inputs.
+- Keep exact coverage thresholds for private security validation while storing
+  its reports only in private GitHub artifacts rather than sending them to
+  Codecov.
 
 - Make executable update-discovery cache fixtures follow the current CLI version
   and verify both entry points report that version. Preserve downgrade rejection

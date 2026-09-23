@@ -45,6 +45,8 @@ jobs:
           python3 .github/test-release-source.py
           python3 .github/test-check-release-admission.py
           python3 .github/test-fuzz-evidence-inputs.py
+          python3 .github/test-fuzz-dependency-inputs.py
+          python3 .github/test-fuzz-target-quality.py
           python3 .github/test-fuzz-evidence.py
 
       - name: Require successful automatic and manual gates for the exact SHA
