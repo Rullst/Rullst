@@ -7,14 +7,17 @@ import json
 import re
 import subprocess
 import tomllib
+from functools import lru_cache
 from pathlib import Path
 
 from release_line import FUZZ_TARGET_COUNTS, policy_line
+from fuzz_dependency_inputs import DependencyScope, SCOPE_REVIEW, UnprovenScope
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ".github/workflows/fuzzing.yml"
 INVENTORY = ".github/fuzz-targets.json"
 DOC_REVIEW = ".github/fuzz-reviewed-publication-docs.json"
+MAINTENANCE_DOC_REVIEW = ".github/fuzz-reviewed-maintenance-docs.json"
 SHA = re.compile(r"[0-9a-f]{40}")
 
 
@@ -34,6 +37,10 @@ NON_INPUTS = frozenset({
     ".github/test-fuzz-preflight.py",
     ".github/check-release-admission.py", ".github/test-check-release-admission.py",
     ".github/workflows/release.yml", ".github/workflows/workflow-lint.yml",
+    ".github/fuzz_dependency_inputs.py", ".github/test-fuzz-dependency-inputs.py",
+    SCOPE_REVIEW, MAINTENANCE_DOC_REVIEW,
+    ".github/workflows/coverage.yml",
+    ".github/test-fuzz-target-quality.py", "rullst/tests/fuzz_harness_contracts.rs",
 })
 
 
@@ -43,6 +50,15 @@ def git(*args: str, root: Path = ROOT) -> bytes:
 
 def digest(value: object) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+@lru_cache(maxsize=4096)
+def read_blob(oid: str, root: Path) -> bytes:
+    return git("cat-file", "blob", oid, root=root)
+
+
+def dependency_scope_review() -> dict:
+    return json.loads((ROOT / SCOPE_REVIEW).read_text())
 
 
 def reviewed_document_blobs() -> dict[str, list[str]]:
@@ -60,7 +76,23 @@ def reviewed_document_blobs() -> dict[str, list[str]]:
                 or any(not isinstance(oid, str) or SHA.fullmatch(oid) is None for oid in blobs)
                 or blobs[0] == blobs[1]):
             raise ValueError("invalid reviewed document blob identity")
-    return review["blobs"]
+    maintenance = json.loads((ROOT / MAINTENANCE_DOC_REVIEW).read_text())
+    if (set(maintenance) != {"schema_version", "baseline_commit", "blobs"}
+            or maintenance["schema_version"] != 1
+            or not isinstance(maintenance["baseline_commit"], str)
+            or SHA.fullmatch(maintenance["baseline_commit"]) is None
+            or not isinstance(maintenance["blobs"], dict)):
+        raise ValueError("invalid maintenance documentation review")
+    for path, blobs in maintenance["blobs"].items():
+        if (path not in {"CHANGELOG.md", "docs/src/spec.md", "docs/src/v12-1-1-review.md"}
+                or not isinstance(blobs, list) or len(blobs) != 2
+                or any(not isinstance(oid, str) or SHA.fullmatch(oid) is None for oid in blobs)
+                or blobs[0] == blobs[1]):
+            raise ValueError("invalid reviewed maintenance documentation identity")
+        # A maintenance review must not silently supersede another exception.
+        if path in review["blobs"]:
+            raise ValueError("overlapping documentation reviews require explicit policy migration")
+    return review["blobs"] | maintenance["blobs"]
 
 
 def execution_contract(workflow: str) -> str:
@@ -162,12 +194,26 @@ class Snapshot:
                     if re.search(rb"include|\bpath\s*=|\b(?:fs|env|process)\s*::|\b(?:File|Command)\s*::", source):
                         isolated = False
         reviewed_docs = reviewed_document_blobs()
+        self.scope_reason = "dependency closure"
+        try:
+            scope = DependencyScope(self, dependency_scope_review(), reviewed_docs)
+        except UnprovenScope as error:
+            scope = None
+            self.scope_reason = str(error)
+        self.dependency_scope = scope
         for path, (mode, oid) in sorted(self.files.items()):
             if path in NON_INPUTS or path == WORKFLOW:
                 continue
             # Only the two explicitly reviewed contents are equivalent. Keep
             # path/mode/deletion in the identity; any third blob is a new input.
-            if path in reviewed_docs and mode == "100644" and oid in reviewed_docs[path]:
+            if (path in reviewed_docs and mode == "100644" and oid in reviewed_docs[path]
+                    and (scope is None or path not in scope.included_files)):
+                # A frozen document pair is not a blanket promise about future
+                # consumers. Unreviewed contexts also retain its actual bytes,
+                # including after their own new source campaign has succeeded.
+                unproven = scope.unproven_consumers if scope is not None else self.directories
+                for directory in sorted(unproven):
+                    self.packages[directory].append([path, mode, oid])
                 oid = reviewed_docs[path][0]
             package = next((directory for directory in self.directories
                             if path.startswith(directory + "/")), None)
@@ -179,12 +225,23 @@ class Snapshot:
                 manifest.pop("dev-dependencies", None)
                 oid = digest(manifest)
             entry = [path, mode, oid]
-            (self.packages[package] if package else self.global_entries).append(entry)
+            recipients = (scope.recipients(path)
+                          if scope is not None and isolated and package is None
+                          and path not in reviewed_docs else None)
+            if package:
+                self.packages[package].append(entry)
+            elif recipients is not None:
+                for directory in sorted(recipients):
+                    self.packages[directory].append(entry)
+            else:
+                self.global_entries.append(entry)
             if package and not isolated:
                 self.global_entries.append(entry)
         self.global_hash = digest({"files": self.global_entries, "execution": self.contract})
 
     def read(self, path: str) -> bytes:
+        if hasattr(self, "files") and path in self.files:
+            return read_blob(self.files[path][1], self.root)
         return git("show", f"{self.sha}:{path}", root=self.root)
 
     def ancestor_of(self, candidate: "Snapshot") -> bool:

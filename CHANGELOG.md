@@ -33,6 +33,15 @@ No tag or crates.io publication is established by this section. See the
 
 ### Maintenance
 
+- Refine fuzz evidence selection with a reviewed Auth dependency profile,
+  preserving full-duration campaigns, provenance, expiry and fail-closed
+  handling of unknown source consumers. Replace inert config/tenant/realtime
+  harnesses and exercise authenticated session decoding with a valid fixture
+  key, deterministic regression contracts and retained seed inputs.
+- Keep exact coverage thresholds for private security validation while storing
+  its reports only in private GitHub artifacts rather than sending them to
+  Codecov.
+
 - Make executable update-discovery cache fixtures follow the current CLI version
   and verify both entry points report that version. Preserve downgrade rejection
   and all cache validity, offline, no-write and authority assertions.
