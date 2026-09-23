@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790135401413,
+  "lastUpdate": 1790168957250,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -9491,6 +9491,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 705,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "24690054942c6c9b227fe0db0566920c42737115",
+          "message": "fix(auth): forward key validation and fuzz contracts to v13 (#261)",
+          "timestamp": "2026-09-23T09:45:03-03:00",
+          "tree_id": "875c0f8b8fb59ab3fcd8494520f1ce0d4640ac6a",
+          "url": "https://github.com/Rullst/Rullst/commit/24690054942c6c9b227fe0db0566920c42737115"
+        },
+        "date": 1790168956595,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1820,
+            "range": "± 38",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 346,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 716,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
