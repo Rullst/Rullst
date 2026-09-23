@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790184291430,
+  "lastUpdate": 1790191397963,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -11699,6 +11699,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1779,
             "range": "± 75",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "56808579bf053b7529d9ed32e9c6d66168e0f2d8",
+          "message": "docs(maintenance): carry release guidance to main (#264)\n\ndocs(maintenance): forward-port stable publication and README guidance",
+          "timestamp": "2026-09-23T16:05:45-03:00",
+          "tree_id": "a1f3c27cb9fe4321ff5ca879fcd524e3f76b5552",
+          "url": "https://github.com/Rullst/Rullst/commit/56808579bf053b7529d9ed32e9c6d66168e0f2d8"
+        },
+        "date": 1790191397240,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 988,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 865,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1860,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3777,
+            "range": "± 51",
             "unit": "ns/iter"
           }
         ]
