@@ -447,4 +447,4 @@ async fn lifecycle_middleware(
 
 #[cfg(test)]
 #[path = "lifecycle_tests.rs"]
-mod tests;
+pub(crate) mod tests;

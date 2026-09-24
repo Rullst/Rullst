@@ -204,7 +204,7 @@ async fn lifecycle_helpers_are_monotonic_and_startup_failure_stops() {
     mark_lifecycle_ready(Some(&lifecycle)).expect("ready transition");
     assert_eq!(lifecycle.phase(), crate::lifecycle::ApplicationPhase::Ready);
 
-    lifecycle.begin_draining().expect("drain transition");
+    crate::lifecycle::tests::bounded_begin_draining(&lifecycle).expect("drain transition");
     assert!(matches!(
         mark_lifecycle_ready(Some(&lifecycle)),
         Err(ServerError::Lifecycle(_))
@@ -216,7 +216,7 @@ async fn lifecycle_helpers_are_monotonic_and_startup_failure_stops() {
     );
 
     let failed = crate::lifecycle::ApplicationLifecycle::new();
-    failed.begin_draining().expect("pre-start drain");
+    crate::lifecycle::tests::bounded_begin_draining(&failed).expect("pre-start drain");
     let result = Server::new(Router::new())
         .with_lifecycle(failed.clone())
         .run(0)
@@ -227,7 +227,15 @@ async fn lifecycle_helpers_are_monotonic_and_startup_failure_stops() {
 
 #[tokio::test]
 async fn custom_shutdown_drives_ready_drain_and_stopped_phases() {
+    // Keep the environment stable while the child inherits it. Each process
+    // owns its own lock; the parent releases its lock if the watchdog fails.
     let _lock = crate::server::TEST_ENV_LOCK.lock().await;
+    // The real shutdown future calls a synchronous transition. If it loops,
+    // the current-thread runtime cannot poll its Tokio watchdog. Run this
+    // scenario in a bounded child so it cannot also strand TEST_ENV_LOCK.
+    if run_shutdown_test_in_child() {
+        return;
+    }
     let environment = EnvironmentGuard::clear(&[
         "HOST",
         "RULLST_HOST",
@@ -267,6 +275,48 @@ async fn custom_shutdown_drives_ready_drain_and_stopped_phases() {
         observed.phase(),
         crate::lifecycle::ApplicationPhase::Stopped
     );
+}
+
+fn run_shutdown_test_in_child() -> bool {
+    const CHILD: &str = "RULLST_LIFECYCLE_SHUTDOWN_TEST_CHILD";
+    const NAME: &str =
+        "server::builder::tests::custom_shutdown_drives_ready_drain_and_stopped_phases";
+    if std::env::var_os(CHILD).as_deref() == Some(std::ffi::OsStr::new(NAME)) {
+        return false;
+    }
+
+    let executable = std::env::current_exe().expect("current test executable");
+    let listing = std::process::Command::new(&executable)
+        .args(["--exact", NAME, "--list"])
+        .output()
+        .expect("list the isolated shutdown test");
+    assert!(listing.status.success());
+    assert!(
+        String::from_utf8(listing.stdout)
+            .expect("test listing is UTF-8")
+            .lines()
+            .any(|line| line == format!("{NAME}: test")),
+        "the exact child filter must select the shutdown test"
+    );
+
+    let mut child = std::process::Command::new(executable)
+        .args(["--exact", NAME, "--nocapture"])
+        .env(CHILD, NAME)
+        .spawn()
+        .expect("start isolated shutdown test");
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        if let Some(status) = child.try_wait().expect("inspect shutdown test") {
+            assert!(status.success(), "isolated shutdown test failed: {status}");
+            return true;
+        }
+        if std::time::Instant::now() >= deadline {
+            child.kill().expect("stop a stuck shutdown test");
+            let _ = child.wait().expect("reap the shutdown test");
+            panic!("isolated shutdown test exceeded its independent deadline");
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
 }
 
 #[tokio::test]

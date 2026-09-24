@@ -206,7 +206,7 @@ async fn application_lifecycle_also_gates_hot_swapped_routes() {
         .unwrap();
     assert_eq!(ready.status(), StatusCode::OK);
 
-    lifecycle.begin_draining().unwrap();
+    crate::lifecycle::tests::bounded_begin_draining(&lifecycle).unwrap();
     let draining = service
         .call(Request::builder().uri("/ok").body(Body::empty()).unwrap())
         .await

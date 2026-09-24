@@ -33,7 +33,7 @@ fn tracked(body: Body) -> (ApplicationLifecycle, Body) {
     lifecycle.mark_ready().unwrap();
     let guard = lifecycle.try_admit().unwrap();
     let response = track(Response::new(body), guard);
-    lifecycle.begin_draining().unwrap();
+    crate::lifecycle::tests::bounded_begin_draining(&lifecycle).unwrap();
     (lifecycle, response.into_body())
 }
 
