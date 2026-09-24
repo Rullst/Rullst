@@ -9,14 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
-## [12.1.1] - 2026-09-22 (maintenance change set)
+## [12.1.1] - 2026-09-24
 
-Compatible maintenance changes prepared on `v12` and subjected to defensive
-review. This section records the change set; the
-[release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md)
-establishes publication status and final evidence. See the
-[review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-1-review.md)
-for scope and acceptance.
+Published on September 24 UTC (September 23 in Brasília), after all 28 required
+source controls and the protected artifact/publication workflow passed. The
+[release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md#1211-published-maintenance-release)
+retains the sixteen verified registry checksums and immutable source identity.
+The [review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-1-review.md)
+records scope and acceptance boundaries.
 
 ### Fixed
 

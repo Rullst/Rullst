@@ -1,11 +1,13 @@
 # Migrating from 12.0 to 12.1
 
-Version [12.1.0 is published](v12.md#1210-published-maintenance-release).
+Version [12.1.1 is published](v12.md#1211-published-maintenance-release).
 Updating dependencies or the CLI does not rewrite generated application files, migrate
 databases or redeploy the Azure examples. Keep the existing application and
 lockfile, generate a separate comparison project, and review the changes below.
 
-## Preparing for the 12.1.1 patch
+<a id="preparing-for-the-1211-patch"></a>
+
+## Upgrading to the 12.1.1 patch
 
 The [12.1.1 maintenance change set](v12-1-1-review.md) preserves the 12.1.0 API,
 database schema and Rust 1.96.0 MSRV. Applications using public scaffold keys
