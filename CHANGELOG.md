@@ -9,6 +9,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Stable maintenance test forward-port
+
+- Add regression tests for independent Argon2 rehash-policy changes, the
+  inclusive application-key entropy threshold and session-cookie bounds.
+- Verify idempotent HTTP draining, terminal transitions, wait limits and prompt
+  wakeup on the last request release; bound test orchestration under mutations.
+- Exercise SQLite lease abandonment without old-worker intervention, scoped
+  recovery, attempt ceilings, exact retry limits, epoch-zero replay, retained
+  subscription history and rollback after damaged delivery transitions.
+- Cover cancellation before HTTP response headers, simultaneous drain waiters,
+  readiness withdrawal, cross-account password-reset isolation, atomic receive
+  batches, partial-consumer retention and fencing of every stale lease operation.
+- Forward-port the v12 maintenance regressions. Published 12.1.1 artifacts,
+  runtime APIs, dependency versions and Rust 1.96.0 MSRV remain unchanged.
+
+### v13 regression verification
+
+- Verify that rejected age-proof signatures do not consume memory or durable
+  replay capacity before a valid one-use assessment.
+- Exercise independent Media and Labs lifecycles for identical identifiers in
+  separately authorized tenants/courses, and independent Supervision exam state
+  for identical learner names across tenants. Provider fixtures stay on loopback;
+  these tests do not establish live-provider or production isolation certification.
+
 ### Auth maintenance forward-port
 
 - Carry the application-key correction from the published v12.1.1 fix in PR #259

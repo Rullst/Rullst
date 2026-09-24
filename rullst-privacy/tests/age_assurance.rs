@@ -73,6 +73,8 @@ mod declaration;
 #[cfg(feature = "postgres")]
 #[path = "age_assurance/postgres/mod.rs"]
 mod postgres;
+#[path = "age_assurance/rejected_proofs.rs"]
+mod rejected_proofs;
 #[path = "age_assurance/replay.rs"]
 mod replay;
 #[cfg(feature = "sqlite")]

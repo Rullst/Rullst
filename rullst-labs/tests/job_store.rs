@@ -257,3 +257,92 @@ async fn withdrawing_the_registered_grader_denies_new_submissions() {
     assert!(serde_json::from_value::<Submission>(forged).is_err());
     f.store.close().await;
 }
+
+#[tokio::test]
+async fn authorized_tenants_and_courses_keep_identical_job_ids_independent() {
+    // All three scopes are authorized so the durable lookup, rather than a
+    // fixture denying other courses, must enforce their separation.
+    struct MultiCourse([Scope; 3]);
+    impl Authorization for MultiCourse {
+        async fn check(
+            &self,
+            actor: &Reference,
+            scope: &Scope,
+            action: Action,
+        ) -> Result<Permission, LabError> {
+            if !self.0.contains(scope)
+                || !matches!(actor.as_str(), "teacher" | "alice")
+                || (matches!(action, Action::ManageJobs | Action::ManageExercises)
+                    && actor.as_str() != "teacher")
+            {
+                return Err(LabError::Denied);
+            }
+            Permission::until(NOW + 1000)
+        }
+    }
+    let f = Fixture::new(4).await;
+    let scopes = [
+        scope(),
+        Scope::new("other-school", "rust").unwrap(),
+        Scope::new("school", "other-course").unwrap(),
+    ];
+    let policy = MultiCourse(scopes.clone());
+    for scope in &scopes[1..] {
+        let exercise = Exercise::new(
+            scope.clone(),
+            id("sum"),
+            id("v1"),
+            vec![GraderCase {
+                id: id("private-case"),
+                input: [123, 456],
+                expected: 579,
+            }],
+            ExecutionLimits::new(10, 100000, 64).unwrap(),
+        )
+        .unwrap();
+        f.store
+            .register_exercise(&policy, &id("teacher"), &exercise)
+            .await
+            .unwrap();
+    }
+    let mut originals = Vec::new();
+    for scope in &scopes {
+        originals.push(
+            f.store
+                .submit(&policy, &id("alice"), scope, submission("same-id"))
+                .await
+                .unwrap(),
+        );
+    }
+    let cancelled = f
+        .store
+        .cancel(&policy, &id("alice"), &scopes[0], &id("same-id"), 1)
+        .await
+        .unwrap();
+    assert_eq!(cancelled.state, JobState::Cancelled);
+    for (scope, original) in scopes.iter().zip(&originals).skip(1) {
+        assert_eq!(
+            f.store
+                .get_job(&policy, &id("alice"), scope, &id("same-id"))
+                .await
+                .unwrap(),
+            *original
+        );
+        assert_eq!(
+            f.store
+                .submit(&policy, &id("alice"), scope, submission("same-id"))
+                .await
+                .unwrap(),
+            *original
+        );
+    }
+    let mut db = f.database().await;
+    let retained: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM labs_jobs WHERE content IS NOT NULL")
+            .fetch_one(&mut db)
+            .await
+            .unwrap();
+    assert_eq!(retained, 2);
+    drop(db);
+    f.store.close().await;
+}
