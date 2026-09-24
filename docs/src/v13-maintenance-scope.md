@@ -90,20 +90,25 @@ capability dispensable merely because it is expensive.
 
 ## Capital: retain billing, contain the responsibility
 
-The initial retention priorities are Stripe, which already serves the
-maintainer's SaaS journey, and Paddle, whose merchant-of-record subscription
-offering addresses another requested product need. Keep useful checkout,
-subscription and authenticated-event behavior alongside the common billing
-contracts, within their supported and validated scope. Cost control must not
-leave every developer to implement payment protocols. Select other official
-adapters through the same demand, cost and evidence review; no provider is
-removed by this planning update, and no new live-account validation is claimed.
+**Owner-selected v13 scope, 24 September 2026:** the official billing-provider
+set is Stripe and Paddle. Crypto integrations are excluded from this release.
+Stripe already serves the maintainer's SaaS journey; Paddle's
+merchant-of-record subscription offering addresses another requested product
+need. Keep useful checkout, subscription and authenticated-event behavior
+alongside the common billing contracts, within their supported and validated
+scope. Cost control must not leave every developer to implement payment
+protocols.
 
-| Priority | Reason and current boundary |
+This is the target release scope, not a claim that the existing adapters have
+already been removed. Plan the compatibility transition for other providers
+before changing APIs, facade features, CLI choices, generated applications or
+dependencies. Preserve the published v12 support commitments. Do not silently
+redirect existing customers/subscriptions to another provider.
+
+| v13 provider | Reason and current boundary |
 | :--- | :--- |
-| Retain Stripe | Existing SaaS use and the generated durable billing integration. Preserve the reviewed operation boundaries rather than promising every Stripe product. |
-| Retain Paddle | Subscription billing with provider-managed merchant-of-record responsibilities. Existing typed checkout and signed subscription contracts are useful foundations; generated durable billing integration is still Stripe-specific. |
-| Preserve an extension path for crypto payments | Reuse applicable billing and event-integrity contracts. Evaluate one optional integration against an actual use case before promising official provider support. Coinbase Business is not the preferred global self-service path under its current merchant eligibility restrictions. |
+| Stripe | Existing SaaS use and the generated durable billing integration. Preserve the reviewed operation boundaries rather than promising every Stripe product. |
+| Paddle | Subscription billing with provider-managed merchant-of-record responsibilities. Existing typed checkout and signed subscription contracts are useful foundations; generated durable billing integration is still Stripe-specific. |
 
 [Paddle's SaaS documentation](https://developer.paddle.com/get-started/how-paddle-works/saas/)
 describes subscription lifecycle, customer self-service and sales-tax handling
@@ -111,69 +116,26 @@ under its merchant-of-record model. These provider capabilities are not a claim
 that every operation is implemented in Rullst or that the application inherits
 universal legal compliance.
 
-**Provider review on 24 September 2026:** Coinbase's
-[Commerce transition notice](https://help.coinbase.com/en/transitioning-from-coinbase-commerce-to-coinbase-business)
-sets 31 March 2026 as the Commerce shutdown deadline. Its current
-[Business availability page](https://help.coinbase.com/en/coinbase/other-topics/business/business-overview)
-lists eligible businesses in the United States and Singapore. Recheck eligibility
-before selecting it for a particular merchant. This describes enrollment of the
-receiving business, not all Coinbase products or every payer's location. Remove
-it from the preferred global integration shortlist, not from supported public
-APIs without the compatibility review described below. The existing Rullst Commerce
-adapter has signed-webhook foundations and rejects unsupported live plan-only
-checkout; it is not an implementation of the Business APIs. Current
-[Checkout APIs](https://docs.cdp.coinbase.com/coinbase-business/checkout-apis/overview)
-use single-use checkouts. Do not infer automatic recurring collection, support
-for every cryptocurrency or compatibility with the old adapter.
+Crypto research is deferred beyond v13. Preserve applicable billing extension
+contracts, but do not add a crypto adapter, universal blockchain API, custody
+service or new crypto-specific release gate. The existing Commerce code still
+requires the same reviewed compatibility transition as other excluded
+providers. Two findings remain relevant if a future application requests this:
 
-A useful initial crypto scope is a server-priced purchase or prepaid credit,
-with authenticated payment confirmation, durable idempotent fulfillment and
-explicit refund/reconciliation rules. Keep assets, networks and merchant
-availability explicit. This remains future provider-selection work, not a new
-live integration. Bunny's [billing FAQ](https://bunny.net/faq/) lists Bitcoin as
-a payment option; that illustrates the product use case, not evidence that
-Coinbase is the required provider or that Rullst's media integration enables
-payments automatically.
-
-For a future optional integration, evaluate
-[BTCPay Server](https://docs.btcpayserver.org/FAQ/General/): its self-hosted Bitcoin
-invoicing model and [Greenfield API](https://docs.btcpayserver.org/API/Greenfield/v1/)
-offer an alternative to requiring an account with a particular custodial payment
-processor. This is a candidate for evaluation, not a validated Rullst adapter or
-a security certification. The operator still owns hosting, updates, wallet
-security and operational costs; self-hosting does not eliminate maintenance.
-Prefer a narrow invoice/status/authenticated-event example or adapter when a
-consumer and maintainer exist. Do not add a blockchain node, custody service,
-exchange or support for every chain to the framework.
-
-The [BTCPay altcoin FAQ](https://docs.btcpayserver.org/FAQ/Altcoin/) distinguishes
-the core team's Bitcoin focus from opt-in community-maintained integrations and
-exchange plugins. Do not describe that list as one uniformly supported or
-validated multi-asset implementation. Its
-[August 2026 security advisory](https://blog.btcpayserver.org/security-advisory-btcpay-server-2-4-2/)
-also records an exploited LND credential vulnerability fixed in 2.4.2; the
-confirmed credential/funds exposure was specific to LND deployments. This is a
-dated incident reference, not a recommendation that 2.4.2 is the latest release
-or that another configuration is generally risk-free. Any future selection
-needs current advisories and the exact deployment/plugin versions reviewed.
-
-Recommendation: do not make a crypto adapter a requirement for v13. Retain
-applicable payment foundations and documented extension boundaries, then use a
-real application requirement to select one optional reference integration with
-bounded acceptance tests and an accountable maintainer. Do not build speculative
-universal crypto APIs merely to advertise support. Completing the supported
-SaaS journey, safe upgrades and independent evaluation currently has higher
-priority; relative commercial demand remains unmeasured.
-
-Asset price volatility and integration maintenance are different costs. An
-[invoice with a fixed exchange rate and expiry](https://docs.btcpayserver.org/Invoices/)
-can define a payment window; it does not remove the merchant's subsequent
-holding risk. Conversion to fiat requires a separately supported service or
-plugin. Reuse tenant binding, authoritative amounts, idempotent fulfillment and
-reconciliation where applicable, while exposing provider-specific capabilities
-and pending/settled/expired semantics explicitly. Do not pretend an ordinary
-subscription trait supplies automatic crypto renewals. No crypto implementation
-or removal is scheduled by this planning clarification.
+- Coinbase's [Commerce transition notice](https://help.coinbase.com/en/transitioning-from-coinbase-commerce-to-coinbase-business)
+  sets 31 March 2026 as the Commerce shutdown deadline. Its
+  [Business availability page](https://help.coinbase.com/en/coinbase/other-topics/business/business-overview)
+  currently lists eligible receiving businesses in the United States and
+  Singapore. Existing Commerce code is not a Business API implementation.
+- [BTCPay Server](https://docs.btcpayserver.org/FAQ/General/) is an optional
+  evaluation candidate, not a selected Rullst provider. Its
+  [altcoin FAQ](https://docs.btcpayserver.org/FAQ/Altcoin/) separates the core
+  Bitcoin scope from community integrations. Its
+  [August 2026 advisory](https://blog.btcpayserver.org/security-advisory-btcpay-server-2-4-2/)
+  records an exploited LND credential vulnerability fixed in 2.4.2. This dated
+  reference does not identify the latest release or certify another deployment.
+  Future evaluation must include current advisories, exact plugin/engine versions
+  and operator maintenance, not merely API access.
 
 Plan three explicit responsibilities, using the existing implementation as the
 starting point rather than rewriting it:
@@ -208,6 +170,47 @@ The recurring obligations are concrete: Stripe documents duplicate events,
 delivery ordering and retries in its [webhook guide](https://docs.stripe.com/webhooks),
 and version transitions in its [API upgrade guide](https://docs.stripe.com/upgrades).
 Other providers require their own evidence rather than inferred equivalence.
+
+## Turso: assess a complete application journey before universal parity
+
+**Assessment on 24 September 2026; implementation is not scheduled here.**
+SQLite, PostgreSQL and MySQL/MariaDB are the principal SQLx ORM backends.
+MariaDB shares the MySQL driver but has its own executable container contract.
+This does not imply every optional crate or generated application supports all
+four databases: some domain stores deliberately have a SQLite-only or
+PostgreSQL-specific implementation.
+
+The current Turso/libSQL path already supplies typed CRUD, equality filters,
+ordering, bounded pagination/counts, explicit SQL transactions and reversible
+checksummed migrations. Blank/API generation and selected generators have
+bounded acceptance; the remote matrix runs against an official libSQL server.
+SQLx-specific relations/hooks, schema auto-diff, seed generation, full blueprint
+parity and transparent replica synchronization remain outside that profile.
+See the [current persistence contracts](polyglot-persistence.md).
+
+The remote adapter owns an HTTP/Hrana protocol implementation; local offline
+execution uses SQLite through SQLx. Reusing SQL syntax does not make those
+transports, row codecs, transactions or generated consumers interchangeable.
+The current [official Rust guide](https://docs.turso.tech/sdk/rust/quickstart)
+also distinguishes libSQL, the newer Turso Database engine, remote clients and
+local-first sync. The existing libSQL evidence does not validate every newer
+engine or sync configuration. Select an engine/protocol/version profile before
+expanding support, and preserve Rust 1.96.0 compatibility.
+
+| Potential scope | Qualitative maintenance assessment |
+| :--- | :--- |
+| Maintain the current bounded libSQL profile | Moderate: existing transport, macro, migration and local/remote acceptance obligations remain. |
+| Complete one named SaaS journey on one selected profile | Medium to high initial effort; recurring work can be bounded by an explicit operation and platform matrix. Inventory actual Auth, billing, tenant, migration and recovery dependencies first. |
+| Match every ORM feature, domain store and blueprint across remote/local/replicated modes and both engine families | High to very high: multiplies implementation and recovery/consistency validation, not just connection strings. |
+
+These are engineering judgments from current boundaries, not measured hours or
+update-frequency forecasts. Retain useful Turso support. If an actual SaaS or
+Academy requirement selects expansion, implement the smallest complete journey
+and review its recurring cost before adding another profile. Validate atomic
+updates/rollback, tenant isolation, concurrency, uncertain network outcomes and
+schema changes. Keep replica freshness and authoritative authorization/payment
+decisions explicit. Local/container evidence remains distinct from managed
+Turso Cloud acceptance; real-account tests are still prohibited in this session.
 
 ## Education, supervision and Labs remain supported use cases
 
@@ -304,9 +307,10 @@ task fixtures and evaluation boundaries; this decision claims no model benchmark
 2. **Make support scope observable.** For each proposed expansion or extraction,
    record the product user, maintained operations/platforms, dependencies,
    evidence gaps, responsible reviewer and estimated recurring work. Start with
-   current SaaS and Academy journeys. Stripe and Paddle are the initial retention
-   priorities above; crypto-provider selection and the remaining official
-   provider set are still subject to the per-integration review.
+   current SaaS and Academy journeys. The selected v13 billing-provider set is
+   Stripe and Paddle, with crypto excluded. Other current providers need a
+   reviewed compatibility transition; the selection does not remove code or
+   waive current validation requirements.
 3. **Prioritize separation and expansion freezes.** Assess the Labs runner's
    independent lifecycle first, then IoT hardware expansion, specialized
    educational monitoring and Capital's fiscal domain. Keep their existing
