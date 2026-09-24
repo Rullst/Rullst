@@ -1,6 +1,6 @@
 #![cfg(feature = "recovery-sqlite")]
 
-use rullst_auth::recovery::{RecoveryError, RecoverySecrets, SqlRecoveryStore};
+use rullst_auth::recovery::{RecoveryError, RecoveryNoticeKind, RecoverySecrets, SqlRecoveryStore};
 use std::collections::HashSet;
 
 const EMAIL: &str = "sessions@example.com";
@@ -211,4 +211,98 @@ async fn invalid_storage_configuration_is_rejected_without_connecting() {
             Err(RecoveryError::Configuration)
         ));
     }
+}
+
+#[tokio::test]
+async fn password_reset_revokes_only_the_selected_accounts_sessions_and_handles() {
+    let store = store().await;
+    let old = fixture_password();
+    let new = fixture_password();
+    for (subject, email) in [("alice", "alice@example.com"), ("bob", "bob@example.com")] {
+        store
+            .register_account(subject, email, old.as_str(), 1000)
+            .await
+            .unwrap();
+        let welcome = store.claim_notice(1001).await.unwrap().unwrap();
+        assert_eq!(welcome.notice().kind(), RecoveryNoticeKind::Welcome);
+        store.complete_notice(&welcome, 1002).await.unwrap();
+    }
+    let alice = store
+        .authenticate("alice@example.com", old.as_str())
+        .await
+        .unwrap()
+        .unwrap();
+    let bob = store
+        .authenticate("bob@example.com", old.as_str())
+        .await
+        .unwrap()
+        .unwrap();
+    let alice_session = store.create_session(&alice, 1003, 3600).await.unwrap();
+    let bob_session = store.create_session(&bob, 1003, 3600).await.unwrap();
+    store
+        .request_password_reset("alice@example.com", 1004)
+        .await
+        .unwrap();
+    let reset = store.claim_notice(1005).await.unwrap().unwrap();
+    let token = reset.notice().token().unwrap().expose().to_owned();
+    store.complete_notice(&reset, 1006).await.unwrap();
+    store
+        .complete_password_reset(&token, new.as_str(), 1007)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        store
+            .verify_session(alice_session.expose(), 1008)
+            .await
+            .unwrap(),
+        None
+    );
+    assert!(matches!(
+        store.create_session(&alice, 1008, 3600).await,
+        Err(RecoveryError::InvalidAction)
+    ));
+    assert_eq!(
+        store
+            .verify_session(bob_session.expose(), 1008)
+            .await
+            .unwrap()
+            .as_deref(),
+        Some("bob")
+    );
+    let fresh_bob = store.create_session(&bob, 1008, 3600).await.unwrap();
+    assert_eq!(
+        store
+            .verify_session(fresh_bob.expose(), 1009)
+            .await
+            .unwrap()
+            .as_deref(),
+        Some("bob")
+    );
+    assert!(
+        store
+            .authenticate("bob@example.com", old.as_str())
+            .await
+            .unwrap()
+            .is_some()
+    );
+    assert!(
+        store
+            .authenticate("bob@example.com", new.as_str())
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert!(
+        store
+            .authenticate("alice@example.com", new.as_str())
+            .await
+            .unwrap()
+            .is_some()
+    );
+    let changed = store.claim_notice(1010).await.unwrap().unwrap();
+    assert_eq!(changed.notice().kind(), RecoveryNoticeKind::PasswordChanged);
+    store.complete_notice(&changed, 1011).await.unwrap();
+    assert!(store.claim_notice(1012).await.unwrap().is_none());
+    store.close().await;
 }

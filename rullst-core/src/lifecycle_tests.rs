@@ -4,8 +4,35 @@ use super::*;
 use axum::body::{Body, to_bytes};
 use axum::http::Request as HttpRequest;
 use axum::routing::get;
+use std::future::Future;
 use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
+use std::task::{Context, Poll, Wake, Waker};
 use tower::ServiceExt;
+
+struct WakeSignal(AtomicBool);
+impl Wake for WakeSignal {
+    fn wake(self: Arc<Self>) {
+        self.0.store(true, AtomicOrdering::SeqCst);
+    }
+}
+
+// A Tokio timeout cannot interrupt a synchronous transition loop. A separate
+// OS thread lets the test fail within a bounded wait even under that mutation;
+// any stuck test-only worker ends when the test process exits.
+fn bounded_begin_draining(
+    lifecycle: &ApplicationLifecycle,
+) -> Result<(), ApplicationLifecycleError> {
+    let lifecycle = lifecycle.clone();
+    let (send, receive) = std::sync::mpsc::sync_channel(1);
+    let worker = std::thread::spawn(move || {
+        let _ = send.send(lifecycle.begin_draining());
+    });
+    let result = receive
+        .recv_timeout(Duration::from_secs(5))
+        .expect("drain transition must return without looping");
+    worker.join().expect("transition worker must not panic");
+    result
+}
 
 #[test]
 fn registry_is_immutable_bounded_and_validated() {
@@ -37,7 +64,11 @@ fn registry_is_immutable_bounded_and_validated() {
         lifecycle.set_component_ready("cache", true),
         Err(ApplicationLifecycleError::UnknownComponent(_))
     ));
-    assert!(!format!("{lifecycle:?}").contains("database"));
+    let debug = format!("{lifecycle:?}");
+    assert!(!debug.contains("database"));
+    for field in ["ApplicationLifecycle", "Starting", "required_components: 1"] {
+        assert!(debug.contains(field), "missing public diagnostic {field}");
+    }
 }
 
 #[test]
@@ -54,7 +85,7 @@ fn readiness_requires_phase_and_every_component() {
 
     lifecycle.set_component_ready("queue", false).unwrap();
     assert!(!lifecycle.snapshot().ready);
-    lifecycle.begin_draining().unwrap();
+    bounded_begin_draining(&lifecycle).unwrap();
     assert_eq!(lifecycle.phase(), ApplicationPhase::Draining);
     assert!(matches!(
         lifecycle.mark_ready(),
@@ -97,9 +128,11 @@ async fn drain_rejects_new_requests_and_waits_for_an_admitted_one() {
             .await
             .unwrap()
     });
-    entered.notified().await;
+    tokio::time::timeout(Duration::from_secs(5), entered.notified())
+        .await
+        .expect("the admitted handler must start");
     assert_eq!(lifecycle.in_flight_requests(), 1);
-    lifecycle.begin_draining().unwrap();
+    bounded_begin_draining(&lifecycle).unwrap();
 
     let rejected = app
         .oneshot(HttpRequest::get("/work").body(Body::empty()).unwrap())
@@ -113,7 +146,14 @@ async fn drain_rejects_new_requests_and_waits_for_an_admitted_one() {
     ));
 
     release.notify_one();
-    assert_eq!(first.await.unwrap().status(), StatusCode::OK);
+    assert_eq!(
+        tokio::time::timeout(Duration::from_secs(5), first)
+            .await
+            .expect("the released handler must finish")
+            .unwrap()
+            .status(),
+        StatusCode::OK
+    );
     lifecycle
         .wait_for_drain(Duration::from_millis(100))
         .await
@@ -135,7 +175,7 @@ async fn response_headers_do_not_complete_an_unconsumed_body() {
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
-    lifecycle.begin_draining().unwrap();
+    bounded_begin_draining(&lifecycle).unwrap();
     assert!(matches!(
         lifecycle.wait_for_drain(Duration::from_millis(1)).await,
         Err(ApplicationLifecycleError::DrainTimedOut { in_flight: 1 })
@@ -201,4 +241,194 @@ fn poisoned_component_state_fails_closed() {
         lifecycle.set_component_ready("database", true),
         Err(ApplicationLifecycleError::StateUnavailable)
     );
+}
+
+#[test]
+fn draining_is_idempotent_and_cannot_reverse_a_terminal_stop() {
+    for ready in [false, true] {
+        let lifecycle = ApplicationLifecycle::new();
+        if ready {
+            lifecycle.mark_ready().unwrap();
+        }
+        bounded_begin_draining(&lifecycle).unwrap();
+        bounded_begin_draining(&lifecycle).unwrap();
+        assert_eq!(lifecycle.phase(), ApplicationPhase::Draining);
+        lifecycle.mark_stopped();
+        assert_eq!(
+            bounded_begin_draining(&lifecycle),
+            Err(ApplicationLifecycleError::InvalidTransition {
+                from: ApplicationPhase::Stopped,
+                to: ApplicationPhase::Draining,
+            })
+        );
+        assert_eq!(lifecycle.phase(), ApplicationPhase::Stopped);
+    }
+}
+
+#[tokio::test]
+async fn drain_wait_rejects_zero_and_accepts_the_inclusive_ten_minute_limit() {
+    let lifecycle = ApplicationLifecycle::new();
+    bounded_begin_draining(&lifecycle).unwrap();
+    for invalid in [
+        Duration::ZERO,
+        Duration::from_secs(600) + Duration::from_nanos(1),
+    ] {
+        assert_eq!(
+            lifecycle.wait_for_drain(invalid).await,
+            Err(ApplicationLifecycleError::InvalidDrainWait)
+        );
+    }
+    for valid in [Duration::from_nanos(1), Duration::from_secs(600)] {
+        lifecycle.wait_for_drain(valid).await.unwrap();
+    }
+}
+
+#[tokio::test]
+async fn last_release_wakes_an_already_pending_drain_before_its_deadline() {
+    for stopped in [false, true] {
+        let lifecycle = ApplicationLifecycle::new();
+        lifecycle.mark_ready().unwrap();
+        let first = lifecycle.try_admit().unwrap();
+        let last = lifecycle.try_admit().unwrap();
+        bounded_begin_draining(&lifecycle).unwrap();
+        if stopped {
+            lifecycle.mark_stopped();
+        }
+        let signal = Arc::new(WakeSignal(AtomicBool::new(false)));
+        let waker = Waker::from(Arc::clone(&signal));
+        let mut context = Context::from_waker(&waker);
+        let mut waiting = std::pin::pin!(lifecycle.wait_for_drain(Duration::from_secs(600)));
+        assert!(waiting.as_mut().poll(&mut context).is_pending());
+        drop(first);
+        assert_eq!(lifecycle.in_flight_requests(), 1);
+        assert!(waiting.as_mut().poll(&mut context).is_pending());
+        // Spurious wakes are allowed, but the final release must wake a waiter.
+        signal.0.store(false, AtomicOrdering::SeqCst);
+        drop(last);
+        assert!(signal.0.load(AtomicOrdering::SeqCst));
+        assert_eq!(waiting.as_mut().poll(&mut context), Poll::Ready(Ok(())));
+        assert_eq!(lifecycle.in_flight_requests(), 0);
+    }
+}
+
+#[tokio::test]
+async fn cancelling_the_handler_before_response_headers_releases_admission() {
+    let lifecycle = ApplicationLifecycle::new();
+    lifecycle.mark_ready().unwrap();
+    let entered = Arc::new(AtomicBool::new(false));
+    let handler_entered = Arc::clone(&entered);
+    let app = apply_lifecycle(
+        Router::new().route(
+            "/pending",
+            get(move || {
+                let entered = Arc::clone(&handler_entered);
+                async move {
+                    entered.store(true, AtomicOrdering::SeqCst);
+                    std::future::pending::<&'static str>().await
+                }
+            }),
+        ),
+        lifecycle.clone(),
+    );
+    let mut request =
+        Box::pin(app.oneshot(HttpRequest::get("/pending").body(Body::empty()).unwrap()));
+    let mut context = Context::from_waker(Waker::noop());
+    assert!(request.as_mut().poll(&mut context).is_pending());
+    assert!(entered.load(AtomicOrdering::SeqCst));
+    assert_eq!(lifecycle.in_flight_requests(), 1);
+    bounded_begin_draining(&lifecycle).unwrap();
+    // Drop the owned future, not just a Pin reference to it.
+    drop(request);
+    assert_eq!(lifecycle.in_flight_requests(), 0);
+    lifecycle
+        .wait_for_drain(Duration::from_secs(1))
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn last_request_release_wakes_every_registered_drain_waiter() {
+    let lifecycle = ApplicationLifecycle::new();
+    lifecycle.mark_ready().unwrap();
+    let request = lifecycle.try_admit().unwrap();
+    bounded_begin_draining(&lifecycle).unwrap();
+    let signals: Vec<_> = (0..3)
+        .map(|_| Arc::new(WakeSignal(AtomicBool::new(false))))
+        .collect();
+    let wakers: Vec<_> = signals.iter().map(|s| Waker::from(Arc::clone(s))).collect();
+    let mut waiters: Vec<_> = (0..3)
+        .map(|_| Box::pin(lifecycle.wait_for_drain(Duration::from_secs(600))))
+        .collect();
+    for (waiter, waker) in waiters.iter_mut().zip(&wakers) {
+        assert!(
+            waiter
+                .as_mut()
+                .poll(&mut Context::from_waker(waker))
+                .is_pending()
+        );
+    }
+    for signal in &signals {
+        signal.0.store(false, AtomicOrdering::SeqCst);
+    }
+    drop(request);
+    for ((waiter, waker), signal) in waiters.iter_mut().zip(&wakers).zip(&signals) {
+        assert!(
+            signal.0.load(AtomicOrdering::SeqCst),
+            "a registered waiter was stranded"
+        );
+        assert_eq!(
+            waiter.as_mut().poll(&mut Context::from_waker(waker)),
+            Poll::Ready(Ok(()))
+        );
+    }
+}
+
+#[tokio::test]
+async fn cancelling_one_drain_wait_does_not_release_work_or_strand_another_waiter() {
+    let lifecycle = ApplicationLifecycle::new();
+    lifecycle.mark_ready().unwrap();
+    let request = lifecycle.try_admit().unwrap();
+    bounded_begin_draining(&lifecycle).unwrap();
+    let mut abandoned = Box::pin(lifecycle.wait_for_drain(Duration::from_secs(600)));
+    let mut surviving = Box::pin(lifecycle.wait_for_drain(Duration::from_secs(600)));
+    let signal = Arc::new(WakeSignal(AtomicBool::new(false)));
+    let waker = Waker::from(Arc::clone(&signal));
+    let mut context = Context::from_waker(&waker);
+    assert!(abandoned.as_mut().poll(&mut context).is_pending());
+    assert!(surviving.as_mut().poll(&mut context).is_pending());
+    drop(abandoned);
+    assert_eq!(lifecycle.in_flight_requests(), 1);
+    assert!(surviving.as_mut().poll(&mut context).is_pending());
+    signal.0.store(false, AtomicOrdering::SeqCst);
+    drop(request);
+    assert!(signal.0.load(AtomicOrdering::SeqCst));
+    assert_eq!(surviving.as_mut().poll(&mut context), Poll::Ready(Ok(())));
+}
+
+#[test]
+fn readiness_withdrawal_closes_admission_without_releasing_existing_work() {
+    let lifecycle = ApplicationLifecycle::with_required_components(["database"]).unwrap();
+    lifecycle.set_component_ready("database", true).unwrap();
+    lifecycle.mark_ready().unwrap();
+    let first = lifecycle.try_admit().unwrap();
+    lifecycle.set_component_ready("database", false).unwrap();
+    assert!(matches!(
+        lifecycle.try_admit(),
+        Err(ApplicationLifecycleError::RequestNotAdmitted { .. })
+    ));
+    assert_eq!(lifecycle.in_flight_requests(), 1);
+    lifecycle.set_component_ready("database", true).unwrap();
+    let second = lifecycle.try_admit().unwrap();
+    assert_eq!(lifecycle.in_flight_requests(), 2);
+    bounded_begin_draining(&lifecycle).unwrap();
+    // A healthy dependency cannot reopen application admission during shutdown.
+    lifecycle.set_component_ready("database", true).unwrap();
+    assert!(matches!(
+        lifecycle.try_admit(),
+        Err(ApplicationLifecycleError::RequestNotAdmitted { .. })
+    ));
+    assert_eq!(lifecycle.in_flight_requests(), 2);
+    drop(first);
+    drop(second);
+    assert_eq!(lifecycle.in_flight_requests(), 0);
 }
