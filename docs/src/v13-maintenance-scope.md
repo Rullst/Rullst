@@ -103,7 +103,7 @@ removed by this planning update, and no new live-account validation is claimed.
 | :--- | :--- |
 | Retain Stripe | Existing SaaS use and the generated durable billing integration. Preserve the reviewed operation boundaries rather than promising every Stripe product. |
 | Retain Paddle | Subscription billing with provider-managed merchant-of-record responsibilities. Existing typed checkout and signed subscription contracts are useful foundations; generated durable billing integration is still Stripe-specific. |
-| Evaluate a bounded crypto-payment integration | Requested alternative payment method. Coinbase Business is a candidate subject to merchant eligibility, current API review and validation, not a commitment to maintain every asset, chain or custody workflow. |
+| Preserve an extension path for crypto payments | Reuse applicable billing and event-integrity contracts. Evaluate one optional integration against an actual use case before promising official provider support. Coinbase Business is not the preferred global self-service path under its current merchant eligibility restrictions. |
 
 [Paddle's SaaS documentation](https://developer.paddle.com/get-started/how-paddle-works/saas/)
 describes subscription lifecycle, customer self-service and sales-tax handling
@@ -116,7 +116,10 @@ universal legal compliance.
 sets 31 March 2026 as the Commerce shutdown deadline. Its current
 [Business availability page](https://help.coinbase.com/en/coinbase/other-topics/business/business-overview)
 lists eligible businesses in the United States and Singapore. Recheck eligibility
-before selecting it for a particular merchant. The existing Rullst Commerce
+before selecting it for a particular merchant. This describes enrollment of the
+receiving business, not all Coinbase products or every payer's location. Remove
+it from the preferred global integration shortlist, not from supported public
+APIs without the compatibility review described below. The existing Rullst Commerce
 adapter has signed-webhook foundations and rejects unsupported live plan-only
 checkout; it is not an implementation of the Business APIs. Current
 [Checkout APIs](https://docs.cdp.coinbase.com/coinbase-business/checkout-apis/overview)
@@ -131,6 +134,27 @@ live integration. Bunny's [billing FAQ](https://bunny.net/faq/) lists Bitcoin as
 a payment option; that illustrates the product use case, not evidence that
 Coinbase is the required provider or that Rullst's media integration enables
 payments automatically.
+
+For a future optional integration, evaluate
+[BTCPay Server](https://docs.btcpayserver.org/FAQ/General/): its self-hosted Bitcoin
+invoicing model and [Greenfield API](https://docs.btcpayserver.org/API/Greenfield/v1/)
+offer an alternative to requiring an account with a particular custodial payment
+processor. This is a candidate for evaluation, not a validated Rullst adapter or
+a security certification. The operator still owns hosting, updates, wallet
+security and operational costs; self-hosting does not eliminate maintenance.
+Prefer a narrow invoice/status/authenticated-event example or adapter when a
+consumer and maintainer exist. Do not add a blockchain node, custody service,
+exchange or support for every chain to the framework.
+
+Asset price volatility and integration maintenance are different costs. An
+[invoice with a fixed exchange rate and expiry](https://docs.btcpayserver.org/Invoices/)
+can define a payment window; it does not remove the merchant's subsequent
+holding risk. Conversion to fiat requires a separately supported service or
+plugin. Reuse tenant binding, authoritative amounts, idempotent fulfillment and
+reconciliation where applicable, while exposing provider-specific capabilities
+and pending/settled/expired semantics explicitly. Do not pretend an ordinary
+subscription trait supplies automatic crypto renewals. No crypto implementation
+or removal is scheduled by this planning clarification.
 
 Plan three explicit responsibilities, using the existing implementation as the
 starting point rather than rewriting it:
@@ -209,6 +233,17 @@ Two kinds of separation must not be confused:
   from an ordinary web library. Its updates need not force unrelated consumers
   to change. This can remain an official Rullst tool in the same repository;
   neither removing the runner nor moving repositories is required by this plan.
+
+There is no release-frequency evidence that the runner changes more often than
+the framework: it is still unpublished. Both Labs packages currently declare
+`13.0.0-alpha.1` with publication disabled and are not part of the published
+12.1.1 release. Keep that candidate versioning until a reviewed migration is
+needed. Independent patch releases can retain a shared major version; they do
+not require inventing an unrelated numbering scheme. Any future separation
+needs an explicit Labs/runner protocol and package compatibility matrix plus
+installation/upgrade tests. Some operating-system image updates may instead
+change a pinned deployment image without changing Rust source. Isolation
+evidence must match the deployed toolchain and image, regardless of versioning.
 
 Retain the bounded Labs foundation. For the existing experimental runner,
 recommend a separately maintained optional implementation with its own release
