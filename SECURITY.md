@@ -2,6 +2,11 @@
 
 ## Supported Versions
 
+The **12.1.1** security maintenance release is available; its
+[publication record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md#1211-published-maintenance-release)
+retains the source, workflow and verified registry checksums. Applications using
+public example keys must rotate those keys and renew sessions when upgrading.
+
 Rullst adopts Semantic Versioning for each published crate. This policy is
 written for the v12 stable release line; crates.io remains authoritative for
 whether an exact package version has been published. Source in a branch or an

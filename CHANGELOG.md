@@ -11,12 +11,12 @@ A prepared version section does not establish that its tag or crates exist.
 
 ### Auth maintenance forward-port
 
-- Carry the application-key correction from the v12.1.1 candidate in PR #259
+- Carry the application-key correction from the published v12.1.1 fix in PR #259
   into v13: reject public scaffold/documentation placeholders and select only
   exact legacy TOML key fields. Preserve the historical effective key bytes
   for values containing `=` so existing valid sessions remain readable.
   Regression tests cover field collisions, session continuity and rejection
-  before session/JWT processing. Neither release is published by this entry.
+  before session/JWT processing. The v13 forward-port remains unpublished.
 - Carry the repaired Auth/configuration/tenant/realtime fuzz harnesses and their
   deterministic contracts from PR #259. These now exercise production APIs;
   earlier no-op or weak-fixture runs cannot establish their coverage. This
@@ -243,6 +243,61 @@ the development version remains unpublished.
   production syntax linkage, pinned tooling, mandatory failing controls and
   resource/source receipts. Preserve production dependencies and the broader
   runtime, integration and release verification requirements.
+
+## [12.1.1] - 2026-09-24
+
+Published on September 24 UTC (September 23 in Brasília), after all 28 required
+source controls and the protected artifact/publication workflow passed. The
+[release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md#1211-published-maintenance-release)
+retains the sixteen verified registry checksums and immutable source identity.
+The [review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-1-review.md)
+records scope and acceptance boundaries.
+
+### Fixed
+
+- Reject every public scaffold/documentation application-key placeholder
+  consistently in Auth, and require exact `app_key` or legacy `key` names when
+  reading `Rullst.toml` so prefix-colliding fields cannot become session keys.
+  Exact legacy fields retain their historical value extraction, including keys
+  containing `=`, so existing sessions stay readable. Replacing an example key
+  requires application-controlled session renewal.
+- Hold Core lifecycle admission through ordinary HTTP body completion, error
+  or cancellation, including streaming data/trailers. Drain remains bounded;
+  upgraded connections and detached work need separate supervision.
+- Evaluate SQLite Messaging publication/lease/retry timestamps after write-lock
+  admission so contention cannot authorize an expired ACK, retry or dead-letter.
+- Correct strict-Clippy diagnostics in generated LMS code while preserving its
+  existing public signatures and response behavior.
+
+### Maintenance
+
+- Use absolute, versioned source/documentation links in all packaged READMEs;
+  distinguish stable v12 documentation and CI badges from v13 development, and
+  correct historical release wording without asserting a registry publication.
+- Refine fuzz evidence selection with a reviewed Auth dependency profile,
+  preserving full-duration campaigns, provenance, expiry and fail-closed
+  handling of unknown source consumers. Replace inert config/tenant/realtime
+  harnesses and exercise authenticated session decoding with a valid fixture
+  key, deterministic regression contracts and retained seed inputs.
+- Keep exact coverage thresholds for private security validation while storing
+  its reports only in private GitHub artifacts rather than sending them to
+  Codecov.
+
+- Make executable update-discovery cache fixtures follow the current CLI version
+  and verify both entry points report that version. Preserve downgrade rejection
+  and all cache validity, offline, no-write and authority assertions.
+
+- Highlight Rullst Academy in the README navigation and a dedicated section: a
+  learning platform built with Rullst to teach Rust, Rullst and other technologies.
+- Carry the compatible dependency/tool updates already reviewed in PR #240 and
+  include Dependabot #252 (SES 1.136.0 and compatible AWS dependencies) and #255
+  (immutable `taiki-e/install-action` 2.87.16 pins). Preserve the Smithy types
+  1.6.4 constraint and Rust 1.96.0 MSRV.
+- Set all sixteen packages/internal requirements to 12.1.1 and synchronize all
+  ten fuzz locks. Existing 12.1.0 publication receipts remain unchanged.
+- Fetch the complete graph for offline package consumers, release canceled
+  observational scorecards and add an archive-only CI diagnostic without
+  replacing the full matrix, native artifacts or publication gates.
 
 ## [12.1.0] - 2026-09-20
 
