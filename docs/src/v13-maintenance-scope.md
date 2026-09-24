@@ -146,6 +146,25 @@ Prefer a narrow invoice/status/authenticated-event example or adapter when a
 consumer and maintainer exist. Do not add a blockchain node, custody service,
 exchange or support for every chain to the framework.
 
+The [BTCPay altcoin FAQ](https://docs.btcpayserver.org/FAQ/Altcoin/) distinguishes
+the core team's Bitcoin focus from opt-in community-maintained integrations and
+exchange plugins. Do not describe that list as one uniformly supported or
+validated multi-asset implementation. Its
+[August 2026 security advisory](https://blog.btcpayserver.org/security-advisory-btcpay-server-2-4-2/)
+also records an exploited LND credential vulnerability fixed in 2.4.2; the
+confirmed credential/funds exposure was specific to LND deployments. This is a
+dated incident reference, not a recommendation that 2.4.2 is the latest release
+or that another configuration is generally risk-free. Any future selection
+needs current advisories and the exact deployment/plugin versions reviewed.
+
+Recommendation: do not make a crypto adapter a requirement for v13. Retain
+applicable payment foundations and documented extension boundaries, then use a
+real application requirement to select one optional reference integration with
+bounded acceptance tests and an accountable maintainer. Do not build speculative
+universal crypto APIs merely to advertise support. Completing the supported
+SaaS journey, safe upgrades and independent evaluation currently has higher
+priority; relative commercial demand remains unmeasured.
+
 Asset price volatility and integration maintenance are different costs. An
 [invoice with a fixed exchange rate and expiry](https://docs.btcpayserver.org/Invoices/)
 can define a payment window; it does not remove the merchant's subsequent
