@@ -235,10 +235,12 @@ async fn ignored_delivery_updates_fail_closed_and_roll_back_trigger_effects() {
             "failed {operation} must roll back the transaction"
         );
         let state: (String,) = sqlx::query_as(
-            "SELECT state FROM rullst_messaging_deliveries WHERE namespace = ? AND ack_token = ?",
+            "SELECT d.state FROM rullst_messaging_deliveries d JOIN rullst_messaging_messages m ON d.namespace = m.namespace AND d.topic = m.topic AND d.sequence = m.sequence WHERE d.namespace = ? AND d.topic = ? AND d.group_name = ? AND m.message_id = ?",
         )
         .bind("ignored-transition")
-        .bind(delivery.ack_token().as_str())
+        .bind("jobs")
+        .bind("workers")
+        .bind(delivery.envelope().id().as_str())
         .fetch_one(&inject)
         .await
         .unwrap();
