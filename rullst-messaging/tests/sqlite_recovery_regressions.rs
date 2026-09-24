@@ -9,6 +9,7 @@ use rullst_messaging::{
 };
 use sqlite_adversarial_support::{ManualClock, receive, subscribe_and_publish};
 use sqlite_support::{cleanup, config, fixture};
+use sqlx::Connection;
 use std::time::Duration;
 
 #[tokio::test]
@@ -194,9 +195,11 @@ async fn ignored_delivery_updates_fail_closed_and_roll_back_trigger_effects() {
     )
     .await
     .unwrap();
-    let inject = sqlx::SqlitePool::connect(&url).await.unwrap();
+    // Keep schema changes on one connection: another pooled connection can
+    // retain the old SQLite schema while preparing a repeated CREATE or ALTER.
+    let mut inject = sqlx::SqliteConnection::connect(&url).await.unwrap();
     sqlx::query("CREATE TABLE transition_probe (value INTEGER NOT NULL)")
-        .execute(&inject)
+        .execute(&mut inject)
         .await
         .unwrap();
     for operation in ["ack", "retry", "dead-letter"] {
@@ -210,7 +213,7 @@ async fn ignored_delivery_updates_fail_closed_and_roll_back_trigger_effects() {
         // update after a side effect. The broker must reject zero affected rows
         // and roll back that side effect rather than report successful delivery.
         sqlx::query("CREATE TRIGGER ignore_transition BEFORE UPDATE ON rullst_messaging_deliveries WHEN OLD.namespace = 'ignored-transition' BEGIN INSERT INTO transition_probe VALUES (1); SELECT RAISE(IGNORE); END")
-            .execute(&inject).await.unwrap();
+            .execute(&mut inject).await.unwrap();
         let failure = FailureCode::try_new("handler.failure").unwrap();
         let result = match operation {
             "ack" => broker.ack(delivery.ack_token()).await,
@@ -227,7 +230,7 @@ async fn ignored_delivery_updates_fail_closed_and_roll_back_trigger_effects() {
         };
         assert_eq!(result, Err(MessagingError::CorruptStorage { context }));
         let side_effects: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM transition_probe")
-            .fetch_one(&inject)
+            .fetch_one(&mut inject)
             .await
             .unwrap();
         assert_eq!(
@@ -241,17 +244,17 @@ async fn ignored_delivery_updates_fail_closed_and_roll_back_trigger_effects() {
         .bind("jobs")
         .bind("workers")
         .bind(delivery.envelope().id().as_str())
-        .fetch_one(&inject)
+        .fetch_one(&mut inject)
         .await
         .unwrap();
         assert_eq!(state.0, "in_flight");
         sqlx::query("DROP TRIGGER ignore_transition")
-            .execute(&inject)
+            .execute(&mut inject)
             .await
             .unwrap();
         broker.ack(delivery.ack_token()).await.unwrap();
     }
-    inject.close().await;
+    inject.close().await.unwrap();
     broker.close().await;
     cleanup(&path);
 }
@@ -272,7 +275,8 @@ async fn duplicate_delivery_rows_are_rejected_without_committing_acknowledgement
         .await
         .unwrap()
         .remove(0);
-    let inject = sqlx::SqlitePool::connect(&url).await.unwrap();
+    // One connection owns both the disposable schema damage and its repair.
+    let mut inject = sqlx::SqliteConnection::connect(&url).await.unwrap();
     // The real schema prevents duplicates. Deliberately damage this disposable
     // table to exercise the defensive row-count guard and transaction rollback.
     for sql in [
@@ -280,7 +284,7 @@ async fn duplicate_delivery_rows_are_rejected_without_committing_acknowledgement
         "CREATE TABLE rullst_messaging_deliveries AS SELECT * FROM original_deliveries",
         "INSERT INTO rullst_messaging_deliveries SELECT * FROM original_deliveries",
     ] {
-        sqlx::query(sql).execute(&inject).await.unwrap();
+        sqlx::query(sql).execute(&mut inject).await.unwrap();
     }
     assert_eq!(
         broker.ack(delivery.ack_token()).await,
@@ -289,20 +293,20 @@ async fn duplicate_delivery_rows_are_rejected_without_committing_acknowledgement
         })
     );
     let states: Vec<(String,)> = sqlx::query_as("SELECT state FROM rullst_messaging_deliveries")
-        .fetch_all(&inject)
+        .fetch_all(&mut inject)
         .await
         .unwrap();
     assert_eq!(states, vec![("in_flight".into(),); 2]);
     sqlx::query("DROP TABLE rullst_messaging_deliveries")
-        .execute(&inject)
+        .execute(&mut inject)
         .await
         .unwrap();
     sqlx::query("ALTER TABLE original_deliveries RENAME TO rullst_messaging_deliveries")
-        .execute(&inject)
+        .execute(&mut inject)
         .await
         .unwrap();
     broker.ack(delivery.ack_token()).await.unwrap();
-    inject.close().await;
+    inject.close().await.unwrap();
     broker.close().await;
     cleanup(&path);
 }
