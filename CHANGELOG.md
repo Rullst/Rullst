@@ -18,6 +18,9 @@ A prepared version section does not establish that its tag or crates exist.
 - Exercise SQLite lease abandonment without old-worker intervention, scoped
   recovery, attempt ceilings, exact retry limits, epoch-zero replay, retained
   subscription history and rollback after damaged delivery transitions.
+- Cover cancellation before HTTP response headers, simultaneous drain waiters,
+  readiness withdrawal, cross-account password-reset isolation, atomic receive
+  batches, partial-consumer retention and fencing of every stale lease operation.
 - These are test-only maintenance changes. The published 12.1.1 artifacts,
   runtime APIs, dependency versions and Rust 1.96.0 MSRV remain unchanged.
 
