@@ -9,6 +9,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Maintenance verification
+
+- Add regression tests for independent Argon2 rehash-policy changes, the
+  inclusive application-key entropy threshold and session-cookie bounds.
+- Verify idempotent HTTP draining, terminal transitions, wait limits and prompt
+  wakeup on the last request release; bound test orchestration under mutations.
+- Exercise SQLite lease abandonment without old-worker intervention, scoped
+  recovery, attempt ceilings, exact retry limits, epoch-zero replay, retained
+  subscription history and rollback after damaged delivery transitions.
+- These are test-only maintenance changes. The published 12.1.1 artifacts,
+  runtime APIs, dependency versions and Rust 1.96.0 MSRV remain unchanged.
+
 ## [12.1.1] - 2026-09-24
 
 Published on September 24 UTC (September 23 in Brasília), after all 28 required
