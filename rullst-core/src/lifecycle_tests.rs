@@ -19,7 +19,7 @@ impl Wake for WakeSignal {
 // A Tokio timeout cannot interrupt a synchronous transition loop. A separate
 // OS thread lets the test fail within a bounded wait even under that mutation;
 // any stuck test-only worker ends when the test process exits.
-fn bounded_begin_draining(
+pub(crate) fn bounded_begin_draining(
     lifecycle: &ApplicationLifecycle,
 ) -> Result<(), ApplicationLifecycleError> {
     let lifecycle = lifecycle.clone();
@@ -134,10 +134,15 @@ async fn drain_rejects_new_requests_and_waits_for_an_admitted_one() {
     assert_eq!(lifecycle.in_flight_requests(), 1);
     bounded_begin_draining(&lifecycle).unwrap();
 
-    let rejected = app
-        .oneshot(HttpRequest::get("/work").body(Body::empty()).unwrap())
-        .await
-        .unwrap();
+    // A broken admission gate can enter the blocked handler a second time.
+    // Bound that request independently of the drain's own timeout.
+    let rejected = tokio::time::timeout(
+        Duration::from_secs(5),
+        app.oneshot(HttpRequest::get("/work").body(Body::empty()).unwrap()),
+    )
+    .await
+    .expect("draining must reject the new request without entering its handler")
+    .unwrap();
     assert_eq!(rejected.status(), StatusCode::SERVICE_UNAVAILABLE);
     assert_eq!(rejected.headers()[header::RETRY_AFTER], "1");
     assert!(matches!(
@@ -279,7 +284,10 @@ async fn drain_wait_rejects_zero_and_accepts_the_inclusive_ten_minute_limit() {
         );
     }
     for valid in [Duration::from_nanos(1), Duration::from_secs(600)] {
-        lifecycle.wait_for_drain(valid).await.unwrap();
+        tokio::time::timeout(Duration::from_secs(5), lifecycle.wait_for_drain(valid))
+            .await
+            .expect("an empty drain must finish without waiting for its deadline")
+            .unwrap();
     }
 }
 

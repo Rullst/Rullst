@@ -201,7 +201,7 @@ mod tests {
             .unwrap();
         assert_eq!(ready.status(), StatusCode::OK);
 
-        lifecycle.begin_draining().unwrap();
+        crate::lifecycle::tests::bounded_begin_draining(&lifecycle).unwrap();
         let draining = app
             .clone()
             .oneshot(
