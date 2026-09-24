@@ -130,7 +130,9 @@ try {
   // Separate principals need separate cookie jars: an automatic reconnect in
   // either teacher tab must not inherit a learner/foreign-tenant credential.
   const foreign = await isolatedPage(other);
-  await foreign.send('Page.navigate', { url: origin + '/' });
+  // An empty 403 navigation creates an opaque Chromium error document. Open
+  // the public same-origin module first, then fetch the protected page below.
+  await foreign.send('Page.navigate', { url: origin + '/live-module.js' });
   await wait(() => foreign.evaluate(`location.origin === ${JSON.stringify(origin)}`), 'foreign page origin');
   assert.equal(await foreign.evaluate("fetch('/').then(response => response.status)"), 403);
   const restricted = await isolatedPage(learner);
