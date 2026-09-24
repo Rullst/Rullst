@@ -7,11 +7,25 @@ software. Code generation by an AI assistant does not remove the need for
 maintenance, integration evidence or security review.
 
 This is an approved planning direction, not an implemented package split or a
-deprecation notice. It leaves the v12.1.1 candidate, supported APIs, defaults,
+deprecation notice. It leaves the published v12.1.1 release, supported APIs, defaults,
 MSRV and current publication inventory unchanged. Specific extractions,
 provider selections and retirements need their own reviewed changes. The
 [SST](spec.md) describes the current architecture; the
 [compatibility policy](compatibility-policy.md) governs transitions.
+
+**Direction reaffirmed on 24 September 2026:** prioritize measured maintenance
+cost and coherent application journeys before expanding the adapter catalogue.
+The next planning deliverable is a decision record per integration, beginning
+with Capital, specialized database adapters and the Labs runner. Retain useful
+maintained implementations; an interface without a usable implementation can
+transfer both development work and security mistakes to every application.
+
+This direction can improve the conditions for broad adoption by concentrating
+effort on reliability, predictable upgrades and developer experience. It is not
+evidence of a global framework ranking. Use the
+[comparative evaluation plan](v13-framework-comparison.md), independent feedback
+and application adoption to assess progress. Feature count and mutation scores
+alone do not establish superiority.
 
 ## How to assess maintenance cost
 
@@ -31,6 +45,25 @@ runner can require more operational assurance than a larger template library.
 An optional dependency reduces the consumer's selected build surface; it does
 not eliminate the project's support obligations. Moving code to another
 repository saves work only when scope, ownership or release coupling changes.
+
+For each integration, record its actual consumer, maintained operations,
+dependency/API versions, compatibility matrix, validation gaps and accountable
+maintainer. Measure update/review effort, regressions and CI execution separately
+from queue time; leave unknown costs explicitly unknown. Recommend one of:
+
+- retained official support with a bounded expansion scope;
+- specialized optional extension with an explicit maintenance/release owner;
+- an application/community integration with a tested contract and transition;
+- deprecation with a replacement and compatibility plan, when justified.
+
+Provider release frequency alone does not decide the category: a compatible
+upstream release need not require an adapter rewrite, while a rarely changing
+executor can still carry substantial security obligations. Evaluate independent
+adapter releases where stable interfaces and dependency ranges allow them; a
+provider correction should not unnecessarily force unrelated framework releases.
+This requires an actual packaging, compatibility and release-workflow migration,
+not just a new repository name. Security support for shipped capabilities remains
+in force throughout that transition.
 
 ## Crate-level investment decisions
 
@@ -56,6 +89,48 @@ They do not add milestones, change the 41-theme count or label an expensive
 capability dispensable merely because it is expensive.
 
 ## Capital: retain billing, contain the responsibility
+
+The initial retention priorities are Stripe, which already serves the
+maintainer's SaaS journey, and Paddle, whose merchant-of-record subscription
+offering addresses another requested product need. Keep useful checkout,
+subscription and authenticated-event behavior alongside the common billing
+contracts, within their supported and validated scope. Cost control must not
+leave every developer to implement payment protocols. Select other official
+adapters through the same demand, cost and evidence review; no provider is
+removed by this planning update, and no new live-account validation is claimed.
+
+| Priority | Reason and current boundary |
+| :--- | :--- |
+| Retain Stripe | Existing SaaS use and the generated durable billing integration. Preserve the reviewed operation boundaries rather than promising every Stripe product. |
+| Retain Paddle | Subscription billing with provider-managed merchant-of-record responsibilities. Existing typed checkout and signed subscription contracts are useful foundations; generated durable billing integration is still Stripe-specific. |
+| Evaluate a bounded crypto-payment integration | Requested alternative payment method. Coinbase Business is a candidate subject to merchant eligibility, current API review and validation, not a commitment to maintain every asset, chain or custody workflow. |
+
+[Paddle's SaaS documentation](https://developer.paddle.com/get-started/how-paddle-works/saas/)
+describes subscription lifecycle, customer self-service and sales-tax handling
+under its merchant-of-record model. These provider capabilities are not a claim
+that every operation is implemented in Rullst or that the application inherits
+universal legal compliance.
+
+**Provider review on 24 September 2026:** Coinbase's
+[Commerce transition notice](https://help.coinbase.com/en/transitioning-from-coinbase-commerce-to-coinbase-business)
+sets 31 March 2026 as the Commerce shutdown deadline. Its current
+[Business availability page](https://help.coinbase.com/en/coinbase/other-topics/business/business-overview)
+lists eligible businesses in the United States and Singapore. Recheck eligibility
+before selecting it for a particular merchant. The existing Rullst Commerce
+adapter has signed-webhook foundations and rejects unsupported live plan-only
+checkout; it is not an implementation of the Business APIs. Current
+[Checkout APIs](https://docs.cdp.coinbase.com/coinbase-business/checkout-apis/overview)
+use single-use checkouts. Do not infer automatic recurring collection, support
+for every cryptocurrency or compatibility with the old adapter.
+
+A useful initial crypto scope is a server-priced purchase or prepaid credit,
+with authenticated payment confirmation, durable idempotent fulfillment and
+explicit refund/reconciliation rules. Keep assets, networks and merchant
+availability explicit. This remains future provider-selection work, not a new
+live integration. Bunny's [billing FAQ](https://bunny.net/faq/) lists Bitcoin as
+a payment option; that illustrates the product use case, not evidence that
+Coinbase is the required provider or that Rullst's media integration enables
+payments automatically.
 
 Plan three explicit responsibilities, using the existing implementation as the
 starting point rather than rewriting it:
@@ -113,6 +188,44 @@ authorization and deployment obligations. Observation signals do not establish
 cheating, and an AI-written integration does not prove model accuracy or safe
 code execution. The outstanding Labs isolation review remains required.
 
+### Labs and the runner have different maintenance responsibilities
+
+`rullst-labs` keeps the trusted exercise, authorization, submission/job,
+cancellation, receipt-verification and grading contracts. It does not execute
+the learner's program. A runner is the separately deployed program that takes
+authorized work, compiles/executes the submitted code under enforced limits,
+returns a bounded authenticated result and tears down the execution environment.
+Trusted grading and expected answers remain outside the untrusted worker.
+
+Two kinds of separation must not be confused:
+
+- **Execution isolation is mandatory today.** Student-controlled code can loop,
+  exhaust resources or attempt to read data. Run it in the separately restricted
+  worker without application secrets and enforce CPU, memory, time and output
+  limits. Merely putting code in another crate or process is not adequate
+  containment; the runner's full observed isolation controls remain required.
+- **Independent maintenance/releases are a proposed governance choice.** The
+  Linux/compiler/sandbox matrix has different deployment and review obligations
+  from an ordinary web library. Its updates need not force unrelated consumers
+  to change. This can remain an official Rullst tool in the same repository;
+  neither removing the runner nor moving repositories is required by this plan.
+
+Retain the bounded Labs foundation. For the existing experimental runner,
+recommend a separately maintained optional implementation with its own release
+and security-review responsibilities, rather than requiring every application
+developer to write a sandbox. The application operator still configures and
+operates its infrastructure. A future third-party executor would require an
+adapter and validation of the same authorization, fencing, result and isolation
+requirements; interchangeable external executors are not implemented today.
+
+The current first profile is a restricted Rust pure-function exercise compiled
+to Wasm on Linux. It does not run arbitrary Rullst projects or support every
+language. Labs and its runner remain unpublished candidates outside the normal
+publication inventory, and the runner still needs independent isolation review.
+If a sustainable maintainer cannot be assigned, freeze runner expansion and
+document its experimental status rather than imply production support or ask
+applications to recreate isolation with an unrestricted process launcher.
+
 ## What belongs in the framework in an AI-assisted workflow
 
 Prioritize explicit APIs, typed errors, safe defaults, version-matched executable
@@ -130,13 +243,16 @@ task fixtures and evaluation boundaries; this decision claims no model benchmark
 
 ## Transition sequence and acceptance
 
-1. **Preserve stable maintenance.** Complete the existing v12.1.1 review work
-   without adding structural changes. Keep `v12` for stable maintenance and
+1. **Preserve stable maintenance.** Keep the published v12.1.1 release immutable
+   and finish the active test-hardening follow-up without structural changes.
+   Keep `v12` for stable maintenance and
    `main` for v13. Continue assessing applicable fixes in both directions.
 2. **Make support scope observable.** For each proposed expansion or extraction,
    record the product user, maintained operations/platforms, dependencies,
    evidence gaps, responsible reviewer and estimated recurring work. Start with
-   current SaaS and Academy journeys; no provider shortlist is selected here.
+   current SaaS and Academy journeys. Stripe and Paddle are the initial retention
+   priorities above; crypto-provider selection and the remaining official
+   provider set are still subject to the per-integration review.
 3. **Prioritize separation and expansion freezes.** Assess the Labs runner's
    independent lifecycle first, then IoT hardware expansion, specialized
    educational monitoring and Capital's fiscal domain. Keep their existing
