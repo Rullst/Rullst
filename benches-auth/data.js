@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790191397963,
+  "lastUpdate": 1790223909974,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -11747,6 +11747,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3777,
             "range": "± 51",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e468b7f961480b038d2ebdc8fff33da286e515e9",
+          "message": "Merge pull request #266 from Rullst/docs/v13-v12-1-1-publication\n\ndocs(maintenance): record stable v12.1.1 publication",
+          "timestamp": "2026-09-24T01:06:15-03:00",
+          "tree_id": "686679602fada6cec045ae0805a6ccab7f855aab",
+          "url": "https://github.com/Rullst/Rullst/commit/e468b7f961480b038d2ebdc8fff33da286e515e9"
+        },
+        "date": 1790223909540,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1034,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 827,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1890,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4086,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
