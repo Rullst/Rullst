@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790224225481,
+  "lastUpdate": 1790263400987,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -9683,6 +9683,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 738,
             "range": "± 21",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a8cb57bf5532dad2d49121726336fe67727ae143",
+          "message": "test(v13): port stable regressions and verify scope isolation",
+          "timestamp": "2026-09-24T11:58:59-03:00",
+          "tree_id": "dd67bb0d64a2f031273df6c48f60f45713a161a8",
+          "url": "https://github.com/Rullst/Rullst/commit/a8cb57bf5532dad2d49121726336fe67727ae143"
+        },
+        "date": 1790263399922,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1409,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 280,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 687,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
