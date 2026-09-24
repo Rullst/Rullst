@@ -83,6 +83,8 @@ mod analysis;
 mod concurrency;
 #[path = "sqlite_cases/exams.rs"]
 mod exams;
+#[path = "sqlite_cases/isolation.rs"]
+mod isolation;
 #[path = "sqlite_cases/observations.rs"]
 mod observations;
 #[path = "sqlite_cases/parental.rs"]

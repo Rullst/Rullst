@@ -24,6 +24,15 @@ A prepared version section does not establish that its tag or crates exist.
 - Forward-port the v12 maintenance regressions. Published 12.1.1 artifacts,
   runtime APIs, dependency versions and Rust 1.96.0 MSRV remain unchanged.
 
+### v13 regression verification
+
+- Verify that rejected age-proof signatures do not consume memory or durable
+  replay capacity before a valid one-use assessment.
+- Exercise independent Media and Labs lifecycles for identical identifiers in
+  separately authorized tenants/courses, and independent Supervision exam state
+  for identical learner names across tenants. Provider fixtures stay on loopback;
+  these tests do not establish live-provider or production isolation certification.
+
 ### Auth maintenance forward-port
 
 - Carry the application-key correction from the published v12.1.1 fix in PR #259
