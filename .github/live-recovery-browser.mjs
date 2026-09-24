@@ -63,8 +63,8 @@ try {
     pending.set(id, { resolve, reject, timer });
     socket.send(JSON.stringify({ id, method, params, sessionId }));
   });
-  async function page() {
-    const { targetId } = await call('Target.createTarget', { url: 'about:blank' });
+  async function page(browserContextId) {
+    const { targetId } = await call('Target.createTarget', { url: 'about:blank', browserContextId });
     const { sessionId } = await call('Target.attachToTarget', { targetId, flatten: true });
     const send = (method, params = {}) => call(method, params, sessionId);
     const evaluate = async expression => {
@@ -76,14 +76,21 @@ try {
     return { targetId, send, evaluate };
   }
   const first = await page();
-  async function cookie(value) {
-    await first.send('Network.setCookie', { name: 'live_fixture', value, url: origin, httpOnly: true, sameSite: 'Lax' });
-    await first.send('Network.setCookie', { name: 'rullst_csrf', value: csrf, url: origin, sameSite: 'Lax' });
+  async function cookie(value, target = first) {
+    await target.send('Network.setCookie', { name: 'live_fixture', value, url: origin, httpOnly: true, sameSite: 'Lax' });
+    await target.send('Network.setCookie', { name: 'rullst_csrf', value: csrf, url: origin, sameSite: 'Lax' });
+  }
+  async function isolatedPage(value) {
+    const { browserContextId } = await call('Target.createBrowserContext');
+    const target = await page(browserContextId);
+    await cookie(value, target);
+    return target;
   }
   const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
-  async function wait(predicate, label) {
+  async function wait(predicate, label, describe = null) {
     for (let i = 0; i < 400; i++) { if (await predicate().catch(() => false)) return; await pause(50); }
-    assert.fail(`Browser state did not converge: ${label}`);
+    const detail = describe ? await describe().catch(() => ({ observation: 'unavailable' })) : null;
+    assert.fail(`Browser state did not converge: ${label}${detail ? ' ' + JSON.stringify(detail) : ''}`);
   }
   async function ready(page, value) {
     await wait(() => page.evaluate(`window.live?.state === 'ready' && document.querySelector('#value')?.textContent === '${value}'`), `ready ${value}`);
@@ -120,20 +127,25 @@ try {
   await ready(first, 3); await ready(second, 3);
   assert(await first.evaluate("window.live.send('increment')")); await ready(first, 4);
 
-  // A new scope is resolved at upgrade, including after a credential change.
-  await cookie(other);
-  assert.equal(await first.evaluate("fetch('/').then(response => response.status)"), 403);
-  await cookie(learner);
-  const restricted = await page();
+  // Separate principals need separate cookie jars: an automatic reconnect in
+  // either teacher tab must not inherit a learner/foreign-tenant credential.
+  const foreign = await isolatedPage(other);
+  await foreign.send('Page.navigate', { url: origin + '/' });
+  await wait(() => foreign.evaluate(`location.origin === ${JSON.stringify(origin)}`), 'foreign page origin');
+  assert.equal(await foreign.evaluate("fetch('/').then(response => response.status)"), 403);
+  const restricted = await isolatedPage(learner);
   await restricted.send('Page.navigate', { url: origin + '/' }); await ready(restricted, 4);
   assert(await restricted.evaluate("window.live.send('increment')"));
   await wait(() => restricted.evaluate("window.live.state === 'denied' && document.querySelector('#view').textContent === ''"), 'domain permission denied');
 
-  await cookie(teacher);
+  const { cookies } = await first.send('Network.getCookies', { urls: [origin] });
+  assert.equal(cookies.find(value => value.name === 'live_fixture')?.value, teacher,
+    'other principals must not change the credential used for teacher reconnects');
   const deniedCsrf = await first.evaluate("fetch('/test/revoke',{method:'POST',headers:{'X-CSRF-Token':'wrong'}}).then(response=>response.status)");
   assert.equal(deniedCsrf, 403);
   assert.equal(await first.evaluate(`fetch('/test/revoke',{method:'POST',headers:{'X-CSRF-Token':${JSON.stringify(csrf)}}}).then(response=>response.status)`), 204);
-  await wait(() => first.evaluate("window.live.state === 'denied' && document.querySelector('#view').textContent === ''"), 'revoked connection');
+  await wait(() => first.evaluate("window.live.state === 'denied' && document.querySelector('#view').textContent === ''"), 'revoked connection',
+    () => first.evaluate("({state: window.live?.state, emptyView: document.querySelector('#view')?.textContent === ''})"));
   await cookie(freshTeacher);
   assert(await first.evaluate('window.live.reconnect()')); await ready(first, 4);
   assert.deepEqual(errors, []);
