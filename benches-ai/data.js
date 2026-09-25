@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790263400987,
+  "lastUpdate": 1790299563057,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -9731,6 +9731,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 687,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ea5498221d457ed487a1f41e187f5f5808a35413",
+          "message": "test(v13): harden lifecycle and browser fixtures and record scope",
+          "timestamp": "2026-09-24T22:02:26-03:00",
+          "tree_id": "6536fdcc42b5dff27701bec36350c996a472ac2d",
+          "url": "https://github.com/Rullst/Rullst/commit/ea5498221d457ed487a1f41e187f5f5808a35413"
+        },
+        "date": 1790299562418,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1660,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 379,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 772,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
