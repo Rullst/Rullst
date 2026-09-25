@@ -67,6 +67,69 @@ authorization-negative case. Expand to account recovery, events, durable work
 and upgrades only as the acceptance fixtures and available resources permit.
 An unsupported journey is a recorded scope gap, not an invented successful run.
 
+### Bounded SaaS pilot
+
+The opt-in `cli-saas-journey` diagnostic in the existing **Rust CI** workflow
+implements the first Rullst acceptance contract. Dispatch it with
+`platform=ubuntu-latest`; it is outside the default platform/shard matrix and
+does not replace any required CI or release gate. Run records, not this source
+description, establish whether a particular SHA passed.
+
+Its canonical resource, migration and runner live in
+[`examples/saas`](https://github.com/Rullst/Rullst/tree/main/examples/saas).
+`python3 examples/saas/run.py` runs the diagnostic locally; `--serve` keeps the
+same disposable application open for exploration without claiming a test pass.
+The example README documents registration, local membership provisioning,
+notes requests, disk requirements and cleanup.
+
+```sh
+gh workflow run ci.yml --ref <candidate-branch> \
+  -f platform=ubuntu-latest -f shard=cli-saas-journey
+```
+
+The script installs the reviewed source CLI in an isolated prefix, verifies its
+version, generates the SQLite SaaS, checks its source dependency paths and runs
+the installed `db:migrate` command twice. It adds one explicit application-owned
+migration/resource, then checks the generated application with strict Clippy.
+Real loopback HTTP exercises three disposable users: permitted registration,
+login, create/read/update, wrong-password and anonymous denial, same-tenant
+ownership denial, cross-tenant denial, forged tenant hints, CSRF, bounded input,
+rejected owner/tenant mass assignment, persistence across an owned process
+restart, fresh membership revocation and client-cookie logout.
+
+The resource uses the starter's real Auth middleware, database-owned membership,
+`TenantLayer`, parameterized SQL and `RbacGuard`. The fixture operator provisions
+membership directly in its disposable database; this is **application code**,
+not automatic organization management in the SaaS blueprint. Neither a tenant
+header nor a request body grants membership. A missing tenant hint can select
+the authenticated user's sole trusted membership, as documented by Core.
+The additional resource mounts CSRF, secure headers and WAF explicitly, including
+in this loopback development profile. The starter's existing middleware and
+Server's production baseline remain unchanged.
+
+`saas-journey-ubuntu-latest` retains sanitized JSON evidence even on failure:
+source and lock identities, installed CLI version/hash, toolchain, phases,
+acceptance outcomes, application fixture size and observed wall times. No
+database, generated secrets or raw application output is uploaded. Failed
+commands expose only a bounded, redacted diagnostic tail in the job log.
+
+This first profile uses a **source-installed debug CLI**, a local SQLite file
+and HTTP clients. It does not establish archive/registry installation, browser
+cookie enforcement, production TLS/provider behavior, stateless-cookie server
+revocation, load capacity, application upgrades, rollback safety or superiority
+over another framework. Independent archive/platform suites retain their own
+source identities. Setup edits and compile/startup times are observable; active
+implementation effort and failed CI attempts must still be retained in the
+trial report. A small functional run cannot predict support for 1,000–10,000
+concurrent users.
+
+Local execution requires Linux, a fetched workspace lock and at least 32 GiB
+available on the source and temporary filesystems for a conservative cold-build
+allowance. The runner checks space between phases and during owned builds,
+stopping those builds at the 12 GiB reserve. Prefer hosted CI on workstations
+near the 15 GiB preventive threshold. This is an operating check, not a disk
+quota or protection against writes from unrelated processes.
+
 ## Measurements
 
 | Dimension | Record |

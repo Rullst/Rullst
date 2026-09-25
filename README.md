@@ -125,6 +125,11 @@ Showcase payment fixtures are **not live checkout**. Deployment availability,
 native downloads and provider approval are separate from framework test evidence;
 use test data, not sensitive information, in public test environments.
 
+For a small local example, explore the
+[reproducible SaaS](https://github.com/Rullst/Rullst/tree/main/examples/saas):
+CLI generation, login, tenant-scoped notes and a matching automated HTTP journey.
+It uses a disposable SQLite database and no provider account.
+
 ## ✨ What you can build on
 
 Rullst coordinates application foundations in one versioned Rust workspace:

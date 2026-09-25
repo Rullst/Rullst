@@ -20,6 +20,7 @@ cargo-rullst/src/bin/test_colored.rs
 
 # Rullst Framework Temporary & Scratch files
 coverage_report.txt
+/saas-journey-result.json
 *.profraw
 *.profdata
 scratch*.rs

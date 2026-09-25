@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
-  echo "usage: $0 <workspace|cli-standard|cli-updates|cli-profiles-basic|cli-profiles-relational|cli-profiles-polyglot|cli-lms|cli-saas-foundation|cli-saas-product> [--release]" >&2
+  echo "usage: $0 <workspace|cli-standard|cli-updates|cli-profiles-basic|cli-profiles-relational|cli-profiles-polyglot|cli-lms|cli-saas-foundation|cli-saas-product|cli-saas-journey> [--release]" >&2
   exit 2
 fi
 
@@ -24,11 +24,19 @@ esac
 # Generated-project checks deliberately invoke Cargo offline. The monolithic
 # workspace command used to populate every locked package first; isolated CLI
 # shards must preserve that precondition without recompiling the workspace.
-if [[ "$shard" == cli-* ]]; then
+if [[ "$shard" == cli-* && "$shard" != cli-saas-journey ]]; then
   cargo fetch --locked
 fi
 
 case "$shard" in
+  cli-saas-journey)
+    # Explicit Linux diagnostic, outside the default matrix and release admission.
+    if [[ "${#profile_args[@]}" -ne 0 ]]; then
+      echo 'The SaaS journey currently measures a source-installed debug CLI only.' >&2
+      exit 2
+    fi
+    python3 examples/saas/run.py
+    ;;
   workspace)
     cargo test --workspace --exclude cargo-rullst \
       --all-features --no-fail-fast "${profile_args[@]}"

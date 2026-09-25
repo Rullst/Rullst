@@ -14,6 +14,13 @@ finish() {
 trap finish EXIT
 
 if [[ "${GITHUB_EVENT_NAME:-}" == workflow_dispatch &&
+      "${RULLST_CI_SHARD:-}" == cli-saas-journey &&
+      "${RULLST_CI_PLATFORM:-}" != ubuntu-latest ]]; then
+  echo 'The bounded SaaS journey requires platform=ubuntu-latest.' >&2
+  exit 1
+fi
+
+if [[ "${GITHUB_EVENT_NAME:-}" == workflow_dispatch &&
       "${RULLST_CI_SHARD:-}" == packaged-distribution &&
       "${RULLST_CI_PLATFORM:-}" != all ]]; then
   echo 'Packaged-distribution diagnostics require platform=all; otherwise the archive job would be skipped.' >&2

@@ -5,6 +5,7 @@ The repository examples and CLI blueprints serve different purposes:
 | Artifact | Purpose | Trust boundary |
 | --- | --- | --- |
 | `examples/blog` | Workspace integration showcase with local data, interactive demos, and offline provider fixtures. | Development-only; not a production template or compliance proof. |
+| `examples/saas` | Reproducible CLI-generated SQLite SaaS with authenticated notes, tenant membership and the same HTTP journey used in CI. | Disposable Linux development example; membership is an explicit local operator action. |
 | CLI blueprints | Small starting structures generated into a new project. | Generated output must be reviewed, configured, formatted, checked, and tested by the application owner. |
 
 No example is expected to exercise 100% of workspace behavior. External provider
@@ -29,9 +30,28 @@ The blog package demonstrates:
 The complete, current route list is maintained in
 `examples/blog/README.md` alongside its configuration requirements.
 
-## Tenant selection
+## Small SaaS example
 
-The example inserts a static test-only `TenantMembership` before the tenant layer.
+The [SaaS example](https://github.com/Rullst/Rullst/tree/main/examples/saas)
+installs the source CLI, generates the starter and adds a small notes API using
+database-owned membership, parameterized SQL and owner authorization. Its
+interactive mode opens a disposable loopback application:
+
+```sh
+python3 examples/saas/run.py --serve
+```
+
+Follow `examples/saas/README.md` to register a user, grant local membership and
+call the notes API. Without `--serve`, the same command runs its automated
+authentication, isolation, CSRF, persistence/restart and revocation journey.
+The script requires Linux, Python 3.11+, the pinned toolchain and 32 GiB of
+initial disk headroom. It removes generated data on exit and uses no real
+provider account. This directory holds the canonical example recipe and
+resource; it is not a duplicate checked-in copy of a generated application.
+
+## Blog tenant selection
+
+The blog example inserts a static test-only `TenantMembership` before the tenant layer.
 The `X-Tenant-ID` header can select only one of those fixed memberships. This
 models the separation between an untrusted selector and trusted authenticated
 claims.
