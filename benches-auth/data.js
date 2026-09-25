@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790299246697,
+  "lastUpdate": 1790313614330,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -11891,6 +11891,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3986,
             "range": "± 21",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1e1185cbbb63e3ab68f7fb39fed05be1f6b6d894",
+          "message": "feat(examples): add reproducible SaaS and HTTP acceptance (#271)",
+          "timestamp": "2026-09-25T02:01:41-03:00",
+          "tree_id": "586b969706a629f63cfa9785c9966cfcb9869aa2",
+          "url": "https://github.com/Rullst/Rullst/commit/1e1185cbbb63e3ab68f7fb39fed05be1f6b6d894"
+        },
+        "date": 1790313613658,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1019,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 816,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1877,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4124,
+            "range": "± 16",
             "unit": "ns/iter"
           }
         ]
