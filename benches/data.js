@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790312887111,
+  "lastUpdate": 1790353167484,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -20345,6 +20345,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2289,
             "range": "± 44",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d1bff8cbcf94ada19e60113089622fded47bcd88",
+          "message": "feat(capital): add bound Paddle customer portal sessions (#272)\n\nAdd owner-bound portal creation, redacted receipts, contract tests and archive consumer validation.",
+          "timestamp": "2026-09-25T13:13:20-03:00",
+          "tree_id": "5bcf84b61eb2cc307e4c8dccf3083fdffd73d206",
+          "url": "https://github.com/Rullst/Rullst/commit/d1bff8cbcf94ada19e60113089622fded47bcd88"
+        },
+        "date": 1790353165703,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 730,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 979,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 655,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2246,
+            "range": "± 75",
             "unit": "ns/iter"
           }
         ]
