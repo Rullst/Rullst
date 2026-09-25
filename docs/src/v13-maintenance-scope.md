@@ -108,7 +108,7 @@ redirect existing customers/subscriptions to another provider.
 | v13 provider | Reason and current boundary |
 | :--- | :--- |
 | Stripe | Existing SaaS use and the generated durable billing integration. Preserve the reviewed operation boundaries rather than promising every Stripe product. |
-| Paddle | Subscription billing with provider-managed merchant-of-record responsibilities. Existing typed checkout and signed subscription contracts are useful foundations; generated durable billing integration is still Stripe-specific. |
+| Paddle | Subscription billing with provider-managed merchant-of-record responsibilities. Typed checkout, signed subscription contracts and a bound customer-portal candidate are useful foundations; generated durable billing integration is still Stripe-specific. Live provider interoperability remains unvalidated. |
 
 [Paddle's SaaS documentation](https://developer.paddle.com/get-started/how-paddle-works/saas/)
 describes subscription lifecycle, customer self-service and sales-tax handling

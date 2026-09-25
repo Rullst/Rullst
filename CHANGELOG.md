@@ -9,6 +9,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### v13 Paddle customer portal
+
+- Add `create_bound_customer_portal`: verify active customer ownership and the
+  original provisioning attempt before creating a fresh customer-wide portal
+  session, without email lookup, caching or automatic retries.
+- Bind responses to the requested customer and selected environment's HTTPS
+  portal. Return a redacted, non-serializable receipt with an owned URL zeroized
+  on drop; offline credentials return explicitly mock `example.invalid` URLs.
+- Add loopback tests for ownership, malformed responses, environment confusion,
+  provider failures and credential redaction, plus an archive-only facade
+  consumer. Live Paddle interoperability and generated durable SaaS integration
+  remain unvalidated/outstanding; this does not alter published v12 packages.
+
 ### Stable maintenance test forward-port
 
 - Add regression tests for independent Argon2 rehash-policy changes, the

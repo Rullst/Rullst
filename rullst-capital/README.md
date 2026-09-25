@@ -169,6 +169,62 @@ scheduled change. See Paddle's [transaction creation](https://developer.paddle.c
 [payment-page setup](https://developer.paddle.com/build/transactions/pass-transaction-checkout/)
 and [retry limitations](https://developer.paddle.com/sdks/libraries/).
 
+### Paddle customer portal (v13 candidate)
+
+`create_bound_customer_portal` creates fresh **customer-wide** overview access.
+First authenticate the application user and authorize that user's billing
+account. Load the original `PaddleCustomerRequest` provisioning intent and known
+customer ID from trusted state scoped to that owner/tenant, provider account and
+environment. Do not accept those references from a browser, discover ownership
+by email, or grant a whole customer's portal to a subscription-only delegate.
+
+```rust,no_run
+use rullst_capital::{CapitalError, PaddleCustomerRequest, PaddleProvider};
+
+// Call only after the host's authentication and billing-owner authorization.
+async fn portal_example() -> Result<(), CapitalError> {
+    let provider = PaddleProvider::new("mock_key", "mock_webhook");
+    let original = PaddleCustomerRequest::new(
+        "authorized_owner", "persisted_provisioning_attempt", "owner@example.test",
+    )?;
+    // This creation is only for the offline example. In a real portal handler,
+    // load the already provisioned customer ID; do not create a customer again.
+    let customer = provider.create_customer(&original).await?;
+    let portal = provider.create_bound_customer_portal(&original, customer.id()).await?;
+    assert!(portal.is_mock());
+    assert!(portal.require_real().is_err());
+    // With real credentials, require_real() must succeed before redirecting
+    // the authorized customer. Never log, cache or persist portal.url().
+    Ok(())
+}
+```
+
+The provider key needs `customer.read` and `customer_portal_session.write`.
+Rullst reads the active customer, verifies its owner and original provisioning
+attempt, then posts once to `/customers/{id}/portal-sessions` without a body.
+The read and creation are separate provider operations: keep ownership metadata
+host-controlled. Each invocation repeats the read; no customer or link cache is
+used. Customer/contact changes do not establish new ownership. Paddle's API
+creates these [temporary portal sessions](https://developer.paddle.com/api-reference/customer-portals/create-customer-portal-session/).
+
+The returned customer/session IDs must be consistent. Rullst accepts only the
+selected environment's exact HTTPS portal host, a `/cpl_` identifier path and
+one `action=overview` plus one nonempty `token` query pair, within 8 KiB. It
+rejects userinfo, nondefault ports, fragments, controls and additional/duplicate
+query fields. These [portal domains](https://developer.paddle.com/changelog/2025/subscription-management-links-customer-portal/)
+are an explicit supported profile; an upstream change needs review.
+
+Treat the URL as a bearer credential. `PaddlePortalSession` redacts Debug, has
+no Serialize/Clone implementation and zeroizes its owned URL on drop (not
+transport buffers or application copies). Send it only to the authorized owner
+with `Cache-Control: no-store` and `Referrer-Policy: no-referrer`; do not store,
+log, cache or iframe it. Expiry remains provider-controlled; no single-use or
+revocation guarantee is inferred. Mocks use the reserved `example.invalid`
+domain and never confer real access. There are no subscription deep links or
+arbitrary return URLs. The generic email-based portal remains unsupported with
+live keys. Provider interoperability is unvalidated without a live sandbox;
+the generated durable SaaS integration is still Stripe-specific.
+
 ### Product-based Polar checkout
 
 Use product UUIDs and an opaque application-owned billing subject, not legacy

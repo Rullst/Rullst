@@ -1925,6 +1925,33 @@ selected API and accept only matching immediate or scheduled changes. Legacy
 email/price-only checkout remains unsupported because it cannot express these
 bindings. Generated durable billing integration remains Stripe-specific.
 
+`PaddleProvider::create_bound_customer_portal` separately creates an overview
+session after reading the active customer and verifying the original owner and
+customer-provisioning attempt. Hosts must authenticate and authorize the caller
+and load these references plus the customer ID from trusted tenant, provider
+account and environment-scoped state. Metadata must remain host-owned; the
+provider read and session creation are not atomic. Portal access is customer-wide,
+not limited to one subscription. No email lookup, arbitrary return URL, automatic
+retry, caching or subscription deep links are included. The legacy generic
+email-based portal method remains unsupported with live credentials.
+
+The response must match the customer and a valid session ID. Overview URLs are
+bounded to 8 KiB, HTTPS, the exact selected environment's
+`customer-portal.paddle.com` or `sandbox-customer-portal.paddle.com` host, a
+`/cpl_` plus 26-character lowercase alphanumeric path, and exactly one
+`action=overview` and nonempty `token` query pair. Userinfo, nondefault ports,
+fragments, whitespace/control characters and ambiguous or additional query
+fields fail closed. This is an explicit API profile, not a general URL resolver.
+Receipts redact Debug and expose no Serialize/Clone implementation; their owned
+URL is zeroized on drop without claiming erasure of parser or caller copies.
+Hosts must not store/log/cache the bearer URL and must deliver it only to the
+authorized customer with no-store/no-referrer response headers. Provider expiry,
+single use and remote revocation are not inferred. Empty/`mock_*` keys preserve
+owner binding and return deterministic `example.invalid` receipts that
+`require_real` rejects. Local transport fixtures and archive consumers do not
+establish live-account interoperability. This API does not enable Paddle in the
+generated durable SaaS flow.
+
 `PolarCheckoutRequest` and `PolarProvider::create_product_checkout` implement
 POST `/v1/checkouts/` with one explicit product UUID, stable opaque external
 customer identity, HTTPS success URL and optional contact email. The response
