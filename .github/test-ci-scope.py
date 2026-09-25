@@ -105,6 +105,16 @@ else:
         self.assertEqual(output, "runtime_required=true")
         self.assertFalse((self.root / "api-called").exists())
 
+    def test_saas_journey_requires_the_single_supported_platform(self):
+        for platform in ("ubuntu-latest", "windows-latest", "macos-latest", "", "all"):
+            result, output = self.execute(GITHUB_EVENT_NAME="workflow_dispatch",
+                                          RULLST_CI_SHARD="cli-saas-journey",
+                                          RULLST_CI_PLATFORM=platform)
+            with self.subTest(platform=platform):
+                self.assertEqual(result.returncode, 0 if platform == "ubuntu-latest" else 1)
+                self.assertTrue(all(line == "runtime_required=true" for line in output.splitlines()))
+                self.assertFalse((self.root / "api-called").exists())
+
     def test_package_diagnostic_rejects_selectors_that_skip_the_archive_job(self):
         for platform in ("ubuntu-latest", "windows-latest", "macos-latest", "", "all"):
             result, output = self.execute(GITHUB_EVENT_NAME="workflow_dispatch",
