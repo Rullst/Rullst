@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790313614330,
+  "lastUpdate": 1790353871351,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -11939,6 +11939,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4124,
             "range": "± 16",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "d1bff8cbcf94ada19e60113089622fded47bcd88",
+          "message": "feat(capital): add bound Paddle customer portal sessions (#272)\n\nAdd owner-bound portal creation, redacted receipts, contract tests and archive consumer validation.",
+          "timestamp": "2026-09-25T13:13:20-03:00",
+          "tree_id": "5bcf84b61eb2cc307e4c8dccf3083fdffd73d206",
+          "url": "https://github.com/Rullst/Rullst/commit/d1bff8cbcf94ada19e60113089622fded47bcd88"
+        },
+        "date": 1790353870732,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1017,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 806,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1876,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4021,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
