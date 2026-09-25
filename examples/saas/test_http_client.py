@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
-"""Check that the acceptance client cannot hide denials or share user cookies."""
+"""Check client isolation and the local example operator's membership boundary."""
+from contextlib import closing
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+import sqlite3
+import tempfile
 import threading
 import unittest
 
-from saas_journey_http import Client
+from http_acceptance import Client
+from membership import grant_membership
 
 
 class Endpoint(BaseHTTPRequestHandler):
@@ -65,6 +70,33 @@ class ClientContract(unittest.TestCase):
         client.request("GET", "/secure")
         self.assertEqual(client.cookie("secure_session"), "synthetic-secure")
         self.assertNotIn(b"synthetic-secure", client.request("GET", "/echo")[2])
+
+
+class MembershipContract(unittest.TestCase):
+    def test_only_existing_accounts_receive_idempotent_parameterized_membership(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "example.sqlite"
+            with closing(sqlite3.connect(database)) as db, db:
+                db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT UNIQUE)")
+                db.execute("CREATE TABLE journey_memberships (user_id INTEGER REFERENCES users(id), "
+                           "tenant_id TEXT, PRIMARY KEY (user_id, tenant_id))")
+                db.execute("INSERT INTO users VALUES (1, ?)", ("alice@example.invalid",))
+            grant_membership(database, " Alice@example.invalid ", "org-a")
+            grant_membership(database, "alice@example.invalid", "org-a")
+            for email in ("missing@example.invalid", "' OR 1=1 --"):
+                with self.assertRaises(ValueError):
+                    grant_membership(database, email, "org-b")
+            with self.assertRaises(ValueError):
+                grant_membership(database, "alice@example.invalid", "org a")
+            with closing(sqlite3.connect(database)) as db:
+                self.assertEqual(db.execute("SELECT * FROM journey_memberships").fetchall(), [(1, "org-a")])
+
+    def test_mistyped_database_path_does_not_create_an_empty_database(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "absent.sqlite"
+            with self.assertRaises(sqlite3.OperationalError):
+                grant_membership(database, "alice@example.invalid", "org-a")
+            self.assertFalse(database.exists())
 
 
 if __name__ == "__main__":

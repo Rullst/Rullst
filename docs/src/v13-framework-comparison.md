@@ -75,6 +75,13 @@ implements the first Rullst acceptance contract. Dispatch it with
 does not replace any required CI or release gate. Run records, not this source
 description, establish whether a particular SHA passed.
 
+Its canonical resource, migration and runner live in
+[`examples/saas`](https://github.com/Rullst/Rullst/tree/main/examples/saas).
+`python3 examples/saas/run.py` runs the diagnostic locally; `--serve` keeps the
+same disposable application open for exploration without claiming a test pass.
+The example README documents registration, local membership provisioning,
+notes requests, disk requirements and cleanup.
+
 ```sh
 gh workflow run ci.yml --ref <candidate-branch> \
   -f platform=ubuntu-latest -f shard=cli-saas-journey

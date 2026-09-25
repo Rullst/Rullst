@@ -7,6 +7,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from membership import grant_membership
+
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -88,9 +90,8 @@ def exercise(base, database, restart, report):
     with sqlite3.connect(database) as db:
         users = dict(db.execute("SELECT email, id FROM users"))
         check("three-persisted-users", len(users) == 3)
-        for name, tenant in (("alice", "org-a"), ("bob", "org-b"), ("charlie", "org-a")):
-            db.execute("INSERT INTO journey_memberships (user_id, tenant_id) VALUES (?, ?)",
-                       (users[name + "@example.invalid"], tenant))
+    for name, tenant in (("alice", "org-a"), ("bob", "org-b"), ("charlie", "org-a")):
+        grant_membership(database, name + "@example.invalid", tenant)
 
     denied = Client(base)
     expect("login-form", denied.request("GET", "/login"), 200)

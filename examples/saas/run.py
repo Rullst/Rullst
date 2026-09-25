@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Source-installed CLI -> generated SQLite SaaS -> real HTTP -> process restart.
+"""Run the generated SQLite SaaS example, or verify its HTTP/restart journey.
 
-Manual, Linux-only diagnostic. This is neither release admission nor a benchmark.
+Linux-only development example. This is neither release admission nor a benchmark.
 The application receives only disposable configuration and no provider credentials.
 """
 import argparse
@@ -19,9 +19,10 @@ import tempfile
 import time
 import tomllib
 
-from saas_journey_http import Client, exercise
+from http_acceptance import Client, exercise
 
-ROOT = Path(__file__).resolve().parent.parent
+EXAMPLE = Path(__file__).resolve().parent
+ROOT = EXAMPLE.parent.parent
 GIB = 1024 ** 3
 
 
@@ -153,9 +154,9 @@ class Journey:
         migrations = list((self.app / "src/migrations").glob("*_create_journey_tables.rs"))
         if len(migrations) != 1:
             raise RuntimeError("CLI did not create exactly one journey migration")
-        migration = ROOT / ".github/fixtures/saas-journey-migration.rs"
+        migration = EXAMPLE / "migration.rs"
         migrations[0].write_text(migration.read_text().replace("__JOURNEY_MIGRATION_NAME__", migrations[0].stem))
-        fixture = ROOT / ".github/fixtures/saas-journey.rs"
+        fixture = EXAMPLE / "journey.rs"
         shutil.copyfile(fixture, self.app / "src/journey.rs")
         main = self.app / "src/main.rs"
         source = main.read_text()
@@ -208,12 +209,28 @@ class Journey:
         self.shutdown()
         self.start()
 
+    def serve(self):
+        print(f"\nOpen {self.base}/register and create a disposable account.", flush=True)
+        print(f"Generated application: {self.app}", flush=True)
+        print(f"Database for the local membership command: {self.database}", flush=True)
+        print("See examples/saas/README.md for tenant membership and note requests.", flush=True)
+        print("Press Ctrl+C to stop. The temporary application and data will be removed.", flush=True)
+        try:
+            while self.server.poll() is None:
+                disk_check((ROOT, self.work), 12)
+                time.sleep(1)
+        except KeyboardInterrupt:
+            return
+        raise RuntimeError("Generated server exited during the interactive demonstration")
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--serve", action="store_true", help="Keep the disposable example open until Ctrl+C")
     parser.add_argument("--output", type=Path, default=ROOT / "saas-journey-result.json")
     args = parser.parse_args()
-    report = {"schema": "rullst.saas-journey.v1", "passed": False, "cases": [], "phases": [],
+    report = {"schema": "rullst.saas-journey.v1", "mode": "serve" if args.serve else "verify",
+              "passed": None if args.serve else False, "cases": [], "phases": [],
               "profile": "Linux / SQLite / source-installed debug CLI / generated SaaS / loopback HTTP",
               "release_evidence": False, "live_provider_evidence": False,
               "platform": platform.platform(), "sqlite_python_version": sqlite3.sqlite_version,
@@ -235,21 +252,25 @@ def main():
             try:
                 journey.prepare()
                 journey.start()
-                start = time.monotonic()
-                exercise(journey.base, journey.database, journey.restart, report)
-                report["http_seconds"] = round(time.monotonic() - start, 3)
-                report["passed"] = True
+                if args.serve:
+                    journey.serve()
+                    report["interactive_shutdown"] = "requested"
+                else:
+                    start = time.monotonic()
+                    exercise(journey.base, journey.database, journey.restart, report)
+                    report["http_seconds"] = round(time.monotonic() - start, 3)
+                    report["passed"] = True
             finally:
                 journey.shutdown()
                 log = journey.work / "server.log"
-                if not report["passed"] and log.exists():
+                if not report["passed"] and report.get("interactive_shutdown") != "requested" and log.exists():
                     print(journey.sanitized_log(log), flush=True)
     except Exception as error:
         report["error"] = str(error)
         raise
     finally:
         args.output.write_text(json.dumps(report, indent=2) + "\n")
-        print(f"SaaS journey: passed={report['passed']}, cases={len(report['cases'])}", flush=True)
+        print(f"SaaS example: mode={report['mode']}, passed={report['passed']}, cases={len(report['cases'])}", flush=True)
 
 
 if __name__ == "__main__":

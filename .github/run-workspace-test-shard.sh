@@ -35,7 +35,7 @@ case "$shard" in
       echo 'The SaaS journey currently measures a source-installed debug CLI only.' >&2
       exit 2
     fi
-    python3 .github/check-saas-journey.py
+    python3 examples/saas/run.py
     ;;
   workspace)
     cargo test --workspace --exclude cargo-rullst \
