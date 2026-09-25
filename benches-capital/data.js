@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790299654608,
+  "lastUpdate": 1790314028702,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -8495,6 +8495,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/ea5498221d457ed487a1f41e187f5f5808a35413"
         },
         "date": 1790299654007,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1e1185cbbb63e3ab68f7fb39fed05be1f6b6d894",
+          "message": "feat(examples): add reproducible SaaS and HTTP acceptance (#271)",
+          "timestamp": "2026-09-25T02:01:41-03:00",
+          "tree_id": "586b969706a629f63cfa9785c9966cfcb9869aa2",
+          "url": "https://github.com/Rullst/Rullst/commit/1e1185cbbb63e3ab68f7fb39fed05be1f6b6d894"
+        },
+        "date": 1790314028004,
         "tool": "cargo",
         "benches": [
           {
