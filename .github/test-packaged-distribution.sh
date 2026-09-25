@@ -408,6 +408,16 @@ cp "$repository_root/.github/fixtures/live-recovery-facade.rs" "$live_dir/tests/
 append_package_patches "$live_dir/Cargo.toml"
 "$cargo_bin" test --manifest-path "$live_dir/Cargo.toml" --offline --test live_recovery_facade
 
+portal_dir="$work_dir/paddle-portal-consumer"
+mkdir -p "$portal_dir/tests"
+{
+  printf '[package]\nname = "rullst-packaged-paddle-portal"\nversion = "0.0.0"\nedition = "2024"\npublish = false\n\n[dependencies]\n'
+  printf 'rullst = { version = "=%s", default-features = false, features = ["capital"] }\n' "$version"
+} > "$portal_dir/Cargo.toml"
+cp "$repository_root/.github/fixtures/paddle-portal-facade.rs" "$portal_dir/tests/paddle_portal_facade.rs"
+append_package_patches "$portal_dir/Cargo.toml"
+"$cargo_bin" test --manifest-path "$portal_dir/Cargo.toml" --offline --test paddle_portal_facade
+
 tracing_dir="$work_dir/tracing-consumer"
 mkdir -p "$tracing_dir/tests"
 {
