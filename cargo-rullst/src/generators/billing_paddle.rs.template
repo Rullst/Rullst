@@ -1,0 +1,220 @@
+//! Durable Paddle attempts. A dispatch claim never expires or permits a blind retry.
+use super::{BillingConfig, BillingIdentity, valid_identity};
+use rullst::capital::{PaddleCheckoutRequest, PaddleCustomerRequest, PaddleProvider};
+use rullst::server::{IntoResponse, Redirect, Response, StatusCode};
+use serde::{Deserialize, Serialize};
+#[path = "billing_store.rs"]
+mod store;
+#[path = "billing_paddle_gateway.rs"]
+mod gateway;
+#[path = "billing_paddle_events.rs"]
+mod events;
+#[path = "billing_paddle_report.rs"]
+mod report;
+pub(super) use events::webhook;
+pub(super) use report::report;
+use gateway::Gateway;
+type Result<T> = std::result::Result<T, StatusCode>;
+const UNAVAILABLE: StatusCode = StatusCode::SERVICE_UNAVAILABLE;
+const CONFLICT: StatusCode = StatusCode::CONFLICT;
+
+#[derive(Clone, Serialize, Deserialize)]
+struct Attempt {
+    key: String, price: String, payment_link: String, dispatched: bool,
+    transaction: Option<String>, subscription: Option<String>, closed: bool,
+}
+#[derive(Clone, Serialize, Deserialize)]
+struct Entitlement { subscription: String, price: String, status: String, ends_at: Option<i64> }
+#[derive(Clone, Serialize, Deserialize)]
+struct State {
+    scope: String, owner: i64, reference: String, revision: String,
+    customer_key: String, email: String, customer_dispatched: bool, customer: Option<String>,
+    attempt: Option<Attempt>, previous_attempts: Vec<Attempt>, entitlement: Option<Entitlement>,
+}
+struct Receipt { id: String, digest: String }
+fn token() -> String { rullst::security::generate_csrf_token() }
+fn scope(config: &BillingConfig) -> Result<(String, bool, String)> {
+    let account = std::env::var("BILLING_ACCOUNT_ID").map_err(|_| UNAVAILABLE)?;
+    // Paddle does not expose Stripe's account-verification API. This is an
+    // operator-owned credential/account namespace, never a browser argument.
+    if config.provider != "paddle" || account.is_empty() || account.len() > 64
+        || !account.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'-'))
+        || config.api_key.trim().is_empty() || super::is_mock_credential(&config.api_key)
+        || !super::strong_webhook_secret(&config.webhook_secret) { return Err(UNAVAILABLE); }
+    let sandbox = match std::env::var("BILLING_PADDLE_ENVIRONMENT").as_deref() {
+        Ok("sandbox") => true, Ok("live") => false, _ => return Err(UNAVAILABLE),
+    };
+    if !sandbox && std::env::var("BILLING_LIVE_ACKNOWLEDGEMENT").as_deref() != Ok("I_UNDERSTAND_REAL_CHARGES") {
+        return Err(UNAVAILABLE);
+    }
+    let page = std::env::var("BILLING_PADDLE_PAYMENT_LINK").map_err(|_| UNAVAILABLE)?;
+    Ok((format!("paddle:{account}:{}", if sandbox { "sandbox" } else { "live" }), sandbox, page))
+}
+fn provider(config: &BillingConfig, sandbox: bool) -> PaddleProvider {
+    PaddleProvider::new(&config.api_key, &config.webhook_secret).with_sandbox(sandbox)
+}
+fn customer_request(state: &State) -> Result<PaddleCustomerRequest> {
+    PaddleCustomerRequest::new(&state.reference, &state.customer_key, &state.email).map_err(|_| UNAVAILABLE)
+}
+fn checkout_request(state: &State, attempt: &Attempt) -> Result<PaddleCheckoutRequest> {
+    PaddleCheckoutRequest::new(state.customer.as_deref().ok_or(CONFLICT)?, &attempt.price,
+        &state.reference, &attempt.key, &attempt.payment_link).map_err(|_| UNAVAILABLE)
+}
+impl State {
+    fn encode(&self) -> Result<String> {
+        let text = serde_json::to_string(self).map_err(|_| UNAVAILABLE)?;
+        if text.len() > 64 * 1024 { return Err(UNAVAILABLE); } Ok(text)
+    }
+    fn decode(text: &str) -> Result<Self> {
+        if text.len() > 64 * 1024 { return Err(UNAVAILABLE); }
+        serde_json::from_str(text).map_err(|_| UNAVAILABLE)
+    }
+}
+async fn commit(old: &State, mut next: State, receipt: Option<&Receipt>) -> Result<State> {
+    next.revision = token();
+    if !store::commit(old, &next, receipt).await? { return Err(UNAVAILABLE); } Ok(next)
+}
+async fn fence(state: &State) -> Result<State> { commit(state, state.clone(), None).await }
+fn protected(mut response: Response) -> Response {
+    response.headers_mut().insert("cache-control", rullst::server::HeaderValue::from_static("no-store"));
+    response.headers_mut().insert("referrer-policy", rullst::server::HeaderValue::from_static("no-referrer"));
+    response
+}
+pub(super) async fn checkout(config: &BillingConfig, identity: &BillingIdentity, price: &str) -> Response {
+    let result: Result<String> = async {
+        let (_, sandbox, _) = scope(config)?;
+        checkout_with(config, identity, price, &provider(config, sandbox)).await
+    }.await;
+    protected(match result {
+        Ok(url) => Redirect::to(&url).into_response(),
+        Err(status) => (status, "Checkout unavailable. A pending creation requires reconciliation, not another charge.").into_response(),
+    })
+}
+async fn checkout_with(config: &BillingConfig, identity: &BillingIdentity, price: &str, gateway: &impl Gateway) -> Result<String> {
+    if !valid_identity(identity) { return Err(StatusCode::UNAUTHORIZED); }
+    if !config.allowed_plan_ids.contains(price) { return Err(StatusCode::BAD_REQUEST); }
+    let (namespace, sandbox, page) = scope(config)?;
+    // Validate the configured catalog/page before persisting or dispatching anything.
+    PaddleCheckoutRequest::new("ctm_00000000000000000000000000", price, "validation", "validation", &page)
+        .map_err(|_| UNAVAILABLE)?;
+    let owner = __OWNER_TO_I64__;
+    let mut state = match store::owner(&namespace, owner).await? {
+        Some(state) => state,
+        None => {
+            let state = State { scope: namespace.clone(), owner, reference: token(), revision: token(),
+                customer_key: token(), email: super::normalize_email(&identity.email), customer_dispatched: false,
+                customer: None, attempt: None, previous_attempts: Vec::new(), entitlement: None };
+            customer_request(&state)?;
+            store::insert(&state).await?;
+            store::owner(&namespace, owner).await?.ok_or(UNAVAILABLE)?
+        }
+    };
+    if state.customer.is_none() {
+        if state.customer_dispatched { return Err(UNAVAILABLE); }
+        let mut claimed = state.clone(); claimed.customer_dispatched = true;
+        state = commit(&state, claimed, None).await?;
+        let request = customer_request(&state)?;
+        let customer = gateway.create_customer(&request).await?;
+        if customer.sandbox != sandbox || customer.digest != request.request_digest() { return Err(CONFLICT); }
+        let mut next = state.clone(); next.customer = Some(customer.id);
+        state = commit(&state, next, None).await?;
+    }
+    if state.entitlement.as_ref().is_some_and(|e| e.status != "canceled") { return Err(CONFLICT); }
+    if state.attempt.as_ref().is_some_and(|a| a.closed) {
+        if state.previous_attempts.len() >= 64 { return Err(UNAVAILABLE); }
+        let mut next = state.clone();
+        if let Some(attempt) = next.attempt.take() { next.previous_attempts.push(attempt); }
+        next.entitlement = None;
+        state = commit(&state, next, None).await?;
+    }
+    if state.attempt.is_none() {
+        let mut next = state.clone(); next.attempt = Some(Attempt { key: token(), price: price.into(),
+            payment_link: page, dispatched: false, transaction: None, subscription: None, closed: false });
+        state = commit(&state, next, None).await?;
+    }
+    let attempt = state.attempt.as_ref().ok_or(CONFLICT)?;
+    if attempt.price != price { return Err(CONFLICT); }
+    let request = checkout_request(&state, attempt)?;
+    if let Some(id) = attempt.transaction.clone() {
+        state = fence(&state).await?;
+        let snapshot = gateway.transaction(&request, &id).await?;
+        let url = snapshot.url.clone();
+        let mut next = state.clone(); apply_transaction(&mut next, &request, &snapshot, sandbox)?;
+        refresh(gateway, sandbox, &mut next).await?;
+        commit(&state, next, None).await?;
+        return url.ok_or(CONFLICT);
+    }
+    if attempt.dispatched { return Err(UNAVAILABLE); }
+    let mut claimed = state.clone(); claimed.attempt.as_mut().ok_or(CONFLICT)?.dispatched = true;
+    state = commit(&state, claimed, None).await?;
+    let snapshot = gateway.create_checkout(&request).await?;
+    let url = snapshot.url.clone();
+    let mut next = state.clone(); apply_transaction(&mut next, &request, &snapshot, sandbox)?;
+    commit(&state, next, None).await?;
+    url.ok_or(CONFLICT)
+}
+fn apply_transaction(state: &mut State, request: &PaddleCheckoutRequest, snapshot: &gateway::Transaction, sandbox: bool) -> Result<()> {
+    if snapshot.sandbox != sandbox || snapshot.digest != request.request_digest() { return Err(CONFLICT); }
+    let attempt = state.attempt.as_mut().ok_or(CONFLICT)?;
+    if attempt.transaction.as_ref().is_some_and(|known| known != &snapshot.id)
+        || attempt.subscription.as_ref().is_some_and(|known| snapshot.subscription.as_ref() != Some(known)) { return Err(CONFLICT); }
+    attempt.transaction = Some(snapshot.id.clone()); attempt.subscription = snapshot.subscription.clone();
+    attempt.closed = snapshot.status == "canceled";
+    Ok(())
+}
+async fn refresh(gateway: &impl Gateway, sandbox: bool, state: &mut State) -> Result<()> {
+    let attempt = state.attempt.as_ref().ok_or(CONFLICT)?;
+    let Some(id) = &attempt.subscription else { return Ok(()); };
+    let request = checkout_request(state, attempt)?;
+    let snapshot = gateway.subscription(&request, id).await?;
+    if snapshot.sandbox != sandbox || snapshot.event.subscription_id != *id
+        || snapshot.event.customer_id != request.customer_id() || snapshot.event.plan_id != request.price_id() { return Err(CONFLICT); }
+    // The shared editable projection has a globally unique ID. Prefix Paddle
+    // projection IDs to avoid colliding with other accounts/providers. Authority
+    // stays in the scoped payload and fresh bound provider reads.
+    state.entitlement = Some(Entitlement { subscription: format!("{}/{}", state.scope, id),
+        price: snapshot.event.plan_id, status: snapshot.status.clone(), ends_at: snapshot.event.ends_at });
+    if snapshot.status == "canceled" { state.attempt.as_mut().ok_or(CONFLICT)?.closed = true; }
+    Ok(())
+}
+pub(super) async fn portal(config: &BillingConfig, identity: &BillingIdentity) -> Response {
+    let result: Result<Response> = async {
+        if !valid_identity(identity) { return Err(StatusCode::UNAUTHORIZED); }
+        let (namespace, sandbox, _) = scope(config)?;
+        let state = store::owner(&namespace, __OWNER_TO_I64__).await?.ok_or(CONFLICT)?;
+        let portal = provider(config, sandbox).create_bound_customer_portal(&customer_request(&state)?,
+            state.customer.as_deref().ok_or(CONFLICT)?).await.map_err(|_| UNAVAILABLE)?;
+        portal.require_real().map_err(|_| UNAVAILABLE)?;
+        if portal.sandbox() != Some(sandbox) { return Err(CONFLICT); }
+        Ok(Redirect::to(portal.url()).into_response())
+    }.await;
+    protected(result.unwrap_or_else(IntoResponse::into_response))
+}
+/// Operator recovery: requires a separately located provider ID and an authorized
+/// local identity. Never mounted automatically, never searches by email.
+pub(super) async fn recover(config: &BillingConfig, identity: &BillingIdentity, id: &str, transaction: bool) -> Result<()> {
+    let (_, sandbox, _) = scope(config)?;
+    recover_with(config, identity, id, transaction, &provider(config, sandbox)).await
+}
+async fn recover_with(config: &BillingConfig, identity: &BillingIdentity, id: &str, transaction: bool, gateway: &impl Gateway) -> Result<()> {
+    if !valid_identity(identity) { return Err(StatusCode::UNAUTHORIZED); }
+    let (namespace, sandbox, _) = scope(config)?;
+    let state = store::owner(&namespace, __OWNER_TO_I64__).await?.ok_or(CONFLICT)?;
+    let state = fence(&state).await?;
+    let mut next = state.clone();
+    if transaction {
+        let attempt = state.attempt.as_ref().ok_or(CONFLICT)?;
+        if !attempt.dispatched { return Err(CONFLICT); }
+        let request = checkout_request(&state, attempt)?;
+        let snapshot = gateway.transaction(&request, id).await?;
+        apply_transaction(&mut next, &request, &snapshot, sandbox)?;
+        refresh(gateway, sandbox, &mut next).await?;
+    } else {
+        if !state.customer_dispatched || state.customer.as_deref().is_some_and(|known| known != id) { return Err(CONFLICT); }
+        let request = customer_request(&state)?;
+        let receipt = gateway.customer(&request, id).await?;
+        if receipt.id != id || receipt.sandbox != sandbox || receipt.digest != request.request_digest() { return Err(CONFLICT); }
+        next.customer = Some(receipt.id);
+    }
+    commit(&state, next, None).await?; Ok(())
+}

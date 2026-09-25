@@ -223,7 +223,9 @@ revocation guarantee is inferred. Mocks use the reserved `example.invalid`
 domain and never confer real access. There are no subscription deep links or
 arbitrary return URLs. The generic email-based portal remains unsupported with
 live keys. Provider interoperability is unvalidated without a live sandbox;
-the generated durable SaaS integration is still Stripe-specific.
+the generated durable Paddle candidate composes this operation with persisted
+customer ownership. See the generated application's `BILLING.md`; offline
+state-transition tests do not establish hosted-provider interoperability.
 
 ### Product-based Polar checkout
 

@@ -108,7 +108,16 @@ redirect existing customers/subscriptions to another provider.
 | v13 provider | Reason and current boundary |
 | :--- | :--- |
 | Stripe | Existing SaaS use and the generated durable billing integration. Preserve the reviewed operation boundaries rather than promising every Stripe product. |
-| Paddle | Subscription billing with provider-managed merchant-of-record responsibilities. Typed checkout, signed subscription contracts and a bound customer-portal candidate are useful foundations; generated durable billing integration is still Stripe-specific. Live provider interoperability remains unvalidated. |
+| Paddle | Subscription billing with provider-managed merchant-of-record responsibilities. Typed checkout, signed subscription contracts, a bound portal and a generated durable candidate cover the limited recurring flow. Live provider interoperability remains unvalidated. |
+
+Keeping these two adapters still incurs upstream API and security maintenance.
+The framework owns bounded protocol validation and reference lifecycle tests;
+applications own credentials, catalog setup, billing-owner permissions, business
+rules and deployment-specific operation. An adapter is not a promise to implement
+every provider product. Generated reference flows must reuse storage/security
+foundations and retain explicit limits, without growing into a full billing
+platform. Capital remains an optional feature. An application-specific need
+does not automatically justify another official adapter.
 
 [Paddle's SaaS documentation](https://developer.paddle.com/get-started/how-paddle-works/saas/)
 describes subscription lifecycle, customer self-service and sales-tax handling

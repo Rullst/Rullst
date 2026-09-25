@@ -21,7 +21,7 @@ const TURSO_MIGRATION: &str = include_str!("billing_migration_turso.rs.template"
 const SQLX_PERSIST: &str = include_str!("billing_persist_sqlx.rs.template");
 const TURSO_PERSIST: &str = include_str!("billing_persist_turso.rs.template");
 
-const FIXED_OUTPUTS: [&str; 10] = [
+const FIXED_OUTPUTS: [&str; 14] = [
     "src/models/subscription.rs",
     "src/models/billing_customer.rs",
     "src/pages/billing.rs",
@@ -32,6 +32,10 @@ const FIXED_OUTPUTS: [&str; 10] = [
     "BILLING.md",
     "src/controllers/billing_gateway.rs",
     "src/controllers/billing_report.rs",
+    "src/controllers/billing_paddle.rs",
+    "src/controllers/billing_paddle_gateway.rs",
+    "src/controllers/billing_paddle_events.rs",
+    "src/controllers/billing_paddle_report.rs",
 ];
 
 pub(crate) fn render_billing_controller(foreign_key: &str, backend: ProjectOrmBackend) -> String {
@@ -64,7 +68,38 @@ pub(crate) fn live_billing_files(
     } else {
         "i64"
     };
+    let render_paddle = |template: &str| {
+        template
+            .replace(
+                "__OWNER_TO_I64__",
+                if backend == ProjectOrmBackend::Sqlx {
+                    "i64::from(identity.owner_id)"
+                } else {
+                    "identity.owner_id"
+                },
+            )
+            .replace(
+                "__SUBJECT_KIND__",
+                foreign_key.strip_suffix("_id").unwrap_or(foreign_key),
+            )
+    };
     vec![
+        (
+            "src/controllers/billing_paddle.rs",
+            render_paddle(include_str!("billing_paddle.rs.template")),
+        ),
+        (
+            "src/controllers/billing_paddle_gateway.rs",
+            include_str!("billing_paddle_gateway.rs.template").into(),
+        ),
+        (
+            "src/controllers/billing_paddle_events.rs",
+            include_str!("billing_paddle_events.rs.template").into(),
+        ),
+        (
+            "src/controllers/billing_paddle_report.rs",
+            render_paddle(include_str!("billing_paddle_report.rs.template")),
+        ),
         (
             "src/controllers/billing_report.rs",
             include_str!("billing_report.rs.template")
@@ -215,12 +250,15 @@ pub fn scaffold_billing_system(model: &str) -> Result<(), Box<dyn std::error::Er
         .bold()
     );
     println!("👉 Mount authenticated checkout/portal routes and the exact signed webhook route.");
-    println!("👉 BILLING_PROVIDER accepts stripe or lemonsqueezy.");
+    println!("👉 BILLING_PROVIDER accepts stripe, paddle or lemonsqueezy.");
     println!(
         "👉 Stripe supports durable customer/checkout ownership and atomic webhook reconciliation."
     );
     println!(
-        "👉 Configure BILLING_ACCOUNT_ID, HTTPS redirect, credentials and plans; follow BILLING.md. Other generated providers remain fixtures."
+        "👉 Configure BILLING_ACCOUNT_ID, HTTPS redirect, credentials and plans; follow BILLING.md. Paddle requires an explicit environment and approved payment page; Lemon Squeezy remains a fixture."
+    );
+    println!(
+        "👉 Paddle persists single-dispatch attempts; uncertain outcomes require read-only recovery. See BILLING.md."
     );
     println!("👉 Lemon Squeezy also requires BILLING_STORE_ID and numeric variant IDs.");
     println!("👉 Set BILLING_ALLOWED_PLAN_IDS to a comma-separated server-owned allowlist.");

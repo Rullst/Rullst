@@ -19,8 +19,24 @@ A prepared version section does not establish that its tag or crates exist.
   on drop; offline credentials return explicitly mock `example.invalid` URLs.
 - Add loopback tests for ownership, malformed responses, environment confusion,
   provider failures and credential redaction, plus an archive-only facade
-  consumer. Live Paddle interoperability and generated durable SaaS integration
-  remain unvalidated/outstanding; this does not alter published v12 packages.
+  consumer. Live Paddle interoperability remains unvalidated; the generated
+  durable candidate is described below. Published v12 packages are unchanged.
+
+### v13 generated Paddle billing candidate
+
+- Add an opt-in Paddle branch to generated billing with scoped customer and
+  checkout persistence, bound portal access, signed lifecycle reconciliation and
+  plan-gated reports. Reuse transactional storage and preserve Stripe's existing
+  account verification and retry rules.
+- Persist one-way dispatch claims before customer/transaction creation. Uncertain
+  results require bound read-only recovery; requests and restarts never release
+  a claim or invent provider idempotency. Fence stale reconciliation and commit
+  event receipts atomically with state and namespaced editable projections.
+- Add materialized SQLite and Turso-local contracts for lost responses, owner
+  isolation, replay, rollback, concurrent requests, replacement and restart.
+  Hosted-provider and payment-page interoperability remain unvalidated.
+- Highlight the limited Stripe/Paddle scope and application responsibilities
+  in the root README, without claiming published v13 availability.
 
 ### Stable maintenance test forward-port
 

@@ -1923,7 +1923,8 @@ periods. Hosts retain account/environment scope, atomic inbox/domain commits,
 revision fencing and entitlement/settlement policy. Cancellation/pause use the
 selected API and accept only matching immediate or scheduled changes. Legacy
 email/price-only checkout remains unsupported because it cannot express these
-bindings. Generated durable billing integration remains Stripe-specific.
+bindings. The generated Paddle candidate described below composes these
+contracts separately from Stripe's idempotent retry policy.
 
 `PaddleProvider::create_bound_customer_portal` separately creates an overview
 session after reading the active customer and verifying the original owner and
@@ -1949,8 +1950,8 @@ authorized customer with no-store/no-referrer response headers. Provider expiry,
 single use and remote revocation are not inferred. Empty/`mock_*` keys preserve
 owner binding and return deterministic `example.invalid` receipts that
 `require_real` rejects. Local transport fixtures and archive consumers do not
-establish live-account interoperability. This API does not enable Paddle in the
-generated durable SaaS flow.
+establish live-account interoperability. Generated Paddle portal routes consume
+this API only with an authenticated billing identity and its persisted customer.
 
 `PolarCheckoutRequest` and `PolarProvider::create_product_checkout` implement
 POST `/v1/checkouts/` with one explicit product UUID, stable opaque external
@@ -2236,7 +2237,8 @@ sending.
   identity is checked through Stripe and test/live namespaces are separate.
   Customer email never discovers or authorizes ownership. Real Stripe credentials
   require an explicit account, HTTPS return URL, webhook secret and price allowlist;
-  mixed credentials and other generated live providers remain unavailable.
+  mixed credentials and generated providers without an explicit durable path
+  remain unavailable. Paddle's separate candidate is described below.
   Customer and session creation reuse persisted keys for at most 23 hours. Older
   unknown outcomes use bounded read-only recovery; absence never permits another
   mutation. Completed and expired Checkout notifications and subscription lifecycle
@@ -2251,6 +2253,39 @@ sending.
   operations; a subscription state is not invoice settlement evidence.
   Existing application-owned code requires merging the generated modules and an
   additive migration; updating the package does not rewrite deployed controllers.
+* The opt-in generated Paddle candidate uses an explicit sandbox/live selection,
+  operator-owned account namespace and approved HTTPS Paddle.js payment page.
+  The namespace is configuration, not remotely verified account evidence;
+  operators must keep it associated with the API key, webhook secret and account,
+  preserve it on rotation and never repurpose it. Live mode requires the explicit
+  real-charge acknowledgement. This profile supports one recurring allowlisted
+  price, quantity one, automatic collection, bound customer/transaction recovery,
+  customer-wide portal, subscription reconciliation and the plan-gated report.
+  It is not a full Paddle SDK or a pricing/tax/refund/settlement policy engine.
+  Separate `paddle:<account>:<environment>` rows retain the original contact,
+  opaque owner and provisioning key. A compare-and-swap commits a one-way
+  dispatch claim before each customer/transaction creation. No retry window or
+  expiration releases it: errors, cancellation and uncertain outcomes require
+  read-only recovery using independently located IDs and original bindings.
+  There is no email lookup or public recovery route. A correctly signed early
+  subscription event may recover its matching transaction. An ambiguous result
+  without a recoverable ID remains unavailable for operator investigation, even
+  if the original HTTP request never reached Paddle. Deleting the claim to retry
+  is not a supported recovery mechanism.
+  One signature header and exact bounded webhook bytes precede state lookup;
+  typed verification binds owner, attempt, customer, price, transaction and
+  subscription. Fresh provider reads drive entitlement state, with revision
+  fences and atomic state/projection/event commits. A redirect or event status
+  alone never grants access. Old attempts cannot overwrite replacements. Paddle
+  editable projection IDs include the account/environment namespace; raw IDs
+  remain in scoped authority state. Bodies are bounded to 2 MiB, state to 64 KiB
+  and history to 64 attempts (whichever limit comes first). Portal/report
+  responses carry no-store/no-referrer. Report authorization denies wrong mode,
+  disallowed plans, missing/expired periods and failed/stale reconciliation.
+  Materialized SQLx/SQLite and Turso-local contracts exercise application state
+  with non-deduplicating fake gateways; Capital owns signed wire fixtures.
+  Hosted-provider, browser payment-page and remote Turso interoperability remain
+  unvalidated. Existing Stripe records and retry rules are unchanged.
 * Hosted checkout forms require an explicit provider-specific CSP `form-action`
   origin on the document that submits the form, including its HTTP 303 handoff.
   The SaaS starter selects Stripe and adds only `https://checkout.stripe.com`
