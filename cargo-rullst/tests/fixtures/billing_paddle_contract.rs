@@ -140,7 +140,7 @@ async fn durable_paddle_billing_contract() {
 }
 
 #[test]
-fn paddle_real_money_activation_requires_explicit_acknowledgement() {
+fn paddle_activation_gate_requires_exact_acknowledgement() {
     let allowed=std::env::var("BILLING_PADDLE_ENVIRONMENT").as_deref()==Ok("sandbox")
         || std::env::var("BILLING_LIVE_ACKNOWLEDGEMENT").as_deref()==Ok("I_UNDERSTAND_REAL_CHARGES");
     assert_eq!(scope(&config()).is_ok(),allowed);

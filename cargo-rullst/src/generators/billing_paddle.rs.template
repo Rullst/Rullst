@@ -3,7 +3,7 @@ use super::{BillingConfig, BillingIdentity, valid_identity};
 use rullst::capital::{PaddleCheckoutRequest, PaddleCustomerRequest, PaddleProvider};
 use rullst::server::{IntoResponse, Redirect, Response, StatusCode};
 use serde::{Deserialize, Serialize};
-#[path = "billing_store.rs"]
+#[path = "billing_paddle_store.rs"]
 mod store;
 #[path = "billing_paddle_gateway.rs"]
 mod gateway;

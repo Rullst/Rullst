@@ -31,7 +31,7 @@ pub(super) fn verify(project: &Path, workspace: &Path) {
     for restart in [false, true] {
         let mut command = Command::new("cargo");
         command
-            .current_dir(&project)
+            .current_dir(project)
             .args([
                 "test",
                 "--quiet",
@@ -60,13 +60,13 @@ pub(super) fn verify(project: &Path, workspace: &Path) {
     for acknowledgement in [None, Some("yes"), Some("I_UNDERSTAND_REAL_CHARGES")] {
         let mut command = Command::new("cargo");
         command
-            .current_dir(&project)
+            .current_dir(project)
             .args([
                 "test",
                 "--quiet",
                 "--bin",
                 "billing_contract",
-                "paddle_real_money_activation_requires_explicit_acknowledgement",
+                "paddle_activation_gate_requires_exact_acknowledgement",
             ])
             .env("BILLING_ACCOUNT_ID", "acct_contract")
             .env("BILLING_PADDLE_ENVIRONMENT", "live")

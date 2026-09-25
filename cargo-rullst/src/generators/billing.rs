@@ -21,7 +21,7 @@ const TURSO_MIGRATION: &str = include_str!("billing_migration_turso.rs.template"
 const SQLX_PERSIST: &str = include_str!("billing_persist_sqlx.rs.template");
 const TURSO_PERSIST: &str = include_str!("billing_persist_turso.rs.template");
 
-const FIXED_OUTPUTS: [&str; 14] = [
+const FIXED_OUTPUTS: [&str; 15] = [
     "src/models/subscription.rs",
     "src/models/billing_customer.rs",
     "src/pages/billing.rs",
@@ -36,6 +36,7 @@ const FIXED_OUTPUTS: [&str; 14] = [
     "src/controllers/billing_paddle_gateway.rs",
     "src/controllers/billing_paddle_events.rs",
     "src/controllers/billing_paddle_report.rs",
+    "src/controllers/billing_paddle_store.rs",
 ];
 
 pub(crate) fn render_billing_controller(foreign_key: &str, backend: ProjectOrmBackend) -> String {
@@ -68,6 +69,15 @@ pub(crate) fn live_billing_files(
     } else {
         "i64"
     };
+    // Emit a separate module for each provider's concrete state type while
+    // maintaining the transaction implementation in one backend template.
+    let store = store
+        .replace("__FOREIGN_KEY__", foreign_key)
+        .replace("__OWNER_ID_TYPE__", owner_type)
+        .replace(
+            "__OWNER_CAST__",
+            "i32::try_from(next.owner).map_err(|_| UNAVAILABLE)?",
+        );
     let render_paddle = |template: &str| {
         template
             .replace(
@@ -100,6 +110,7 @@ pub(crate) fn live_billing_files(
             "src/controllers/billing_paddle_report.rs",
             render_paddle(include_str!("billing_paddle_report.rs.template")),
         ),
+        ("src/controllers/billing_paddle_store.rs", store.clone()),
         (
             "src/controllers/billing_report.rs",
             include_str!("billing_report.rs.template")
@@ -135,16 +146,7 @@ pub(crate) fn live_billing_files(
             "src/controllers/billing_events.rs",
             include_str!("billing_events.rs.template").into(),
         ),
-        (
-            "src/controllers/billing_store.rs",
-            store
-                .replace("__FOREIGN_KEY__", foreign_key)
-                .replace("__OWNER_ID_TYPE__", owner_type)
-                .replace(
-                    "__OWNER_CAST__",
-                    "i32::try_from(next.owner).map_err(|_| UNAVAILABLE)?",
-                ),
-        ),
+        ("src/controllers/billing_store.rs", store),
         (
             "BILLING.md",
             include_str!("billing_readme.md.template").into(),

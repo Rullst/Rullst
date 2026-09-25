@@ -119,6 +119,11 @@ catalog/pricing, deployment, tax/settlement policy and the approved Paddle.js
 payment page. It is not a full Paddle SDK. Real provider/browser interoperability
 has not been validated by the local orchestration fixtures.
 
+The generated `billing_store.rs` and `billing_paddle_store.rs` instantiate the
+same backend transaction template for their respective concrete state types.
+They use separate provider namespaces in the same tables. When applying an
+application-owned persistence change, review both generated modules.
+
 Set `BILLING_PROVIDER=paddle`, a real `BILLING_API_KEY`, the matching strong
 `BILLING_WEBHOOK_SECRET`, explicit recurring `BILLING_ALLOWED_PLAN_IDS` and:
 
@@ -136,6 +141,11 @@ account. Preserve the namespace on credential rotation; never reuse it for
 another account. Live mode requires `BILLING_PADDLE_ENVIRONMENT=live` and
 `BILLING_LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_REAL_CHARGES`. Production configuration
 retains the shared HTTPS redirect, credential and explicit catalog checks.
+
+The API key needs `customer.write` and `transaction.write` (each includes read),
+`subscription.read` and `customer_portal_session.write`; see
+[Paddle API permissions](https://developer.paddle.com/api-reference/about/permissions/).
+Keep the API key on the server; the payment page uses its separate client token.
 
 Configure the payment-link page in Paddle and initialize Paddle.js on it with
 the correct environment/client token. This page launches the transaction; it is
