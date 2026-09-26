@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790399014110,
+  "lastUpdate": 1790424547474,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -20507,6 +20507,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1109,
             "range": "± 19",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "290ac000dd98499778291ef57fd75c61350f5aad",
+          "message": "feat(examples): add optional WebGPU browser example (#274)\n\nServe bounded local WebGPU and Canvas rendering with browser lifecycle, fallback and HTTP security regression coverage.",
+          "timestamp": "2026-09-26T08:59:41-03:00",
+          "tree_id": "00be21c0d7e809a7b180189c2e5d7148c30fdf19",
+          "url": "https://github.com/Rullst/Rullst/commit/290ac000dd98499778291ef57fd75c61350f5aad"
+        },
+        "date": 1790424545679,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 733,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 973,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 647,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2242,
+            "range": "± 36",
             "unit": "ns/iter"
           }
         ]
