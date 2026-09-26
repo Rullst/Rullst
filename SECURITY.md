@@ -7,6 +7,13 @@ The **12.1.1** security maintenance release is available; its
 retains the source, workflow and verified registry checksums. Applications using
 public example keys must rotate those keys and renew sessions when upgrading.
 
+The **12.1.2 candidate** on `v12` additionally corrects stored-value escaping
+in Nexus; the same correction is integrated into v13 development on `main`.
+Source integration does not establish a published crates.io fix. See the
+[candidate review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-2-review.md)
+for scope, validation and application actions. An application-specific patch
+does not update other installations of the published framework.
+
 Rullst adopts Semantic Versioning for each published crate. This policy is
 written for the v12 stable release line; crates.io remains authoritative for
 whether an exact package version has been published. Source in a branch or an

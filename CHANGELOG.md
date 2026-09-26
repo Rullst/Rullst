@@ -9,6 +9,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Nexus stored-value escaping maintenance
+
+- Forward-port unconditional escaping of stored Nexus table values, including
+  numeric-entity prefixes, and preserve boolean labels as ordinary Unicode.
+  SQLite/Chromium regressions cover 72 text fixtures and table structure.
+- The correction is integrated on `main` and in the unpublished 12.1.2 stable
+  candidate. JavaScript execution and production exploitation have not been
+  established. See the [stable review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-2-review.md)
+  for the demonstrated defect, application actions and admission boundaries.
+
 ### Optional v13 WebGPU example
 
 - Add a non-publishable wave-interference teaching application in `examples/webgpu`,
