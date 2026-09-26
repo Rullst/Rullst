@@ -187,6 +187,7 @@ jobs:
       RULLST_UI_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && (matrix.shard == 'workspace' || matrix.shard == 'cli-saas-product') && '1' || '0' }}
       RULLST_UI_BROWSER_SCRIPT: ${{ github.workspace }}/.github/mobile-ui-browser-smoke.mjs
       RULLST_MEDIA_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'workspace' && '1' || '0' }}
+      RULLST_WEBGPU_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'workspace' && '1' || '0' }}
       RULLST_SUPERVISION_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'cli-standard' && '1' || '0' }}
       RULLST_BILLING_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'cli-standard' && '1' || '0' }}
       RULLST_API_CONTRACT_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'cli-standard' && '1' || '0' }}

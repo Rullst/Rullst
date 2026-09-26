@@ -130,6 +130,11 @@ For a small local example, explore the
 CLI generation, login, tenant-scoped notes and a matching automated HTTP journey.
 It uses a disposable SQLite database and no provider account.
 
+For interactive lessons, the optional
+[WebGPU wave example](https://github.com/Rullst/Rullst/tree/main/examples/webgpu)
+shows browser graphics, a Canvas fallback and resource cleanup, served by Rullst
+without adding GPU dependencies to the framework.
+
 ## ✨ What you can build on
 
 Rullst coordinates application foundations in one versioned Rust workspace:
