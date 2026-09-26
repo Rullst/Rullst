@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790425326096,
+  "lastUpdate": 1790448756516,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -7517,6 +7517,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 543,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3d2802007b664d7cd15703376ca3c1d879e67195",
+          "message": "docs(nexus): record bounded integration priorities (#278)\n\nDocument application boundaries and maintain stable Nexus correction status on the v13 development line.",
+          "timestamp": "2026-09-26T14:43:40-03:00",
+          "tree_id": "65c4b5f523b42b2b95028a926efc6b36400d20e7",
+          "url": "https://github.com/Rullst/Rullst/commit/3d2802007b664d7cd15703376ca3c1d879e67195"
+        },
+        "date": 1790448755663,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 557,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
