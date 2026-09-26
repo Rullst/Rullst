@@ -158,7 +158,19 @@ PY
     fi
   done
 } > "$consumer_dir/Cargo.toml"
-printf 'fn main() {}\n' > "$consumer_dir/src/main.rs"
+# Compile the public macro through extracted archives: a caller field must not
+# resolve to a generated String buffer, including attributes and root fragments.
+cat > "$consumer_dir/src/main.rs" <<'RS'
+struct Label { text: &'static str }
+
+fn main() {
+    let s = Label { text: "archive consumer" };
+    let _page = rullst::html! {
+        <p title={s.text}>{s.text}</p>
+        <input value={s.text} />
+    };
+}
+RS
 append_package_patches "$consumer_dir/Cargo.toml"
 
 "$cargo_bin" check \

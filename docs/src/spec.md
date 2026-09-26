@@ -1338,6 +1338,10 @@ PostgreSQL/MySQL contention evidence also remains open.
 ### 4.2. Server-Side Rendering (`rullst::macros`)
 * **Macro:** `html!` expands supported HTML trees into ordinary Rust `String`
   construction at compile time.
+* **Caller bindings:** Generated output-buffer locals use hygienic identifiers;
+  interpolated expressions retain caller name resolution, including `s` in
+  fragments, attributes, nested elements and closures. Each expression keeps
+  its existing evaluation order and escaping behavior.
 * **XSS Protection:** Dynamic display values in the supported `{expr}` syntax
   are HTML-escaped by the generated code.
 * **Raw Unescaped HTML:** Explicitly bypassed using the wrapper `rullst::html::RawHtml(String)`.
