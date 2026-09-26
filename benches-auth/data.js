@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790389954112,
+  "lastUpdate": 1790399617530,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -12035,6 +12035,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3800,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ab56500ab4275ac54861afdfdde0b41f11cf4e4e",
+          "message": "fix(nexus): port stored-cell escaping to v13 (#276)\n\nForward-port unconditional stored-cell escaping and SQLite/browser regressions.",
+          "timestamp": "2026-09-26T01:58:42-03:00",
+          "tree_id": "b30215ccad76a336fce4d0965fbc783d18ef4698",
+          "url": "https://github.com/Rullst/Rullst/commit/ab56500ab4275ac54861afdfdde0b41f11cf4e4e"
+        },
+        "date": 1790399616745,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 676,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 554,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1258,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 2948,
+            "range": "± 31",
             "unit": "ns/iter"
           }
         ]
