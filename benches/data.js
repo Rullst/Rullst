@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790389309378,
+  "lastUpdate": 1790399014110,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -20453,6 +20453,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1691,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ab56500ab4275ac54861afdfdde0b41f11cf4e4e",
+          "message": "fix(nexus): port stored-cell escaping to v13 (#276)\n\nForward-port unconditional stored-cell escaping and SQLite/browser regressions.",
+          "timestamp": "2026-09-26T01:58:42-03:00",
+          "tree_id": "b30215ccad76a336fce4d0965fbc783d18ef4698",
+          "url": "https://github.com/Rullst/Rullst/commit/ab56500ab4275ac54861afdfdde0b41f11cf4e4e"
+        },
+        "date": 1790399012202,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 409,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 585,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 395,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1109,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
