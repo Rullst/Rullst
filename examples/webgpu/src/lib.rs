@@ -1,9 +1,9 @@
 //! A public, read-only demonstration. No GPU, database or provider runs on the server.
 use rullst_core::{
-    Router,
     config::{Environment, SecurityConfig},
     security::{SecurityBaselineError, apply_security_baseline},
     server::{IntoResponse, Redirect, Response, get, header},
+    web::axum::Router,
 };
 
 fn asset(content_type: &'static str, body: &'static str) -> Response {
