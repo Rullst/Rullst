@@ -42,7 +42,7 @@ telemetry views from the sources explicitly supplied by the application.
 Add `rullst-studio` to your project:
 
 Install the exact stable train with
-`cargo add rullst-studio@12.1.1`.
+`cargo add rullst-studio@12.1.2`.
 
 ### Launching the Studio
 
@@ -65,7 +65,7 @@ under `/studio`. Published `12.0.0` omits those routes. An unconnected cache is
 reported as **Unavailable**, not fabricated telemetry. Existing applications
 must remove temporary asset/Cache `.route(...)` overrides before updating to
 avoid duplicate-route collisions; preserve their access-control layers. See the
-[migration checklist](https://github.com/Rullst/Rullst/blob/v12.1.1/docs/src/3-rullst-studio.md#v1210-browser-composition-fix).
+[migration checklist](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/3-rullst-studio.md#v1210-browser-composition-fix).
 
 **CLI Launch:**
 
@@ -151,5 +151,5 @@ audit history, rollback, or a supported shared-production admin surface.
 ## 📚 Documentation
 
 For supported usage and security boundaries, see the
-**[Rullst Book](https://github.com/Rullst/Rullst/blob/v12.1.1/docs/src/SUMMARY.md)** and its
+**[Rullst Book](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/SUMMARY.md)** and its
 capability ledger. A production/shared Studio mode is not currently supplied.

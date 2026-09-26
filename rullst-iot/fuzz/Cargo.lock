@@ -317,7 +317,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-iot"
-version = "12.1.1"
+version = "12.1.2"
 dependencies = [
  "ed25519-dalek",
  "serde",

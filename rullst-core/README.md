@@ -42,7 +42,7 @@ Most developers will not depend on `rullst-core` directly, as it is re-exported 
 If you are developing a plugin or advanced middleware for the Rullst ecosystem, you can add it explicitly:
 
 Install the exact stable train with
-`cargo add rullst-core@12.1.1`.
+`cargo add rullst-core@12.1.2`.
 
 Core is runtime-only by default. Add just the database capabilities the
 application needs:
@@ -107,4 +107,4 @@ Repository workflows exercise Core with unit, integration, fuzz, and Miri jobs w
 
 ## 📚 Documentation
 
-For an architectural deep-dive into Rullst Core's event loop and middleware lifecycle, please visit the **[Rullst Book](https://github.com/Rullst/Rullst/blob/v12.1.1/docs/src/SUMMARY.md)**.
+For an architectural deep-dive into Rullst Core's event loop and middleware lifecycle, please visit the **[Rullst Book](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/SUMMARY.md)**.

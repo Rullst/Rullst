@@ -2,7 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/rullst-connect.svg?style=for-the-badge&logo=rust)](https://crates.io/crates/rullst-connect)
 [![Downloads](https://img.shields.io/crates/d/rullst-connect.svg?style=for-the-badge)](https://crates.io/crates/rullst-connect)
-[![Documentation](https://img.shields.io/docsrs/rullst-connect?style=for-the-badge&logo=docs.rs)](https://docs.rs/rullst-connect/12.1.1)
+[![Documentation](https://img.shields.io/docsrs/rullst-connect?style=for-the-badge&logo=docs.rs)](https://docs.rs/rullst-connect/12.1.2)
 [![Build](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/ci.yml?branch=v12&style=for-the-badge&logo=github)](https://github.com/Rullst/Rullst/actions/workflows/ci.yml)
 [![License](https://img.shields.io/crates/l/rullst-connect?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
@@ -66,9 +66,9 @@ state of those checks for the referenced commit; they are not an absolute securi
   EdDSA ID tokens and JWKS.
 
 > 📚 **Important Documents:**
-> - [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/v12.1.1/CHANGELOG.md): See what's new.
+> - [CHANGELOG.md](https://github.com/Rullst/Rullst/blob/v12.1.2/CHANGELOG.md): See what's new.
 > - [ISSUES](https://github.com/Rullst/Rullst/issues): Any issue? Please report.
-> - [AUDIT.md](https://github.com/Rullst/Rullst/blob/v12.1.1/AUDIT.md): Repository audit record; current workflow evidence remains authoritative.
+> - [AUDIT.md](https://github.com/Rullst/Rullst/blob/v12.1.2/AUDIT.md): Repository audit record; current workflow evidence remains authoritative.
 
 ## 📦 Supported Providers
 
@@ -207,7 +207,7 @@ one-shot codes, optional nonce, S256 PKCE, EdDSA ID-token verification, JWKS and
 bearer-protected userinfo. The signing seed and credentials are predictable test
 material. Keep the listener on loopback; this is not a login UI, consent server,
 refresh-token service, federation implementation or conformance suite. See the
-[local OIDC testing tutorial](https://github.com/Rullst/Rullst/blob/v12.1.1/docs/src/tutorials/48-local-oidc-testing.md).
+[local OIDC testing tutorial](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/tutorials/48-local-oidc-testing.md).
 
 ### Explicit corporate proxy
 
@@ -268,7 +268,7 @@ login deliberately invalidates the earlier tab. The application must configure
 a durable production session store, Secure/HttpOnly/SameSite cookies, TLS,
 registered redirect URLs, account-linking policy, and post-login session
 rotation. See the
-[server-bound OAuth/OIDC tutorial](https://github.com/Rullst/Rullst/blob/v12.1.1/docs/src/tutorials/42-server-bound-oauth-sessions.md).
+[server-bound OAuth/OIDC tutorial](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/tutorials/42-server-bound-oauth-sessions.md).
 
 ### Safe profile serialization
 
@@ -454,7 +454,7 @@ cargo run --example axum_server
 train. Do not run `cargo release` or publish this crate manually. The protected,
 tag-only `release.yml` workflow verifies and publishes every crate in
 topological order after an exact `vX.Y.Z[-pre]` tag is approved. Follow the
-[root release guide](https://github.com/Rullst/Rullst/blob/v12.1.1/RELEASE_GUIDE.md)
+[root release guide](https://github.com/Rullst/Rullst/blob/v12.1.2/RELEASE_GUIDE.md)
 and machine-readable `.github/release-order.json`.
 
 ## 🤝 Contributing
@@ -463,4 +463,4 @@ Feel free to open Issues and submit Pull Requests! Want to add a new provider? I
 
 ## 📄 License
 
-This project is licensed under the [MIT License](https://github.com/Rullst/Rullst/blob/v12.1.1/LICENSE).
+This project is licensed under the [MIT License](https://github.com/Rullst/Rullst/blob/v12.1.2/LICENSE).
