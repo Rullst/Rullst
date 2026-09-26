@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wave interference · Rullst example</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <main data-wave-demo>
+    <header>
+      <p class="eyebrow">RULLST · INTERACTIVE SCIENCE</p>
+      <h1>When two waves meet</h1>
+      <p class="intro">Explore how two sources reinforce or cancel each other. Change the distance,
+        wavelength or phase, then watch their interference pattern.</p>
+    </header>
+    <section class="experiment" aria-label="Wave experiment">
+      <div class="display">
+        <canvas data-canvas="cpu" width="160" height="100" role="img"
+          aria-label="Two circular waves interfering. Teal indicates a crest; dark blue indicates a trough.">
+          The visualization needs canvas support. The explanation below remains available.
+        </canvas>
+        <canvas data-canvas="gpu" width="960" height="600" hidden="true" role="img"
+          aria-label="Two circular waves interfering. Teal indicates a crest; dark blue indicates a trough."></canvas>
+        <div class="legend"><span>Trough</span><span>Equilibrium</span><span>Crest</span></div>
+      </div>
+      <div class="controls">
+        <label>Wavelength <output data-value="wavelength">0.45</output>
+          <input data-control="wavelength" type="range" min="0.15" max="1.2" step="0.01" value="0.45">
+        </label>
+        <label>Source distance <output data-value="separation">0.70</output>
+          <input data-control="separation" type="range" min="0.15" max="1.4" step="0.01" value="0.70">
+        </label>
+        <label>Phase difference <output data-value="phase">0°</output>
+          <input data-control="phase" type="range" min="0" max="180" step="1" value="0">
+        </label>
+        <label>Rendering
+          <select data-control="renderer">
+            <option value="auto">WebGPU when available</option>
+            <option value="canvas">Canvas compatibility mode</option>
+          </select>
+        </label>
+        <div class="buttons">
+          <button data-action="play" type="button" aria-pressed="false" disabled="true">Start animation</button>
+          <button data-action="reset" type="button" disabled="true">Reset</button>
+        </div>
+        <p data-status role="status" aria-live="polite">Preparing the visualization…</p>
+        <noscript><p>Enable JavaScript to explore the simulation. No data is sent from the experiment.</p></noscript>
+      </div>
+    </section>
+    <section class="lesson" aria-labelledby="try-heading">
+      <h2 id="try-heading">Try a prediction</h2>
+      <p>At the midpoint, both waves travel the same distance. With zero phase difference they reinforce
+        each other. Set the phase to 180°: a crest from one source meets a trough from the other.</p>
+      <p>The white dots are the sources. Teal and blue show signed displacement, not brightness or energy.
+        This is an idealized sum of two circular sine waves in relative units, without attenuation or boundaries.</p>
+    </section>
+    <footer>Runs on your device. No camera, microphone, tracking or external services.
+      Animation starts only when you choose it and pauses when this page is hidden.</footer>
+  </main>
+</body>
+</html>

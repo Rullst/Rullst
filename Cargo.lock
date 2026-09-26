@@ -7190,6 +7190,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rullst-webgpu-example"
+version = "13.0.0-alpha.1"
+dependencies = [
+ "rullst-core",
+ "tokio",
+ "tower",
+]
+
+[[package]]
 name = "rust-embed"
 version = "8.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

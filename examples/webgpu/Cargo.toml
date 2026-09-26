@@ -1,0 +1,15 @@
+[package]
+name = "rullst-webgpu-example"
+version = "13.0.0-alpha.1"
+edition = "2024"
+rust-version = "1.96.0"
+publish = false
+license = "MIT"
+description = "Optional browser wave simulation served by Rullst, with a Canvas fallback"
+
+[dependencies]
+rullst-core = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "signal", "sync"] }
+
+[dev-dependencies]
+tower = { workspace = true, features = ["util"] }

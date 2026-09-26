@@ -1,0 +1,28 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; background: #0b1420; color: #e7edf5; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 1120px; margin: auto; padding: 48px 24px; }
+.eyebrow { color: #73dfcb; font-size: .8rem; letter-spacing: .18em; }
+h1 { font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1.1; margin: 18px 0; }
+.intro { max-width: 700px; color: #bac8d9; line-height: 1.7; }
+.experiment { display: grid; grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr); gap: 28px; margin: 32px 0; }
+.display { min-width: 0; align-self: start; background: #101e30; border: 1px solid #33465c; border-radius: 14px; overflow: hidden; }
+canvas { display: block; width: 100%; aspect-ratio: 8 / 5; }
+[hidden] { display: none !important; }
+.legend { display: flex; justify-content: space-between; padding: 14px; font-size: .8rem; color: #cedbe9; }
+.controls { display: grid; align-content: start; gap: 22px; }
+label { display: block; font-weight: 600; font-size: .95rem; }
+output { float: right; font-variant-numeric: tabular-nums; color: #73dfcb; }
+input, select { display: block; width: 100%; margin-top: 12px; accent-color: #73dfcb; }
+input { min-height: 24px; cursor: pointer; }
+select, button { color: #e7edf5; background: #182c40; border: 1px solid #516780; border-radius: 7px; padding: 11px; font: inherit; }
+button { cursor: pointer; }
+button:disabled { opacity: .65; cursor: wait; }
+button[data-action="play"] { background: #21665c; border-color: #70dfc9; }
+:focus-visible { outline: 3px solid #ffe3a1; outline-offset: 4px; }
+.buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+[data-status] { min-height: 3em; margin: 0; color: #bac8d9; font-size: .85rem; line-height: 1.5; }
+.lesson { max-width: 800px; line-height: 1.75; }
+.lesson h2 { font-size: 1.25rem; }
+footer { margin-top: 32px; border-top: 1px solid #33465c; padding-top: 20px; color: #a8b9cc; font-size: .8rem; line-height: 1.7; }
+@media (max-width: 760px) { main { padding: 28px 18px; } .experiment { grid-template-columns: 1fr; } }
