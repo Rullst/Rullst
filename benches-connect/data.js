@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790353944698,
+  "lastUpdate": 1790390009828,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -7427,6 +7427,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 535,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1bc70253ac80880ab2172decd738d8c532ddcfd3",
+          "message": "feat(cli): add durable Paddle billing scaffolds (#273)",
+          "timestamp": "2026-09-25T23:16:26-03:00",
+          "tree_id": "8c68dda566e937903645faca0df96e2e5908156b",
+          "url": "https://github.com/Rullst/Rullst/commit/1bc70253ac80880ab2172decd738d8c532ddcfd3"
+        },
+        "date": 1790390009111,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 355,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
