@@ -23,6 +23,8 @@ fn caller_fields_are_escaped_in_fragments_attributes_and_nested_elements() {
 fn caller_string_is_borrowed_instead_of_capturing_generated_markup() {
     let s = String::from("<caller>");
     assert_eq!(html! { <p>{s}</p> }, "<p>&lt;caller&gt;</p>");
+    // An owned expression used to compile while reading the generated buffer.
+    assert_eq!(html! { <p>{s.clone()}</p> }, "<p>&lt;caller&gt;</p>");
     assert_eq!(s, "<caller>");
 }
 
