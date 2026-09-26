@@ -17,6 +17,11 @@ defines the outstanding exact-source admission and package checks.
 
 ### Fixed
 
+- Keep generated `html!` buffers hygienically separate from caller variables.
+  A caller named `s` now retains its own value in text, dynamic attributes,
+  fragments, nested elements and iterator closures, avoiding compilation
+  failures or silently rendering the buffer instead of the caller's string.
+  Existing escaping, explicit `RawHtml`, evaluation order and MSRV are retained.
 - Always escape stored Nexus table values, including strings beginning with
   an HTML numeric-entity prefix. Render boolean labels as ordinary Unicode
   text. SQLite and Chromium regressions cover 72 text fixtures, table structure
