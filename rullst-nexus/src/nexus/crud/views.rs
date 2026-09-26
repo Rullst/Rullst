@@ -93,9 +93,9 @@ pub async fn render_table_rows(
                             .or_else(|_| row.try_get::<i64, _>(f.name).map(|v| v != 0))
                             .unwrap_or(false);
                         if b {
-                            "&#9989; Yes".to_string()
+                            "✅ Yes".to_string()
                         } else {
-                            "&#10060; No".to_string()
+                            "❌ No".to_string()
                         }
                     }
                     FieldKind::Number | FieldKind::ForeignKey { .. } => {
@@ -114,11 +114,7 @@ pub async fn render_table_rows(
                         .unwrap_or_else(|_| "-".to_string()),
                 };
 
-                let clean_val = if val_str.starts_with("&#") {
-                    val_str
-                } else {
-                    rullst_core::html::escape_str(&val_str).to_string()
-                };
+                let clean_val = rullst_core::html::escape_str(&val_str);
 
                 let _ = std::fmt::Write::write_fmt(&mut cells, format_args!("<td class=\"nexus-td\">{}</td>", clean_val));
                 cells
