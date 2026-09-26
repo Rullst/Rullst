@@ -1,0 +1,60 @@
+//! Static Paddle boundary. Provider wire/metadata checks stay in Capital.
+use super::{Result, UNAVAILABLE};
+use rullst::capital::{PaddleCheckoutRequest, PaddleCheckoutSession, PaddleCustomerRequest,
+    PaddleCustomerReceipt, PaddleProvider, WebhookEvent};
+use std::{collections::HashMap, future::Future};
+pub(super) struct Customer { pub id: String, pub digest: [u8; 32], pub sandbox: bool }
+impl Customer {
+    fn from(value: PaddleCustomerReceipt) -> Result<Self> {
+        Ok(Self { id: value.id().into(), digest: value.request_digest(), sandbox: value.sandbox().ok_or(UNAVAILABLE)? })
+    }
+}
+pub(super) struct Transaction {
+    pub id: String, pub url: Option<String>, pub status: String, pub subscription: Option<String>,
+    pub digest: [u8; 32], pub sandbox: bool,
+}
+impl Transaction {
+    fn from(value: PaddleCheckoutSession) -> Result<Self> {
+        Ok(Self { id: value.id().into(), url: value.url().map(str::to_owned), status: value.status().into(),
+            subscription: value.subscription_id().map(str::to_owned), digest: value.request_digest(),
+            sandbox: value.sandbox().ok_or(UNAVAILABLE)? })
+    }
+}
+pub(super) struct Subscription { pub event: WebhookEvent, pub status: String, pub sandbox: bool }
+pub(super) trait Gateway: Sync {
+    fn create_customer(&self, request: &PaddleCustomerRequest) -> impl Future<Output = Result<Customer>> + Send;
+    fn customer(&self, request: &PaddleCustomerRequest, id: &str) -> impl Future<Output = Result<Customer>> + Send;
+    fn create_checkout(&self, request: &PaddleCheckoutRequest) -> impl Future<Output = Result<Transaction>> + Send;
+    fn transaction(&self, request: &PaddleCheckoutRequest, id: &str) -> impl Future<Output = Result<Transaction>> + Send;
+    fn subscription(&self, request: &PaddleCheckoutRequest, id: &str) -> impl Future<Output = Result<Subscription>> + Send;
+    fn notice(&self, request: &PaddleCheckoutRequest, transaction: &str, body: &[u8], headers: &HashMap<String, String>)
+        -> impl Future<Output = Result<(super::Receipt, String)>> + Send;
+}
+impl Gateway for PaddleProvider {
+    async fn create_customer(&self, request: &PaddleCustomerRequest) -> Result<Customer> {
+        Customer::from(self.create_customer(request).await.map_err(|_| UNAVAILABLE)?)
+    }
+    async fn customer(&self, request: &PaddleCustomerRequest, id: &str) -> Result<Customer> {
+        Customer::from(self.retrieve_bound_customer(request, id).await.map_err(|_| UNAVAILABLE)?)
+    }
+    async fn create_checkout(&self, request: &PaddleCheckoutRequest) -> Result<Transaction> {
+        Transaction::from(self.create_transaction_checkout(request).await.map_err(|_| UNAVAILABLE)?)
+    }
+    async fn transaction(&self, request: &PaddleCheckoutRequest, id: &str) -> Result<Transaction> {
+        Transaction::from(self.retrieve_transaction_checkout(request, id).await.map_err(|_| UNAVAILABLE)?)
+    }
+    async fn subscription(&self, request: &PaddleCheckoutRequest, id: &str) -> Result<Subscription> {
+        let value = self.retrieve_bound_subscription(request, id).await.map_err(|_| UNAVAILABLE)?;
+        value.require_real().map_err(|_| UNAVAILABLE)?;
+        Ok(Subscription { event: value.subscription().clone(), status: value.provider_status().into(),
+            sandbox: value.sandbox().ok_or(UNAVAILABLE)? })
+    }
+    async fn notice(&self, request: &PaddleCheckoutRequest, transaction: &str, body: &[u8], headers: &HashMap<String, String>) -> Result<(super::Receipt, String)> {
+        let checkout = self.retrieve_transaction_checkout(request, transaction).await.map_err(|_| UNAVAILABLE)?;
+        let event = self.verify_checkout_subscription(request, &checkout, body, headers).map_err(|_| super::CONFLICT)?;
+        event.require_real().map_err(|_| UNAVAILABLE)?;
+        Ok((super::Receipt { id: event.event_id().into(),
+            digest: event.mutation_digest().iter().map(|byte| format!("{byte:02x}")).collect() },
+            event.subscription().subscription_id.clone()))
+    }
+}

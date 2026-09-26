@@ -106,7 +106,91 @@ attempt. Failed/repeated requests do not create quota consumption; an applicatio
 adding billing quotas should count newly persisted session IDs, not HTTP requests.
 
 Empty/mock credentials remain explicit offline demonstrations. The legacy email
-fixture handler never processes live events. Other generated providers remain
-fixtures until their durable application integration is implemented. Existing
+fixture handler never processes live events. Lemon Squeezy remains a generated
+fixture; Paddle's separate candidate is described below. Existing
 applications must merge these generated modules and add the new billing tables in
 a new migration; updating the dependency does not overwrite existing controllers.
+
+## Paddle recurring billing candidate
+
+This optional profile covers one recurring catalog price, quantity one and
+automatic collection. Applications own billing-owner authentication, credentials,
+catalog/pricing, deployment, tax/settlement policy and the approved Paddle.js
+payment page. It is not a full Paddle SDK. Real provider/browser interoperability
+has not been validated by the local orchestration fixtures.
+
+The generated `billing_store.rs` and `billing_paddle_store.rs` instantiate the
+same backend transaction template for their respective concrete state types.
+They use separate provider namespaces in the same tables. When applying an
+application-owned persistence change, review both generated modules.
+
+Set `BILLING_PROVIDER=paddle`, a real `BILLING_API_KEY`, the matching strong
+`BILLING_WEBHOOK_SECRET`, explicit recurring `BILLING_ALLOWED_PLAN_IDS` and:
+
+```dotenv
+BILLING_ACCOUNT_ID=your_immutable_account_label
+BILLING_PADDLE_ENVIRONMENT=sandbox
+BILLING_PADDLE_PAYMENT_LINK=https://your-approved-domain.example/pay
+BILLING_REPORT_PLAN_IDS=pri_your_recurring_price_id
+```
+
+The account label is 1–64 ASCII letters/digits, underscores or hyphens. It is a
+server-owned namespace, not a remotely verified merchant identifier. Keep the
+label, API key, environment and notification secret associated with the same
+account. Preserve the namespace on credential rotation; never reuse it for
+another account. Live mode requires `BILLING_PADDLE_ENVIRONMENT=live` and
+`BILLING_LIVE_ACKNOWLEDGEMENT=I_UNDERSTAND_REAL_CHARGES`. Production configuration
+retains the shared HTTPS redirect, credential and explicit catalog checks.
+
+The API key needs `customer.write` and `transaction.write` (each includes read),
+`subscription.read` and `customer_portal_session.write`; see
+[Paddle API permissions](https://developer.paddle.com/api-reference/about/permissions/).
+Keep the API key on the server; the payment page uses its separate client token.
+
+Configure the payment-link page in Paddle and initialize Paddle.js on it with
+the correct environment/client token. This page launches the transaction; it is
+not an after-payment redirect. Its URL must be HTTPS without query or fragment.
+Review CSP `form-action` for that exact page origin and the client script/connect
+policy for your Paddle.js setup. This generator does not create or approve the
+external page or its CSP policy.
+
+The original customer email is stored as immutable provisioning contact, never
+as ownership. Plan retention/access controls for this personal data. State lives
+in `paddle:<account>:<environment>` namespaces in the existing billing tables.
+Before each creation, the application commits a one-way dispatch claim under a
+revision comparison. Only the winner can send. There is no automatic retry window:
+[Paddle does not provide arbitrary client idempotency keys](https://developer.paddle.com/sdks/libraries/).
+
+If a response is lost, canceled or rejected, later checkout requests stop until
+reconciliation. An operator may call `recover_paddle_customer` or
+`recover_paddle_transaction` with an authorized `BillingIdentity` and a provider
+ID independently located in that account/environment. These helpers read and
+verify existing data; they never create entities or search by email and are not
+mounted as routes. Even a crash between the database claim and HTTP dispatch
+requires operator investigation. Do not reset/delete the claim merely because
+no ID returned. A known transaction is retrieved and reused.
+
+Configure subscription lifecycle deliveries on the existing exact webhook
+route. Raw-body signature/freshness checks precede lookup. Typed validation
+binds owner, checkout intent, customer, price, transaction and subscription.
+A signed early subscription notification can recover its matching transaction
+after a lost creation response. Transaction notifications are not handled by
+this subscription-only profile. Current provider reads drive state, with atomic
+receipts and revision fences. Old deliveries and retired subscriptions cannot
+overwrite newer reconciliation. No redirect/event status alone grants access;
+a webhook is not proof of settlement for every renewal.
+
+`billing_report` uses fresh subscription reads and the entitlement gate. Wrong
+modes/plans, disallowed states, missing/expired periods and unavailable reads
+deny access. The portal is customer-wide: authorize the billing owner, not a
+delegate who owns just one subscription. Portal/report responses use
+no-store/no-referrer. Never log or persist the portal bearer URL. Editable
+`subscriptions` projection IDs are namespaced for Paddle; raw IDs stay in the
+scoped state payload. These editable projections never authorize access.
+
+The flow retains at most 64 old attempts and a 64 KiB payload, has no automatic
+inbox eviction and does not implement cross-price upgrades, discounts, quantities,
+refunds or other payment products. Operators own capacity, retention and
+reconciliation. Existing applications must merge the generated files and
+preserve billing tables; dependencies do not rewrite controllers or migrate
+remote subscriptions.
