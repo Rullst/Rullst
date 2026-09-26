@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790424547474,
+  "lastUpdate": 1790447944934,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -20561,6 +20561,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2242,
             "range": "± 36",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3d2802007b664d7cd15703376ca3c1d879e67195",
+          "message": "docs(nexus): record bounded integration priorities (#278)\n\nDocument application boundaries and maintain stable Nexus correction status on the v13 development line.",
+          "timestamp": "2026-09-26T14:43:40-03:00",
+          "tree_id": "65c4b5f523b42b2b95028a926efc6b36400d20e7",
+          "url": "https://github.com/Rullst/Rullst/commit/3d2802007b664d7cd15703376ca3c1d879e67195"
+        },
+        "date": 1790447942709,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 765,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 983,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 619,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2294,
+            "range": "± 48",
             "unit": "ns/iter"
           }
         ]
