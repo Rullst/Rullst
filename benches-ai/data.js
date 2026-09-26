@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790425574160,
+  "lastUpdate": 1790449007254,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -10019,6 +10019,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 771,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3d2802007b664d7cd15703376ca3c1d879e67195",
+          "message": "docs(nexus): record bounded integration priorities (#278)\n\nDocument application boundaries and maintain stable Nexus correction status on the v13 development line.",
+          "timestamp": "2026-09-26T14:43:40-03:00",
+          "tree_id": "65c4b5f523b42b2b95028a926efc6b36400d20e7",
+          "url": "https://github.com/Rullst/Rullst/commit/3d2802007b664d7cd15703376ca3c1d879e67195"
+        },
+        "date": 1790449006350,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1735,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 376,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 732,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
