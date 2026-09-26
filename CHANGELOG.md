@@ -17,6 +17,12 @@ defines the outstanding exact-source admission and package checks.
 
 ### Fixed
 
+- Send `response_type=code` from the built-in Google, Microsoft, Discord,
+  LinkedIn, GitHub, Facebook, X and Cognito authorization URL builders.
+  Keep Apple, Auth0 and discovered OIDC at one response-type parameter,
+  preserve encoded state/PKCE and retain the generic parameter helper and
+  exported macro contracts. Offline request tests cover all eleven providers;
+  they do not establish live provider-account interoperability.
 - Keep generated `html!` buffers hygienically separate from caller variables.
   A caller named `s` now retains its own value in text, dynamic attributes,
   fragments, nested elements and iterator closures, avoiding compilation

@@ -8,7 +8,9 @@ crate::define_provider!(LinkedinProvider, "profile", "email", "openid");
 
 #[async_trait]
 impl Provider for LinkedinProvider {
-    crate::impl_standard_redirect_url!("https://www.linkedin.com/oauth/v2/authorization");
+    crate::impl_standard_redirect_url!(
+        "https://www.linkedin.com/oauth/v2/authorization?response_type=code"
+    );
 
     async fn get_user(
         &self,

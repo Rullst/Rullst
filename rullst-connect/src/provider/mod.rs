@@ -10,6 +10,9 @@ pub mod types;
 mod tests;
 
 #[cfg(test)]
+mod authorization_tests;
+
+#[cfg(test)]
 mod id_token_tests;
 
 #[cfg(test)]
