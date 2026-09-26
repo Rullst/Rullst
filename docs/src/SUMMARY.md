@@ -21,6 +21,7 @@
 - [🤖 Rullst AI: Developing with Autonomous Agents](2-rullst-ai.md)
 - [📊 Rullst Studio: Real-Time Monitoring](3-rullst-studio.md)
 - [⚙️ Rullst Nexus: Explicit Admin CMS](4-rullst-nexus.md)
+  - [Nexus Application Integration Plan](nexus-integration-plan.md)
 - [💳 Rullst Capital: SaaS Billing Made Easy](5-rullst-capital.md)
 - [🧠 Integrating AI into Rullst](6-ai-integration-tutorial.md)
 - [Rullst AI Architecture & Local Models](7-ai-token-economy-and-local-llms.md)

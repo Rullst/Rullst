@@ -100,6 +100,12 @@ recovery and usable documentation next; then product expansion supported by
 Academy/SaaS demand. Run one bounded feature effort at a time alongside the
 stable maintenance lane. Reassess after each completed journey.
 
+The [Nexus application integration plan](nexus-integration-plan.md) refines M11
+with host-session authorization, read-only capabilities, strict-CSP assets,
+localization and explicit data ownership. It also identifies a separate M32
+boolean-attribute ergonomics proposal. These are scoped follow-ups within the
+existing counts, not delivered APIs or additional top-level milestones.
+
 ## B — defer expansion until justified
 
 | ID | Deferred expansion | What would justify revisiting it |
