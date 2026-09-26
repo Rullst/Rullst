@@ -9,7 +9,7 @@ crate::define_provider!(MicrosoftProvider, "User.Read");
 #[async_trait]
 impl Provider for MicrosoftProvider {
     crate::impl_standard_redirect_url!(
-        "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
+        "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?response_type=code"
     );
 
     async fn get_user(

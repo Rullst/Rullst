@@ -153,6 +153,7 @@ impl Provider for CognitoProvider {
             self.state.as_deref(),
             self.pkce_challenge.as_deref(),
         );
+        params.append_pair("response_type", "code");
         params.finish()
     }
 

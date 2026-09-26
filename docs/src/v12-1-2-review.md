@@ -22,11 +22,20 @@ calls and single evaluation of mutable caller expressions. Facade tests retain
 the real escaping and explicit `RawHtml` contract. This is a compile/render
 correctness defect; no additional security impact has been established.
 
-The demonstrated defect is stored HTML injection. An attacker must be able
+The Nexus defect is stored HTML injection. An attacker must be able
 to influence a displayed value and have it rendered in the administration
 view. Actual JavaScript execution depends on the application and browser's
 defenses; neither production exploitation nor a critical CVSS rating has
 been established. Treat the correction as high-priority security maintenance.
+
+Connect also corrects missing `response_type=code` in eight built-in
+authorization URL builders: Google, Microsoft, Discord, LinkedIn, GitHub,
+Facebook, X and Cognito. Parsed-query regressions cover all eleven providers,
+including Apple/Auth0/OIDC paths that already set the parameter, four public
+URL variants, builder state/PKCE and encoded values. The generic helper and
+exported macro retain their response-type-neutral behavior. The missing field
+can prevent authorization before the callback; no authentication bypass or
+token disclosure has been established. Provider-account testing remains excluded.
 
 Additional post-12.1.1 changes strengthen Auth, HTTP lifecycle and SQLite
 messaging regression tests, including mutation-survivor cases and bounded
@@ -59,6 +68,11 @@ validation. Final campaigns requested for `1dce103a` were cancelled after the
 caller-binding defect was independently reproduced, to avoid spending long
 campaigns on superseded source. Retain their results as history, not admission
 of the corrected candidate.
+
+The subsequent OAuth correction also changes the candidate SHA. The 27/28
+checkpoint at `aa26e5b5` describes that earlier source, not admission of this
+patch. Apply the same exact-source and fuzz-equivalence requirements to the
+corrected commit; no earlier green check automatically certifies it.
 
 ## Required admission before a release decision
 
