@@ -8,10 +8,19 @@ The [release record](v12.md) establishes publication status separately.
 ## Scope and compatibility
 
 The candidate builds on published 12.1.1 source
-`d27db26c6089e06366ca01b67d741f3d037c076a`. Its runtime correction is the Nexus
+`d27db26c6089e06366ca01b67d741f3d037c076a`. One runtime correction is the Nexus
 table renderer: escape every stored text value, including values beginning
 with an HTML numeric-entity prefix. Ordinary Unicode boolean labels retain
 their visible meaning without an escaping exception.
+
+The HTML procedural macro also isolates its generated buffer identifier from
+caller bindings. Previously, a caller variable named `s` could resolve to the
+generated `String`, causing field-access/type errors or rendering the buffer's
+contents when types happened to match. Regression tests cover text, dynamic
+attributes, void/nested elements, fragments, iterator closures, nested macro
+calls and single evaluation of mutable caller expressions. Facade tests retain
+the real escaping and explicit `RawHtml` contract. This is a compile/render
+correctness defect; no additional security impact has been established.
 
 The demonstrated defect is stored HTML injection. An attacker must be able
 to influence a displayed value and have it rendered in the administration
@@ -40,10 +49,16 @@ provider integration or v13 capability is part of this patch.
   independently passed hosted checks and was integrated into `main` as
   `ab56500ab4275ac54861afdfdde0b41f11cf4e4e`.
 
-Those checks concern the correction's source commits. They do not certify
+Those checks concern the Nexus correction's source commits. They do not certify
 the subsequent version/packaging candidate, installed CLI, final native
 artifacts or release admission. Passing regressions do not establish the
 absence of other flaws.
+
+The later HTML macro correction requires a new candidate SHA and corresponding
+validation. Final campaigns requested for `1dce103a` were cancelled after the
+caller-binding defect was independently reproduced, to avoid spending long
+campaigns on superseded source. Retain their results as history, not admission
+of the corrected candidate.
 
 ## Required admission before a release decision
 
