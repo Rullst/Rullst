@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790399617530,
+  "lastUpdate": 1790425252177,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -12083,6 +12083,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 2948,
             "range": "± 31",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "290ac000dd98499778291ef57fd75c61350f5aad",
+          "message": "feat(examples): add optional WebGPU browser example (#274)\n\nServe bounded local WebGPU and Canvas rendering with browser lifecycle, fallback and HTTP security regression coverage.",
+          "timestamp": "2026-09-26T08:59:41-03:00",
+          "tree_id": "00be21c0d7e809a7b180189c2e5d7148c30fdf19",
+          "url": "https://github.com/Rullst/Rullst/commit/290ac000dd98499778291ef57fd75c61350f5aad"
+        },
+        "date": 1790425251559,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1034,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 805,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1900,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4072,
+            "range": "± 27",
             "unit": "ns/iter"
           }
         ]
