@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790425666616,
+  "lastUpdate": 1790449101430,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -8705,6 +8705,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/290ac000dd98499778291ef57fd75c61350f5aad"
         },
         "date": 1790425665997,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3d2802007b664d7cd15703376ca3c1d879e67195",
+          "message": "docs(nexus): record bounded integration priorities (#278)\n\nDocument application boundaries and maintain stable Nexus correction status on the v13 development line.",
+          "timestamp": "2026-09-26T14:43:40-03:00",
+          "tree_id": "65c4b5f523b42b2b95028a926efc6b36400d20e7",
+          "url": "https://github.com/Rullst/Rullst/commit/3d2802007b664d7cd15703376ca3c1d879e67195"
+        },
+        "date": 1790449100545,
         "tool": "cargo",
         "benches": [
           {
