@@ -2215,7 +2215,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-capital"
-version = "12.1.1"
+version = "12.1.2"
 dependencies = [
  "async-trait",
  "axum",
@@ -2235,7 +2235,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-core"
-version = "12.1.1"
+version = "12.1.2"
 dependencies = [
  "async-trait",
  "axum",
@@ -2279,7 +2279,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-macros"
-version = "12.1.1"
+version = "12.1.2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2288,7 +2288,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm"
-version = "12.1.1"
+version = "12.1.2"
 dependencies = [
  "aes-gcm",
  "async-stream",
@@ -2312,7 +2312,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm-macros"
-version = "12.1.1"
+version = "12.1.2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2321,7 +2321,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-security"
-version = "12.1.1"
+version = "12.1.2"
 dependencies = [
  "aes-gcm",
  "ammonia",
@@ -2351,7 +2351,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-studio"
-version = "12.1.1"
+version = "12.1.2"
 dependencies = [
  "axum",
  "base64 0.23.1",

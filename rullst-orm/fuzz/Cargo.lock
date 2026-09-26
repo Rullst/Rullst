@@ -970,7 +970,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm"
-version = "12.1.1"
+version = "12.1.2"
 dependencies = [
  "aes-gcm",
  "async-stream",
@@ -1008,7 +1008,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-orm-macros"
-version = "12.1.1"
+version = "12.1.2"
 dependencies = [
  "proc-macro2",
  "quote",

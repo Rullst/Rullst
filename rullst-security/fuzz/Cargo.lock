@@ -1689,7 +1689,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-core"
-version = "12.1.1"
+version = "12.1.2"
 dependencies = [
  "async-trait",
  "axum",
@@ -1731,7 +1731,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-macros"
-version = "12.1.1"
+version = "12.1.2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1740,7 +1740,7 @@ dependencies = [
 
 [[package]]
 name = "rullst-security"
-version = "12.1.1"
+version = "12.1.2"
 dependencies = [
  "aes-gcm",
  "ammonia",

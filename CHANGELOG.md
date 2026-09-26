@@ -9,6 +9,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+## [12.1.2] - 2026-09-26 (unpublished candidate)
+
+Prepared for compatible maintenance on `v12`; no tag or registry publication is
+established by this section. The [review plan](docs/src/v12-1-2-review.md)
+defines the outstanding exact-source admission and package checks.
+
+### Fixed
+
+- Always escape stored Nexus table values, including strings beginning with
+  an HTML numeric-entity prefix. Render boolean labels as ordinary Unicode
+  text. SQLite and Chromium regressions cover 72 text fixtures, table structure
+  and existing numeric/boolean display across portable and strict SQLite paths.
+- The confirmed defect is stored HTML injection in the administration view.
+  JavaScript execution and production exploitation have not been established;
+  their impact depends on application inputs, access controls and browser policy.
+
+### Maintenance
+
+- Prepare all sixteen packages and internal requirements as 12.1.2, with
+  synchronized workspace/fuzz locks and absolute versioned README links.
+  Preserve external dependency versions, public APIs and Rust 1.96.0 MSRV.
+
 ### Maintenance verification
 
 - Add regression tests for independent Argon2 rehash-policy changes, the
@@ -21,8 +43,8 @@ A prepared version section does not establish that its tag or crates exist.
 - Cover cancellation before HTTP response headers, simultaneous drain waiters,
   readiness withdrawal, cross-account password-reset isolation, atomic receive
   batches, partial-consumer retention and fencing of every stale lease operation.
-- These are test-only maintenance changes. The published 12.1.1 artifacts,
-  runtime APIs, dependency versions and Rust 1.96.0 MSRV remain unchanged.
+- These additional regression tests do not change runtime behavior. The Nexus
+  correction above does. Published 12.1.1 artifacts remain immutable.
 
 ## [12.1.1] - 2026-09-24
 
