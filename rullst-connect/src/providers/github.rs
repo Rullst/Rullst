@@ -45,7 +45,9 @@ impl GithubProvider {
 
 #[async_trait]
 impl Provider for GithubProvider {
-    crate::impl_standard_redirect_url!("https://github.com/login/oauth/authorize");
+    crate::impl_standard_redirect_url!(
+        "https://github.com/login/oauth/authorize?response_type=code"
+    );
 
     async fn get_user(
         &self,

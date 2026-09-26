@@ -9,7 +9,7 @@ crate::define_provider!(XProvider, "users.read", "tweet.read");
 
 #[async_trait]
 impl Provider for XProvider {
-    crate::impl_standard_redirect_url!("https://twitter.com/i/oauth2/authorize");
+    crate::impl_standard_redirect_url!("https://twitter.com/i/oauth2/authorize?response_type=code");
 
     async fn get_user(
         &self,

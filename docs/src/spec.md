@@ -1184,6 +1184,19 @@ The implementation candidate and its capability/operational limits are described
 in [the Redis messaging guide](redis-messaging.md). Hosted source/package
 admission passed in PR #236; final release admission remains separate.
 
+### OAuth authorization request invariant
+
+The built-in Connect authorization-code providers explicitly request
+`response_type=code`. With ordinary authorization endpoints, the plain URL,
+state, PKCE, and combined trait variants each contain exactly one response
+type and retain the configured client, redirect, scopes and encoded state/PKCE.
+Apple retains `response_mode=form_post`; offline mock redirects remain local
+fixtures rather than real authorization requests. Application configuration,
+nonce/callback validation and provider-account interoperability remain separate.
+The generic `build_oauth_params` helper and exported redirect macro remain
+response-type-neutral for downstream custom providers. Callers own optional
+endpoint query data and must not supply conflicting reserved parameters.
+
 ### Shared-local facade composition invariant
 
 The umbrella features `auth-sqlite`, `capital-quota-sql`, `oauth-sqlite`,

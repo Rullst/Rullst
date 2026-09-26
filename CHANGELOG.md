@@ -9,6 +9,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### OAuth authorization-code request maintenance
+
+- Explicitly request `response_type=code` in the built-in Google, Microsoft,
+  Discord, LinkedIn, GitHub, Facebook, X and Cognito authorization URLs.
+- Preserve Apple/Auth0/OIDC response types, encoded state/PKCE, mock redirects,
+  and downstream generic helper/macro behavior. Thirteen offline contract tests
+  cover all eleven providers without claiming live account interoperability.
+  This is a compatible stable correction, with no new provider or public API.
+
 ### HTML macro caller bindings
 
 - Keep generated `html!` buffers hygienically separate from caller variables.
