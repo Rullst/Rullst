@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790425252177,
+  "lastUpdate": 1790448683548,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -12131,6 +12131,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4072,
             "range": "± 27",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3d2802007b664d7cd15703376ca3c1d879e67195",
+          "message": "docs(nexus): record bounded integration priorities (#278)\n\nDocument application boundaries and maintain stable Nexus correction status on the v13 development line.",
+          "timestamp": "2026-09-26T14:43:40-03:00",
+          "tree_id": "65c4b5f523b42b2b95028a926efc6b36400d20e7",
+          "url": "https://github.com/Rullst/Rullst/commit/3d2802007b664d7cd15703376ca3c1d879e67195"
+        },
+        "date": 1790448682702,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1023,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 806,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1878,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4088,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
