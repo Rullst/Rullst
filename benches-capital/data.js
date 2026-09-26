@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790390298223,
+  "lastUpdate": 1790399926314,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -8638,6 +8638,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ab56500ab4275ac54861afdfdde0b41f11cf4e4e",
+          "message": "fix(nexus): port stored-cell escaping to v13 (#276)\n\nForward-port unconditional stored-cell escaping and SQLite/browser regressions.",
+          "timestamp": "2026-09-26T01:58:42-03:00",
+          "tree_id": "b30215ccad76a336fce4d0965fbc783d18ef4698",
+          "url": "https://github.com/Rullst/Rullst/commit/ab56500ab4275ac54861afdfdde0b41f11cf4e4e"
+        },
+        "date": 1790399925478,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 3,
             "range": "± 0",
             "unit": "ns/iter"
           }
