@@ -9,6 +9,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Optional v13 WebGPU example
+
+- Add a non-publishable wave-interference teaching application in `examples/webgpu`,
+  served by Core's production security baseline with same-origin assets.
+- Demonstrate browser WebGPU with a Canvas fallback, bounded resolution/frame
+  submission, explicit animation controls and cleanup on device loss/navigation.
+- Add HTTP contracts and Linux Chromium/software-GPU acceptance. No framework
+  GPU dependency, real-device performance or universal browser support is implied.
+
 ### v13 Paddle customer portal
 
 - Add `create_bound_customer_portal`: verify active customer ownership and the

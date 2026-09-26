@@ -7,6 +7,7 @@ members = [
     "rullst-orm-macros",
     "rullst-connect",
     "examples/blog",
+    "examples/webgpu",
     "rullst-core",
     "rullst-auth",
     "rullst-mail",

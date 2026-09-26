@@ -47,6 +47,19 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 * **URL Paths:** Lowercase kebab-case (e.g. `/users`, `/user-profiles`, `/billing/webhooks`).
 * **Database Identifiers:** Snake case (e.g. `user_id`, `created_at`, `billing_accounts`).
 
+### Optional browser graphics example (v13 candidate)
+
+`examples/webgpu` is a non-publishable teaching application served by Core's
+production security baseline. It demonstrates two-source wave interference with
+browser-native WebGPU and a lower-resolution Canvas fallback. No GPU dependency
+or default feature is added to the framework, and no GPU work runs on the server.
+The example starts paused, bounds resolution and frame submission, handles GPU
+startup failure/device loss, and explicitly disposes resources on removal or
+navigation. It uses same-origin assets without a bundler, external service or
+capture permission. Client results are illustrative, never authorization or
+grading evidence. Automated Chromium/software-GPU checks are bounded example
+acceptance, not physical-device, browser-universal or performance evidence.
+
 ---
 
 ## ⚡ 3. Framework Crates & Capability Matrix
