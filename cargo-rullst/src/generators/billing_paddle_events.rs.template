@@ -1,0 +1,64 @@
+//! Exact signed deliveries reconcile provider state; they never directly grant access.
+use super::{BillingConfig, Gateway, Result, State, CONFLICT, UNAVAILABLE, apply_transaction,
+    checkout_request, commit, fence, provider, refresh, scope, store};
+use rullst::server::{IntoResponse, Request, Response, StatusCode};
+use std::collections::HashMap;
+
+pub(super) struct Notice { pub owner: String, pub customer: String, pub attempt: String, pub transaction: Option<String> }
+fn bounded(value: &serde_json::Value) -> Result<String> {
+    let value = value.as_str().ok_or(CONFLICT)?;
+    if value.is_empty() || value.len() > 200 || !value.bytes().all(|c| c.is_ascii_alphanumeric() || matches!(c, b'_' | b'-')) {
+        return Err(CONFLICT);
+    } Ok(value.into())
+}
+pub(in super::super) async fn webhook(config: &BillingConfig, request: Request) -> Result<Response> {
+    if request.method() != rullst::web::axum::http::Method::POST { return Err(StatusCode::METHOD_NOT_ALLOWED); }
+    let (_, sandbox, _) = scope(config)?;
+    let gateway = provider(config, sandbox);
+    let mut signatures = request.headers().get_all("paddle-signature").iter();
+    let signature = signatures.next().ok_or(StatusCode::BAD_REQUEST)?.to_str().map_err(|_| StatusCode::BAD_REQUEST)?.to_owned();
+    if signatures.next().is_some() { return Err(StatusCode::BAD_REQUEST); }
+    let body = rullst::web::axum::body::to_bytes(request.into_body(), 2 * 1024 * 1024).await.map_err(|_| StatusCode::PAYLOAD_TOO_LARGE)?;
+    gateway.verify_signature(&body, &signature).map_err(|_| StatusCode::BAD_REQUEST)?;
+    let json: serde_json::Value = serde_json::from_slice(&body).map_err(|_| StatusCode::BAD_REQUEST)?;
+    if !json["event_type"].as_str().is_some_and(|kind| kind.starts_with("subscription.")) { return Err(StatusCode::BAD_REQUEST); }
+    let data = &json["data"];
+    let notice = Notice { owner: bounded(&data["custom_data"]["rullst_owner_reference"])?,
+        customer: bounded(&data["customer_id"])?, attempt: bounded(&data["custom_data"]["rullst_attempt_reference"])?,
+        transaction: if data["transaction_id"].is_null() { None } else { Some(bounded(&data["transaction_id"])?) } };
+    let headers = HashMap::from([("paddle-signature".into(), signature)]);
+    process(config, &gateway, notice, &body, &headers).await
+}
+pub(super) async fn process(config: &BillingConfig, gateway: &impl Gateway, notice: Notice,
+    body: &[u8], headers: &HashMap<String, String>) -> Result<Response>
+{
+    let (namespace, sandbox, _) = scope(config)?;
+    let state = store::reference(&namespace, &notice.owner).await?.ok_or(CONFLICT)?;
+    if state.customer.as_deref() != Some(&notice.customer) { return Err(CONFLICT); }
+    let prior = state.previous_attempts.iter().find(|a| a.key == notice.attempt).cloned();
+    let attempt = prior.as_ref().or(state.attempt.as_ref()).ok_or(CONFLICT)?;
+    if attempt.key != notice.attempt || !attempt.dispatched { return Err(CONFLICT); }
+    if notice.transaction.as_ref().is_some_and(|id| attempt.transaction.as_ref().is_some_and(|known| id != known)) { return Err(CONFLICT); }
+    let id = attempt.transaction.as_deref().or(notice.transaction.as_deref()).ok_or(CONFLICT)?.to_owned();
+    let request = checkout_request(&state, attempt)?;
+    let known_subscription = attempt.subscription.clone();
+    let state: State = fence(&state).await?;
+    // This independently verifies signature, customer, owner, original attempt,
+    // price, original transaction and current subscription against typed reads.
+    let (receipt, subscription) = gateway.notice(&request, &id, body, headers).await?;
+    if known_subscription.as_ref().is_some_and(|known| known != &subscription) { return Err(CONFLICT); }
+    if let Some(digest) = store::receipt(&namespace, &receipt.id).await? {
+        return if digest == receipt.digest { Ok(StatusCode::OK.into_response()) } else { Err(CONFLICT) };
+    }
+    if prior.is_some() {
+        commit(&state, state.clone(), Some(&receipt)).await?;
+        return Ok(StatusCode::OK.into_response());
+    }
+    if !config.allowed_plan_ids.contains(request.price_id()) { return Err(UNAVAILABLE); }
+    let transaction = gateway.transaction(&request, &id).await?;
+    if transaction.subscription.as_deref() != Some(&subscription) { return Err(CONFLICT); }
+    let mut next = state.clone(); apply_transaction(&mut next, &request, &transaction, sandbox)?;
+    refresh(gateway, sandbox, &mut next).await?;
+    commit(&state, next, Some(&receipt)).await?;
+    Ok(StatusCode::OK.into_response())
+}

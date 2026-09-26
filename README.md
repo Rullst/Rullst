@@ -62,6 +62,29 @@ and dependency validation passed [PR #239](https://github.com/Rullst/Rullst/pull
 Final release admission remains separate; these additions are not part of the
 published v12.1.0 package.
 
+## 💳 Build subscription billing with Stripe and Paddle
+
+**Optional payment integrations, with the protocol work included.** Rullst Capital
+provides typed checkout/subscription operations, signed-webhook verification and
+customer-bound portal access. The billing generator supplies editable Rust for
+persisted ownership, event reconciliation and plan-gated access.
+
+| Provider | Current v13 development scope |
+| :--- | :--- |
+| Stripe | Existing generated recurring billing flow with persisted retry keys, bound recovery and a customer portal. |
+| Paddle | Bound customer, transaction checkout, subscription and portal APIs; a generated persistent flow is a candidate awaiting validation. |
+
+Your application configures provider accounts, credentials, products/prices,
+billing-owner permissions and business rules. Paddle also requires an approved
+Paddle.js payment page. These are bounded integrations, not every product in
+either provider's catalog; live-provider interoperability is not established by
+offline tests. The v13 additions are unpublished and are not installed by the
+stable v12 command below.
+
+[Explore Capital's APIs and limits](https://github.com/Rullst/Rullst/blob/main/rullst-capital/README.md)
+· [Generated billing setup](https://github.com/Rullst/Rullst/blob/main/cargo-rullst/src/generators/billing_readme.md.template)
+· [Why v13 focuses on these two providers](https://github.com/Rullst/Rullst/blob/main/docs/src/v13-maintenance-scope.md#capital-retain-billing-contain-the-responsibility)
+
 ## 🎓 Rullst Academy — built with Rullst to teach Rullst
 
 [Rullst Academy](https://academy.rullst.win/) is a free learning platform built

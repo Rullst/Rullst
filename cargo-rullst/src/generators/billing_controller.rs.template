@@ -1,8 +1,10 @@
 #[path = "billing_live.rs"]
 mod live;
+#[path = "billing_paddle.rs"]
+mod paddle;
 use crate::models::{billing_customer::BillingCustomer, subscription::Subscription};
 use crate::pages::billing;
-use rullst::capital::{BillingProvider, LemonSqueezyProvider, StripeProvider, WebhookEvent};
+use rullst::capital::{BillingProvider, LemonSqueezyProvider, PaddleProvider, StripeProvider, WebhookEvent};
 use rullst::server::{
     Extension, Form, IntoResponse, Next, Redirect, Request, Response, StatusCode,
 };
@@ -74,9 +76,9 @@ fn billing_config() -> Result<BillingConfig, BillingConfigError> {
         .unwrap_or_else(|_| "stripe".to_string())
         .trim()
         .to_ascii_lowercase();
-    if !matches!(provider.as_str(), "stripe" | "lemonsqueezy") {
+    if !matches!(provider.as_str(), "stripe" | "lemonsqueezy" | "paddle") {
         return Err(BillingConfigError(
-            "BILLING_PROVIDER must be stripe or lemonsqueezy",
+            "BILLING_PROVIDER must be stripe, paddle or lemonsqueezy",
         ));
     }
     let api_key = std::env::var("BILLING_API_KEY").unwrap_or_default();
@@ -143,8 +145,8 @@ fn lemon_provider(config: &BillingConfig) -> Result<LemonSqueezyProvider, rullst
     }
 }
 
-// Email-based mock fixtures are isolated from the durable Stripe implementation.
-// Mixed credentials and unsupported live providers fail closed in live::scope.
+// Email-based mock fixtures are isolated from the durable provider paths.
+// Mixed credentials and unsupported live operations fail closed in their scope.
 fn local_billing_fixture(config: &BillingConfig) -> bool {
     !is_production()
         && (config.api_key.is_empty() || config.api_key.starts_with("mock_"))
@@ -155,6 +157,8 @@ fn local_billing_fixture(config: &BillingConfig) -> bool {
 pub fn initialize_billing_provider() -> Result<(), BillingConfigError> {
     let config = billing_config()?;
     let provider: Box<dyn BillingProvider> = match config.provider.as_str() {
+        "paddle" => Box::new(PaddleProvider::new(config.api_key, config.webhook_secret)
+            .with_sandbox(std::env::var("BILLING_PADDLE_ENVIRONMENT").as_deref() != Ok("live"))),
         "lemonsqueezy" => Box::new(lemon_provider(&config)
             .map_err(|_| BillingConfigError("invalid Lemon Squeezy store configuration"))?),
         _ => Box::new(StripeProvider::new(config.api_key, config.webhook_secret)),
@@ -171,7 +175,8 @@ pub async fn verify_billing_webhook(
 ) -> Result<Response, StatusCode> {
     let config = billing_config().map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
     if !local_billing_fixture(&config) {
-        return live::webhook(&config, request).await;
+        return if config.provider == "paddle" { paddle::webhook(&config, request).await }
+            else { live::webhook(&config, request).await };
     }
     if let Err(error) = initialize_billing_provider() {
         eprintln!("Billing webhook configuration error: {error}");
@@ -261,7 +266,8 @@ pub async fn checkout_redirect(
         return (StatusCode::BAD_REQUEST, "Plan is not enabled").into_response();
     }
     if !local_billing_fixture(&config) {
-        return live::checkout(&config, &identity, &form.plan).await;
+        return if config.provider == "paddle" { paddle::checkout(&config, &identity, &form.plan).await }
+            else { live::checkout(&config, &identity, &form.plan).await };
     }
     let customer = match billing_customer(&identity).await {
         Ok(customer) => customer,
@@ -269,6 +275,8 @@ pub async fn checkout_redirect(
     };
 
     let result = match config.provider.as_str() {
+        "paddle" => PaddleProvider::new(config.api_key, config.webhook_secret)
+            .create_checkout_session(&customer.email, &form.plan, &config.redirect_url).await,
         "lemonsqueezy" => match lemon_provider(&config) {
             Ok(provider) => provider
                 .create_checkout_session(&customer.email, &form.plan, &config.redirect_url)
@@ -298,7 +306,8 @@ pub async fn portal_redirect(Extension(identity): Extension<BillingIdentity>) ->
         }
     };
     if !local_billing_fixture(&config) {
-        return live::portal(&config, &identity).await;
+        return if config.provider == "paddle" { paddle::portal(&config, &identity).await }
+            else { live::portal(&config, &identity).await };
     }
     let customer = match billing_customer(&identity).await {
         Ok(customer) => customer,
@@ -306,6 +315,8 @@ pub async fn portal_redirect(Extension(identity): Extension<BillingIdentity>) ->
     };
 
     let result = match config.provider.as_str() {
+        "paddle" => PaddleProvider::new(config.api_key, config.webhook_secret)
+            .create_customer_portal(&customer.email, &config.redirect_url).await,
         "lemonsqueezy" => {
             LemonSqueezyProvider::new(config.api_key, config.webhook_secret)
                 .create_customer_portal(&customer.email, &config.redirect_url)
@@ -425,5 +436,19 @@ pub async fn billing_report(Extension(identity): Extension<BillingIdentity>) -> 
         Ok(config) => config,
         Err(_) => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
     };
-    live::report(&config, &identity).await
+    if config.provider == "paddle" { paddle::report(&config, &identity).await }
+    else { live::report(&config, &identity).await }
+}
+
+/// Operator-only recovery of an already dispatched Paddle customer creation.
+/// Authorize the identity and independently locate the provider ID first.
+pub async fn recover_paddle_customer(identity: &BillingIdentity, customer_id: &str) -> Result<(), StatusCode> {
+    let config = billing_config().map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    paddle::recover(&config, identity, customer_id, false).await
+}
+
+/// Operator-only recovery of an already dispatched Paddle transaction creation.
+pub async fn recover_paddle_transaction(identity: &BillingIdentity, transaction_id: &str) -> Result<(), StatusCode> {
+    let config = billing_config().map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+    paddle::recover(&config, identity, transaction_id, true).await
 }
