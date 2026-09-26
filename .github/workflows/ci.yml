@@ -189,6 +189,7 @@ jobs:
       RULLST_MEDIA_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'workspace' && '1' || '0' }}
       RULLST_WEBGPU_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'workspace' && '1' || '0' }}
       RULLST_SUPERVISION_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'cli-standard' && '1' || '0' }}
+      RULLST_NEXUS_RENDER_BROWSER_SCRIPT: ${{ github.workspace }}/.github/nexus-renderer-browser.mjs
       RULLST_BILLING_BROWSER_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'cli-standard' && '1' || '0' }}
       RULLST_API_CONTRACT_TESTS: ${{ matrix.os == 'ubuntu-latest' && matrix.shard == 'cli-standard' && '1' || '0' }}
     strategy:
@@ -286,6 +287,12 @@ jobs:
           path: saas-journey-result.json
           if-no-files-found: error
           retention-days: 14
+
+      - name: Run portable Nexus stored-value rendering contract
+        # The all-feature shard selects strict Postgres; exercise SQLite with
+        # its own feature graph. Linux also checks the real output in Chromium.
+        if: matrix.shard == 'workspace'
+        run: cargo test -p rullst-nexus --test renderer_escaping --locked
 
       - name: Run portable transactional outbox contract
         if: matrix.shard == 'workspace'
@@ -397,6 +404,8 @@ jobs:
             strict-sqlite)
               cargo test -p rullst-orm --no-default-features \
                 --features strict-sqlite --test matrix_sqlite -- --test-threads=1
+              cargo test -p rullst-nexus --no-default-features \
+                --features strict-sqlite --test renderer_escaping --locked
               RULLST_REQUIRE_SQLITE_INBOX=1 cargo test -p rullst-capital \
                 --features webhook-sql,rullst-orm/strict-sqlite --test stripe_inbox_sql --locked
               ;;
