@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790470681454,
+  "lastUpdate": 1790481705440,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -12227,6 +12227,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3036,
             "range": "± 188",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6c926f95b5e6ba700ac7b094f30144c96d2b5fb7",
+          "message": "fix(cli): constrain the compatible Omni Tauri family (#283)\n\nPort the validated Omni Tauri family constraints and application-owned shell migration documentation to v13.",
+          "timestamp": "2026-09-27T00:44:41-03:00",
+          "tree_id": "57611f675edaab9809d1d113c309ce824e5182fa",
+          "url": "https://github.com/Rullst/Rullst/commit/6c926f95b5e6ba700ac7b094f30144c96d2b5fb7"
+        },
+        "date": 1790481704416,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 976,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 844,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1791,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3804,
+            "range": "± 12",
             "unit": "ns/iter"
           }
         ]
