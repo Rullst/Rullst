@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790448890957,
+  "lastUpdate": 1790470834085,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -11381,6 +11381,60 @@ window.BENCHMARK_DATA = {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 70,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e61e5fe0fa9d24a68edca10d97da3ec216e1d568",
+          "message": "fix(v13): port HTML and OAuth request corrections (#280)\n\nPreserve caller identifiers in HTML expansion and request authorization codes in built-in OAuth providers, with regression and archive-consumer coverage.",
+          "timestamp": "2026-09-26T21:32:53-03:00",
+          "tree_id": "038bea6eb3582978e129f7a5976146ad36105969",
+          "url": "https://github.com/Rullst/Rullst/commit/e61e5fe0fa9d24a68edca10d97da3ec216e1d568"
+        },
+        "date": 1790470833209,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 2831,
+            "range": "± 53",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 337,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 8,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 7,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 12,
+            "range": "± 0",
             "unit": "ns/iter"
           }
         ]
