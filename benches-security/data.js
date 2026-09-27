@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790470834085,
+  "lastUpdate": 1790481884310,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -11435,6 +11435,60 @@ window.BENCHMARK_DATA = {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 12,
             "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6c926f95b5e6ba700ac7b094f30144c96d2b5fb7",
+          "message": "fix(cli): constrain the compatible Omni Tauri family (#283)\n\nPort the validated Omni Tauri family constraints and application-owned shell migration documentation to v13.",
+          "timestamp": "2026-09-27T00:44:41-03:00",
+          "tree_id": "57611f675edaab9809d1d113c309ce824e5182fa",
+          "url": "https://github.com/Rullst/Rullst/commit/6c926f95b5e6ba700ac7b094f30144c96d2b5fb7"
+        },
+        "date": 1790481883276,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4109,
+            "range": "± 45",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 587,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 28,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
