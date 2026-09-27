@@ -17,6 +17,10 @@ defines the outstanding exact-source admission and package checks.
 
 ### Fixed
 
+- Keep generated Omni shells on a compatible Tauri runtime/macro/build family
+  so fresh desktop, Android and iOS builds cannot mix incompatible internal
+  releases. Select Tauri 2.11.6 for its upstream channel IPC isolation fix;
+  existing shells require an explicit application-owned dependency update.
 - Send `response_type=code` from the built-in Google, Microsoft, Discord,
   LinkedIn, GitHub, Facebook, X and Cognito authorization URL builders.
   Keep Apple, Auth0 and discovered OIDC at one response-type parameter,
@@ -40,7 +44,8 @@ defines the outstanding exact-source admission and package checks.
 
 - Prepare all sixteen packages and internal requirements as 12.1.2, with
   synchronized workspace/fuzz locks and absolute versioned README links.
-  Preserve external dependency versions, public APIs and Rust 1.96.0 MSRV.
+  Preserve framework workspace dependency versions, public APIs and Rust
+  1.96.0 MSRV; generated Omni requirements change as described above.
 
 ### Maintenance verification
 

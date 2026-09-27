@@ -37,12 +37,23 @@ exported macro retain their response-type-neutral behavior. The missing field
 can prevent authorization before the callback; no authentication bypass or
 token disclosure has been established. Provider-account testing remains excluded.
 
+The Omni shell generator additionally constrains the compatible Tauri runtime,
+macro and build-helper family. Fresh resolution previously mixed pinned Tauri
+2.11.5 with new 2.12 runtime components and failed compilation on desktop,
+Android and iOS. New shells select Tauri 2.11.6, which also includes the
+[upstream channel IPC isolation fix](https://github.com/tauri-apps/tauri/releases/tag/tauri-v2.11.6).
+The existing remote-content boundary remains restrictive; this report does not
+establish exploitation in the Rullst shell. Existing shells must review and
+update their own manifest/lockfile; updating Rullst does not rewrite them.
+All three actual generated-platform workflows must pass on the corrected source.
+
 Additional post-12.1.1 changes strengthen Auth, HTTP lifecycle and SQLite
 messaging regression tests, including mutation-survivor cases and bounded
 test orchestration. They do not add runtime features. All sixteen publication
 packages and their internal requirements are prepared as 12.1.2; workspace
-and ten fuzz locks must remain synchronized. External dependency versions,
-public APIs and Rust **1.96.0** MSRV are preserved. No schema migration, real
+and ten fuzz locks must remain synchronized. Framework workspace dependency
+versions, public APIs and Rust **1.96.0** MSRV are preserved; the generated Omni
+dependency requirements change as described above. No schema migration, real
 provider integration or v13 capability is part of this patch.
 
 ## Evidence already obtained
