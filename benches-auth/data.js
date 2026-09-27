@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790448683548,
+  "lastUpdate": 1790470681454,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -12179,6 +12179,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4088,
             "range": "± 14",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e61e5fe0fa9d24a68edca10d97da3ec216e1d568",
+          "message": "fix(v13): port HTML and OAuth request corrections (#280)\n\nPreserve caller identifiers in HTML expansion and request authorization codes in built-in OAuth providers, with regression and archive-consumer coverage.",
+          "timestamp": "2026-09-26T21:32:53-03:00",
+          "tree_id": "038bea6eb3582978e129f7a5976146ad36105969",
+          "url": "https://github.com/Rullst/Rullst/commit/e61e5fe0fa9d24a68edca10d97da3ec216e1d568"
+        },
+        "date": 1790470680630,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 673,
+            "range": "± 105",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 564,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1271,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3036,
+            "range": "± 188",
             "unit": "ns/iter"
           }
         ]
