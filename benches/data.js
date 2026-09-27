@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790447944934,
+  "lastUpdate": 1790470074931,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -20615,6 +20615,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2294,
             "range": "± 48",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e61e5fe0fa9d24a68edca10d97da3ec216e1d568",
+          "message": "fix(v13): port HTML and OAuth request corrections (#280)\n\nPreserve caller identifiers in HTML expansion and request authorization codes in built-in OAuth providers, with regression and archive-consumer coverage.",
+          "timestamp": "2026-09-26T21:32:53-03:00",
+          "tree_id": "038bea6eb3582978e129f7a5976146ad36105969",
+          "url": "https://github.com/Rullst/Rullst/commit/e61e5fe0fa9d24a68edca10d97da3ec216e1d568"
+        },
+        "date": 1790470072851,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 440,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 629,
+            "range": "± 59",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 448,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1193,
+            "range": "± 49",
             "unit": "ns/iter"
           }
         ]
