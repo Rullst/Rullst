@@ -194,3 +194,44 @@ build/run inputs and pinned tool versions, not bit-identical hosted runner
 images or external state. Corpora can evolve and hosted runner images change.
 The seven-day limit bounds age; maintainers can always request a fresh complete
 campaign. The reviewed policy code remains part of the release trust boundary.
+
+### Complete-context review for 12.1.2 publication changes
+
+The provenance/documentation transition from `273db60c` to `5a8709d1` changes
+no runtime source, manifest, compiler configuration, fuzz harness, dependency
+lock or campaign command. The existing Auth dependency profile predates that
+source and therefore conservatively cannot establish documentation equivalence.
+It is not expanded by this review.
+
+`.github/fuzz-reviewed-context.json` instead binds the twelve exact changed
+document/spelling paths to their old/new regular-file blobs and a SHA-256 of
+**all other tracked paths, modes and blobs**, the release branch and the fuzz
+execution contract. A small explicit control-plane list excludes only the
+review machinery, this document, workflow lint and release reporting. The
+fuzz workflow retains its full execution contract; its scheduler and evidence
+checker remain reviewed policy. This profile also pins the root lockfile and
+existing admission/dependency policies even where the ordinary fuzz identity
+does not require them.
+
+The two complete document states are equivalent only within that frozen source
+context. Mixed states, later edits, missing documents, mode changes, another
+branch, new source consumers or any unclassified file change receive no credit
+from this exception. New governance and Scorecard documents are absent in the
+canonical old state only when their exact reviewed additions match. Source and
+dependency discovery always retain the actual committed files.
+
+The reviewed README and book material is package metadata or documentation;
+book snippets are confined to the pinned `cfg(doctest)` module. Governance,
+security policy and spelling configuration are not inputs to these harnesses.
+No production consumer or procedural macro reads the changed material into a
+fuzzed API. Future consumers invalidate the frozen context, including when a
+new consumer has already passed a campaign of its own. Tests exercise that
+case, unknown files, manifests, locks, macros, build scripts, configuration,
+changed execution and malformed policy against real isolated Git histories.
+
+The review machinery and exact table are included in the receipt's policy
+identity. Original job provenance, the seven-day expiry, 19,800-second minimum,
+newer-failure protection and final-source successful evidence workflow remain
+mandatory. Reuse never restarts the expiry clock or creates synthetic campaign
+successes. All other release admission checks still apply to the final SHA;
+this review does not establish publication readiness or validate v13 code.

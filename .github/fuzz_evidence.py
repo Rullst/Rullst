@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 
 from fuzz_evidence_inputs import (
-    DOC_REVIEW, MAINTENANCE_DOC_REVIEW, REGISTRY_DOC_REVIEW, ROOT, SHA, SCOPE_REVIEW,
+    CONTEXT_REVIEW, DOC_REVIEW, MAINTENANCE_DOC_REVIEW, REGISTRY_DOC_REVIEW, ROOT, SHA, SCOPE_REVIEW,
     FuzzSurfaceChanged, Snapshot, digest,
 )
 from release_line import EVIDENCE_BRANCHES
@@ -193,7 +193,8 @@ def plan(candidate: Snapshot, github: GitHub, now: datetime | None = None,
                                        ".github/release_line.py", ".github/release-required-workflows.json",
                                        ".github/fuzz_dependency_inputs.py", SCOPE_REVIEW,
                                        ".github/test-fuzz-target-quality.py",
-                                       DOC_REVIEW, MAINTENANCE_DOC_REVIEW, REGISTRY_DOC_REVIEW)})}
+                                       ".github/fuzz_reviewed_context.py",
+                                       ".github/test-fuzz-reviewed-context.py", CONTEXT_REVIEW, DOC_REVIEW, MAINTENANCE_DOC_REVIEW, REGISTRY_DOC_REVIEW)})}
 
 
 def write_report(report: dict, path: Path) -> None:
