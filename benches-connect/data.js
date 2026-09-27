@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790481769192,
+  "lastUpdate": 1790535533145,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -7607,6 +7607,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 355,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a8a78aa2ac79654e366930ae581cc2829922d9f4",
+          "message": "fix(ci): install rustfmt for release regression shards (#284)",
+          "timestamp": "2026-09-27T15:39:48-03:00",
+          "tree_id": "e076d1ed5edbe3ef7d6de8ac0a6aca641b034e93",
+          "url": "https://github.com/Rullst/Rullst/commit/a8a78aa2ac79654e366930ae581cc2829922d9f4"
+        },
+        "date": 1790535532374,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 457,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
