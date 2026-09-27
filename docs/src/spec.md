@@ -2812,6 +2812,12 @@ assistant, not a claim that compilation proves production compatibility.
   downloaded checksums and attests executables, manifests and inventory files
   without checking out source or executing downloaded binaries. GitHub release
   assets include those files only after crate publication and attestation pass.
+  The development release workflow also retains the original Sigstore bundle and
+  its signed in-toto envelope as release assets and verifies every artifact against it
+  with exact repository/workflow/tag/commit identity before release creation.
+  This export is being admitted for v12.1.2 and v13 and awaits tag-workflow
+  acceptance. Existing release assets remain unchanged. See the
+  [OpenSSF evidence plan](openssf-scorecard.md).
   Client-side verification must pin the publisher, tag workflow, source tag and
   commit and then compare the expected platform/version/file digest; metadata
   and matching checksums by themselves remain insufficient authority. This

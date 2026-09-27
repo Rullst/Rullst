@@ -8,6 +8,8 @@ extend-exclude = [
 ]
 
 [default.extend-words]
+# Standard in-toto signed provenance filename suffix (.intoto.jsonl).
+intoto = "intoto"
 Ba = "Ba"
 Jus = "Jus"
 Ue = "Ue"
