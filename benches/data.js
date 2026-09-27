@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790470074931,
+  "lastUpdate": 1790481039183,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -20669,6 +20669,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1193,
             "range": "± 49",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6c926f95b5e6ba700ac7b094f30144c96d2b5fb7",
+          "message": "fix(cli): constrain the compatible Omni Tauri family (#283)\n\nPort the validated Omni Tauri family constraints and application-owned shell migration documentation to v13.",
+          "timestamp": "2026-09-27T00:44:41-03:00",
+          "tree_id": "57611f675edaab9809d1d113c309ce824e5182fa",
+          "url": "https://github.com/Rullst/Rullst/commit/6c926f95b5e6ba700ac7b094f30144c96d2b5fb7"
+        },
+        "date": 1790481036287,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 580,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 765,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 501,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1696,
+            "range": "± 14",
             "unit": "ns/iter"
           }
         ]
