@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790471004780,
+  "lastUpdate": 1790482065854,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -8806,6 +8806,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6c926f95b5e6ba700ac7b094f30144c96d2b5fb7",
+          "message": "fix(cli): constrain the compatible Omni Tauri family (#283)\n\nPort the validated Omni Tauri family constraints and application-owned shell migration documentation to v13.",
+          "timestamp": "2026-09-27T00:44:41-03:00",
+          "tree_id": "57611f675edaab9809d1d113c309ce824e5182fa",
+          "url": "https://github.com/Rullst/Rullst/commit/6c926f95b5e6ba700ac7b094f30144c96d2b5fb7"
+        },
+        "date": 1790482064826,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
