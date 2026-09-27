@@ -4,6 +4,15 @@
 > This page targets `12.1.0`. Check the [release record](../v12.md) for
 > publication status; use a path dependency only for checkout-local review.
 
+Development source includes the compatible OAuth request correction prepared
+for the unpublished **12.1.2 candidate**: built-in authorization-code URLs
+explicitly request `response_type=code`. The
+[OAuth protocol](https://www.rfc-editor.org/rfc/rfc6749#section-4.1.1) and
+[Google request contract](https://developers.google.com/identity/openid-connect/openid-connect#sendauthrequest)
+require this field. Offline parsed-query tests cover all eleven providers;
+real account interoperability remains separate. Temporary application
+workarounds should add the field only when absent.
+
 > **Vision preserved:** message brokers, additional queue transports, remote
 > storage, and media work are retained with explicit status and recommendations in
 > the [capability ledger](../capability-ledger.md#connect-real-time-queues-storage-and-data).

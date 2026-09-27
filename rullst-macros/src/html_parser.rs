@@ -152,11 +152,14 @@ impl HtmlDocument {
 
         let capacity = self.nodes.iter().map(HtmlNode::static_size).sum::<usize>();
         let nodes = self.nodes.iter().map(HtmlNode::to_tokens);
+        // Keep the generated local out of caller expressions, including an `s`
+        // binding in a fragment. Renaming a call-site identifier is not hygiene.
+        let buffer = Ident::new("s", Span::mixed_site());
         quote! {
             {
-                let mut s = String::with_capacity(#capacity);
-                #(s.push_str(&#nodes);)*
-                s
+                let mut #buffer = String::with_capacity(#capacity);
+                #(#buffer.push_str(&#nodes);)*
+                #buffer
             }
         }
     }
@@ -231,6 +234,9 @@ impl HtmlElement {
     pub fn to_tokens(&self) -> TokenStream {
         let tag = self.tag_name.to_string();
         let capacity = self.static_size();
+        // Use one hygienic binding for this element and all its attribute
+        // writes; interpolated caller expressions retain their original spans.
+        let buffer = Ident::new("s", Span::mixed_site());
 
         let mut attr_tokens = Vec::new();
         for attr in &self.attributes {
@@ -240,15 +246,15 @@ impl HtmlElement {
                     let val = lit.value();
                     let static_attr = format!(" {}=\"{}\"", attr_name, val);
                     attr_tokens.push(quote! {
-                        s.push_str(#static_attr);
+                        #buffer.push_str(#static_attr);
                     });
                 }
                 HtmlAttrValue::Dynamic(expr) => {
                     let attr_prefix = format!(" {}=\"", attr_name);
                     attr_tokens.push(quote! {
-                        s.push_str(#attr_prefix);
-                        s.push_str(&rullst::html::escape_attr(&(#expr)));
-                        s.push_str("\"");
+                        #buffer.push_str(#attr_prefix);
+                        #buffer.push_str(&rullst::html::escape_attr(&(#expr)));
+                        #buffer.push_str("\"");
                     });
                 }
             }
@@ -265,27 +271,27 @@ impl HtmlElement {
         if self.children.is_empty() && is_void {
             quote! {
                 {
-                    let mut s = String::with_capacity(#capacity);
-                    s.push_str("<");
-                    s.push_str(#tag);
+                    let mut #buffer = String::with_capacity(#capacity);
+                    #buffer.push_str("<");
+                    #buffer.push_str(#tag);
                     #( #attr_tokens )*
-                    s.push_str(" />");
-                    s
+                    #buffer.push_str(" />");
+                    #buffer
                 }
             }
         } else {
             quote! {
                 {
-                    let mut s = String::with_capacity(#capacity);
-                    s.push_str("<");
-                    s.push_str(#tag);
+                    let mut #buffer = String::with_capacity(#capacity);
+                    #buffer.push_str("<");
+                    #buffer.push_str(#tag);
                     #( #attr_tokens )*
-                    s.push_str(">");
-                    #( s.push_str(&#child_tokens); )*
-                    s.push_str("</");
-                    s.push_str(#tag);
-                    s.push_str(">");
-                    s
+                    #buffer.push_str(">");
+                    #( #buffer.push_str(&#child_tokens); )*
+                    #buffer.push_str("</");
+                    #buffer.push_str(#tag);
+                    #buffer.push_str(">");
+                    #buffer
                 }
             }
         }

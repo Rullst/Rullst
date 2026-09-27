@@ -9,7 +9,9 @@ use serde_json::Value;
 
 #[async_trait]
 impl Provider for GoogleProvider {
-    crate::impl_standard_redirect_url!("https://accounts.google.com/o/oauth2/v2/auth");
+    crate::impl_standard_redirect_url!(
+        "https://accounts.google.com/o/oauth2/v2/auth?response_type=code"
+    );
 
     async fn get_user(
         &self,

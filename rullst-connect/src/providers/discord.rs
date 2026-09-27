@@ -8,7 +8,9 @@ crate::define_provider!(DiscordProvider, "identify", "email");
 
 #[async_trait]
 impl Provider for DiscordProvider {
-    crate::impl_standard_redirect_url!("https://discord.com/api/oauth2/authorize");
+    crate::impl_standard_redirect_url!(
+        "https://discord.com/api/oauth2/authorize?response_type=code"
+    );
 
     async fn get_user(
         &self,
