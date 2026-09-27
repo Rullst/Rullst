@@ -71,15 +71,26 @@ description = "Rullst Omni application shell"
 authors = ["Rullst Developer"]
 edition = "2021"
 
+# These dependencies intentionally constrain Tauri's transitive release family.
+[package.metadata.cargo-machete]
+ignored = ["tauri-codegen", "tauri-macros", "tauri-utils", "tauri-runtime", "tauri-runtime-wry"]
+
 [lib]
 name = "rullst_omni_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+# Keep this Tauri family together: newer internal runtimes/macros are not
+# source-compatible with the 2.11 facade. Revalidate all platforms on upgrade.
 [build-dependencies]
 tauri-build = {{ version = "=2.6.3", features = [] }}
+tauri-codegen = {{ version = "=2.6.3", default-features = false }}
+tauri-macros = {{ version = "=2.6.3", default-features = false }}
+tauri-utils = {{ version = "=2.9.3", default-features = false }}
 
 [dependencies]
-tauri = {{ version = "=2.11.5", features = [] }}
+tauri = {{ version = "=2.11.6", features = [] }}
+tauri-runtime = {{ version = "=2.11.3", default-features = false }}
+tauri-runtime-wry = {{ version = "=2.11.4", default-features = false }}
 
 [workspace]
 "#,
@@ -208,6 +219,20 @@ cargo rullst omni ios
 Android requires its SDK/NDK; iOS requires macOS and Xcode. Distributable apps
 must use an HTTPS endpoint reachable from the real device. The web backend
 remains responsible for authentication, authorization, CSP, CSRF and data.
+
+## Dependency maintenance
+
+The manifest constrains the compatible Tauri runtime, macros and build helpers
+as one family. These explicit transitive constraints prevent a fresh Cargo
+resolution from combining incompatible internal releases. They do not freeze
+all third-party dependencies: retain the generated `Cargo.lock` and
+`package-lock.json`, review dependency advisories, and validate desktop,
+Android and iOS together before upgrading the Tauri family. Tauri 2.11.6
+includes the upstream channel IPC isolation security correction.
+
+Existing shells are application-owned and are not changed by updating Rullst.
+Review and migrate their manifest/lockfile explicitly; do not overwrite them
+with a newly generated shell.
 
 ## Intentional security boundary
 
