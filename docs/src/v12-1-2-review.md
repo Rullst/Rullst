@@ -1,13 +1,13 @@
-# Rullst 12.1.2 maintenance candidate
+# Rullst 12.1.2 maintenance review
 
-Status: unpublished candidate prepared on 26 September 2026. The supported
-stable line remains `v12`; `main` develops v13. Package versions, passing PRs
-and this plan do not create a tag, registry release or security advisory.
-The [release record](v12.md) establishes publication status separately.
+Reviewed scope and release requirements, updated on 27 September 2026. The
+supported stable line is `v12`; `main` develops v13. Source preparation and
+publication are separate operations. Consult the [release record](v12.md) and
+registry for publication evidence.
 
 ## Scope and compatibility
 
-The candidate builds on published 12.1.1 source
+This maintenance release builds on published 12.1.1 source
 `d27db26c6089e06366ca01b67d741f3d037c076a`. One runtime correction is the Nexus
 table renderer: escape every stored text value, including values beginning
 with an HTML numeric-entity prefix. Ordinary Unicode boolean labels retain
@@ -116,6 +116,14 @@ Use hosted CI for large matrices and preserve the local AGENTS disk reserve.
 Fixtures must remain synthetic and offline; do not use real provider accounts
 or downstream production data. The final candidate has not yet completed
 these admission steps.
+
+The source at `273db60cae95c397401bdd5a2d28ca88de96e7fc` subsequently passed
+all 28 required controls, including 40 complete fuzz campaigns. The maintainer
+then requested portable release provenance and final publication wording before
+publication. Those changes require admission of their own SHA. The existing
+fuzz equivalence policy decides which campaigns are reusable; this report
+does not exempt any target. See the [OpenSSF evidence plan](openssf-scorecard.md)
+for the signing changes, public branch rules and remaining governance limits.
 
 ## Application action and boundaries
 

@@ -38,15 +38,19 @@
 > `v5` line is no longer maintained. [Release record](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/v12.md)
 > · [Compatibility policy](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/compatibility-policy.md).
 
-This README describes the **12.1.2 maintenance candidate**. It includes a Nexus
-stored-value escaping correction and additional maintenance regressions. Its
-versioned links are prepared for the corresponding release tag; package versions
-and this README alone do not establish publication. `main` develops v13. Check
-[crates.io](https://crates.io/crates/rullst) and the
+**Rullst 12.1.2** includes fixes for Nexus stored-value escaping, HTML macro
+variable hygiene, OAuth authorization URLs and generated Omni dependencies,
+plus stronger Auth, HTTP lifecycle and SQLite messaging regression tests.
+Public APIs and Rust 1.96.0 compatibility are preserved. See the
 [release record](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12.md)
-for publication status. The
-[review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-2-review.md)
-records the compatible fixes and verification boundaries.
+for publication evidence and the
+[maintenance review](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/v12-1-2-review.md)
+for application actions and verification boundaries.
+
+Release artifacts include a portable signed provenance bundle. Verify the
+artifact, publisher, release tag and commit using the
+[verification guide](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/openssf-scorecard.md#portable-release-attestations).
+The public OpenSSF score is a repository assessment, not a security certification.
 
 ## 🎓 Rullst Academy — built with Rullst to teach Rullst
 
@@ -275,7 +279,7 @@ certification of every application built with the framework.
 | **Security exception governance** | [![Security Governance](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/security-audit.yml?branch=v12&style=flat-square&label=Exception%20Policy)](https://github.com/Rullst/Rullst/actions/workflows/security-audit.yml?query=branch%3Av12) | Cross-checks scanner allowlists against the owner/expiry ledger, then independently reruns Cargo Audit. |
 | **Cargo Deny** | [![Cargo Deny](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/cargo-deny.yml?branch=v12&style=flat-square&label=Cargo%20Deny)](https://github.com/Rullst/Rullst/actions/workflows/cargo-deny.yml?query=branch%3Av12) | Advisory, license, ban, and source policy. |
 | **CodeQL SAST** | [![CodeQL](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/codeql.yml?branch=v12&style=flat-square&label=CodeQL)](https://github.com/Rullst/Rullst/actions/workflows/codeql.yml?query=branch%3Av12) | Rust semantic analysis after an all-target/all-feature build. |
-| **OpenSSF Scorecard** | [![OpenSSF Scorecard](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FRullst%2FRullst&query=%24.score&label=OpenSSF%20Scorecard&style=flat-square)](https://scorecard.dev/viewer/?uri=github.com/Rullst/Rullst) | The badge renders the score from the official public Scorecard JSON report; the pinned [Scorecard workflow](https://github.com/Rullst/Rullst/actions/workflows/scorecards.yml) publishes OIDC-authenticated results on each `main` push and weekly. A score is evidence, not a security certification. |
+| **OpenSSF Scorecard** | [![OpenSSF Scorecard](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.scorecard.dev%2Fprojects%2Fgithub.com%2FRullst%2FRullst&query=%24.score&label=OpenSSF%20Scorecard&style=flat-square)](https://scorecard.dev/viewer/?uri=github.com/Rullst/Rullst) | The badge renders the score from the official public Scorecard JSON report; the pinned [Scorecard workflow](https://github.com/Rullst/Rullst/actions/workflows/scorecards.yml) publishes OIDC-authenticated results on each `main` push and weekly. A score is evidence, not a security certification. [Evidence and improvements](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/openssf-scorecard.md). |
 | **Cargo Machete** | [![Machete](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/machete.yml?branch=v12&style=flat-square&label=Machete)](https://github.com/Rullst/Rullst/actions/workflows/machete.yml?query=branch%3Av12) | Unused direct dependency detection. |
 | **SemVer checks** | [![SemVer](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/semver.yml?branch=v12&style=flat-square&label=SemVer)](https://github.com/Rullst/Rullst/actions/workflows/semver.yml?query=branch%3Av12) | Supported library APIs are compared with exact latest non-yanked registry baselines; never-published packages and unsupported proc-macro/binary surfaces are reported explicitly. |
 | **Zero-panics policy** | [![Zero Panics](https://img.shields.io/github/actions/workflow/status/Rullst/Rullst/zero-panics.yml?branch=v12&style=flat-square&label=Zero%20Panics)](https://github.com/Rullst/Rullst/actions/workflows/zero-panics.yml?query=branch%3Av12) | Denies panic-family operations in published production targets and generated runtime templates. |

@@ -4,7 +4,7 @@
 > This page targets `12.1.0`. Check the [release record](../v12.md) for
 > publication status; use a path dependency only for checkout-local review.
 
-The unpublished **12.1.2 candidate** corrects a missing `response_type=code`
+**12.1.2** corrects a missing `response_type=code`
 in several built-in authorization URLs, including Google. This parameter is
 required by the [authorization-code protocol](https://www.rfc-editor.org/rfc/rfc6749#section-4.1.1)
 and [Google's request contract](https://developers.google.com/identity/openid-connect/openid-connect#sendauthrequest).
