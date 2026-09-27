@@ -3017,8 +3017,13 @@ authoritative secrets into JavaScript or an untrusted client.
   reverse-DNS identifier and reject framework/reserved example placeholders;
   desktop-only development may use a clearly documented `com.example` value.
 * 🟢 **`[Implemented / Bounded]` Reproducible Tooling:** the generated manifest
-  pins the Tauri CLI and Rust dependencies, emits a restrictive local CSP and
-  real source-derived platform icons, and treats npm, icon generation or
+  pins the Tauri CLI and compatible Rust runtime/macro/build-helper family,
+  including Tauri 2.11.6's channel IPC isolation correction. Explicit transitive
+  constraints prevent fresh resolution from combining incompatible internal
+  Tauri releases; other dependencies still require application-owned lockfiles
+  and advisory review. Existing shells require explicit manifest/lockfile
+  migration. The generator emits a restrictive local CSP and real
+  source-derived platform icons, and treats npm, icon generation or
   explicitly requested mobile initialization failures as command failures.
   Explicit iOS initialization requires macOS/Xcode.
   **12.1.0:** new shells embed the existing Rullst logo as their

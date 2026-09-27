@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Omni dependency compatibility maintenance
+
+- Keep generated Omni shells on a compatible Tauri runtime/macro/build family
+  so fresh desktop, Android and iOS builds cannot mix incompatible internal
+  releases. Select Tauri 2.11.6 for its upstream channel IPC isolation fix;
+  existing shells require an explicit application-owned dependency update.
+
 ### OAuth authorization-code request maintenance
 
 - Explicitly request `response_type=code` in the built-in Google, Microsoft,
