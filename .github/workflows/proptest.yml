@@ -52,9 +52,9 @@ jobs:
           rustflags: "-D warnings"
           build-warnings: ""
           toolchain: 1.98.1
-          # The CLI release shards materialize fresh applications and enforce
-          # their generated source with `cargo clippy -- -D warnings`.
-          components: clippy
+          # The CLI release shards materialize and format fresh applications,
+          # then enforce their generated source with `cargo clippy -- -D warnings`.
+          components: rustfmt, clippy
           cache: false
 
       - name: Run all-feature release regression shard
