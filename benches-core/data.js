@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790448589243,
+  "lastUpdate": 1790470604256,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Core Primitives Benchmark": [
@@ -19643,6 +19643,78 @@ window.BENCHMARK_DATA = {
             "name": "generate_csrf_token_32_chars",
             "value": 139,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e61e5fe0fa9d24a68edca10d97da3ec216e1d568",
+          "message": "fix(v13): port HTML and OAuth request corrections (#280)\n\nPreserve caller identifiers in HTML expansion and request authorization codes in built-in OAuth providers, with regression and archive-consumer coverage.",
+          "timestamp": "2026-09-26T21:32:53-03:00",
+          "tree_id": "038bea6eb3582978e129f7a5976146ad36105969",
+          "url": "https://github.com/Rullst/Rullst/commit/e61e5fe0fa9d24a68edca10d97da3ec216e1d568"
+        },
+        "date": 1790470603380,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_escape/clean_input_no_escape",
+            "value": 19,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/malicious_input_full_escape",
+            "value": 101,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_escape/realistic_partial_escape",
+            "value": 36,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/email_field",
+            "value": 83,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/credit_card_field",
+            "value": 171,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/phone_field",
+            "value": 596,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "mask_pii/safe_field_no_pii",
+            "value": 88,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "generate_csrf_token_32_chars",
+            "value": 105,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
