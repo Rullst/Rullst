@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790481705440,
+  "lastUpdate": 1790535462128,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -12275,6 +12275,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3804,
             "range": "± 12",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a8a78aa2ac79654e366930ae581cc2829922d9f4",
+          "message": "fix(ci): install rustfmt for release regression shards (#284)",
+          "timestamp": "2026-09-27T15:39:48-03:00",
+          "tree_id": "e076d1ed5edbe3ef7d6de8ac0a6aca641b034e93",
+          "url": "https://github.com/Rullst/Rullst/commit/a8a78aa2ac79654e366930ae581cc2829922d9f4"
+        },
+        "date": 1790535461386,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1084,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 878,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1984,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4780,
+            "range": "± 64",
             "unit": "ns/iter"
           }
         ]
