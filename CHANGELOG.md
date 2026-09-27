@@ -9,11 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
-## [12.1.2] - 2026-09-26 (unpublished candidate)
+## [12.1.2] - 2026-09-27
 
-Prepared for compatible maintenance on `v12`; no tag or registry publication is
-established by this section. The [review plan](docs/src/v12-1-2-review.md)
-defines the outstanding exact-source admission and package checks.
+Compatible maintenance on `v12`, preserving public APIs and Rust 1.96.0.
+The [maintenance review](docs/src/v12-1-2-review.md) describes fixes, application
+actions and the source/artifact verification requirements. Publication evidence
+is recorded separately in the [release record](docs/src/v12.md).
 
 ### Fixed
 
@@ -42,6 +43,12 @@ defines the outstanding exact-source admission and package checks.
 
 ### Maintenance
 
+- Attach the original signed Sigstore provenance bundle to GitHub releases,
+  verifying every attested artifact against the exact repository, workflow,
+  tag and source identity before release creation. Retain existing checksums,
+  signing isolation and CLI verification requirements.
+- Prepare publication-facing README/release text and document OpenSSF evidence,
+  sole-maintainer governance and the remaining continuity/badge requirements.
 - Prepare all sixteen packages and internal requirements as 12.1.2, with
   synchronized workspace/fuzz locks and absolute versioned README links.
   Preserve framework workspace dependency versions, public APIs and Rust

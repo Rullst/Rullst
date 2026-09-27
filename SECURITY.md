@@ -10,10 +10,10 @@ The **12.1.1** security maintenance release is available; its
 retains the source, workflow and verified registry checksums. Applications using
 public example keys must rotate those keys and renew sessions when upgrading.
 
-The **12.1.2 candidate** on `v12` additionally corrects stored-value escaping
-in Nexus. That correction is integrated in source, not established as a
-published crates.io fix. See the
-[candidate review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-2-review.md)
+The **12.1.2** maintenance patch additionally corrects stored-value escaping
+in Nexus. Confirm availability using the registry and maintained release record;
+source integration alone does not establish a published fix. See the
+[maintenance review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-2-review.md)
 for scope, validation and application actions. An application-specific patch
 does not update other installations of the published framework.
 

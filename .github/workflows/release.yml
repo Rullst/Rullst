@@ -350,6 +350,7 @@ jobs:
           done
 
       - name: Generate cryptographic build attestation
+        id: provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
@@ -357,6 +358,49 @@ jobs:
             verified-crates/evidence-checksums.txt
             verified-crates/release-evidence/*
             native-cli/*
+
+      - name: Preserve the original signed provenance bundle
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+        run: |
+          test -s "$ATTESTATION_BUNDLE"
+          mkdir release-provenance
+          cp -- "$ATTESTATION_BUNDLE" release-provenance/rullst-release.sigstore.json
+          jq -ce '.dsseEnvelope | select(.payloadType == "application/vnd.in-toto+json"
+            and (.payload | type == "string") and (.signatures | length > 0))' \
+            "$ATTESTATION_BUNDLE" > release-provenance/rullst-release.intoto.jsonl
+
+      - name: Verify portable provenance before registry publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cmp --silent \
+            <(jq -ce '.dsseEnvelope' release-provenance/rullst-release.sigstore.json) \
+            release-provenance/rullst-release.intoto.jsonl
+          for artifact in verified-crates/*.crate \
+            verified-crates/evidence-checksums.txt \
+            verified-crates/release-evidence/* native-cli/*; do
+            gh attestation verify "$artifact" \
+              --bundle release-provenance/rullst-release.sigstore.json \
+              --repo "$GITHUB_REPOSITORY" \
+              --cert-identity "https://github.com/$GITHUB_REPOSITORY/.github/workflows/release.yml@$GITHUB_REF" \
+              --cert-oidc-issuer https://token.actions.githubusercontent.com \
+              --source-ref "$GITHUB_REF" \
+              --source-digest "$GITHUB_SHA" \
+              --signer-digest "$GITHUB_SHA" \
+              --deny-self-hosted-runners
+          done
+
+      - name: Retain portable release provenance
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-provenance
+          path: |
+            release-provenance/rullst-release.sigstore.json
+            release-provenance/rullst-release.intoto.jsonl
+          if-no-files-found: error
+          retention-days: 7
 
   publication_preflight:
     name: Reproduce publication inputs without registry identity
@@ -624,6 +668,34 @@ jobs:
             sha256sum --check "$checksum_file"
           done
 
+      - name: Download the original signed provenance bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-provenance
+          path: release-provenance
+
+      - name: Verify portable provenance against every attested artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cmp --silent \
+            <(jq -ce '.dsseEnvelope' release-provenance/rullst-release.sigstore.json) \
+            release-provenance/rullst-release.intoto.jsonl
+          for artifact in verified-crates/*.crate \
+            verified-crates/evidence-checksums.txt \
+            verified-crates/release-evidence/* native-cli/*; do
+            gh attestation verify "$artifact" \
+              --bundle release-provenance/rullst-release.sigstore.json \
+              --repo "$GITHUB_REPOSITORY" \
+              --cert-identity "https://github.com/$GITHUB_REPOSITORY/.github/workflows/release.yml@$GITHUB_REF" \
+              --cert-oidc-issuer https://token.actions.githubusercontent.com \
+              --source-ref "$GITHUB_REF" \
+              --source-digest "$GITHUB_SHA" \
+              --signer-digest "$GITHUB_SHA" \
+              --deny-self-hosted-runners
+          done
+
       - name: Create GitHub release from verified artifacts
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
@@ -635,4 +707,6 @@ jobs:
             verified-crates/evidence-checksums.txt
             verified-crates/release-evidence/*
             native-cli/*
+            release-provenance/rullst-release.sigstore.json
+            release-provenance/rullst-release.intoto.jsonl
           fail_on_unmatched_files: true
