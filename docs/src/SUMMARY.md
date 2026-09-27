@@ -6,6 +6,7 @@
 - [Why Rullst?](why-Rullst.md)
 - [Simple Capability Status](capability-status.md)
 - [Per-Commit Quality Scorecard](quality-scorecard.md)
+- [OpenSSF Scorecard Evidence & Improvements](openssf-scorecard.md)
 - [v12 Stable Release Audit](v12-release-audit.md)
 - [v13 Delivery Plan & Evidence](v13-delivery-plan.md)
 - [Sustainable v12 Maintenance & v13 Priorities](v13-priorities.md)

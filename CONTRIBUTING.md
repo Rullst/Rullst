@@ -15,6 +15,10 @@ This section guides you through submitting an enhancement suggestion for Rullst,
 - Provide a clear and descriptive title for the issue to identify the suggestion.
 
 ### Pull Requests & Commit Guidelines
+- Major new functionality must include automated tests of its public behavior,
+  failure cases and relevant trust boundaries. Bug fixes must include a
+  regression test where executable coverage is practical; document any
+  limitation and alternative verification in the pull request.
 - **Strict Conventional Commits**: All commit messages must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
   - Format: `<type>(<scope>): <short imperative description>`
   - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
@@ -84,6 +88,9 @@ verification gates to every contribution, regardless of authorship. See
 8. Ensure the full test suite passes.
 
 ## Branching Model
+
+The [governance policy](GOVERNANCE.md) identifies the maintainer, decision process,
+release responsibilities and current continuity/review limitations.
 
 - `main`: Protected v13 development. Product work and breaking changes target
   this branch; its contents are not published v12 APIs.

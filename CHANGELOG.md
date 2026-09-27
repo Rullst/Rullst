@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Release provenance and governance
+
+- Preserve the original signed Sigstore bundle as a release asset and verify all
+  attested artifacts against the exact publisher, workflow, tag and commit.
+- Document public branch protection evidence, sole-maintainer responsibilities,
+  testing requirements and the remaining OpenSSF/continuity limitations.
+
 ### Omni dependency compatibility maintenance
 
 - Keep generated Omni shells on a compatible Tauri runtime/macro/build family
@@ -41,8 +48,8 @@ A prepared version section does not establish that its tag or crates exist.
 - Forward-port unconditional escaping of stored Nexus table values, including
   numeric-entity prefixes, and preserve boolean labels as ordinary Unicode.
   SQLite/Chromium regressions cover 72 text fixtures and table structure.
-- The correction is integrated on `main` and in the unpublished 12.1.2 stable
-  candidate. JavaScript execution and production exploitation have not been
+- The correction is integrated on `main` and in 12.1.2 stable
+  maintenance. JavaScript execution and production exploitation have not been
   established. See the [stable review plan](https://github.com/Rullst/Rullst/blob/v12/docs/src/v12-1-2-review.md)
   for the demonstrated defect, application actions and admission boundaries.
 
