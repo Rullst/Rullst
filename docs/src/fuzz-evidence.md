@@ -102,3 +102,35 @@ build/run inputs and pinned tool versions, not bit-identical hosted runner
 images or external state. Corpora can evolve and hosted runner images change.
 The seven-day limit bounds age; maintainers can always request a fresh complete
 campaign. The reviewed policy code remains part of the release trust boundary.
+
+### Complete-context publication documentation review
+
+The development transition from `a8a78aa2` to `181dd8a2` changes publication
+provenance, spelling configuration and nine exact documentation paths. It
+changes no runtime source, manifest, compiler configuration, fuzz harness,
+dependency lock or campaign execution command.
+
+`.github/fuzz-reviewed-context.json` binds these exact old/new regular-file
+blobs to a SHA-256 of all other tracked paths, modes and blobs, the `main`
+release branch and the fuzz execution contract. Its review is independent of
+the stable `v12` table. A small explicit control-plane list excludes only the
+review machinery, this document, workflow lint and release reporting. The fuzz
+workflow retains its execution contract while its scheduler and verifier remain
+reviewed policy. The root lockfile and existing admission policy are also pinned.
+
+Only the complete before or after documentation state receives normalization.
+Mixed states, later edits, deleted files, changed modes, another branch, unknown
+files or changed consumers receive no exception. New governance and Scorecard
+documents map to their former absence only with their exact reviewed contents.
+The original committed files remain available for source/dependency discovery.
+The reviewed root README and book material is metadata or doctest-only content;
+none of these changed documents is consumed by the current fuzzed APIs. A new
+consumer invalidates this profile even after passing its own campaign.
+
+The review engine, table and tests are included in the receipt's policy digest.
+Real Git fixture tests cover altered source, manifests, locks, macros, build
+scripts, configuration, document states, execution contracts and malformed
+reviews. Provenance, original seven-day expiry, the full 19,800-second duration,
+newer-failure protection and a successful final-source evidence workflow remain
+mandatory. All 42 development targets require their own eligible evidence;
+v12 campaigns cannot certify v13. This review alone grants no release admission.
