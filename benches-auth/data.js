@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790545812528,
+  "lastUpdate": 1790593349874,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -12371,6 +12371,52 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3843,
             "range": "± 58",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "@venelouis",
+            "username": "venelouis",
+            "email": "37526748+venelouis@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "181dd8a272a96f71e56dd30f048c25c9aebed335",
+          "message": "fix(release): integrate portable provenance and governance (#285)",
+          "timestamp": "2026-09-27T21:32:28Z",
+          "url": "https://github.com/Rullst/Rullst/commit/181dd8a272a96f71e56dd30f048c25c9aebed335"
+        },
+        "date": 1790593349301,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1022,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 806,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1893,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4098,
+            "range": "± 32",
             "unit": "ns/iter"
           }
         ]
