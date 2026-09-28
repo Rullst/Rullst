@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "release_branch": "v12",
+  "before_commit": "273db60cae95c397401bdd5a2d28ca88de96e7fc",
+  "after_commit": "5a8709d1d051f62a6f026269241466f2752d2541",
+  "context_sha256": "1cbbc237cff9195db0ace5d9d061bbdb1a55f698ddbfd8a1a18fffeff6df3eb0",
+  "documents": {
+    ".typos.toml": {
+      "before": [
+        "100644",
+        "183bf74c4c4438958ecd3e9fadfbaf6ce8fbe9fe"
+      ],
+      "after": [
+        "100644",
+        "0cb52a15f282d4e45370a34c850cf6f16d369f0d"
+      ]
+    },
+    "CHANGELOG.md": {
+      "before": [
+        "100644",
+        "a8e2fdc44545d97463cb873f716ad20f09fbd303"
+      ],
+      "after": [
+        "100644",
+        "54d93a54092125639363f08f1385ab5a36500468"
+      ]
+    },
+    "CONTRIBUTING.md": {
+      "before": [
+        "100644",
+        "8c4c866fb4ec452a6ab6acc2436fefe0b398c3f6"
+      ],
+      "after": [
+        "100644",
+        "f99a05ec1475a58159edc96a2636dc452e0c458f"
+      ]
+    },
+    "GOVERNANCE.md": {
+      "before": null,
+      "after": [
+        "100644",
+        "1938992d53b1e3c0d4ba8ce070f42367109728d0"
+      ]
+    },
+    "README.md": {
+      "before": [
+        "100644",
+        "9355400ea3d58db25ae43e8791ba913d3e195076"
+      ],
+      "after": [
+        "100644",
+        "203d7af6c62c9d1afac7f52d64b55e15bee63615"
+      ]
+    },
+    "SECURITY.md": {
+      "before": [
+        "100644",
+        "7c207202c4b1e06161319c1c8d9fecc4ece502a7"
+      ],
+      "after": [
+        "100644",
+        "df254b8a05ea30c84c1d1abae3dfabbcf238587c"
+      ]
+    },
+    "docs/src/SUMMARY.md": {
+      "before": [
+        "100644",
+        "63d41049be82e730dec34eb879be7e4bd058faf3"
+      ],
+      "after": [
+        "100644",
+        "009e96c22913bad04365a44f205f882e3662ee95"
+      ]
+    },
+    "docs/src/crates/connect.md": {
+      "before": [
+        "100644",
+        "f522ead255dab0ec18a3a93e0d5ded0234e762bf"
+      ],
+      "after": [
+        "100644",
+        "f066194e1ba3c218b56c84004a7f79d29cfd7472"
+      ]
+    },
+    "docs/src/openssf-scorecard.md": {
+      "before": null,
+      "after": [
+        "100644",
+        "f91e42802476d423dc36b6478b7424fc64b4de5d"
+      ]
+    },
+    "docs/src/spec.md": {
+      "before": [
+        "100644",
+        "b31c4d5dfe04d32f8eaffbbee849208c55e892ac"
+      ],
+      "after": [
+        "100644",
+        "01310f8dfab936f5af3daa8bf793d9df83f01839"
+      ]
+    },
+    "docs/src/v12-1-2-review.md": {
+      "before": [
+        "100644",
+        "5f7c86536b2e20f02a4974015cd12e82e146ebce"
+      ],
+      "after": [
+        "100644",
+        "0778a8fd0ab280dcb5ca58fe39b2d27b60efb424"
+      ]
+    },
+    "docs/src/v12.md": {
+      "before": [
+        "100644",
+        "13a82dc98833f779ffe5b6591a3d85486a21ffe5"
+      ],
+      "after": [
+        "100644",
+        "0a8668140a21e8efc4d67d86e8bdeedd63005fdc"
+      ]
+    }
+  }
+}

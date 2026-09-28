@@ -11,6 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from release_line import FUZZ_TARGET_COUNTS, policy_line
+from fuzz_reviewed_context import REVIEW as CONTEXT_REVIEW, normalized_files
 from fuzz_dependency_inputs import DependencyScope, SCOPE_REVIEW, UnprovenScope
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,7 +30,8 @@ class FuzzSurfaceChanged(ValueError):
 # The fuzz crates are separate workspaces with their own retained Cargo.lock.
 # Admission/control code is trusted reviewed policy, never execution evidence.
 NON_INPUTS = frozenset({
-    DOC_REVIEW,
+    DOC_REVIEW, CONTEXT_REVIEW,
+    ".github/fuzz_reviewed_context.py", ".github/test-fuzz-reviewed-context.py",
     "Cargo.lock", "WORKFLOWS.md", "docs/src/fuzz-evidence.md",
     ".github/mobile-ui-browser-smoke.mjs", ".github/billing-csp-browser-smoke.mjs",
     "rullst-mail/tests/feedback.rs",
@@ -230,7 +232,10 @@ class Snapshot:
             scope = None
             self.scope_reason = str(error)
         self.dependency_scope = scope
-        for path, (mode, oid) in sorted(self.files.items()):
+        identity_files, self.context_review = normalized_files(
+            self.files, self.contract, self.release_branch,
+            json.loads((ROOT / CONTEXT_REVIEW).read_text()))
+        for path, (mode, oid) in sorted(identity_files.items()):
             if path in NON_INPUTS or path == WORKFLOW:
                 continue
             # Only explicitly reviewed contents are equivalent. Keep path/mode/
