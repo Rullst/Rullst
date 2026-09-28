@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790545872609,
+  "lastUpdate": 1790593423625,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -7667,6 +7667,34 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 353,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "@venelouis",
+            "username": "venelouis",
+            "email": "37526748+venelouis@users.noreply.github.com"
+          },
+          "committer": {
+            "name": "GitHub",
+            "username": "web-flow",
+            "email": "noreply@github.com"
+          },
+          "id": "181dd8a272a96f71e56dd30f048c25c9aebed335",
+          "message": "fix(release): integrate portable provenance and governance (#285)",
+          "timestamp": "2026-09-27T21:32:28Z",
+          "url": "https://github.com/Rullst/Rullst/commit/181dd8a272a96f71e56dd30f048c25c9aebed335"
+        },
+        "date": 1790593423044,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 544,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
