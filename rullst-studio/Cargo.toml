@@ -37,7 +37,7 @@ tower = { workspace = true, features = ["util"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 utoipa = "5"
-utoipa-swagger-ui = { version = "9", default-features = false, features = ["axum", "vendored"] }
+utoipa-swagger-ui = { version = "10", default-features = false, features = ["axum", "vendored"] }
 sqlx = { workspace = true, features = ["runtime-tokio", "tls-rustls"] }
 urlencoding = { workspace = true }
 chrono = { workspace = true }
