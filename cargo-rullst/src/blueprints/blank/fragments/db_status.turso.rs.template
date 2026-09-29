@@ -1,0 +1,8 @@
+    // Typed Turso Active Record query through the primary Hrana transport.
+    let db_status = match User::all().await {
+        Ok(_) => "Database connected.".to_string(),
+        Err(error) => {
+            tracing::warn!(error = %error, "database status check failed");
+            "Database unavailable.".to_string()
+        }
+    };

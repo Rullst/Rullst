@@ -1,0 +1,45 @@
+use rullst::{routes, Server, response::IntoResponse};
+use serde::Serialize;
+
+__MIGRATIONS_MOD_DECLARATION__
+
+__DB_MODEL_CODE__
+
+#[derive(Serialize)]
+struct HomeResponse {
+    message: String,
+    database_status: String,
+}
+
+async fn home() -> impl IntoResponse {
+    let name = "Rullst";
+__DB_STATUS_CODE__
+    rullst::server::Json(HomeResponse {
+        message: format!("Welcome to Rullst REST API: {}", name),
+        database_status: db_status,
+    })
+}
+
+#[rullst::runtime::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+__ARTISAN_CALL__
+    #[cfg(debug_assertions)]
+    {
+        rullst::runtime::spawn(async {
+            if let Err(error) = rullst::studio::run_studio(5555).await {
+                eprintln!("Rullst Studio could not start: {error}");
+            }
+        });
+        println!("Rullst Studio running on http://127.0.0.1:5555");
+    }
+
+    let router = routes![
+        get("/" => home),
+    ].layer(rullst::server::from_fn(rullst::security::headers_middleware));
+
+    Server::new(router)
+        .run(3000)
+        .await?;
+
+    Ok(())
+}

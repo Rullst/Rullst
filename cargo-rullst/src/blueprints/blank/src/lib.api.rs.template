@@ -1,0 +1,32 @@
+use rullst::{routes, Router, response::IntoResponse};
+use serde::Serialize;
+
+__MIGRATIONS_MOD_DECLARATION____CLIENT_MODULES__
+
+__DB_MODEL_CODE__
+
+#[derive(Serialize)]
+struct HomeResponse {
+    message: String,
+    database_status: String,
+}
+
+pub async fn home() -> impl IntoResponse {
+    let name = "Rullst";
+__DB_STATUS_CODE__
+    rullst::server::Json(HomeResponse {
+        message: format!("Welcome to Rullst REST API: {}", name),
+        database_status: db_status,
+    })
+}
+
+pub fn router() -> Router {
+    routes![
+        get("/" => home),
+    ].layer(rullst::server::from_fn(rullst::security::headers_middleware))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rullst_router_init() -> *mut Router {
+    Box::into_raw(Box::new(router()))
+}
