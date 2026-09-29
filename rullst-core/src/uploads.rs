@@ -290,11 +290,7 @@ pub struct ReleasedUpload {
 }
 
 fn valid_tenant_id(value: &str) -> bool {
-    !value.is_empty()
-        && value.len() <= 128
-        && value
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':'))
+    crate::security::validate_tenant_id(value).is_ok()
 }
 
 fn validate_file_name(value: &str) -> Result<(), UploadError> {
@@ -401,6 +397,12 @@ mod tests {
             policy.admit("../school", "note.txt", "text/plain", b"safe"),
             Err(UploadError::InvalidTenant)
         ));
+        for dot_only in [".", "..", "..."] {
+            assert!(matches!(
+                policy.admit(dot_only, "note.txt", "text/plain", b"safe"),
+                Err(UploadError::InvalidTenant)
+            ));
+        }
     }
 
     #[test]

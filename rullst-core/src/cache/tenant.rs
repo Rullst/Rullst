@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use super::{Cache, CacheError};
-use crate::security::TenantContext;
+use crate::security::{TenantContext, tenant_namespaced_name};
 
 const MAX_LOGICAL_KEY_BYTES: usize = 256;
 
@@ -32,9 +32,13 @@ impl TenantCache {
     }
 
     /// Returns the canonical backend key within this instance's tenant namespace.
+    ///
+    /// The key is `tenants:<tenant>:<logical_key>`. In the tenant segment `%`
+    /// is written as `%25` and `:` as `%3A`, so a logical key containing `:`
+    /// can never alias another tenant's namespace.
     pub fn namespaced_key(&self, logical_key: &str) -> Result<String, CacheError> {
         validate_logical_key(logical_key)?;
-        Ok(format!("tenants:{}:{logical_key}", self.tenant_id))
+        Ok(tenant_namespaced_name(&self.tenant_id, logical_key))
     }
 
     /// Retrieves a value only from this instance's tenant namespace.
@@ -149,5 +153,41 @@ mod tests {
             alpha.get("school beta\nsecret").await,
             Err(CacheError::InvalidKey(_))
         ));
+    }
+
+    #[tokio::test]
+    // TM-TENANT-04
+    async fn colon_in_tenant_or_logical_key_cannot_alias_another_namespace() {
+        let membership =
+            TenantMembership::try_new(["a", "a:b", "acme"]).expect("valid tenant membership");
+        let cache = Cache::memory();
+        let a = TenantCache::from_context(cache.clone(), &membership.select("a").expect("a"));
+        let a_b = TenantCache::from_context(cache.clone(), &membership.select("a:b").expect("a:b"));
+        let acme = TenantCache::from_context(cache, &membership.select("acme").expect("acme"));
+
+        assert_eq!(a.namespaced_key("b:c").expect("a key"), "tenants:a:b:c");
+        assert_eq!(a_b.namespaced_key("c").expect("a:b key"), "tenants:a%3Ab:c");
+        assert_eq!(
+            acme.namespaced_key("leaderboard:x").expect("acme key"),
+            "tenants:acme:leaderboard:x"
+        );
+
+        a.put("b:c", "tenant-a", Some(60))
+            .await
+            .expect("tenant a write");
+        assert!(!a_b.has("c").await.expect("tenant a:b probe"));
+        assert_eq!(a_b.get("c").await.expect("tenant a:b read"), None);
+
+        a_b.put("c", "tenant-a:b", Some(60))
+            .await
+            .expect("tenant a:b write");
+        assert_eq!(
+            a.get("b:c")
+                .await
+                .expect("tenant a read")
+                .as_deref()
+                .map(String::as_str),
+            Some("tenant-a")
+        );
     }
 }
