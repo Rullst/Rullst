@@ -99,9 +99,10 @@ A prepared version section does not establish that its tag or crates exist.
 - `PasskeyAuth::new` rejects challenge TTLs above 86,400 seconds, and challenge
   expiry uses checked arithmetic, so a huge TTL can no longer panic and disable
   passkeys until restart.
-- Malformed `.env` and `Rullst.toml` errors report only a position, never file
-  contents such as `APP_KEY` or connection strings, and the cookie helpers skip
-  `.env` when `RULLST_ENV` or `APP_ENV` is set.
+- Malformed `.env` and `Rullst.toml` errors, in rullst-auth and at server
+  startup, report only a position, never file contents such as `APP_KEY` or
+  connection strings, and the cookie helpers skip `.env` when `RULLST_ENV` or
+  `APP_ENV` is set.
 - JWT revocation stores cap token rows per subject and keep a reserve for
   subject revocations, falling back to a subject issue-time cutoff, so one
   subject can no longer block logout for everyone. The SQLite store adds two
