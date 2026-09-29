@@ -1178,7 +1178,11 @@ The built-in Connect authorization-code providers explicitly request
 state, PKCE, and combined trait variants each contain exactly one response
 type and retain the configured client, redirect, scopes and encoded state/PKCE.
 Apple retains `response_mode=form_post`; offline mock redirects remain local
-fixtures rather than real authorization requests. Application configuration,
+fixtures rather than real authorization requests. The managed `AuthSession`
+extractor reads only the callback query string, so it does not complete Apple's
+cross-site POST callback; an Apple host keeps its state, PKCE verifier and
+nonce behind a `SameSite=None; Secure` challenge cookie and validates the
+posted form itself. Application configuration,
 nonce/callback validation and provider-account interoperability remain separate.
 The generic `build_oauth_params` helper and exported redirect macro remain
 response-type-neutral for downstream custom providers. Callers own optional

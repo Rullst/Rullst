@@ -264,8 +264,17 @@ let authorization = begin_oauth_session(&session, &github).await?;
 return Ok(Redirect::temporary(authorization.url()));
 ```
 
-Use `begin_oidc_session` instead for Google, Apple, or a custom OIDC provider.
-It adds and stores an OIDC nonce as well.
+Use `begin_oidc_session` instead for Google or a custom OIDC provider. It adds
+and stores an OIDC nonce as well.
+
+Sign in with Apple is different: `AppleProvider` always requests
+`response_mode=form_post`, so Apple returns `code`, `state` and `id_token` in a
+cross-site POST body. `AuthSession` reads only the query string, and a
+`SameSite=Lax` or `Strict` session cookie is not sent on that POST, so the
+managed `begin_oidc_session` + `AuthSession` flow cannot complete an Apple
+login. Use the manual state/PKCE/nonce flow with a dedicated
+`SameSite=None; Secure; HttpOnly` challenge cookie, as described in the
+[server-bound OAuth/OIDC tutorial](https://rullst.github.io/Rullst/book/tutorials/42-server-bound-oauth-sessions.html#sign-in-with-apple-form-post-callback).
 
 ### 3. Consume the Callback and Get the User
 

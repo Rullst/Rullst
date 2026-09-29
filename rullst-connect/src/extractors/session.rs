@@ -76,6 +76,9 @@ where
 ///
 /// The returned URL includes the nonce. The callback extractor later exposes that exact nonce
 /// through [`AuthSession::exchange_params`] for cryptographic ID-token validation.
+///
+/// [`AuthSession`] reads the callback from the query string. It cannot complete a provider that
+/// posts the callback with `response_mode=form_post`, such as Sign in with Apple.
 pub async fn begin_oidc_session<P>(
     session: &Session,
     provider: &P,
@@ -133,6 +136,10 @@ where
 }
 
 /// Validated callback plus the consumed OIDC nonce and PKCE verifier, when present.
+///
+/// The callback is read from the query string only. A `response_mode=form_post` callback, such
+/// as Sign in with Apple, carries its parameters in a cross-site POST body that this extractor
+/// does not read, and a `SameSite=Lax` or `Strict` session cookie is not sent with that POST.
 #[derive(Clone)]
 pub struct AuthSession {
     /// Real callback parameters parsed from the query string.
