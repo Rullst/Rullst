@@ -37,6 +37,9 @@ pub struct ParsedModel {
     /// Persisted fields tagged `#[orm(masked)]`. Their values are redacted from
     /// generated audit, event and search projections.
     pub masked_fields: Vec<syn::Ident>,
+    /// Persisted `SecretString` / `Option<SecretString>` fields, redacted like
+    /// masked fields and compared through `PartialEq` for audit changes.
+    pub secret_fields: Vec<syn::Ident>,
     /// Fields tagged with `#[orm(skip)]` or `#[sqlx(skip)]`. They are
     /// still part of the struct but excluded from generated INSERT /
     /// UPDATE statements, the `*Column` enum and JSON serialisation.
@@ -56,6 +59,7 @@ impl ParsedModel {
     /// this field's value (`#[orm(encrypted)]` or `#[orm(masked)]`).
     pub fn is_redacted(&self, field: &syn::Ident) -> bool {
         self.masked_fields.contains(field)
+            || self.secret_fields.contains(field)
             || self
                 .encrypted_fields
                 .iter()
@@ -127,6 +131,29 @@ fn encrypted_field_kind(field_type: &syn::Type) -> Option<EncryptedFieldKind> {
         .then_some(EncryptedFieldKind::OptionalString)
 }
 
+/// Recognizes `SecretString` and `Option<SecretString>` by the last path segment.
+fn is_secret_string_type(field_type: &syn::Type) -> bool {
+    let syn::Type::Path(type_path) = field_type else {
+        return false;
+    };
+    let Some(segment) = type_path.path.segments.last() else {
+        return false;
+    };
+    match (&segment.arguments, segment.ident == "Option") {
+        (syn::PathArguments::None, false) => segment.ident == "SecretString",
+        (syn::PathArguments::AngleBracketed(arguments), true) => {
+            matches!(arguments.args.first(), Some(syn::GenericArgument::Type(inner))
+                if arguments.args.len() == 1 && !is_option(inner) && is_secret_string_type(inner))
+        }
+        _ => false,
+    }
+}
+
+fn is_option(field_type: &syn::Type) -> bool {
+    matches!(field_type, syn::Type::Path(path)
+        if path.path.segments.last().is_some_and(|segment| segment.ident == "Option"))
+}
+
 pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     let name = input.ident.clone();
     let mut model_attributes = ModelAttributes::parse(input)?;
@@ -159,6 +186,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     let mut hidden_fields = vec![];
     let mut encrypted_fields = vec![];
     let mut masked_fields = vec![];
+    let mut secret_fields = vec![];
     let mut skipped_fields = vec![];
     let mut relations = vec![];
     let mut rag_context_fields = vec![];
@@ -266,6 +294,9 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
             normal_fields_types.push(field.ty.clone());
             if field_attributes.is_masked {
                 masked_fields.push(field_name.clone());
+            }
+            if is_secret_string_type(&field.ty) {
+                secret_fields.push(field_name.clone());
             }
             if field_attributes.is_hidden {
                 hidden_fields.push(field_name);
@@ -452,6 +483,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         hidden_fields,
         encrypted_fields,
         masked_fields,
+        secret_fields,
         skipped_fields,
         relations,
         has_soft_deletes,

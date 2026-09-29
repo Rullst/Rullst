@@ -57,6 +57,18 @@ stores the ciphertext read from the database. Audit rows, indexes and Redis
 hashes written before this behavior may contain plaintext: purge, reindex or
 rewrite them.
 
+### `SecretString` fields
+
+`rullst_orm::SecretString` is an alternative for a field that should be
+encrypted by its SQLx codec and redacted from `Debug`. Its serde form is never
+plaintext: `Serialize` writes a `RULLST:v2` envelope under the current key (and
+fails without one), and `Deserialize` decrypts such an envelope with the
+current key or keyring while still accepting an ordinary string as input.
+Generated audit, event and search projections write `"***"` instead, and the
+`.remember(...)` query cache stores the envelope. A `#[derive(Serialize)]` on
+the model therefore produces ciphertext for this field; call
+`reveal_audited()` where the plaintext is deliberately required.
+
 ## 3. Rotate a key without downtime
 
 Set the new current key and keep old readable keys in a JSON keyring:

@@ -325,4 +325,49 @@ fn environment_key_selection_rotation_and_context_fail_closed() {
         decrypt_configured_secret(&configured).unwrap(),
         "configured"
     );
+
+    // SecretString serde emits a keyring-aware envelope, never plaintext.
+    let secret = SecretString::new("123.456.789-00");
+    let serialized = serde_json::to_string(&secret).unwrap();
+    assert!(serialized.starts_with("\"RULLST:v2:rotated-2027:"));
+    assert!(!serialized.contains("123.456.789-00"));
+    let restored: SecretString = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(restored.reveal_audited(), "123.456.789-00");
+    let sql_column_envelope = serde_json::to_string(&configured).unwrap();
+    assert!(
+        serde_json::from_str::<SecretString>(&sql_column_envelope).is_err(),
+        "a SQL-column envelope must not decrypt through the serde context"
+    );
+    environment.set(KEY_ID_ENV, "primary-2026");
+    environment.set(KEY_ENV, primary);
+    environment.clear(KEYRING_ENV);
+    assert!(
+        serde_json::from_str::<SecretString>(&serialized).is_err(),
+        "an envelope for a key missing from the keyring must fail closed"
+    );
+    environment.clear(KEY_ENV);
+    assert!(
+        serde_json::to_string(&secret).is_err(),
+        "serializing without a key must fail instead of emitting plaintext"
+    );
+}
+
+#[test]
+fn secret_string_serde_redacts_projections_and_accepts_plaintext_input() {
+    let secret = SecretString::new("cpf-123");
+    let redacted = with_redacted_secrets(|| {
+        with_redacted_secrets(|| serde_json::to_string(&vec![secret.clone()]))
+    })
+    .unwrap();
+    assert_eq!(redacted, r#"["***"]"#);
+
+    let parsed: SecretString = serde_json::from_str("\"plain input\"").unwrap();
+    assert_eq!(parsed.reveal_audited(), "plain input");
+    for malformed in [
+        "\"RULLST:v2:k:!!:!!\"",
+        "\"RULLST:v9:k:a:b\"",
+        "\"RULLST:\"",
+    ] {
+        assert!(serde_json::from_str::<SecretString>(malformed).is_err());
+    }
 }
