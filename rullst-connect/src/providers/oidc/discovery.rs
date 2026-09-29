@@ -24,6 +24,8 @@ pub struct OidcProvider {
     pub token_endpoint: String,
     pub userinfo_endpoint: String,
     pub(crate) jwks_uri: String,
+    /// The discovered `issuer`, exactly as published by the provider. ID
+    /// tokens must carry this exact `iss` value.
     pub issuer: String,
 }
 
@@ -76,6 +78,10 @@ impl OidcProvider {
                 .await?
         };
 
+        // The configured and discovered issuers are compared leniently (a
+        // trailing slash may differ), but ID tokens are validated against the
+        // raw `issuer` exactly as published: OIDC requires `iss` to match it
+        // byte for byte, and Auth0 publishes `https://TENANT/`.
         let issuer = required_string(&metadata, "issuer")?;
         let discovered_issuer_url = crate::configuration::validate_issuer_url(&issuer)?;
         let discovered_issuer = crate::configuration::normalize_issuer(&discovered_issuer_url);
@@ -116,7 +122,7 @@ impl OidcProvider {
             token_endpoint,
             userinfo_endpoint,
             jwks_uri,
-            issuer: discovered_issuer,
+            issuer,
         })
     }
 
