@@ -1246,6 +1246,14 @@ deployment order, dependent-object removal and rollback remain explicit,
 reviewed migration work. The schema helper does not auto-migrate an existing
 type or infer application compatibility.
 
+`Blueprint::timestamps()` adds nullable `created_at`/`updated_at` `TEXT`
+columns that default to the current timestamp on every SQLx driver. SQLite and
+PostgreSQL receive `DEFAULT CURRENT_TIMESTAMP`. MySQL/MariaDB accept a default
+on `TEXT`, `BLOB`, `JSON` or `GEOMETRY` columns only as an expression, so the
+builder emits `DEFAULT (CURRENT_TIMESTAMP)` and parenthesizes every other
+non-`NULL` default on those column types (MySQL 8.0.13+, MariaDB 10.2.1+).
+The columns stay `TEXT` so SQLx's `Any` driver can decode them as strings.
+
 The Capital row also includes one implemented, feature-gated quota boundary:
 `BillingSubject` binds a shared team/workspace counter to trusted tenant state,
 `Billable::quota_request` derives the limit from the subscription owner, and
