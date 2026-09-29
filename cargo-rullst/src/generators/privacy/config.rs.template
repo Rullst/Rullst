@@ -1,7 +1,8 @@
 use rullst_privacy::consent::{ConsentError, ConsentGate, ConsentPurpose, ConsentSubject, SqliteConsentStore};
 use super::proof::ProofKey;
 
-pub(super) const FIXED_TENANT: Option<&str> = __TENANT_CONFIG__;
+/// Fixed at generation by `--tenant-ref`; no request input selects the tenant.
+pub(super) const TENANT_REF: &str = __TENANT_REF__;
 pub(super) const PURPOSE_ID: &str = "personalized-greeting";
 pub(super) const NOTICE_VERSION: &str = __NOTICE_VERSION__;
 pub(super) const VALIDITY_SECONDS: i64 = __VALIDITY_SECONDS__;
@@ -22,16 +23,8 @@ impl PrivacyState {
     }
 }
 
-pub(super) fn subject(user_id: i32, school: Option<&rullst::security::TenantContext>) -> Result<ConsentSubject, ConsentError> {
+/// The subject is the authenticated user in the fixed tenant, never request input.
+pub(super) fn subject(user_id: i32) -> Result<ConsentSubject, ConsentError> {
     if user_id <= 0 { return Err(ConsentError::BindingMismatch); }
-    let tenant = match (FIXED_TENANT, school) {
-        (Some(tenant), None) => tenant,
-        (None, Some(school)) => &school.tenant_id,
-        _ => return Err(ConsentError::BindingMismatch),
-    };
-    ConsentSubject::new(user_id.to_string(), tenant)
-}
-
-pub(super) fn url(path: &str, subject: &ConsentSubject) -> String {
-    if FIXED_TENANT.is_some() { path.to_owned() } else { format!("{path}?school={}", subject.tenant_ref()) }
+    ConsentSubject::new(user_id.to_string(), TENANT_REF)
 }

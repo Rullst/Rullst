@@ -15,6 +15,7 @@ pub struct PasskeyConfig {
     /// Require the authenticator to prove user verification (PIN, biometric, or equivalent).
     pub require_user_verification: bool,
     /// Maximum lifetime of a one-time registration/authentication challenge, in seconds.
+    /// `PasskeyAuth::new` accepts 1 to 86,400 (one day).
     pub challenge_ttl_seconds: u64,
     /// Upper bound for in-memory outstanding challenges per `PasskeyAuth` instance.
     pub max_pending_challenges: usize,
@@ -61,7 +62,10 @@ impl PasskeyConfig {
         self
     }
 
-    /// Configures the lifetime of one-time challenges.
+    /// Configures the lifetime of one-time challenges, in seconds.
+    ///
+    /// `PasskeyAuth::new` rejects zero and values above 86,400 (one day) with
+    /// `AuthError::PasskeyError`; the default is 300.
     pub fn with_challenge_ttl_seconds(mut self, seconds: u64) -> Self {
         self.challenge_ttl_seconds = seconds;
         self

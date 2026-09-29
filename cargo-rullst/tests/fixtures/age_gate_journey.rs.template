@@ -48,10 +48,16 @@ async fn authenticated_declaration_journey() {
         assert_eq!(request(&app, Some(&first), None, None).await.status(), StatusCode::SERVICE_UNAVAILABLE);
         return;
     }
-    let shown = request(&app, Some(&first), None, None).await;
+    // The tenant is fixed by --tenant-ref and no request input is read to select
+    // it: a challenge issued alongside client tenant hints still binds the
+    // configured tenant and is accepted below without them.
+    let hinted = Request::builder().uri("/dashboard?school=tenant-beta").header("x-school-id", "tenant-beta")
+        .header("cookie", format!("rullst_session={first}")).body(Body::empty()).unwrap();
+    let shown = app.as_axum().clone().oneshot(hinted).await.unwrap();
     assert_eq!(shown.status(), StatusCode::OK);
     assert_eq!(shown.headers()["cache-control"], "no-store");
     let html = text(shown).await;
+    assert!(html.contains("action=\"/dashboard\"")); assert!(!html.contains("school"));
     assert!(html.contains("does not verify your age"));
     assert!(!html.contains("checked"));
     assert!(!html.contains(&first));

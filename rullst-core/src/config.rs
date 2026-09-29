@@ -339,8 +339,26 @@ impl RullstConfig {
     }
 
     /// Parses a complete `Rullst.toml` document.
+    ///
+    /// A failure reports only the line and column. The `toml` error text quotes
+    /// the offending source line and can echo values, such as `app_key` or a
+    /// database URL, so it never reaches `ConfigError::Parse`.
     pub fn from_toml(content: &str) -> Result<Self, ConfigError> {
-        toml::from_str(content).map_err(|error| ConfigError::Parse(error.to_string()))
+        toml::from_str(content).map_err(|error: toml::de::Error| {
+            ConfigError::Parse(match error.span() {
+                Some(span) => {
+                    let before = content.get(..span.start).unwrap_or(content);
+                    let line = before.matches('\n').count() + 1;
+                    let column = before
+                        .rsplit('\n')
+                        .next()
+                        .map_or(0, |text| text.chars().count())
+                        + 1;
+                    format!("invalid configuration at line {line}, column {column}")
+                }
+                None => "invalid configuration".to_string(),
+            })
+        })
     }
 
     /// Resolves the validated runtime environment for this configuration.
@@ -376,6 +394,30 @@ mod tests {
             "global() should return the same instance"
         );
         assert_eq!(config1.security.csrf_same_site, "Lax");
+    }
+
+    #[test]
+    fn parse_errors_report_position_without_configuration_content() {
+        let canary = "sk_live_toml_redaction_canary";
+        for (content, line) in [
+            (
+                format!(
+                    "[app]\nenv = \"production\"\n[database]\nurl = \"postgres://owner:{canary}@db\n"
+                ),
+                4,
+            ),
+            (format!("[app]\nport = \"{canary}\"\n"), 2),
+            (format!("app_key = \"{canary}\"\n[app\n"), 2),
+        ] {
+            let error = RullstConfig::from_toml(&content).unwrap_err();
+            let rendered = format!("{error} {error:?}");
+            assert!(!rendered.contains(canary), "{rendered}");
+            assert!(!rendered.contains("postgres://"), "{rendered}");
+            assert!(
+                matches!(&error, ConfigError::Parse(message) if message.contains(&format!("line {line},"))),
+                "{rendered}"
+            );
+        }
     }
 
     #[tokio::test]

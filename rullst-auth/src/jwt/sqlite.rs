@@ -1,24 +1,19 @@
 //! Durable shared SQLite revocation state for application-issued JWTs.
 
+use super::quota::must_widen;
 use super::{
     ApplicationJwtClaims, AsyncJwtRevocationStore, JwtError, JwtRevocationMode, unix_time,
     valid_identifier, valid_identity,
 };
+use schema::{
+    MAX_REVOCATION_ENTRIES, prepare_schema, reject_existing_unsafe_target, volatile_database_url,
+};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
-use sqlx::{Executor, Sqlite, SqliteConnection, SqlitePool, Transaction};
-use std::path::Path;
+use sqlx::{Sqlite, SqliteConnection, SqlitePool, Transaction};
 use std::str::FromStr;
 use std::time::Duration;
 
-const SCHEMA_VERSION: i64 = 1;
-const MAX_REVOCATION_ENTRIES: usize = 1_000_000;
-
-const SCHEMA: &[&str] = &[
-    "CREATE TABLE IF NOT EXISTS rullst_auth_jwt_meta (id INTEGER PRIMARY KEY CHECK (id = 1), schema_version INTEGER NOT NULL CHECK (schema_version > 0), max_entries INTEGER NOT NULL CHECK (max_entries > 0))",
-    "CREATE TABLE IF NOT EXISTS rullst_auth_jwt_tokens (jti TEXT PRIMARY KEY, expires_at INTEGER NOT NULL CHECK (expires_at > 0))",
-    "CREATE TABLE IF NOT EXISTS rullst_auth_jwt_subjects (subject TEXT PRIMARY KEY, minimum_session_version INTEGER NOT NULL CHECK (minimum_session_version > 0))",
-    "CREATE INDEX IF NOT EXISTS rullst_auth_jwt_token_expiry_idx ON rullst_auth_jwt_tokens(expires_at)",
-];
+mod schema;
 
 /// Current bounded counts for one durable JWT revocation database.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -56,6 +51,14 @@ impl SqliteJwtRevocationSnapshot {
 /// assessed, and the configured quota is persisted so another process cannot
 /// silently open the same database with a different limit. The host owns file
 /// permissions, backup, availability and multi-host replication.
+///
+/// Token rows may use at most three quarters of `max_entries` and 64 active
+/// rows per subject. Beyond either bound, `revoke_token` records a subject
+/// cutoff that rejects every token of that subject issued no later than the
+/// revoked one, so one principal cannot exhaust the quota for others. Subject
+/// rows are never pruned; size `max_entries` for the subjects that may revoke.
+/// `connect` adds the nullable `subject` and `revoked_through_iat` columns to
+/// an older file; releases without this change ignore subject cutoffs.
 #[derive(Clone)]
 pub struct SqliteJwtRevocationStore {
     pool: SqlitePool,
@@ -103,10 +106,14 @@ impl SqliteJwtRevocationStore {
         Ok(Self { pool, max_entries })
     }
 
-    /// Persists one token identifier until the token expires.
+    /// Persists one token identifier until the token expires, or widens to a
+    /// subject cutoff when the subject or the token share is at its quota.
     pub async fn revoke_token(&self, claims: &ApplicationJwtClaims) -> Result<(), JwtError> {
         if !valid_identifier(&claims.jti, 64) {
             return Err(JwtError::InvalidConfiguration("jti"));
+        }
+        if !valid_identity(&claims.sub) {
+            return Err(JwtError::InvalidConfiguration("subject"));
         }
         let now = unix_time()?;
         if claims.exp <= now {
@@ -114,7 +121,7 @@ impl SqliteJwtRevocationStore {
         }
         let mut connection = self.begin_write("begin token revocation").await?;
         let result = self
-            .revoke_token_in_transaction(&mut connection, &claims.jti, claims.exp, now)
+            .revoke_token_in_transaction(&mut connection, claims, now)
             .await;
         finish(connection, result, "finish token revocation").await
     }
@@ -174,25 +181,40 @@ impl SqliteJwtRevocationStore {
     async fn revoke_token_in_transaction(
         &self,
         connection: &mut SqliteConnection,
-        jti: &str,
-        expires_at: u64,
+        claims: &ApplicationJwtClaims,
         now: u64,
     ) -> Result<(), JwtError> {
         prune_expired(connection, now).await?;
+        let expires_at = i64::try_from(claims.exp)
+            .map_err(|_| JwtError::InvalidConfiguration("token expiry"))?;
         let existing: Option<(i64,)> =
             sqlx::query_as("SELECT expires_at FROM rullst_auth_jwt_tokens WHERE jti = ?")
-                .bind(jti)
+                .bind(&claims.jti)
                 .fetch_optional(&mut *connection)
                 .await
                 .map_err(|_| backend_error("lookup token revocation"))?;
         if existing.is_none() {
-            ensure_capacity(connection, self.max_entries).await?;
+            let (tokens, subjects) = counts(connection).await?;
+            let (subject_tokens,): (i64,) =
+                sqlx::query_as("SELECT COUNT(*) FROM rullst_auth_jwt_tokens WHERE subject = ?")
+                    .bind(&claims.sub)
+                    .fetch_one(&mut *connection)
+                    .await
+                    .map_err(|_| backend_error("count subject token revocations"))?;
+            let subject_tokens = usize::try_from(subject_tokens)
+                .map_err(|_| backend_error("validate subject token count"))?;
+            if must_widen(subject_tokens, tokens, subjects, self.max_entries) {
+                let issued_at = i64::try_from(claims.iat)
+                    .map_err(|_| JwtError::InvalidConfiguration("token issue time"))?;
+                return self
+                    .record_subject_revocation(connection, &claims.sub, 1, issued_at)
+                    .await;
+            }
         }
-        let expires_at = i64::try_from(expires_at)
-            .map_err(|_| JwtError::InvalidConfiguration("token expiry"))?;
-        sqlx::query("INSERT INTO rullst_auth_jwt_tokens (jti, expires_at) VALUES (?, ?) ON CONFLICT(jti) DO UPDATE SET expires_at = MAX(expires_at, excluded.expires_at)")
-            .bind(jti)
+        sqlx::query("INSERT INTO rullst_auth_jwt_tokens (jti, expires_at, subject) VALUES (?, ?, ?) ON CONFLICT(jti) DO UPDATE SET expires_at = MAX(expires_at, excluded.expires_at), subject = COALESCE(subject, excluded.subject)")
+            .bind(&claims.jti)
             .bind(expires_at)
+            .bind(&claims.sub)
             .execute(&mut *connection)
             .await
             .map_err(|_| backend_error("persist token revocation"))?;
@@ -207,6 +229,18 @@ impl SqliteJwtRevocationStore {
         now: u64,
     ) -> Result<(), JwtError> {
         prune_expired(connection, now).await?;
+        self.record_subject_revocation(connection, subject, minimum_session_version, 0)
+            .await
+    }
+
+    /// Raises a subject's minimum session version and issue-time cutoff.
+    async fn record_subject_revocation(
+        &self,
+        connection: &mut SqliteConnection,
+        subject: &str,
+        minimum_session_version: i64,
+        revoked_through_iat: i64,
+    ) -> Result<(), JwtError> {
         let existing: Option<(i64,)> = sqlx::query_as(
             "SELECT minimum_session_version FROM rullst_auth_jwt_subjects WHERE subject = ?",
         )
@@ -217,9 +251,10 @@ impl SqliteJwtRevocationStore {
         if existing.is_none() {
             ensure_capacity(connection, self.max_entries).await?;
         }
-        sqlx::query("INSERT INTO rullst_auth_jwt_subjects (subject, minimum_session_version) VALUES (?, ?) ON CONFLICT(subject) DO UPDATE SET minimum_session_version = MAX(minimum_session_version, excluded.minimum_session_version)")
+        sqlx::query("INSERT INTO rullst_auth_jwt_subjects (subject, minimum_session_version, revoked_through_iat) VALUES (?, ?, ?) ON CONFLICT(subject) DO UPDATE SET minimum_session_version = MAX(minimum_session_version, excluded.minimum_session_version), revoked_through_iat = MAX(revoked_through_iat, excluded.revoked_through_iat)")
             .bind(subject)
             .bind(minimum_session_version)
+            .bind(revoked_through_iat)
             .execute(&mut *connection)
             .await
             .map_err(|_| backend_error("persist subject revocation"))?;
@@ -244,52 +279,24 @@ impl AsyncJwtRevocationStore for SqliteJwtRevocationStore {
         if token.is_some() {
             return Ok(true);
         }
-        let subject: Option<(i64,)> = sqlx::query_as(
-            "SELECT minimum_session_version FROM rullst_auth_jwt_subjects WHERE subject = ?",
+        let subject: Option<(i64, i64)> = sqlx::query_as(
+            "SELECT minimum_session_version, revoked_through_iat FROM rullst_auth_jwt_subjects WHERE subject = ?",
         )
         .bind(&claims.sub)
         .fetch_optional(&self.pool)
         .await
         .map_err(|_| backend_error("read subject revocation"))?;
         match subject {
-            Some((minimum,)) => {
+            Some((minimum, cutoff)) => {
                 let minimum = u64::try_from(minimum)
                     .map_err(|_| backend_error("validate subject revocation"))?;
-                Ok(claims.session_version < minimum)
+                let cutoff = u64::try_from(cutoff)
+                    .map_err(|_| backend_error("validate subject revocation"))?;
+                Ok(claims.session_version < minimum || (cutoff > 0 && claims.iat <= cutoff))
             }
             None => Ok(false),
         }
     }
-}
-
-async fn prepare_schema(pool: &SqlitePool, max_entries: usize) -> Result<(), JwtError> {
-    for statement in SCHEMA {
-        pool.execute(*statement)
-            .await
-            .map_err(|_| backend_error("prepare SQLite revocation schema"))?;
-    }
-    let max_entries = i64::try_from(max_entries)
-        .map_err(|_| JwtError::InvalidConfiguration("SQLite revocation max_entries"))?;
-    sqlx::query("INSERT OR IGNORE INTO rullst_auth_jwt_meta (id, schema_version, max_entries) VALUES (1, ?, ?)")
-        .bind(SCHEMA_VERSION)
-        .bind(max_entries)
-        .execute(pool)
-        .await
-        .map_err(|_| backend_error("register SQLite revocation configuration"))?;
-    let stored: (i64, i64) =
-        sqlx::query_as("SELECT schema_version, max_entries FROM rullst_auth_jwt_meta WHERE id = 1")
-            .fetch_one(pool)
-            .await
-            .map_err(|_| backend_error("read SQLite revocation configuration"))?;
-    if stored.0 != SCHEMA_VERSION || stored.1 <= 0 {
-        return Err(backend_error("validate SQLite revocation schema"));
-    }
-    if stored.1 != max_entries {
-        return Err(JwtError::InvalidConfiguration(
-            "SQLite revocation max_entries conflicts with stored configuration",
-        ));
-    }
-    Ok(())
 }
 
 async fn prune_expired(connection: &mut SqliteConnection, now: u64) -> Result<(), JwtError> {
@@ -344,52 +351,6 @@ async fn finish<T>(
     result
 }
 
-fn volatile_database_url(database_url: &str, filename: &Path) -> bool {
-    let filename = filename.as_os_str().to_string_lossy();
-    let memory_mode = database_url
-        .split_once('?')
-        .map(|(_, query)| {
-            url::form_urlencoded::parse(query.as_bytes()).any(|(key, value)| {
-                key.eq_ignore_ascii_case("mode") && value.eq_ignore_ascii_case("memory")
-            })
-        })
-        .unwrap_or(false);
-    database_url.eq_ignore_ascii_case("sqlite::memory:")
-        || database_url.eq_ignore_ascii_case("sqlite://:memory:")
-        || filename.is_empty()
-        || filename.eq_ignore_ascii_case(":memory:")
-        || filename.eq_ignore_ascii_case("file::memory:")
-        || memory_mode
-}
-
-fn reject_existing_unsafe_target(path: &Path) -> Result<(), JwtError> {
-    #[cfg(windows)]
-    let portable_path = path.as_os_str().to_string_lossy();
-    #[cfg(windows)]
-    let path = windows_file_url_target(&portable_path)
-        .map(Path::new)
-        .unwrap_or(path);
-
-    match std::fs::symlink_metadata(path) {
-        Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_file() => Err(
-            JwtError::InvalidConfiguration("SQLite revocation target must be a regular file"),
-        ),
-        Ok(_) => Ok(()),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(_) => Err(backend_error("inspect SQLite revocation target")),
-    }
-}
-
-#[cfg(any(windows, test))]
-fn windows_file_url_target(path: &str) -> Option<&str> {
-    let bytes = path.as_bytes();
-    (bytes.len() >= 3
-        && matches!(bytes[0], b'/' | b'\\')
-        && bytes[1].is_ascii_alphabetic()
-        && bytes[2] == b':')
-        .then(|| &path[1..])
-}
-
 fn backend_error(operation: &'static str) -> JwtError {
     JwtError::RevocationBackend(operation.to_string())
 }
@@ -414,7 +375,7 @@ mod tests {
         let (ready, started) = tokio::sync::oneshot::channel();
         let task = tokio::spawn(async move {
             let mut transaction = writer.begin_write("cancelled write").await.unwrap();
-            sqlx::query("INSERT INTO rullst_auth_jwt_subjects VALUES ('cancelled-subject', 3)")
+            sqlx::query("INSERT INTO rullst_auth_jwt_subjects (subject, minimum_session_version) VALUES ('cancelled-subject', 3)")
                 .execute(&mut *transaction)
                 .await
                 .unwrap();
@@ -438,20 +399,5 @@ mod tests {
             .await
             .expect("next transaction must not inherit an open transaction");
         store.close().await;
-    }
-
-    #[test]
-    fn windows_file_url_target_removes_only_a_leading_drive_separator() {
-        assert_eq!(
-            windows_file_url_target("/C:/temp/auth.sqlite"),
-            Some("C:/temp/auth.sqlite")
-        );
-        assert_eq!(
-            windows_file_url_target("\\D:/temp/auth.sqlite"),
-            Some("D:/temp/auth.sqlite")
-        );
-        assert_eq!(windows_file_url_target("C:/temp/auth.sqlite"), None);
-        assert_eq!(windows_file_url_target("/tmp/auth.sqlite"), None);
-        assert_eq!(windows_file_url_target("//server/share/auth.sqlite"), None);
     }
 }

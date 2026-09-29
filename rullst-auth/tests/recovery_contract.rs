@@ -328,3 +328,196 @@ async fn outbox_insert_failure_rolls_back_password_token_and_session_changes() {
     store.close().await;
     std::fs::remove_file(path).unwrap();
 }
+
+#[cfg(feature = "recovery-sqlite")]
+#[tokio::test]
+async fn overlong_passwords_share_one_error_for_known_and_unknown_accounts() {
+    // Argon2 helpers accept at most 72 bytes. An 80-byte password must not
+    // distinguish a registered email (Argon2 then `Ok(None)`) from an unknown
+    // one (fast `Err(Crypto)`), and registration/reset must reject it as input.
+    let now = 1_800_000_000;
+    let password = fixture_password();
+    let overlong = "p".repeat(80);
+    let store = SqlRecoveryStore::connect("sqlite::memory:", keys())
+        .await
+        .unwrap();
+    store.migrate().await.unwrap();
+    store
+        .register_account("member-long", EMAIL, password.as_str(), now)
+        .await
+        .unwrap();
+    consume_welcome(&store, now).await;
+
+    let known = store.authenticate(EMAIL, overlong.as_str()).await;
+    let unknown = store
+        .authenticate("absent@example.com", overlong.as_str())
+        .await;
+    assert_eq!(known.err(), Some(RecoveryError::InvalidInput));
+    assert_eq!(unknown.err(), Some(RecoveryError::InvalidInput));
+    // A wrong in-bound password for an unknown account keeps the uniform result.
+    assert!(
+        store
+            .authenticate("absent@example.com", password.as_str())
+            .await
+            .unwrap()
+            .is_none()
+    );
+
+    assert_eq!(
+        store
+            .register_account("member-over", "over@example.com", overlong.as_str(), now)
+            .await,
+        Err(RecoveryError::InvalidInput)
+    );
+    let boundary = "b".repeat(72);
+    store
+        .register_account("member-edge", "edge@example.com", boundary.as_str(), now)
+        .await
+        .unwrap();
+    assert!(
+        store
+            .authenticate("edge@example.com", boundary.as_str())
+            .await
+            .unwrap()
+            .is_some()
+    );
+
+    store.request_password_reset(EMAIL, now + 1).await.unwrap();
+    let mut token = None;
+    while let Some(claim) = store.claim_notice(now + 2).await.unwrap() {
+        if let Some(value) = claim.notice().token() {
+            token = Some(value.expose().to_owned());
+        }
+        store.complete_notice(&claim, now + 3).await.unwrap();
+    }
+    let token = token.expect("reset notice");
+    assert_eq!(
+        store
+            .complete_password_reset(&token, overlong.as_str(), now + 4)
+            .await,
+        Err(RecoveryError::InvalidInput)
+    );
+    // The rejected reset leaves the credential usable with a bounded password.
+    store
+        .complete_password_reset(&token, password.as_str(), now + 5)
+        .await
+        .unwrap();
+    store.close().await;
+}
+
+#[cfg(feature = "recovery-postgres")]
+#[tokio::test]
+async fn postgres_urls_use_the_hardened_connection_policy_before_connecting() {
+    // The store shares the email-login/API-token PostgreSQL policy: unknown
+    // query options and fragments fail as configuration without any network I/O.
+    for url in [
+        "postgres://db.invalid/accounts?application_name=recovery",
+        "postgres://db.invalid/accounts?sslmode=verify-full&sslmode=disable",
+        "postgresql://db.invalid/accounts#fragment",
+    ] {
+        let started = std::time::Instant::now();
+        assert_eq!(
+            SqlRecoveryStore::connect(url, keys()).await.err(),
+            Some(RecoveryError::Configuration),
+            "{url}"
+        );
+        assert!(started.elapsed() < std::time::Duration::from_secs(1));
+    }
+}
+
+#[cfg(feature = "recovery-sqlite")]
+async fn store_with_reset_token(
+    subject: &str,
+    password: &str,
+    now: u64,
+) -> (SqlRecoveryStore, String) {
+    let store = SqlRecoveryStore::connect("sqlite::memory:", keys())
+        .await
+        .unwrap();
+    store.migrate().await.unwrap();
+    store
+        .register_account(subject, EMAIL, password, now)
+        .await
+        .unwrap();
+    consume_welcome(&store, now).await;
+    store.request_password_reset(EMAIL, now + 1).await.unwrap();
+    let claim = store.claim_notice(now + 2).await.unwrap().unwrap();
+    let token = claim.notice().token().unwrap().expose().to_owned();
+    store.complete_notice(&claim, now + 3).await.unwrap();
+    (store, token)
+}
+
+#[cfg(feature = "recovery-sqlite")]
+#[tokio::test]
+async fn failed_reset_attempts_never_block_another_members_valid_reset() {
+    // Resets used to share one 60-per-minute budget charged before the token
+    // check, so any unauthenticated client could block every member's reset.
+    let now = 1_800_000_000;
+    let (password, new) = (fixture_password(), fixture_password());
+    let (store, token) = store_with_reset_token("reset-member", password.as_str(), now).await;
+    let replayed = "A".repeat(43);
+    let mut throttled = 0;
+    for attempt in 0..100 {
+        let guess = if attempt % 2 == 0 {
+            replayed.clone()
+        } else {
+            format!(
+                "{:032x}{:011x}",
+                rand::random::<u128>(),
+                rand::random::<u64>() >> 20
+            )
+        };
+        match store
+            .complete_password_reset(&guess, new.as_str(), now + 5)
+            .await
+        {
+            Err(RecoveryError::InvalidAction) => {}
+            Err(RecoveryError::Throttled) => throttled += 1,
+            // Never format the outcome: it derives from a call that takes a password.
+            Ok(()) => panic!("a guessed reset token was accepted"),
+            Err(_) => panic!("unexpected reset error"),
+        }
+    }
+    // Only the replayed token exhausts its own budget (10 failures per minute).
+    assert_eq!(throttled, 40);
+    store
+        .complete_password_reset(&token, new.as_str(), now + 5)
+        .await
+        .unwrap();
+    assert!(
+        store
+            .authenticate(EMAIL, new.as_str())
+            .await
+            .unwrap()
+            .is_some()
+    );
+    // The replayed token's budget recovers after its window.
+    assert_eq!(
+        store
+            .complete_password_reset(&replayed, new.as_str(), now + 65)
+            .await,
+        Err(RecoveryError::InvalidAction)
+    );
+    store.close().await;
+}
+
+#[cfg(feature = "recovery-sqlite")]
+#[tokio::test]
+async fn concurrent_attempts_with_one_valid_reset_token_are_bounded() {
+    // Argon2 runs only after the token lookup. In-flight attempts hold a unit of
+    // the token's budget, so a flood with one valid token cannot multiply work.
+    let now = 1_800_000_000;
+    let (password, new) = (fixture_password(), fixture_password());
+    let (store, token) = store_with_reset_token("reset-flood", password.as_str(), now).await;
+    let results = futures_util::future::join_all(
+        (0..20).map(|_| store.complete_password_reset(&token, new.as_str(), now + 5)),
+    )
+    .await;
+    let count = |expected: Result<(), RecoveryError>| {
+        results.iter().filter(|result| **result == expected).count()
+    };
+    assert_eq!(count(Ok(())), 1);
+    assert_eq!(count(Err(RecoveryError::Throttled)), 10);
+    assert_eq!(count(Err(RecoveryError::InvalidAction)), 9);
+    store.close().await;
+}

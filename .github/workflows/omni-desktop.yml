@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "cargo-rullst/src/cli.rs"
+      - "cargo-rullst/src/cli/**"
       - "cargo-rullst/src/generators/desktop/**"
       - "cargo-rullst/Cargo.toml"
       - "Cargo.toml"
@@ -13,7 +13,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - "cargo-rullst/src/cli.rs"
+      - "cargo-rullst/src/cli/**"
       - "cargo-rullst/src/generators/desktop/**"
       - "cargo-rullst/Cargo.toml"
       - "Cargo.toml"

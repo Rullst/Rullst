@@ -10,19 +10,6 @@ use toml_edit::DocumentMut;
 
 mod routing;
 
-/// The privacy consumer reuses the age-gate school selector with these rewrites.
-const SELECTOR_TEMPLATE: &str = include_str!("../age_gate/selection.rs.template");
-const SELECTOR_REWRITES: [(&str, &str); 2] = [
-    (
-        "Not mounted by the SaaS dashboard, whose tenant is fixed by `--tenant-ref`.",
-        "Used only on the privacy consumer routes, outside the existing authentication layer.",
-    ),
-    (
-        "if let Some(school) = selection.school {",
-        "if super::config::FIXED_TENANT.is_some() && (selection.school.is_some() || request.headers().contains_key(\"x-school-id\")) { return super::denied(); }\n    if let Some(school) = selection.school {",
-    ),
-];
-
 pub(crate) fn command() -> Command {
     Command::new("make:privacy")
         .about("Add authenticated privacy choices and an own-account profile export (v13 preview)")
@@ -52,7 +39,8 @@ pub(crate) fn command() -> Command {
         .arg(
             Arg::new("tenant-ref")
                 .long("tenant-ref")
-                .required_if_eq("blueprint", "saas"),
+                .required(true)
+                .help("Server-owned SaaS tenant, fixed at generation"),
         )
 }
 
@@ -74,7 +62,9 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>
     let lifetime = *matches
         .get_one::<u32>("validity-seconds")
         .ok_or_else(|| invalid("grant validity is required"))?;
-    let tenant = matches.get_one::<String>("tenant-ref").map(String::as_str);
+    let tenant = matches
+        .get_one::<String>("tenant-ref")
+        .ok_or_else(|| invalid("tenant reference is required"))?;
     let edits = plan(&root, source, consumer, version, lifetime, tenant)?;
     files::apply(&edits)?;
     println!(
@@ -89,12 +79,12 @@ fn plan(
     consumer: &str,
     version: &str,
     lifetime: u32,
-    tenant: Option<&str>,
+    tenant: &str,
 ) -> Result<Vec<Edit>, Box<dyn std::error::Error>> {
-    if !matches!((consumer, tenant), ("saas", Some(_))) {
-        return Err(invalid("the SaaS consumer requires --tenant-ref").into());
+    if consumer != "saas" {
+        return Err(invalid("make:privacy supports only the SaaS consumer").into());
     }
-    for value in std::iter::once(version).chain(tenant) {
+    for value in [version, tenant] {
         if value.is_empty()
             || value.len() > 128
             || !value.bytes().all(|byte| {
@@ -159,16 +149,7 @@ fn plan(
     let config = include_str!("config.rs.template")
         .replace("__NOTICE_VERSION__", &format!("{version:?}"))
         .replace("__VALIDITY_SECONDS__", &lifetime.to_string())
-        .replace(
-            "__TENANT_CONFIG__",
-            &tenant
-                .map(|tenant| format!("Some({tenant:?})"))
-                .unwrap_or_else(|| "None".to_owned()),
-        );
-    let mut selector = SELECTOR_TEMPLATE.to_owned();
-    for (from, to) in SELECTOR_REWRITES {
-        selector = selector.replace(from, to);
-    }
+        .replace("__TENANT_REF__", &format!("{tenant:?}"));
     for (path, source) in [
         (
             "src/controllers/privacy_controller.rs",
@@ -187,7 +168,6 @@ fn plan(
             "src/controllers/privacy/profile.rs",
             include_str!("profile.rs.template").to_owned(),
         ),
-        ("src/controllers/privacy/selection.rs", selector),
         (
             "src/bin/privacy-init.rs",
             include_str!("init.rs.template").to_owned(),
@@ -208,12 +188,57 @@ fn plan(
 
 #[cfg(test)]
 mod tests {
-    use super::{SELECTOR_REWRITES, SELECTOR_TEMPLATE};
+    use super::*;
 
     #[test]
-    fn selector_rewrites_match_the_age_gate_template_exactly_once() {
-        for (from, _) in SELECTOR_REWRITES {
-            assert_eq!(SELECTOR_TEMPLATE.matches(from).count(), 1, "{from}");
+    fn generated_routes_bind_only_the_fixed_tenant_and_refuse_scope_hints() {
+        let temporary = tempfile::tempdir().unwrap();
+        let root = temporary.path();
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname = \"consumer\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = \"13\"\n",
+        )
+        .unwrap();
+        crate::blueprints::apply(
+            crate::blueprints::SAAS_BLUEPRINT_ID,
+            root,
+            "consumer",
+            "consumer",
+            false,
+            false,
+            true,
+            "Active Record",
+            "Zero-Bundle HTMX",
+        )
+        .unwrap();
+        for tenant in ["", "tenant/other", "tenant?school=x"] {
+            assert!(plan(root, None, "saas", "greeting-v1", 3600, tenant).is_err());
+        }
+        files::apply(&plan(root, None, "saas", "greeting-v1", 3600, "tenant-alpha").unwrap())
+            .unwrap();
+        let privacy = root.join("src/controllers/privacy");
+        let config = std::fs::read_to_string(privacy.join("config.rs")).unwrap();
+        assert!(config.contains("const TENANT_REF: &str = \"tenant-alpha\";"));
+        assert!(!privacy.join("selection.rs").exists());
+        let controller =
+            std::fs::read_to_string(root.join("src/controllers/privacy_controller.rs")).unwrap();
+        assert!(controller.contains(".layer(rullst::server::from_fn(deny_scope_hints))"));
+        let page = std::fs::read_to_string(privacy.join("page.rs")).unwrap();
+        assert!(page.contains("action=\"/privacy\""));
+        for (name, source) in [
+            ("config", &config),
+            ("controller", &controller),
+            ("page", &page),
+        ] {
+            for removed in [
+                "TenantContext",
+                "select_school",
+                "selection::",
+                "config::url",
+                "FIXED_TENANT",
+            ] {
+                assert!(!source.contains(removed), "{name} still contains {removed}");
+            }
         }
     }
 }

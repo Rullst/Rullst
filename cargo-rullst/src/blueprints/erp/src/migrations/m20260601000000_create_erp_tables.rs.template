@@ -1,0 +1,58 @@
+use rullst::db::schema::{Schema, Migration};
+use rullst::db::async_trait;
+
+pub struct MigrationImpl;
+
+#[async_trait]
+impl Migration for MigrationImpl {
+    fn name(&self) -> &'static str {
+        "m20260601000000_create_erp_tables"
+    }
+
+    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
+        // Create products table
+        Schema::create("products", |table| {
+            table.id();
+            table.string("name").not_null();
+            table.string("sku").not_null();
+            table.float("price").not_null();
+            table.integer("stock").not_null();
+            table.timestamps();
+        }).await?;
+
+        // Create orders table
+        Schema::create("orders", |table| {
+            table.id();
+            table.string("customer_name").not_null();
+            table.integer("product_id").not_null();
+            table.integer("quantity").not_null();
+            table.float("total_price").not_null();
+            table.string("status").not_null();
+            table.timestamps();
+        }).await?;
+
+        // Seed initial products and orders
+        let pool = rullst::db::Orm::pool()?;
+        
+        rullst::db::sqlx::query(
+            "INSERT INTO products (id, name, sku, price, stock, created_at, updated_at) VALUES 
+             (1, 'Specialty Arabica Coffee', 'CAF-001', 34.90, 18, datetime('now'), datetime('now')),
+             (2, 'Rullst Ceramic Mug', 'CAN-002', 19.90, 4, datetime('now'), datetime('now')),
+             (3, 'French Press', 'PRE-003', 89.00, 12, datetime('now'), datetime('now'))"
+        ).execute(pool).await?;
+
+        rullst::db::sqlx::query(
+            "INSERT INTO orders (id, customer_name, product_id, quantity, total_price, status, created_at, updated_at) VALUES 
+             (1, 'Carlos Silva', 1, 2, 69.80, 'Paid', datetime('now'), datetime('now')),
+             (2, 'Mariana Souza', 2, 1, 19.90, 'Pending', datetime('now'), datetime('now'))"
+        ).execute(pool).await?;
+
+        Ok(())
+    }
+
+    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
+        Schema::drop_if_exists("orders").await?;
+        Schema::drop_if_exists("products").await?;
+        Ok(())
+    }
+}

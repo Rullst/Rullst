@@ -1,0 +1,52 @@
+use rullst::{routes, Server};
+
+pub mod migrations;
+pub mod models;
+__REPO_MOD_DECL__pub mod controllers;
+pub mod pages;
+
+#[rullst::runtime::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Run migrations on startup
+    rullst::artisan!(crate::migrations::get_migrations());
+
+    let admin_access = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
+    let nexus = rullst::nexus::Nexus::new()
+        .with_auth_policy(admin_access.clone())
+        .with_brand("ERP Admin")
+        .register::<models::product::Product>()
+        .register::<models::order::Order>()
+        .try_build()?;
+
+    let admin_routes = routes![
+        post("/products" => controllers::erp_controller::store_product),
+        // rullst-access: admin — protected by admin_access.protect_router below.
+        post("/products/{id}/add-stock" => controllers::erp_controller::add_stock),
+        post("/orders" => controllers::erp_controller::store_order),
+    ];
+    let admin_routes = admin_access.protect_router(admin_routes.into_axum())?;
+
+    let router = routes![
+        get("/" => controllers::erp_controller::index),
+    ]
+    .merge_axum(admin_routes)
+    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
+    .nest_axum("/nexus", nexus);
+
+    #[cfg(debug_assertions)]
+    {
+        rullst::runtime::spawn(async {
+            if let Err(error) = rullst::studio::run_studio(5555).await {
+                eprintln!("Rullst Studio could not start: {error}");
+            }
+        });
+        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
+    }
+    println!("🚀 ERP Pocket server starting on port 3000...");
+    Server::new(router)
+        .run(3000)
+        .await?;
+
+    Ok(())
+}

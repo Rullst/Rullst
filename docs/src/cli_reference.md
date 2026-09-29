@@ -646,7 +646,8 @@ verified guardianship, reusable age flags or global compliance.
 
 It targets the recognized SaaS starter (`--blueprint saas`, the default) and
 requires `--tenant-ref`. v13 removed the LMS target together with the complete
-Academy scaffold.
+Academy scaffold. The tenant is compiled into the generated configuration; no
+query parameter, header or form field is read to select it.
 
 ### `cargo rullst make:privacy` (unpublished v13 preview)
 
@@ -666,7 +667,10 @@ cargo rullst make:privacy \
 
 The version and lifetime are explicit application choices; the engineering cap
 of 365 days is not a legal retention rule. It targets the recognized SaaS
-starter and requires `--tenant-ref`; v13 removed the LMS target.
+starter and requires `--tenant-ref`; v13 removed the LMS target. The tenant is
+compiled into the generated configuration. The privacy routes take no query
+string: a request carrying one, or an `x-school-id` header, is refused rather
+than allowed to select another tenant or account.
 The generated consumer composes with `make:age-gate` in either installation order.
 Omitting `--privacy-source` selects this CLI's matching registry version; before
 publication use the explicit local override shown above or a reviewed archive patch.

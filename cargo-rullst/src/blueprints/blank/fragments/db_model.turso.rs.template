@@ -1,0 +1,7 @@
+// Primary Turso/libSQL model. The familiar Orm derive targets libSQL explicitly.
+#[derive(Debug, Clone, rullst_orm::Orm)]
+#[orm(table = "users", backend = "turso")]
+pub struct User {
+    pub id: i64,
+    pub name: String,
+}
