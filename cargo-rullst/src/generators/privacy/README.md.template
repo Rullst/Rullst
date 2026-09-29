@@ -47,7 +47,10 @@ explicitly; the engineering lifetime cap is 365 days, not a legal retention rule
 
 The form binds its notice/version, revision, authenticated account, tenant and
 session with an expiring HMAC proof. A switched account/session, tampered or
-expired form cannot apply an old choice.
+expired form cannot apply an old choice. The tenant is the fixed `--tenant-ref`
+value in `src/controllers/privacy/config.rs`, and the account comes only from
+authentication. These routes take no query string: a request carrying one, or an
+`x-school-id` header, is refused instead of selecting another scope.
 
 Refusal/withdrawal makes the next greeting generic. A stale positive form cannot
 undo a completed withdrawal, and a new notice requires a new explicit choice.

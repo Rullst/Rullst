@@ -31,11 +31,13 @@ Remote PostgreSQL verifies TLS; replication/failover, clocks, permissions,
 backups and durable hardware remain operator responsibilities. A restored old
 database requires quiescing verification and rotating the policy/key epoch.
 
-The policy version and minimum age live in `src/controllers/age_gate/config.rs`.
-The SaaS profile requires a fixed application tenant reference. Other routes
-retain their original authorization, and no subject age band or guardian-consent
-row is changed.
-Do not accept user identity or policy values from a form.
+The policy version, minimum age and fixed tenant reference (`--tenant-ref`) live
+in `src/controllers/age_gate/config.rs`. The challenge binds the authenticated
+user, that tenant and the session. No query parameter, header or form field is
+read to select a tenant, so a client-supplied tenant hint cannot change it. Other
+routes retain their original authorization, and no subject age band or
+guardian-consent row is changed.
+Do not accept user identity, tenant or policy values from a form.
 The challenge contains keyed opaque references, is authenticated but not
 encrypted, and must stay out of URLs/logs/analytics. TLS, request limits and the
 Server security baseline remain mandatory. Responses are marked `no-store`.

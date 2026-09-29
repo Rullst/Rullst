@@ -2,12 +2,15 @@ use ring::hmac;
 use rullst::server::HeaderMap;
 use rullst_privacy::age_assurance::{AgeError, AgePolicy, ChallengeTokens, DeclarationGate, RiskLevel, SubjectBinding, __STORE_TYPE__};
 
+/// Fixed at generation by `--tenant-ref`. No query, header or form field
+/// selects the tenant, so a client-supplied tenant hint is never read.
+const TENANT_REF: &str = __TENANT_REF__;
+
 pub struct AgeGateState {
     pub(super) policy: AgePolicy,
     pub(super) tokens: ChallengeTokens,
     pub(super) gate: DeclarationGate<__STORE_TYPE__>,
     binding_key: hmac::Key,
-    tenant: Option<String>,
 }
 
 impl AgeGateState {
@@ -26,12 +29,11 @@ impl AgeGateState {
             tokens,
             gate: DeclarationGate::new(store)?,
             binding_key: hmac::Key::new(hmac::HMAC_SHA256, &key),
-            tenant: __TENANT_CONFIG__,
         })
     }
 
-    pub(super) fn binding(&self, user_id: i32, headers: &HeaderMap, school: Option<&rullst::security::TenantContext>) -> Result<SubjectBinding, AgeError> {
-        let tenant = self.tenant(school)?;
+    /// Binds the challenge to the authenticated user, the fixed tenant and the session.
+    pub(super) fn binding(&self, user_id: i32, headers: &HeaderMap) -> Result<SubjectBinding, AgeError> {
         if user_id <= 0 {
             return Err(AgeError::BindingMismatch);
         }
@@ -41,27 +43,11 @@ impl AgeGateState {
             return Err(AgeError::BindingMismatch);
         }
         SubjectBinding::new(
-            self.reference(b"subject", &[tenant.as_bytes(), &user_id.to_be_bytes()]),
-            self.reference(b"tenant", &[tenant.as_bytes()]),
-            self.reference(b"session", &[tenant.as_bytes(), cookie.as_bytes()]),
+            self.reference(b"subject", &[TENANT_REF.as_bytes(), &user_id.to_be_bytes()]),
+            self.reference(b"tenant", &[TENANT_REF.as_bytes()]),
+            self.reference(b"session", &[TENANT_REF.as_bytes(), cookie.as_bytes()]),
             __AUDIENCE__, "dashboard-view",
         )
-    }
-
-    fn tenant<'a>(&'a self, school: Option<&'a rullst::security::TenantContext>) -> Result<&'a str, AgeError> {
-        let tenant = match (&self.tenant, school) {
-            (Some(tenant), None) => tenant.as_str(),
-            (None, Some(school)) => school.tenant_id.as_str(),
-            _ => return Err(AgeError::BindingMismatch),
-        };
-        if !super::selection::valid_school(tenant) { return Err(AgeError::BindingMismatch); }
-        Ok(tenant)
-    }
-
-    pub(super) fn form_action(&self, school: Option<&rullst::security::TenantContext>) -> Result<String, AgeError> {
-        let tenant = self.tenant(school)?;
-        Ok(if self.tenant.is_some() { "/dashboard".to_owned() }
-           else { format!("/dashboard?school={tenant}") })
     }
 
     fn reference(&self, field: &[u8], parts: &[&[u8]]) -> String {

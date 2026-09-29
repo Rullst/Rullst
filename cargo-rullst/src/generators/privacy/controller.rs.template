@@ -8,7 +8,6 @@ use std::{sync::Arc, time::Duration};
 #[path = "privacy/page.rs"] mod page;
 #[path = "privacy/profile.rs"] mod profile;
 #[path = "privacy/proof.rs"] mod proof;
-#[path = "privacy/selection.rs"] mod selection;
 pub use config::PrivacyState;
 use profile::{AccountProfileAdapter, ExportError};
 
@@ -24,8 +23,19 @@ pub fn routes() -> rullst::Router {
         .route("/privacy/export", rullst::routing::get(export))
         .layer(rullst::server::DefaultBodyLimit::max(16 * 1024))
         .layer(rullst::server::from_fn(crate::middlewares::auth_middleware::auth_middleware))
-        .layer(rullst::server::from_fn(selection::select_school))
+        .layer(rullst::server::from_fn(deny_scope_hints))
         .layer(rullst::server::from_fn(private_response))
+}
+
+/// The tenant is fixed by `--tenant-ref` and the account comes only from
+/// authentication. These routes take no query string, so a client scope hint
+/// (`?school=`, `?user_id=` or an `x-school-id` header) is refused, never applied.
+async fn deny_scope_hints(request: Request, next: Next) -> Response {
+    let query = request.uri().query().is_some_and(|query| !query.is_empty());
+    if query || request.headers().contains_key("x-school-id") {
+        return denied();
+    }
+    next.run(request).await
 }
 
 async fn private_response(request: Request, next: Next) -> Response {
@@ -47,11 +57,10 @@ async fn with_state(mut request: Request, next: Next) -> Response {
 async fn show(
     Extension(state): Extension<Arc<PrivacyState>>,
     Extension(user_id): Extension<i32>,
-    school: Option<Extension<rullst::security::TenantContext>>,
     Extension(csrf): Extension<rullst::security::CsrfToken>,
     headers: HeaderMap,
 ) -> Response {
-    let subject = match config::subject(user_id, school.as_ref().map(|Extension(school)| school)) {
+    let subject = match config::subject(user_id) {
         Ok(subject) => subject, Err(_) => return denied(),
     };
     let record = match state.gate.current(&subject, &state.purpose).await {
@@ -61,7 +70,7 @@ async fn show(
     let proof = match state.proof.seal(&subject, &state.purpose, record.revision(), issued_at, &headers) {
         Ok(proof) => proof, Err(_) => return denied(),
     };
-    page::preferences(&subject, &record, csrf.as_str(), &proof, issued_at).into_response()
+    page::preferences(&record, csrf.as_str(), &proof, issued_at).into_response()
 }
 
 #[derive(Deserialize)]
@@ -79,11 +88,10 @@ struct ChoiceForm {
 async fn submit(
     Extension(state): Extension<Arc<PrivacyState>>,
     Extension(user_id): Extension<i32>,
-    school: Option<Extension<rullst::security::TenantContext>>,
     headers: HeaderMap,
     Form(form): Form<ChoiceForm>,
 ) -> Response {
-    let subject = match config::subject(user_id, school.as_ref().map(|Extension(school)| school)) {
+    let subject = match config::subject(user_id) {
         Ok(subject) => subject, Err(_) => return denied(),
     };
     let now = match SystemConsentClock.now() { Ok(now) => now, Err(_) => return unavailable() };
@@ -104,7 +112,7 @@ async fn submit(
         }
     };
     match result {
-        Ok(_) => Redirect::to(&config::url("/privacy", &subject)).into_response(),
+        Ok(_) => Redirect::to("/privacy").into_response(),
         Err(ConsentError::RevisionConflict) => (StatusCode::CONFLICT, "Your choice changed in another request. Open privacy choices again before saving.").into_response(),
         Err(ConsentError::BindingMismatch | ConsentError::InvalidConfiguration) => denied(),
         Err(_) => unavailable(),
@@ -114,26 +122,22 @@ async fn submit(
 async fn personalized(
     Extension(state): Extension<Arc<PrivacyState>>,
     Extension(user_id): Extension<i32>,
-    school: Option<Extension<rullst::security::TenantContext>>,
 ) -> Response {
-    let subject = match config::subject(user_id, school.as_ref().map(|Extension(school)| school)) {
+    let subject = match config::subject(user_id) {
         Ok(subject) => subject, Err(_) => return denied(),
     };
     match state.gate.allows(&subject, &state.purpose).await {
-        Ok(false) => page::greeting(None, &subject).into_response(),
+        Ok(false) => page::greeting(None).into_response(),
         Ok(true) => match AccountProfileAdapter::greeting_name(user_id).await {
-            Ok(name) => page::greeting(Some(&name), &subject).into_response(),
+            Ok(name) => page::greeting(Some(&name)).into_response(),
             Err(error) => export_error(error),
         },
         Err(_) => unavailable(),
     }
 }
 
-async fn export(
-    Extension(user_id): Extension<i32>,
-    school: Option<Extension<rullst::security::TenantContext>>,
-) -> Response {
-    if config::subject(user_id, school.as_ref().map(|Extension(school)| school)).is_err() { return denied(); }
+async fn export(Extension(user_id): Extension<i32>) -> Response {
+    if config::subject(user_id).is_err() { return denied(); }
     let result = tokio::time::timeout(Duration::from_secs(8), AccountProfileAdapter::export(user_id)).await;
     let profile = match result { Ok(Ok(profile)) => profile, Ok(Err(error)) => return export_error(error), Err(_) => return unavailable() };
     let payload = serde_json::to_vec(&serde_json::json!({ "schema_version": 1, "scope": "account_profile", "account": profile }));
