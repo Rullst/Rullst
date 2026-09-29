@@ -1199,6 +1199,10 @@ sending.
 * **Login Guard Tarpit:** `record_login_failure` returns progressive delay
   decisions and `record_login_failure_and_wait` applies them asynchronously;
   both share bounded, temporary in-memory jails keyed by a hashed identity.
+  At `max_identities`, a new identity evicts the least recently failed counter
+  and a new offender evicts the soonest-expiring jail; expired state is pruned
+  in time order on every call, and jail telemetry is emitted only for a jail
+  that was actually created.
 
 ### 7.3. MFA and Security Evidence Boundaries
 * **TOTP enrollment:** Secrets contain 160 bits derived from the OS RNG,
