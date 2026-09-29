@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790720370459,
+  "lastUpdate": 1790724503621,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -21747,6 +21747,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2280,
             "range": "± 24",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "722de4d0f0e12409eb91f8d8d2532e4c8bc7510f",
+          "message": "Merge pull request #330 from Rullst/fix/v13-core-state-fixes\n\nfix(core): bound live messages, keep queue claims, release idle channels, reuse Redis connections",
+          "timestamp": "2026-09-29T20:22:40-03:00",
+          "tree_id": "f1ffc193283c5c37d81bcac7f299f4f231558b5e",
+          "url": "https://github.com/Rullst/Rullst/commit/722de4d0f0e12409eb91f8d8d2532e4c8bc7510f"
+        },
+        "date": 1790724500682,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 548,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 790,
+            "range": "± 25",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 575,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1621,
+            "range": "± 72",
             "unit": "ns/iter"
           }
         ]
