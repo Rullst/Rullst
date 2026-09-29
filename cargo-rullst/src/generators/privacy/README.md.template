@@ -1,7 +1,7 @@
 # Authenticated privacy consumer — v13 preview
 
 This opt-in consumer adds `/privacy` preferences, `/privacy/personalization`
-and `/privacy/export`. It supports the recognized SaaS or full LMS starter and
+and `/privacy/export`. It supports the recognized SaaS starter and
 composes with `make:age-gate` in either installation order. Custom authentication,
 unknown privacy dependencies, ambiguous routes and existing output files need
 manual review. The dependency uses the registry version matching this CLI unless
@@ -46,11 +46,8 @@ purpose. The operator selects the displayed notice version and grant lifetime
 explicitly; the engineering lifetime cap is 365 days, not a legal retention rule.
 
 The form binds its notice/version, revision, authenticated account, tenant and
-session with an expiring HMAC proof. A switched account/session, changed school,
-tampered or expired form cannot apply an old choice. The LMS school selector is
-only a hint; current active membership is checked again before every request.
-Use `/privacy?school=...` when membership requires explicit selection. Form and
-download links retain the school selection for ordinary browser navigation.
+session with an expiring HMAC proof. A switched account/session, tampered or
+expired form cannot apply an old choice.
 
 Refusal/withdrawal makes the next greeting generic. A stale positive form cannot
 undo a completed withdrawal, and a new notice requires a new explicit choice.

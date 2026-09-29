@@ -106,32 +106,6 @@ impl DatabaseChoice {
     }
 }
 
-/// Selectable modules for the bounded LMS scaffold profiles.
-#[derive(ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LmsModuleChoice {
-    Auth,
-    Learning,
-    Assessment,
-    Gamification,
-    Automation,
-    Realtime,
-    Billing,
-}
-
-impl From<LmsModuleChoice> for crate::blueprints::lms::LmsModule {
-    fn from(module: LmsModuleChoice) -> Self {
-        match module {
-            LmsModuleChoice::Auth => Self::Auth,
-            LmsModuleChoice::Learning => Self::Learning,
-            LmsModuleChoice::Assessment => Self::Assessment,
-            LmsModuleChoice::Gamification => Self::Gamification,
-            LmsModuleChoice::Automation => Self::Automation,
-            LmsModuleChoice::Realtime => Self::Realtime,
-            LmsModuleChoice::Billing => Self::Billing,
-        }
-    }
-}
-
 #[derive(Subcommand)]
 pub enum Commands {
     /// Creates a new Rullst application
@@ -171,9 +145,6 @@ pub enum Commands {
         /// Enables Redis-backed adapters in deterministic/CI mode
         #[arg(long, requires = "default")]
         redis: bool,
-        /// Selects a detached LMS module profile; assessment or gamification foundation
-        #[arg(long, value_enum, value_delimiter = ',', requires = "default")]
-        lms_modules: Vec<LmsModuleChoice>,
         /// Skips the best-effort initial database migration after scaffolding
         #[arg(long)]
         skip_initial_migration: bool,
@@ -535,7 +506,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             hot_reload,
             ai,
             redis,
-            lms_modules,
             skip_initial_migration,
             turso,
             mongodb,
@@ -543,18 +513,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
             surrealdb,
             qdrant,
         } => {
-            if !lms_modules.is_empty() && !matches!(blueprint, Some(BlueprintChoice::Lms)) {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidInput,
-                    "--lms-modules requires --blueprint lms",
-                )
-                .into());
-            }
-            let lms_modules = lms_modules
-                .iter()
-                .copied()
-                .map(crate::blueprints::lms::LmsModule::from)
-                .collect::<Vec<_>>();
             create_new_project_with_cli_options(
                 name.as_deref(),
                 ProjectScaffoldOptions {
@@ -576,7 +534,6 @@ pub fn run_cli_command(command: &Commands) -> Result<(), Box<dyn std::error::Err
                 },
                 blueprint.as_ref().map(|choice| choice.id()),
                 *skip_initial_migration,
-                (!lms_modules.is_empty()).then_some(lms_modules.as_slice()),
             )?;
         }
         Commands::MakeController { name, api } => {
@@ -1083,96 +1040,21 @@ mod tests {
     }
 
     #[test]
-    fn parses_bounded_lms_module_profile() {
-        let auth_cli = Cli::try_parse_from([
+    fn lms_module_profiles_were_retired() {
+        let error = Cli::try_parse_from([
             "rullst",
             "new",
-            "academy-identity",
-            "--default",
-            "--blueprint",
-            "lms",
-            "--lms-modules",
-            "auth",
-        ])
-        .expect("bounded LMS auth CLI");
-        assert!(matches!(
-            auth_cli.command,
-            Commands::New {
-                blueprint: Some(BlueprintChoice::Lms),
-                lms_modules,
-                ..
-            } if lms_modules == vec![LmsModuleChoice::Auth]
-        ));
-
-        let cli = Cli::try_parse_from([
-            "rullst",
-            "new",
-            "academy-foundation",
+            "demo",
             "--default",
             "--blueprint",
             "lms",
             "--lms-modules",
             "auth,learning",
-            "--skip-initial-migration",
         ])
-        .expect("bounded LMS module CLI");
+        .err()
+        .expect("the single LMS starter has no module profiles");
 
-        assert!(matches!(
-            cli.command,
-            Commands::New {
-                blueprint: Some(BlueprintChoice::Lms),
-                lms_modules,
-                ..
-            } if lms_modules == vec![LmsModuleChoice::Auth, LmsModuleChoice::Learning]
-        ));
-
-        let assessment_cli = Cli::try_parse_from([
-            "rullst",
-            "new",
-            "academy-assessment",
-            "--default",
-            "--blueprint",
-            "lms",
-            "--lms-modules",
-            "auth,learning,assessment",
-        ])
-        .expect("bounded LMS assessment CLI");
-        assert!(matches!(
-            assessment_cli.command,
-            Commands::New {
-                blueprint: Some(BlueprintChoice::Lms),
-                lms_modules,
-                ..
-            } if lms_modules == vec![
-                LmsModuleChoice::Auth,
-                LmsModuleChoice::Learning,
-                LmsModuleChoice::Assessment,
-            ]
-        ));
-
-        let gamification_cli = Cli::try_parse_from([
-            "rullst",
-            "new",
-            "academy-game",
-            "--default",
-            "--blueprint",
-            "lms",
-            "--lms-modules",
-            "auth,learning,gamification",
-        ])
-        .expect("bounded LMS gamification CLI");
-        assert!(matches!(
-            gamification_cli.command,
-            Commands::New {
-                blueprint: Some(BlueprintChoice::Lms),
-                lms_modules,
-                ..
-            } if lms_modules == vec![
-                LmsModuleChoice::Auth,
-                LmsModuleChoice::Learning,
-                LmsModuleChoice::Gamification,
-            ]
-        ));
+        assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument);
     }
 
     #[test]

@@ -57,12 +57,6 @@ pub(super) fn recognized_auth(
             "Active Record",
             "Zero-Bundle HTMX",
         ),
-        "lms" => crate::blueprints::lms::file_manifest(
-            "unused",
-            false,
-            "Active Record",
-            "Zero-Bundle HTMX",
-        ),
         _ => return Err(invalid("unknown authenticated starter").into()),
     };
     for name in [
@@ -74,7 +68,7 @@ pub(super) fn recognized_auth(
             .find(|(path, _)| *path == name)
             .ok_or_else(|| invalid("authentication template is missing"))?;
         if !equivalent(&consumer_files::read(&root.join(name))?, &expected.1)? {
-            return Err(invalid("this generator requires the recognized SaaS authentication controller and middleware (or the selected LMS equivalents); review custom authentication separately").into());
+            return Err(invalid("this generator requires the recognized SaaS authentication controller and middleware; review custom authentication separately").into());
         }
     }
     Ok(())

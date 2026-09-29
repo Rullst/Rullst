@@ -34,40 +34,6 @@ pub fn apply(
     orm_pattern: &str,
     frontend_engine: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    apply_with_lms_modules(
-        id,
-        path,
-        project_name,
-        project_name_safe,
-        api,
-        hot_reload,
-        db_needed,
-        orm_pattern,
-        frontend_engine,
-        None,
-    )
-}
-
-#[allow(clippy::too_many_arguments)]
-pub fn apply_with_lms_modules(
-    id: usize,
-    path: &Path,
-    project_name: &str,
-    project_name_safe: &str,
-    api: bool,
-    hot_reload: bool,
-    db_needed: bool,
-    orm_pattern: &str,
-    frontend_engine: &str,
-    lms_modules: Option<&[lms::LmsModule]>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    if id != LMS_BLUEPRINT_ID && lms_modules.is_some() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "LMS modules may only be selected with the LMS blueprint",
-        )
-        .into());
-    }
     let manifest = match id {
         BLANK_BLUEPRINT_ID => blank::file_manifest(
             project_name,
@@ -78,16 +44,9 @@ pub fn apply_with_lms_modules(
             orm_pattern,
             frontend_engine,
         ),
-        LMS_BLUEPRINT_ID => match lms_modules {
-            Some(modules) => lms::file_manifest_for_modules(
-                project_name_safe,
-                hot_reload,
-                orm_pattern,
-                frontend_engine,
-                modules,
-            )?,
-            None => lms::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine),
-        },
+        LMS_BLUEPRINT_ID => {
+            lms::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine)
+        }
         SAAS_BLUEPRINT_ID => {
             saas::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine)
         }
@@ -155,27 +114,12 @@ mod tests {
         let blog = blog::file_manifest("demo", false, "Active Record", "Zero-Bundle HTMX");
 
         assert!(lms.iter().any(|(path, _)| *path == "src/models/course.rs"));
-        for academy_path in [
-            "src/models/course_module.rs",
-            "src/models/quiz.rs",
-            "src/models/activity.rs",
-            "src/models/achievement.rs",
-            "src/models/leaderboard_entry.rs",
-            "src/models/automation_rule.rs",
-            "src/models/score_event.rs",
-            "src/models/score_correction.rs",
-            "src/models/domain_event.rs",
-        ] {
-            assert!(lms.iter().any(|(path, _)| *path == academy_path));
-        }
+        assert!(
+            lms.iter()
+                .any(|(path, _)| *path == "src/models/course_module.rs")
+        );
+        assert!(lms.iter().all(|(path, _)| *path != "src/models/quiz.rs"));
         assert!(lms.iter().all(|(_, source)| !source.contains("datetime(")));
-        let auth_controller = lms
-            .iter()
-            .find(|(path, _)| *path == "src/controllers/auth_controller.rs")
-            .map(|(_, source)| source)
-            .expect("LMS auth controller");
-        assert!(auth_controller.contains("provision_self_registration_with_tx"));
-        assert!(auth_controller.contains("save_with_tx"));
         assert!(
             saas.iter()
                 .any(|(path, _)| *path == "src/models/subscription.rs")

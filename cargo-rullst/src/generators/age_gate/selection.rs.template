@@ -12,7 +12,7 @@ pub(super) fn valid_school(value: &str) -> bool {
     })
 }
 
-/// Used only on the LMS dashboard, outside the existing authentication layer.
+/// Not mounted by the SaaS dashboard, whose tenant is fixed by `--tenant-ref`.
 pub async fn select_school(mut request: Request, next: Next) -> Response {
     if request.uri().query().is_some_and(|query| query.len() > 512) {
         return super::denied();

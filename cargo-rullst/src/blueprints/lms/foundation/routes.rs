@@ -12,7 +12,7 @@ const ROUTER: &str = r##"pub fn router() -> Result<Router, Box<dyn std::error::E
     let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
-        .with_brand("LMS Foundation Admin")
+        .with_brand("LMS Admin")
         .register::<models::category::Category>()
         .register::<models::course::Course>()
         .register::<models::course_module::CourseModule>()
@@ -52,11 +52,13 @@ const ROUTER: &str = r##"pub fn router() -> Result<Router, Box<dyn std::error::E
 
 const STARTUP: &str = r##"    rullst::artisan!(crate::migrations::get_migrations());
     #[cfg(debug_assertions)]
-    rullst::runtime::spawn(async {
-        if let Err(error) = rullst::studio::run_studio(5555).await {
-            eprintln!("Rullst Studio could not start: {error}");
-        }
-    });
+    {
+        rullst::runtime::spawn(async {
+            if let Err(error) = rullst::studio::run_studio(5555).await {
+                eprintln!("Rullst Studio could not start: {error}");
+            }
+        });
+    }
 "##;
 
 /// `src/main.rs` without hot reload: the binary owns the router.

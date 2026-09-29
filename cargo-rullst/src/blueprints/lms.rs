@@ -1,88 +1,26 @@
-// src/blueprints/lms.rs — LMS Course Platform blueprint templates.
+// src/blueprints/lms.rs — LMS starter: catalog, courses, modules, lessons, an
+// accessible player, enrollment, progress, login and a Nexus admin.
 
-use super::common;
-
-mod academy_catalog_tests;
-mod academy_http_tests;
-mod academy_notification_realtime_tests;
-mod academy_privacy_tests;
-mod academy_schema;
-mod academy_schema_tests;
-mod academy_score_quiz_tests;
-mod academy_tenancy_tests;
-mod academy_timed_tests;
-mod access;
-mod activity_contract;
-mod assessment;
-#[cfg(test)]
-mod assessment_tests;
-mod assessment_timing;
 mod auth;
-mod automation;
-mod automation_execution;
-mod automation_worker;
-mod availability;
-mod base_modules;
 mod catalog;
 mod curriculum;
-mod domain_events;
 mod foundation;
-mod gamification;
 mod learning;
 mod lms_player;
-mod module_selection;
-use module_selection::supports_hot_reload;
-mod notifications;
-mod outbox;
-mod privacy;
-mod progress;
-mod repositories;
-mod routes;
-mod scheduler_lease;
-mod score;
-mod score_corrections;
-mod tenancy;
 
-pub use module_selection::{
-    LmsModule, LmsModuleError, file_manifest_for_modules, validate_module_selection,
-};
-
+/// Generates the LMS starter. Its Active Record models do not vary with the ORM
+/// pattern, and hot reload exports the router from `src/lib.rs`.
 pub fn file_manifest(
     project_name_safe: &str,
     hot_reload: bool,
-    orm_pattern: &str,
+    _orm_pattern: &str,
     frontend_engine: &str,
 ) -> Vec<(&'static str, String)> {
     let mut manifest = Vec::new();
-    let is_repo = common::is_repo_mode(orm_pattern);
-    manifest.extend(routes::get_routes(
-        project_name_safe,
-        hot_reload,
-        orm_pattern,
-    ));
-    manifest.extend(activity_contract::get_files());
-    manifest.extend(assessment::get_files());
-    manifest.extend(assessment_timing::get_files());
-    manifest.extend(automation::get_files());
-    manifest.extend(automation_execution::get_files());
-    manifest.extend(automation_worker::get_files());
-    manifest.extend(availability::get_files());
-    manifest.extend(learning::get_files());
-    manifest.extend(notifications::get_files());
-    manifest.extend(curriculum::get_files());
-    manifest.extend(domain_events::get_files());
-    manifest.extend(gamification::get_files());
-    manifest.extend(outbox::get_files());
-    manifest.extend(progress::get_files());
-    manifest.extend(privacy::get_files());
-    manifest.extend(score::get_files());
-    manifest.extend(score_corrections::get_files());
-    manifest.extend(tenancy::get_files());
-    manifest.extend(scheduler_lease::get_files());
-    manifest.extend(academy_schema::get_files());
-    manifest.extend(access::get_files());
     manifest.extend(auth::get_files());
     manifest.extend(catalog::get_files(frontend_engine));
+    manifest.extend(learning::get_files());
+    manifest.extend(curriculum::get_files());
 
     let migration = r##"use rullst::db::schema::{Schema, Migration};
 use rullst::db::async_trait;
@@ -182,8 +120,6 @@ impl Migration for MigrationImpl {
             .to_string(),
     ));
 
-    manifest.push(("src/migrations/mod.rs", academy_schema::migrations_module()));
-
     let category_model = r##"use rullst::db::{Orm, FromRow};
 use rullst::nexus::{NexusModel, FieldMeta, FieldKind};
 #[derive(Debug, Clone, FromRow, Orm)]
@@ -272,25 +208,5 @@ impl NexusModel for Lesson {
 "##;
     manifest.push(("src/models/lesson.rs", lesson_model.to_string()));
 
-    manifest.push(("src/models/mod.rs", base_modules::MODELS_MODULE.to_string()));
-
-    let controllers_mod = r##"pub mod activity_controller; pub mod activity_matching_controller; pub mod activity_typed_controller; pub mod auth_controller;
-pub mod assessment_controller; pub mod assignment_controller; pub mod completion_controller;
-pub mod learning_controller;
-pub mod lms_controller;
-pub mod notification_controller;
-pub mod publication_controller; pub mod publication_rollback_controller;
-pub mod review_controller;
-pub mod role_controller;
-"##;
-    manifest.push(("src/controllers/mod.rs", controllers_mod.to_string()));
-
-    let pages_mod = r##"pub mod auth;
-pub mod lms;
-"##;
-    manifest.push(("src/pages/mod.rs", pages_mod.to_string()));
-
-    repositories::extend_manifest(&mut manifest, is_repo);
-
-    manifest
+    foundation::starter(manifest, project_name_safe, hot_reload)
 }

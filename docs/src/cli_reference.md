@@ -53,7 +53,6 @@ the generated application:
   * `--no-database`: Generates the blank blueprint without a primary relational database; it conflicts with `--database` and rejects database-dependent blueprints.
   * `--ai`: Enables the umbrella AI facade in the generated manifest.
   * `--redis`: Enables the umbrella Redis queue/cache/ORM capabilities and the direct ORM Redis feature.
-  * `--lms-modules <modules>`: With `--default --blueprint lms`, selects a detached LMS profile. Version 12 currently accepts `auth`, `auth,learning`, or `auth,learning,assessment`; unsupported/duplicate combinations fail explicitly, and hot reload is available for `auth,learning` only (the other profiles reject it). Omitting the flag generates the complete LMS starter.
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. Run `cargo rullst db:migrate` explicitly after configuring the database.
 
 Without `--skip-initial-migration`, project creation performs the first Cargo
@@ -105,24 +104,14 @@ gates prove reproducible local generation and bounded offline construction;
 they do not prove provider accounts, production deployment, browser behavior
 or application-specific authorization.
 
-The bounded LMS foundation omits assessment, gamification, automation and
-notification files while retaining authenticated catalog/enrollment/progress:
+The LMS blueprint generates a small starter: catalog, courses, modules,
+lessons, an accessible player, enrollment, progress, login and a Nexus admin.
+It supports hot reload and has no module profiles; v13 retired `--lms-modules`
+and the earlier complete Academy scaffold.
 
 ```bash
-cargo rullst new academy-identity --default --blueprint lms \
-  --lms-modules auth --skip-initial-migration
-
-cargo rullst new academy-foundation --default --blueprint lms \
-  --lms-modules auth,learning --skip-initial-migration
-
-cargo rullst new academy-assessment --default --blueprint lms \
-  --lms-modules auth,learning,assessment --skip-initial-migration
+cargo rullst new academy --default --blueprint lms --skip-initial-migration
 ```
-
-The assessment foundation adds owner-only quiz presentation and
-server-authoritative, idempotent grading with bounded attempts. It deliberately
-does not pull in scoring, leaderboards, achievements, automation, outbox, or
-notification modules.
 
 ### `cargo rullst upgrade`
 Plans or applies a transactional application upgrade. The target defaults to
@@ -655,11 +644,9 @@ both consumers' explicit dependency features are preserved.
 Review the generated diff before deployment. It does not install facial models,
 verified guardianship, reusable age flags or global compliance.
 
-For the full LMS starter, select `--blueprint lms` and omit `--tenant-ref`.
-The server resolves the school through its existing active-membership policy;
-the form preserves that selection for an ordinary browser POST. A school query
-parameter is only a selection hint, and cannot grant membership or move an age
-challenge between schools. Other learning routes keep their existing policies.
+It targets the recognized SaaS starter (`--blueprint saas`, the default) and
+requires `--tenant-ref`. v13 removed the LMS target together with the complete
+Academy scaffold.
 
 ### `cargo rullst make:privacy` (unpublished v13 preview)
 
@@ -678,9 +665,8 @@ cargo rullst make:privacy \
 ```
 
 The version and lifetime are explicit application choices; the engineering cap
-of 365 days is not a legal retention rule. Select `--blueprint lms` and omit
-`--tenant-ref` for the full LMS starter. Its current school membership determines
-the tenant; a bounded `school` query value only selects among authorized schools.
+of 365 days is not a legal retention rule. It targets the recognized SaaS
+starter and requires `--tenant-ref`; v13 removed the LMS target.
 The generated consumer composes with `make:age-gate` in either installation order.
 Omitting `--privacy-source` selects this CLI's matching registry version; before
 publication use the explicit local override shown above or a reviewed archive patch.

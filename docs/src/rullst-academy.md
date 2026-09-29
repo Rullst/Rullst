@@ -166,7 +166,5 @@ against immutable application and framework SHAs:
 - a documented human GO/NO-GO decision and remaining product risks.
 
 Related reusable guides include [accessible Academy media](tutorials/45-accessible-academy-media.md),
-[server-authoritative activities](tutorials/46-server-authoritative-learning-activities.md),
-[durable spaced review](tutorials/47-spaced-review-queue.md),
 [tenant-bound RAG](tutorials/41-tenant-bound-rag.md), and the
 [assisted upgrade workflow](tutorials/36-assisted-framework-upgrades.md).

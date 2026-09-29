@@ -26,19 +26,13 @@ from this acknowledgement; selecting a capability proves neither.
 
 ## Browser observations
 
-For the recognized full SQLite LMS, generate the optional consumer with:
-
-```bash
-cargo rullst make:supervision --supervision-source /path/to/rullst-supervision \
-  --policy-version exam-v2 --notice-version notice-v2 \
-  --retention-seconds 3600 --session-seconds 3600 \
-  --browser-observations visibility,focus,clipboard,fullscreen
-```
-
-Omitting `--browser-observations` preserves visibility alone. The generated
-notice and start/resume acknowledgement show and bind the selected categories.
-The generator includes no camera/microphone permission prompt, analysis endpoint
-or background media upload. Its ordinary session controls work without JavaScript.
+v13 no longer generates a consumer (`make:supervision` targeted the removed
+complete Academy LMS). An application that integrates the crate selects the
+observation categories explicitly; visibility alone is the conservative default.
+The notice and start/resume acknowledgement must show and bind the selected
+categories. The crate includes no camera/microphone permission prompt, analysis
+endpoint or background media upload, and ordinary session controls should work
+without JavaScript.
 
 | Observation | Meaning and limit |
 | --- | --- |
@@ -150,8 +144,8 @@ browser/capture kinds, legacy visibility, v1 rejection, simulated adapters,
 wrong-kind/failure handling, authorization revocation during analysis, shared
 leases, timeout and no retained sample contents. Deterministic JavaScript tests
 exercise the shipped collector's queue, sequence, selected events and stop/failure
-behavior. The generated LMS/Chromium journey validates actual HTTP/security/forms
-and browser behavior.
+behavior. Before v13 removed the generated LMS consumer, a generated LMS/Chromium
+journey also validated HTTP/security/forms and browser behavior.
 
 Local validation passed the five generator/process/composition contracts with
 Chromium enabled, the generated LMS's fourteen original library tests and

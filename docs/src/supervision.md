@@ -12,8 +12,8 @@ The separate crate has optional `exam`, `parental`, `sqlite` and `analysis` feat
 SQLite adapter selects both domain modules; neither the crate nor storage becomes
 a Core/default dependency. Its first backend uses a concrete adapter generic
 over a trusted server clock, with real SQLite and deterministic clocks in tests.
-The first consumer is an explicit full-LMS SQLite opt-in. Other blueprints and
-database topologies are outside this initial increment.
+Applications integrate it directly. v13 removed the generated full-LMS consumer
+(`make:supervision`) together with the complete Academy scaffold it targeted.
 
 The host authenticates the actor and checks current school membership, course
 access and administrative authority. Store context constructors validate opaque
@@ -137,66 +137,12 @@ resuming. No automatic rollback or failover claim is made.
   installed-archive consumer before registry inclusion. Phase completion means
   the named behavior and tests exist; no mock-only package admission.
 
-## Generated LMS integration
+## Application integration
 
-The current prerelease CLI requires the matching local source. A stable CLI
-selects the exact matching registry version when `--supervision-source` is
-omitted; an explicit path must still match the package identity and CLI version.
-Neither mode enables supervision by default or upgrades an existing store.
-
-```bash
-cargo rullst make:supervision --supervision-source /path/to/rullst-supervision \
-  --policy-version exam-v1 --notice-version notice-v1 \
-  --retention-seconds 3600 --session-seconds 3600 \
-  --browser-observations visibility,focus,clipboard,fullscreen
-```
-
-It recognizes the complete SQLite LMS authentication and learning service before
-planning atomic file changes. Custom authorization, other backends, existing
-outputs or ambiguous CSRF routing require manual integration. It adds a shared
-learning-service gate, scoped SSR controls, a local `supervision-admin` binary and
-`SUPERVISION.md`; neither startup nor a browser can provision its own authority.
-A separate nonzero form key binds authenticated cookie, actor, school, learner,
-resource, configured categories, policy/notice and revision. Forms expire after five minutes, shorter
-than retained session metadata. An active/paused session is recovered when the
-learner reopens its start page, rather than replaced by another session.
-
-The browser collector sends only selected event occurrences, without automatic
-renewal or heartbeats. Visibility alone remains the command default. A queue of
-at most sixteen waiting events preserves order with one request in flight; an
-overflow stops collection, clears the queue and asks for a state reload. It stops locally on pause/end submission, page exit, form/session
-expiry or a failed report. Other open pages learn of revocation through rejection;
-server state prevents acceptance after a completed pause/end. Own pause/end and
-state reads remain possible after learning restrictions change, provided school
-membership and lesson binding remain valid. New starts/resumes/reports require
-current learning access.
-
-The earlier visibility-only baseline passed the real CLI/operator process, authenticated
-HTTP journey and Chromium. The browser exercises keyboard start/pause/end with
-JavaScript disabled, then real tab visibility, minimal request fields,
-pause/resume/end and absence of capture or external page requests. HTTP negatives
-cover missing CSRF, changed cookie, cross-subject/school access, duplicate/unknown
-query fields, unknown/oversized bodies, stale session/policy forms, independent
-authority/revocation and corrupted-store denial on original learning routes.
-The public directly linked LMS compiles with privacy/age/supervision together;
-both installation orders preserve application guidance and refreshed AI context.
-The generated application also passes all fourteen original LMS library tests
-and strict production Clippy, including the zero-panic lints. The added gate
-preserves already-authorized administrative progress corrections while denying
-restricted learner progress writes. Its 376 CLI library tests passed locally.
-That baseline had twenty-one crate tests passing locally. A focused mutation run of the changed
-start/latest-session paths catches all six executable mutations; three attempted
-`Default` replacements do not compile because sessions deliberately have no
-`Default`. The earlier scoped-authority run caught twenty mutations with one
-non-compiling replacement. These bounded samples are not a whole-crate mutation
-score. The baseline subsequently passed its hosted checks and archive rehearsal and
-was merged in PR #222. The observation extension subsequently passed its own
-hosted checks in PR #226 and retrospective exact-commit archive validation;
-the [delivery plan](v13-delivery-plan.md) records the original skipped gate and
-its repair. Neither source increment replaces the final release campaign.
-
-Normal release packaging selects exactly `.github/release-order.json`, which
-now includes Supervision. Its archive tests and generated LMS journey run in
-the ordinary installed-CLI rehearsal. The current prerelease rehearsal feeds
-only audited extracted source to the CLI; it never resolves an unpublished
-registry version. Labs retains a separate diagnostic-only package mode.
+v13 no longer generates a supervision consumer: `make:supervision` targeted the
+complete Academy LMS, which was replaced by a smaller starter. Integrate the
+crate directly. The host application authenticates the actor, checks membership
+and authority, provisions operators out of band and wires the SSR controls and
+retention workers to the contracts above. Existing stores are never upgraded or
+enabled by default. The removed generator remains in the git history and on the
+stable v12 branch as a reference implementation.

@@ -12,7 +12,7 @@ presence/audio activity adapters; combining it with `sqlite` adds authorization,
 concurrency leases and deadline checks around invocation. There are no default
 features or Core dependencies.
 
-The generated LMS can opt into visibility, focus, clipboard occurrence and
+An application can opt into visibility, focus, clipboard occurrence and
 fullscreen events. No clipboard contents, camera/audio model, media capture,
 other-window inventory or device-wide control is included. An application can
 supply a local model or external adapter. Observations never determine misconduct,
@@ -30,7 +30,7 @@ Unpublished schema v1 requires a separately reviewed transition to a fresh store
 opening it never upgrades, deletes or infers consent from existing records.
 
 The [design and acceptance boundary](https://rullst.github.io/Rullst/book/supervision.html) records the
-supported scope and generated-LMS/Chromium evidence. Source increments entered
+supported scope and its validation evidence. Source increments entered
 `v13` through PRs #222 and #226; the latter's missing premerge archive gate was
 repaired retrospectively, as recorded in the
 [delivery evidence](https://rullst.github.io/Rullst/book/v13-delivery-plan.html). Final combined release

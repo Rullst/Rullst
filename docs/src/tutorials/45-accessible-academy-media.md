@@ -1,11 +1,10 @@
 # 45. Accessible Academy Media
 
 Rullst's LMS blueprint generates a bounded lesson-presentation foundation for
-video and audio. It belongs to the web-first Academy slice: authorization and
-progress remain server-owned, while the browser receives accessible media
-markup and an escaped transcript.
+video and audio. Authorization and progress remain server-owned, while the
+browser receives accessible media markup and an escaped transcript.
 
-## Generate the complete Academy starter
+## Generate the LMS starter
 
 ```bash
 cargo rullst new language-academy --default --blueprint lms \
@@ -14,9 +13,10 @@ cd language-academy
 cargo test --offline --all-targets
 ```
 
-The complete starter includes the integrated curriculum, assessment,
-gamification, automation and notification journey. A smaller learning
-foundation is available with `--lms-modules auth,learning`.
+The starter includes the course catalog, modules, lessons, this accessible
+player, enrollment, progress, login and a Nexus admin. Earlier releases also
+generated a complete Academy (assessment, gamification, automation and
+notifications); v13 removed it in favor of this smaller starter.
 
 ## Lesson media contract
 
@@ -65,8 +65,8 @@ combination in the deployed browser rather than disabling isolation globally.
 - fail-closed rendering for unknown kinds, insecure sources or invalid
   accessibility metadata.
 
-The protected lesson controller still checks the authenticated learner's
-school, enrollment, entitlement and release policy before rendering the player.
+The protected lesson controller checks the authenticated learner's
+active enrollment before rendering the player.
 Progress submissions use CSRF and idempotency data and remain authoritative in
 the database.
 

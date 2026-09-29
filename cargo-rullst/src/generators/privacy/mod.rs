@@ -10,6 +10,19 @@ use toml_edit::DocumentMut;
 
 mod routing;
 
+/// The privacy consumer reuses the age-gate school selector with these rewrites.
+const SELECTOR_TEMPLATE: &str = include_str!("../age_gate/selection.rs.template");
+const SELECTOR_REWRITES: [(&str, &str); 2] = [
+    (
+        "Not mounted by the SaaS dashboard, whose tenant is fixed by `--tenant-ref`.",
+        "Used only on the privacy consumer routes, outside the existing authentication layer.",
+    ),
+    (
+        "if let Some(school) = selection.school {",
+        "if super::config::FIXED_TENANT.is_some() && (selection.school.is_some() || request.headers().contains_key(\"x-school-id\")) { return super::denied(); }\n    if let Some(school) = selection.school {",
+    ),
+];
+
 pub(crate) fn command() -> Command {
     Command::new("make:privacy")
         .about("Add authenticated privacy choices and an own-account profile export (v13 preview)")
@@ -17,7 +30,7 @@ pub(crate) fn command() -> Command {
             Arg::new("blueprint")
                 .long("blueprint")
                 .default_value("saas")
-                .value_parser(["saas", "lms"]),
+                .value_parser(["saas"]),
         )
         .arg(
             Arg::new("privacy-source")
@@ -78,8 +91,8 @@ fn plan(
     lifetime: u32,
     tenant: Option<&str>,
 ) -> Result<Vec<Edit>, Box<dyn std::error::Error>> {
-    if !matches!((consumer, tenant), ("saas", Some(_)) | ("lms", None)) {
-        return Err(invalid("SaaS requires --tenant-ref; LMS requires authenticated school membership and rejects a fixed tenant").into());
+    if !matches!((consumer, tenant), ("saas", Some(_))) {
+        return Err(invalid("the SaaS consumer requires --tenant-ref").into());
     }
     for value in std::iter::once(version).chain(tenant) {
         if value.is_empty()
@@ -152,9 +165,10 @@ fn plan(
                 .map(|tenant| format!("Some({tenant:?})"))
                 .unwrap_or_else(|| "None".to_owned()),
         );
-    let selector = include_str!("../age_gate/selection.rs.template")
-        .replace("Used only on the LMS dashboard", "Used only on the privacy consumer routes")
-        .replace("if let Some(school) = selection.school {", "if super::config::FIXED_TENANT.is_some() && (selection.school.is_some() || request.headers().contains_key(\"x-school-id\")) { return super::denied(); }\n    if let Some(school) = selection.school {");
+    let mut selector = SELECTOR_TEMPLATE.to_owned();
+    for (from, to) in SELECTOR_REWRITES {
+        selector = selector.replace(from, to);
+    }
     for (path, source) in [
         (
             "src/controllers/privacy_controller.rs",
@@ -190,4 +204,16 @@ fn plan(
         include_str!("README.md.template").to_owned(),
     )?);
     Ok(edits)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{SELECTOR_REWRITES, SELECTOR_TEMPLATE};
+
+    #[test]
+    fn selector_rewrites_match_the_age_gate_template_exactly_once() {
+        for (from, _) in SELECTOR_REWRITES {
+            assert_eq!(SELECTOR_TEMPLATE.matches(from).count(), 1, "{from}");
+        }
+    }
 }

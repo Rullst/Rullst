@@ -1,25 +1,19 @@
-//! Materialized proof for detached LMS module profiles.
+//! Materialized proof that the LMS starter compiles and passes its tests.
 
 #![allow(clippy::expect_used, clippy::panic)]
 
-use cargo_rullst::blueprints::{self, LMS_BLUEPRINT_ID, lms::LmsModule};
+use cargo_rullst::blueprints::{self, LMS_BLUEPRINT_ID};
 use cargo_rullst::generators::project::cargo_toml::build_cargo_toml;
 use std::{fs, path::Path, path::PathBuf, process::Command};
 
-fn materialize_and_test(
-    profile: &str,
-    modules: &[LmsModule],
-    hot_reload: bool,
-    required: &[&str],
-    excluded: &[&str],
-) {
+fn materialize_and_test(profile: &str, hot_reload: bool, required: &[&str], excluded: &[&str]) {
     let crate_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let workspace = crate_dir.parent().expect("workspace root");
     let project_dir = std::env::temp_dir().join(format!(
         "rullst-generated-lms-{profile}-{}",
         rand::random::<u64>()
     ));
-    fs::create_dir_all(&project_dir).expect("selected profile project directory");
+    fs::create_dir_all(&project_dir).expect("LMS starter project directory");
 
     let manifest = build_cargo_toml(
         &format!("generated-lms-{profile}"),
@@ -33,13 +27,13 @@ fn materialize_and_test(
         "Zero-Bundle HTMX",
         workspace,
     )
-    .expect("selected profile Cargo.toml");
-    fs::write(project_dir.join("Cargo.toml"), manifest).expect("write selected profile Cargo.toml");
+    .expect("LMS starter Cargo.toml");
+    fs::write(project_dir.join("Cargo.toml"), manifest).expect("write LMS starter Cargo.toml");
     let workspace_lock = workspace.join("Cargo.lock");
     if workspace_lock.exists() {
         fs::copy(workspace_lock, project_dir.join("Cargo.lock")).expect("copy workspace lockfile");
     }
-    blueprints::apply_with_lms_modules(
+    blueprints::apply(
         LMS_BLUEPRINT_ID,
         &project_dir,
         &format!("generated-lms-{profile}"),
@@ -49,9 +43,8 @@ fn materialize_and_test(
         true,
         "Active Record",
         "Zero-Bundle HTMX",
-        Some(modules),
     )
-    .expect("apply selected LMS modules");
+    .expect("apply the LMS starter");
 
     for path in required {
         assert!(project_dir.join(path).exists(), "missing {path}");
@@ -81,7 +74,7 @@ fn materialize_and_test(
         .env("CARGO_PROFILE_TEST_INCREMENTAL", "false")
         .env("CARGO_BUILD_JOBS", "1")
         .output()
-        .expect("run generated foundation cargo test");
+        .expect("run generated LMS starter cargo test");
     if !output.status.success() {
         panic!(
             "generated LMS {profile} profile failed cargo test\nstdout:\n{}\nstderr:\n{}",
@@ -90,103 +83,35 @@ fn materialize_and_test(
         );
     }
 
-    fs::remove_dir_all(project_dir).expect("selected profile project cleanup");
+    fs::remove_dir_all(project_dir).expect("LMS starter project cleanup");
 }
 
 #[test]
-fn selected_auth_profile_passes_generated_cargo_tests() {
+fn lms_starter_passes_generated_cargo_tests() {
     materialize_and_test(
-        "auth",
-        &[LmsModule::Auth],
+        "starter",
         false,
         &[
-            "rullst-lms-modules.json",
-            "src/models/user.rs",
-            "src/controllers/auth_controller.rs",
-        ],
-        &[
-            "src/models/course.rs",
-            "src/models/enrollment.rs",
-            "src/models/quiz.rs",
-        ],
-    );
-}
-
-#[test]
-fn selected_auth_learning_profile_passes_generated_cargo_tests() {
-    materialize_and_test(
-        "foundation",
-        &[LmsModule::Auth, LmsModule::Learning],
-        false,
-        &[
-            "rullst-lms-modules.json",
             "static/media/memory-safety.en.vtt",
             "src/models/course.rs",
             "src/models/enrollment.rs",
+            "src/services/learning_service.rs",
         ],
-        &["src/models/quiz.rs", "src/models/achievement.rs"],
+        &[
+            "src/models/quiz.rs",
+            "src/models/achievement.rs",
+            "rullst-lms-modules.json",
+            "src/lib.rs",
+        ],
     );
 }
 
 #[test]
-fn selected_auth_learning_profile_with_hot_reload_passes_generated_cargo_tests() {
+fn lms_starter_with_hot_reload_passes_generated_cargo_tests() {
     materialize_and_test(
-        "foundation-hot",
-        &[LmsModule::Auth, LmsModule::Learning],
+        "starter-hot",
         true,
         &["src/lib.rs", "src/main.rs", "src/models/course.rs"],
         &["src/models/quiz.rs", "src/models/achievement.rs"],
-    );
-}
-
-#[test]
-fn selected_auth_learning_assessment_profile_passes_generated_cargo_tests() {
-    materialize_and_test(
-        "assessment-foundation",
-        &[LmsModule::Auth, LmsModule::Learning, LmsModule::Assessment],
-        false,
-        &[
-            "rullst-lms-modules.json",
-            "src/models/quiz.rs",
-            "src/controllers/assessment_controller.rs",
-            "src/services/assessment_service.rs",
-            "src/migrations/m20260828000000_add_assessment.rs",
-        ],
-        &[
-            "src/models/achievement.rs",
-            "src/models/leaderboard_entry.rs",
-            "src/services/automation_worker_service.rs",
-            "src/services/notification_service.rs",
-            "src/services/outbox_service.rs",
-        ],
-    );
-}
-
-#[test]
-fn selected_auth_learning_gamification_profile_passes_generated_cargo_tests() {
-    materialize_and_test(
-        "gamification-foundation",
-        &[
-            LmsModule::Auth,
-            LmsModule::Learning,
-            LmsModule::Gamification,
-        ],
-        false,
-        &[
-            "rullst-lms-modules.json",
-            "src/models/activity.rs",
-            "src/models/score_event.rs",
-            "src/models/leaderboard_entry.rs",
-            "src/controllers/gamification_controller.rs",
-            "src/services/gamification_service.rs",
-            "src/migrations/m20260828000000_add_gamification.rs",
-        ],
-        &[
-            "src/models/quiz.rs",
-            "src/models/achievement.rs",
-            "src/services/automation_worker_service.rs",
-            "src/services/notification_service.rs",
-            "src/services/outbox_service.rs",
-        ],
     );
 }

@@ -85,7 +85,7 @@ source of truth until individual migrations are reviewed and validated.
 | **`rullst-studio`** | Local Developer Control Room (`http://127.0.0.1:5555`), clean route navigation, live system telemetry visualizers. | 🟢 **`[Implemented / Bounded]`**: Local control center, `RadarSnapshot` telemetry, database/migration surfaces when configured, and explicit `Unavailable` states for unconnected probes. The data browser reads/filters SQLx tables and, only after the verified debug-loopback/same-origin middleware installs an unforgeable request marker, can update primitive non-key values or delete exactly one complete-primary-key-selected row. Values are bound, request/schema/value cardinality is bounded, backend-specific types remain read-only and SQLite/PostgreSQL/MySQL/MariaDB have executable mutation contracts. This is not application tenant/RBAC, audit, rollback or shared-production administration. The supplied queue snapshot exposes only backend records; SQLite can explicitly retain 1–100,000 successful jobs with atomic pruning and purge while deleting them by default. Retained payload access/policy belongs to the host. An explicitly supplied memory/Redis `Cache` exposes at most 100 metadata rows in the UI; logical keys become process-bound HMAC tokens, values never leave the driver, and only individual local invalidation is available. A separately mounted push-only trace router accepts 1–128 attribute-free v1 spans under 128 KiB after HMAC-SHA256, source/ID/clock/nonce validation and atomic replay rejection; the bounded in-process viewer derives slow-query and repeated-label heuristics without SQL or bindings. It is not OTLP, durable trace storage, a key manager or remote Studio authentication. Successful feature-flag toggles invalidate all warm `DbFeatureDriver` caches in the same process through a constant-size epoch. Cross-process/direct-writer invalidation remains TTL-bound unless the application distributes the signal. |
 | **`rullst-nexus`** | Auto-generated Admin CMS (`/nexus`), dynamic model CRUD, AI Admin Assistant (`/nexus/chat`), SOC Threat Radar. | 🟢 **`[Implemented / Bounded]`**: `#[derive(Nexus)]` emits registered named-field metadata with inferred primitive or explicit semantic widgets; the panel provides parameterized CRUD/search/sort/pagination plus bounded selected-record delete/deactivate. Construction is fail-closed, requires an authentication policy and admin role layer, validates bounded unambiguous model/field/enum/relation metadata, enforces server-side field policy, caps form pairs and field bytes, rejects unknown/protected/duplicate or semantically invalid form values, minimizes database errors returned to clients, and escapes record/model metadata on audited paths. Boolean widgets are inferred; enum options and multiline intent are explicit because an unrelated Rust field type does not expose those semantics to the struct derive. Deactivation requires a writable Boolean `is_active`/`active`.<br/>🟢 **`[Implemented / Opt-in Bounded]`**: a registered text `tenant` column scopes every built-in read, create, update, delete and batch operation to a trusted Core `TenantContext`; create injects the context value and missing context fails closed. `with_required_audit` transactionally couples successful mutations to a minimized fixed-schema row containing the built-in authenticated actor, optional tenant, table/action, optional known key, count, committed outcome, correlation ID, timestamp and format version; missing audit storage rolls back the mutation. The audit table is in the same relational database, mutable by its administrators, records no denied attempts, and may omit an automatically generated create key. Host identity/membership/domain policy, global-model and custom-route authorization, database privileges, schema/type compatibility, retention/backup/replication and immutable external audit delivery remain application/deployment contracts. |
 | **`rullst-macros`** | Procedural macros (`html!`, `rullst::model`, `rullst::runtime::main`) and compatibility helpers. | 🟢 **`[Implemented / Bounded]`**: Compile-time `html!` escaping with explicit `RawHtml`, model/runtime macros, and `trybuild` diagnostics. A concrete async `#[server_function]` returning `RpcResult<T>` generates a matching explicit native router and Wasm caller over the bounded `rullst.client` v1 JSON envelope: owned Serde parameters/results, same-origin `/api/rpc/...` path, 256 KiB request/response policy, request correlation, media-type/version/schema checks, CSRF-cookie forwarding and message-free failure codes. The host must mount the route inside production security, authenticated identity, tenant, authorization and rate-limit layers; application idempotency and browser/network interoperability beyond CI are not inferred. `#[island]` hydration remains experimental. |
-| **`cargo-rullst`** | Developer CLI toolkit, scaffolding generators (`make:*`), project blueprints, AST IDOR static route scanner. | 🟢 **`[Implemented / Bounded]`**: Interactive wizard, generators, heuristic IDOR scanner, CycloneDX exporter, toolchain doctor and a fail-closed Academy evidence diagnostic that explicitly does not certify a deployment. Version 12 deterministic generation can explicitly select the blueprint, primary database or database-free blank profile, AI, Redis and additive persistence capabilities. It deliberately fixes generated database-backed application code to Active Record and full-stack rendering to server-side `html!` plus HTMX; Repository/Data Mapper and the LiveView, Wasm Island, Pico.css and Tera foundations remain application APIs rather than equivalent v12 generator profiles. The optional storage multi-select remains public and accepts zero or more Turso/libSQL, MongoDB, DuckDB, SurrealDB and Qdrant add-ons with their distinct capability boundaries. SQLx manifests disable umbrella defaults and select one strict primary backend. A structural gate retains 18 internal layouts: nine directly linked public shapes and nine legacy DLL regression shapes. A minimal eight-case matrix still checks legacy templates and release boundaries without advertising DLL runtime support. Seven additional public-CLI profiles exercise all six blueprints plus distinct database/AI/Redis/polyglot axes; the CLI-level polyglot case compiles while dedicated ORM matrices own adapter runtime evidence. `dash` uses bounded logs/input, probes application and Studio availability, observes its child process, reports configured rather than presumed-connected persistence, runs migrations asynchronously and restores terminal/process state on exit; neon motion is optional and has reduced-motion/color-free modes. The public development commands now use supervised process restart: coalesced source/asset/configuration changes trigger a real build, compile failures retain the current application, and successful candidates run from owned executable snapshots. A debug/development-only same-origin generation probe drives browser refresh and verifies startup identity; process state resets and shutdown is bounded. The CLI rejects legacy DLL profile generation after the Windows LMS/ORM state-split finding. The retained experimental loader is not a public v12 workflow or stable Rust ABI; see the release audit and supervised-reload tutorial. `make:chat-session` emits registered SQLx or Turso-primary models, reversible migrations and application-owned bounded chat memory; materialized contracts run persistent mock conversations on both backends and prove collision refusal. `make:billing --model` likewise emits SQLx/Turso-primary persistence plus Stripe/LemonSqueezy pricing, authenticated checkout/portal and mandatory signed-webhook code; its materialized contract compiles, migrates, persists, denies cross-owner subscription mutation before customer binding and refuses existing outputs on both backends.<br/>🟢 **`[Implemented / Bounded]`**: The LMS starter supplies bounded curriculum, school-scoped learning/assessment/publication/progress/completion, roles, leaderboard, automation/outbox/workers, localized in-app notifications and a minimized privacy-request foundation. Its SSR catalog performs limited, ORM-parameterized title/category filtering; generated auth/catalog/course/player shells consume the Core CSP nonce without remote page dependencies or inline style attributes and include keyboard landmarks, visible focus and reduced-motion handling. Lesson presentation distinguishes video/audio, rejects non-HTTPS non-local sources, requires a WebVTT track for video and a bounded transcript/language for both; materialized tests cover escaping and fail-closed negatives, not real-browser playback or caption quality. Privacy claims use exact leases, retry/dead-letter with a hard ten-attempt ceiling, actor/digest-bound completion and a supervised static-dispatch executor with an explicit protocol-only mock; the product must still supply the adapter that performs application-specific export/deletion/anonymization. Materialized SQLite exercises catalog/player escaping/nonce, privacy hard limits and the documented vertical/cross-school boundaries. Detached `--lms-modules auth`, `auth,learning` and `auth,learning,assessment` profiles remain small compiling foundations; the assessment profile grades versioned quizzes authoritatively without pulling score/leaderboard/outbox verticals. The complete starter is the default.<br/>🟠 **`[Partial]`**: Other detached combinations, profile hot reload, complete generated frontend alternatives, full Turso-primary parity beyond Blank/API, media upload/hosting/transcoding, advanced/localized search, caption/transcript quality and localization, WCAG/browser evidence, distributed failover, PostgreSQL/MySQL isolation, visual authoring, exported telemetry and the separately operated Academy remain roadmap or release-engineering work. |
+| **`cargo-rullst`** | Developer CLI toolkit, scaffolding generators (`make:*`), project blueprints, AST IDOR static route scanner. | 🟢 **`[Implemented / Bounded]`**: Interactive wizard, generators, heuristic IDOR scanner, CycloneDX exporter, toolchain doctor and a fail-closed Academy evidence diagnostic that explicitly does not certify a deployment. Version 12 deterministic generation can explicitly select the blueprint, primary database or database-free blank profile, AI, Redis and additive persistence capabilities. It deliberately fixes generated database-backed application code to Active Record and full-stack rendering to server-side `html!` plus HTMX; Repository/Data Mapper and the LiveView, Wasm Island, Pico.css and Tera foundations remain application APIs rather than equivalent v12 generator profiles. The optional storage multi-select remains public and accepts zero or more Turso/libSQL, MongoDB, DuckDB, SurrealDB and Qdrant add-ons with their distinct capability boundaries. SQLx manifests disable umbrella defaults and select one strict primary backend. A structural gate retains 18 internal layouts: nine directly linked public shapes and nine legacy DLL regression shapes. A minimal eight-case matrix still checks legacy templates and release boundaries without advertising DLL runtime support. Seven additional public-CLI profiles exercise all six blueprints plus distinct database/AI/Redis/polyglot axes; the CLI-level polyglot case compiles while dedicated ORM matrices own adapter runtime evidence. `dash` uses bounded logs/input, probes application and Studio availability, observes its child process, reports configured rather than presumed-connected persistence, runs migrations asynchronously and restores terminal/process state on exit; neon motion is optional and has reduced-motion/color-free modes. The public development commands now use supervised process restart: coalesced source/asset/configuration changes trigger a real build, compile failures retain the current application, and successful candidates run from owned executable snapshots. A debug/development-only same-origin generation probe drives browser refresh and verifies startup identity; process state resets and shutdown is bounded. The CLI rejects legacy DLL profile generation after the Windows LMS/ORM state-split finding. The retained experimental loader is not a public v12 workflow or stable Rust ABI; see the release audit and supervised-reload tutorial. `make:chat-session` emits registered SQLx or Turso-primary models, reversible migrations and application-owned bounded chat memory; materialized contracts run persistent mock conversations on both backends and prove collision refusal. `make:billing --model` likewise emits SQLx/Turso-primary persistence plus Stripe/LemonSqueezy pricing, authenticated checkout/portal and mandatory signed-webhook code; its materialized contract compiles, migrates, persists, denies cross-owner subscription mutation before customer binding and refuses existing outputs on both backends.<br/>🟢 **`[Implemented / Bounded]`**: The LMS starter supplies bounded curriculum, school-scoped learning/assessment/publication/progress/completion, roles, leaderboard, automation/outbox/workers, localized in-app notifications and a minimized privacy-request foundation. Its SSR catalog performs limited, ORM-parameterized title/category filtering; generated auth/catalog/course/player shells consume the Core CSP nonce without remote page dependencies or inline style attributes and include keyboard landmarks, visible focus and reduced-motion handling. Lesson presentation distinguishes video/audio, rejects non-HTTPS non-local sources, requires a WebVTT track for video and a bounded transcript/language for both; materialized tests cover escaping and fail-closed negatives, not real-browser playback or caption quality. Privacy claims use exact leases, retry/dead-letter with a hard ten-attempt ceiling, actor/digest-bound completion and a supervised static-dispatch executor with an explicit protocol-only mock; the product must still supply the adapter that performs application-specific export/deletion/anonymization. Materialized SQLite exercises catalog/player escaping/nonce and the learning service's owner boundary. In v13 the LMS blueprint is a small starter (catalog, modules, lessons, accessible player, enrollment and owner-bound progress) with hot reload; the complete Academy scaffold and its `--lms-modules` profiles were retired. The complete starter is the default.<br/>🟠 **`[Partial]`**: Other detached combinations, profile hot reload, complete generated frontend alternatives, full Turso-primary parity beyond Blank/API, media upload/hosting/transcoding, advanced/localized search, caption/transcript quality and localization, WCAG/browser evidence, distributed failover, PostgreSQL/MySQL isolation, visual authoring, exported telemetry and the separately operated Academy remain roadmap or release-engineering work. |
 
 ### v13 roadmap package boundaries
 
@@ -326,8 +326,8 @@ shared durable replay store. The host owns independent secret provisioning,
 rotation/retirement, TLS, CSRF and endpoint limits; no external age provider is
 needed for this transport.
 
-The v13 `make:age-gate` consumer is an explicit opt-in for recognized SaaS and full
-LMS starters. It protects the existing dashboard action with an authenticated GET
+The v13 `make:age-gate` consumer is an explicit opt-in for the recognized SaaS
+starter. It protects the existing dashboard action with an authenticated GET
 challenge and POST declaration; it never sets a reusable age-verified account
 flag. Both routes retain the starter's authentication, CSRF, headers and Server
 baseline. Policy version and threshold are chosen explicitly at generation time;
@@ -345,20 +345,8 @@ source override or a reviewed archive-only registry patch. Other blueprint adapt
 provider flows, persistent age permissions and deployed browser acceptance remain
 separate work.
 
-The extension of this same generator to the full LMS starter uses
-the authenticated `TenantContext` produced by active school-membership resolution.
-For the dashboard only, a bounded `school` query value may act as a selection
-hint before the existing authentication middleware. It is never authorization:
-unknown/conflicting selections, inactive membership and ambiguous selection fail
-closed. The existing policy may select an explicitly stored default school.
-The form action carries the already-resolved school selection, allowing
-ordinary browser submission without a custom header. The challenge binds the
-resolved school, user and session again on POST. The declaration does not update
-the existing subject age band or guardian-consent records, and the age-state
-middleware is not mounted around unrelated learning actions. The generated local
-contract exercises cross-school/user denial, selector ambiguity/conflicts,
-ordinary form submission, replay and membership revocation between issuance and
-submission. Hosted and deployed-browser acceptance remain separate.
+v13 removed this generator's LMS target together with the complete Academy
+scaffold; the LMS starter has no school membership to bind.
 
 The v13 fuzz inventory adds two isolated privacy targets for authenticated
 challenge transport and signed attestations. Deterministic fuzz-only keys permit
@@ -421,15 +409,15 @@ with the age consumer while preserving both consumers' dependency features.
 Choice forms bind the displayed notice/version and current revision, with a
 bounded expiring HMAC proof tied to the authenticated account, tenant and session;
 an old tab cannot apply a choice after switching accounts or sessions. Identity
-comes only from the authenticated user and, for LMS, active school membership.
+comes only from the authenticated user and the fixed application tenant.
 The export projects only account ID, name and email with explicit output bounds;
 it exposes no credential fields, produces no public artifact and does not mark
 broader queued rights requests as fulfilled. Its direct private response needs no
 retained export file and remains independent of optional-consent storage
 availability. Refusal/withdrawal changes the next greeting to generic content.
-Local materialized SaaS/full LMS fixtures cover both age/privacy installation
-orders, real authenticated profile queries, explicit choices, withdrawal/stale
-forms, session/account/school changes, CSRF, expiry, bounded input and missing or
+Local materialized SaaS fixtures cover both age/privacy installation orders and
+both dependency sources, real authenticated profile queries, explicit choices,
+withdrawal/stale forms, session/account changes, CSRF, expiry, bounded input and missing or
 failed state. A normal SaaS using PostgreSQL as its primary database compiles;
 this is not live PostgreSQL consumer or browser/deployment acceptance. Bootstrap
 explicitly initializes a new private consent file; ordinary opening never
@@ -587,7 +575,8 @@ reviewed initial registration and final release acceptance.
 Keep supervision policy/session/event and reviewer-access contracts separate
 from `rullst-privacy` age and consent primitives. Exam supervision and parental
 controls need distinct modules and authorization policies. The initial candidate
-must deliver one real generated LMS journey, visible session status, explicit
+had to deliver one real generated LMS journey (retired in v13 with the complete
+Academy scaffold; applications now integrate the crate directly), visible session status, explicit
 permissions, revocation, bounded collection/retention and actual application-side
 enforcement, with cross-school/subject and unauthorized-reviewer negatives.
 Parental time/content restrictions initially concern this application only.
@@ -617,12 +606,9 @@ global revision counter, and enforce bounded quotas and retention. An opener
 must supply the independently retained deployment epoch. This detects epoch
 mismatch, not restoration of an old database with the same epoch.
 
-`make:supervision` remains an explicit full-SQLite-LMS opt-in. Stable CLI releases
-pin the supervision dependency to exactly their own version and disable default
-features. `--supervision-source` optionally selects a local crate with matching
-name/version and the SQLite module. A prerelease CLI requires that source path
-and fails before applying edits when it is absent; it must never resolve an
-unpublished registry candidate or silently substitute the stable v12 package.
+v13 removed `make:supervision` together with the complete Academy LMS it
+targeted. Applications depend on the crate directly with an exact version and
+default features disabled; the removed generator remains in the git history.
 
 Only trusted operator provisioning can establish expiring `ExamReview` or
 `ParentalManage` authority after independent relationship verification. The host
@@ -1248,50 +1234,13 @@ contracts exercise all four protocols. Membership establishment, plan state,
 migrations, reconciliation and non-relational adapters remain application
 boundaries.
 
-### 3.1. Generated Academy activity boundary
+### 3.1. Generated Academy activity boundary (removed in v13)
 
-The generated `ActivityEvaluator` boundary uses static dispatch and accepts an
-untrusted submission, never client-supplied points. It validates authenticated
-ownership, activity/ruleset identity, bounded object-shaped state, server-time
-ordering and a canonical evidence digest, then constructs `ActivityResult` from
-the evaluator's outcome. Built-in bounded evaluators cover single-choice, a
-complete permutation of at most eight matching pairs and typed recall with a
-closed answer set, 512-byte/control-character boundary, trim and optional
-Unicode lowercase comparison. Typed replay persists a policy-bound SHA-256
-digest rather than raw input; it does not perform Unicode normalization,
-accent/fuzzy matching or make the digest non-personal data. The complete
-Academy starter's `record_activity_result` rechecks the authenticated actor,
-loads course/kind/maximum/ruleset/season and
-the canonical evidence digest and exact evaluator configuration from persisted
-activity state, rejects any divergence, then atomically appends an exact-replay
-activity-attempt record,
-`ScoreEvent` v2, the leaderboard update and `score_recorded`. The generated
-owner-only `POST /activities/{id}/attempts` accepts only an idempotency key and
-selected option. `POST /activities/{id}/attempts/matching` accepts only an
-idempotency key and bounded pair IDs, while
-`POST /activities/{id}/attempts/typed` accepts the key and bounded learner text.
-All derive learner/activity identity, policy, answers, points, evidence and time
-from authenticated/server state. Durable attempt identity is scoped by learner
-and activity, and the event idempotency key is derived by the
-server rather than trusted as a global client namespace. The application must
-keep evaluator answer rules in trusted state and include retained attempt state
-in its privacy lifecycle. Listening/game evaluators and unification with
-the separately persisted quiz evaluator remain roadmap work.
-
-Activities may opt into the exact `rullst-box-v1` review policy. For a newly
-applied score, the score transaction locks and validates that versioned policy,
-loads the learner/activity review state, applies a deterministic bounded
-pass/lapse transition and upserts the next due time before commit. An exact
-activity replay exits before this transition and therefore cannot advance the
-schedule. The owner-only `GET /reviews/due` derives the learner and current time
-from server state and returns at most 50 due activities after rechecking active
-school membership, course scope and enrollment. Invalid policy/state or a
-changed algorithm version fails the score transaction closed. This is a simple
-inspectable scheduling foundation, not FSRS/SM-2 compatibility, efficacy proof,
-AI personalization, generated pedagogy or a complete adaptive-learning system;
-PostgreSQL/MySQL contention evidence also remains open.
-
----
+v13 replaced the complete Academy scaffold with the LMS starter. The generated
+`ActivityEvaluator`, activity attempts, `ScoreEvent` recording, leaderboards and
+the spaced-review queue are no longer generated. Their design remains in the
+git history and on the stable v12 branch; an application that adds them owns
+the same server-authoritative controls.
 
 ## ⚡ 4. Core API Specifications (`rullst-core`)
 

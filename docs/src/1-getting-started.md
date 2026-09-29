@@ -131,21 +131,19 @@ A visually stunning, glassmorphic portfolio template designed specifically for R
 
 ## 3. LMS Platform Starter
 **Use Case:** Online learning products and course platforms.
-The complete profile is a bounded learning-domain foundation featuring:
-- School-scoped curriculum, enrollment, progress and versioned publication.
-- Quizzes, learning activities, assignments/rubrics, completion records and
-  database-verifiable certificates.
-- Roles, leaderboard updates, transactional outbox/workers, scheduling and
-  localized in-app notifications.
-- Accessible server-rendered catalog, course and media-player shells with
-  explicit source, caption and transcript admission rules.
+A small, readable learning foundation featuring:
+- A course catalog with search, course pages, modules and lessons.
+- An accessible server-rendered video/audio player with explicit source,
+  caption and transcript admission rules.
+- Registration, login, enrollment and owner-bound, idempotent lesson progress.
+- A Nexus admin for categories, courses, modules, lessons, users and enrollments.
 
 It remains a starter rather than a finished education product. Upload hosting,
 media transcoding and signed delivery, advanced/localized search, billing-linked
 entitlements, distributed failover, native offline playback, real-browser/WCAG
 evidence and PostgreSQL/MySQL isolation evidence remain application or roadmap
-work. Smaller `auth`, `auth,learning` and `auth,learning,assessment` profiles are
-available when the complete domain scaffold is unnecessary.
+work, as do quizzes, schools, roles and notifications: v13 replaced the earlier
+complete Academy scaffold with this starter.
 
 ## 4. SaaS App Starter
 **Use Case:** Subscription-based products and billing.

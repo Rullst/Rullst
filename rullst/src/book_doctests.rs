@@ -208,14 +208,6 @@ tutorial!(
     "../../docs/src/tutorials/45-accessible-academy-media.md"
 );
 tutorial!(
-    tutorial_46_server_authoritative_learning_activities,
-    "../../docs/src/tutorials/46-server-authoritative-learning-activities.md"
-);
-tutorial!(
-    tutorial_47_spaced_review_queue,
-    "../../docs/src/tutorials/47-spaced-review-queue.md"
-);
-tutorial!(
     tutorial_48_local_oidc_testing,
     "../../docs/src/tutorials/48-local-oidc-testing.md"
 );

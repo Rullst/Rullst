@@ -7,14 +7,13 @@ use std::{
 };
 use toml_edit::DocumentMut;
 
-mod lms_routing;
 mod routing;
 use writes::Edit;
 
 pub(crate) fn command() -> Command {
     Command::new("make:age-gate")
-        .about("Add an explicit first-party age declaration to a SaaS/LMS dashboard (v13 preview)")
-        .arg(Arg::new("blueprint").long("blueprint").default_value("saas").value_parser(["saas", "lms"]))
+        .about("Add an explicit first-party age declaration to a SaaS dashboard (v13 preview)")
+        .arg(Arg::new("blueprint").long("blueprint").default_value("saas").value_parser(["saas"]))
         .arg(
             Arg::new("privacy-source")
                 .long("privacy-source")
@@ -36,7 +35,7 @@ pub(crate) fn command() -> Command {
             Arg::new("tenant-ref")
                 .long("tenant-ref")
                 .required_if_eq("blueprint", "saas")
-                .help("Server-owned SaaS tenant; the LMS profile uses authenticated school membership"),
+                .help("Server-owned SaaS tenant"),
         )
         .arg(
             Arg::new("replay-store")
@@ -86,8 +85,8 @@ fn plan(
     profile: &str,
     consumer: &str,
 ) -> Result<Vec<Edit>, Box<dyn std::error::Error>> {
-    if !matches!((consumer, tenant), ("saas", Some(_)) | ("lms", None)) {
-        return Err(invalid("SaaS requires --tenant-ref; LMS resolves its school from authenticated membership and rejects a fixed tenant").into());
+    if !matches!((consumer, tenant), ("saas", Some(_))) {
+        return Err(invalid("the SaaS dashboard requires --tenant-ref").into());
     }
     for token in std::iter::once(version).chain(tenant) {
         if token.is_empty()
@@ -125,11 +124,7 @@ fn plan(
     } else {
         (main_path.clone(), main_updated.clone())
     };
-    let updated_router = if consumer == "saas" {
-        routing::protect(&router)?
-    } else {
-        lms_routing::protect(&router)?
-    };
+    let updated_router = routing::protect(&router)?;
     if router_path == main_path {
         main_updated = updated_router;
     } else {
@@ -165,14 +160,7 @@ fn plan(
                 .map(|tenant| format!("Some({tenant:?}.to_owned())"))
                 .unwrap_or_else(|| "None".to_owned()),
         )
-        .replace(
-            "__AUDIENCE__",
-            if consumer == "saas" {
-                "\"saas-dashboard\""
-            } else {
-                "\"lms-dashboard\""
-            },
-        )
+        .replace("__AUDIENCE__", "\"saas-dashboard\"")
         .replace("__MINIMUM_AGE__", &minimum.to_string());
     for (name, content) in [
         (

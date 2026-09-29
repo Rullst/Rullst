@@ -63,8 +63,6 @@
 - [43. Omni Web-First Applications](tutorials/43-omni-web-first.md)
 - [44. Omni Offline Synchronization](tutorials/44-omni-offline-sync.md)
 - [45. Accessible Academy Media](tutorials/45-accessible-academy-media.md)
-- [46. Server-Authoritative Learning Activities](tutorials/46-server-authoritative-learning-activities.md)
-- [47. Durable Spaced-Review Queue](tutorials/47-spaced-review-queue.md)
 - [48. Signed Local OIDC Testing](tutorials/48-local-oidc-testing.md)
 - [49. Android Signing and Application Icons](tutorials/49-omni-android-signing.md)
 - [49. Bounded Brokered Messaging](tutorials/49-brokered-messaging.md)
