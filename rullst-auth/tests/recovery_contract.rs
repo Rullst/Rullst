@@ -404,3 +404,23 @@ async fn overlong_passwords_share_one_error_for_known_and_unknown_accounts() {
         .unwrap();
     store.close().await;
 }
+
+#[cfg(feature = "recovery-postgres")]
+#[tokio::test]
+async fn postgres_urls_use_the_hardened_connection_policy_before_connecting() {
+    // The store shares the email-login/API-token PostgreSQL policy: unknown
+    // query options and fragments fail as configuration without any network I/O.
+    for url in [
+        "postgres://db.invalid/accounts?application_name=recovery",
+        "postgres://db.invalid/accounts?sslmode=verify-full&sslmode=disable",
+        "postgresql://db.invalid/accounts#fragment",
+    ] {
+        let started = std::time::Instant::now();
+        assert_eq!(
+            SqlRecoveryStore::connect(url, keys()).await.err(),
+            Some(RecoveryError::Configuration),
+            "{url}"
+        );
+        assert!(started.elapsed() < std::time::Duration::from_secs(1));
+    }
+}

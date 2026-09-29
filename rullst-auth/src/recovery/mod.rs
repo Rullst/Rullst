@@ -6,6 +6,7 @@
 //! Mount request/consume endpoints behind independent ingress abuse controls,
 //! secure headers, CSRF and no-store/referrer-policy protections.
 
+mod connection;
 mod crypto;
 mod outbox;
 mod store;

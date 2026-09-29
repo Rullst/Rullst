@@ -44,6 +44,14 @@ impl SqlRecoveryStore {
     /// Connects without changing schema. Call `migrate` explicitly during deployment.
     /// SQLite filenames must be URL-encoded. Prefer `sqlite:PATH?mode=rwc`
     /// (without an authority) for absolute paths, including Windows drive letters.
+    ///
+    /// PostgreSQL URLs follow a hardened connection policy: a
+    /// non-loopback, non-socket host always uses `sslmode=verify-full`
+    /// (certificate and hostname verification; add `sslrootcert` for a private
+    /// CA), and only `sslmode`, `sslrootcert`, `sslcert`, `sslkey`, `host`,
+    /// `hostaddr`, `port`, `dbname`, `user` and `password` (plus their SQLx
+    /// aliases) are accepted as query options. Anything else fails with
+    /// `Configuration` before connecting.
     pub async fn connect(
         url: impl Into<String>,
         secrets: RecoverySecrets,
@@ -57,8 +65,13 @@ impl SqlRecoveryStore {
         {
             return Err(RecoveryError::Configuration);
         }
+        let postgres_options = if postgres {
+            Some(super::connection::postgres_options(&url)?)
+        } else {
+            None
+        };
         sqlx::any::install_default_drivers();
-        let pool = sqlx::any::AnyPoolOptions::new()
+        let pool_options = sqlx::any::AnyPoolOptions::new()
             .max_connections(if sqlite { 1 } else { 5 })
             .acquire_timeout(std::time::Duration::from_secs(5))
             .after_connect(move |connection, _| {
@@ -70,9 +83,11 @@ impl SqlRecoveryStore {
                     }
                     Ok(())
                 })
-            })
-            .connect(&url)
-            .await?;
+            });
+        let pool = match postgres_options {
+            Some(options) => pool_options.connect_with(options).await?,
+            None => pool_options.connect(&url).await?,
+        };
         Ok(Self {
             pool,
             keys: Arc::new(secrets),
