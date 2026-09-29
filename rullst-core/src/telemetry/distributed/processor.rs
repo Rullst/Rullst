@@ -66,7 +66,7 @@ impl SpanProcessor for MinimizedProcessor {
 
 #[derive(Debug)]
 pub(super) enum Destination {
-    Remote(opentelemetry_otlp::SpanExporter),
+    Remote(Box<opentelemetry_otlp::SpanExporter>),
     Offline(Arc<Counters>),
 }
 impl SpanExporter for Destination {

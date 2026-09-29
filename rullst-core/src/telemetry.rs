@@ -69,6 +69,8 @@ pub fn init_telemetry() -> Result<(), Box<dyn std::error::Error>> {
         .with_endpoint(&endpoint)
         .with_protocol(opentelemetry_otlp::Protocol::HttpBinary)
         .with_http_client(distributed::BoundedOtlpClient::legacy(endpoint))
+        // OTLP 0.33 retries by default; keep the single-attempt export contract.
+        .with_retry_policy(opentelemetry_otlp::RetryPolicy::disabled())
         .build()?;
 
     let resource = opentelemetry_sdk::Resource::builder()
