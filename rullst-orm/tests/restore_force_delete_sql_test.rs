@@ -25,9 +25,11 @@ struct FlaggedNote {
 }
 
 #[derive(Clone, Debug, FromRow, rullst_orm::Orm)]
+// v12's derive needs at least one column besides `id`.
 #[orm(table = "plain_notes")]
 struct PlainNote {
     id: i32,
+    body: String,
 }
 
 const NON_POSTGRES: [&str; 2] = ["mysql", "sqlite"];
@@ -88,7 +90,10 @@ fn fixture_models_keep_their_fields() {
         deleted_at: None,
     };
     let flagged = FlaggedNote { id: 2, archived: 0 };
-    let plain = PlainNote { id: 3 };
+    let plain = PlainNote {
+        id: 3,
+        body: String::new(),
+    };
     assert_eq!(
         (note.id, note.tenant_id.as_str(), note.deleted_at),
         (1, "acme", None)
