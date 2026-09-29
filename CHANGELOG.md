@@ -153,6 +153,9 @@ A prepared version section does not establish that its tag or crates exist.
   full hosted campaign must pass before this candidate is admitted.
 - Refresh immutable CodeQL, Rust toolchain installer, tool installer,
   TruffleHog wrapper and Codecov Action references together across v13 workflows.
+- Replace the exact aws-smithy-types 1.6.4 pin with a 1.8.1 floor: the
+  incompatible 1.7.0 release was yanked and 1.8 compiles with Smithy JSON 0.63.
+  v12 keeps its exact 1.6.4 pin.
 
 ### Unpublished v13 privacy foundation
 
