@@ -30,12 +30,26 @@ pub use session::{AuthSession, OAuthAuthorization, begin_oauth_session, begin_oi
 ///     format!("Exchange authorization code: {code}").into_response()
 /// }
 /// ```
-#[derive(Debug, Deserialize, Clone, PartialEq)]
+#[derive(Deserialize, Clone, PartialEq)]
 pub struct AuthCallback {
     pub code: Option<String>,
     pub state: Option<String>,
     pub error: Option<String>,
     pub error_description: Option<String>,
+}
+
+/// Redacts the authorization code and CSRF state, which are single-use secrets.
+impl std::fmt::Debug for AuthCallback {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        const REDACTED: &str = "[REDACTED]";
+        formatter
+            .debug_struct("AuthCallback")
+            .field("code", &self.code.as_ref().map(|_| REDACTED))
+            .field("state", &self.state.as_ref().map(|_| REDACTED))
+            .field("error", &self.error)
+            .field("error_description", &self.error_description)
+            .finish()
+    }
 }
 
 impl AuthCallback {
@@ -103,6 +117,20 @@ impl actix_web::FromRequest for AuthCallback {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn auth_callback_debug_redacts_code_and_state() {
+        let callback = AuthCallback {
+            code: Some("code-secret-canary".to_string()),
+            state: Some("state-secret-canary".to_string()),
+            error: None,
+            error_description: None,
+        };
+        let debug = format!("{callback:?}");
+        assert!(!debug.contains("code-secret-canary"), "{debug}");
+        assert!(!debug.contains("state-secret-canary"), "{debug}");
+        assert!(debug.contains("[REDACTED]"), "{debug}");
+    }
 
     #[test]
     fn test_auth_callback_success_deserialization() {
