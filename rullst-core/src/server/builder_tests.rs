@@ -360,3 +360,19 @@ async fn database_configuration_fails_closed_without_the_orm_feature() {
         Err(ServerError::Database(_))
     ));
 }
+
+#[test]
+fn dotenv_errors_never_echo_file_content() {
+    let canary = "server-dotenv-secret-canary";
+    let content = format!("APP_NAME='unterminated\nAPP_KEY={canary}\n");
+    let error = super::parse_dotenv(&content).expect_err("unterminated quote must fail");
+    let message = error.to_string();
+    assert!(!message.contains(canary), "{message}");
+    assert!(
+        message.contains("invalid .env syntax in entry 1"),
+        "{message}"
+    );
+
+    let values = super::parse_dotenv("A=1\nB=two\n").expect("valid dotenv");
+    assert_eq!(values.get("B").map(String::as_str), Some("two"));
+}
