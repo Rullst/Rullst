@@ -201,6 +201,15 @@ async fn main() -> Result<(), rullst_orm::Error> {
 }
 ```
 
+### Query row cap
+
+Generated builders start with a global row cap (`Orm::set_max_query_limit`,
+1,000 by default; `0` disables it). `limit()` clamps to that cap and
+`unsafe_unlimited()` removes it for one explicit query. `paginate(page,
+per_page)` clamps `per_page` to the same cap, because the value often comes
+from request input; `PaginationResult::per_page` and `last_page` report the
+effective page size.
+
 ### Native database enums
 
 Generated applications should select a strict primary feature. PostgreSQL

@@ -199,6 +199,13 @@ fails before contacting Scout, and an empty provider result remains an empty
 match even when a database contains an explicitly inserted ID of zero. Search
 index access controls still belong to the application/operator.
 
+Generated builders start with a global row cap (`Orm::set_max_query_limit`,
+1,000 by default; `0` disables it). `limit()` clamps to that cap and
+`unsafe_unlimited()` removes it for one explicit query. `paginate(page,
+per_page)` clamps `per_page` to the same cap, because the value often comes
+from request input; `PaginationResult::per_page` and `last_page` report the
+effective page size.
+
 Prefer `Orm::transaction` with ordinary model/query methods when combining
 eager relationships or `after_fetch` hooks with transactional reads. Fetches
 release the managed transaction lock before invoking hooks and loading related

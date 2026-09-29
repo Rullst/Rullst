@@ -233,6 +233,11 @@ pub fn generate_execution_methods(
                     "paginate() requires per_page greater than zero".to_string()
                 ));
             }
+            // Request-supplied `per_page` obeys the same global row cap as `limit()`.
+            let per_page = match rullst_orm::schema::get_max_query_limit() {
+                Some(max_limit) => per_page.min(max_limit),
+                None => per_page,
+            };
             let current_page = page.max(1);
             let mut total_builder = self.clone();
             total_builder.selects = Some("COUNT(*)".to_string());

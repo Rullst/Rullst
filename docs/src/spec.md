@@ -1496,6 +1496,11 @@ while portability and semantic review remain the model author's responsibility.
 * Generated builders assemble bindings by emitted clause position (CTE, JOIN,
   WHERE/HAVING, ORDER BY), not by the order in which fluent methods were
   called. Nested typed subqueries export that ordered binding sequence.
+* Generated builders start with the global row cap from
+  `Orm::set_max_query_limit` (1,000 by default; `0` disables it). `limit()`
+  clamps to it and `unsafe_unlimited()` removes it for one query.
+  `paginate(page, per_page)` clamps `per_page` to the same cap and reports the
+  effective value in `PaginationResult::per_page` and `last_page`.
 * `where_exists`, `or_where_exists`, `with_cte` and `with_recursive` embed a
   subquery with portable `?` markers, even when its own `to_sql()` rendered
   PostgreSQL `$n` markers. The outermost statement (including `delete_all`) is
