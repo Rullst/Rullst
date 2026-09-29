@@ -39,82 +39,10 @@ impl OidcProvider {
             .ok_or_else(|| ConnectError::Token("Failed to get access_token".to_string()))?;
 
         let mut user = if let Some(id_token) = token_res["id_token"].as_str() {
-            // Cryptographic OIDC Signature Validation
-            let header = jsonwebtoken::decode_header(id_token).map_err(|e| {
-                crate::error::ConnectError::Provider(format!(
-                    "Failed to decode OIDC id_token header: {}",
-                    e
-                ))
-            })?;
-
-            if let Some(kid) = header.kid.as_ref() {
-                let jwks = self.get_jwks_for_kid(kid).await?;
-                let jwk = jwks.find(kid).ok_or_else(|| {
-                    crate::error::ConnectError::Provider(format!(
-                        "OIDC JWK with key ID '{}' not found",
-                        kid
-                    ))
-                })?;
-                let decoding_key = jsonwebtoken::DecodingKey::from_jwk(jwk).map_err(|e| {
-                    crate::error::ConnectError::Provider(format!(
-                        "Failed to build OIDC decoding key from JWK: {}",
-                        e
-                    ))
-                })?;
-                let alg = match header.alg {
-                    jsonwebtoken::Algorithm::RS256
-                    | jsonwebtoken::Algorithm::RS384
-                    | jsonwebtoken::Algorithm::RS512
-                    | jsonwebtoken::Algorithm::ES256
-                    | jsonwebtoken::Algorithm::ES384
-                    | jsonwebtoken::Algorithm::EdDSA => header.alg,
-                    _ => {
-                        return Err(crate::error::ConnectError::Provider(
-                            "OIDC token header specifies an insecure or symmetric algorithm"
-                                .to_string(),
-                        ));
-                    }
-                };
-                let validation =
-                    crate::provider::id_token::validation(alg, &self.client_id, &[&self.issuer]);
-
-                let token_data =
-                    jsonwebtoken::decode::<Value>(id_token, &decoding_key, &validation).map_err(
-                        |e| {
-                            crate::error::ConnectError::Provider(format!(
-                                "OIDC id_token signature or claims validation failed: {}",
-                                e
-                            ))
-                        },
-                    )?;
-                let payload = token_data.claims;
-
-                crate::provider::id_token::validate_claims(
-                    &payload,
-                    &self.client_id,
-                    expected_nonce,
-                )?;
-
-                ConnectUser {
-                    id: payload["sub"].as_str().map(String::from).ok_or_else(|| {
-                        crate::error::ConnectError::Provider("Missing sub in id_token".to_owned())
-                    })?,
-                    name: payload["name"].as_str().map(String::from).ok_or_else(|| {
-                        crate::error::ConnectError::Provider("Missing name in id_token".to_owned())
-                    })?,
-                    email: payload["email"].as_str().map(String::from),
-                    avatar_url: payload["picture"].as_str().map(String::from),
-                    email_verified: payload["email_verified"].as_bool(),
-                    raw_data: payload,
-                    access_token: secrecy::SecretString::from(access_token.to_owned()),
-                    refresh_token: None,
-                    expires_in: None,
-                }
-            } else {
-                return Err(crate::error::ConnectError::Provider(
-                    "Missing 'kid' header in OIDC id_token".to_owned(),
-                ));
-            }
+            let claims = self
+                .verify_id_token_claims(id_token, expected_nonce)
+                .await?;
+            user_from_id_token_claims(claims, secrecy::SecretString::from(access_token.to_owned()))?
         } else {
             if expected_nonce.is_some() && !self.credential_mode.is_mock() {
                 return Err(ConnectError::Provider(
@@ -132,6 +60,109 @@ impl OidcProvider {
 
         Ok(user)
     }
+
+    /// Verifies an ID token issued to this application and returns its user.
+    ///
+    /// Use this to sign in a user whose native or mobile client obtained an ID
+    /// token from this issuer for this `client_id` and sent it to your server.
+    /// Unlike [`Provider::get_user_from_token`], the result is bound to this
+    /// application: the signature is verified through the discovered, rotating
+    /// JWKS (RS256/384/512, ES256/384 or EdDSA), `iss` must equal the
+    /// discovered issuer exactly, `aud` exactly this `client_id`, `azp` (when
+    /// present) this `client_id`, and `exp`, `iat` and `nonce` must be valid.
+    /// Generate `expected_nonce` on the server for this sign-in attempt, let
+    /// the client pass it to the provider, and consume it once.
+    ///
+    /// The returned user carries the verified ID token in `access_token`; this
+    /// flow yields no provider access or refresh token. The userinfo endpoint
+    /// is not called, and the token must contain a `name` claim. Mock
+    /// credentials return a deterministic offline identity when the `mock`
+    /// feature is enabled.
+    pub async fn verify_id_token(
+        &self,
+        id_token: &str,
+        expected_nonce: &str,
+    ) -> Result<ConnectUser, ConnectError> {
+        crate::provider::id_token::validate_verification_input(id_token, expected_nonce)?;
+        if self.credential_mode.is_mock() {
+            return crate::provider::id_token::mock_verified_user("oidc", id_token);
+        }
+        let claims = self
+            .verify_id_token_claims(id_token, Some(expected_nonce))
+            .await?;
+        user_from_id_token_claims(claims, secrecy::SecretString::from(id_token.to_owned()))
+    }
+
+    /// Verifies an ID token's signature through the discovered JWKS, then its
+    /// exact issuer, audience, `azp`, lifetime and, when supplied, nonce.
+    pub(crate) async fn verify_id_token_claims(
+        &self,
+        id_token: &str,
+        expected_nonce: Option<&str>,
+    ) -> Result<Value, ConnectError> {
+        let header = jsonwebtoken::decode_header(id_token).map_err(|e| {
+            ConnectError::Provider(format!("Failed to decode OIDC id_token header: {}", e))
+        })?;
+        let kid = header.kid.as_ref().ok_or_else(|| {
+            ConnectError::Provider("Missing 'kid' header in OIDC id_token".to_owned())
+        })?;
+        let jwks = self.get_jwks_for_kid(kid).await?;
+        let jwk = jwks.find(kid).ok_or_else(|| {
+            ConnectError::Provider(format!("OIDC JWK with key ID '{}' not found", kid))
+        })?;
+        let decoding_key = jsonwebtoken::DecodingKey::from_jwk(jwk).map_err(|e| {
+            ConnectError::Provider(format!("Failed to build OIDC decoding key from JWK: {}", e))
+        })?;
+        let alg = match header.alg {
+            jsonwebtoken::Algorithm::RS256
+            | jsonwebtoken::Algorithm::RS384
+            | jsonwebtoken::Algorithm::RS512
+            | jsonwebtoken::Algorithm::ES256
+            | jsonwebtoken::Algorithm::ES384
+            | jsonwebtoken::Algorithm::EdDSA => header.alg,
+            _ => {
+                return Err(ConnectError::Provider(
+                    "OIDC token header specifies an insecure or symmetric algorithm".to_string(),
+                ));
+            }
+        };
+        let validation =
+            crate::provider::id_token::validation(alg, &self.client_id, &[&self.issuer]);
+
+        let claims = jsonwebtoken::decode::<Value>(id_token, &decoding_key, &validation)
+            .map_err(|e| {
+                ConnectError::Provider(format!(
+                    "OIDC id_token signature or claims validation failed: {}",
+                    e
+                ))
+            })?
+            .claims;
+        crate::provider::id_token::validate_claims(&claims, &self.client_id, expected_nonce)?;
+        Ok(claims)
+    }
+}
+
+fn user_from_id_token_claims(
+    payload: Value,
+    access_token: secrecy::SecretString,
+) -> Result<ConnectUser, ConnectError> {
+    Ok(ConnectUser {
+        id: payload["sub"]
+            .as_str()
+            .map(String::from)
+            .ok_or_else(|| ConnectError::Provider("Missing sub in id_token".to_owned()))?,
+        name: payload["name"]
+            .as_str()
+            .map(String::from)
+            .ok_or_else(|| ConnectError::Provider("Missing name in id_token".to_owned()))?,
+        email: payload["email"].as_str().map(String::from),
+        avatar_url: payload["picture"].as_str().map(String::from),
+        email_verified: payload["email_verified"].as_bool(),
+        raw_data: payload,
+        access_token,
+        refresh_token: None,
+        expires_in: None,
+    })
 }
 
 #[async_trait]

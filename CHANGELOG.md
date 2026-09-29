@@ -37,6 +37,12 @@ A prepared version section does not establish that its tag or crates exist.
   empty `source_findings` array. The catalog becomes `rullst-upgrade-rules-v3`,
   so earlier preparations must be prepared again.
 
+### CLI error messages
+
+- `cargo rullst` and `rullst` print a failed command's message instead of its
+  internal debug form (for example `Error: NotRullstProject`) and exit with
+  status 1.
+
 ### Release provenance and governance
 
 - Preserve the original signed Sigstore bundle as a release asset and verify all
@@ -73,6 +79,30 @@ A prepared version section does not establish that its tag or crates exist.
   generated applications are copied code and must apply the same change.
 - The portfolio blueprint's generated files move into template files under
   `blueprints/portfolio/src/`; their output is otherwise unchanged.
+
+### Security crate review fixes
+
+- `LoginGuard` keeps jailing when its failure or jail map is full: it evicts the
+  least recently failed counter or the soonest-expiring jail instead of
+  dropping the new identity, removes expired state on every call through
+  time-ordered indexes, and emits `LOGIN_JAIL_TRIGGERED` only for a jail it
+  created. Before, 100,000 failed logins for random usernames disabled the
+  jail for real accounts.
+- DLP response masking and `redact_secrets` run in linear time. A database URL
+  password is searched only within the URL's host part (up to 2,048 bytes),
+  and the last `@` there ends the credentials.
+- Honeypot ban checks look up only the requesting peer instead of scanning
+  every ban under the global lock. Expired bans are pruned in expiry order,
+  and a full list evicts the soonest-expiring ban.
+- `verify_totp_code` accepts a replayed code for about 90 seconds; its docs now
+  explain how to reject reuse by storing the last accepted step. New
+  `verify_totp_step` returns the matched step, and `verify_totp_step_after`
+  rejects any step not newer than the last accepted one (RFC 6238 §5.2).
+- Deserializing `SentinelObservation` applies `try_new` validation, and
+  `ThreatClassifier::assess` no longer panics on a zero window or zero requests.
+- The global `is_rate_limited` helper keeps a separate budget per key and
+  policy, so a short-window caller no longer resets a longer policy's counter.
+  Keys in `global_rate_limit_store()` now include the policy.
 
 ### Omni dependency compatibility maintenance
 
@@ -116,6 +146,30 @@ A prepared version section does not establish that its tag or crates exist.
   and downstream generic helper/macro behavior. Thirteen offline contract tests
   cover all eleven providers without claiming live account interoperability.
   This is a compatible stable correction, with no new provider or public API.
+
+### Connect review fixes
+
+- Provider error responses with localized text no longer panic:
+  `error_for_status` cuts messages (512 bytes) and OAuth error codes (128
+  bytes) on a UTF-8 character boundary, and OAuth errors returned with a
+  success status are bounded the same way.
+- `Oauth2TokenResponse`, `ExchangeParams`, `AuthCallback` and
+  `DeviceAuthorizationResponse` redact tokens, authorization codes, CSRF state,
+  PKCE verifiers, nonces and device codes from `Debug` output.
+- `OidcProvider` validates ID tokens against the issuer exactly as discovered,
+  so Auth0 issuers ending in `/` work; `OidcProvider::issuer` now holds the
+  published value.
+- JWKS caches reject malformed `kid` values before any I/O, let an unknown
+  `kid` force at most one refresh per 30 seconds per URL, and make refreshes
+  single-flight, so a client can no longer force a fetch per request.
+- `Provider::get_user_from_token` is documented as not authenticating tokens
+  supplied by native or mobile clients. New `GoogleProvider::verify_id_token`
+  and `OidcProvider::verify_id_token` verify a client-supplied ID token against
+  this client ID and a server-issued nonce.
+- Sign in with Apple guidance is corrected: the query-string `AuthSession` flow
+  cannot receive Apple's `form_post` callback. New `AuthSessionForm` consumes
+  the same stored challenge from a bounded form POST, and tutorial 42 explains
+  the `SameSite=None; Secure` challenge cookie it needs.
 
 ### HTML macro caller bindings
 

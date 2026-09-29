@@ -44,6 +44,40 @@ pub enum ConnectError {
     Session(String),
 }
 
+/// Maximum bytes of a provider-supplied error description kept in an error.
+pub(crate) const MAX_PROVIDER_ERROR_MESSAGE_BYTES: usize = 512;
+/// Maximum bytes of a provider-supplied OAuth error code kept in an error.
+pub(crate) const MAX_PROVIDER_ERROR_CODE_BYTES: usize = 128;
+const TRUNCATION_MARKER: &str = "... (truncated)";
+
+/// Copies at most `max_bytes` of provider-controlled text, cutting at the last
+/// UTF-8 character boundary at or below the limit and marking the truncation.
+///
+/// Provider bodies are untrusted and may be localized, so a byte limit must
+/// never split a multi-byte character.
+pub(crate) fn bounded_provider_text(text: &str, max_bytes: usize) -> String {
+    if text.len() <= max_bytes {
+        return text.to_owned();
+    }
+    let end = (0..=max_bytes)
+        .rev()
+        .find(|&index| text.is_char_boundary(index))
+        .unwrap_or(0);
+    let mut bounded = String::with_capacity(end.saturating_add(TRUNCATION_MARKER.len()));
+    bounded.push_str(text.get(..end).unwrap_or_default());
+    bounded.push_str(TRUNCATION_MARKER);
+    bounded
+}
+
+/// Builds the error for an OAuth `error` object returned with a success status.
+pub(crate) fn provider_returned_error(error: &str, description: &str) -> ConnectError {
+    ConnectError::Token(format!(
+        "Provider returned error: {} - {}",
+        bounded_provider_text(error, MAX_PROVIDER_ERROR_CODE_BYTES),
+        bounded_provider_text(description, MAX_PROVIDER_ERROR_MESSAGE_BYTES)
+    ))
+}
+
 impl From<reqwest::Error> for ConnectError {
     fn from(err: reqwest::Error) -> Self {
         ConnectError::Reqwest(err.to_string())

@@ -3,7 +3,12 @@ use jsonwebtoken::{Algorithm, Validation};
 use serde_json::Value;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::ConnectError;
+use crate::{ConnectError, ConnectUser};
+
+/// Longest ID token accepted by the audience-bound verification entry points.
+const MAX_ID_TOKEN_BYTES: usize = 16 * 1024;
+/// Longest caller-supplied nonce accepted by those entry points.
+const MAX_NONCE_BYTES: usize = 512;
 
 pub(crate) fn validation(algorithm: Algorithm, client_id: &str, issuers: &[&str]) -> Validation {
     let mut validation = Validation::new(algorithm);
@@ -70,4 +75,48 @@ pub(crate) fn validate_claims(
         }
     }
     Ok(())
+}
+
+/// Checks caller-supplied input to a `verify_id_token` entry point before any
+/// I/O. A nonce is mandatory there: it is the only binding between the token
+/// and the sign-in attempt this server started.
+pub(crate) fn validate_verification_input(
+    id_token: &str,
+    expected_nonce: &str,
+) -> Result<(), ConnectError> {
+    if id_token.is_empty() || id_token.len() > MAX_ID_TOKEN_BYTES {
+        return Err(ConnectError::Token(format!(
+            "ID token must contain 1 to {MAX_ID_TOKEN_BYTES} bytes"
+        )));
+    }
+    if expected_nonce.is_empty() || expected_nonce.len() > MAX_NONCE_BYTES {
+        return Err(ConnectError::Provider(format!(
+            "ID-token verification requires an expected nonce of 1 to {MAX_NONCE_BYTES} bytes"
+        )));
+    }
+    Ok(())
+}
+
+/// Deterministic identity for `verify_id_token` under mock credentials.
+pub(crate) fn mock_verified_user(
+    provider: &str,
+    id_token: &str,
+) -> Result<ConnectUser, ConnectError> {
+    if !cfg!(any(test, feature = "mock")) {
+        return Err(ConnectError::Offline(
+            "mock credentials are network-free but functional mock identities require the 'mock' feature"
+                .to_string(),
+        ));
+    }
+    Ok(ConnectUser {
+        id: "mock-user".to_string(),
+        name: "Rullst Mock User".to_string(),
+        email: Some("mock@example.invalid".to_string()),
+        avatar_url: None,
+        email_verified: Some(true),
+        raw_data: serde_json::json!({ "provider": provider, "mock": true }),
+        access_token: secrecy::SecretString::from(id_token.to_owned()),
+        refresh_token: None,
+        expires_in: None,
+    })
 }

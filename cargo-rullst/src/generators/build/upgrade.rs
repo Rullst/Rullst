@@ -55,6 +55,10 @@ enum UpgradeError {
         command: &'static str,
         recovery: String,
     },
+    #[error(
+        "this project depends on Rullst {0}; this CLI upgrades from v12 or later. Upgrade to v12 first with `cargo install cargo-rullst --version '^12' --locked` and `cargo rullst upgrade`, then rerun this CLI"
+    )]
+    RetiredSourceMajor(String),
 }
 
 pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Error>> {
@@ -100,13 +104,7 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
         .map(|major| format!("v{major}"))
         .collect::<Vec<_>>();
     if !retired.is_empty() {
-        // A plain message: the binary prints errors with Debug formatting, which
-        // would hide a typed variant's guidance.
-        return Err(format!(
-            "this project depends on Rullst {}; this CLI upgrades from v12 or later. Upgrade to v12 first with `cargo install cargo-rullst --version '^12' --locked` and `cargo rullst upgrade`, then rerun this CLI",
-            retired.join(", ")
-        )
-        .into());
+        return Err(UpgradeError::RetiredSourceMajor(retired.join(", ")).into());
     }
 
     scan::reject_symlinked_sources(&package_roots)?;

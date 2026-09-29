@@ -254,6 +254,102 @@ async fn oidc_provider_verifies_signed_token_nonce_pkce_and_replay() {
     assert!(cancellation.is_cancelled());
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn verify_id_token_accepts_only_this_audience_and_nonce() {
+    use crate::providers::OidcProvider;
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind mock IdP loopback listener");
+    let address = listener.local_addr().expect("mock IdP loopback address");
+    let issuer = format!("http://{address}");
+    let redirect_uri = "http://127.0.0.1:39002/callback";
+    let config = MockIdpConfig::try_new(&issuer, "native-app", "native-secret", redirect_uri)
+        .expect("valid mock IdP config");
+    let server = tokio::spawn(async move {
+        axum::serve(listener, mock_router_with_config(config))
+            .await
+            .expect("serve mock IdP")
+    });
+
+    // A native client signs the user in with the IdP and receives an ID token
+    // bound to the nonce that the application server issued for this attempt.
+    let mut authorization_url =
+        url::Url::parse(&format!("{issuer}/auth")).expect("authorization URL");
+    authorization_url
+        .query_pairs_mut()
+        .append_pair("client_id", "native-app")
+        .append_pair("redirect_uri", redirect_uri)
+        .append_pair("response_type", "code")
+        .append_pair("scope", "openid profile email")
+        .append_pair("nonce", "server-issued-nonce");
+    let client = NoRedirectClient::new();
+    let authorization = client
+        .get(authorization_url)
+        .send()
+        .await
+        .expect("authorize against mock IdP");
+    let code = authorization
+        .headers()
+        .get(reqwest::header::LOCATION)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| url::Url::parse(value).ok())
+        .and_then(|callback| {
+            callback
+                .query_pairs()
+                .find(|(key, _)| key == "code")
+                .map(|(_, value)| value.into_owned())
+        })
+        .expect("authorization code");
+    let tokens: Value = client
+        .post_form(
+            &format!("{issuer}/token"),
+            &[
+                ("client_id", "native-app"),
+                ("client_secret", "native-secret"),
+                ("code", code.as_str()),
+                ("grant_type", "authorization_code"),
+                ("redirect_uri", redirect_uri),
+            ],
+        )
+        .await;
+    let id_token = tokens["id_token"].as_str().expect("signed ID token");
+
+    let provider = OidcProvider::discover(&issuer, "native-app", "native-secret", redirect_uri)
+        .await
+        .expect("discover local mock IdP");
+    let user = provider
+        .verify_id_token(id_token, "server-issued-nonce")
+        .await
+        .expect("token for this audience and nonce");
+    assert_eq!(user.id, "rullst-mock-user");
+    assert_eq!(user.email.as_deref(), Some("mock@example.invalid"));
+
+    assert!(
+        provider
+            .verify_id_token(id_token, "another-attempt-nonce")
+            .await
+            .is_err(),
+        "a nonce from another sign-in attempt must be rejected"
+    );
+
+    let other_application =
+        OidcProvider::discover(&issuer, "other-app", "other-secret", redirect_uri)
+            .await
+            .expect("discover the same issuer for another client");
+    assert!(
+        other_application
+            .verify_id_token(id_token, "server-issued-nonce")
+            .await
+            .is_err(),
+        "a token issued to another client_id must be rejected"
+    );
+
+    server.abort();
+    let cancellation = server.await.expect_err("aborted mock IdP server task");
+    assert!(cancellation.is_cancelled());
+}
+
 mod rullst_connect_test_support {
     pub(super) struct NoRedirectClient(reqwest::Client);
 
@@ -271,6 +367,29 @@ mod rullst_connect_test_support {
 
         pub(super) fn get(&self, url: url::Url) -> reqwest::RequestBuilder {
             self.0.get(url)
+        }
+
+        pub(super) async fn post_form(
+            &self,
+            url: &str,
+            form: &[(&str, &str)],
+        ) -> serde_json::Value {
+            let body = serde_urlencoded::to_string(form).expect("token form");
+            self.0
+                .post(url)
+                .header(
+                    reqwest::header::CONTENT_TYPE,
+                    "application/x-www-form-urlencoded",
+                )
+                .body(body)
+                .send()
+                .await
+                .expect("token request")
+                .error_for_status()
+                .expect("token response status")
+                .json()
+                .await
+                .expect("token response JSON")
         }
     }
 }

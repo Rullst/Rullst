@@ -1,17 +1,28 @@
 //! Bounded JWKS caching with rotation-aware refresh and safe stale fallback.
+//!
+//! A token's `kid` is attacker-controlled until its signature is verified, so
+//! an unknown `kid` may force at most one refresh of a fresh cached set per 30
+//! seconds and URL. Refreshes of one URL are single-flight: concurrent callers
+//! wait for, and reuse, the refresh in progress.
 
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 use std::time::{Duration, Instant};
 
 use jsonwebtoken::jwk::JwkSet;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::client::{HttpClient, HttpClientExt};
 use crate::error::ConnectError;
 
 const DEFAULT_TTL: Duration = Duration::from_secs(15 * 60);
 const DEFAULT_MAX_STALE: Duration = Duration::from_secs(24 * 60 * 60);
+/// Minimum time between refreshes that an unknown `kid` may force while the
+/// cached set is still fresh. The first unknown `kid` after the interval
+/// refreshes again, so key rotation keeps working.
+pub(crate) const MIN_FORCED_REFRESH_INTERVAL: Duration = Duration::from_secs(30);
+/// Longest accepted `kid`, checked before any cache lookup or network I/O.
+pub(crate) const MAX_KID_BYTES: usize = 256;
 
 /// Freshness and stale-on-error bounds for a JWKS cache.
 #[derive(Debug, Clone, Copy)]
@@ -19,10 +30,14 @@ const DEFAULT_MAX_STALE: Duration = Duration::from_secs(24 * 60 * 60);
 pub struct JwksCachePolicy {
     ttl: Duration,
     max_stale: Duration,
+    min_forced_refresh_interval: Duration,
 }
 
 impl JwksCachePolicy {
     /// Creates a policy. `max_stale` is the maximum total age of a cached set.
+    ///
+    /// While a set is younger than `ttl`, an unknown `kid` forces at most one
+    /// refresh every 30 seconds; a zero `ttl` refreshes on every lookup.
     pub fn new(ttl: Duration, max_stale: Duration) -> Result<Self, ConnectError> {
         if max_stale < ttl {
             return Err(ConnectError::InvalidConfiguration {
@@ -30,7 +45,11 @@ impl JwksCachePolicy {
                 reason: "must be greater than or equal to the JWKS TTL".to_string(),
             });
         }
-        Ok(Self { ttl, max_stale })
+        Ok(Self {
+            ttl,
+            max_stale,
+            min_forced_refresh_interval: MIN_FORCED_REFRESH_INTERVAL,
+        })
     }
 
     /// Returns the configured freshness lifetime.
@@ -49,6 +68,7 @@ impl Default for JwksCachePolicy {
         Self {
             ttl: DEFAULT_TTL,
             max_stale: DEFAULT_MAX_STALE,
+            min_forced_refresh_interval: MIN_FORCED_REFRESH_INTERVAL,
         }
     }
 }
@@ -57,6 +77,8 @@ impl Default for JwksCachePolicy {
 struct CacheEntry {
     keys: Arc<JwkSet>,
     fetched_at: Instant,
+    /// Last refresh, successful or not, forced by an unknown `kid` while fresh.
+    forced_refresh_at: Option<Instant>,
 }
 
 /// An isolated JWKS cache. Providers own a cache so injected clients cannot
@@ -64,7 +86,16 @@ struct CacheEntry {
 #[derive(Clone)]
 pub struct JwksCache {
     entries: Arc<RwLock<HashMap<String, CacheEntry>>>,
+    /// One refresh gate per URL makes remote fetches single-flight.
+    refresh_gates: Arc<Mutex<HashMap<String, Arc<Mutex<()>>>>>,
     policy: JwksCachePolicy,
+}
+
+/// Result of consulting a fresh cached set for a `kid`.
+enum FreshLookup {
+    Found(Arc<JwkSet>),
+    Throttled,
+    Refresh,
 }
 
 impl JwksCache {
@@ -72,6 +103,7 @@ impl JwksCache {
     pub fn new(policy: JwksCachePolicy) -> Self {
         Self {
             entries: Arc::new(RwLock::new(HashMap::new())),
+            refresh_gates: Arc::new(Mutex::new(HashMap::new())),
             policy,
         }
     }
@@ -82,16 +114,26 @@ impl JwksCache {
         url: &str,
         client: &dyn HttpClient,
     ) -> Result<Arc<JwkSet>, ConnectError> {
+        if let Some(entry) = self.cached(url).await
+            && self.is_fresh(&entry)
+        {
+            return Ok(entry.keys);
+        }
+
+        let gate = self.refresh_gate(url).await;
+        let _single_flight = gate.lock().await;
+        // Another caller may have refreshed the set while this one waited.
         let cached = self.cached(url).await;
         if let Some(entry) = cached.as_ref()
-            && age(entry) <= self.policy.ttl
+            && self.is_fresh(entry)
         {
             return Ok(entry.keys.clone());
         }
 
         match fetch_remote(url, client).await {
             Ok(keys) => {
-                self.store(url, keys.clone()).await;
+                let forced_refresh_at = cached.and_then(|entry| entry.forced_refresh_at);
+                self.store(url, keys.clone(), forced_refresh_at).await;
                 Ok(keys)
             }
             Err(error) => {
@@ -106,29 +148,47 @@ impl JwksCache {
         }
     }
 
-    /// Returns a set containing `kid`. A missing key forces one immediate
-    /// refresh even while the cached set is fresh, which supports key rotation.
+    /// Returns a set containing `kid`.
+    ///
+    /// A `kid` that is empty, longer than 256 bytes or not printable ASCII is
+    /// rejected before any I/O. A missing key forces a refresh even while the
+    /// cached set is fresh, which supports key rotation, but at most once per
+    /// 30 seconds and URL: until then an unknown `kid` fails without a network
+    /// call. Concurrent refreshes of one URL are coalesced.
     pub async fn get_for_kid(
         &self,
         url: &str,
         kid: &str,
         client: &dyn HttpClient,
     ) -> Result<Arc<JwkSet>, ConnectError> {
-        if kid.trim().is_empty() {
-            return Err(ConnectError::JwkNotFound("<empty>".to_string()));
+        validate_kid(kid)?;
+
+        match self.lookup_fresh(url, kid).await {
+            FreshLookup::Found(keys) => return Ok(keys),
+            FreshLookup::Throttled => return Err(ConnectError::JwkNotFound(kid.to_string())),
+            FreshLookup::Refresh => {}
+        }
+
+        let gate = self.refresh_gate(url).await;
+        let _single_flight = gate.lock().await;
+        // A concurrent caller may have refreshed, or been throttled, meanwhile.
+        match self.lookup_fresh(url, kid).await {
+            FreshLookup::Found(keys) => return Ok(keys),
+            FreshLookup::Throttled => return Err(ConnectError::JwkNotFound(kid.to_string())),
+            FreshLookup::Refresh => {}
         }
 
         let cached = self.cached(url).await;
-        if let Some(entry) = cached.as_ref()
-            && age(entry) <= self.policy.ttl
-            && entry.keys.find(kid).is_some()
-        {
-            return Ok(entry.keys.clone());
-        }
-
+        let forced = cached.as_ref().is_some_and(|entry| self.is_fresh(entry));
+        let attempted_at = Instant::now();
         match fetch_remote(url, client).await {
             Ok(keys) => {
-                self.store(url, keys.clone()).await;
+                let forced_refresh_at = if forced {
+                    Some(attempted_at)
+                } else {
+                    cached.as_ref().and_then(|entry| entry.forced_refresh_at)
+                };
+                self.store(url, keys.clone(), forced_refresh_at).await;
                 if keys.find(kid).is_some() {
                     Ok(keys)
                 } else {
@@ -136,6 +196,9 @@ impl JwksCache {
                 }
             }
             Err(error) => {
+                if forced {
+                    self.record_forced_refresh(url, attempted_at).await;
+                }
                 if let Some(entry) = cached
                     && age(&entry) <= self.policy.max_stale
                     && entry.keys.find(kid).is_some()
@@ -161,14 +224,55 @@ impl JwksCache {
         self.entries.read().await.get(url).cloned()
     }
 
-    async fn store(&self, url: &str, keys: Arc<JwkSet>) {
+    fn is_fresh(&self, entry: &CacheEntry) -> bool {
+        age(entry) <= self.policy.ttl
+    }
+
+    async fn lookup_fresh(&self, url: &str, kid: &str) -> FreshLookup {
+        let Some(entry) = self.cached(url).await else {
+            return FreshLookup::Refresh;
+        };
+        if !self.is_fresh(&entry) {
+            return FreshLookup::Refresh;
+        }
+        if entry.keys.find(kid).is_some() {
+            return FreshLookup::Found(entry.keys);
+        }
+        let recently_forced = entry.forced_refresh_at.is_some_and(|at| {
+            Instant::now().saturating_duration_since(at) < self.policy.min_forced_refresh_interval
+        });
+        if recently_forced {
+            FreshLookup::Throttled
+        } else {
+            FreshLookup::Refresh
+        }
+    }
+
+    async fn refresh_gate(&self, url: &str) -> Arc<Mutex<()>> {
+        self.refresh_gates
+            .lock()
+            .await
+            .entry(url.to_string())
+            .or_default()
+            .clone()
+    }
+
+    async fn store(&self, url: &str, keys: Arc<JwkSet>, forced_refresh_at: Option<Instant>) {
         self.entries.write().await.insert(
             url.to_string(),
             CacheEntry {
                 keys,
                 fetched_at: Instant::now(),
+                forced_refresh_at,
             },
         );
+    }
+
+    /// Throttles a failed forced refresh like a successful one.
+    async fn record_forced_refresh(&self, url: &str, attempted_at: Instant) {
+        if let Some(entry) = self.entries.write().await.get_mut(url) {
+            entry.forced_refresh_at = Some(attempted_at);
+        }
     }
 }
 
@@ -180,6 +284,15 @@ impl Default for JwksCache {
 
 fn age(entry: &CacheEntry) -> Duration {
     Instant::now().saturating_duration_since(entry.fetched_at)
+}
+
+/// Rejects a `kid` that no provider key set could legitimately use, without
+/// echoing the untrusted value.
+fn validate_kid(kid: &str) -> Result<(), ConnectError> {
+    if kid.is_empty() || kid.len() > MAX_KID_BYTES || !kid.bytes().all(|b| b.is_ascii_graphic()) {
+        return Err(ConnectError::JwkNotFound("<invalid>".to_string()));
+    }
+    Ok(())
 }
 
 async fn fetch_remote(url: &str, client: &dyn HttpClient) -> Result<Arc<JwkSet>, ConnectError> {
@@ -213,7 +326,8 @@ pub async fn fetch_and_cache_jwks(
     PROCESS_JWKS_CACHE.get(url, client).await
 }
 
-/// Fetches JWKS and forces refresh when `kid` is absent from a fresh cache.
+/// Fetches JWKS and forces a rate-limited refresh when `kid` is absent from a
+/// fresh cache. See [`JwksCache::get_for_kid`].
 pub async fn fetch_and_cache_jwks_for_kid(
     url: &str,
     kid: &str,
@@ -223,156 +337,7 @@ pub async fn fetch_and_cache_jwks_for_kid(
 }
 
 #[cfg(test)]
-mod tests {
-    use std::sync::atomic::{AtomicUsize, Ordering};
+mod refresh_tests;
 
-    use async_trait::async_trait;
-    use serde_json::json;
-
-    use super::*;
-    use crate::client::{HttpRequest, HttpResponse};
-
-    struct SequenceClient {
-        calls: AtomicUsize,
-        responses: Vec<Result<serde_json::Value, &'static str>>,
-    }
-
-    #[async_trait]
-    impl HttpClient for SequenceClient {
-        async fn execute(&self, _req: HttpRequest) -> Result<HttpResponse, ConnectError> {
-            let index = self.calls.fetch_add(1, Ordering::SeqCst);
-            match self.responses.get(index).or_else(|| self.responses.last()) {
-                Some(Ok(body)) => Ok(HttpResponse {
-                    status: 200,
-                    body: body.clone(),
-                }),
-                Some(Err(message)) => Err(ConnectError::Reqwest((*message).to_string())),
-                None => Err(ConnectError::Reqwest("no response".to_string())),
-            }
-        }
-    }
-
-    fn jwks(kid: &str) -> serde_json::Value {
-        json!({
-            "keys": [{
-                "kty": "RSA",
-                "kid": kid,
-                "use": "sig",
-                "alg": "RS256",
-                "n": "sXchDaQebHnPiGvyDO5R",
-                "e": "AQAB"
-            }]
-        })
-    }
-
-    #[tokio::test]
-    async fn unknown_kid_forces_refresh() {
-        let policy = JwksCachePolicy::new(Duration::from_secs(60), Duration::from_secs(120))
-            .expect("valid policy");
-        let cache = JwksCache::new(policy);
-        let client = SequenceClient {
-            calls: AtomicUsize::new(0),
-            responses: vec![Ok(jwks("old")), Ok(jwks("new"))],
-        };
-
-        cache
-            .get_for_kid("https://issuer.example/jwks", "old", &client)
-            .await
-            .expect("old key");
-        cache
-            .get_for_kid("https://issuer.example/jwks", "new", &client)
-            .await
-            .expect("rotated key");
-        assert_eq!(client.calls.load(Ordering::SeqCst), 2);
-    }
-
-    #[tokio::test]
-    async fn stale_fallback_never_accepts_an_unknown_kid() {
-        let policy =
-            JwksCachePolicy::new(Duration::ZERO, Duration::from_secs(60)).expect("valid policy");
-        let cache = JwksCache::new(policy);
-        let client = SequenceClient {
-            calls: AtomicUsize::new(0),
-            responses: vec![Ok(jwks("known")), Err("offline")],
-        };
-
-        cache
-            .get_for_kid("https://issuer.example/jwks", "known", &client)
-            .await
-            .expect("initial key");
-        let error = cache
-            .get_for_kid("https://issuer.example/jwks", "unknown", &client)
-            .await
-            .expect_err("unknown stale key must be rejected");
-        assert!(matches!(error, ConnectError::Reqwest(_)));
-    }
-
-    #[tokio::test]
-    async fn expired_entries_are_refreshed_and_known_keys_can_be_bounded_stale() {
-        let policy =
-            JwksCachePolicy::new(Duration::ZERO, Duration::from_secs(60)).expect("valid policy");
-        let rotating_cache = JwksCache::new(policy);
-        let rotating_client = SequenceClient {
-            calls: AtomicUsize::new(0),
-            responses: vec![Ok(jwks("old")), Ok(jwks("new"))],
-        };
-
-        let old = rotating_cache
-            .get("https://issuer.example/rotating-jwks", &rotating_client)
-            .await
-            .expect("old set");
-        assert!(old.find("old").is_some());
-        let new = rotating_cache
-            .get("https://issuer.example/rotating-jwks", &rotating_client)
-            .await
-            .expect("refreshed set");
-        assert!(new.find("new").is_some());
-
-        let stale_cache = JwksCache::new(policy);
-        let stale_client = SequenceClient {
-            calls: AtomicUsize::new(0),
-            responses: vec![Ok(jwks("known")), Err("offline")],
-        };
-        stale_cache
-            .get_for_kid("https://issuer.example/stale-jwks", "known", &stale_client)
-            .await
-            .expect("initial key");
-        let stale = stale_cache
-            .get_for_kid("https://issuer.example/stale-jwks", "known", &stale_client)
-            .await
-            .expect("bounded stale matching key");
-        assert!(stale.find("known").is_some());
-    }
-
-    #[tokio::test]
-    async fn keys_older_than_the_stale_bound_are_rejected_on_refresh_error() {
-        let policy =
-            JwksCachePolicy::new(Duration::ZERO, Duration::from_secs(1)).expect("valid policy");
-        let cache = JwksCache::new(policy);
-        let keys: JwkSet = serde_json::from_value(jwks("known")).expect("valid JWKS");
-        cache.entries.write().await.insert(
-            "https://issuer.example/expired-jwks".to_string(),
-            CacheEntry {
-                keys: Arc::new(keys),
-                fetched_at: Instant::now()
-                    .checked_sub(Duration::from_secs(2))
-                    .expect("test instant supports a two-second offset"),
-            },
-        );
-        let client = SequenceClient {
-            calls: AtomicUsize::new(0),
-            responses: vec![Err("offline")],
-        };
-
-        let error = cache
-            .get_for_kid("https://issuer.example/expired-jwks", "known", &client)
-            .await
-            .expect_err("expired stale key must be rejected");
-        assert!(matches!(error, ConnectError::Reqwest(_)));
-    }
-
-    #[test]
-    fn rejects_a_stale_bound_shorter_than_ttl() {
-        assert!(JwksCachePolicy::new(Duration::from_secs(2), Duration::from_secs(1)).is_err());
-    }
-}
+#[cfg(test)]
+mod tests;

@@ -94,39 +94,103 @@ pub fn generate_totp_code(base32_secret: &str) -> Option<String> {
     Some(format!("{:06}", code))
 }
 
-/// Verifies a 6-digit TOTP code with time drift window tolerance (+-1 window).
-pub fn verify_totp_code(base32_secret: &str, code: &str) -> bool {
-    if code.len() != 6 || !code.bytes().all(|byte| byte.is_ascii_digit()) {
-        return false;
-    }
-    let Some(secret_bytes) = decode_base32(base32_secret) else {
-        return false;
-    };
-    if secret_bytes.len() < MIN_TOTP_SECRET_BYTES {
-        return false;
-    }
+/// TOTP time-step length in seconds (RFC 6238 default).
+const TOTP_STEP_SECONDS: u64 = 30;
 
-    let now = SystemTime::now()
+/// Verifies a 6-digit TOTP code with time drift window tolerance (+-1 window).
+///
+/// # Replay
+///
+/// This function is stateless: it accepts any code for the previous, current
+/// or next 30-second step, so the same code verifies again for up to about 90
+/// seconds. It does not implement the RFC 6238 section 5.2 rule that a
+/// verifier must not accept the same one-time password twice. Use
+/// [`verify_totp_step_after`] with the last accepted step persisted per
+/// secret to reject replays.
+pub fn verify_totp_code(base32_secret: &str, code: &str) -> bool {
+    verify_totp_step(base32_secret, code).is_some()
+}
+
+/// Verifies a 6-digit TOTP code (+-1 step) and returns the matched time step.
+///
+/// The step is `unix_seconds / 30`. Like [`verify_totp_code`] this is
+/// stateless and does not reject replays; pass the returned step to
+/// [`verify_totp_step_after`] on the next verification.
+pub fn verify_totp_step(base32_secret: &str, code: &str) -> Option<u64> {
+    verify_totp_step_at(base32_secret, code, current_totp_step(), None)
+}
+
+/// Verifies a 6-digit TOTP code (+-1 step) and rejects replays (RFC 6238 section 5.2).
+///
+/// Only a step strictly greater than `last_accepted_step` can match, so a code
+/// is accepted at most once and older codes are rejected after a newer one.
+/// Pass `None` when no code has been accepted for this secret. On success the
+/// caller must persist the returned step atomically before admitting the
+/// login, for example with a conditional
+/// `UPDATE ... SET last_step = $step WHERE last_step IS NULL OR last_step < $step`
+/// that affects exactly one row; otherwise two concurrent requests can both
+/// accept the same code.
+///
+/// ```rust
+/// use rullst_security::mfa::{generate_mfa_secret, generate_totp_code, verify_totp_step_after};
+///
+/// let secret = generate_mfa_secret();
+/// let code = generate_totp_code(&secret).expect("valid secret");
+/// // Stored with the secret and updated atomically in production.
+/// let mut last_accepted_step = None;
+///
+/// let step = verify_totp_step_after(&secret, &code, last_accepted_step).expect("fresh code");
+/// last_accepted_step = Some(step);
+///
+/// assert_eq!(verify_totp_step_after(&secret, &code, last_accepted_step), None);
+/// ```
+pub fn verify_totp_step_after(
+    base32_secret: &str,
+    code: &str,
+    last_accepted_step: Option<u64>,
+) -> Option<u64> {
+    verify_totp_step_at(base32_secret, code, current_totp_step(), last_accepted_step)
+}
+
+fn current_totp_step() -> u64 {
+    SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
-        .as_secs();
-    let current_counter = now / 30;
+        .as_secs()
+        / TOTP_STEP_SECONDS
+}
 
-    let counters = [
-        current_counter.checked_sub(1),
-        Some(current_counter),
-        current_counter.checked_add(1),
-    ];
-    for target_counter in counters.into_iter().flatten() {
-        let generated = generate_totp_at_counter(&secret_bytes, target_counter);
-        let expected = format!("{generated:06}");
-        if bool::from(expected.as_bytes().ct_eq(code.as_bytes())) {
-            SecurityStore::global().inc_mfa_verifications();
-            return true;
-        }
+/// Returns the lowest step in `current_step` +-1 that is newer than
+/// `last_accepted_step` and whose code equals `code` in constant time.
+fn verify_totp_step_at(
+    base32_secret: &str,
+    code: &str,
+    current_step: u64,
+    last_accepted_step: Option<u64>,
+) -> Option<u64> {
+    if code.len() != 6 || !code.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    let secret_bytes = decode_base32(base32_secret)?;
+    if secret_bytes.len() < MIN_TOTP_SECRET_BYTES {
+        return None;
     }
 
-    false
+    let steps = [
+        current_step.checked_sub(1),
+        Some(current_step),
+        current_step.checked_add(1),
+    ];
+    let matched = steps
+        .into_iter()
+        .flatten()
+        .filter(|step| last_accepted_step.is_none_or(|last| *step > last))
+        .find(|&step| {
+            let expected = format!("{:06}", generate_totp_at_counter(&secret_bytes, step));
+            bool::from(expected.as_bytes().ct_eq(code.as_bytes()))
+        })?;
+    SecurityStore::global().inc_mfa_verifications();
+    Some(matched)
 }
 
 /// Builds an `otpauth://` URI string suitable for generating QR codes in authenticator apps.
@@ -224,6 +288,56 @@ mod tests {
         assert!(!verify_totp_code(&secret, "１２３４５６"));
         assert!(generate_totp_code("JBSWY3DPEHPK3PXP").is_none());
         assert!(!verify_totp_code("JBSWY3DPEHPK3PXP", "000000"));
+    }
+
+    #[test]
+    fn replayed_code_is_rejected_once_its_step_is_recorded() {
+        // RFC 6238 Appendix B SHA-1 secret; a fixed secret keeps the test deterministic.
+        let secret = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
+        let bytes = decode_base32(secret).unwrap();
+        assert_eq!(generate_totp_at_counter(&bytes, 1), 287_082);
+        let step = 57_000_000;
+        let code_at = |step| format!("{:06}", generate_totp_at_counter(&bytes, step));
+        let code = code_at(step);
+
+        // The stateless check accepts the same code on every attempt.
+        assert_eq!(verify_totp_step_at(secret, &code, step, None), Some(step));
+        assert_eq!(verify_totp_step_at(secret, &code, step, None), Some(step));
+        // With the accepted step supplied, the second attempt is rejected,
+        // including after the clock moves on within the drift window.
+        assert_eq!(verify_totp_step_at(secret, &code, step, Some(step)), None);
+        assert_eq!(
+            verify_totp_step_at(secret, &code, step + 1, Some(step)),
+            None
+        );
+        // A newer code is still accepted; an older one is not.
+        assert_eq!(
+            verify_totp_step_at(secret, &code_at(step + 1), step, Some(step)),
+            Some(step + 1)
+        );
+        assert_eq!(
+            verify_totp_step_at(secret, &code_at(step - 1), step, Some(step)),
+            None
+        );
+        // Codes outside the +-1 window never match.
+        assert_eq!(
+            verify_totp_step_at(secret, &code_at(step + 2), step, None),
+            None
+        );
+    }
+
+    #[test]
+    fn public_step_api_matches_the_boolean_verifier_and_blocks_replay() {
+        let secret = generate_mfa_secret();
+        let code = generate_totp_code(&secret).unwrap();
+        let step = verify_totp_step(&secret, &code).expect("fresh code");
+        assert!(verify_totp_code(&secret, &code));
+        assert_eq!(verify_totp_step_after(&secret, &code, None), Some(step));
+        assert_eq!(verify_totp_step_after(&secret, &code, Some(step)), None);
+
+        assert_eq!(verify_totp_step(&secret, "12345"), None);
+        assert_eq!(verify_totp_step("JBSWY3DPEHPK3PXP", "000000"), None);
+        assert_eq!(verify_totp_step_after("not base32!", "000000", None), None);
     }
 
     #[test]

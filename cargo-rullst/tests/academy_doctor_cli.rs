@@ -49,7 +49,10 @@ fn academy_doctor_process_fails_closed_without_evidence() {
             .iter()
             .all(|check| check["status"] == "NOT_EVALUATED")
     );
-    assert!(String::from_utf8_lossy(&output.stderr).contains("ContractNotSatisfied"));
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("Error: Academy production-boundary contract is not satisfied")
+    );
 }
 
 #[test]
