@@ -43,6 +43,8 @@ process variables. Environment precedence is exact: `RULLST_ENV`, legacy
 errors rather than silently becoming development. `rullst-auth` cookie helpers
 also consult `.env` below the process variables and skip reading it when either
 is set; a malformed `.env` yields a fixed error that never quotes file content.
+A malformed or mistyped `Rullst.toml` fails with only its line and column, so
+the error can be logged without exposing `app_key` or connection strings.
 
 ---
 

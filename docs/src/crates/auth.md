@@ -38,6 +38,7 @@ The cookie helpers select `Secure` from `RULLST_ENV`, then `APP_ENV`, then `.env
 `Rullst.toml`. When either process variable is set, `.env` is not read for that decision. A
 malformed `.env` produces a fixed `AuthError::General` message naming only the failing entry
 number; file content, including values after an unclosed quote, never appears in the error.
+A malformed `Rullst.toml` likewise reports only its line and column.
 
 ```rust,no_run
 use rullst_auth::{AuthError, decrypt_session, get_app_key, make_login_cookie};
