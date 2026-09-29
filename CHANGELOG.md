@@ -153,6 +153,8 @@ A prepared version section does not establish that its tag or crates exist.
   full hosted campaign must pass before this candidate is admitted.
 - Refresh immutable CodeQL, Rust toolchain installer, tool installer,
   TruffleHog wrapper and Codecov Action references together across v13 workflows.
+- Update jsonschema to 0.57.0 in the workspace and the four fuzz locks that
+  resolve it (`rullst`, `rullst-nexus`, `rullst-security`, `rullst-studio`).
 
 ### Unpublished v13 privacy foundation
 
