@@ -598,7 +598,8 @@ while portability and semantic review remain the model author's responsibility.
   explicit or task-scoped transaction is reused; otherwise `delete()` opens,
   commits, or rolls back its own transaction. Recursive descendant/cycle
   traversal remains a separate contract.
-* Generated `#[orm(auditable)]` instance `save()`/`delete()` operations write
+* Generated `#[orm(auditable)]` instance `save()`/`delete()` operations (and
+  `restore()`/`force_delete()`, recorded as `restored`/`force_deleted`) write
   their bounded audit entry through the same explicit, implicit, or task-scoped
   transaction as the model mutation. Audit write errors fail the mutation and
   roll its savepoint back; direct `log_audit` calls also honor a task-scoped
@@ -624,8 +625,8 @@ while portability and semantic review remain the model author's responsibility.
 
 ### 5.5. Process-Local Post-Commit Contract
 
-* `Orm::transaction` and direct generated model `save()`/`delete()` operations
-  own a post-commit callback scope. `after_commit` callbacks registered within
+* `Orm::transaction` and direct generated model `save()`/`delete()`/
+  `restore()`/`force_delete()` operations own a post-commit callback scope. `after_commit` callbacks registered within
   it run only after SQLx confirms commit and are discarded on rollback. When no
   managed transaction is active, `after_commit` executes immediately for an
   already committed/autocommit operation.
@@ -635,6 +636,17 @@ while portability and semantic review remain the model author's responsibility.
   the managed commit; it omits hidden fields and carries `"***"` for encrypted
   and masked fields. Generated Redis invalidation/pub-sub
   and Scout projections use this same post-commit boundary.
+* `force_delete()` and `restore()` check the tenant and their policy
+  (`can_force_delete`/`can_restore`) before the transaction, then run in a
+  savepoint. `force_delete()` runs the `before_delete`/`after_delete` hooks,
+  the `deleting`/`deleted` observers and the same post-commit cache
+  invalidation, Redis `deleted` event, `committed(Deleted)` and Scout removal
+  as `delete()`; it does not cascade to `cascade_soft_delete` relations.
+  `restore()` re-reads the restored row, runs the `updated`/`saved` observers
+  with it and registers the update effects of `save()` (cache invalidation,
+  Redis `updated`/`saved` events, `committed(Updated)`, Scout re-index). It
+  runs no save hooks or `saving`/`updating` observers because it writes only
+  the soft-delete column, and restoring a missing row is a no-op.
 * Savepoint-scoped generated saves/deletes and revision restores collect their
   callbacks in a nested scope. The callbacks are promoted to the enclosing
   commit boundary only after that savepoint succeeds, so catching a failed

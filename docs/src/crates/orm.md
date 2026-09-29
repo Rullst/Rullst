@@ -56,7 +56,9 @@ generated API.
 
 **Key Features:**
 - **Generated CRUD:** Insert, update, delete, restore, and find operations for
-  supported model shapes.
+  supported model shapes. `restore()` and `force_delete()` use the same
+  savepoint, hook/observer, audit and post-commit cache/event/Scout pipeline as
+  `delete()`/`save()`; see [Active Record CRUD](../tutorials/03-active-record-crud.md).
 - **Fluent Query Builder:** Chain methods such as `.where_eq()`, `.limit()`, and
   `.order_by()`; values are bound and structural identifiers are validated.
 - **Relationships and eager loading:** `has_many`, `has_one`, `belongs_to`, and
@@ -67,8 +69,8 @@ generated API.
 - **Actor-bound audit revisions:** `#[orm(auditable)]` requires a validated
   user/service/system `AuditContext`; the active tenant and optional correlation
   ID are recorded with recursively redacted bounded changes. Generated
-  instance saves/deletes and their audit entry share a savepoint and fail
-  together. Eligible v2 updates expose guarded revision restoration, which
+  instance saves/deletes/restores/force-deletes and their audit entry share a
+  savepoint and fail together. Eligible v2 updates expose guarded revision restoration, which
   rejects stale, cross-tenant, redacted, malformed, legacy, create/delete, and
   oversized revisions and records a compensating audit entry. The host still
   derives authenticated principal/tenant authority, while bulk per-row history

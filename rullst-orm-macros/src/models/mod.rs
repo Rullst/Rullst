@@ -2,9 +2,11 @@ pub mod ai_ops;
 pub mod column_enum;
 pub mod crud_ops;
 pub mod json_ops;
+mod mutation_parts;
 pub mod query_ops;
 pub mod redis_ops;
 mod save_entrypoints;
+mod trash_ops;
 pub mod update_builder;
 
 use crate::parser::{EncryptedFieldKind, ParsedModel};
@@ -30,6 +32,7 @@ pub fn generate(parsed: &ParsedModel, relationship_methods: &[TokenStream]) -> T
     let search_method = generate_search_method(parsed, &builder_name);
     let save_method = generate_save_method(parsed);
     let delete_methods = generate_delete_methods(parsed);
+    let trash_methods = trash_ops::generate(parsed);
     let query_methods = generate_query_methods(parsed, &builder_name);
     let (update_builder_struct, update_builder_method) = generate_update_builder(parsed);
     let redis_methods = generate_redis_hash_methods(parsed);
@@ -98,6 +101,7 @@ pub fn generate(parsed: &ParsedModel, relationship_methods: &[TokenStream]) -> T
 
             #save_method
             #delete_methods
+            #trash_methods
 
             #redis_methods
         }
