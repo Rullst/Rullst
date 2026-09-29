@@ -3,6 +3,8 @@ use sqlx::{Any, Row, Transaction};
 use std::sync::Arc;
 use subtle::ConstantTimeEq;
 
+// `consume_window`/`consumes` are retained for schema compatibility; redemption
+// now uses the per-browser failure budget in `guard.rs` instead.
 const SCHEMA: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS rullst_email_login_control (namespace TEXT PRIMARY KEY, binding TEXT NOT NULL, capacity BIGINT NOT NULL, last_now BIGINT NOT NULL, request_window BIGINT NOT NULL, requests BIGINT NOT NULL, consume_window BIGINT NOT NULL, consumes BIGINT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS rullst_email_login_accounts (namespace TEXT NOT NULL, subject TEXT NOT NULL, enabled BIGINT NOT NULL, revision BIGINT NOT NULL, request_window BIGINT NOT NULL, requests BIGINT NOT NULL, PRIMARY KEY(namespace, subject))",
@@ -43,6 +45,7 @@ impl EmailLoginService {
             store,
             config,
             postgres,
+            failures: guard::RedemptionFailures::default(),
         };
         let result = async {
             // Serialize concurrent explicit bootstraps before recovery DDL too.

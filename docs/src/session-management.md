@@ -24,7 +24,10 @@ configuration, with separate databases and keys. A browser cannot choose a
 database, account subject or tenant by supplying an identifier. Every protected
 request calls `verify_session` against that same authoritative store. PostgreSQL
 can serve multiple hosts; SQLite requires processes sharing the same local file
-and does not provide multi-host replication.
+and does not provide multi-host replication. `SqlRecoveryStore::connect` requires
+certificate- and hostname-verified TLS (`sslmode=verify-full`) for every remote
+PostgreSQL host and accepts only connection/TLS query options, as email login and
+API tokens do.
 
 Management methods authenticate the supplied current session again inside a
 serialized SQL transaction. They never accept a target account. The host still

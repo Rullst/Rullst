@@ -23,13 +23,22 @@ async fn verify_login(password: String) -> Result<bool, AuthError> {
 ```
 
 Passwords longer than 72 bytes are rejected. `needs_rehash` compares the algorithm, version,
-memory, iteration, and parallelism parameters.
+memory, iteration, and parallelism parameters. The optional `SqlRecoveryStore` applies
+the same 72-byte bound to registration, password reset and `authenticate`; overlong input
+returns `RecoveryError::InvalidInput` before any account lookup, for registered and
+unknown emails alike.
 
 ## Encrypted sessions
 
 `make_login_cookie` and `decrypt_session` use a versioned AES-256-GCM envelope with
 authenticated metadata and an operating-system nonce. `APP_KEY` must contain at least 32 bytes,
 must not be a documented placeholder, and must satisfy the entropy check.
+
+The cookie helpers select `Secure` from `RULLST_ENV`, then `APP_ENV`, then `.env`, then
+`Rullst.toml`. When either process variable is set, `.env` is not read for that decision. A
+malformed `.env` produces a fixed `AuthError::General` message naming only the failing entry
+number; file content, including values after an unclosed quote, never appears in the error.
+A malformed `Rullst.toml` likewise reports only its line and column.
 
 ```rust,no_run
 use rullst_auth::{AuthError, decrypt_session, get_app_key, make_login_cookie};
@@ -82,7 +91,8 @@ restart/HTTP evidence and pending hosted admission.
 
 ## WebAuthn/passkeys
 
-`PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges,
+`PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges
+(`challenge_ttl_seconds` from 1 to 86,400; `PasskeyAuth::new` rejects other values),
 client-data ceremony type, user-presence/user-verification flags, ES256 COSE keys, P-256 points,
 credential IDs, signatures, and monotonic counters. Only `none` attestation is advertised and
 accepted. With `sqlite`, `SqlitePasskeyStore` supplies a bounded file-backed
@@ -145,6 +155,15 @@ async fn verify_shared(
     Ok(())
 }
 ```
+
+Both bundled stores cap token-ID rows at three quarters of the entry quota and at 64 active
+rows per subject. Past either cap, `revoke_token` records a subject cutoff instead: every
+token of that subject issued no later than the revoked one is rejected, which is broader but
+never weaker. One principal that repeatedly logs in and out therefore cannot exhaust the
+quota, and subject revocations keep the remaining quarter. Subject entries are never pruned;
+size `max_entries` for the subjects that may revoke. `SqliteJwtRevocationStore::connect`
+adds a `subject` and a `revoked_through_iat` column to an existing file. Earlier releases can
+still open it but ignore subject cutoffs, so upgrade every process sharing the file.
 
 The SQLite adapter is durable across restarts and shared across local processes,
 not replicated across hosts. The deployment owns its trusted directory, file

@@ -59,6 +59,16 @@ registration, step-up MFA, verified age or guardian authorization.
    token and cookie binding to `redeem`. The initiating browser is required;
    opening the email on another device requires starting a new request there.
    Never redeem automatically in JavaScript or on page load.
+   Only a failed token lookup (malformed, unknown, expired, replayed or
+   wrong-browser) is charged, to the presented browser binding. After 60 such
+   failures within 60 seconds, that binding receives `RecoveryError::Throttled`
+   until its window passes, before any database work, even for a valid link.
+   Other bindings and valid redemptions are never charged or blocked, so one
+   client cannot lock other users out. The budget is process-local, keyed by an
+   HMAC digest of the binding and bounded to 10,000 recent bindings. It is not a
+   global brute-force bound: an attacker can rotate bindings, and a multi-host
+   deployment keeps one budget per service instance, so ingress limits remain
+   required. Map `Throttled` to a generic "try again later" response.
 6. Redemption atomically consumes the link and creates a one-hour opaque session
    using the existing account epoch, 20-session limit and inventory/revocation
    machinery. Store it in a `Secure; HttpOnly; SameSite` cookie, clear the browser

@@ -36,7 +36,7 @@ impl EmailLoginService {
             None
         };
         let (mut tx, current) = self.begin(clock).await?;
-        if !self.rate(&mut tx, current, false).await? {
+        if !self.rate(&mut tx, current).await? {
             tx.commit().await?;
             return Ok(LoginRequestAccepted);
         }
@@ -104,6 +104,11 @@ impl EmailLoginService {
     /// never call this operation. The email credential alone cannot authenticate.
     /// Session creation and single-use consumption commit atomically. A timeout
     /// or uncertain commit never returns a session; request a fresh link instead.
+    ///
+    /// Only failed token lookups are charged, to the presented browser binding:
+    /// after 60 failures in 60 seconds that binding receives
+    /// `RecoveryError::Throttled` until its window passes. The budget is
+    /// process-local; other bindings and valid links are never blocked by it.
     pub async fn redeem(
         &self,
         email_token: &str,
@@ -119,21 +124,22 @@ impl EmailLoginService {
         browser: &BrowserBinding,
         clock: &impl EmailLoginClock,
     ) -> Result<EmailLoginSession, RecoveryError> {
-        let (mut tx, current) = self.begin(clock).await?;
-        if !self.rate(&mut tx, current, true).await? {
-            tx.commit().await?;
-            return Err(RecoveryError::InvalidAction);
+        let browser_digest = self.digest("email-login-browser-v1", browser.expose_cookie());
+        // Refused before any database work; charged below only on a failed lookup.
+        if self.failures.exhausted(&browser_digest, now(clock)?)? {
+            return Err(RecoveryError::Throttled);
         }
+        let (mut tx, current) = self.begin(clock).await?;
         let token = SecretToken::from_encoded(email_token);
         let digest = self.digest(
             "email-login-token-v1",
             token.as_ref().map_or("", SecretToken::expose),
         );
-        let browser_digest = self.digest("email-login-browser-v1", browser.expose_cookie());
         let row = sqlx::query("SELECT t.subject,t.account_epoch,t.issued_at,t.expires_at FROM rullst_email_login_tokens t JOIN rullst_email_login_accounts p ON p.namespace = t.namespace AND p.subject = t.subject AND p.revision = t.policy_revision JOIN rullst_recovery_accounts a ON a.subject = t.subject AND a.session_version = t.account_epoch WHERE t.namespace = $1 AND t.token_digest = $2 AND t.browser_digest = $3 AND p.enabled = 1 AND a.suppressed = 0 AND t.expires_at > $4 AND t.issued_at <= $4")
-            .bind(&self.config.namespace).bind(digest).bind(browser_digest).bind(current).fetch_optional(&mut *tx).await?;
+            .bind(&self.config.namespace).bind(digest).bind(&browser_digest).bind(current).fetch_optional(&mut *tx).await?;
         let Some(row) = row else {
             tx.commit().await?;
+            self.failures.charge(browser_digest, current)?;
             return Err(RecoveryError::InvalidAction);
         };
         let expiry: i64 = row.try_get("expires_at")?;
