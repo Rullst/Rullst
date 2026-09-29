@@ -113,7 +113,9 @@ struct CacheEntry {
 
 /// In-memory cache driver using `DashMap` for lock-free concurrent access.
 ///
-/// Supports TTL-based expiration. Expired entries are lazily cleaned on access.
+/// Supports TTL-based expiration. Expired entries are lazily cleaned on access;
+/// a read removes an expired key only while it still holds that expired value,
+/// so a concurrent refill of the same key is kept.
 /// Perfect for single-instance deployments and development.
 pub struct MemoryDriver {
     store: DashMap<String, CacheEntry>,
@@ -150,11 +152,20 @@ impl MemoryDriver {
             .expires_at
             .is_some_and(|expires_at| Instant::now() >= expires_at)
         {
+            let expired = Arc::clone(&entry.value);
             drop(entry);
-            self.store.remove(key);
+            self.remove_expired(key, &expired);
             return None;
         }
         Some(Arc::clone(&entry.value))
+    }
+
+    /// Removes `key` only while it still holds the expired value observed by
+    /// the caller. Every `put` allocates a new `Arc`, so a fresh value written
+    /// after the read guard was released is never deleted here.
+    fn remove_expired(&self, key: &str, expired: &Arc<String>) {
+        self.store
+            .remove_if(key, |_, current| Arc::ptr_eq(&current.value, expired));
     }
 
     /// Stores a value. A TTL too large for the monotonic clock to represent

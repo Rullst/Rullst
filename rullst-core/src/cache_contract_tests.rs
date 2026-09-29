@@ -53,6 +53,39 @@ async fn unrepresentable_ttl_never_expires_instead_of_panicking() {
     assert!(cache.has("settings").await.expect("memory has"));
 }
 
+#[tokio::test]
+async fn expiry_removal_never_deletes_a_value_written_concurrently() {
+    let driver = MemoryDriver::default();
+    driver.store.insert(
+        "hot".to_string(),
+        CacheEntry {
+            value: Arc::new("stale".to_string()),
+            expires_at: Some(Instant::now()),
+        },
+    );
+    // A reader observed the expired entry and released its guard...
+    let observed = Arc::clone(&driver.store.get("hot").expect("stale entry").value);
+    // ...another request refilled the key before the reader removed it.
+    driver
+        .put("hot", "fresh", Some(60))
+        .await
+        .expect("memory put");
+    driver.remove_expired("hot", &observed);
+    assert_eq!(
+        driver.get("hot").await.expect("memory get").as_deref(),
+        Some(&"fresh".to_string())
+    );
+
+    // The exact expired entry is still removed.
+    let current = Arc::clone(&driver.store.get("hot").expect("fresh entry").value);
+    driver.store.alter("hot", |_, mut entry| {
+        entry.expires_at = Some(Instant::now());
+        entry
+    });
+    driver.remove_expired("hot", &current);
+    assert!(!driver.store.contains_key("hot"));
+}
+
 struct RejectingDriver {
     miss_before_put: bool,
 }
