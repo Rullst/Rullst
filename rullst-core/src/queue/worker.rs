@@ -145,6 +145,12 @@ impl WorkerHandle {
     /// Stops polling, cancels active handlers, and requeues interrupted jobs
     /// when the driver supports recoverable processing states.
     ///
+    /// A claim that is already in flight is allowed to finish, so shutdown can
+    /// wait for one `pop` call. A job claimed after shutdown was requested is
+    /// requeued rather than dispatched. Dropping the handle instead aborts the
+    /// worker immediately; a claim interrupted that way is returned only by
+    /// stalled-lease recovery.
+    ///
     /// # Errors
     /// Returns the first processing error reported before shutdown.
     pub async fn shutdown(mut self) -> Result<(), QueueError> {
@@ -218,13 +224,14 @@ async fn run_worker_loop(
             continue;
         }
 
-        tokio::select! {
-            _ = wait_for_shutdown(&mut shutdown) => break,
-            outcome = jobs.join_next(), if !jobs.is_empty() => {
-                report_outcome(outcome, &errors);
-            }
-            popped = driver.pop() => match popped {
-                Ok(Some(job)) => dispatch_job(
+        let popped = claim_next(&**driver, &mut jobs, &errors).await;
+        if shutdown_requested(&shutdown) {
+            release_claim_after_shutdown(popped, &**driver, &errors).await;
+            break;
+        }
+        match popped {
+            Ok(Some(job)) => {
+                dispatch_job(
                     job,
                     &handlers,
                     Arc::clone(&driver),
@@ -232,22 +239,23 @@ async fn run_worker_loop(
                     shutdown.clone(),
                     &mut jobs,
                     &errors,
-                ).await,
-                Ok(None) => {
-                    tokio::select! {
-                        _ = tokio::time::sleep(poll_interval) => {}
-                        outcome = jobs.join_next(), if !jobs.is_empty() => {
-                            report_outcome(outcome, &errors);
-                        }
-                        _ = wait_for_shutdown(&mut shutdown) => break,
+                )
+                .await
+            }
+            Ok(None) => {
+                tokio::select! {
+                    _ = tokio::time::sleep(poll_interval) => {}
+                    outcome = jobs.join_next(), if !jobs.is_empty() => {
+                        report_outcome(outcome, &errors);
                     }
+                    _ = wait_for_shutdown(&mut shutdown) => break,
                 }
-                Err(error) => {
-                    let _ = errors.send(error);
-                    tokio::select! {
-                        _ = tokio::time::sleep(poll_interval) => {}
-                        _ = wait_for_shutdown(&mut shutdown) => break,
-                    }
+            }
+            Err(error) => {
+                let _ = errors.send(error);
+                tokio::select! {
+                    _ = tokio::time::sleep(poll_interval) => {}
+                    _ = wait_for_shutdown(&mut shutdown) => break,
                 }
             }
         }
@@ -260,6 +268,50 @@ async fn run_worker_loop(
         && !error.is_cancelled()
     {
         let _ = errors.send(QueueError::WorkerTask(error.to_string()));
+    }
+}
+
+/// Runs one `pop` to completion.
+///
+/// The built-in drivers commit a claim before the future resolves (an SQLite
+/// `UPDATE ... RETURNING`, a Redis `EVAL`), so dropping the future would leave
+/// the job in the processing state until stalled-lease recovery. The claim is
+/// therefore never raced against shutdown; handlers that finish meanwhile are
+/// still reported because `JoinSet::join_next` is cancel-safe.
+async fn claim_next(
+    driver: &dyn QueueDriver,
+    jobs: &mut JoinSet<Result<(), QueueError>>,
+    errors: &mpsc::UnboundedSender<QueueError>,
+) -> Result<Option<QueuedJob>, QueueError> {
+    let mut claim = driver.pop();
+    loop {
+        tokio::select! {
+            popped = &mut claim => return popped,
+            outcome = jobs.join_next(), if !jobs.is_empty() => report_outcome(outcome, errors),
+        }
+    }
+}
+
+/// Returns a job claimed while shutdown was requested to the pending state
+/// instead of dispatching it.
+async fn release_claim_after_shutdown(
+    popped: Result<Option<QueuedJob>, QueueError>,
+    driver: &dyn QueueDriver,
+    errors: &mpsc::UnboundedSender<QueueError>,
+) {
+    match popped {
+        Ok(Some(job)) => {
+            if let Err(error) = driver
+                .requeue(&job.id, "worker shutdown before dispatch")
+                .await
+            {
+                let _ = errors.send(state_error(&job.id, "requeue_claim_after_shutdown", error));
+            }
+        }
+        Ok(None) => {}
+        Err(error) => {
+            let _ = errors.send(error);
+        }
     }
 }
 
