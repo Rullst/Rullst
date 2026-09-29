@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790715928934,
+  "lastUpdate": 1790716528523,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -21585,6 +21585,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2290,
             "range": "± 42",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ac831d687a5bdb2443294e68eefb3615990119ef",
+          "message": "Merge pull request #325 from Rullst/refactor/v13-erp-blank-templates\n\nrefactor(cli): move the ERP and blank blueprint sources into template files",
+          "timestamp": "2026-09-29T18:07:35-03:00",
+          "tree_id": "d0e5843c11ef736fbf44f060d95dc232c3c537d5",
+          "url": "https://github.com/Rullst/Rullst/commit/ac831d687a5bdb2443294e68eefb3615990119ef"
+        },
+        "date": 1790716525464,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 733,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 966,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 683,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2236,
+            "range": "± 58",
             "unit": "ns/iter"
           }
         ]
