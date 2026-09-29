@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "release_branch": "main",
+  "before_commit": "a8a78aa2ac79654e366930ae581cc2829922d9f4",
+  "after_commit": "181dd8a272a96f71e56dd30f048c25c9aebed335",
+  "context_sha256": "d2161d7ed7b567f4d55f1775fa0675a1bd2619ac91191e22ea1e5f3e06e91988",
+  "documents": {
+    ".typos.toml": {
+      "before": [
+        "100644",
+        "183bf74c4c4438958ecd3e9fadfbaf6ce8fbe9fe"
+      ],
+      "after": [
+        "100644",
+        "0cb52a15f282d4e45370a34c850cf6f16d369f0d"
+      ]
+    },
+    "CHANGELOG.md": {
+      "before": [
+        "100644",
+        "bf74a0f0f56f9852c12c661b01900aae9a414e28"
+      ],
+      "after": [
+        "100644",
+        "aab743014aa1319c4f07708d2792fc797d104ca6"
+      ]
+    },
+    "CONTRIBUTING.md": {
+      "before": [
+        "100644",
+        "ffc0bab9687fc115fdb7ddd9874a7295e57fb95a"
+      ],
+      "after": [
+        "100644",
+        "e39a7d58ba4ea356c3de2f032cb8346d78a2778d"
+      ]
+    },
+    "GOVERNANCE.md": {
+      "before": null,
+      "after": [
+        "100644",
+        "1938992d53b1e3c0d4ba8ce070f42367109728d0"
+      ]
+    },
+    "README.md": {
+      "before": [
+        "100644",
+        "b14d2e4a7df281b5bcb99ee5c213683f207e465c"
+      ],
+      "after": [
+        "100644",
+        "3a959cb1eaafab434ab41f6694aca8e32bac08d2"
+      ]
+    },
+    "SECURITY.md": {
+      "before": [
+        "100644",
+        "f6f4d72e83be23ca7bc201bf4a355d44e0b09569"
+      ],
+      "after": [
+        "100644",
+        "b3a001c92577ef462dd6ce5510e18be6f1245ff5"
+      ]
+    },
+    "docs/src/SUMMARY.md": {
+      "before": [
+        "100644",
+        "44ddc3367d0c475e3dae04909fafb2f86c9a5f39"
+      ],
+      "after": [
+        "100644",
+        "3a99d1e86319afeffac950353ef6253b7ae97fbb"
+      ]
+    },
+    "docs/src/openssf-scorecard.md": {
+      "before": null,
+      "after": [
+        "100644",
+        "7f5954bccedcdbbc7b6d5ad9944aaf299ff96c0f"
+      ]
+    },
+    "docs/src/spec.md": {
+      "before": [
+        "100644",
+        "10eea401f2f518751310943d0d4a1f2be5ca575f"
+      ],
+      "after": [
+        "100644",
+        "fad4e4601154a86cfad935cd3124cd1fe491fd84"
+      ]
+    }
+  }
+}
