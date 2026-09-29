@@ -38,4 +38,5 @@ pub use tenant_guard::{
     TenantContext, TenantContextError, TenantMembership, strict_tenant_guard_middleware,
     tenant_guard_middleware,
 };
+pub(crate) use tenant_guard::{tenant_namespaced_name, validate_tenant_id};
 pub use waf::waf_middleware;

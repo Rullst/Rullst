@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
-use crate::security::TenantContext;
+use crate::security::{TenantContext, tenant_namespaced_name};
 
 const MAX_CHANNEL_BYTES: usize = 128;
 const MAX_EVENT_BYTES: usize = 128;
@@ -112,9 +112,13 @@ impl TenantRealtime {
     }
 
     /// Returns the canonical backend channel inside this tenant namespace.
+    ///
+    /// The channel is `tenants:<tenant>:<logical_channel>`. In the tenant
+    /// segment `%` is written as `%25` and `:` as `%3A`, so a logical channel
+    /// containing `:` can never alias another tenant's channel.
     pub fn namespaced_channel(&self, logical_channel: &str) -> Result<String, RealtimeError> {
         validate_room(logical_channel)?;
-        Ok(format!("tenants:{}:{logical_channel}", self.tenant_id))
+        Ok(tenant_namespaced_name(&self.tenant_id, logical_channel))
     }
 
     /// Subscribes only to the tenant-scoped version of a logical channel.
@@ -294,7 +298,7 @@ impl TenantPresence {
 
     fn namespaced_room(&self, room: &str) -> Result<String, RealtimeError> {
         validate_room(room)?;
-        Ok(format!("tenants:{}:{room}", self.tenant_id))
+        Ok(tenant_namespaced_name(&self.tenant_id, room))
     }
 }
 
@@ -363,6 +367,56 @@ mod tests {
             beta_presence.user_joined("course/1", "learner 7"),
             Err(RealtimeError::InvalidPresenceIdentity(_))
         ));
+    }
+
+    #[tokio::test]
+    // TM-TENANT-04
+    async fn colon_in_tenant_or_channel_cannot_alias_another_namespace() {
+        let membership =
+            TenantMembership::try_new(["a", "a:b", "acme"]).expect("valid tenant membership");
+        let a_context = membership.select("a").expect("a membership");
+        let a_b_context = membership.select("a:b").expect("a:b membership");
+        let acme_context = membership.select("acme").expect("acme membership");
+        let manager = Arc::new(BroadcastManager::new());
+        let a = TenantRealtime::from_context(Arc::clone(&manager), &a_context);
+        let a_b = TenantRealtime::from_context(Arc::clone(&manager), &a_b_context);
+        let acme = TenantRealtime::from_context(manager, &acme_context);
+
+        assert_eq!(a.namespaced_channel("b:c").expect("a"), "tenants:a:b:c");
+        assert_eq!(a_b.namespaced_channel("c").expect("a:b"), "tenants:a%3Ab:c");
+        assert_eq!(
+            acme.namespaced_channel("course:1").expect("acme"),
+            "tenants:acme:course:1"
+        );
+
+        let mut a_receiver = a.subscribe("b:c").expect("a subscription");
+        let mut a_b_receiver = a_b.subscribe("c").expect("a:b subscription");
+        assert_eq!(
+            a_b.publish("c", "lesson.completed", "{}")
+                .expect("a:b publish"),
+            1
+        );
+        assert_eq!(
+            a_b_receiver.recv().await.expect("a:b message").channel,
+            "tenants:a%3Ab:c"
+        );
+        assert!(matches!(
+            a_receiver.try_recv(),
+            Err(broadcast::error::TryRecvError::Empty)
+        ));
+
+        let presence = Arc::new(PresenceTracker::new());
+        let a_presence = TenantPresence::from_context(Arc::clone(&presence), &a_context);
+        let a_b_presence = TenantPresence::from_context(presence, &a_b_context);
+        assert_eq!(
+            a_b_presence.namespaced_room("c").expect("a:b room"),
+            "tenants:a%3Ab:c"
+        );
+        a_presence
+            .user_joined("b:c", "learner-7")
+            .expect("a presence");
+        assert_eq!(a_presence.count_online("b:c").expect("a count"), 1);
+        assert_eq!(a_b_presence.count_online("c").expect("a:b count"), 0);
     }
 
     #[test]
