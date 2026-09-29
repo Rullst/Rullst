@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790703896251,
+  "lastUpdate": 1790705654736,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -9165,6 +9165,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/81cfbe7458299e3f2a9a020d47af44990bc2ccd5"
         },
         "date": 1790703895561,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1c64709bc12bedd2cd3b35bc0a8a01d224421c10",
+          "message": "Merge pull request #316 from Rullst/fix/v13-cli-error-display\n\nfix(cli): report command errors with their Display message",
+          "timestamp": "2026-09-29T14:47:36-03:00",
+          "tree_id": "dcb983e431669265e6f539df4e872658467edc7e",
+          "url": "https://github.com/Rullst/Rullst/commit/1c64709bc12bedd2cd3b35bc0a8a01d224421c10"
+        },
+        "date": 1790705653841,
         "tool": "cargo",
         "benches": [
           {
