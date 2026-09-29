@@ -473,7 +473,9 @@ async fn failed_reset_attempts_never_block_another_members_valid_reset() {
         {
             Err(RecoveryError::InvalidAction) => {}
             Err(RecoveryError::Throttled) => throttled += 1,
-            other => panic!("unexpected reset outcome: {other:?}"),
+            // Never format the outcome: it derives from a call that takes a password.
+            Ok(()) => panic!("a guessed reset token was accepted"),
+            Err(_) => panic!("unexpected reset error"),
         }
     }
     // Only the replayed token exhausts its own budget (10 failures per minute).
