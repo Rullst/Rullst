@@ -51,6 +51,11 @@ When a handler finishes while its timeout or a graceful shutdown is being
 processed, the worker records the handler's own result: only a handler that
 was actually cancelled is failed as timed out or requeued, so a success is
 never reported as a timeout or run again.
+`WorkerHandle` and `SchedulerHandle` buffer at most 256 undrained errors. Once
+the buffer is full, newer errors are dropped, counted by `dropped_errors()` and
+emitted as `tracing` warnings, so a handle that is kept alive but never drained
+does not grow memory. Drain `next_error` (for example from a supervising task)
+to observe every failure.
 Custom drivers return `QueueError::Unsupported` for future timestamps unless
 they explicitly implement durable scheduling.
 
