@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790683897541,
+  "lastUpdate": 1790694334469,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -12513,6 +12513,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4083,
             "range": "± 23",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0e3dc96d41947cff8e4e47629eaa72ba927a5edc",
+          "message": "Merge pull request #314 from Rullst/refactor/v13-lms-basic-starter\n\nfeat(cli): support hot reload in the auth,learning LMS starter",
+          "timestamp": "2026-09-29T11:39:00-03:00",
+          "tree_id": "a9cd160116c4ef3928ab89b0f514bd792c68ab25",
+          "url": "https://github.com/Rullst/Rullst/commit/0e3dc96d41947cff8e4e47629eaa72ba927a5edc"
+        },
+        "date": 1790694333370,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 986,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 835,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1835,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 3737,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
