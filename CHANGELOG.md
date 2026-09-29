@@ -193,6 +193,25 @@ A prepared version section does not establish that its tag or crates exist.
   This forward-ports the compatible stable maintenance correction; it adds no
   new macro syntax or v13-only rendering behavior.
 
+### ORM review fixes
+
+- Typed subqueries in `where_exists`, `or_where_exists`, `with_cte` and
+  `with_recursive` no longer shift PostgreSQL bindings. Before, a subquery with
+  its own tenant scope made the outer mandatory tenant predicate bind to a
+  caller-supplied value. `delete_all` no longer sends `$n` markers to MySQL.
+- `#[orm(encrypted)]` and `#[orm(masked)]` values no longer reach audit rows,
+  committed events, Redis `orm:events:*`, Scout documents or `save_to_redis`
+  hashes in plaintext: projections write `"***"`, search documents omit them,
+  and Redis hashes store the same encrypted envelope as SQL. A change to such a
+  field is audited as `"***"` and makes that revision non-restorable. Existing
+  audit rows and search indexes are not rewritten.
+- `SecretString` serializes as an encrypted envelope (or `"***"` in generated
+  projections), never plaintext; the query cache still round-trips the real
+  value. Serializing it without a configured key now fails.
+- The `Model::search()` SQL fallback no longer matches hidden, encrypted,
+  masked or `SecretString` columns, treats LIKE wildcards literally and applies
+  the Scout query limits.
+
 ### Nexus stored-value escaping maintenance
 
 - Forward-port unconditional escaping of stored Nexus table values, including

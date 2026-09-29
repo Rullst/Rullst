@@ -6,7 +6,6 @@ use base64::{
     Engine as _,
     engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
 };
-use serde::{Deserialize, Serialize};
 
 const ENVELOPE_PREFIX: &str = "RULLST";
 const ENVELOPE_VERSION: &str = "v2";
@@ -20,7 +19,20 @@ const KEY_ENV: &str = "RULLST_ENCRYPTION_KEY";
 const KEY_ID_ENV: &str = "RULLST_ENCRYPTION_KEY_ID";
 const KEYRING_ENV: &str = "RULLST_ENCRYPTION_KEYRING";
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+mod secret_serde;
+#[doc(hidden)]
+pub use secret_serde::with_redacted_secrets;
+
+/// A decrypted secret whose `Debug` output and serde form never contain the
+/// plaintext.
+///
+/// SQLx encoding/decoding encrypts and decrypts the column value. `Serialize`
+/// emits an authenticated `RULLST:v2` envelope under the configured
+/// `RULLST_ENCRYPTION_KEY` (and fails without one); `Deserialize` decrypts such
+/// an envelope and still accepts any other string as plaintext input.
+/// Generated ORM audit, event and search projections serialize it as `"***"`.
+/// Use [`SecretString::reveal_audited`] for deliberate exposure.
+#[derive(Clone, PartialEq, Eq)]
 pub struct SecretString(String);
 
 impl SecretString {

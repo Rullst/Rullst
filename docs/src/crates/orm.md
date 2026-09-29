@@ -77,6 +77,11 @@ generated API.
 - **Field privacy:** `#[orm(encrypted)]` transparently encrypts supported
   `String` fields with a versioned AES-256-GCM envelope. Randomized ciphertext
   cannot be filtered or sorted; use a separate keyed blind index where needed.
+  Encrypted and `#[orm(masked)]` values appear as `"***"` in generated
+  `to_json()`, audit rows and committed events, are omitted from Scout
+  documents, and stay encrypted in `save_to_redis` hashes. `SecretString`
+  fields are redacted the same way, and `SecretString` serializes as an
+  encrypted envelope rather than plaintext.
 - **Native relational enums:** `#[derive(Enum)]` owns one closed label mapping
   for SQLx, Serde and ORM values. `Blueprint::native_enum` emits a named,
   drift-checked PostgreSQL type with `strict-postgres`, inline MySQL/MariaDB

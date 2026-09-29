@@ -48,6 +48,27 @@ RULLST:v2:<key_id>:<base64url_nonce>:<base64url_ciphertext_and_tag>
 The table and column names are authenticated as additional data. Copying a
 ciphertext into a different annotated column therefore fails decryption.
 
+Generated secondary copies do not undo that protection. `to_json()`, audit
+rows and committed-event payloads (including Redis `orm:events:*` messages)
+carry the fixed marker `"***"` instead of the value, and Scout documents omit
+the field. `save_to_redis` writes the same authenticated envelope as the SQL
+column and `get_from_redis` decrypts it, while the `.remember(...)` query cache
+stores the ciphertext read from the database. Audit rows, indexes and Redis
+hashes written before this behavior may contain plaintext: purge, reindex or
+rewrite them.
+
+### `SecretString` fields
+
+`rullst_orm::SecretString` is an alternative for a field that should be
+encrypted by its SQLx codec and redacted from `Debug`. Its serde form is never
+plaintext: `Serialize` writes a `RULLST:v2` envelope under the current key (and
+fails without one), and `Deserialize` decrypts such an envelope with the
+current key or keyring while still accepting an ordinary string as input.
+Generated audit, event and search projections write `"***"` instead, and the
+`.remember(...)` query cache stores the envelope. A `#[derive(Serialize)]` on
+the model therefore produces ciphertext for this field; call
+`reveal_audited()` where the plaintext is deliberately required.
+
 ## 3. Rotate a key without downtime
 
 Set the new current key and keep old readable keys in a JSON keyring:
@@ -107,7 +128,9 @@ process-memory capture while the secret is live.
 - Test restore and rotation before retiring any key.
 - Restrict environment and crash-dump access.
 - Never log plaintext model fields or expose them through serialization by
-  accident; add `#[orm(hidden)]` when a field must be omitted from generated
-  `to_json()` output.
+  accident. Generated `to_json()` already replaces encrypted fields with
+  `"***"`; add `#[orm(hidden)]` when a field must be omitted entirely. A
+  `#[derive(Serialize)]` on the model is your own serializer and still emits
+  the decrypted value.
 - Treat authentication failure as possible corruption, wrong context, wrong
   key, or tampering; do not replace it with an empty value.

@@ -28,7 +28,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                 #table_name,
                 self.id,
                 operation,
-                self.to_json(),
+                self.__rullst_search_json(),
             );
             rullst_orm::after_commit(move || async move {
                 if let Some(engine) = rullst_orm::scout::get_search_engine() {

@@ -83,6 +83,12 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   MariaDB and SQLite share the contract. Delivery is at least once, so the
   external consumer must also be idempotent.
 - **Data Governance & Privacy Helpers**: At-rest encryption, recursive audit masking, and data-erasure primitives; legal compliance remains application-specific.
+  `#[orm(encrypted)]` and `#[orm(masked)]` values appear as `"***"` in generated
+  `to_json()`, audit rows and committed events (including Redis
+  `orm:events:*`), are omitted from Scout documents, and remain encrypted in
+  `save_to_redis` hashes. `SecretString` fields get the same treatment, and
+  `SecretString` itself serializes as an encrypted `RULLST:v2` envelope (never
+  plaintext), which the query cache stores and decrypts on a hit.
 - **Scout Search Providers**: `scout-http` adds bounded Meilisearch,
   Elasticsearch and Algolia update/delete/search adapters with deterministic
   offline fallbacks. Generated projections run after commit; guaranteed crash
@@ -180,8 +186,15 @@ is still deliberately a bulk operation. Model-wide, tenant, and soft-delete
 scopes constrain every user `OR` branch, and keyset traversal applies its cursor
 to the entire original filter. Nested generated subqueries propagate validation
 errors, including a missing tenant context, into their containing query.
+Typed subqueries passed to `where_exists`, `or_where_exists`, `with_cte` and
+`with_recursive` are embedded with portable `?` markers; on PostgreSQL the
+final statement is numbered once, in textual order, so nested scopes, CTEs and
+joins keep every tenant and caller binding at its own `$n` position.
 Generated `Model::search()` uses those same model-wide and tenant scopes for
-both its SQL fallback and external Scout result IDs. Missing tenant context
+both its SQL fallback and external Scout result IDs. The SQL fallback never
+matches `#[orm(hidden)]`, `#[orm(encrypted)]`, `#[orm(masked)]` or
+`SecretString` columns, treats `%` and `_` in the query literally, and rejects
+queries over 1,024 bytes or with control characters. Missing tenant context
 fails before contacting Scout, and an empty provider result remains an empty
 match even when a database contains an explicitly inserted ID of zero. Search
 index access controls still belong to the application/operator.
@@ -243,7 +256,7 @@ pub struct User {
     pub id: i32, // ID = 0 means it hasn't been saved yet
     pub name: String,
     pub email: String,
-    #[orm(hidden)] // Excluded from the ORM's generated to_json() projection
+    #[orm(hidden)] // Excluded from generated to_json(), audit, event and search projections
     pub password: String,
 }
 

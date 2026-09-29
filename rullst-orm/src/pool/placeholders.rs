@@ -1,5 +1,7 @@
 //! SQL-aware conversion of portable `?` bind markers to PostgreSQL `$n` markers.
 
+use crate::{Error, RullstValue};
+
 /// Converts portable `?` bind markers to PostgreSQL `$1`, `$2`, ... markers.
 ///
 /// Quoted strings and identifiers, line and nested block comments, PostgreSQL
@@ -29,8 +31,72 @@ pub fn replace_placeholders(sql: &str) -> String {
     replaced
 }
 
+/// Rewrites one embedded subquery fragment to portable `?` bind markers.
+///
+/// A typed subquery renders PostgreSQL `$n` markers when the active driver is
+/// PostgreSQL, but the containing builder must number every marker of the
+/// final statement exactly once, in textual order. Each `$n` is therefore
+/// replaced by `?` and its binding is emitted at that textual position, so
+/// repeated or out-of-order markers from custom builders keep their meaning.
+/// Fragments that already use `?` markers are returned unchanged.
+///
+/// A fragment that mixes `?` and `$n` markers, references a missing binding,
+/// or leaves a supplied binding unreferenced is rejected instead of guessed.
+#[doc(hidden)]
+pub fn portable_subquery(
+    sql: &str,
+    bindings: Vec<RullstValue>,
+) -> Result<(String, Vec<RullstValue>), Error> {
+    let scan = scan_sql(sql.as_bytes());
+    if scan.numbered.is_empty() {
+        return Ok((sql.to_string(), bindings));
+    }
+    if !scan.placeholders.is_empty() {
+        return Err(Error::Validation(
+            "subquery mixes portable `?` and numbered `$n` bind markers".to_string(),
+        ));
+    }
+
+    let mut portable = String::with_capacity(sql.len());
+    let mut ordered = Vec::with_capacity(scan.numbered.len());
+    let mut referenced = vec![false; bindings.len()];
+    let mut last_index = 0;
+    for marker in &scan.numbered {
+        let binding = marker
+            .value
+            .checked_sub(1)
+            .and_then(|index| bindings.get(index).map(|value| (index, value)));
+        let Some((index, value)) = binding else {
+            return Err(Error::Validation(format!(
+                "subquery bind marker ${} has no matching binding ({} supplied)",
+                marker.value,
+                bindings.len()
+            )));
+        };
+        referenced[index] = true;
+        ordered.push(value.clone());
+        portable.push_str(&sql[last_index..marker.start]);
+        portable.push('?');
+        last_index = marker.start + marker.length;
+    }
+    if referenced.iter().any(|used| !used) {
+        return Err(Error::Validation(
+            "subquery supplies a binding that its SQL never references".to_string(),
+        ));
+    }
+    portable.push_str(&sql[last_index..]);
+    Ok((portable, ordered))
+}
+
+struct NumberedParameter {
+    start: usize,
+    length: usize,
+    value: usize,
+}
+
 struct SqlScan {
     placeholders: Vec<usize>,
+    numbered: Vec<NumberedParameter>,
     highest_parameter: usize,
 }
 
@@ -50,6 +116,7 @@ enum LexState {
 
 fn scan_sql(sql: &[u8]) -> SqlScan {
     let mut placeholders = Vec::new();
+    let mut numbered = Vec::new();
     let mut highest_parameter = 0;
     let mut state = LexState::Code;
     let mut index = 0;
@@ -80,6 +147,11 @@ fn scan_sql(sql: &[u8]) -> SqlScan {
                         b'$' => {
                             if let Some((value, length)) = numbered_parameter(sql, index) {
                                 highest_parameter = highest_parameter.max(value);
+                                numbered.push(NumberedParameter {
+                                    start: index,
+                                    length,
+                                    value,
+                                });
                                 index += length;
                             } else if let Some(delimiter_len) = dollar_delimiter_len(sql, index) {
                                 state = LexState::DollarQuoted {
@@ -178,6 +250,7 @@ fn scan_sql(sql: &[u8]) -> SqlScan {
 
     SqlScan {
         placeholders,
+        numbered,
         highest_parameter,
     }
 }
@@ -263,7 +336,67 @@ fn next_non_whitespace(sql: &[u8], after: usize) -> Option<u8> {
 
 #[cfg(test)]
 mod tests {
-    use super::replace_placeholders;
+    use super::{portable_subquery, replace_placeholders};
+    use crate::RullstValue;
+
+    fn text(value: &str) -> RullstValue {
+        RullstValue::String(value.to_string())
+    }
+
+    fn described(values: &[RullstValue]) -> Vec<String> {
+        values.iter().map(|value| format!("{value:?}")).collect()
+    }
+
+    #[test]
+    fn portable_subquery_restores_textual_marker_order() {
+        let rendered = replace_placeholders(
+            "SELECT * FROM comments WHERE (tenant_id = ?) AND (status = ?) AND body = '$9'",
+        );
+        let (sql, bindings) =
+            portable_subquery(&rendered, vec![text("acme"), text("open")]).expect("portable");
+        assert_eq!(
+            sql,
+            "SELECT * FROM comments WHERE (tenant_id = ?) AND (status = ?) AND body = '$9'"
+        );
+        assert_eq!(
+            described(&bindings),
+            described(&[text("acme"), text("open")])
+        );
+
+        let (sql, bindings) = portable_subquery(
+            "SELECT 1 WHERE b = $2 AND a = $1 AND c = $2",
+            vec![text("a"), text("b")],
+        )
+        .expect("custom numbering is reordered");
+        assert_eq!(sql, "SELECT 1 WHERE b = ? AND a = ? AND c = ?");
+        assert_eq!(
+            described(&bindings),
+            described(&[text("b"), text("a"), text("b")])
+        );
+
+        let (sql, bindings) =
+            portable_subquery("SELECT 1 WHERE a = ?", vec![text("a")]).expect("already portable");
+        assert_eq!(sql, "SELECT 1 WHERE a = ?");
+        assert_eq!(described(&bindings), described(&[text("a")]));
+    }
+
+    #[test]
+    fn portable_subquery_rejects_ambiguous_numbering() {
+        for (sql, bindings) in [
+            (
+                "SELECT 1 WHERE a = ? AND b = $1",
+                vec![text("a"), text("b")],
+            ),
+            ("SELECT 1 WHERE a = $2", vec![text("a")]),
+            ("SELECT 1 WHERE a = $0", vec![text("a")]),
+            ("SELECT 1 WHERE a = $1", vec![text("a"), text("unused")]),
+        ] {
+            assert!(matches!(
+                portable_subquery(sql, bindings),
+                Err(crate::Error::Validation(_))
+            ));
+        }
+    }
 
     #[test]
     fn preserves_quoted_text_comments_and_dollar_quotes() {

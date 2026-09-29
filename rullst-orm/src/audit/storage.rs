@@ -1,7 +1,7 @@
 use super::{
     context::current_metadata,
     diff::{self, compute_diff},
-    revision::build_reverse_patch,
+    revision::build_reverse_patch_with_redacted,
 };
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -196,12 +196,16 @@ pub async fn log_audit_with_tx(
     insert_prepared_with_tx(tx, &entry).await
 }
 
-fn diff_payloads(old_json: &str, new_json: &str) -> Option<(Option<String>, Option<String>)> {
+fn diff_payloads(
+    old_json: &str,
+    new_json: &str,
+    redacted_changes: &[&str],
+) -> Option<(Option<String>, Option<String>)> {
     if old_json.len() > MAX_PAYLOAD_LEN || new_json.len() > MAX_PAYLOAD_LEN {
         let marker = Some(r#"{"error":"payload_too_large_for_diff"}"#.to_string());
         return Some((marker.clone(), marker));
     }
-    let payloads = compute_diff(old_json, new_json);
+    let payloads = diff::with_redacted_changes(compute_diff(old_json, new_json), redacted_changes);
     (payloads.0.is_some() || payloads.1.is_some()).then_some(payloads)
 }
 
@@ -214,8 +218,8 @@ pub async fn log_audit_diff(
     old_json: &str,
     new_json: &str,
 ) -> Result<(), crate::Error> {
-    if let Some((old_values, new_values)) = diff_payloads(old_json, new_json) {
-        let restore_patch = restore_patch_for(old_json, new_json)?;
+    if let Some((old_values, new_values)) = diff_payloads(old_json, new_json, &[]) {
+        let restore_patch = restore_patch_for(old_json, new_json, &[])?;
         let entry = prepare_audit(
             model_type,
             model_id,
@@ -239,8 +243,28 @@ pub async fn log_audit_diff_with_tx(
     old_json: &str,
     new_json: &str,
 ) -> Result<(), crate::Error> {
-    if let Some((old_values, new_values)) = diff_payloads(old_json, new_json) {
-        let restore_patch = restore_patch_for(old_json, new_json)?;
+    log_audit_diff_redacted_with_tx(tx, model_type, model_id, event, old_json, new_json, &[]).await
+}
+
+/// Persists a bounded audit difference in a caller-owned transaction and
+/// records each `redacted_changes` field as a changed `***` value.
+///
+/// Generated models pass the `#[orm(encrypted)]`/`#[orm(masked)]` fields whose
+/// in-memory values differ. Their payload values are already redacted, so the
+/// change is recorded without the value and the revision is not restorable.
+#[doc(hidden)]
+#[cfg_attr(test, mutants::skip)]
+pub async fn log_audit_diff_redacted_with_tx(
+    tx: &mut crate::db::Transaction<'_>,
+    model_type: &str,
+    model_id: i32,
+    event: &str,
+    old_json: &str,
+    new_json: &str,
+    redacted_changes: &[&str],
+) -> Result<(), crate::Error> {
+    if let Some((old_values, new_values)) = diff_payloads(old_json, new_json, redacted_changes) {
+        let restore_patch = restore_patch_for(old_json, new_json, redacted_changes)?;
         let entry = prepare_audit(
             model_type,
             model_id,
@@ -254,11 +278,15 @@ pub async fn log_audit_diff_with_tx(
     Ok(())
 }
 
-fn restore_patch_for(old_json: &str, new_json: &str) -> Result<Option<String>, crate::Error> {
+fn restore_patch_for(
+    old_json: &str,
+    new_json: &str,
+    redacted_changes: &[&str],
+) -> Result<Option<String>, crate::Error> {
     if old_json.len() > MAX_PAYLOAD_LEN || new_json.len() > MAX_PAYLOAD_LEN {
         return Ok(None);
     }
-    build_reverse_patch(old_json, new_json)
+    build_reverse_patch_with_redacted(old_json, new_json, redacted_changes)
 }
 
 #[cfg(test)]

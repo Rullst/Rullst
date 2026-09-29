@@ -8,15 +8,12 @@ pub fn generate_search_method(parsed: &ParsedModel, builder_name: &syn::Ident) -
         return quote! {};
     }
     let table_name = &parsed.table_name;
-    let encrypted_fields = parsed
-        .encrypted_fields
-        .iter()
-        .map(|field| &field.name)
-        .collect::<Vec<_>>();
+    // Hidden, encrypted, masked and `SecretString` columns never take part in
+    // the SQL fallback, so it cannot act as a substring oracle for them.
     let cols = parsed
         .normal_fields
         .iter()
-        .filter(|field| !encrypted_fields.contains(field))
+        .filter(|field| !parsed.hidden_fields.contains(field) && !parsed.is_redacted(field))
         .map(|f| f.to_string())
         .collect::<Vec<_>>();
     quote! {
@@ -44,17 +41,26 @@ pub fn generate_search_method(parsed: &ParsedModel, builder_name: &syn::Ident) -
                 }
             };
             let cast_type = if driver == "mysql" { "CHAR" } else { "TEXT" };
-            let like_query = format!("%{}%", query);
-            let cols = vec![#(#cols),*];
+            let pattern = match rullst_orm::scout::sql_contains_pattern(query) {
+                Ok(pattern) => pattern,
+                Err(error) => {
+                    base_builder.errors.push(error);
+                    return base_builder;
+                }
+            };
+            let cols: &[&str] = &[#(#cols),*];
+            if cols.is_empty() {
+                return base_builder.where_raw::<rullst_orm::RullstValue>("1 = 0", Vec::new());
+            }
             let mut raw_parts: Vec<String> = Vec::with_capacity(cols.len());
-            for col in &cols {
-                raw_parts.push(format!("CAST({} AS {}) LIKE ?", col, cast_type));
+            for col in cols {
+                raw_parts.push(format!("CAST({} AS {}) LIKE ? ESCAPE '!'", col, cast_type));
             }
             let raw_where = raw_parts.join(" OR ");
-            let mut bindings = Vec::with_capacity(cols.len());
-            for _ in &cols {
-                bindings.push(rullst_orm::RullstValue::String(like_query.clone()));
-            }
+            let bindings = cols
+                .iter()
+                .map(|_| rullst_orm::RullstValue::String(pattern.clone()))
+                .collect::<Vec<_>>();
             base_builder.where_raw(raw_where.as_str(), bindings)
         }
     }
@@ -121,5 +127,41 @@ pub fn generate_query_methods(parsed: &ParsedModel, builder_name: &syn::Ident) -
         pub async fn all_with_tx(tx: &mut rullst_orm::db::Transaction<'_>) -> Result<Vec<Self>, rullst_orm::Error> {
             Self::query().get_with_tx(tx).await
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use syn::{DeriveInput, parse_quote};
+
+    #[test]
+    fn sql_search_fallback_skips_hidden_and_protected_columns() {
+        let input: DeriveInput = parse_quote! {
+            #[orm(table = "accounts", searchable)]
+            struct Account {
+                id: i32,
+                name: String,
+                #[orm(hidden)]
+                reset_token: String,
+                #[orm(masked)]
+                recovery_hint: String,
+                #[orm(encrypted)]
+                note: String,
+                cpf: SecretString,
+            }
+        };
+        let parsed = crate::parser::parse(&input).expect("test model should parse");
+        let builder = quote::format_ident!("AccountQueryBuilder");
+        let generated = generate_search_method(&parsed, &builder).to_string();
+
+        assert!(generated.contains("& [\"id\" , \"name\"]"));
+        for column in ["reset_token", "recovery_hint", "note", "cpf"] {
+            assert!(
+                !generated.contains(&format!("\"{column}\"")),
+                "{column} searched"
+            );
+        }
+        assert!(generated.contains("LIKE ? ESCAPE '!'"));
     }
 }

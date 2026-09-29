@@ -1488,12 +1488,44 @@ while portability and semantic review remain the model author's responsibility.
 * Generated builders assemble bindings by emitted clause position (CTE, JOIN,
   WHERE/HAVING, ORDER BY), not by the order in which fluent methods were
   called. Nested typed subqueries export that ordered binding sequence.
+* `where_exists`, `or_where_exists`, `with_cte` and `with_recursive` embed a
+  subquery with portable `?` markers, even when its own `to_sql()` rendered
+  PostgreSQL `$n` markers. The outermost statement (including `delete_all`) is
+  numbered once, so `$n` follows textual order and the mandatory tenant or
+  model-wide scope binding can never shift onto a nested or caller value. A
+  custom subquery whose `$n` markers are mixed with `?`, reference a missing
+  binding or leave a binding unused fails closed with a `Validation` error.
 * Generated magic filters bind supported primitive fields to their Rust type at
   compile time (`String`, `i32`, `f64`, and `bool`), and generated column enums
   make unknown columns unrepresentable on typed paths. String-column builders,
   custom `RullstValue` conversions and raw SQL are explicit runtime-checked or
   caller-owned alternatives, not compile-time schema verification.
 * `String` and `Option<String>` fields annotated with `#[orm(encrypted)]` are encrypted before generated ORM writes and decrypted after generated model reads using AES-256-GCM. Randomized ciphertext cannot be filtered, ordered, grouped, or explicitly selected by generated query-builder methods; use a separately reviewed blind index when equality lookup is required. Raw SQL remains an explicit, non-transparent escape hatch.
+* Generated secondary projections never carry `#[orm(encrypted)]` or
+  `#[orm(masked)]` plaintext. `to_json()` (used for audit rows and committed
+  `ModelCommittedEvent`/Redis `orm:events:*` payloads) omits `#[orm(hidden)]`
+  fields and replaces encrypted and masked values with the fixed `"***"`
+  marker. An update that changes only such a field still writes an audit row
+  that records the field as `"***"` on both sides, and that revision cannot be
+  restored. Scout documents omit hidden, encrypted and masked fields entirely.
+  `save_to_redis` stores encrypted fields as the same table/column-bound
+  envelope as the SQL column and `get_from_redis` decrypts them; hashes written
+  by earlier versions with plaintext in those fields fail closed on read and
+  must be rewritten. Masked and hidden values keep their database
+  representation in Redis hashes and the query cache, like the SQL column.
+  Audit rows, search documents and events written by earlier versions are not
+  rewritten; purge or reindex them if they may contain plaintext.
+* `SecretString` never serializes its plaintext. Its SQLx codec encrypts and
+  decrypts the column. `Serialize` emits an authenticated `RULLST:v2` envelope
+  under the configured key, bound to a serde-specific context (a SQL-column
+  envelope is not accepted), and fails when no key is configured;
+  `Deserialize` decrypts such an envelope through the current key or keyring
+  and still accepts any other string as plaintext input. Generated `to_json()`
+  and search projections serialize it (also when nested) as `"***"`, and
+  `SecretString`/`Option<SecretString>` model fields are audited, excluded and
+  change-tracked like `#[orm(masked)]` fields. A plain `#[derive(Serialize)]`
+  on a model therefore emits the envelope; call `reveal_audited()` for
+  deliberate exposure.
 
 ### 5.3. Generated Relationship Contract
 
@@ -1594,8 +1626,9 @@ while portability and semantic review remain the model author's responsibility.
   already committed/autocommit operation.
 * Generated observers retain synchronous lifecycle callbacks such as
   `creating`, `created`, and `saved` for mutation validation. The separate
-  `committed(ModelCommittedEvent)` callback receives an owned, hidden-field-
-  aware snapshot after the managed commit. Generated Redis invalidation/pub-sub
+  `committed(ModelCommittedEvent)` callback receives an owned snapshot after
+  the managed commit; it omits hidden fields and carries `"***"` for encrypted
+  and masked fields. Generated Redis invalidation/pub-sub
   and Scout projections use this same post-commit boundary.
 * Savepoint-scoped generated saves/deletes and revision restores collect their
   callbacks in a nested scope. The callbacks are promoted to the enclosing
@@ -1655,7 +1688,9 @@ while portability and semantic review remain the model author's responsibility.
   without initializing Redis fails closed as a configuration error; transport
   failures and corrupt cached JSON fail open to the authoritative database.
 * Cache writes occur only after a successful database read and retain encrypted
-  model fields as ciphertext. Generated model `save()`/`delete()` operations
+  model fields as ciphertext; `SecretString` fields are cached as serde
+  envelopes and decrypted on a cache hit, and a result that cannot be
+  serialized (for example without an encryption key) is not cached. Generated model `save()`/`delete()` operations
   invalidate the active tenant/table's versioned keys only after commit through
   a bounded Redis `SCAN` plus asynchronous `UNLINK`; rollback preserves existing entries.
   Raw SQL, bulk builders, caller-owned raw transactions and writes from other
@@ -1713,8 +1748,15 @@ while portability and semantic review remain the model author's responsibility.
 
 ### 5.9. Scout Search Projection Contract
 
+* Without a configured engine, `Model::search(query)` falls back to
+  `CAST(column AS TEXT) LIKE ? ESCAPE '!'` over the persisted columns except
+  `#[orm(hidden)]`, `#[orm(encrypted)]`, `#[orm(masked)]` and `SecretString`
+  ones, so it cannot become a substring oracle for them. `%`, `_` and `!` in
+  the query match literally, and the query uses the provider bounds (1,024
+  bytes, no control characters).
 * `#[orm(searchable)]` projects generated save/delete operations only after a
-  managed relational commit. Search adapter failures remain visible; a failed
+  managed relational commit. The indexed document omits `#[orm(hidden)]`,
+  `#[orm(encrypted)]` and `#[orm(masked)]` fields. Search adapter failures remain visible; a failed
   query is not silently treated as an empty result, and `PostCommit` means a
   projection failed after the database mutation became durable.
 * `MockSearchEngine` is deterministic and always available. The optional
