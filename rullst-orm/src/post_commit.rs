@@ -96,6 +96,19 @@ impl PostCommitScope {
         CALLBACKS.scope(self.callbacks.clone(), future).await
     }
 
+    /// Like [`Self::run`], but the returned future owns its callback queue
+    /// instead of borrowing `self`. Generic callers need this: a generic
+    /// future holding a borrowed scope is rejected by rustc as not `Send`.
+    pub(crate) fn scope<F>(
+        &self,
+        future: F,
+    ) -> tokio::task::futures::TaskLocalFuture<CallbackQueue, F>
+    where
+        F: Future,
+    {
+        CALLBACKS.scope(self.callbacks.clone(), future)
+    }
+
     /// Runs all callbacks after the caller has confirmed its database commit.
     #[doc(hidden)]
     pub async fn commit(self) -> Result<(), Error> {

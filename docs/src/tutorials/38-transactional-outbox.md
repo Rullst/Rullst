@@ -66,8 +66,12 @@ Orm::transaction(|_| Box::pin(async move {
 # }
 ```
 
-If the transaction rolls back, neither row survives. Calling `enqueue` outside
-`Orm::transaction` fails instead of silently opening an unrelated transaction.
+If the transaction rolls back, neither row survives. This also holds when a
+helper wraps `enqueue` in its own `Orm::transaction` and is called from inside
+another one: the nested call joins the outer transaction through a savepoint,
+so its outbox row commits or rolls back with the outer transaction. Calling
+`enqueue` outside `Orm::transaction` fails instead of silently opening an
+unrelated transaction.
 When the application already owns a raw SQLx transaction, use
 `enqueue_with_tx(&mut transaction, ...)`.
 
