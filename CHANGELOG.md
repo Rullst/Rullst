@@ -9,6 +9,52 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Security review fixes
+
+Ported from the v13 security review. None adds public API; where v13 adds one,
+v12 documents the existing-API workaround instead.
+
+- **rullst-security:**
+  - `LoginGuard` keeps jailing when its failure or jail map is full, instead of
+    failing open after 100,000 identities.
+  - DLP response masking and `redact_secrets` run in linear time.
+  - Honeypot ban checks look up only the requesting peer instead of scanning
+    every ban under one lock.
+  - `verify_totp_code` documents its replay window and how to reject reuse with
+    `generate_totp_at_counter` and a stored last step.
+  - Deserializing `SentinelObservation` validates it, and
+    `ThreatClassifier::assess` no longer panics on zero values.
+  - The global `is_rate_limited` helper keeps a separate budget per key and
+    policy.
+- **rullst-auth:**
+  - `SqlRecoveryStore` rejects passwords over 72 bytes before the account
+    lookup, closing an account-enumeration leak.
+  - Its `connect` requires `sslmode=verify-full` for remote PostgreSQL hosts and
+    allowlists query options.
+  - `complete_password_reset` budgets failed attempts per reset token
+    (`RecoveryError::Throttled`), so one client can no longer block every
+    member's reset.
+  - `PasskeyAuth::new` rejects challenge TTLs above one day, and expiry uses
+    checked arithmetic, so a huge TTL can no longer panic.
+  - JWT revocation stores cap token rows per subject, keep a reserve for
+    subject revocations, and fall back to a subject cutoff, so one subject can
+    no longer block logout for everyone. The SQLite store adds two
+    backward-compatible columns.
+- **Configuration errors:** malformed `.env` and `Rullst.toml` errors report only
+  a position, never file content such as `APP_KEY`. This covers rullst-auth and
+  server startup. The cookie helpers skip `.env` when `RULLST_ENV` or `APP_ENV`
+  is set.
+- **rullst-connect:**
+  - Provider error text is cut on a UTF-8 boundary instead of panicking.
+  - Token responses, exchange parameters, callbacks and device authorization
+    responses redact their secrets from `Debug`.
+  - OIDC validates `iss` against the issuer exactly as discovered, which fixes
+    Auth0.
+  - An unknown JWKS `kid` forces at most one refresh per 30 seconds.
+  - `get_user_from_token` is documented as not authenticating client-supplied
+    tokens, and the Sign in with Apple guidance no longer recommends the
+    query-string session flow.
+
 ### Fixed
 
 - The generated portfolio page escapes CMS values and renders only `http(s)`
