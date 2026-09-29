@@ -9,6 +9,7 @@ use std::{fs, path::Path, path::PathBuf, process::Command};
 fn materialize_and_test(
     profile: &str,
     modules: &[LmsModule],
+    hot_reload: bool,
     required: &[&str],
     excluded: &[&str],
 ) {
@@ -22,7 +23,7 @@ fn materialize_and_test(
 
     let manifest = build_cargo_toml(
         &format!("generated-lms-{profile}"),
-        false,
+        hot_reload,
         true,
         "Sqlite",
         &[],
@@ -44,7 +45,7 @@ fn materialize_and_test(
         &format!("generated-lms-{profile}"),
         &format!("generated_lms_{}", profile.replace('-', "_")),
         false,
-        false,
+        hot_reload,
         true,
         "Active Record",
         "Zero-Bundle HTMX",
@@ -97,6 +98,7 @@ fn selected_auth_profile_passes_generated_cargo_tests() {
     materialize_and_test(
         "auth",
         &[LmsModule::Auth],
+        false,
         &[
             "rullst-lms-modules.json",
             "src/models/user.rs",
@@ -115,6 +117,7 @@ fn selected_auth_learning_profile_passes_generated_cargo_tests() {
     materialize_and_test(
         "foundation",
         &[LmsModule::Auth, LmsModule::Learning],
+        false,
         &[
             "rullst-lms-modules.json",
             "static/media/memory-safety.en.vtt",
@@ -126,10 +129,22 @@ fn selected_auth_learning_profile_passes_generated_cargo_tests() {
 }
 
 #[test]
+fn selected_auth_learning_profile_with_hot_reload_passes_generated_cargo_tests() {
+    materialize_and_test(
+        "foundation-hot",
+        &[LmsModule::Auth, LmsModule::Learning],
+        true,
+        &["src/lib.rs", "src/main.rs", "src/models/course.rs"],
+        &["src/models/quiz.rs", "src/models/achievement.rs"],
+    );
+}
+
+#[test]
 fn selected_auth_learning_assessment_profile_passes_generated_cargo_tests() {
     materialize_and_test(
         "assessment-foundation",
         &[LmsModule::Auth, LmsModule::Learning, LmsModule::Assessment],
+        false,
         &[
             "rullst-lms-modules.json",
             "src/models/quiz.rs",
@@ -156,6 +171,7 @@ fn selected_auth_learning_gamification_profile_passes_generated_cargo_tests() {
             LmsModule::Learning,
             LmsModule::Gamification,
         ],
+        false,
         &[
             "rullst-lms-modules.json",
             "src/models/activity.rs",

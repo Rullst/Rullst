@@ -53,7 +53,7 @@ the generated application:
   * `--no-database`: Generates the blank blueprint without a primary relational database; it conflicts with `--database` and rejects database-dependent blueprints.
   * `--ai`: Enables the umbrella AI facade in the generated manifest.
   * `--redis`: Enables the umbrella Redis queue/cache/ORM capabilities and the direct ORM Redis feature.
-  * `--lms-modules <modules>`: With `--default --blueprint lms`, selects a detached LMS profile. Version 12 currently accepts `auth`, `auth,learning`, or `auth,learning,assessment`; unsupported/duplicate combinations and the profiles' not-yet-supported hot reload fail explicitly. Omitting the flag generates the complete LMS starter.
+  * `--lms-modules <modules>`: With `--default --blueprint lms`, selects a detached LMS profile. Version 12 currently accepts `auth`, `auth,learning`, or `auth,learning,assessment`; unsupported/duplicate combinations fail explicitly, and hot reload is available for `auth,learning` only (the other profiles reject it). Omitting the flag generates the complete LMS starter.
   * `--skip-initial-migration`: Generates the project without running the best-effort initial database migration. Run `cargo rullst db:migrate` explicitly after configuring the database.
 
 Without `--skip-initial-migration`, project creation performs the first Cargo

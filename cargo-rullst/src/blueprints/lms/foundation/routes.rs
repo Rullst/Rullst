@@ -1,14 +1,14 @@
-pub(super) fn main_source() -> String {
-    r##"use rullst::{routes, Router, Server};
+//! Entrypoint templates for the auth + learning LMS starter.
 
-pub mod controllers;
+const MODULES: &str = "pub mod controllers;
 pub mod middlewares;
 pub mod migrations;
 pub mod models;
 pub mod pages;
 pub mod services;
+";
 
-pub fn router() -> Result<Router, Box<dyn std::error::Error>> {
+const ROUTER: &str = r##"pub fn router() -> Result<Router, Box<dyn std::error::Error>> {
     let nexus_auth = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
     let nexus = rullst::nexus::Nexus::new()
         .with_auth_policy(nexus_auth)
@@ -48,19 +48,65 @@ pub fn router() -> Result<Router, Box<dyn std::error::Error>> {
         .layer(rullst::server::from_fn(rullst::security::headers_middleware))
         .nest_axum("/nexus", nexus))
 }
+"##;
 
-#[rullst::runtime::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    rullst::artisan!(crate::migrations::get_migrations());
+const STARTUP: &str = r##"    rullst::artisan!(crate::migrations::get_migrations());
     #[cfg(debug_assertions)]
     rullst::runtime::spawn(async {
         if let Err(error) = rullst::studio::run_studio(5555).await {
             eprintln!("Rullst Studio could not start: {error}");
         }
     });
-    Server::new(router()?).run(3000).await?;
-    Ok(())
+"##;
+
+/// `src/main.rs` without hot reload: the binary owns the router.
+pub(super) fn main_source() -> String {
+    format!(
+        "use rullst::{{routes, Router, Server}};\n\n{MODULES}\n{ROUTER}\n#[rullst::runtime::main]\nasync fn main() -> Result<(), Box<dyn std::error::Error>> {{\n{STARTUP}    Server::new(router()?).run(3000).await?;\n    Ok(())\n}}\n"
+    )
 }
+
+/// `src/lib.rs` with hot reload: the reloadable library exports the router.
+pub(super) fn hot_lib_source() -> String {
+    format!(
+        r##"use rullst::{{routes, Router}};
+
+{MODULES}
+{ROUTER}
+#[unsafe(no_mangle)]
+pub extern "C" fn rullst_router_init() -> *mut Router {{
+    let router = match router() {{
+        Ok(router) => router,
+        Err(error) => {{
+            eprintln!("LMS startup configuration error: {{error}}");
+            Router::new()
+        }}
+    }};
+    Box::into_raw(Box::new(router))
+}}
 "##
-    .to_string()
+    )
+}
+
+/// `src/main.rs` with hot reload: `HOT_RELOAD` loads the rebuilt library.
+pub(super) fn hot_main_source(project_name_safe: &str) -> String {
+    format!(
+        r##"{MODULES}
+#[rullst::runtime::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {{
+{STARTUP}    let server = if std::env::var("HOT_RELOAD").is_ok() {{
+        let lib_path = if cfg!(target_os = "windows") {{
+            "target/debug/{project_name_safe}"
+        }} else {{
+            "target/debug/lib{project_name_safe}"
+        }};
+        rullst::Server::new_hot(lib_path)
+    }} else {{
+        rullst::Server::new({project_name_safe}::router()?)
+    }};
+    server.run(3000).await?;
+    Ok(())
+}}
+"##
+    )
 }

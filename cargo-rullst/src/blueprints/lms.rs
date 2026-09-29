@@ -31,6 +31,7 @@ mod gamification;
 mod learning;
 mod lms_player;
 mod module_selection;
+use module_selection::supports_hot_reload;
 mod notifications;
 mod outbox;
 mod privacy;

@@ -35,10 +35,11 @@ const RETAINED_FILES: &[&str] = &[
 
 pub(super) fn select(
     mut full_manifest: Vec<(&'static str, String)>,
+    project_name_safe: &str,
     hot_reload: bool,
     modules: &[super::LmsModule],
 ) -> Result<Vec<(&'static str, String)>, super::LmsModuleError> {
-    if hot_reload {
+    if hot_reload && !super::supports_hot_reload(modules) {
         return Err(super::LmsModuleError::HotReloadUnsupported);
     }
     if modules.len() == 1 && modules.contains(&super::LmsModule::Auth) {
@@ -51,8 +52,15 @@ pub(super) fn select(
     {
         *source = super::auth::identity_controller();
     }
+    if hot_reload {
+        full_manifest.extend([
+            ("src/lib.rs", routes::hot_lib_source()),
+            ("src/main.rs", routes::hot_main_source(project_name_safe)),
+        ]);
+    } else {
+        full_manifest.push(("src/main.rs", routes::main_source()));
+    }
     full_manifest.extend([
-        ("src/main.rs", routes::main_source()),
         (
             "src/controllers/learning_controller.rs",
             FOUNDATION_CONTROLLER.to_string(),
@@ -269,16 +277,56 @@ mod tests {
     }
 
     #[test]
-    fn foundation_hot_reload_fails_explicitly() {
+    fn foundation_hot_reload_exports_the_router_library() {
+        let manifest = file_manifest_for_modules(
+            "demo",
+            true,
+            "Active Record",
+            "Zero-Bundle HTMX",
+            &[LmsModule::Auth, LmsModule::Learning],
+        )
+        .expect("hot-reload foundation manifest");
+        let file = |name: &str| {
+            manifest
+                .iter()
+                .find(|(path, _)| *path == name)
+                .map(|(_, source)| source.as_str())
+                .unwrap_or_default()
+        };
+        assert!(file("src/lib.rs").contains("pub extern \"C\" fn rullst_router_init()"));
+        assert!(file("src/lib.rs").contains("pub fn router()"));
+        assert!(file("src/main.rs").contains("rullst::Server::new_hot(lib_path)"));
+        assert!(file("src/main.rs").contains("demo::router()?"));
         assert_eq!(
-            file_manifest_for_modules(
-                "demo",
-                true,
-                "Active Record",
-                "Zero-Bundle HTMX",
-                &[LmsModule::Auth, LmsModule::Learning],
-            ),
-            Err(LmsModuleError::HotReloadUnsupported)
+            manifest
+                .iter()
+                .filter(|(path, _)| *path == "src/main.rs")
+                .count(),
+            1
         );
+    }
+
+    #[test]
+    fn other_detached_profiles_still_reject_hot_reload() {
+        for modules in [
+            &[LmsModule::Auth][..],
+            &[LmsModule::Auth, LmsModule::Learning, LmsModule::Assessment],
+            &[
+                LmsModule::Auth,
+                LmsModule::Learning,
+                LmsModule::Gamification,
+            ],
+        ] {
+            assert_eq!(
+                file_manifest_for_modules(
+                    "demo",
+                    true,
+                    "Active Record",
+                    "Zero-Bundle HTMX",
+                    modules
+                ),
+                Err(LmsModuleError::HotReloadUnsupported)
+            );
+        }
     }
 }
