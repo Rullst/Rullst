@@ -1,0 +1,2 @@
+    // 1. Intercept Artisan commands (e.g. cargo rullst db:migrate) before starting server
+    rullst::artisan!(crate::migrations::get_migrations());

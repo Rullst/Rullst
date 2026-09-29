@@ -1,0 +1,9 @@
+use rullst::db::{Orm, FromRow};
+
+// 1. Define your database model using the built-in rullst-orm ORM!
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "users")]
+pub struct User {
+    pub id: i32,
+    pub name: String,
+}

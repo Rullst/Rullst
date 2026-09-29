@@ -1,0 +1,33 @@
+__MIGRATIONS_MOD_DECLARATION__
+
+#[rullst::runtime::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+__ARTISAN_CALL__
+    #[cfg(debug_assertions)]
+    {
+        rullst::runtime::spawn(async {
+            if let Err(error) = rullst::studio::run_studio(5555).await {
+                eprintln!("Rullst Studio could not start: {error}");
+            }
+        });
+        println!("Rullst Studio running on http://127.0.0.1:5555");
+    }
+
+    let is_hot = std::env::var("HOT_RELOAD").is_ok();
+
+    let server = if is_hot {
+        let lib_path = if cfg!(target_os = "windows") {
+            "target/debug/__PROJECT_NAME_SAFE__"
+        } else {
+            "target/debug/lib__PROJECT_NAME_SAFE__"
+        };
+        rullst::Server::new_hot(lib_path)
+    } else {
+        let router = __PROJECT_NAME_SAFE__::router();
+        rullst::Server::new(router)
+    };
+
+    server.run(3000).await?;
+
+    Ok(())
+}

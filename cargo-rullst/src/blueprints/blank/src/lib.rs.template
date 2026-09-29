@@ -1,0 +1,90 @@
+__FE_IMPORTS__use rullst::{routes, Router, response::{Html, IntoResponse}, server::Extension};
+use rullst::htmx::{HtmxRequest, render_page};
+
+__MIGRATIONS_MOD_DECLARATION____CLIENT_MODULES__
+
+__DB_MODEL_CODE__
+
+// Main route: uses hybrid SSR with render_page
+pub async fn home(
+    htmx: HtmxRequest,
+    Extension(csrf_token): Extension<rullst::security::CsrfToken>,
+) -> impl IntoResponse {
+    let name = "Rullst";
+__DB_STATUS_CODE__
+    let content = html! {
+        <div class="rullst-starter flex flex-col items-center justify-center min-h-screen bg-slate-950 text-slate-100 p-6 font-sans">
+            <div class="rullst-starter__content max-w-xl text-center space-y-6">
+                <h1 class="rullst-starter__title text-5xl font-extrabold tracking-tight bg-gradient-to-r from-sky-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
+                    "Welcome to " {name}
+                </h1>
+                
+                <p class="rullst-starter__lede text-slate-400 text-lg">
+                    "A full-stack Rust framework focused on explicit security boundaries, maintainability, and measured speed."
+                </p>
+
+                <div class="rullst-starter__status inline-block px-4 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-sky-400 font-mono">
+                    {db_status}
+                </div>
+
+                <div class="rullst-starter__card bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
+                    <h2 class="text-xl font-bold text-slate-200">"HTMX Reactive Counter"</h2>
+                    <div id="counter-box" class="rullst-starter__counter-box flex flex-col items-center gap-3">
+                        <form method="post" action="/clicked" hx-post="/clicked" hx-target="#counter-box" hx-swap="outerHTML">
+                            <input type="hidden" name="_token" value={csrf_token.as_str()} />
+                            <button type="submit" class="rullst-starter__button px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                            "Click here to increment"
+                            </button>
+                        </form>
+                        <p class="rullst-starter__count text-sm text-slate-400">"Clicks received on server: 0"</p>
+                    </div>
+                </div>
+
+                <div class="rullst-starter__card bg-slate-900/50 backdrop-blur-md p-6 rounded-xl border border-slate-800 space-y-4">
+                    <h2 class="text-xl font-bold text-slate-200">"Wasm Island (Client Side)"</h2>
+                    <div data-island="counter" data-props="{\"props\": {\"initial_value\": 0}}"></div>
+                </div>
+            </div>
+        </div>
+    };
+
+    render_page(&htmx, "Welcome to Rullst", content)
+}
+
+// State for counter
+use std::sync::atomic::{AtomicUsize, Ordering};
+static CLICK_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+// Reactive HTMX endpoint
+pub async fn clicked(
+    Extension(csrf_token): Extension<rullst::security::CsrfToken>,
+) -> impl IntoResponse {
+    let current_clicks = CLICK_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
+    
+    Html(html! {
+        <div id="counter-box" class="rullst-starter__counter-box flex flex-col items-center gap-3">
+            <form method="post" action="/clicked" hx-post="/clicked" hx-target="#counter-box" hx-swap="outerHTML">
+                <input type="hidden" name="_token" value={csrf_token.as_str()} />
+                <button type="submit" class="rullst-starter__button px-6 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-medium rounded-lg shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition duration-150 ease-in-out cursor-pointer">
+                    "Click here to increment"
+                </button>
+            </form>
+            <p class="rullst-starter__count text-sm text-emerald-400 font-medium">"Clicks received on server: " {current_clicks.to_string()}</p>
+        </div>
+    })
+}
+
+pub fn router() -> Router {
+    routes![
+        get("/" => home),
+        post("/clicked" => clicked),
+    ]
+    .merge_axum(rpc::increment_counter_rpc_router().into_axum())
+    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
+    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rullst_router_init() -> *mut Router {
+    Box::into_raw(Box::new(router()))
+}

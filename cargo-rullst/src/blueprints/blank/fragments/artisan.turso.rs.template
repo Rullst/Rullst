@@ -1,0 +1,38 @@
+    // Turso is initialized before routes use the global typed model facade.
+    let _ = dotenvy::dotenv();
+    rullst_orm::polyglot::TursoOrm::init_from_env().await?;
+    if let Some(command) = std::env::args().nth(1) {
+        match command.as_str() {
+            "db:migrate" => {
+                let report = rullst_orm::polyglot::TursoOrm::migrate(
+                    crate::migrations::get_migrations()?,
+                ).await?;
+                println!("Applied {} Turso migration(s); {} already current.", report.applied.len(), report.skipped.len());
+                return Ok(());
+            }
+            "db:rollback" => {
+                let report = rullst_orm::polyglot::TursoOrm::rollback_last(
+                    crate::migrations::get_migrations()?,
+                ).await?;
+                match report.rolled_back {
+                    Some(name) => println!("Rolled back Turso migration {name}."),
+                    None => println!("No Turso migrations to roll back."),
+                }
+                return Ok(());
+            }
+            "db:status" => {
+                let applied = rullst_orm::polyglot::TursoOrm::migration_status().await?;
+                if applied.is_empty() {
+                    println!("No Turso migrations applied.");
+                } else {
+                    for name in applied { println!("[applied] {name}"); }
+                }
+                return Ok(());
+            }
+            "db:seed" => {
+                println!("No Turso seeders are configured in this blank starter.");
+                return Ok(());
+            }
+            _ => {}
+        }
+    }
