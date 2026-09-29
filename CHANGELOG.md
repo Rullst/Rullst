@@ -15,6 +15,10 @@ A prepared version section does not establish that its tag or crates exist.
   attested artifacts against the exact publisher, workflow, tag and commit.
 - Document public branch protection evidence, sole-maintainer responsibilities,
   testing requirements and the remaining OpenSSF/continuity limitations.
+- Run a fast Linux gate on pull requests to `main` and move the macOS/Windows
+  matrix, CLI profiles, feature boundaries, threat-model minimum, coverage,
+  SemVer and CodeQL to the post-merge push, a nightly full-matrix run and weekly
+  schedules. `v12` pull requests and release admission keep the complete set.
 
 ### Omni dependency compatibility maintenance
 

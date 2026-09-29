@@ -37,9 +37,14 @@ on:
           - cli-saas-foundation
           - cli-saas-product
           - cli-saas-journey
+  # PRs to main run the Linux gate; the nightly run restores the full
+  # cross-platform matrix on the default branch.
+  schedule:
+    - cron: '30 5 * * *'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # A nightly run must not cancel, or be cancelled by, a main push.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}${{ github.event_name == 'schedule' && '-nightly' || '' }}
   cancel-in-progress: true
 
 permissions:
@@ -195,13 +200,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # A ready PR (and an explicit manual run) proves all three platforms
-        # before merge. The resulting push to main repeats Linux only instead
-        # of paying for the exact macOS/Windows matrix a second time. A direct
-        # main push still receives the Linux regression gate and can be followed
-        # by workflow_dispatch for full cross-platform evidence.
-        os: ${{ fromJSON(github.event_name == 'push' && '["ubuntu-latest"]' || github.event_name == 'workflow_dispatch' && inputs.platform != 'all' && format('["{0}"]', inputs.platform) || '["ubuntu-latest","macos-latest","windows-latest"]') }}
-        shard: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.shard != 'all' && format('["{0}"]', inputs.shard) || '["workspace","cli-standard","cli-profiles-basic","cli-profiles-relational","cli-profiles-polyglot","cli-lms","cli-saas-foundation","cli-saas-product"]') }}
+        # A ready PR to main runs the Linux workspace and standard CLI gate;
+        # the resulting main push runs every Linux shard. The nightly run, PRs
+        # to maintained lines (v12/v13) and full manual runs prove all three
+        # platforms; release admission still requires a full manual run.
+        os: ${{ fromJSON((github.event_name == 'push' || (github.event_name == 'pull_request' && github.base_ref == 'main')) && '["ubuntu-latest"]' || github.event_name == 'workflow_dispatch' && inputs.platform != 'all' && format('["{0}"]', inputs.platform) || '["ubuntu-latest","macos-latest","windows-latest"]') }}
+        shard: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.shard != 'all' && format('["{0}"]', inputs.shard) || github.event_name == 'pull_request' && github.base_ref == 'main' && '["workspace","cli-standard"]' || '["workspace","cli-standard","cli-profiles-basic","cli-profiles-relational","cli-profiles-polyglot","cli-lms","cli-saas-foundation","cli-saas-product"]') }}
     steps:
       - name: Checkout Monorepo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -512,8 +516,10 @@ jobs:
 
   feature-boundaries:
     needs: scope
+    # Runs after merge, nightly and on maintained-line PRs, not on PRs to main.
     if: >-
       !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      (github.event_name != 'pull_request' || github.base_ref != 'main') &&
       (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Public feature boundaries (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
@@ -544,8 +550,10 @@ jobs:
 
   threat-model-release-minimum:
     needs: scope
+    # Runs after merge, nightly and on maintained-line PRs, not on PRs to main.
     if: >-
       !cancelled() && (github.event_name != 'push' || (github.ref != 'refs/heads/v13' && github.ref != 'refs/heads/main') || needs.scope.result != 'success' || needs.scope.outputs.runtime_required != 'false') &&
+      (github.event_name != 'pull_request' || github.base_ref != 'main') &&
       (github.event_name != 'workflow_dispatch' || inputs.shard == 'all' || inputs.shard == 'workspace')
     name: Threat-model release-negative minimum (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
@@ -895,12 +903,13 @@ jobs:
   quality-scorecard:
     name: Evidence quality scorecard (observational)
     # The scorecard's verification dimension requires the full OS matrix. A
-    # Linux-only post-merge push must not silently inherit cross-platform credit.
+    # Linux-only post-merge push or PR to main must not silently inherit
+    # cross-platform credit; the nightly run emits it for the default branch.
     # Report failures, but never hold a replaced run's concurrency slot after
     # cancellation. An always() job can survive normal workflow cancellation.
     if: >-
       !cancelled() && github.event_name != 'push' &&
-      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      (github.event_name != 'pull_request' || (github.event.pull_request.draft == false && github.base_ref != 'main')) &&
       (github.event_name != 'workflow_dispatch' || (inputs.platform == 'all' && inputs.shard == 'all'))
     needs:
       - check
@@ -917,7 +926,7 @@ jobs:
     timeout-minutes: 10
     env:
       RULLST_SCORECARD_SHA: ${{ github.sha }}
-      RULLST_SCORECARD_TIME: ${{ github.event.head_commit.timestamp || github.event.pull_request.updated_at || 'workflow_dispatch' }}
+      RULLST_SCORECARD_TIME: ${{ github.event.head_commit.timestamp || github.event.pull_request.updated_at || github.event_name }}
       RULLST_SCORECARD_CHECK: ${{ needs.check.result }}
       RULLST_SCORECARD_TESTS: ${{ needs.test.result }}
       RULLST_SCORECARD_STRICT_DB: ${{ needs.strict-database-features.result }}
