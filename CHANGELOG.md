@@ -30,6 +30,16 @@ A prepared version section does not establish that its tag or crates exist.
   SemVer and CodeQL to the post-merge push, a nightly full-matrix run and weekly
   schedules. `v12` pull requests and release admission keep the complete set.
 
+### Portfolio blueprint escaping
+
+- The generated portfolio page escapes CMS values and renders only `http(s)`
+  URLs as links. Project, experience and skill fields were inserted as raw
+  HTML, so anyone with Nexus write access could store script in the public
+  page. The generated page ships a test for this contract. Previously
+  generated applications are copied code and must apply the same change.
+- The portfolio blueprint's generated files move into template files under
+  `blueprints/portfolio/src/`; their output is otherwise unchanged.
+
 ### Omni dependency compatibility maintenance
 
 - Keep generated Omni shells on a compatible Tauri runtime/macro/build family
