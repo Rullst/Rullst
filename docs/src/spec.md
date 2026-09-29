@@ -561,6 +561,14 @@ while portability and semantic review remain the model author's responsibility.
   `None` for a different target; eager loading batches each declared target and
   never guesses an undeclared runtime type. Target models used in eager inverse
   loading must implement `Clone`.
+* Each eager load (`has_many`, `has_one`, `belongs_to`, `morph_many`,
+  `morph_one`, `morph_to` and the related query of `belongs_to_many`) issues
+  one query for the whole parent batch. When that query still carries the
+  global row cap, it fetches one row beyond the cap and fails with a
+  `Validation` error if the cap would truncate it, so no parent silently
+  receives an empty or partial relation. A constrained eager load that sets an
+  explicit smaller `limit(n)` (applied to the whole batch) or
+  `unsafe_unlimited()` is honored as written.
 
 ### 5.4. Tenant Scope Contract
 
