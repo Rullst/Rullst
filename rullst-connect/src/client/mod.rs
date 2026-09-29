@@ -4,6 +4,8 @@ pub mod reqwest_client;
 pub mod traits;
 
 #[cfg(test)]
+mod bounded_error_tests;
+#[cfg(test)]
 mod tests;
 
 pub(crate) use offline::{DisabledHttpClient, OfflineHttpClient};
