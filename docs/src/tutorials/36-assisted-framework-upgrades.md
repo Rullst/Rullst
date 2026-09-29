@@ -142,7 +142,7 @@ require the 12.1.0 cross-platform release checks.
 
 ## 4. Finish a v5 to v12 migration
 
-This step uses the v12 CLI. The v13 CLI retired the v5 and v6 source rules, so
+This step uses the v12 CLI. The v13 CLI accepts only v12 and v13 projects, so
 upgrade older applications to v12 first and then to v13.
 
 The v5 README used attribute-style routing and a server builder with no router

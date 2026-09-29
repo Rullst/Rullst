@@ -12,13 +12,13 @@ pub(crate) use isolated::{
 use crate::ui::spinner::with_spinner;
 use colored::Colorize;
 use manifest::ManifestUpgradePlan;
-use scan::SourceFinding;
 use semver::Version;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// v5 and v6 migrations were retired in v13; older projects upgrade with the v12 CLI first.
-const OLDEST_SUPPORTED_SOURCE_MAJOR: u64 = 11;
+/// v13 upgrades v12 and v13 projects; the `rullst` crate never shipped v11, and
+/// v5/v6 (with their v11-era ecosystem crates) upgrade with the v12 CLI first.
+const OLDEST_SUPPORTED_SOURCE_MAJOR: u64 = 12;
 
 fn portable_path(path: &Path) -> String {
     path.to_string_lossy()
@@ -103,18 +103,18 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
         // A plain message: the binary prints errors with Debug formatting, which
         // would hide a typed variant's guidance.
         return Err(format!(
-            "this project depends on Rullst {}; this CLI upgrades from v11 or later. Upgrade to v12 first with `cargo install cargo-rullst --version '^12' --locked` and `cargo rullst upgrade`, then rerun this CLI",
+            "this project depends on Rullst {}; this CLI upgrades from v12 or later. Upgrade to v12 first with `cargo install cargo-rullst --version '^12' --locked` and `cargo rullst upgrade`, then rerun this CLI",
             retired.join(", ")
         )
         .into());
     }
 
-    let findings = scan::scan_workspace(&package_roots, &source_majors, target.major)?;
-    let json_report = render_json_report(&root, &target, &plans, &findings)?;
+    scan::reject_symlinked_sources(&package_roots)?;
+    let json_report = render_json_report(&root, &target, &plans)?;
     if options.json {
         println!("{json_report}");
     } else {
-        print_plan(&root, &target, &plans, &findings, options.dry_run);
+        print_plan(&root, &target, &plans, options.dry_run);
     }
 
     if options.dry_run {
@@ -138,10 +138,7 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
     }
 
     let backup = backup::UpgradeBackup::create(&root, &plans)?;
-    let report_path = backup.write_reports(
-        &render_report(&root, &target, &plans, &findings),
-        &json_report,
-    )?;
+    let report_path = backup.write_reports(&render_report(&root, &target, &plans), &json_report)?;
 
     if let Err(error) = manifest::apply_plans(&plans) {
         let recovery = recover_after_failure(&backup, options.keep_on_failure)?;
@@ -241,13 +238,7 @@ fn recover_after_failure(
     }
 }
 
-fn print_plan(
-    root: &Path,
-    target: &Version,
-    plans: &[ManifestUpgradePlan],
-    findings: &[SourceFinding],
-    dry_run: bool,
-) {
+fn print_plan(root: &Path, target: &Version, plans: &[ManifestUpgradePlan], dry_run: bool) {
     let mode = if dry_run { "DRY RUN" } else { "APPLY" };
     println!(
         "{}",
@@ -269,22 +260,9 @@ fn print_plan(
             println!("  REVIEW {relative}: {warning}");
         }
     }
-
-    for finding in findings {
-        let relative = relative_report_path(root, &finding.path);
-        println!(
-            "  {} {}:{} [{}] {}",
-            finding.severity, relative, finding.line, finding.code, finding.message
-        );
-    }
 }
 
-fn render_report(
-    root: &Path,
-    target: &Version,
-    plans: &[ManifestUpgradePlan],
-    findings: &[SourceFinding],
-) -> String {
+fn render_report(root: &Path, target: &Version, plans: &[ManifestUpgradePlan]) -> String {
     let mut report = format!(
         "# Rullst assisted upgrade report\n\n- Project: `{}`\n- Target: `{target}`\n- Scope: dependency manifests, Cargo.lock and compiler-provided Rust fixes\n\n",
         root.display()
@@ -302,20 +280,9 @@ fn render_report(
             report.push_str(&format!("- REVIEW `{relative}`: {warning}\n"));
         }
     }
-    report.push_str("\n## Source review\n\n");
-    if findings.is_empty() {
-        report.push_str(
-            "No applicable source markers from the current rule catalog were detected. This is not proof of runtime compatibility.\n",
-        );
-    } else {
-        for finding in findings {
-            let relative = relative_report_path(root, &finding.path);
-            report.push_str(&format!(
-                "- **{}** `{}` line {} (`{}`): {}\n",
-                finding.severity, relative, finding.line, finding.code, finding.message
-            ));
-        }
-    }
+    report.push_str(
+        "\n## Source review\n\nThe current rule catalog has no source-marker rules for v12 or v13 origins. This is not proof of runtime compatibility.\n",
+    );
     report.push_str(
         "\n## Mandatory manual gates\n\n- Review every diff and the migration guide for the target major.\n- Restore a database backup into a disposable environment and rehearse migrations and rollback.\n- Run formatting, Clippy, the complete application tests, authorization negatives and a production-profile smoke test.\n- Revalidate Nexus, Studio, providers, proxy trust, CSRF/CORS and secrets.\n",
     );
@@ -326,7 +293,6 @@ fn render_json_report(
     root: &Path,
     target: &Version,
     plans: &[ManifestUpgradePlan],
-    findings: &[SourceFinding],
 ) -> Result<String, serde_json::Error> {
     let manifests = plans
         .iter()
@@ -340,24 +306,13 @@ fn render_json_report(
             })
         })
         .collect::<Vec<_>>();
-    let findings = findings
-        .iter()
-        .map(|finding| {
-            serde_json::json!({
-                "path": relative_report_path(root, &finding.path),
-                "line": finding.line,
-                "code": finding.code,
-                "severity": finding.severity,
-                "message": finding.message,
-            })
-        })
-        .collect::<Vec<_>>();
     serde_json::to_string_pretty(&serde_json::json!({
         "schema_version": "rullst.upgrade-plan.v1",
         "rule_catalog": scan::RULE_CATALOG_VERSION,
         "target": target.to_string(),
         "manifests": manifests,
-        "source_findings": findings,
+        // Kept for rullst.upgrade-plan.v1 consumers; v12/v13 origins have no rules.
+        "source_findings": [],
         "automatic_scope": [
             "workspace dependency manifests",
             "Cargo.lock resolution",

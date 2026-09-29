@@ -197,13 +197,8 @@ fn preserves_dirty_untracked_deleted_and_ignored_lock_inputs_without_running_bui
 }
 
 #[test]
-fn source_findings_are_review_data_and_never_execution_authority() {
-    let fixture = Fixture::new("11", "11.0.0");
-    fs::write(
-        fixture.app.join("src/main.rs"),
-        "fn main() { Nexus::build(); }\n",
-    )
-    .unwrap();
+fn preparation_is_review_data_and_never_execution_authority() {
+    let fixture = Fixture::new("12", "12.0.0");
     let output = fixture.prepare();
     assert!(output.status.success(), "{}", text(&output));
     let report: Value = serde_json::from_slice(&output.stdout).unwrap();
@@ -211,18 +206,7 @@ fn source_findings_are_review_data_and_never_execution_authority() {
     assert_eq!(prepared["execution_authorized"], false);
     assert_eq!(prepared["application_authorized"], false);
     assert_eq!(prepared["plan"]["production_ready"], false);
-    assert!(
-        prepared["plan"]["source_findings"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|finding| finding["code"] == "V5-NEXUS-POLICY")
-    );
-    assert!(
-        fs::read_to_string(fixture.app.join("src/main.rs"))
-            .unwrap()
-            .contains("Nexus::build")
-    );
+    assert_eq!(prepared["plan"]["source_findings"], serde_json::json!([]));
 }
 
 #[test]
@@ -271,12 +255,14 @@ fn virtual_workspace_prepares_members_and_records_an_absent_lockfile() {
 #[test]
 fn rejects_unknown_catalog_downgrades_and_unversioned_dependencies_without_retaining_staging() {
     let unknown = Fixture::new("7", "7.0.0");
-    unknown.assert_clean_failure(&unknown.prepare(), "source majors 11, 12 and 13");
-    let retired = Fixture::new("5", "5.0.0");
-    retired.assert_clean_failure(
-        &retired.prepare(),
-        "upgrade v5/v6 applications to v12 with the v12 CLI first",
-    );
+    unknown.assert_clean_failure(&unknown.prepare(), "source majors 12 and 13");
+    for (requirement, version) in [("5", "5.0.0"), ("11", "11.0.0")] {
+        let retired = Fixture::new(requirement, version);
+        retired.assert_clean_failure(
+            &retired.prepare(),
+            "upgrade older applications to v12 with the v12 CLI first",
+        );
+    }
     let mut newer = semver::Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
     newer.patch += 1;
     newer.pre = semver::Prerelease::EMPTY;
@@ -315,22 +301,6 @@ fn rejects_oversized_inputs_and_reports_instead_of_filling_storage() {
         .unwrap();
     fixture.assert_clean_failure(&fixture.prepare(), "bounded to 64 MiB");
     fs::remove_file(fixture.app.join("large.bin")).unwrap();
-    fs::write(
-        fixture.app.join("Cargo.toml"),
-        fs::read_to_string(fixture.app.join("Cargo.toml"))
-            .unwrap()
-            .replace(
-                &format!("version = \"{}\"", env!("CARGO_PKG_VERSION")),
-                "version = \"11\"",
-            ),
-    )
-    .unwrap();
-    fs::write(
-        fixture.app.join("src/main.rs"),
-        "Nexus::build(\n".repeat(10_001),
-    )
-    .unwrap();
-    fixture.assert_clean_failure(&fixture.prepare(), "findings exceed 10,000");
 }
 
 #[cfg(unix)]
