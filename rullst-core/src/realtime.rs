@@ -3,6 +3,7 @@
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::broadcast;
 
 use crate::security::{TenantContext, tenant_namespaced_name};
@@ -10,6 +11,8 @@ use crate::security::{TenantContext, tenant_namespaced_name};
 const MAX_CHANNEL_BYTES: usize = 128;
 const MAX_EVENT_BYTES: usize = 128;
 const MAX_PAYLOAD_BYTES: usize = 64 * 1024;
+/// Registry size that triggers the first sweep of idle channels.
+const MIN_CHANNEL_SWEEP_THRESHOLD: usize = 64;
 
 /// Payload model for realtime broadcast events.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -177,9 +180,14 @@ fn validate_room(room: &str) -> Result<(), RealtimeError> {
 }
 
 /// Thread-safe in-memory pub/sub manager for realtime channels.
+///
+/// A channel is retained only while it has a subscriber or a caller holds the
+/// `Arc` from [`Self::get_or_create`]. Publishing never creates a channel, and
+/// idle channels are released on a failed publish or by an amortized sweep.
 #[derive(Default)]
 pub struct BroadcastManager {
     channels: DashMap<String, Arc<Channel>>,
+    sweep_threshold: AtomicUsize,
 }
 
 impl BroadcastManager {
@@ -189,27 +197,76 @@ impl BroadcastManager {
     }
 
     /// Retrieves an existing channel or creates a new one if it does not exist.
+    /// A channel with no subscriber and no outstanding `Arc` may be released.
     pub fn get_or_create(&self, channel_name: &str) -> Arc<Channel> {
-        self.channels
+        let mut created = false;
+        let channel = self
+            .channels
             .entry(channel_name.to_string())
-            .or_insert_with(|| Arc::new(Channel::new(channel_name, 100)))
+            .or_insert_with(|| {
+                created = true;
+                Arc::new(Channel::new(channel_name, 100))
+            })
             .value()
-            .clone()
+            .clone();
+        if created {
+            self.sweep_idle_channels_if_due();
+        }
+        channel
     }
 
-    /// Publishes a message directly to a channel by name.
+    /// Publishes a message directly to a channel by name. Without subscribers it
+    /// returns [`RealtimeError::BroadcastError`] and retains no channel.
     pub fn publish(
         &self,
         channel_name: &str,
         event: &str,
         payload: &str,
     ) -> Result<usize, RealtimeError> {
-        let ch = self.get_or_create(channel_name);
-        ch.broadcast(event, payload)
+        let Some(channel) = self
+            .channels
+            .get(channel_name)
+            .map(|entry| Arc::clone(entry.value()))
+        else {
+            return Err(RealtimeError::BroadcastError(
+                broadcast::error::SendError(()).to_string(),
+            ));
+        };
+        let result = channel.broadcast(event, payload);
+        if result.is_err() {
+            drop(channel);
+            self.channels
+                .remove_if(channel_name, |_, channel| is_idle_channel(channel));
+        }
+        result
+    }
+
+    /// Sweeps once the registry has doubled since the previous sweep, keeping
+    /// the amortized cost per created channel constant.
+    fn sweep_idle_channels_if_due(&self) {
+        let threshold = self.sweep_threshold.load(Ordering::Relaxed);
+        if self.channels.len() >= threshold.max(MIN_CHANNEL_SWEEP_THRESHOLD) {
+            self.remove_idle_channels();
+            let next = self.channels.len().saturating_mul(2);
+            self.sweep_threshold.store(next, Ordering::Relaxed);
+        }
+    }
+
+    fn remove_idle_channels(&self) {
+        self.channels.retain(|_, channel| !is_idle_channel(channel));
     }
 }
 
+/// Checked under the shard write lock: if the registry holds the only `Arc`,
+/// nobody can clone it or subscribe through it until the lock is released, so
+/// a concurrent subscriber is never detached from the channel it joined.
+fn is_idle_channel(channel: &Arc<Channel>) -> bool {
+    Arc::strong_count(channel) == 1 && channel.sender.receiver_count() == 0
+}
+
 /// In-memory tracker for active user presence across channels/rooms.
+///
+/// A room is removed when its last user leaves.
 #[derive(Default)]
 pub struct PresenceTracker {
     online_users: DashMap<String, DashMap<String, u64>>,
@@ -232,10 +289,18 @@ impl PresenceTracker {
         room_map.insert(user_id.to_string(), now);
     }
 
-    /// Removes a user from a specific room upon disconnect.
+    /// Removes a user from a specific room upon disconnect, and the room once
+    /// it is empty.
     pub fn user_left(&self, room: &str, user_id: &str) {
-        if let Some(room_map) = self.online_users.get(room) {
+        let now_empty = self.online_users.get(room).is_some_and(|room_map| {
             room_map.remove(user_id);
+            room_map.is_empty()
+        });
+        if now_empty {
+            // `user_joined` inserts while holding this shard's write lock, so the
+            // re-check cannot discard a user who joined in the meantime.
+            self.online_users
+                .remove_if(room, |_, room_map| room_map.is_empty());
         }
     }
 
@@ -301,6 +366,10 @@ impl TenantPresence {
         Ok(tenant_namespaced_name(&self.tenant_id, room))
     }
 }
+
+#[cfg(test)]
+#[path = "realtime_retention_tests.rs"]
+mod retention_tests;
 
 #[cfg(test)]
 #[allow(clippy::expect_used)]

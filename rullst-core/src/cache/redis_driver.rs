@@ -1,6 +1,7 @@
 //! Redis-backed cache driver. Requires the `cache-redis` feature.
 
 use super::*;
+use crate::redis_connection::{RedisConnection, SharedRedisConnection};
 use std::collections::BTreeSet;
 
 const MAX_SCAN_ROUNDS: usize = 64;
@@ -9,8 +10,12 @@ const MAX_SCAN_ROUNDS: usize = 64;
 ///
 /// Uses `SET`/`GET` with `EX` for TTL support. Ideal for distributed
 /// multi-instance deployments where cache must be shared.
+///
+/// One multiplexed connection is opened on first use and shared by all
+/// operations. If it breaks, the failing operation returns its error and the
+/// next operation reconnects.
 pub struct RedisDriver {
-    client: redis::Client,
+    shared: SharedRedisConnection,
     prefix: String,
 }
 
@@ -21,7 +26,7 @@ impl RedisDriver {
         let client = redis::Client::open(redis_url)
             .map_err(|error| CacheError::Driver(format!("Failed to connect to Redis: {error}")))?;
         Ok(Self {
-            client,
+            shared: SharedRedisConnection::new(client),
             prefix: "rullst:cache:".to_string(),
         })
     }
@@ -31,9 +36,9 @@ impl RedisDriver {
         format!("{}{key}", self.prefix)
     }
 
-    async fn connection(&self) -> Result<redis::aio::MultiplexedConnection, CacheError> {
-        self.client
-            .get_multiplexed_async_connection()
+    async fn connection(&self) -> Result<RedisConnection<'_>, CacheError> {
+        self.shared
+            .connection()
             .await
             .map_err(|error| CacheError::Driver(format!("Redis connection failed: {error}")))
     }

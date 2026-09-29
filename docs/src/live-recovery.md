@@ -6,7 +6,9 @@ mounted native-server API; the browser uses the supplied small ES module.
 Protocol and Chromium acceptance have passed. Hosted workspace/platform and extracted-package source admission passed in [PR #236](v13-delivery-plan.md#six-increment-source-admission-on-september-21). Final release admission remains separate.
 
 The older `LiveComponent`, `Live::mount` and `make:live` example keep their
-per-connection state and HTMX WebSocket protocol. Adopting the recovery API is
+per-connection state and HTMX WebSocket protocol. Their `live_ws_handler` now
+limits incoming frames and messages to 64 KiB (previously the 64 MiB transport
+default) but still has no origin check, connection cap or idle timeout. Adopting the recovery API is
 an application change; upgrading a dependency does not migrate those components.
 
 ## Application contract

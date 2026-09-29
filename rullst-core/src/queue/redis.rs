@@ -4,6 +4,7 @@
 /// Redis queue driver implementation and its recoverable lease protocol.
 pub mod redis_driver {
     use super::super::{QueueDriver, QueueError, QueuedJob, unix_timestamp_millis_ceil};
+    use crate::redis_connection::{RedisConnection, SharedRedisConnection};
     use async_trait::async_trait;
     use serde::Deserialize;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -102,8 +103,11 @@ return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
 
     /// Redis queue using a pending list, a processing lease set, and failure
     /// hashes. Lua scripts make each state transition atomic.
+    ///
+    /// Operations share one lazily opened multiplexed connection. If it breaks,
+    /// the failing operation returns its error and the next one reconnects.
     pub struct RedisDriver {
-        client: redis::Client,
+        shared: SharedRedisConnection,
         queue_key: String,
         processing_key: String,
         processing_index_key: String,
@@ -160,7 +164,7 @@ return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
                 failed_key: format!("{queue_key}:failed"),
                 dead_letter_key: format!("{queue_key}:dead-letter"),
                 queue_key,
-                client,
+                shared: SharedRedisConnection::new(client),
             }
         }
 
@@ -182,9 +186,9 @@ return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
             Ok(())
         }
 
-        async fn connection(&self) -> Result<redis::aio::MultiplexedConnection, QueueError> {
-            self.client
-                .get_multiplexed_async_connection()
+        async fn connection(&self) -> Result<RedisConnection<'_>, QueueError> {
+            self.shared
+                .connection()
                 .await
                 .map_err(|error| QueueError::Driver(format!("Redis connection failed: {error}")))
         }
