@@ -159,8 +159,8 @@ In 12.1, managed requirements use exact `=VERSION` pins. The final
 by `cargo fix` without resolving a different version. Broader dependency ranges
 remain an application decision after reviewing the update.
 
-Process-level fixtures select the rule catalog independently for documented v5,
-v6 and v11 origins, verify restoration across multiple workspace
+Process-level fixtures upgrade v12 origins, reject retired pre-v12 origins with
+v12-first guidance, verify restoration across multiple workspace
 members, retain a deliberately failed edit only with `--keep-on-failure`, and
 restore that retained snapshot on demand. Symlinked Rust sources are rejected
 before a transaction begins. This is recovery evidence for the bounded file and
@@ -376,8 +376,9 @@ the two copies can consume about 1 GiB before any build.
 
 The command rejects linked/special inputs, unsupported paths, unknown migration
 origins, ambiguous/unversioned managed dependencies and version/lockfile
-downgrades. Source rules support majors 5, 6, 11 and 12; findings remain review
-data, with a 10,000-entry ceiling. The exact-version editor preserves TOML
+downgrades. It accepts source majors 12 and 13, which need no source-marker
+rules; older applications first upgrade to v12 with the v12 CLI. The
+exact-version editor preserves TOML
 comments. Offline, locked, dependency-free Cargo metadata enumerates workspace
 members inside the copy. Rustup auto-installation is disabled using its
 [documented environment setting](https://rust-lang.github.io/rustup/environment-variables.html);

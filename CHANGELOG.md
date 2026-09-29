@@ -16,6 +16,16 @@ A prepared version section does not establish that its tag or crates exist.
   `HOT_RELOAD` is set, matching the other blueprints. The remaining detached
   profiles still reject hot reload explicitly.
 
+### CLI upgrade catalog v3
+
+- Retire pre-v12 source migrations from the v13 CLI. `cargo rullst upgrade` and
+  project preparation accept Rullst 12 and 13 sources and direct older
+  applications (v5/v6 and their v11-era ecosystem crates) to upgrade to v12 with
+  the v12 CLI first. The source-marker rules, which applied only to those
+  origins, are removed while the symlinked-source guard stays; reports keep an
+  empty `source_findings` array. The catalog becomes `rullst-upgrade-rules-v3`,
+  so earlier preparations must be prepared again.
+
 ### Release provenance and governance
 
 - Preserve the original signed Sigstore bundle as a release asset and verify all
