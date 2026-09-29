@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790684107145,
+  "lastUpdate": 1790694509765,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -11756,6 +11756,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 32,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0e3dc96d41947cff8e4e47629eaa72ba927a5edc",
+          "message": "Merge pull request #314 from Rullst/refactor/v13-lms-basic-starter\n\nfeat(cli): support hot reload in the auth,learning LMS starter",
+          "timestamp": "2026-09-29T11:39:00-03:00",
+          "tree_id": "a9cd160116c4ef3928ab89b0f514bd792c68ab25",
+          "url": "https://github.com/Rullst/Rullst/commit/0e3dc96d41947cff8e4e47629eaa72ba927a5edc"
+        },
+        "date": 1790694508692,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 4087,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 571,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 10,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 22,
             "range": "± 0",
             "unit": "ns/iter"
           }
