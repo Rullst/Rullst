@@ -33,11 +33,7 @@ pub fn generate_delete_all_logic(parsed: &ParsedModel) -> TokenStream {
     let set_fragment = build_soft_delete_set_clause(cfg);
     let delval_token: TokenStream = if cfg.delval.trim().is_empty() {
         quote! {
-            let delval = if rullst_orm::Orm::driver()? == "postgres" {
-                "CURRENT_TIMESTAMP"
-            } else {
-                "CURRENT_TIMESTAMP"
-            };
+            let delval = "CURRENT_TIMESTAMP";
         }
     } else {
         let delval_lit = cfg.delval.clone();
@@ -457,17 +453,11 @@ pub fn generate_execution_methods(
                     "delete_all() cannot authorize a policy-protected model; load the records and call each model's delete() inside Orm::transaction(...)".to_string()
                 ));
             }
-            #delete_all_logic
-
-            let first_where = self.push_wheres(&mut query_str);
-            self.push_soft_deletes(&mut query_str, first_where);
+            let query_str = self.__rullst_delete_all_sql(rullst_orm::Orm::driver().unwrap_or_default());
             let query_bindings = self.scope_bindings.iter().chain(self.bindings.iter());
             if rullst_orm::schema::is_query_log_enabled() {
                 println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, self.scope_bindings.len() + self.bindings.len());
             }
-            // Embedded subqueries are portable, so one pass numbers every
-            // marker in textual order; MySQL and SQLite keep `?` markers.
-            let query_str = self.format_postgres(&query_str);
             let result = {
                 let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
                 for binding in query_bindings {
@@ -488,6 +478,19 @@ pub fn generate_execution_methods(
                 }
             };
             Ok(result.rows_affected())
+        }
+
+        /// Renders `delete_all` (a soft-delete UPDATE on soft-delete models) for `driver`;
+        /// only PostgreSQL numbers the portable `?` markers, once, in textual order.
+        fn __rullst_delete_all_sql(&self, driver: &str) -> String {
+            #delete_all_logic
+            let first_where = self.push_wheres(&mut query_str);
+            self.push_soft_deletes(&mut query_str, first_where);
+            if driver == "postgres" {
+                rullst_orm::replace_placeholders(&query_str)
+            } else {
+                query_str
+            }
         }
 
         #pluck_methods
