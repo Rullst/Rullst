@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790718510701,
+  "lastUpdate": 1790721311594,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -10689,6 +10689,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 414,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c5095331efef2f09ae50a449f1ddbec3cd83ac32",
+          "message": "Merge pull request #328 from Rullst/fix/v13-orm-exposure-fixes\n\nfix(orm): stop tenant binding shifts and plaintext leaks of protected fields",
+          "timestamp": "2026-09-29T19:13:33-03:00",
+          "tree_id": "942b6d9bcb447f6d6850ddbc55a729394bb25451",
+          "url": "https://github.com/Rullst/Rullst/commit/c5095331efef2f09ae50a449f1ddbec3cd83ac32"
+        },
+        "date": 1790721310894,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1870,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 347,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 371,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
