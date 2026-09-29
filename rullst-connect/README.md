@@ -58,7 +58,7 @@ state of those checks for the referenced commit; they are not an absolute securi
   operations. Google, GitHub, Discord, Apple, Auth0 and Cognito have bounded
   protocol adapters; unsupported providers fail explicitly and offline
   credentials remain network-free.
-- 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, refresh on unknown `kid`, and bounded stale-if-error behavior.
+- 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, single-flight refresh on unknown `kid` (at most once per 30 seconds), and bounded stale-if-error behavior.
 - 🏢 **Explicit Corporate Proxy**: First-class HTTP(S) proxy clients, including bounded Basic proxy authentication without credentials in the endpoint URL.
 - 📺 **Device Flow**: Native RFC 8628 support for headless CLI and Smart TV auth.
 - 🛠️ **Testing**: Typed network-free provider fallbacks plus an explicitly
@@ -439,9 +439,12 @@ published it, so an Auth0 tenant whose issuer is `https://TENANT/` is validated 
 the trailing slash. `OidcProvider::issuer` holds that published value. Discovered token,
 authorization, userinfo, and JWKS endpoints must use HTTPS. HTTP is accepted only when
 both the issuer and endpoint use the same exact loopback origin. JWKS entries are refreshed
-after their TTL and immediately when a token presents an unknown `kid`; stale keys are
-used after a refresh error only within a bounded age and only when the requested `kid`
-already exists in the cached set.
+after their TTL and when a token presents an unknown `kid`. Because the `kid` is
+unverified input, a forced refresh of a fresh set happens at most once per 30 seconds per
+JWKS URL; until then an unknown `kid` fails without a network call. Concurrent refreshes
+are coalesced, and a `kid` that is empty, longer than 256 bytes or not printable ASCII is
+rejected before any I/O. Stale keys are used after a refresh error only within a bounded
+age and only when the requested `kid` already exists in the cached set.
 
 ## 🧑‍💻 Full Example with Axum
 
