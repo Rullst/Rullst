@@ -43,6 +43,10 @@
 - **Applied tarpit:** `LoginGuard::record_login_failure_and_wait` records a
   failure and awaits its progressive delay; jail state is bounded and local to
   the process. Concurrent admission shares the configured identity ceiling.
+  At capacity, a new identity evicts the least recently failed counter and a
+  new offender evicts the jail that expires soonest, so a flood of unrelated
+  identities cannot stop a later identity from being counted and jailed. It
+  can still age out older counters, so pair the jail with upstream rate limits.
 - **Local rate limiter:** Fixed-window counters retain at most 16,384 identities
   with keys up to 256 bytes, reclaim expired identities on subsequent requests,
   and reject zero budgets or exhausted admission. Clones share state; this is
