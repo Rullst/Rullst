@@ -21,18 +21,11 @@ model_path="docs/src/threat-models.md"
 
 jq -e '
   .schema_version == 1
-  and .model_version == "TM-12.10"
+  and .model_version == "TM-13.0"
   and (.cases | length > 0)
   and ([.cases[].id] | unique | sort == [
     "ACADEMY-02",
-    "ACADEMY-03",
-    "ACADEMY-04",
-    "ACADEMY-05",
-    "ACADEMY-06",
-    "ACADEMY-07",
-    "ACADEMY-08",
     "ACADEMY-09",
-    "ACADEMY-10",
     "ACADEMY-12",
     "AI-01",
     "AI-02",

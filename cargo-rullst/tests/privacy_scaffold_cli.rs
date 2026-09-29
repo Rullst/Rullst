@@ -16,13 +16,11 @@ fn success(output: Output) -> Output {
     output
 }
 
-fn materialize(root: &Path, workspace: &Path, blueprint: &str, hot: bool, database: &str) {
+/// Materializes the SaaS consumer. `registry` makes the generators emit the
+/// registry-shaped `rullst-privacy` dependency instead of a local path.
+fn materialize(root: &Path, workspace: &Path, registry: bool, hot: bool, database: &str) {
     fs::create_dir_all(root).unwrap();
-    let id = if blueprint == "saas" {
-        blueprints::SAAS_BLUEPRINT_ID
-    } else {
-        blueprints::LMS_BLUEPRINT_ID
-    };
+    let id = blueprints::SAAS_BLUEPRINT_ID;
     let mut manifest = build_cargo_toml(
         "privacy-consumer",
         hot,
@@ -37,7 +35,7 @@ fn materialize(root: &Path, workspace: &Path, blueprint: &str, hot: bool, databa
     )
     .unwrap();
     manifest.push_str("\n[dev-dependencies]\ntower = { version = \"0.5\", features = [\"util\"] }\nhttp-body-util = \"0.1\"\n\n[profile.test]\ndebug = 0\nincremental = false\n");
-    if blueprint == "lms" {
+    if registry {
         // Exercise registry-shaped generator output before publication using
         // an explicit test-only patch. The installed-archive job replaces this
         // source patch with the extracted release archive.
@@ -69,12 +67,17 @@ fn materialize(root: &Path, workspace: &Path, blueprint: &str, hot: bool, databa
     );
 }
 
-fn install(root: &Path, workspace: &Path, blueprint: &str, command: &str) -> Output {
+fn install(root: &Path, workspace: &Path, registry: bool, command: &str) -> Output {
     let mut cli = Command::new(env!("CARGO_BIN_EXE_rullst"));
-    cli.current_dir(root)
-        .args([command, "--blueprint", blueprint]);
-    if blueprint == "saas" {
-        cli.args(["--tenant-ref", "tenant-alpha", "--privacy-source"])
+    cli.current_dir(root).args([
+        command,
+        "--blueprint",
+        "saas",
+        "--tenant-ref",
+        "tenant-alpha",
+    ]);
+    if !registry {
+        cli.arg("--privacy-source")
             .arg(workspace.join("rullst-privacy"));
     }
     if command == "make:privacy" {
@@ -111,16 +114,16 @@ fn cargo(root: &Path, workspace: &Path) -> Command {
 fn privacy_commands_refresh_context_with_both_dependency_sources() {
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let temp = tempfile::tempdir().unwrap();
-    for blueprint in ["saas", "lms"] {
-        let project = temp.path().join(blueprint);
-        materialize(&project, workspace, blueprint, true, "Sqlite");
+    for (name, registry) in [("path-source", false), ("registry-source", true)] {
+        let project = temp.path().join(name);
+        materialize(&project, workspace, registry, true, "Sqlite");
         fs::write(
             project.join("AGENTS.md"),
             "Keep these application instructions.\n",
         )
         .unwrap();
         for command in ["make:age-gate", "make:privacy"] {
-            success(install(&project, workspace, blueprint, command));
+            success(install(&project, workspace, registry, command));
             success(
                 Command::new(env!("CARGO_BIN_EXE_rullst"))
                     .current_dir(&project)
@@ -146,20 +149,18 @@ fn generated_privacy_choices_and_export_work_with_both_age_installation_orders()
     let form_key: String = (0..4)
         .map(|_| format!("{:016x}", rand::random::<u64>()))
         .collect();
-    for blueprint in ["saas", "lms"] {
-        let project = temporary.path().join(blueprint);
-        materialize(&project, workspace, blueprint, true, "Sqlite");
-        let commands = if blueprint == "saas" {
-            ["make:privacy", "make:age-gate"]
-        } else {
-            ["make:age-gate", "make:privacy"]
-        };
+    for (name, registry, commands) in [
+        ("privacy-first", false, ["make:privacy", "make:age-gate"]),
+        ("age-first", true, ["make:age-gate", "make:privacy"]),
+    ] {
+        let project = temporary.path().join(name);
+        materialize(&project, workspace, registry, true, "Sqlite");
         for command in commands {
-            success(install(&project, workspace, blueprint, command));
+            success(install(&project, workspace, registry, command));
         }
         let before = fs::read(project.join("Cargo.toml")).unwrap();
         assert!(
-            !install(&project, workspace, blueprint, "make:privacy")
+            !install(&project, workspace, registry, "make:privacy")
                 .status
                 .success()
         );
@@ -183,10 +184,10 @@ fn generated_privacy_choices_and_export_work_with_both_age_installation_orders()
         let bootstrap = project.join(format!("privacy-bootstrap{}", std::env::consts::EXE_SUFFIX));
         fs::copy(workspace.join("target/debug").join(binary), &bootstrap).unwrap();
         for configuration in ["valid", "missing-key", "missing-store"] {
-            eprintln!("privacy consumer: {blueprint}, {configuration}");
+            eprintln!("privacy consumer: {name}, {configuration}");
             let database = temporary
                 .path()
-                .join(format!("{blueprint}-{configuration}.sqlite"));
+                .join(format!("{name}-{configuration}.sqlite"));
             if configuration != "missing-store" {
                 success(
                     Command::new(&bootstrap)
@@ -217,7 +218,7 @@ fn generated_privacy_choices_and_export_work_with_both_age_installation_orders()
             ])
             .env("APP_KEY", &app_key)
             .env("RULLST_ENV", "development")
-            .env("RULLST_PRIVACY_TEST_BLUEPRINT", blueprint)
+            .env("RULLST_PRIVACY_TEST_BLUEPRINT", "saas")
             .env("RULLST_PRIVACY_TEST_CONFIGURATION", configuration)
             .env("RULLST_PRIVACY_DATABASE", &database)
             .env("BILLING_PROVIDER", "stripe")
@@ -236,8 +237,8 @@ fn generated_privacy_choices_and_export_work_with_both_age_installation_orders()
     }
     // QueryBuilder infers the actual strict backend and binds its placeholders.
     let postgres = temporary.path().join("postgres");
-    materialize(&postgres, workspace, "saas", false, "Postgres");
-    success(install(&postgres, workspace, "saas", "make:privacy"));
+    materialize(&postgres, workspace, false, false, "Postgres");
+    success(install(&postgres, workspace, false, "make:privacy"));
     success(
         cargo(&postgres, workspace)
             .args(["check", "--all-targets", "-j", "2"])
@@ -258,13 +259,13 @@ fn generator_rejects_custom_authentication_and_existing_outputs_without_mutation
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let temporary = tempfile::tempdir().unwrap();
     let project = temporary.path().join("app");
-    materialize(&project, workspace, "saas", false, "Sqlite");
+    materialize(&project, workspace, false, false, "Sqlite");
     let before = fs::read(project.join("Cargo.toml")).unwrap();
     let auth = project.join("src/middlewares/auth_middleware.rs");
     let original_auth = fs::read(&auth).unwrap();
     fs::write(&auth, "// application-owned authentication").unwrap();
     assert!(
-        !install(&project, workspace, "saas", "make:privacy")
+        !install(&project, workspace, false, "make:privacy")
             .status
             .success()
     );
@@ -273,7 +274,7 @@ fn generator_rejects_custom_authentication_and_existing_outputs_without_mutation
     let custom = project.join("src/controllers/privacy_controller.rs");
     fs::write(&custom, "// preserve this file").unwrap();
     assert!(
-        !install(&project, workspace, "saas", "make:privacy")
+        !install(&project, workspace, false, "make:privacy")
             .status
             .success()
     );

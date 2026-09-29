@@ -17,7 +17,7 @@ pub(crate) fn command() -> Command {
             Arg::new("blueprint")
                 .long("blueprint")
                 .default_value("saas")
-                .value_parser(["saas", "lms"]),
+                .value_parser(["saas"]),
         )
         .arg(
             Arg::new("privacy-source")
@@ -78,8 +78,8 @@ fn plan(
     lifetime: u32,
     tenant: Option<&str>,
 ) -> Result<Vec<Edit>, Box<dyn std::error::Error>> {
-    if !matches!((consumer, tenant), ("saas", Some(_)) | ("lms", None)) {
-        return Err(invalid("SaaS requires --tenant-ref; LMS requires authenticated school membership and rejects a fixed tenant").into());
+    if !matches!((consumer, tenant), ("saas", Some(_))) {
+        return Err(invalid("the SaaS consumer requires --tenant-ref").into());
     }
     for value in std::iter::once(version).chain(tenant) {
         if value.is_empty()

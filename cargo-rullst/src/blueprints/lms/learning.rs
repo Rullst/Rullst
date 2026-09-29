@@ -1,10 +1,7 @@
-// Learning-domain persistence templates kept outside the blueprint orchestrator.
-
-#[path = "roles.rs"]
-mod roles;
+// Learning persistence templates for the LMS starter: users, enrollment and progress.
 
 pub fn get_files() -> Vec<(&'static str, String)> {
-    let mut files = vec![
+    vec![
         ("src/models/user.rs", USER_MODEL.to_string()),
         ("src/models/enrollment.rs", ENROLLMENT_MODEL.to_string()),
         (
@@ -19,9 +16,7 @@ pub fn get_files() -> Vec<(&'static str, String)> {
             "src/migrations/m20260827000000_add_learning_access.rs",
             LEARNING_MIGRATION.to_string(),
         ),
-    ];
-    files.extend(roles::get_files());
-    files
+    ]
 }
 
 const USER_MODEL: &str = r##"use rullst::db::{FromRow, Orm};

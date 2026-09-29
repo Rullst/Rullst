@@ -9,6 +9,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### LMS starter replaces the complete Academy scaffold
+
+- `--blueprint lms` and the wizard generate the small LMS starter (catalog,
+  modules, lessons, accessible player, enrollment, owner-bound progress, login
+  and a Nexus admin); the complete Academy scaffold, its `--lms-modules`
+  profiles and about 20,000 lines of templates are removed.
+- Remove `make:supervision`, which targeted that scaffold; `make:privacy` and
+  `make:age-gate` keep their SaaS target. Retire tutorials 46 and 47 and move
+  the threat model to TM-13.0: `ACADEMY-02` maps to the starter's owner-boundary
+  test and the removed Academy capabilities are recorded as retired.
+
 ### LMS starter hot reload
 
 - Support hot reload in the `auth,learning` LMS profile: it emits a reloadable

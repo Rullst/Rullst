@@ -31,8 +31,8 @@ The standalone package remains independent of Core and the umbrella.
 
 The v13 CLI's explicit
 [`make:privacy` consumer](https://github.com/Rullst/Rullst/blob/main/docs/src/cli_reference.md#cargo-rullst-makeprivacy-unpublished-v13-preview)
-composes these controls with the recognized SaaS/full LMS authentication and
-school membership. It supplies preferences, an optional personalized greeting,
+composes these controls with the recognized SaaS authentication and its
+server-owned tenant. It supplies preferences, an optional personalized greeting,
 and an independent direct JSON export of only the current account's ID, name
 and email. The CLI selects its matching registry version unless an explicit
 `--privacy-source` selects local development source. Before publication, use that
@@ -162,7 +162,7 @@ gate.withdraw(&subject, &purpose).await?;
 # }
 ```
 
-Generated SaaS/LMS consumer tests exercise authenticated preferences, withdrawal
+Generated SaaS consumer tests exercise authenticated preferences, withdrawal
 and the bounded own-account profile export. Deployment-specific acceptance and
 rights workflows across the rest of an application remain separate.
 
@@ -325,12 +325,11 @@ keep tokens out of URLs and logs. A changed policy or session invalidates the
 old challenge. No external age provider is required for this transport.
 
 The v13 CLI preview supplies an optional
-[`make:age-gate` SaaS/LMS consumers](https://github.com/Rullst/Rullst/blob/main/docs/src/cli_reference.md#cargo-rullst-makeage-gate-unpublished-v13-preview).
+[`make:age-gate` SaaS consumer](https://github.com/Rullst/Rullst/blob/main/docs/src/cli_reference.md#cargo-rullst-makeage-gate-unpublished-v13-preview).
 It mounts a declaration before the existing authenticated dashboard rendering,
 with explicit server policy, CSRF and durable one-use consumption. Before registry
-publication, use the matching local source override or archive patch. The LMS profile binds the
-school resolved by current authenticated membership; changing school invalidates
-the challenge, and a declaration changes no guardian or subject-age record.
+publication, use the matching local source override or archive patch. A
+declaration changes no guardian or subject-age record.
 Other app actions and stronger
 assurance methods retain their own authorization/integration requirements.
 

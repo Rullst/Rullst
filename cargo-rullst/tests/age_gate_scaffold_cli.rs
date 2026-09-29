@@ -172,67 +172,11 @@ fn generated_age_gate_compiles_and_enforces_the_authenticated_journey() {
             .output()
             .unwrap(),
     );
-    let lms = temporary.path().join("lms-app");
-    materialize_blueprint(&lms, workspace, true, blueprints::LMS_BLUEPRINT_ID);
-    success(
-        Command::new("cargo")
-            .current_dir(&lms)
-            .args(["fmt", "--all"])
-            .output()
-            .unwrap(),
-    );
-    success(
-        Command::new(env!("CARGO_BIN_EXE_rullst"))
-            .current_dir(&lms)
-            .args(["make:age-gate", "--blueprint", "lms", "--privacy-source"])
-            .arg(workspace.join("rullst-privacy"))
-            .args([
-                "--minimum-age",
-                "18",
-                "--policy-version",
-                "dashboard-v1",
-                "--replay-store",
-                "sqlite",
-            ])
-            .output()
-            .unwrap(),
-    );
-    fs::create_dir_all(lms.join("tests")).unwrap();
-    fs::write(
-        lms.join("tests/age_school_journey.rs"),
-        include_str!("fixtures/age_school_journey.rs.template"),
-    )
-    .unwrap();
-    success(
-        Command::new("cargo")
-            .current_dir(&lms)
-            .args([
-                "test",
-                "--test",
-                "age_school_journey",
-                "--offline",
-                "-j",
-                "2",
-                "--",
-                "--nocapture",
-            ])
-            .env("CARGO_TARGET_DIR", workspace.join("target"))
-            .env("APP_KEY", &app_key)
-            .env("RULLST_ENV", "development")
-            .env("RULLST_AGE_KEY_HEX", &privacy_key)
-            .env("RULLST_AGE_KEY_ID", "lms-epoch")
-            .env(
-                "RULLST_AGE_REPLAY_DATABASE",
-                temporary.path().join("lms-replay.sqlite"),
-            )
-            .output()
-            .unwrap(),
-    );
     // All generated Cargo/test child processes have exited. Remove only this
     // suite's package artifacts; retain shared framework/dependency builds.
     success(
         Command::new("cargo")
-            .current_dir(&lms)
+            .current_dir(&postgres)
             .args(["clean", "--package", "age-gate-consumer"])
             .env("CARGO_TARGET_DIR", workspace.join("target"))
             .env("CARGO_NET_OFFLINE", "true")

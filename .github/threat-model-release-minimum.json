@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "model_version": "TM-12.10",
+  "model_version": "TM-13.0",
   "cases": [
     {
       "id": "CORE-01",
@@ -552,60 +552,6 @@
       "marker": "TM-ACADEMY-02"
     },
     {
-      "id": "ACADEMY-03",
-      "crate": "cargo-rullst",
-      "target_kind": "integration",
-      "target": "generated_saas_check",
-      "test_filter": "materialized_lms_executes_security_contracts",
-      "source": "cargo-rullst/tests/generated_saas_check.rs",
-      "marker": "TM-ACADEMY-03"
-    },
-    {
-      "id": "ACADEMY-04",
-      "crate": "cargo-rullst",
-      "target_kind": "integration",
-      "target": "generated_saas_check",
-      "test_filter": "materialized_lms_executes_security_contracts",
-      "source": "cargo-rullst/tests/generated_saas_check.rs",
-      "marker": "TM-ACADEMY-04"
-    },
-    {
-      "id": "ACADEMY-05",
-      "crate": "cargo-rullst",
-      "target_kind": "integration",
-      "target": "generated_saas_check",
-      "test_filter": "materialized_lms_executes_security_contracts",
-      "source": "cargo-rullst/tests/generated_saas_check.rs",
-      "marker": "TM-ACADEMY-05"
-    },
-    {
-      "id": "ACADEMY-06",
-      "crate": "cargo-rullst",
-      "target_kind": "integration",
-      "target": "generated_saas_check",
-      "test_filter": "materialized_lms_executes_security_contracts",
-      "source": "cargo-rullst/tests/generated_saas_check.rs",
-      "marker": "TM-ACADEMY-06"
-    },
-    {
-      "id": "ACADEMY-07",
-      "crate": "cargo-rullst",
-      "target_kind": "integration",
-      "target": "generated_saas_check",
-      "test_filter": "materialized_lms_executes_security_contracts",
-      "source": "cargo-rullst/tests/generated_saas_check.rs",
-      "marker": "TM-ACADEMY-07"
-    },
-    {
-      "id": "ACADEMY-08",
-      "crate": "cargo-rullst",
-      "target_kind": "integration",
-      "target": "generated_saas_check",
-      "test_filter": "materialized_lms_executes_security_contracts",
-      "source": "cargo-rullst/tests/generated_saas_check.rs",
-      "marker": "TM-ACADEMY-08"
-    },
-    {
       "id": "ACADEMY-09",
       "crate": "rullst-core",
       "target_kind": "lib",
@@ -613,15 +559,6 @@
       "test_filter": "uploads::tests::upload_policy_rejects_spoofing_active_content_and_unsafe_names",
       "source": "rullst-core/src/uploads.rs",
       "marker": "TM-ACADEMY-09"
-    },
-    {
-      "id": "ACADEMY-10",
-      "crate": "cargo-rullst",
-      "target_kind": "integration",
-      "target": "generated_saas_check",
-      "test_filter": "materialized_lms_executes_security_contracts",
-      "source": "cargo-rullst/tests/generated_saas_check.rs",
-      "marker": "TM-ACADEMY-10"
     },
     {
       "id": "ACADEMY-12",

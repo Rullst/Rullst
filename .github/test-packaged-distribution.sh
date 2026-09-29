@@ -504,20 +504,15 @@ for blueprint in "${blueprints[@]}"; do
     exit 1
   fi
 
-  if [[ "$blueprint" == saas || "$blueprint" == lms ]]; then
+  if [[ "$blueprint" == saas ]]; then
     (
       cd "$projects_dir/$app_name"
       # Require registry-only output from the installed CLI; the archive patch
       # below is the sole source substitution in this unpublished rehearsal.
-      tenant_args=()
-      if [[ "$blueprint" == saas ]]; then tenant_args=(--tenant-ref archive-tenant); fi
-      "$rullst_bin" make:age-gate --blueprint "$blueprint" "${tenant_args[@]}" \
+      "$rullst_bin" make:age-gate --blueprint saas --tenant-ref archive-tenant \
         --minimum-age 18 --policy-version archive-v1 --replay-store sqlite
-      "$rullst_bin" make:privacy --blueprint "$blueprint" "${tenant_args[@]}" \
+      "$rullst_bin" make:privacy --blueprint saas --tenant-ref archive-tenant \
         --purpose-version archive-v1 --validity-seconds 3600
-      if [[ "$blueprint" == lms && "$supervision_included" == true ]]; then
-        "$rullst_bin" make:supervision --supervision-source "$candidate_source" --policy-version archive-v1 --notice-version archive-v1 --retention-seconds 3600 --session-seconds 600
-      fi
       "$rullst_bin" generate:ai-context --check
     )
     python3 - "$manifest" "$version" <<'PY'

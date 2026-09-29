@@ -1,9 +1,6 @@
-//! Small, compiling detached LMS scaffold profiles.
+//! The LMS starter's file set and entrypoint overlays.
 
-mod assessment;
-mod auth_only;
 mod controller;
-mod gamification;
 mod middleware;
 mod migrations;
 mod routes;
@@ -33,18 +30,13 @@ const RETAINED_FILES: &[&str] = &[
     "src/pages/lms.rs",
 ];
 
-pub(super) fn select(
+/// Keeps the starter's files from the shared templates and adds its entrypoints,
+/// controllers, middleware, migrations index and learning service.
+pub(super) fn starter(
     mut full_manifest: Vec<(&'static str, String)>,
     project_name_safe: &str,
     hot_reload: bool,
-    modules: &[super::LmsModule],
-) -> Result<Vec<(&'static str, String)>, super::LmsModuleError> {
-    if hot_reload && !super::supports_hot_reload(modules) {
-        return Err(super::LmsModuleError::HotReloadUnsupported);
-    }
-    if modules.len() == 1 && modules.contains(&super::LmsModule::Auth) {
-        return Ok(auth_only::select(full_manifest));
-    }
+) -> Vec<(&'static str, String)> {
     full_manifest.retain(|(path, _)| RETAINED_FILES.contains(path));
     if let Some((_, source)) = full_manifest
         .iter_mut()
@@ -99,204 +91,61 @@ pub(super) fn select(
             "src/services/mod.rs",
             "pub mod learning_service;\n".to_string(),
         ),
-        (
-            "rullst-lms-modules.json",
-            "{\n  \"schema_version\": 1,\n  \"modules\": [\"auth\", \"learning\"],\n  \"profile\": \"foundation\"\n}\n"
-                .to_string(),
-        ),
     ]);
-    if modules.contains(&super::LmsModule::Assessment) {
-        assessment::extend(&mut full_manifest);
-    } else if modules.contains(&super::LmsModule::Gamification) {
-        gamification::extend(&mut full_manifest);
-    }
     full_manifest.sort_unstable_by_key(|(path, _)| *path);
-    Ok(full_manifest)
+    full_manifest
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::{LmsModule, LmsModuleError, file_manifest_for_modules};
+    use super::super::file_manifest;
+
+    fn manifest(hot_reload: bool) -> Vec<(&'static str, String)> {
+        file_manifest("demo", hot_reload, "Active Record", "Zero-Bundle HTMX")
+    }
+
+    fn source<'a>(manifest: &'a [(&'static str, String)], name: &str) -> &'a str {
+        manifest
+            .iter()
+            .find(|(path, _)| *path == name)
+            .map(|(_, source)| source.as_str())
+            .unwrap_or_default()
+    }
 
     #[test]
-    fn foundation_manifest_is_small_explicit_and_excludes_vertical_modules() {
-        let manifest = file_manifest_for_modules(
-            "demo",
-            false,
-            "Active Record",
-            "Zero-Bundle HTMX",
-            &[LmsModule::Auth, LmsModule::Learning],
-        )
-        .expect("detached foundation manifest");
-        assert!(
-            manifest
-                .iter()
-                .any(|(path, _)| *path == "rullst-lms-modules.json")
-        );
-        assert!(
-            manifest
-                .iter()
-                .any(|(path, _)| *path == "src/services/learning_service.rs")
-        );
-        assert!(
-            manifest
-                .iter()
-                .any(|(path, _)| *path == "static/media/memory-safety.en.vtt")
-        );
+    fn starter_is_small_explicit_and_excludes_academy_verticals() {
+        let manifest = manifest(false);
+        for required in [
+            "src/services/learning_service.rs",
+            "src/controllers/learning_controller.rs",
+            "src/models/course.rs",
+            "src/models/enrollment.rs",
+            "src/pages/lms.rs",
+            "static/media/memory-safety.en.vtt",
+        ] {
+            assert!(
+                manifest.iter().any(|(path, _)| *path == required),
+                "{required}"
+            );
+        }
         for excluded in [
             "src/models/quiz.rs",
             "src/models/achievement.rs",
             "src/services/automation_worker_service.rs",
             "src/services/notification_service.rs",
+            "rullst-lms-modules.json",
+            "src/lib.rs",
         ] {
-            assert!(manifest.iter().all(|(path, _)| *path != excluded));
+            assert!(
+                manifest.iter().all(|(path, _)| *path != excluded),
+                "{excluded}"
+            );
         }
         assert!(
             manifest.len() < 30,
-            "foundation emitted {} files",
+            "starter emitted {} files",
             manifest.len()
         );
-        let auth = manifest
-            .iter()
-            .find(|(path, _)| *path == "src/controllers/auth_controller.rs")
-            .map(|(_, source)| source)
-            .expect("foundation auth controller");
-        assert!(!auth.contains("provision_self_registration_with_tx"));
-    }
-
-    #[test]
-    fn auth_manifest_contains_only_the_identity_boundary() {
-        let manifest = file_manifest_for_modules(
-            "demo",
-            false,
-            "Active Record",
-            "Zero-Bundle HTMX",
-            &[LmsModule::Auth],
-        )
-        .expect("detached auth manifest");
-        for required in [
-            "src/controllers/auth_controller.rs",
-            "src/migrations/m20260827000000_add_auth_identity.rs",
-            "src/models/user.rs",
-            "rullst-lms-modules.json",
-        ] {
-            assert!(manifest.iter().any(|(path, _)| *path == required));
-        }
-        for excluded in [
-            "src/models/course.rs",
-            "src/models/enrollment.rs",
-            "src/services/learning_service.rs",
-            "src/models/quiz.rs",
-        ] {
-            assert!(manifest.iter().all(|(path, _)| *path != excluded));
-        }
-        assert!(
-            manifest.len() < 15,
-            "auth profile emitted {} files",
-            manifest.len()
-        );
-        let auth = manifest
-            .iter()
-            .find(|(path, _)| *path == "src/controllers/auth_controller.rs")
-            .map(|(_, source)| source)
-            .expect("identity auth controller");
-        assert!(!auth.contains("provision_self_registration_with_tx"));
-    }
-
-    #[test]
-    fn assessment_manifest_is_bounded_and_excludes_unselected_verticals() {
-        let manifest = file_manifest_for_modules(
-            "demo",
-            false,
-            "Active Record",
-            "Zero-Bundle HTMX",
-            &[LmsModule::Auth, LmsModule::Learning, LmsModule::Assessment],
-        )
-        .expect("detached assessment manifest");
-        for required in [
-            "src/controllers/assessment_controller.rs",
-            "src/migrations/m20260828000000_add_assessment.rs",
-            "src/models/quiz.rs",
-            "src/services/assessment_service.rs",
-        ] {
-            assert!(manifest.iter().any(|(path, _)| *path == required));
-        }
-        for excluded in [
-            "src/models/achievement.rs",
-            "src/models/leaderboard_entry.rs",
-            "src/services/automation_worker_service.rs",
-            "src/services/notification_service.rs",
-            "src/services/outbox_service.rs",
-        ] {
-            assert!(manifest.iter().all(|(path, _)| *path != excluded));
-        }
-        assert!(
-            manifest.len() < 40,
-            "assessment profile emitted {} files",
-            manifest.len()
-        );
-    }
-
-    #[test]
-    fn gamification_manifest_is_bounded_and_excludes_unselected_verticals() {
-        let manifest = file_manifest_for_modules(
-            "demo",
-            false,
-            "Active Record",
-            "Zero-Bundle HTMX",
-            &[
-                LmsModule::Auth,
-                LmsModule::Learning,
-                LmsModule::Gamification,
-            ],
-        )
-        .expect("detached gamification manifest");
-        for required in [
-            "src/controllers/gamification_controller.rs",
-            "src/migrations/m20260828000000_add_gamification.rs",
-            "src/models/score_event.rs",
-            "src/models/leaderboard_entry.rs",
-            "src/services/gamification_service.rs",
-        ] {
-            assert!(manifest.iter().any(|(path, _)| *path == required));
-        }
-        for excluded in [
-            "src/models/quiz.rs",
-            "src/models/achievement.rs",
-            "src/services/automation_worker_service.rs",
-            "src/services/notification_service.rs",
-            "src/services/outbox_service.rs",
-        ] {
-            assert!(manifest.iter().all(|(path, _)| *path != excluded));
-        }
-        assert!(
-            manifest.len() < 40,
-            "gamification profile emitted {} files",
-            manifest.len()
-        );
-    }
-
-    #[test]
-    fn foundation_hot_reload_exports_the_router_library() {
-        let manifest = file_manifest_for_modules(
-            "demo",
-            true,
-            "Active Record",
-            "Zero-Bundle HTMX",
-            &[LmsModule::Auth, LmsModule::Learning],
-        )
-        .expect("hot-reload foundation manifest");
-        let file = |name: &str| {
-            manifest
-                .iter()
-                .find(|(path, _)| *path == name)
-                .map(|(_, source)| source.as_str())
-                .unwrap_or_default()
-        };
-        assert!(file("src/lib.rs").contains("pub extern \"C\" fn rullst_router_init()"));
-        assert!(file("src/lib.rs").contains("pub fn router()"));
-        assert!(file("src/main.rs").contains("rullst::Server::new_hot(lib_path)"));
-        assert!(file("src/main.rs").contains("demo::router()?"));
         assert_eq!(
             manifest
                 .iter()
@@ -304,29 +153,27 @@ mod tests {
                 .count(),
             1
         );
+        assert!(
+            !source(&manifest, "src/controllers/auth_controller.rs")
+                .contains("provision_self_registration_with_tx")
+        );
     }
 
     #[test]
-    fn other_detached_profiles_still_reject_hot_reload() {
-        for modules in [
-            &[LmsModule::Auth][..],
-            &[LmsModule::Auth, LmsModule::Learning, LmsModule::Assessment],
-            &[
-                LmsModule::Auth,
-                LmsModule::Learning,
-                LmsModule::Gamification,
-            ],
-        ] {
-            assert_eq!(
-                file_manifest_for_modules(
-                    "demo",
-                    true,
-                    "Active Record",
-                    "Zero-Bundle HTMX",
-                    modules
-                ),
-                Err(LmsModuleError::HotReloadUnsupported)
-            );
-        }
+    fn hot_reload_exports_the_router_library() {
+        let manifest = manifest(true);
+        assert!(
+            source(&manifest, "src/lib.rs").contains("pub extern \"C\" fn rullst_router_init()")
+        );
+        assert!(source(&manifest, "src/lib.rs").contains("pub fn router()"));
+        assert!(source(&manifest, "src/main.rs").contains("rullst::Server::new_hot(lib_path)"));
+        assert!(source(&manifest, "src/main.rs").contains("demo::router()?"));
+        assert_eq!(
+            manifest
+                .iter()
+                .filter(|(path, _)| *path == "src/main.rs")
+                .count(),
+            1
+        );
     }
 }

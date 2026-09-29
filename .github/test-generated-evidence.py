@@ -143,11 +143,10 @@ class SelectionTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(cases, [])
 
-    def test_threat_manifest_maps_all_eight_lms_contracts_to_focused_execution(self):
+    def test_threat_manifest_maps_the_lms_starter_contract_to_focused_execution(self):
         manifest = json.loads((ROOT / ".github/threat-model-release-minimum.json").read_text())
         rows = [row for row in manifest["cases"] if row["target"] == "generated_saas_check"]
-        self.assertEqual(sorted(row["id"] for row in rows),
-                         [f"ACADEMY-{n:02}" for n in (2, 3, 4, 5, 6, 7, 8, 10)])
+        self.assertEqual(sorted(row["id"] for row in rows), ["ACADEMY-02"])
         for row in rows:
             self.assertEqual(row["test_filter"], FOCUSED)
             self.assertEqual(row["source"], str(SOURCE.relative_to(ROOT)))
