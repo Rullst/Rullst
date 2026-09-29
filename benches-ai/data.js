@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790721311594,
+  "lastUpdate": 1790725513764,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -10737,6 +10737,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 371,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "722de4d0f0e12409eb91f8d8d2532e4c8bc7510f",
+          "message": "Merge pull request #330 from Rullst/fix/v13-core-state-fixes\n\nfix(core): bound live messages, keep queue claims, release idle channels, reuse Redis connections",
+          "timestamp": "2026-09-29T20:22:40-03:00",
+          "tree_id": "f1ffc193283c5c37d81bcac7f299f4f231558b5e",
+          "url": "https://github.com/Rullst/Rullst/commit/722de4d0f0e12409eb91f8d8d2532e4c8bc7510f"
+        },
+        "date": 1790725512640,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1301,
+            "range": "± 40",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 286,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 263,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
