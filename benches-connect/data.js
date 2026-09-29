@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790655056810,
+  "lastUpdate": 1790683974235,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -7725,6 +7725,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 517,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c2125a1eeb448752b7722dd587665d3c4060bb17",
+          "message": "Merge pull request #288 from Rullst/fix/v13-fuzz-reviewed-context\n\nfix(ci): preserve reviewed fuzz evidence across development publication docs",
+          "timestamp": "2026-09-29T08:53:16-03:00",
+          "tree_id": "d31f1ecfaa4ec95a08c2e5f28ca493c445dd4e86",
+          "url": "https://github.com/Rullst/Rullst/commit/c2125a1eeb448752b7722dd587665d3c4060bb17"
+        },
+        "date": 1790683973277,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 549,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
