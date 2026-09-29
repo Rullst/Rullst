@@ -158,6 +158,9 @@ A prepared version section does not establish that its tag or crates exist.
 - Replace the exact aws-smithy-types 1.6.4 pin with a 1.8.1 floor: the
   incompatible 1.7.0 release was yanked and 1.8 compiles with Smithy JSON 0.63.
   v12 keeps its exact 1.6.4 pin.
+- Update Studio's API playground to utoipa 6.0.0 and utoipa-swagger-ui 10.0.1
+  together, including the `rullst` and `rullst-studio` fuzz locks.
+  `Studio::with_openapi` now accepts a utoipa 6 `OpenApi` (breaking for v13).
 
 ### Unpublished v13 privacy foundation
 
