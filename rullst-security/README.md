@@ -40,6 +40,12 @@
 - **TOTP enrollment:** OS-random 160-bit secrets, RFC 6238 code generation,
   constant-time six-digit verification, `otpauth://` URIs, and bounded SVG QR
   generation through `build_mfa_qr_svg`.
+- **TOTP replay is the caller's job:** `verify_totp_code` is stateless and
+  accepts the previous, current and next 30-second step, so an observed code
+  verifies again for about 90 seconds. To meet RFC 6238 section 5.2, find the
+  matched step with `mfa::generate_totp_at_counter`, persist the last accepted
+  step per secret atomically, and reject any step less than or equal to it.
+  The `verify_totp_code` rustdoc shows the complete check.
 - **Applied tarpit:** `LoginGuard::record_login_failure_and_wait` records a
   failure and awaits its progressive delay; jail state is bounded and local to
   the process. Concurrent admission shares the configured identity ceiling.
