@@ -28,6 +28,7 @@ pub struct EmailLoginService {
     store: SqlRecoveryStore,
     config: EmailLoginConfig,
     postgres: bool,
+    failures: guard::RedemptionFailures,
 }
 
 async fn bounded<T>(

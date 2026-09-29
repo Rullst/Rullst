@@ -42,6 +42,9 @@ pub enum RecoveryError {
     Crypto,
     #[error("recovery capacity or request limit reached")]
     Limited,
+    /// Too many failed attempts from this client binding; retry after the window.
+    #[error("too many failed attempts; retry later")]
+    Throttled,
 }
 
 impl From<sqlx::Error> for RecoveryError {

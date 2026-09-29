@@ -42,12 +42,6 @@ pub async fn run(url: &str) {
     );
     let claim = issue(&service, &email, &browser, &clock).await;
     let token = token(&claim);
-    // Durable attempt limit includes malformed and wrong-browser redemptions.
-    for _ in 0..60 {
-        assert!(service.redeem("invalid", &browser, &clock).await.is_err());
-    }
-    assert!(service.redeem(&token, &browser, &clock).await.is_err());
-    clock.advance(60);
     // The session bound is shared with password-created sessions. Capacity failure
     // rolls back the link consumption; releasing one slot permits one redemption.
     let mut sessions = Vec::new();
@@ -69,7 +63,52 @@ pub async fn run(url: &str) {
         .revoke_session(sessions[0].expose())
         .await
         .unwrap();
-    assert!(service.redeem(&token, &browser, &clock).await.is_ok());
+    // Failed redemptions are charged to the presenting browser binding only after
+    // the token lookup fails. Sixty failures from one unauthenticated client
+    // throttle that client alone and never block another client's valid link.
+    let attacker = BrowserBinding::generate().unwrap();
+    for _ in 0..60 {
+        assert_eq!(
+            service
+                .redeem("invalid", &attacker, &clock)
+                .await
+                .unwrap_err(),
+            RecoveryError::InvalidAction
+        );
+    }
+    assert_eq!(
+        service.redeem(&token, &attacker, &clock).await.unwrap_err(),
+        RecoveryError::Throttled
+    );
+    let session = service.redeem(&token, &browser, &clock).await.unwrap();
+    assert_eq!(
+        service.redeem(&token, &browser, &clock).await.unwrap_err(),
+        RecoveryError::InvalidAction
+    );
+    // A browser's own malformed, wrong or replayed redemptions (the replay above
+    // included) throttle it, even for a valid link, until its window passes.
+    service
+        .accounts()
+        .revoke_session(session.token().expose())
+        .await
+        .unwrap();
+    let retry = super::support::token(&issue(&service, &email, &browser, &clock).await);
+    for _ in 0..59 {
+        assert!(service.redeem("invalid", &browser, &clock).await.is_err());
+    }
+    assert_eq!(
+        service.redeem(&retry, &browser, &clock).await.unwrap_err(),
+        RecoveryError::Throttled
+    );
+    clock.advance(60);
+    assert_eq!(
+        service
+            .redeem("invalid", &attacker, &clock)
+            .await
+            .unwrap_err(),
+        RecoveryError::InvalidAction
+    );
+    assert!(service.redeem(&retry, &browser, &clock).await.is_ok());
     // Retention remains operable without another incoming authentication request.
     clock.advance(3600);
     service.purge_expired(&clock).await.unwrap();
