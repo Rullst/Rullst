@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790684228704,
+  "lastUpdate": 1790694615512,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -10401,6 +10401,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 716,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0e3dc96d41947cff8e4e47629eaa72ba927a5edc",
+          "message": "Merge pull request #314 from Rullst/refactor/v13-lms-basic-starter\n\nfeat(cli): support hot reload in the auth,learning LMS starter",
+          "timestamp": "2026-09-29T11:39:00-03:00",
+          "tree_id": "a9cd160116c4ef3928ab89b0f514bd792c68ab25",
+          "url": "https://github.com/Rullst/Rullst/commit/0e3dc96d41947cff8e4e47629eaa72ba927a5edc"
+        },
+        "date": 1790694614464,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1475,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 276,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 539,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
