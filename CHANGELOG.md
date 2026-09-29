@@ -58,6 +58,30 @@ A prepared version section does not establish that its tag or crates exist.
 - The portfolio blueprint's generated files move into template files under
   `blueprints/portfolio/src/`; their output is otherwise unchanged.
 
+### Security crate review fixes
+
+- `LoginGuard` keeps jailing when its failure or jail map is full: it evicts the
+  least recently failed counter or the soonest-expiring jail instead of
+  dropping the new identity, removes expired state on every call through
+  time-ordered indexes, and emits `LOGIN_JAIL_TRIGGERED` only for a jail it
+  created. Before, 100,000 failed logins for random usernames disabled the
+  jail for real accounts.
+- DLP response masking and `redact_secrets` run in linear time. A database URL
+  password is searched only within the URL's host part (up to 2,048 bytes),
+  and the last `@` there ends the credentials.
+- Honeypot ban checks look up only the requesting peer instead of scanning
+  every ban under the global lock. Expired bans are pruned in expiry order,
+  and a full list evicts the soonest-expiring ban.
+- `verify_totp_code` accepts a replayed code for about 90 seconds; its docs now
+  explain how to reject reuse by storing the last accepted step. New
+  `verify_totp_step` returns the matched step, and `verify_totp_step_after`
+  rejects any step not newer than the last accepted one (RFC 6238 §5.2).
+- Deserializing `SentinelObservation` applies `try_new` validation, and
+  `ThreatClassifier::assess` no longer panics on a zero window or zero requests.
+- The global `is_rate_limited` helper keeps a separate budget per key and
+  policy, so a short-window caller no longer resets a longer policy's counter.
+  Keys in `global_rate_limit_store()` now include the policy.
+
 ### Omni dependency compatibility maintenance
 
 - Keep generated Omni shells on a compatible Tauri runtime/macro/build family
