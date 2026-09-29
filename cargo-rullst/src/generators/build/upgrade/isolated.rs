@@ -66,19 +66,18 @@ fn plan_manifests(
     if std::collections::BTreeSet::is_empty(&majors)
         || majors
             .iter()
-            .any(|major| !matches!(major, 5 | 6 | 11 | 12 | 13))
+            .any(|major| !(super::OLDEST_SUPPORTED_SOURCE_MAJOR..=13).contains(major))
     {
-        return Err("the migration catalog covers source majors 5, 6, 11, 12 and 13 only".into());
+        return Err("the migration catalog covers source majors 12 and 13 only; upgrade older applications to v12 with the v12 CLI first".into());
     }
     let roots = plans
         .iter()
         .filter(|plan| plan.is_package)
         .filter_map(|plan| plan.path.parent().map(Path::to_path_buf))
         .collect::<Vec<_>>();
-    let findings = super::scan::scan_workspace(&roots, &majors, version.major)?;
-    let mut report: serde_json::Value = serde_json::from_str(&super::render_json_report(
-        &root, &version, &plans, &findings,
-    )?)?;
+    super::scan::reject_symlinked_sources(&roots)?;
+    let mut report: serde_json::Value =
+        serde_json::from_str(&super::render_json_report(&root, &version, &plans)?)?;
     report["automatic_scope"] = serde_json::json!(["workspace dependency manifests in candidate/"]);
     if apply {
         super::manifest::apply_plans(&plans)?;

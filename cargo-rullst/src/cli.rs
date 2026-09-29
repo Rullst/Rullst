@@ -404,7 +404,7 @@ pub enum Commands {
         /// Exact target version; defaults to the installed cargo-rullst version
         #[arg(long, value_name = "VERSION")]
         to: Option<String>,
-        /// Prints dependency changes and v5 source findings without writing files
+        /// Prints dependency changes and source findings without writing files
         #[arg(long)]
         dry_run: bool,
         /// Emits the dry-run plan as versioned JSON for automation
