@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790655185914,
+  "lastUpdate": 1790684107145,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -11702,6 +11702,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 29,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c2125a1eeb448752b7722dd587665d3c4060bb17",
+          "message": "Merge pull request #288 from Rullst/fix/v13-fuzz-reviewed-context\n\nfix(ci): preserve reviewed fuzz evidence across development publication docs",
+          "timestamp": "2026-09-29T08:53:16-03:00",
+          "tree_id": "d31f1ecfaa4ec95a08c2e5f28ca493c445dd4e86",
+          "url": "https://github.com/Rullst/Rullst/commit/c2125a1eeb448752b7722dd587665d3c4060bb17"
+        },
+        "date": 1790684106168,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5532,
+            "range": "± 47",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 725,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 32,
             "range": "± 0",
             "unit": "ns/iter"
           }
