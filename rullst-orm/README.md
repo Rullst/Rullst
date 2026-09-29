@@ -75,7 +75,7 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   [audit revision guide](https://rullst.github.io/Rullst/book/tutorials/50-auditable-revisions.html).
 - **Bounded Post-Commit Effects**: `after_commit` and the generated observer
   `committed` callback run only after `Orm::transaction` or a direct generated
-  save/delete commits. Rollback discards them, and post-commit failures use a
+  save/delete/restore/force_delete commits. Rollback discards them, and post-commit failures use a
   distinct error that says the database is already durable. These callbacks
   remain process-local; caller-owned raw SQLx transactions cannot expose their
   eventual commit decision to generated hooks.
@@ -145,8 +145,8 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   versioned SHA-256 key bound to the application namespace, active tenant,
   generated SQL and typed bindings. Generated reads bypass cache inside every
   ORM transaction so Redis cannot replace the transaction's database view.
-  Generated model saves/deletes invalidate keys for the active tenant and table
-  only after commit, using a bounded non-blocking scan; cluster/failover
+  Generated model saves/deletes/restores/force-deletes invalidate keys for the
+  active tenant and table only after commit, using a bounded non-blocking scan; cluster/failover
   evidence remains outside the current contract.
 - **Model Policies (Authorization)**: `#[orm(policy = "MyPolicy")]` checks generated
   instance mutations. Policy-protected models reject `delete_all()` because
@@ -231,6 +231,15 @@ it is consumed or dropped. Consume/drop it before starting another operation
 on that transaction. Transactional streams reject `after_fetch` hooks to avoid
 reentrant queries while retaining that access; use `get()` inside
 `Orm::transaction` for those models. Streaming does not eagerly load relations.
+
+`force_delete()` and `restore()` run in a savepoint like `delete()`.
+`force_delete()` runs the delete hooks and observers, writes a `force_deleted`
+audit entry on auditable models (so it needs an `AuditContext` there) and
+registers the same post-commit cache, Redis, `committed` and Scout removal
+effects; it does not cascade. `restore()` re-reads the row, calls the `updated`
+and `saved` observers, writes a `restored` audit entry and registers the update
+effects of `save()`, including a Scout re-index. Their `can_force_delete` and
+`can_restore` policies run before the transaction, as before.
 
 Full `save`/`delete` policies and their lifecycle callbacks run while their
 executor is borrowed.
