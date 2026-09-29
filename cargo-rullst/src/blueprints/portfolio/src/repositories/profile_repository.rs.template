@@ -1,0 +1,19 @@
+use crate::models::profile::Profile;
+
+pub struct ProfileRepository;
+
+impl ProfileRepository {
+    pub async fn get() -> Profile {
+        Profile::find(1).await.unwrap_or(None).unwrap_or(Profile {
+            id: 1,
+            name: "Vene Light".to_string(),
+            title: "Senior Rust & AI Systems Engineer".to_string(),
+            subtitle: "Specializing in hyper-concurrent web backends, LLM inference pipelines, and high-throughput Rust architectures.".to_string(),
+            email: "rullst@veneloius.de".to_string(),
+            website: "https://rullst.github.io/".to_string(),
+            avatar_url: "https://raw.githubusercontent.com/venelouis/Rullst/main/Rullst.png".to_string(),
+            github_url: "https://github.com/Rullst".to_string(),
+            linkedin_url: "https://linkedin.com".to_string(),
+        })
+    }
+}

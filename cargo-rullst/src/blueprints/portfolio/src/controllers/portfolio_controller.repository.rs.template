@@ -1,0 +1,16 @@
+use rullst::server::IntoResponse;
+use rullst::response::Html;
+use crate::repositories::profile_repository::ProfileRepository;
+use crate::repositories::project_repository::ProjectRepository;
+use crate::repositories::experience_repository::ExperienceRepository;
+use crate::repositories::skill_repository::SkillRepository;
+use crate::pages::home;
+
+pub async fn index() -> impl IntoResponse {
+    let profile = ProfileRepository::get().await;
+    let projects = ProjectRepository::all().await;
+    let experiences = ExperienceRepository::all().await;
+    let skills = SkillRepository::all().await;
+
+    Html(home::render(&profile, &projects, &experiences, &skills))
+}

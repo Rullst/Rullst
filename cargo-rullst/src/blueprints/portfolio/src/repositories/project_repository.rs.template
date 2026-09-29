@@ -1,0 +1,9 @@
+use crate::models::project::Project;
+
+pub struct ProjectRepository;
+
+impl ProjectRepository {
+    pub async fn all() -> Vec<Project> {
+        Project::all().await.unwrap_or_default()
+    }
+}

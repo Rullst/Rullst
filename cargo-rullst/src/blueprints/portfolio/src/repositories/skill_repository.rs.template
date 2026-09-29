@@ -1,0 +1,9 @@
+use crate::models::skill::Skill;
+
+pub struct SkillRepository;
+
+impl SkillRepository {
+    pub async fn all() -> Vec<Skill> {
+        Skill::all().await.unwrap_or_default()
+    }
+}
