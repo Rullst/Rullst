@@ -95,6 +95,58 @@ pub fn generate_totp_code(base32_secret: &str) -> Option<String> {
 }
 
 /// Verifies a 6-digit TOTP code with time drift window tolerance (+-1 window).
+///
+/// # Replay
+///
+/// This function is stateless: it accepts any code for the previous, current
+/// or next 30-second step, so the same code verifies again for up to about 90
+/// seconds. It does not implement the RFC 6238 section 5.2 rule that a
+/// verifier must not accept the same one-time password twice. A caller that
+/// needs replay protection must find the matched step, persist the last
+/// accepted step per secret atomically (for example with a conditional
+/// `UPDATE ... WHERE last_step IS NULL OR last_step < $step`), and reject any
+/// step less than or equal to it. The public
+/// [`generate_totp_at_counter`] and [`decode_base32`] functions are enough to
+/// find the step:
+///
+/// ```rust
+/// use rullst_security::mfa::{
+///     MIN_TOTP_SECRET_BYTES, decode_base32, generate_mfa_secret, generate_totp_at_counter,
+///     generate_totp_code,
+/// };
+/// use std::time::{SystemTime, UNIX_EPOCH};
+///
+/// /// Returns the time step matched by `code`, if any.
+/// fn matched_totp_step(base32_secret: &str, code: &str) -> Option<u64> {
+///     if code.len() != 6 || !code.bytes().all(|byte| byte.is_ascii_digit()) {
+///         return None;
+///     }
+///     let expected: u32 = code.parse().ok()?;
+///     let secret = decode_base32(base32_secret)?;
+///     if secret.len() < MIN_TOTP_SECRET_BYTES {
+///         return None;
+///     }
+///     let now = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
+///     let current = now / 30;
+///     [current.checked_sub(1), Some(current), current.checked_add(1)]
+///         .into_iter()
+///         .flatten()
+///         .find(|&step| generate_totp_at_counter(&secret, step) == expected)
+/// }
+///
+/// let secret = generate_mfa_secret();
+/// let code = generate_totp_code(&secret).expect("valid secret");
+/// // In production this value is stored with the secret and updated atomically.
+/// let mut last_accepted_step: Option<u64> = None;
+///
+/// let step = matched_totp_step(&secret, &code).expect("fresh code");
+/// assert!(last_accepted_step.is_none_or(|last| step > last));
+/// last_accepted_step = Some(step);
+///
+/// // The same code matches the same step again and must be rejected.
+/// let replayed = matched_totp_step(&secret, &code).expect("still in window");
+/// assert!(!last_accepted_step.is_none_or(|last| replayed > last));
+/// ```
 pub fn verify_totp_code(base32_secret: &str, code: &str) -> bool {
     if code.len() != 6 || !code.bytes().all(|byte| byte.is_ascii_digit()) {
         return false;
