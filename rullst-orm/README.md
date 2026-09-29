@@ -349,6 +349,13 @@ Adding, removing or reordering labels is an explicit reviewed migration. Drop
 every dependent table before calling `Schema::drop_native_enum::<T>()` on
 PostgreSQL; the method is a validated no-op on the other backends.
 
+`table.timestamps()` adds nullable `created_at`/`updated_at` `TEXT` columns
+that default to the current timestamp. MySQL/MariaDB reject a literal default
+on `TEXT`, `BLOB`, `JSON` and `GEOMETRY` columns, so on that driver the
+builder emits `DEFAULT (CURRENT_TIMESTAMP)` and wraps other non-`NULL`
+defaults on those types in parentheses (MySQL 8.0.13+, MariaDB 10.2.1+).
+SQLite and PostgreSQL DDL is unchanged.
+
 ### Optional Redis query cache
 
 Enable the `redis` feature and give each application sharing a Redis database a

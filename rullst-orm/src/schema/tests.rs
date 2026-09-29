@@ -135,6 +135,92 @@ fn test_timestamps_adds_columns() {
 }
 
 #[test]
+fn timestamps_use_a_mysql_expression_default_and_keep_other_drivers() {
+    let mut bp = Blueprint::new();
+    bp.id();
+    bp.timestamps();
+
+    let mysql = bp.build_for_driver("mysql").expect("MySQL DDL");
+    assert!(
+        mysql.contains("created_at TEXT DEFAULT (CURRENT_TIMESTAMP)"),
+        "{mysql}"
+    );
+    assert!(
+        mysql.contains("updated_at TEXT DEFAULT (CURRENT_TIMESTAMP)"),
+        "{mysql}"
+    );
+    assert!(!mysql.contains("TEXT DEFAULT CURRENT_TIMESTAMP"), "{mysql}");
+
+    for driver in ["sqlite", "postgres"] {
+        let sql = bp.build_for_driver(driver).expect("DDL");
+        assert!(
+            sql.contains("created_at TEXT DEFAULT CURRENT_TIMESTAMP"),
+            "{driver}: {sql}"
+        );
+        assert!(
+            sql.contains("updated_at TEXT DEFAULT CURRENT_TIMESTAMP"),
+            "{driver}: {sql}"
+        );
+    }
+}
+
+#[test]
+fn mysql_text_like_defaults_are_expressions_and_other_defaults_are_literals() {
+    let mut bp = Blueprint::new();
+    bp.string("status")
+        .not_null()
+        .default(ColumnDefault::Text("draft".to_string()));
+    bp.string("note").default(ColumnDefault::Null);
+    bp.integer("attempts")
+        .not_null()
+        .default(ColumnDefault::Integer(0));
+    bp.enum_col("kind", vec!["a", "b"])
+        .default(ColumnDefault::Text("a".to_string()));
+    bp.columns.push({
+        let mut payload = Column::new("payload", "json");
+        payload.default(ColumnDefault::Text("{}".to_string()));
+        payload
+    });
+
+    let mysql = bp.build_for_driver("mysql").expect("MySQL DDL");
+    assert!(
+        mysql.contains("status TEXT NOT NULL DEFAULT ('draft')"),
+        "{mysql}"
+    );
+    assert!(mysql.contains("note TEXT DEFAULT NULL"), "{mysql}");
+    assert!(
+        mysql.contains("attempts INTEGER NOT NULL DEFAULT 0"),
+        "{mysql}"
+    );
+    assert!(
+        mysql.contains("kind TEXT CHECK(kind IN ('a', 'b')) DEFAULT ('a')"),
+        "{mysql}"
+    );
+    assert!(mysql.contains("payload json DEFAULT ('{}')"), "{mysql}");
+
+    let sqlite = bp.build_for_driver("sqlite").expect("SQLite DDL");
+    assert!(
+        sqlite.contains("status TEXT NOT NULL DEFAULT 'draft'"),
+        "{sqlite}"
+    );
+    assert!(sqlite.contains("payload json DEFAULT '{}'"), "{sqlite}");
+}
+
+#[test]
+fn mysql_native_enum_defaults_remain_literals() {
+    let mut blueprint = Blueprint::new();
+    blueprint
+        .native_enum::<AccountStatus>("status")
+        .default(ColumnDefault::Text("owners_active".to_string()));
+
+    let mysql = blueprint.build_for_driver("mysql").expect("MySQL enum DDL");
+    assert!(
+        mysql.contains("status ENUM('awaiting_review', 'owners_active') DEFAULT 'owners_active'"),
+        "{mysql}"
+    );
+}
+
+#[test]
 fn test_soft_deletes_adds_nullable_column() {
     let mut bp = Blueprint::new();
     bp.soft_deletes();

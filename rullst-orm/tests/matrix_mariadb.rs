@@ -2,6 +2,9 @@
 
 mod support;
 
+// Driver-neutral contracts, also run on SQLite by `driver_contract_sqlite`.
+mod driver_contract;
+
 use rullst_orm::schema::{Blueprint, Schema};
 use rullst_orm::{FromRow, Orm};
 use testcontainers::runners::AsyncRunner;
@@ -87,6 +90,7 @@ async fn test_matrix_mariadb_crud() {
 
     support::exercise_outbox().await;
     exercise_native_enum().await;
+    driver_contract::exercise().await;
 }
 
 async fn exercise_native_enum() {

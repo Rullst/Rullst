@@ -2,6 +2,9 @@
 
 mod support;
 
+// Driver-neutral contracts, also run on SQLite by `driver_contract_sqlite`.
+mod driver_contract;
+
 use rullst_orm::schema::{Blueprint, Schema};
 use rullst_orm::{FromRow, Orm};
 use testcontainers::runners::AsyncRunner;
@@ -148,6 +151,7 @@ async fn test_matrix_postgres_crud() {
     exercise_native_enum().await;
     #[cfg(not(feature = "strict-postgres"))]
     exercise_dynamic_pool_enum_refusal().await;
+    driver_contract::exercise().await;
 }
 
 /// Tenant scope, typed CTEs and EXISTS subqueries must share one `$n` sequence.
