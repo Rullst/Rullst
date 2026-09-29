@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790654253853,
+  "lastUpdate": 1790682348522,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -20937,6 +20937,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2275,
             "range": "± 56",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "28fee0b7f249b6cf54304ff21b34bec1f509118e",
+          "message": "Merge pull request #304 from Rullst/chore/v13-dependency-refresh\n\nchore(deps): integrate the September v13 dependency refresh",
+          "timestamp": "2026-09-29T08:34:26-03:00",
+          "tree_id": "941e7f8dfe1123da4d0d4b15547604ebef264a6d",
+          "url": "https://github.com/Rullst/Rullst/commit/28fee0b7f249b6cf54304ff21b34bec1f509118e"
+        },
+        "date": 1790682346762,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 749,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1014,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 620,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2293,
+            "range": "± 40",
             "unit": "ns/iter"
           }
         ]
