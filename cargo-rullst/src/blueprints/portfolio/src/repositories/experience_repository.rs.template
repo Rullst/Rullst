@@ -1,0 +1,9 @@
+use crate::models::experience::Experience;
+
+pub struct ExperienceRepository;
+
+impl ExperienceRepository {
+    pub async fn all() -> Vec<Experience> {
+        Experience::all().await.unwrap_or_default()
+    }
+}
