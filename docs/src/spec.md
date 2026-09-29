@@ -1501,6 +1501,20 @@ while portability and semantic review remain the model author's responsibility.
   custom `RullstValue` conversions and raw SQL are explicit runtime-checked or
   caller-owned alternatives, not compile-time schema verification.
 * `String` and `Option<String>` fields annotated with `#[orm(encrypted)]` are encrypted before generated ORM writes and decrypted after generated model reads using AES-256-GCM. Randomized ciphertext cannot be filtered, ordered, grouped, or explicitly selected by generated query-builder methods; use a separately reviewed blind index when equality lookup is required. Raw SQL remains an explicit, non-transparent escape hatch.
+* Generated secondary projections never carry `#[orm(encrypted)]` or
+  `#[orm(masked)]` plaintext. `to_json()` (used for audit rows and committed
+  `ModelCommittedEvent`/Redis `orm:events:*` payloads) omits `#[orm(hidden)]`
+  fields and replaces encrypted and masked values with the fixed `"***"`
+  marker. An update that changes only such a field still writes an audit row
+  that records the field as `"***"` on both sides, and that revision cannot be
+  restored. Scout documents omit hidden, encrypted and masked fields entirely.
+  `save_to_redis` stores encrypted fields as the same table/column-bound
+  envelope as the SQL column and `get_from_redis` decrypts them; hashes written
+  by earlier versions with plaintext in those fields fail closed on read and
+  must be rewritten. Masked and hidden values keep their database
+  representation in Redis hashes and the query cache, like the SQL column.
+  Audit rows, search documents and events written by earlier versions are not
+  rewritten; purge or reindex them if they may contain plaintext.
 
 ### 5.3. Generated Relationship Contract
 
@@ -1601,8 +1615,9 @@ while portability and semantic review remain the model author's responsibility.
   already committed/autocommit operation.
 * Generated observers retain synchronous lifecycle callbacks such as
   `creating`, `created`, and `saved` for mutation validation. The separate
-  `committed(ModelCommittedEvent)` callback receives an owned, hidden-field-
-  aware snapshot after the managed commit. Generated Redis invalidation/pub-sub
+  `committed(ModelCommittedEvent)` callback receives an owned snapshot after
+  the managed commit; it omits hidden fields and carries `"***"` for encrypted
+  and masked fields. Generated Redis invalidation/pub-sub
   and Scout projections use this same post-commit boundary.
 * Savepoint-scoped generated saves/deletes and revision restores collect their
   callbacks in a nested scope. The callbacks are promoted to the enclosing
@@ -1721,7 +1736,8 @@ while portability and semantic review remain the model author's responsibility.
 ### 5.9. Scout Search Projection Contract
 
 * `#[orm(searchable)]` projects generated save/delete operations only after a
-  managed relational commit. Search adapter failures remain visible; a failed
+  managed relational commit. The indexed document omits `#[orm(hidden)]`,
+  `#[orm(encrypted)]` and `#[orm(masked)]` fields. Search adapter failures remain visible; a failed
   query is not silently treated as an empty result, and `PostCommit` means a
   projection failed after the database mutation became durable.
 * `MockSearchEngine` is deterministic and always available. The optional

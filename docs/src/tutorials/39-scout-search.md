@@ -82,7 +82,9 @@ let results = Article::search("transactional outbox").await.get().await?;
 ```
 
 Generated save/update/delete operations project only after the relational
-commit. Rollback produces no search write. Provider or search errors remain
+commit. The indexed document omits `#[orm(hidden)]`, `#[orm(encrypted)]` and
+`#[orm(masked)]` fields, so the provider never receives their values; documents
+indexed by earlier versions should be reindexed. Rollback produces no search write. Provider or search errors remain
 typed errors; they are not silently converted into an empty result.
 
 The shared adapter boundary enforces:

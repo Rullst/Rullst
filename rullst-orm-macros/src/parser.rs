@@ -34,6 +34,9 @@ pub struct ParsedModel {
     pub hidden_fields: Vec<syn::Ident>,
     /// String fields transparently encrypted by generated persistence methods.
     pub encrypted_fields: Vec<ParsedEncryptedField>,
+    /// Persisted fields tagged `#[orm(masked)]`. Their values are redacted from
+    /// generated audit, event and search projections.
+    pub masked_fields: Vec<syn::Ident>,
     /// Fields tagged with `#[orm(skip)]` or `#[sqlx(skip)]`. They are
     /// still part of the struct but excluded from generated INSERT /
     /// UPDATE statements, the `*Column` enum and JSON serialisation.
@@ -46,6 +49,18 @@ pub struct ParsedModel {
     pub has_soft_deletes: bool,
     pub rag_context_fields: Vec<syn::Ident>,
     pub embedding_for: Option<(syn::Ident, String)>,
+}
+
+impl ParsedModel {
+    /// Whether generated audit, event and search projections must withhold
+    /// this field's value (`#[orm(encrypted)]` or `#[orm(masked)]`).
+    pub fn is_redacted(&self, field: &syn::Ident) -> bool {
+        self.masked_fields.contains(field)
+            || self
+                .encrypted_fields
+                .iter()
+                .any(|encrypted| encrypted.name == *field)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -143,6 +158,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
     let mut normal_fields_types = vec![];
     let mut hidden_fields = vec![];
     let mut encrypted_fields = vec![];
+    let mut masked_fields = vec![];
     let mut skipped_fields = vec![];
     let mut relations = vec![];
     let mut rag_context_fields = vec![];
@@ -248,6 +264,9 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
             attributes::validate_sql_identifier(&field_name_str, "column name", field_span)?;
             normal_fields.push(field_name.clone());
             normal_fields_types.push(field.ty.clone());
+            if field_attributes.is_masked {
+                masked_fields.push(field_name.clone());
+            }
             if field_attributes.is_hidden {
                 hidden_fields.push(field_name);
             }
@@ -432,6 +451,7 @@ pub fn parse(input: &DeriveInput) -> Result<ParsedModel, syn::Error> {
         normal_fields_types,
         hidden_fields,
         encrypted_fields,
+        masked_fields,
         skipped_fields,
         relations,
         has_soft_deletes,

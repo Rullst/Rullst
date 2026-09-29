@@ -1,5 +1,54 @@
+use serde::Serialize;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
+
+/// Marker persisted in place of a value the audit trail must not contain.
+///
+/// Generated model projections emit it for `#[orm(encrypted)]` and
+/// `#[orm(masked)]` fields. Revision restore treats it as non-restorable.
+#[doc(hidden)]
+pub const REDACTED_VALUE: &str = "***";
+
+/// Compares two in-memory values of a redacted field without persisting them.
+///
+/// A value that cannot be serialized is reported as changed so the audit
+/// trail records a redacted change instead of silently omitting it.
+#[doc(hidden)]
+pub fn redacted_value_changed<T: Serialize + ?Sized>(current: &T, previous: &T) -> bool {
+    match (
+        serde_json::to_value(current),
+        serde_json::to_value(previous),
+    ) {
+        (Ok(current), Ok(previous)) => current != previous,
+        _ => true,
+    }
+}
+
+/// Adds `field: "***"` to both diff payloads for each changed redacted field.
+pub(super) fn with_redacted_changes(
+    payloads: (Option<String>, Option<String>),
+    redacted_changes: &[&str],
+) -> (Option<String>, Option<String>) {
+    if redacted_changes.is_empty() {
+        return payloads;
+    }
+    let mark = |payload: Option<String>| {
+        let mut object = match payload.as_deref().map(serde_json::from_str::<Value>) {
+            None => Map::new(),
+            Some(Ok(Value::Object(object))) => object,
+            // A non-object diff is already a bounded sentinel; keep it intact.
+            Some(_) => return payload,
+        };
+        for field in redacted_changes {
+            object.insert(
+                (*field).to_string(),
+                Value::String(REDACTED_VALUE.to_string()),
+            );
+        }
+        serde_json::to_string(&Value::Object(object)).ok()
+    };
+    (mark(payloads.0), mark(payloads.1))
+}
 
 pub(super) fn is_sensitive(key: &str) -> bool {
     let normalized = key.to_ascii_lowercase();
@@ -160,6 +209,22 @@ mod tests {
         assert!(!new_diff.contains("two"));
         assert!(old_diff.contains("***"));
         assert!(new_diff.contains("***"));
+    }
+
+    #[test]
+    fn redacted_changes_are_marked_on_both_sides() {
+        let payloads = with_redacted_changes(
+            compute_diff(r#"{"a":1,"cpf":"***"}"#, r#"{"a":2,"cpf":"***"}"#),
+            &["cpf"],
+        );
+        assert_eq!(payloads.0.as_deref(), Some(r#"{"a":1,"cpf":"***"}"#));
+        assert_eq!(payloads.1.as_deref(), Some(r#"{"a":2,"cpf":"***"}"#));
+
+        let only_redacted = with_redacted_changes(compute_diff("{}", "{}"), &["cpf"]);
+        assert_eq!(only_redacted.0.as_deref(), Some(r#"{"cpf":"***"}"#));
+        assert_eq!(only_redacted.1.as_deref(), Some(r#"{"cpf":"***"}"#));
+        assert!(redacted_value_changed("before", "after"));
+        assert!(!redacted_value_changed("same", "same"));
     }
 
     #[test]

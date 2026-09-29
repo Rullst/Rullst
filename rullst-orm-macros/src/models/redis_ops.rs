@@ -1,4 +1,4 @@
-use crate::parser::ParsedModel;
+use crate::parser::{EncryptedFieldKind, ParsedModel};
 use proc_macro2::TokenStream;
 use quote::quote;
 
@@ -31,13 +31,54 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
 
     for field in normal_fields {
         let field_str = field.to_string();
+        let encrypted_kind = parsed
+            .encrypted_fields
+            .iter()
+            .find(|encrypted| encrypted.name == *field)
+            .map(|encrypted| encrypted.kind);
 
         // Redis hashes store each field as JSON. Serialization failures are
         // returned to the caller instead of silently replacing data with null.
+        // `#[orm(encrypted)]` fields keep the same authenticated envelope as
+        // the SQL column, so Redis never receives their plaintext.
+        let stored_value = match encrypted_kind {
+            Some(EncryptedFieldKind::String) => quote! {
+                rullst_orm::privacy::encrypt_model_field(&self.#field, #table_name, #field_str)?
+            },
+            Some(EncryptedFieldKind::OptionalString) => quote! {
+                match self.#field.as_deref() {
+                    Some(value) => Some(rullst_orm::privacy::encrypt_model_field(
+                        value,
+                        #table_name,
+                        #field_str,
+                    )?),
+                    None => None,
+                }
+            },
+            None => quote! { &self.#field },
+        };
         to_hash_fields.push(quote! {
-            (#field_str, rullst_orm::_serde_json::to_string(&self.#field)?)
+            (#field_str, rullst_orm::_serde_json::to_string(&#stored_value)?)
         });
 
+        let decoded_value = match encrypted_kind {
+            Some(EncryptedFieldKind::String) => quote! {
+                let stored: String = rullst_orm::_serde_json::from_str(serialized)?;
+                rullst_orm::privacy::decrypt_model_field(&stored, #table_name, #field_str)?
+            },
+            Some(EncryptedFieldKind::OptionalString) => quote! {
+                let stored: Option<String> = rullst_orm::_serde_json::from_str(serialized)?;
+                match stored {
+                    Some(value) => Some(rullst_orm::privacy::decrypt_model_field(
+                        &value,
+                        #table_name,
+                        #field_str,
+                    )?),
+                    None => None,
+                }
+            },
+            None => quote! { rullst_orm::_serde_json::from_str(serialized)? },
+        };
         // A missing or malformed cache field means the cached model is corrupt;
         // do not invent a Default value that the model never promised to have.
         from_hash_fields.push(quote! {
@@ -49,24 +90,43 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
                         #field_str,
                     ))
                 })?;
-                rullst_orm::_serde_json::from_str(serialized)?
+                #decoded_value
             }
         });
     }
 
     quote! {
+        /// Serializes each persisted field for a Redis hash.
+        #[cfg(feature = "redis")]
+        fn __rullst_redis_hash_fields(&self) -> Result<Vec<(&'static str, String)>, rullst_orm::Error> {
+            Ok(vec![
+                #(#to_hash_fields),*
+            ])
+        }
+
+        /// Rebuilds a model from a Redis hash written by `save_to_redis`.
+        #[cfg(feature = "redis")]
+        fn __rullst_from_redis_hash(
+            hash: &std::collections::HashMap<String, String>,
+        ) -> Result<Self, rullst_orm::Error>
+        #redis_get_default_bound
+        {
+            Ok(Self {
+                #(#from_hash_fields,)*
+                #(#relation_field_idents: None,)*
+                #skip_tail
+            })
+        }
+
         #[cfg(feature = "redis")]
         pub async fn save_to_redis(&self) -> Result<(), rullst_orm::Error> {
             use rullst_orm::_redis::AsyncCommands;
+            let fields = self.__rullst_redis_hash_fields()?;
             let mut conn = rullst_orm::Orm::redis_manager()?;
 
             // Assuming primary key is 'id' and can be formatted
             // Note: In real scenarios, primary key could be different, but we assume id for now
             let redis_key = format!("orm:{}:{}", #table_name, self.id);
-
-            let fields: Vec<(&str, String)> = vec![
-                #(#to_hash_fields),*
-            ];
 
             let _: () = conn.hset_multiple(&redis_key, &fields).await?;
             Ok(())
@@ -87,13 +147,7 @@ pub fn generate_redis_hash_methods(parsed: &ParsedModel) -> TokenStream {
                 return Ok(None);
             }
 
-            let instance = Self {
-                #(#from_hash_fields,)*
-                #(#relation_field_idents: None,)*
-                #skip_tail
-            };
-
-            Ok(Some(instance))
+            Self::__rullst_from_redis_hash(&hash).map(Some)
         }
 
         #[cfg(feature = "redis")]
@@ -132,5 +186,32 @@ mod tests {
         assert!(!generated.contains("String :: from (\"null\")"));
         assert!(generated.contains("is missing field"));
         assert!(generated.contains("from_str (serialized) ?"));
+    }
+
+    #[test]
+    fn encrypted_fields_are_enveloped_in_redis_hashes() {
+        let input: DeriveInput = parse_quote! {
+            #[orm(table = "patients")]
+            struct Patient {
+                id: i32,
+                #[orm(encrypted)]
+                diagnosis: String,
+                #[orm(encrypted)]
+                note: Option<String>,
+            }
+        };
+        let parsed = crate::parser::parse(&input).expect("test model should parse");
+        let generated = generate_redis_hash_methods(&parsed).to_string();
+
+        assert!(
+            generated.contains(
+                "encrypt_model_field (& self . diagnosis , \"patients\" , \"diagnosis\")"
+            )
+        );
+        assert!(
+            generated.contains("decrypt_model_field (& stored , \"patients\" , \"diagnosis\")")
+        );
+        assert!(generated.contains("decrypt_model_field (& value , \"patients\" , \"note\" ,)"));
+        assert!(!generated.contains("to_string (& & self . diagnosis)"));
     }
 }
