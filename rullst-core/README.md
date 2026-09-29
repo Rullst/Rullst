@@ -99,6 +99,8 @@ endpoint. The limit must be 1–200. `CacheEntryMetadata` deliberately redacts
 the logical key from `Debug` and never carries the cached value, but
 `logical_key()` still returns application data to an authorized caller. Rullst
 Studio converts it into a process-bound opaque token before rendering it.
+`Cache::memory()` stores a TTL too large for the monotonic clock (such as
+`u64::MAX`) as non-expiring instead of panicking.
 
 For orchestrated deployments, construct `ApplicationLifecycle`, mount
 `health_router_with_lifecycle(lifecycle.clone())`, then pass the same value to
