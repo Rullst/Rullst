@@ -77,7 +77,8 @@ Ok(Redirect::temporary(authorization.url()))
 This stores another random value and sends it as `nonce`. The provider adapter
 receives that same expected nonce later and validates it against the signed ID
 token in the adapters whose documented contract includes ID-token validation.
-Apple is not supported by this managed callback; see the next section.
+The query-string `AuthSession` callback does not support Apple; see the next
+section.
 
 ## Sign in with Apple: form POST callback
 
@@ -85,7 +86,7 @@ Apple is not supported by this managed callback; see the next section.
 when the `name` or `email` scope is requested. Apple then returns `code`,
 `state`, `id_token` and, on the first sign-in only, `user` in an
 `application/x-www-form-urlencoded` POST from `appleid.apple.com`. Two parts of
-the managed flow do not fit that request:
+the query-string flow do not fit that request:
 
 - `AuthSession` reads the callback from the query string only, so the POST has
   no state to compare and the extraction fails;
@@ -96,8 +97,8 @@ the managed flow do not fit that request:
 Do not relax the application's authenticated session cookie to
 `SameSite=None` to work around this. Keep the Apple challenge in a dedicated,
 short-lived store reached through its own `SameSite=None; Secure; HttpOnly`
-cookie scoped to the Apple routes, and validate the posted form with the
-framework-neutral primitives:
+cookie scoped to the Apple routes. With a 12.x release, validate the posted form
+with the framework-neutral primitives:
 
 ```rust,ignore
 use rullst_connect::extractors::AuthCallback;
@@ -149,6 +150,52 @@ audience, expiry and nonce. The unsigned `user` JSON is the only place Apple
 sends the user's name; parse it separately if needed and treat it as
 unverified. After a successful callback, rotate or create the application's own
 authenticated session as usual.
+
+### Managed form POST callback
+
+The unpublished v13 development source adds `AuthSessionForm`, the form POST
+counterpart of `AuthSession`. It reads an `application/x-www-form-urlencoded`
+`POST` body of at most 16 KiB, ignores `id_token` and `user`, and consumes the
+same challenge that `begin_oidc_session` stored, with the same expiry,
+constant-time state comparison and single use. A non-`POST` request, another
+content type or an oversized body is rejected before the challenge is touched.
+
+```rust
+use rullst_connect::prelude::*;
+
+async fn apple_callback(
+    callback: AuthSessionForm,
+    apple: &AppleProvider,
+) -> Result<ConnectUser, ConnectError> {
+    apple.get_user(callback.exchange_params()?).await
+}
+```
+
+The cookie requirement does not change: the session that holds the challenge
+must be `SameSite=None; Secure`. Give the Apple start and callback routes their
+own session layer rather than relaxing the application session:
+
+```rust,ignore
+use tower_sessions::{cookie::SameSite, MemoryStore, SessionManagerLayer};
+
+let apple_challenges = SessionManagerLayer::new(MemoryStore::default())
+    .with_name("apple_oauth_challenge")
+    .with_path("/auth/apple")
+    .with_http_only(true)
+    .with_secure(true)
+    .with_same_site(SameSite::None);
+
+let apple_routes = Router::new()
+    .route("/auth/apple/start", get(start_apple)) // begin_oidc_session
+    .route("/auth/apple/callback", post(apple_callback)) // AuthSessionForm
+    .layer(apple_challenges);
+```
+
+An inner session layer replaces the outer `Session` for those routes, so the
+callback cannot also write the application session. Hand the verified identity
+over with an application-owned one-time step, for example a random single-use
+handoff ID that expires within a minute and is redeemed by a same-site route
+under the application session layer.
 
 ## Consume the callback
 
@@ -275,6 +322,8 @@ The managed contract is intentionally small:
 - the challenge is removed and saved before state, nonce or PKCE-dependent
   exchange;
 - missing, mismatched, expired and later sequential callbacks fail closed;
+- the form POST variant accepts only a `POST` with a form body of at most
+  16 KiB and leaves the challenge untouched when it rejects the request shape;
 - provider error text is bounded before it becomes a typed error;
 - callback codes, state, nonce, verifier and authorization URLs are redacted
   from the managed types' `Debug` output.

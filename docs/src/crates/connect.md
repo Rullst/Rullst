@@ -274,9 +274,14 @@ Sign in with Apple is different: `AppleProvider` always requests
 cross-site POST body. `AuthSession` reads only the query string, and a
 `SameSite=Lax` or `Strict` session cookie is not sent on that POST, so the
 managed `begin_oidc_session` + `AuthSession` flow cannot complete an Apple
-login. Use the manual state/PKCE/nonce flow with a dedicated
-`SameSite=None; Secure; HttpOnly` challenge cookie, as described in
+login with a 12.x release. Use the manual state/PKCE/nonce flow with a
+dedicated `SameSite=None; Secure; HttpOnly` challenge cookie, as described in
 [Sign in with Apple: form POST callback](../tutorials/42-server-bound-oauth-sessions.md#sign-in-with-apple-form-post-callback).
+
+The unpublished v13 development source adds `AuthSessionForm`, which consumes
+the `begin_oidc_session` challenge from the form POST body (at most 16 KiB).
+The session cookie that holds that challenge must still be
+`SameSite=None; Secure`, so give the Apple routes their own session layer.
 
 ### 3. Consume the Callback and Get the User
 

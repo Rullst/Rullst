@@ -11,8 +11,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 ///
 /// Authorization URLs request `response_mode=form_post`, so Apple returns the callback as a
 /// cross-site `application/x-www-form-urlencoded` POST. The query-string `AuthSession` flow
-/// does not handle it; the challenge must be reachable through a `SameSite=None; Secure` cookie
-/// and the host validates the posted form.
+/// does not handle it; use the `AuthSessionForm` extractor (feature `axum-session`) or validate
+/// the posted form yourself. Either way the challenge must be reachable through a
+/// `SameSite=None; Secure` cookie.
 pub struct AppleProvider {
     pub(crate) client_id: String,
     pub(crate) team_id: String,

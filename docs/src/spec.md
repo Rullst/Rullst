@@ -1182,7 +1182,10 @@ fixtures rather than real authorization requests. The managed `AuthSession`
 extractor reads only the callback query string, so it does not complete Apple's
 cross-site POST callback; an Apple host keeps its state, PKCE verifier and
 nonce behind a `SameSite=None; Secure` challenge cookie and validates the
-posted form itself. Application configuration,
+posted form itself. The unpublished v13 `AuthSessionForm` extractor consumes the
+same managed challenge from a `POST` `application/x-www-form-urlencoded` body of
+at most 16 KiB, rejecting another method, content type or oversized body before
+touching the challenge; the `SameSite=None; Secure` cookie requirement remains. Application configuration,
 nonce/callback validation and provider-account interoperability remain separate.
 The generic `build_oauth_params` helper and exported redirect macro remain
 response-type-neutral for downstream custom providers. Callers own optional

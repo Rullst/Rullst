@@ -11,6 +11,9 @@ use std::fmt;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tower_sessions::Session;
 
+mod form;
+pub use form::AuthSessionForm;
+
 const CHALLENGE_KEY: &str = "rullst_oauth_challenge_v1";
 const LEGACY_STATE_KEY: &str = "oauth_state";
 const CHALLENGE_TTL: Duration = Duration::from_secs(10 * 60);
@@ -77,8 +80,8 @@ where
 /// The returned URL includes the nonce. The callback extractor later exposes that exact nonce
 /// through [`AuthSession::exchange_params`] for cryptographic ID-token validation.
 ///
-/// [`AuthSession`] reads the callback from the query string. It cannot complete a provider that
-/// posts the callback with `response_mode=form_post`, such as Sign in with Apple.
+/// [`AuthSession`] reads the callback from the query string. For a provider that posts the
+/// callback with `response_mode=form_post`, such as Sign in with Apple, use [`AuthSessionForm`].
 pub async fn begin_oidc_session<P>(
     session: &Session,
     provider: &P,
@@ -138,8 +141,9 @@ where
 /// Validated callback plus the consumed OIDC nonce and PKCE verifier, when present.
 ///
 /// The callback is read from the query string only. A `response_mode=form_post` callback, such
-/// as Sign in with Apple, carries its parameters in a cross-site POST body that this extractor
-/// does not read, and a `SameSite=Lax` or `Strict` session cookie is not sent with that POST.
+/// as Sign in with Apple, carries its parameters in a cross-site POST body; use
+/// [`AuthSessionForm`] for it. A `SameSite=Lax` or `Strict` session cookie is not sent with that
+/// POST.
 #[derive(Clone)]
 pub struct AuthSession {
     /// Real callback parameters parsed from the query string.
@@ -199,68 +203,83 @@ where
         parts: &mut axum::http::request::Parts,
         state: &S,
     ) -> Result<Self, Self::Rejection> {
-        let session = parts
-            .extensions
-            .get::<Session>()
-            .cloned()
-            .ok_or_else(|| internal_response("Missing tower-sessions extension"))?;
+        let session = request_session(parts).map_err(IntoResponse::into_response)?;
         let axum::extract::Query(callback) =
             axum::extract::Query::<AuthCallback>::from_request_parts(parts, state)
                 .await
                 .map_err(IntoResponse::into_response)?;
-
-        let challenge = session
-            .remove::<StoredChallenge>(CHALLENGE_KEY)
+        consume_challenge(&session, callback)
             .await
-            .map_err(|_| internal_response("OAuth session challenge is unavailable"))?;
-        if let Some(challenge) = challenge {
-            session
-                .save()
-                .await
-                .map_err(|_| internal_response("OAuth challenge consumption could not be saved"))?;
-            let callback_state = callback
-                .state
-                .as_deref()
-                .ok_or_else(|| bad_request("Missing CSRF state parameter"))?;
-            validate_challenge(callback_state, &challenge)
-                .map_err(|(status, message)| (status, message).into_response())?;
-            return Ok(Self {
-                callback,
-                expected_nonce: challenge.nonce,
-                code_verifier: Some(challenge.code_verifier),
-            });
-        }
+            .map_err(IntoResponse::into_response)
+    }
+}
 
-        let legacy_state = session
-            .remove::<String>(LEGACY_STATE_KEY)
-            .await
-            .map_err(|_| internal_response("Legacy OAuth session state is unavailable"))?;
-        let Some(legacy_state) = legacy_state else {
-            return Err(bad_request("CSRF state mismatch"));
-        };
+/// A callback rejection: an HTTP status and a fixed, credential-free message.
+type CallbackRejection = (axum::http::StatusCode, &'static str);
+
+fn request_session(parts: &axum::http::request::Parts) -> Result<Session, CallbackRejection> {
+    parts
+        .extensions
+        .get::<Session>()
+        .cloned()
+        .ok_or(internal_error("Missing tower-sessions extension"))
+}
+
+/// Removes and saves the stored challenge, then validates the parsed callback against it.
+async fn consume_challenge(
+    session: &Session,
+    callback: AuthCallback,
+) -> Result<AuthSession, CallbackRejection> {
+    let challenge = session
+        .remove::<StoredChallenge>(CHALLENGE_KEY)
+        .await
+        .map_err(|_| internal_error("OAuth session challenge is unavailable"))?;
+    if let Some(challenge) = challenge {
         session
             .save()
             .await
-            .map_err(|_| internal_response("Legacy OAuth state consumption could not be saved"))?;
-        callback
+            .map_err(|_| internal_error("OAuth challenge consumption could not be saved"))?;
+        let callback_state = callback
             .state
             .as_deref()
-            .ok_or_else(|| bad_request("Missing CSRF state parameter"))?;
-        callback
-            .verify_state(&legacy_state)
-            .map_err(|_| bad_request("CSRF state mismatch"))?;
-        Ok(Self {
+            .ok_or(invalid_callback("Missing CSRF state parameter"))?;
+        validate_challenge(callback_state, &challenge)?;
+        return Ok(AuthSession {
             callback,
-            expected_nonce: None,
-            code_verifier: None,
-        })
+            expected_nonce: challenge.nonce,
+            code_verifier: Some(challenge.code_verifier),
+        });
     }
+
+    let legacy_state = session
+        .remove::<String>(LEGACY_STATE_KEY)
+        .await
+        .map_err(|_| internal_error("Legacy OAuth session state is unavailable"))?;
+    let Some(legacy_state) = legacy_state else {
+        return Err(invalid_callback("CSRF state mismatch"));
+    };
+    session
+        .save()
+        .await
+        .map_err(|_| internal_error("Legacy OAuth state consumption could not be saved"))?;
+    callback
+        .state
+        .as_deref()
+        .ok_or(invalid_callback("Missing CSRF state parameter"))?;
+    callback
+        .verify_state(&legacy_state)
+        .map_err(|_| invalid_callback("CSRF state mismatch"))?;
+    Ok(AuthSession {
+        callback,
+        expected_nonce: None,
+        code_verifier: None,
+    })
 }
 
 fn validate_challenge(
     callback_state: &str,
     challenge: &StoredChallenge,
-) -> Result<(), (axum::http::StatusCode, &'static str)> {
+) -> Result<(), CallbackRejection> {
     let now = unix_seconds(SystemTime::now()).map_err(|_| {
         (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -332,12 +351,12 @@ fn bounded_error(error: &str) -> String {
     error.chars().take(128).collect()
 }
 
-fn bad_request(message: &'static str) -> Response {
-    (axum::http::StatusCode::BAD_REQUEST, message).into_response()
+fn invalid_callback(message: &'static str) -> CallbackRejection {
+    (axum::http::StatusCode::BAD_REQUEST, message)
 }
 
-fn internal_response(message: &'static str) -> Response {
-    (axum::http::StatusCode::INTERNAL_SERVER_ERROR, message).into_response()
+fn internal_error(message: &'static str) -> CallbackRejection {
+    (axum::http::StatusCode::INTERNAL_SERVER_ERROR, message)
 }
 
 #[cfg(test)]

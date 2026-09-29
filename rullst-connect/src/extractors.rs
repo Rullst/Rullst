@@ -3,7 +3,9 @@ use serde::Deserialize;
 #[cfg(feature = "axum-session")]
 mod session;
 #[cfg(feature = "axum-session")]
-pub use session::{AuthSession, OAuthAuthorization, begin_oauth_session, begin_oidc_session};
+pub use session::{
+    AuthSession, AuthSessionForm, OAuthAuthorization, begin_oauth_session, begin_oidc_session,
+};
 
 /// Standard OAuth2 callback query parameters.
 ///

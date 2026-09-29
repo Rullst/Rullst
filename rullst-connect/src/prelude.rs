@@ -25,7 +25,7 @@ pub use crate::extractors::AuthCallback;
 
 #[cfg(feature = "axum-session")]
 pub use crate::extractors::{
-    AuthSession, OAuthAuthorization, begin_oauth_session, begin_oidc_session,
+    AuthSession, AuthSessionForm, OAuthAuthorization, begin_oauth_session, begin_oidc_session,
 };
 
 #[cfg(test)]
@@ -47,5 +47,7 @@ mod tests {
 
         #[cfg(feature = "axum-session")]
         let _authorization: Option<OAuthAuthorization> = None;
+        #[cfg(feature = "axum-session")]
+        let _form_callback: Option<AuthSessionForm> = None;
     }
 }
