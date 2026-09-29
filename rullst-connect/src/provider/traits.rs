@@ -85,7 +85,9 @@ pub trait Provider: Send + Sync {
     /// with an ID token whose signature, issuer, audience (this `client_id`),
     /// expiry and nonce are verified for this client. Use this method only for
     /// a token that this server obtained for this client, for example to
-    /// reload profile data.
+    /// reload profile data. For a client-supplied ID token, use
+    /// [`crate::providers::GoogleProvider::verify_id_token`] or
+    /// [`crate::providers::OidcProvider::verify_id_token`].
     ///
     /// Apple expects an ID token here and validates its signature, issuer,
     /// audience and expiry, but no nonce, so a captured Apple ID token issued

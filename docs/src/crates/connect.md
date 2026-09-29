@@ -117,6 +117,31 @@ adapter treats its argument as an ID token and checks signature, issuer,
 audience and expiry but no nonce, so a captured Apple ID token for your client
 can be replayed until it expires.
 
+The unpublished v13 development source adds that audience-bound entry point for
+Google and `OidcProvider`: `verify_id_token(id_token, expected_nonce)` verifies
+the signature through the provider's rotating JWKS and requires the exact
+issuer, `aud` equal to your `client_id` (and a matching `azp` when present),
+valid `exp`/`iat` and the nonce your server issued for that sign-in attempt. It
+never calls userinfo. The returned `ConnectUser` carries the verified ID token
+in `access_token`; there is no provider access or refresh token in this flow.
+
+```rust,no_run
+use rullst_connect::prelude::{ConnectError, ConnectUser, GoogleProvider};
+
+async fn sign_in_native_google_user(
+    google: &GoogleProvider,
+    id_token: &str,
+    nonce_issued_for_this_attempt: &str,
+) -> Result<ConnectUser, ConnectError> {
+    google
+        .verify_id_token(id_token, nonce_issued_for_this_attempt)
+        .await
+}
+```
+
+Generate the nonce on your server, give it to the client for the provider
+sign-in request, and consume it once, just like an OAuth `state`.
+
 Remote token revocation is deliberately narrower than login support. Use
 `Provider::revoke_token` for an access token and
 `Provider::revoke_refresh_token` for a refresh token; Auth0/Cognito accept only

@@ -309,7 +309,8 @@ Before release, test the exact deployed provider and browser path:
    identity to an existing local account.
    Native or mobile clients do not sign in by sending a provider access token
    to `get_user_from_token`: a userinfo response does not prove the token was
-   issued to this application's `client_id`.
+   issued to this application's `client_id`. Verify their ID token with
+   `verify_id_token` (Google, `OidcProvider`) and a server-issued nonce.
 6. Denial, timeout, provider outage and abandoned-login recovery have bounded
    user-visible behavior without logging credentials.
 
