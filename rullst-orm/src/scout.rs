@@ -45,6 +45,26 @@ pub(crate) fn validate_query(value: &str) -> Result<(), crate::Error> {
     Ok(())
 }
 
+/// Builds the pattern bound to `LIKE ? ESCAPE '!'` by the generated SQL
+/// search fallback.
+///
+/// The query has the same bounds as provider queries, and `%`, `_` and the
+/// escape character itself match literally instead of acting as wildcards.
+#[doc(hidden)]
+pub fn sql_contains_pattern(query: &str) -> Result<String, crate::Error> {
+    validate_query(query)?;
+    let mut pattern = String::with_capacity(query.len().saturating_add(2));
+    pattern.push('%');
+    for character in query.chars() {
+        if matches!(character, '!' | '%' | '_') {
+            pattern.push('!');
+        }
+        pattern.push(character);
+    }
+    pattern.push('%');
+    Ok(pattern)
+}
+
 pub(crate) fn document_with_id(id: i32, mut payload: Value) -> Result<Value, crate::Error> {
     if id <= 0 {
         return Err(crate::Error::Validation(
@@ -86,6 +106,14 @@ pub fn get_search_engine() -> Option<&'static dyn SearchEngine> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sql_search_pattern_escapes_wildcards_and_is_bounded() {
+        assert_eq!(sql_contains_pattern("ana").unwrap(), "%ana%");
+        assert_eq!(sql_contains_pattern("50%_off!").unwrap(), "%50!%!_off!!%");
+        assert!(sql_contains_pattern(&"a".repeat(MAX_SEARCH_QUERY_BYTES + 1)).is_err());
+        assert!(sql_contains_pattern("line\nbreak").is_err());
+    }
 
     #[test]
     fn test_get_search_engine_none_before_set() {

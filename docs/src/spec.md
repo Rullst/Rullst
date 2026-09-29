@@ -725,6 +725,12 @@ while portability and semantic review remain the model author's responsibility.
 
 ### 5.9. Scout Search Projection Contract
 
+* Without a configured engine, `Model::search(query)` falls back to
+  `CAST(column AS TEXT) LIKE ? ESCAPE '!'` over the persisted columns except
+  `#[orm(hidden)]`, `#[orm(encrypted)]`, `#[orm(masked)]` and `SecretString`
+  ones, so it cannot become a substring oracle for them. `%`, `_` and `!` in
+  the query match literally, and the query uses the provider bounds (1,024
+  bytes, no control characters).
 * `#[orm(searchable)]` projects generated save/delete operations only after a
   managed relational commit. The indexed document omits `#[orm(hidden)]`,
   `#[orm(encrypted)]` and `#[orm(masked)]` fields. Search adapter failures remain visible; a failed

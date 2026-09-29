@@ -81,6 +81,11 @@ let results = Article::search("transactional outbox").await.get().await?;
 # }
 ```
 
+Without a configured engine, `Article::search(...)` falls back to a SQL
+`LIKE` over the model's persisted columns, excluding `#[orm(hidden)]`,
+`#[orm(encrypted)]`, `#[orm(masked)]` and `SecretString` fields. `%` and `_`
+in the query match literally rather than as wildcards.
+
 Generated save/update/delete operations project only after the relational
 commit. The indexed document omits `#[orm(hidden)]`, `#[orm(encrypted)]` and
 `#[orm(masked)]` fields, so the provider never receives their values; documents
