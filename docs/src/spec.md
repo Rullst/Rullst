@@ -1365,6 +1365,19 @@ the same server-authoritative controls.
   retention policy remain host responsibilities. Redis/custom drivers expose
   inspection or history only when their capability implements it.
 
+### Local object replacement
+
+`LocalDriver::put`, and `Storage::local`/`TenantStorage` over it, never
+truncates an existing object. It writes a uniquely named temporary file in the
+validated destination directory (`create_new`), flushes it with `sync_all` and
+renames it over the destination. A failure removes the temporary file and
+leaves the previous version. Readers and concurrent writers observe exactly one
+complete version; the last rename wins. The replacement is a new file with
+default permissions, so permissions or hard links of the previous file are not
+carried over. The directory is not fsynced, so a power loss can roll a
+completed put back to the previous version. On Windows a replacement fails
+while another process holds the object open without delete sharing.
+
 ---
 
 ### 4.4. Private S3-compatible storage (v13, source admitted)
