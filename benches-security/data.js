@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790721209765,
+  "lastUpdate": 1790725397702,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -12134,6 +12134,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 27,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "722de4d0f0e12409eb91f8d8d2532e4c8bc7510f",
+          "message": "Merge pull request #330 from Rullst/fix/v13-core-state-fixes\n\nfix(core): bound live messages, keep queue claims, release idle channels, reuse Redis connections",
+          "timestamp": "2026-09-29T20:22:40-03:00",
+          "tree_id": "f1ffc193283c5c37d81bcac7f299f4f231558b5e",
+          "url": "https://github.com/Rullst/Rullst/commit/722de4d0f0e12409eb91f8d8d2532e4c8bc7510f"
+        },
+        "date": 1790725396538,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 3777,
+            "range": "± 122",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 545,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 7,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 4,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 23,
             "range": "± 0",
             "unit": "ns/iter"
           }
