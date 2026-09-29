@@ -31,6 +31,12 @@
 - **Explicit Completion History:** SQLite deletes successful payloads by
   default. `Queue::sqlite_with_completed_history` opts into a bounded retained
   history for Studio/operations, with atomic pruning and an explicit purge API.
+- **Atomic Local Writes:** `Storage::local`/`LocalDriver::put` writes a unique
+  temporary file beside the object, flushes it and renames it over the key.
+  Readers and concurrent writers see one complete version, and a failed write
+  leaves the previous object intact. Each put creates a new file with default
+  permissions; the directory is not fsynced, so a power loss can roll a
+  completed put back to the previous version.
 - **Metadata-only Cache Inspection:** Memory and Redis drivers can return a
   sorted snapshot of at most 200 logical keys, UTF-8 value lengths and TTLs
   without returning values. Custom drivers fail explicitly unless they opt in;
