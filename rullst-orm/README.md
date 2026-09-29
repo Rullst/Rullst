@@ -57,7 +57,9 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
 - **Eager Loading**: Batch supported `has_many`, `belongs_to`, `morph_many`,
   `morph_one`, and typed `morph_to` targets. Inverse polymorphic fields use an
   explicit target per relation and a persisted `<morph_name>_id` plus
-  `<morph_name>_type` discriminator.
+  `<morph_name>_type` discriminator. A batch whose related rows exceed the
+  global query cap fails with a `Validation` error instead of silently
+  returning partial relations.
 - **Fail-Closed Tenant Scopes**: Models declaring `tenant_column` require
   `with_tenant`, inject the tenant predicate into generated queries, protect
   instance mutations, and reserve explicit `unscoped()` for reviewed global
@@ -205,6 +207,13 @@ Generated builders start with a global row cap (`Orm::set_max_query_limit`,
 per_page)` clamps `per_page` to the same cap, because the value often comes
 from request input; `PaginationResult::per_page` and `last_page` report the
 effective page size.
+
+Eager loading runs one related-model query for all parents of a batch and
+never assigns relations from a result truncated by that cap: when the related
+rows exceed it, `get()` fails with a `Validation` error naming the relation.
+Load fewer parents per query, raise the cap, or choose explicitly with
+`with_<relation>_constrained(...)`: an explicit smaller `limit(n)` there applies
+to the whole batch, and `unsafe_unlimited()` loads every related row.
 
 Prefer `Orm::transaction` with ordinary model/query methods when combining
 eager relationships or `after_fetch` hooks with transactional reads. Fetches

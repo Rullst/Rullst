@@ -153,6 +153,10 @@ pub use value::RullstValue;
 #[path = "transaction_access.rs"]
 pub mod __transaction_access;
 
+#[doc(hidden)]
+#[path = "eager_limit.rs"]
+pub mod __eager_limit;
+
 tokio::task_local! {
     pub static CURRENT_TX: std::sync::Arc<tokio::sync::Mutex<Option<crate::db::Transaction<'static>>>>;
 }

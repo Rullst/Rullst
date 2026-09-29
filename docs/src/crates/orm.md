@@ -210,6 +210,13 @@ per_page)` clamps `per_page` to the same cap, because the value often comes
 from request input; `PaginationResult::per_page` and `last_page` report the
 effective page size.
 
+Eager loading runs one related-model query for all parents of a batch and
+never assigns relations from a result truncated by that cap: when the related
+rows exceed it, `get()` fails with a `Validation` error naming the relation.
+Load fewer parents per query, raise the cap, or choose explicitly with
+`with_<relation>_constrained(...)`: an explicit smaller `limit(n)` there applies
+to the whole batch, and `unsafe_unlimited()` loads every related row.
+
 ### Native database enums
 
 Generated applications should select a strict primary feature. PostgreSQL
