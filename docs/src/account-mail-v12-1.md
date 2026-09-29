@@ -38,6 +38,10 @@ umbrella defaults when a backend-exclusive dependency graph is required.
    deterministic fallback. Existing accounts require an application migration;
    there is no automatic import of arbitrary password tables.
 4. Use `authenticate`, `create_session` and `verify_session` for this registry.
+   Passwords contain at least 12 characters and at most 72 bytes, the Argon2
+   input limit. Registration, reset and `authenticate` reject longer input with
+   `InvalidInput` before any account lookup, so the outcome does not reveal
+   whether an email is registered; unknown accounts still perform Argon2 work.
    Verify the opaque session on every authenticated request. Set it in a Secure,
    HttpOnly, appropriately SameSite cookie. Use `revoke_session` for logout.
    Legacy encrypted-only session cookies do **not** gain revocation implicitly.

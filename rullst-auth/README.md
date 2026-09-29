@@ -23,7 +23,10 @@ async fn verify_login(password: String) -> Result<bool, AuthError> {
 ```
 
 Passwords longer than 72 bytes are rejected. `needs_rehash` compares the algorithm, version,
-memory, iteration, and parallelism parameters.
+memory, iteration, and parallelism parameters. The optional `SqlRecoveryStore` applies
+the same 72-byte bound to registration, password reset and `authenticate`; overlong input
+returns `RecoveryError::InvalidInput` before any account lookup, for registered and
+unknown emails alike.
 
 ## Encrypted sessions
 

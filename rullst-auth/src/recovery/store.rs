@@ -172,6 +172,8 @@ impl SqlRecoveryStore {
     }
 
     /// Checks the authoritative password. Hosts must independently throttle login.
+    /// Passwords above the 72-byte Argon2 input limit fail with `InvalidInput`
+    /// before the account lookup, so the result never depends on registration.
     pub async fn authenticate(
         &self,
         email: impl Into<String>,
@@ -179,16 +181,16 @@ impl SqlRecoveryStore {
     ) -> Result<Option<AuthenticatedRecoveryAccount>, RecoveryError> {
         let email = normalized_email(&email.into())?;
         let password = password.into();
-        if password.len() > 1024 {
+        if password.len() > crate::auth::MAX_PASSWORD_BYTES {
             return Err(RecoveryError::InvalidInput);
         }
         let row = sqlx::query("SELECT subject, password_hash, session_version FROM rullst_recovery_accounts WHERE email_key = $1")
             .bind(self.keys.digest("email", &email)).fetch_optional(&self.pool).await?;
         let Some(row) = row else {
-            // Match the current Argon2 work factor without a fast unknown-account branch.
-            let _dummy = crate::hash_password_async(password)
-                .await
-                .map_err(|_| RecoveryError::Crypto)?;
+            // Match the current Argon2 work factor without a fast unknown-account
+            // branch. Its outcome is ignored: a known account's failed verification
+            // also yields `Ok(None)`, never a distinct error.
+            let _ = crate::hash_password_async(password).await;
             return Ok(None);
         };
         let hash: String = row.try_get("password_hash")?;
@@ -244,8 +246,9 @@ impl SqlRecoveryStore {
     }
 }
 
+/// Registration and reset share the Argon2 helper's 72-byte input limit.
 pub(super) async fn password_hash(password: String) -> Result<String, RecoveryError> {
-    if password.chars().count() < 12 || password.len() > 1024 {
+    if password.chars().count() < 12 || password.len() > crate::auth::MAX_PASSWORD_BYTES {
         return Err(RecoveryError::InvalidInput);
     }
     crate::hash_password_async(password)
