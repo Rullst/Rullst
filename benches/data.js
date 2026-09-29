@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790682348522,
+  "lastUpdate": 1790683194082,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -20991,6 +20991,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2293,
             "range": "± 40",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c2125a1eeb448752b7722dd587665d3c4060bb17",
+          "message": "Merge pull request #288 from Rullst/fix/v13-fuzz-reviewed-context\n\nfix(ci): preserve reviewed fuzz evidence across development publication docs",
+          "timestamp": "2026-09-29T08:53:16-03:00",
+          "tree_id": "d31f1ecfaa4ec95a08c2e5f28ca493c445dd4e86",
+          "url": "https://github.com/Rullst/Rullst/commit/c2125a1eeb448752b7722dd587665d3c4060bb17"
+        },
+        "date": 1790683191271,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 759,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1002,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 652,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2322,
+            "range": "± 52",
             "unit": "ns/iter"
           }
         ]
