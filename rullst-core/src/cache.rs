@@ -157,9 +157,13 @@ impl MemoryDriver {
         Some(Arc::clone(&entry.value))
     }
 
+    /// Stores a value. A TTL too large for the monotonic clock to represent
+    /// (for example `u64::MAX`) is treated as "never expires" instead of
+    /// overflowing `Instant`.
     fn put_sync(&self, key: &str, value: &str, ttl_secs: Option<u64>) {
         self.cleanup_if_due();
-        let expires_at = ttl_secs.map(|secs| Instant::now() + std::time::Duration::from_secs(secs));
+        let expires_at = ttl_secs
+            .and_then(|secs| Instant::now().checked_add(std::time::Duration::from_secs(secs)));
         self.store.insert(
             key.to_string(),
             CacheEntry {
@@ -308,7 +312,9 @@ impl Cache {
 
     /// Store a value with an optional TTL in seconds.
     ///
-    /// Pass `None` for TTL to store indefinitely.
+    /// Pass `None` for TTL to store indefinitely. The in-memory driver also
+    /// stores a TTL too large for the monotonic clock (such as `u64::MAX`)
+    /// without expiry.
     pub async fn put(
         &self,
         key: &str,

@@ -7,7 +7,9 @@ silently fall back when Redis is unavailable.
 ## Cache choices
 
 `Cache::memory()` uses a process-local `DashMap`. Values disappear on restart
-and are not shared between replicas:
+and are not shared between replicas. A TTL too large for the monotonic clock
+to represent, such as `u64::MAX`, is stored as "never expires" instead of
+panicking:
 
 ```rust
 use rullst_core::cache::{Cache, CacheError};

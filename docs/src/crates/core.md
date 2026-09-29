@@ -26,6 +26,8 @@ bounded method. The live Redis CI/release contract checks metadata, TTL and
 non-disclosure; it does not prove cluster/failover or operator authorization.
 The Redis cache and queue drivers each keep one lazily opened multiplexed
 connection for all operations and replace it after a connection-level failure.
+The memory cache stores a TTL too large for the monotonic clock (such as
+`u64::MAX`) as non-expiring instead of panicking.
 
 SQLite deletes successful jobs by default. Applications that need a real
 Studio/operations history can opt in with

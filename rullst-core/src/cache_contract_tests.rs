@@ -26,6 +26,33 @@ async fn zero_ttl_and_periodic_cleanup_reclaim_expired_entries() {
     assert!(driver.store.is_empty());
 }
 
+#[tokio::test]
+async fn unrepresentable_ttl_never_expires_instead_of_panicking() {
+    let driver = MemoryDriver::default();
+    driver
+        .put("forever", "value", Some(u64::MAX))
+        .await
+        .expect("an overflowing TTL must not panic");
+    assert_eq!(
+        driver.get("forever").await.expect("memory get").as_deref(),
+        Some(&"value".to_string())
+    );
+    let entry = driver.store.get("forever").expect("stored entry");
+    assert!(entry.expires_at.is_none());
+    drop(entry);
+
+    let inspection = driver.inspect(10).await.expect("memory inspection");
+    assert_eq!(inspection.entries()[0].remaining_ttl_ms(), None);
+
+    let cache = Cache::memory();
+    let remembered = cache
+        .remember("settings", u64::MAX, || async { Ok("loaded".to_string()) })
+        .await
+        .expect("remember with an unbounded TTL");
+    assert_eq!(remembered.as_str(), "loaded");
+    assert!(cache.has("settings").await.expect("memory has"));
+}
+
 struct RejectingDriver {
     miss_before_put: bool,
 }
