@@ -32,9 +32,12 @@ campaigns are retained. `v13` remains transitional while that admission runs.
 
 The default-branch Dependabot configuration targets Cargo and Actions on both
 `main` and `v12`. Minor/patch Cargo changes share a PR; Actions share one tools
-PR per line. Updates still require compatibility/MSRV and protected CI; group
-membership is not approval. Old Dependabot PRs are closed only after equivalent
-updates have actually entered their destination source line.
+PR per line. On `v12`, Dependabot ignores SemVer-major Cargo updates (including
+Cargo's breaking `0.x` minors) and the held `aws-smithy-types` constraint:
+majors are evaluated on `main` first. Updates still require compatibility/MSRV
+and protected CI; group membership is not approval. Old Dependabot PRs are
+closed after equivalent updates have entered their destination source line, or
+with a comment when that line's policy excludes them.
 
 ## Mainline execution model
 
@@ -605,7 +608,7 @@ dependency graph make static estimates unreliable.
 | :--- | :--- | :--- | :--- |
 | [`ai-sentinel-pr.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ai-sentinel-pr.yml) | pull requests | Automated evidence | Generates bounded CLI audit, compliance report, and CycloneDX SBOM artifacts; no certification claim. |
 | [`architecture.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/architecture.yml) | main/v12/v13 push and PR, manual | Blocking | Compares Cargo's publishable non-dev internal dependency graph with the reviewed `crate-architecture-policy.json`; unreviewed normal/build edges, removals, or optionality changes fail, while test-only dev-dependencies do not masquerade as production coupling. |
-| [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | main/v12/v13 push and PR, daily, manual | Blocking | Cargo Audit over the production lock and all eleven fuzz-package locks with one advisory-database fetch. The v12 candidate applies no advisory exceptions; future exceptions must pass the separate owner/expiry governance check. |
+| [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | main/v12/v13 push and PR, daily, manual | Blocking | Cargo Audit over the production lock and all eleven fuzz-package locks with one advisory-database fetch. Scheduled and manual runs add a job that audits the protected `v12` locks, because scheduled workflows only check out the default branch. The v12 candidate applies no advisory exceptions; future exceptions must pass the separate owner/expiry governance check. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
 | [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) | main/v12/v13 push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
 | [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, eight-shard multi-OS tests including Cargo-aware doctests sourced from all 52 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |

@@ -24,6 +24,15 @@ updates:
           - "major"
           - "minor"
           - "patch"
+      # utoipa-swagger-ui requires the matching utoipa major; update them together.
+      utoipa-family:
+        patterns:
+          - "utoipa"
+          - "utoipa-*"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
       safe-updates:
         update-types:
           - "minor"
@@ -56,6 +65,13 @@ updates:
     labels:
       - "dependencies"
       - "rust"
+    # v12 takes compatible maintenance only; majors are evaluated on main first.
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+      # Held for Smithy JSON 0.63 compatibility; see rullst-mail/Cargo.toml.
+      - dependency-name: "aws-smithy-types"
     groups:
       opentelemetry-family:
         patterns:

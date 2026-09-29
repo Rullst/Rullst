@@ -195,10 +195,12 @@ git pull --ff-only origin main
 git switch -c feat/<short-topic>
 ```
 
-Carry applicable v12 fixes forward through reviewed changes. Evaluate
-Dependabot updates individually: a dependency's major version does not by
-itself prove that Rullst's public API must break. Compatible fixes may ship in
-`12.x`; changes that break Rullst's compatibility contract belong to v13.
+Carry applicable v12 fixes forward through reviewed changes. Dependabot
+proposes SemVer-major dependency updates only for `main`; evaluate them there
+first. A dependency's major version does not by itself prove that Rullst's
+public API must break, so a compatible major may still be backported to `12.x`
+deliberately (for example, to resolve an advisory). Changes that break Rullst's
+compatibility contract belong to v13.
 Keep the v12 release gates active while v13's own CI policy evolves.
 
 Version 12.1.0 is published. Carry its compatible
