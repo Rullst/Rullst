@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790705311231,
+  "lastUpdate": 1790710021035,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -7875,6 +7875,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 557,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "52d1ca6112f79a3b57f9caa1c448e9b97e81bc86",
+          "message": "Merge pull request #323 from Rullst/fix/v13-connect-review-fixes\n\nfix(connect): close the rullst-connect review findings",
+          "timestamp": "2026-09-29T16:07:59-03:00",
+          "tree_id": "fc84ada000fb87f5d296c2332d35d7011beb6d39",
+          "url": "https://github.com/Rullst/Rullst/commit/52d1ca6112f79a3b57f9caa1c448e9b97e81bc86"
+        },
+        "date": 1790710020299,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 428,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
