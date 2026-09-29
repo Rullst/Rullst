@@ -44,9 +44,12 @@ pub fn generate_cache_write(name: &syn::Ident) -> TokenStream {
             let ttl = u64::try_from(ttl).map_err(|_| rullst_orm::Error::Validation(
                 "remember() TTL exceeds the Redis-supported range".to_string()
             ))?;
-            let serialized = #name::to_cache_json_array(&results);
-            let mut conn = rullst_orm::Orm::redis_manager()?;
-            let _: Result<(), rullst_orm::_redis::RedisError> = conn.set_ex(cache_key, serialized, ttl).await;
+            // A model that cannot be serialized safely (for example a
+            // `SecretString` without a configured key) is not cached.
+            if let Ok(serialized) = #name::__rullst_try_cache_json_array(&results) {
+                let mut conn = rullst_orm::Orm::redis_manager()?;
+                let _: Result<(), rullst_orm::_redis::RedisError> = conn.set_ex(cache_key, serialized, ttl).await;
+            }
         }
     }
 }

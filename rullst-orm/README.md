@@ -86,7 +86,9 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   `#[orm(encrypted)]` and `#[orm(masked)]` values appear as `"***"` in generated
   `to_json()`, audit rows and committed events (including Redis
   `orm:events:*`), are omitted from Scout documents, and remain encrypted in
-  `save_to_redis` hashes.
+  `save_to_redis` hashes. `SecretString` fields get the same treatment, and
+  `SecretString` itself serializes as an encrypted `RULLST:v2` envelope (never
+  plaintext), which the query cache stores and decrypts on a hit.
 - **Scout Search Providers**: `scout-http` adds bounded Meilisearch,
   Elasticsearch and Algolia update/delete/search adapters with deterministic
   offline fallbacks. Generated projections run after commit; guaranteed crash

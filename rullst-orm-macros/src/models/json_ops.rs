@@ -41,9 +41,11 @@ pub fn generate_json_methods(parsed: &ParsedModel) -> TokenStream {
         quote! {
             /// Search-provider document without hidden, encrypted or masked fields.
             fn __rullst_search_json(&self) -> String {
-                let mut map = rullst_orm::_serde_json::Map::new();
-                #(#search_fields)*
-                rullst_orm::_serde_json::Value::Object(map).to_string()
+                rullst_orm::privacy::with_redacted_secrets(|| {
+                    let mut map = rullst_orm::_serde_json::Map::new();
+                    #(#search_fields)*
+                    rullst_orm::_serde_json::Value::Object(map).to_string()
+                })
             }
         }
     } else {
@@ -55,7 +57,9 @@ pub fn generate_json_methods(parsed: &ParsedModel) -> TokenStream {
             .filter(|field| !hidden_fields.contains(field) && parsed.is_redacted(field))
             .map(|field| {
                 let key = field.to_string();
-                if parsed.encrypted_fields.iter().any(|encrypted| encrypted.name == *field) {
+                let compared_in_memory = parsed.secret_fields.contains(field)
+                    || parsed.encrypted_fields.iter().any(|encrypted| encrypted.name == *field);
+                if compared_in_memory {
                     quote! {
                         if self.#field != previous.#field {
                             changed.push(#key);
@@ -127,23 +131,40 @@ pub fn generate_json_methods(parsed: &ParsedModel) -> TokenStream {
             }
         }
 
-        pub fn to_cache_json(&self) -> String {
+        /// Full persisted state for the query cache and revision restore.
+        /// `SecretString` values serialize as encrypted envelopes, so this fails
+        /// when no encryption key is configured.
+        fn __rullst_cache_json_value(&self) -> Result<rullst_orm::_serde_json::Value, rullst_orm::_serde_json::Error> {
             let mut map = rullst_orm::_serde_json::Map::new();
             #(
-                map.insert(stringify!(#normal_fields).to_string(), rullst_orm::_serde_json::json!(self.#normal_fields));
+                map.insert(
+                    stringify!(#normal_fields).to_string(),
+                    rullst_orm::_serde_json::to_value(&self.#normal_fields)?,
+                );
             )*
-            rullst_orm::_serde_json::Value::Object(map).to_string()
+            Ok(rullst_orm::_serde_json::Value::Object(map))
         }
 
+        fn __rullst_try_cache_json_array(models: &[Self]) -> Result<String, rullst_orm::_serde_json::Error> {
+            let values = models
+                .iter()
+                .map(Self::__rullst_cache_json_value)
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(rullst_orm::_serde_json::Value::Array(values).to_string())
+        }
+
+        /// Serializes every persisted field for caching. Returns an empty
+        /// string when a field cannot be serialized, for example a
+        /// `SecretString` without a configured encryption key.
+        pub fn to_cache_json(&self) -> String {
+            self.__rullst_cache_json_value()
+                .map(|value| value.to_string())
+                .unwrap_or_default()
+        }
+
+        /// Array form of [`Self::to_cache_json`]; empty string on failure.
         pub fn to_cache_json_array(models: &[Self]) -> String {
-            let json_values: Vec<rullst_orm::_serde_json::Value> = models.iter().map(|m| {
-                let mut map = rullst_orm::_serde_json::Map::new();
-                #(
-                    map.insert(stringify!(#normal_fields).to_string(), rullst_orm::_serde_json::json!(m.#normal_fields));
-                )*
-                rullst_orm::_serde_json::Value::Object(map)
-            }).collect();
-            rullst_orm::_serde_json::Value::Array(json_values).to_string()
+            Self::__rullst_try_cache_json_array(models).unwrap_or_default()
         }
 
         pub fn from_cache_json(json_str: &str) -> Result<Self, rullst_orm::_serde_json::Error> {
@@ -155,11 +176,14 @@ pub fn generate_json_methods(parsed: &ParsedModel) -> TokenStream {
         }
 
         /// Audit/event projection: hidden fields are omitted and
-        /// `#[orm(encrypted)]`/`#[orm(masked)]` values become `"***"`.
+        /// `#[orm(encrypted)]`, `#[orm(masked)]` and `SecretString` values
+        /// (including nested ones) become `"***"`.
         pub fn to_json(&self) -> String {
-            let mut map = rullst_orm::_serde_json::Map::new();
-            #(#to_json_fields)*
-            rullst_orm::_serde_json::Value::Object(map).to_string()
+            rullst_orm::privacy::with_redacted_secrets(|| {
+                let mut map = rullst_orm::_serde_json::Map::new();
+                #(#to_json_fields)*
+                rullst_orm::_serde_json::Value::Object(map).to_string()
+            })
         }
 
         #search_json

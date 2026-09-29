@@ -246,9 +246,7 @@ fn revision_restore(table_name: &str, lookup: &TokenStream) -> TokenStream {
                         .await?
                         .ok_or(rullst_orm::Error::RecordNotFound)?;
                     current_model.__rullst_decrypt_encrypted_fields()?;
-                    let current_json = rullst_orm::_serde_json::from_str(
-                        &current_model.to_cache_json(),
-                    )?;
+                    let current_json = current_model.__rullst_cache_json_value()?;
                     let restored_json = rullst_orm::audit::apply_reverse_patch(
                         current_json,
                         revision.restore_patch(),
