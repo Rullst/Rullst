@@ -67,6 +67,12 @@ one database transaction. Make every migration reversible, test both directions
 against each supported database, and use backend-appropriate transactional DDL
 inside the migration when atomicity is required.
 
+These commands use the same database as the running server: the process
+`DATABASE_URL`, then `DATABASE_URL` in `./.env` (never overriding the process
+environment), then `[database].url` in `Rullst.toml`. If none is set, the
+command fails instead of creating a new SQLite file, and a database that cannot
+be initialized also fails the command with exit status 1.
+
 ---
 
 ## Step 3: Define and register a seeder

@@ -407,6 +407,14 @@ PostgreSQL/MySQL contention evidence also remains open.
   emission, so an explicitly protected router remains valid when the production
   server wraps it. The cookie intentionally remains script-readable and must
   not be confused with an authentication or session cookie.
+* **Database URL Resolution:** `Server` and Artisan (`artisan!`,
+  `check_and_run_artisan`, `db:*`, `studio`) share one resolver: a
+  `Server::with_db` value when `Server::run` intercepts the command, the process
+  `DATABASE_URL`, `DATABASE_URL` in `./.env` (never overriding the process
+  environment), then `[database].url` parsed as TOML. There is no implicit
+  SQLite fallback: a `db:*` command without a configured database, and any
+  configuration or `Orm::init` failure, exits with status 1. Parse errors
+  report positions only, never file content.
 
 ### 4.2. Server-Side Rendering (`rullst::macros`)
 * **Macro:** `html!` expands supported HTML trees into ordinary Rust `String`
