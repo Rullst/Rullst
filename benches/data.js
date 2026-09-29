@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790683194082,
+  "lastUpdate": 1790690741770,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -21045,6 +21045,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2322,
             "range": "± 52",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1aed96edabb06f02d3070565a87fbee4d0dd5c0a",
+          "message": "Merge pull request #312 from Rullst/docs/v13-book-navigation\n\ndocs(book): lead navigation with user guides and group v13 and governance pages",
+          "timestamp": "2026-09-29T10:58:44-03:00",
+          "tree_id": "5fe3e875611f5e6d9450a6f668f36aa56fa0c2eb",
+          "url": "https://github.com/Rullst/Rullst/commit/1aed96edabb06f02d3070565a87fbee4d0dd5c0a"
+        },
+        "date": 1790690738940,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 725,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 955,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 641,
+            "range": "± 96",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2273,
+            "range": "± 66",
             "unit": "ns/iter"
           }
         ]
