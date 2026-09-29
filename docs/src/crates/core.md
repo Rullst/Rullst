@@ -24,6 +24,8 @@ authorized diagnostic boundary; its `Debug` output redacts the key. Custom
 drivers return `CacheError::InspectionUnsupported` unless they implement the
 bounded method. The live Redis CI/release contract checks metadata, TTL and
 non-disclosure; it does not prove cluster/failover or operator authorization.
+The Redis cache and queue drivers each keep one lazily opened multiplexed
+connection for all operations and replace it after a connection-level failure.
 
 SQLite deletes successful jobs by default. Applications that need a real
 Studio/operations history can opt in with
