@@ -155,6 +155,15 @@ async fn verify_shared(
 }
 ```
 
+Both bundled stores cap token-ID rows at three quarters of the entry quota and at 64 active
+rows per subject. Past either cap, `revoke_token` records a subject cutoff instead: every
+token of that subject issued no later than the revoked one is rejected, which is broader but
+never weaker. One principal that repeatedly logs in and out therefore cannot exhaust the
+quota, and subject revocations keep the remaining quarter. Subject entries are never pruned;
+size `max_entries` for the subjects that may revoke. `SqliteJwtRevocationStore::connect`
+adds a `subject` and a `revoked_through_iat` column to an existing file. Earlier releases can
+still open it but ignore subject cutoffs, so upgrade every process sharing the file.
+
 The SQLite adapter is durable across restarts and shared across local processes,
 not replicated across hosts. The deployment owns its trusted directory, file
 permissions/encryption, backup, availability and disaster recovery. This API

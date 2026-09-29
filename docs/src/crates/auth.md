@@ -85,6 +85,14 @@ versions behind a stored quota. Its `BEGIN IMMEDIATE` mutations are visible to
 local processes, expired token rows are pruned before capacity checks, and
 `ApplicationJwtPolicy::verify_async` checks that shared state.
 
+Both bundled stores cap token-ID rows at three quarters of the quota and at 64
+active rows per subject. Past either cap, `revoke_token` records a subject cutoff
+that rejects every token of that subject issued no later than the revoked one,
+so one principal cannot exhaust capacity for others and subject revocations keep
+a reserve. Subject entries are never pruned. Opening an existing SQLite file adds
+two backward-compatible columns; earlier releases ignore subject cutoffs, so
+upgrade every process sharing the file.
+
 The SQLite boundary is durable across restarts but not replicated across hosts.
 The deployment owns trusted paths, file permissions/encryption, backup,
 availability and disaster recovery. This API does not verify third-party
