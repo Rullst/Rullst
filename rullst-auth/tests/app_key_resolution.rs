@@ -150,6 +150,18 @@ DATABASE_URL=\"postgres://unterminated\nSTRIPE_SECRET={DOTENV_CANARY}\n"
 }
 
 #[test]
+// TM-AUTH-02: configuration errors never echo `Rullst.toml` content.
+fn malformed_rullst_toml_errors_are_redacted() {
+    run_isolated_case("malformed_toml_is_redacted", |directory| {
+        fs::write(
+            directory.join("Rullst.toml"),
+            format!("[app]\nenv = \"production\"\n[database]\nurl = \"postgres://owner:{DOTENV_CANARY}@db.example/app\n"),
+        )
+        .expect("malformed Rullst.toml fixture should be written");
+    });
+}
+
+#[test]
 // TM-AUTH-02: configuration errors never echo `.env` content.
 fn malformed_dotenv_errors_are_redacted_and_skipped_when_selected_by_process() {
     run_isolated_case("malformed_dotenv_is_redacted", write_malformed_dotenv);
@@ -288,6 +300,18 @@ fn app_key_resolution_child() {
             }
             assert!(matches!(error, AuthError::General(message) if message.contains(".env")));
             assert!(make_logout_cookie().contains("; Secure"));
+        }
+        "malformed_toml_is_redacted" => {
+            let key_error = get_app_key().expect_err("malformed Rullst.toml must fail closed");
+            let cookie_error =
+                make_login_cookie(42).expect_err("malformed Rullst.toml must fail closed");
+            for error in [key_error, cookie_error] {
+                for rendered in [error.to_string(), format!("{error:?}")] {
+                    assert!(!rendered.contains(DOTENV_CANARY), "{rendered}");
+                    assert!(!rendered.contains("postgres://"), "{rendered}");
+                    assert!(rendered.contains("line 4"), "{rendered}");
+                }
+            }
         }
         "process_environment_skips_malformed_dotenv" => {
             // Both selectors come from the process, so `.env` is not needed.
