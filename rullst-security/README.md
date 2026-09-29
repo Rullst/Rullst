@@ -88,6 +88,9 @@
 - **Explainable assessment:** Classifies caller-supplied aggregate windows
   against explicit credential-stuffing, API-scraping and
   distributed-automation thresholds; it does not claim AI attribution.
+  `SentinelObservation` deserialization applies the same validation as
+  `try_new`, so a zero window, zero requests or inconsistent counts are
+  rejected rather than reaching the classifier.
 - **Bounded proof of work:** Issues OS-random, HMAC-authenticated, subject-bound
   challenges with bounded TTL, difficulty and local cardinality.
 - **One-shot verification:** Exactly one concurrent verifier consumes an active
