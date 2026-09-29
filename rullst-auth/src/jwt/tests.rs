@@ -268,3 +268,85 @@ fn revocation_store_is_bounded_and_subject_versions_only_advance() {
         .expect("token");
     assert_eq!(policy.verify(&token, &store), Err(JwtError::Revoked));
 }
+
+fn verified(
+    policy: &ApplicationJwtPolicy,
+    subject: &str,
+    issued_at: u64,
+) -> (String, ApplicationJwtClaims) {
+    let token = policy
+        .issue_at(
+            subject.to_string(),
+            Vec::<String>::new(),
+            1,
+            Duration::from_secs(600),
+            issued_at,
+        )
+        .expect("token");
+    let claims = policy
+        .decode_and_validate(&token, issued_at)
+        .expect("fresh token");
+    (token, claims)
+}
+
+// TM-AUTH-06: one principal repeatedly revoking its own tokens must neither
+// exhaust shared capacity nor stop other subjects' logout and revocation.
+#[test]
+fn one_subject_cannot_exhaust_revocation_capacity_for_other_subjects() {
+    let policy = development_policy();
+    let store = InMemoryJwtRevocationStore::new(128).expect("bounded store");
+    let now = unix_time().expect("clock");
+    let (bystander_other, _) = verified(&policy, "learner-b", now - 1);
+    let mut abusive = Vec::new();
+    for _ in 0..200 {
+        let (token, claims) = verified(&policy, "learner-a", now - 1);
+        store.revoke_token(&claims).expect("revocation never fails");
+        abusive.push(token);
+    }
+    for token in &abusive {
+        assert_eq!(policy.verify(token, &store), Err(JwtError::Revoked));
+    }
+    // Widening revokes only tokens issued no later than the revoked ones.
+    let (later, _) = verified(&policy, "learner-a", now);
+    assert!(policy.verify(&later, &store).is_ok());
+
+    let (bystander, claims) = verified(&policy, "learner-b", now - 1);
+    store
+        .revoke_token(&claims)
+        .expect("another subject can still log out");
+    assert_eq!(policy.verify(&bystander, &store), Err(JwtError::Revoked));
+    // The bystander's revocation stayed exact rather than subject-wide.
+    assert!(policy.verify(&bystander_other, &store).is_ok());
+    store
+        .revoke_subject_before("learner-c", 2)
+        .expect("subject revocation still has capacity");
+    assert!(store.entry_count().unwrap() <= 128);
+}
+
+#[test]
+fn subject_revocations_keep_a_reserve_when_token_rows_fill_their_share() {
+    let policy = development_policy();
+    let store = InMemoryJwtRevocationStore::new(8).expect("bounded store");
+    let now = unix_time().expect("clock");
+    for index in 0..6 {
+        let (_, claims) = verified(&policy, &format!("learner-{index}"), now - 1);
+        store.revoke_token(&claims).expect("token row");
+    }
+    // Token rows are limited to three quarters of the quota; the seventh
+    // subject's revocation widens to a subject cutoff that still rejects it.
+    let (token, claims) = verified(&policy, "learner-6", now - 1);
+    store.revoke_token(&claims).expect("widened revocation");
+    assert_eq!(policy.verify(&token, &store), Err(JwtError::Revoked));
+    store
+        .revoke_subject_before("instructor-1", 2)
+        .expect("reserved subject capacity");
+    assert_eq!(store.entry_count().unwrap(), 8);
+    assert_eq!(
+        store.revoke_subject_before("instructor-2", 2),
+        Err(JwtError::RevocationStoreCapacity)
+    );
+    // Existing subjects still update in place at full capacity.
+    store
+        .revoke_subject_before("learner-6", 3)
+        .expect("existing subject update");
+}

@@ -224,11 +224,26 @@ The built-in Connect authorization-code providers explicitly request
 state, PKCE, and combined trait variants each contain exactly one response
 type and retain the configured client, redirect, scopes and encoded state/PKCE.
 Apple retains `response_mode=form_post`; offline mock redirects remain local
-fixtures rather than real authorization requests. Application configuration,
+fixtures rather than real authorization requests. The managed `AuthSession`
+extractor reads only the callback query string, so it does not complete Apple's
+cross-site POST callback; an Apple host keeps its state, PKCE verifier and
+nonce behind a `SameSite=None; Secure` challenge cookie and validates the
+posted form itself. Application configuration,
 nonce/callback validation and provider-account interoperability remain separate.
 The generic `build_oauth_params` helper and exported redirect macro remain
 response-type-neutral for downstream custom providers. Callers own optional
 endpoint query data and must not supply conflicting reserved parameters.
+
+### Client-supplied token invariant
+
+`Provider::get_user_from_token` is a profile lookup for a token the server
+obtained for its own client. It is not an authentication primitive for a token
+supplied by a native or mobile client: except for Apple, the adapters ask the
+provider's userinfo/profile endpoint about the bearer token, which does not
+prove that the token was issued to the configured `client_id`. Sign-in must use
+the application's own authorization-code exchange or an ID token verified for
+this client's issuer, audience, expiry, signature and nonce. Apple's adapter
+validates an ID token's audience there, but checks no nonce.
 
 ### Shared-local facade composition invariant
 
@@ -1199,12 +1214,21 @@ sending.
 * **Login Guard Tarpit:** `record_login_failure` returns progressive delay
   decisions and `record_login_failure_and_wait` applies them asynchronously;
   both share bounded, temporary in-memory jails keyed by a hashed identity.
+  At `max_identities`, a new identity evicts the least recently failed counter
+  and a new offender evicts the soonest-expiring jail; expired state is pruned
+  in time order on every call, and jail telemetry is emitted only for a jail
+  that was actually created.
 
 ### 7.3. MFA and Security Evidence Boundaries
 * **TOTP enrollment:** Secrets contain 160 bits derived from the OS RNG,
   verification accepts exactly six ASCII digits with constant-time comparison,
   and enrollment can emit an `otpauth://` URI or bounded SVG QR. Secret custody,
   recovery workflow and durable rate limiting belong to the application.
+  `verify_totp_code` is stateless and accepts steps -1/0/+1, so it does not
+  reject a replayed code. RFC 6238 section 5.2 replay protection requires the
+  application to find the matched step (`mfa::generate_totp_at_counter`),
+  persist the last accepted step per secret atomically and reject any step
+  less than or equal to it.
 * **Security CLI:** CycloneDX generation, MSRV/tool diagnostics, unsafe/IDOR
   source heuristics, network observations and compliance evidence are bounded
   checks. They do not certify a deployment, prove absence of vulnerabilities or

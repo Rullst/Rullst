@@ -28,7 +28,12 @@ pub enum SentinelAction {
 }
 
 /// Validated aggregate signals from one application-defined observation window.
+///
+/// Deserialization applies the same validation as [`Self::try_new`], so a
+/// serialized value with a zero window, zero requests or inconsistent counts
+/// is rejected instead of producing an invalid observation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "SentinelObservationFields")]
 #[non_exhaustive]
 pub struct SentinelObservation {
     window_seconds: u64,
@@ -38,6 +43,34 @@ pub struct SentinelObservation {
     distinct_paths: u64,
     distinct_sources: u64,
     correlated_sources: u64,
+}
+
+/// Unvalidated wire shape of [`SentinelObservation`]; only used to deserialize.
+#[derive(Deserialize)]
+struct SentinelObservationFields {
+    window_seconds: u64,
+    total_requests: u64,
+    failed_auth_attempts: u64,
+    distinct_accounts: u64,
+    distinct_paths: u64,
+    distinct_sources: u64,
+    correlated_sources: u64,
+}
+
+impl TryFrom<SentinelObservationFields> for SentinelObservation {
+    type Error = SentinelError;
+
+    fn try_from(fields: SentinelObservationFields) -> Result<Self, Self::Error> {
+        Self::try_new(
+            Duration::from_secs(fields.window_seconds),
+            fields.total_requests,
+            fields.failed_auth_attempts,
+            fields.distinct_accounts,
+            fields.distinct_paths,
+            fields.distinct_sources,
+            fields.correlated_sources,
+        )
+    }
 }
 
 impl SentinelObservation {
@@ -240,11 +273,19 @@ impl ThreatClassifier {
         Self { policy }
     }
 
+    /// Classifies one observation.
+    ///
+    /// Zero-length windows or zero request totals cannot be constructed, but
+    /// are treated as zero rates here, so they never panic and never escalate
+    /// beyond [`SentinelAction::Observe`].
     pub fn assess(&self, observation: SentinelObservation) -> SentinelAssessment {
         let request_rate = per_minute(observation.total_requests, observation.window_seconds);
         let failure_rate = per_minute(observation.failed_auth_attempts, observation.window_seconds);
-        let failure_ratio =
-            observation.failed_auth_attempts.saturating_mul(10_000) / observation.total_requests;
+        let failure_ratio = observation
+            .failed_auth_attempts
+            .saturating_mul(10_000)
+            .checked_div(observation.total_requests)
+            .unwrap_or(0);
         let mut patterns = Vec::with_capacity(3);
         let mut risk_score = 0;
 
@@ -296,5 +337,55 @@ fn validate_threshold(value: u64, name: &'static str) -> Result<(), SentinelErro
 }
 
 fn per_minute(count: u64, window_seconds: u64) -> u64 {
+    if window_seconds == 0 {
+        return 0;
+    }
     count.saturating_mul(60).div_ceil(window_seconds)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deserialization_applies_observation_validation() {
+        let valid = SentinelObservation::try_new(Duration::from_secs(60), 25, 20, 8, 3, 1, 0)
+            .expect("valid observation");
+        let json = serde_json::to_string(&valid).unwrap();
+        assert_eq!(
+            serde_json::from_str::<SentinelObservation>(&json).unwrap(),
+            valid
+        );
+
+        for invalid in [
+            r#"{"window_seconds":0,"total_requests":25,"failed_auth_attempts":20,"distinct_accounts":8,"distinct_paths":3,"distinct_sources":1,"correlated_sources":0}"#,
+            r#"{"window_seconds":60,"total_requests":0,"failed_auth_attempts":0,"distinct_accounts":0,"distinct_paths":0,"distinct_sources":0,"correlated_sources":0}"#,
+            r#"{"window_seconds":60,"total_requests":1,"failed_auth_attempts":2,"distinct_accounts":0,"distinct_paths":1,"distinct_sources":1,"correlated_sources":0}"#,
+            r#"{"window_seconds":3601,"total_requests":1,"failed_auth_attempts":0,"distinct_accounts":0,"distinct_paths":1,"distinct_sources":1,"correlated_sources":0}"#,
+        ] {
+            let error = serde_json::from_str::<SentinelObservation>(invalid)
+                .expect_err("invalid observation must not deserialize");
+            assert!(error.to_string().contains("invalid Sentinel observation"));
+        }
+    }
+
+    #[test]
+    fn assess_treats_zero_window_or_requests_as_observe() {
+        let classifier = ThreatClassifier::default();
+        for (window_seconds, total_requests) in [(0, 500), (60, 0), (0, 0)] {
+            let unchecked = SentinelObservation {
+                window_seconds,
+                total_requests,
+                failed_auth_attempts: 400,
+                distinct_accounts: 100,
+                distinct_paths: 100,
+                distinct_sources: 100,
+                correlated_sources: 100,
+            };
+            let assessment = classifier.assess(unchecked);
+            assert_eq!(assessment.action(), SentinelAction::Observe);
+            assert!(assessment.patterns().is_empty());
+            assert_eq!(assessment.risk_score(), 0);
+        }
+    }
 }

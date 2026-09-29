@@ -9,7 +9,7 @@
 ### 🍯 1. Rullst Honey (`rullst::security::honey`)
 *Deception Security & Botnet Mitigation Engine*
 - **Synthetic Honeypot Traps:** Intercepts reconnaissance bots attempting to scan paths like `/.env`, `/admin.php`, `/wp-login.php`, `/.git/config`.
-- **Bounded In-Memory Ban List:** Tracks verified socket peers with an explicit TTL and cardinality limit.
+- **Bounded In-Memory Ban List:** Tracks verified socket peers with an explicit TTL and cardinality limit. A request checks only its own peer; expired bans are pruned in expiry order when bans are added or counted, and a full list evicts the ban that expires soonest.
 - **Exact Route Matching:** Trap paths are matched as complete paths; untrusted forwarding headers are not used as ban identities.
 
 ### 🧹 2. Rullst Sanitizer (`rullst::security::sanitizer`)
@@ -40,13 +40,26 @@
 - **TOTP enrollment:** OS-random 160-bit secrets, RFC 6238 code generation,
   constant-time six-digit verification, `otpauth://` URIs, and bounded SVG QR
   generation through `build_mfa_qr_svg`.
+- **TOTP replay is the caller's job:** `verify_totp_code` is stateless and
+  accepts the previous, current and next 30-second step, so an observed code
+  verifies again for about 90 seconds. To meet RFC 6238 section 5.2, find the
+  matched step with `mfa::generate_totp_at_counter`, persist the last accepted
+  step per secret atomically, and reject any step less than or equal to it.
+  The `verify_totp_code` rustdoc shows the complete check.
 - **Applied tarpit:** `LoginGuard::record_login_failure_and_wait` records a
   failure and awaits its progressive delay; jail state is bounded and local to
   the process. Concurrent admission shares the configured identity ceiling.
+  At capacity, a new identity evicts the least recently failed counter and a
+  new offender evicts the jail that expires soonest, so a flood of unrelated
+  identities cannot stop a later identity from being counted and jailed. It
+  can still age out older counters, so pair the jail with upstream rate limits.
 - **Local rate limiter:** Fixed-window counters retain at most 16,384 identities
   with keys up to 256 bytes, reclaim expired identities on subsequent requests,
   and reject zero budgets or exhausted admission. Clones share state; this is
-  not a distributed limit across application instances.
+  not a distributed limit across application instances. Prefer one
+  `RateLimiter` per policy. The legacy global `is_rate_limited` helper keeps a
+  separate budget per `(key, max_requests, window)`, so policies on the same
+  key neither share a count nor reset each other, but they share its capacity.
 
 ### 🔎 7. Bounded Payload, Log & Asset Guards
 
@@ -56,8 +69,16 @@
   component into route-scoped middleware. References stay local, pattern
   matching uses the linear-time regex engine, and schema construction performs
   no filesystem or network retrieval.
+- **Response DLP:** `mask_response_payload` and `DlpResponseLayer` mask PEM
+  private keys, AWS access-key IDs and `postgres`/`postgresql`/`mysql`/`redis`
+  URL passwords in bounded textual responses (at most 2 MiB). Every pass is
+  linear in the body length. A URL password is recognized only inside the URL
+  authority: credentials must be percent-encoded, and the authority ends at
+  the first `/`, `?`, `#`, whitespace, quote, `<`, `>`, backtick or control
+  character, or after 2,048 bytes.
 - **Log redaction:** `redact_secrets` handles repeated Bearer/assignment, PEM,
-  AWS, and database patterns, including escaped quoted values. Records over
+  AWS, and database patterns, including escaped quoted values, in time linear
+  in the record length. Records over
   64 KiB are replaced wholesale by an oversized-record marker. The host must
   invoke it before emitting untrusted log fields; pattern matching is not a
   guarantee that arbitrary sensitive content can be recognized.
@@ -69,6 +90,9 @@
 - **Explainable assessment:** Classifies caller-supplied aggregate windows
   against explicit credential-stuffing, API-scraping and
   distributed-automation thresholds; it does not claim AI attribution.
+  `SentinelObservation` deserialization applies the same validation as
+  `try_new`, so a zero window, zero requests or inconsistent counts are
+  rejected rather than reaching the classifier.
 - **Bounded proof of work:** Issues OS-random, HMAC-authenticated, subject-bound
   challenges with bounded TTL, difficulty and local cardinality.
 - **One-shot verification:** Exactly one concurrent verifier consumes an active

@@ -61,6 +61,10 @@ impl ChallengeStore {
         allowed_credential_ids: Vec<Vec<u8>>,
     ) -> Result<String, AuthError> {
         let now = Instant::now();
+        // Checked before locking: an overflow must not panic and poison the store.
+        let expires_at = now
+            .checked_add(self.ttl)
+            .ok_or_else(|| passkey_error("WebAuthn challenge lifetime cannot be represented"))?;
         let mut pending = self.pending()?;
         pending.retain(|_, challenge| challenge.expires_at > now);
         if pending.len() >= self.maximum {
@@ -74,7 +78,7 @@ impl ChallengeStore {
                     challenge.clone(),
                     PendingChallenge {
                         ceremony,
-                        expires_at: now + self.ttl,
+                        expires_at,
                         allowed_credential_ids,
                     },
                 );
@@ -154,6 +158,19 @@ mod tests {
             store.consume(&challenge, &challenge, Ceremony::Authentication, None),
             Err(AuthError::PasskeyError(message)) if message.contains("not allowed")
         ));
+    }
+
+    #[test]
+    fn unrepresentable_challenge_expiry_fails_without_poisoning_the_store() {
+        let store = ChallengeStore::new(Duration::MAX, 4);
+        for _ in 0..2 {
+            assert!(matches!(
+                store.issue(Ceremony::Registration, Vec::new()),
+                Err(AuthError::PasskeyError(message)) if message.contains("lifetime")
+            ));
+        }
+        assert!(!store.pending.is_poisoned());
+        assert!(store.pending.lock().unwrap().is_empty());
     }
 
     #[test]

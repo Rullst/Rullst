@@ -58,7 +58,7 @@ state of those checks for the referenced commit; they are not an absolute securi
   operations. Google, GitHub, Discord, Apple, Auth0 and Cognito have bounded
   protocol adapters; unsupported providers fail explicitly and offline
   credentials remain network-free.
-- 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, refresh on unknown `kid`, and bounded stale-if-error behavior.
+- 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, single-flight refresh on unknown `kid` (at most once per 30 seconds), and bounded stale-if-error behavior.
 - 🏢 **Explicit Corporate Proxy**: First-class HTTP(S) proxy clients, including bounded Basic proxy authentication without credentials in the endpoint URL.
 - 📺 **Device Flow**: Native RFC 8628 support for headless CLI and Smart TV auth.
 - 🛠️ **Testing**: Typed network-free provider fallbacks plus an explicitly
@@ -97,6 +97,23 @@ issuer when that guarantee is needed for Auth0, Cognito or another OIDC host.
 Apple refresh verifies the returned ID token separately from its opaque access
 token. A refresh response without an ID token cannot establish a fresh Apple
 identity through this API.
+
+### Tokens supplied by native or mobile clients
+
+`Provider::get_user_from_token` is **not** a way to sign in a user whose app
+sends you a provider access token. Except for Apple, it asks the provider's
+userinfo or profile endpoint who owns the bearer token. That proves only that
+the token is valid for *some* client of the provider, not that it was issued to
+your `client_id`. Another app that holds a user's token for its own client ID
+could replay it to your backend and be signed in as that user.
+
+Sign users in with your own authorization-code exchange (`get_user` with state,
+PKCE and, for OIDC, nonce), or with an ID token whose signature, issuer,
+audience (your `client_id`), expiry and nonce are verified for your client.
+Keep `get_user_from_token` for tokens your server obtained itself. Apple's
+adapter treats its argument as an ID token and checks signature, issuer,
+audience and expiry but no nonce, so a captured Apple ID token for your client
+can be replayed until it expires.
 
 Token responses may omit `expires_in`, but a supplied value must be an integer
 from one second through 366 days, matching the managed refresh-state bound.
@@ -247,8 +264,17 @@ let authorization = begin_oauth_session(&session, &github).await?;
 return Ok(Redirect::temporary(authorization.url()));
 ```
 
-Use `begin_oidc_session` instead for Google, Apple, or a custom OIDC provider.
-It adds and stores an OIDC nonce as well.
+Use `begin_oidc_session` instead for Google or a custom OIDC provider. It adds
+and stores an OIDC nonce as well.
+
+Sign in with Apple is different: `AppleProvider` always requests
+`response_mode=form_post`, so Apple returns `code`, `state` and `id_token` in a
+cross-site POST body. `AuthSession` reads only the query string, and a
+`SameSite=Lax` or `Strict` session cookie is not sent on that POST, so the
+managed `begin_oidc_session` + `AuthSession` flow cannot complete an Apple
+login. Use the manual state/PKCE/nonce flow with a dedicated
+`SameSite=None; Secure; HttpOnly` challenge cookie, as described in the
+[server-bound OAuth/OIDC tutorial](https://rullst.github.io/Rullst/book/tutorials/42-server-bound-oauth-sessions.html#sign-in-with-apple-form-post-callback).
 
 ### 3. Consume the Callback and Get the User
 
@@ -433,12 +459,18 @@ let provider = OidcProvider::discover(
 ).await?;
 ```
 
-Discovery requires the returned issuer to match the requested issuer. Discovered token,
+Discovery requires the returned issuer to match the requested issuer after URL
+normalization; a trailing slash may differ. ID tokens must carry the discovered `issuer` exactly as the provider
+published it, so an Auth0 tenant whose issuer is `https://TENANT/` is validated with
+the trailing slash. `OidcProvider::issuer` holds that published value. Discovered token,
 authorization, userinfo, and JWKS endpoints must use HTTPS. HTTP is accepted only when
 both the issuer and endpoint use the same exact loopback origin. JWKS entries are refreshed
-after their TTL and immediately when a token presents an unknown `kid`; stale keys are
-used after a refresh error only within a bounded age and only when the requested `kid`
-already exists in the cached set.
+after their TTL and when a token presents an unknown `kid`. Because the `kid` is
+unverified input, a forced refresh of a fresh set happens at most once per 30 seconds per
+JWKS URL; until then an unknown `kid` fails without a network call. Concurrent refreshes
+are coalesced, and a `kid` that is empty, longer than 256 bytes or not printable ASCII is
+rejected before any I/O. Stale keys are used after a refresh error only within a bounded
+age and only when the requested `kid` already exists in the cached set.
 
 ## 🧑‍💻 Full Example with Axum
 

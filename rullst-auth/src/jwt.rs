@@ -10,7 +10,6 @@ use jsonwebtoken::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const MAX_TOKEN_TTL: Duration = Duration::from_secs(30 * 24 * 60 * 60);
@@ -22,6 +21,9 @@ const MAX_KEYS: usize = 8;
 
 mod async_store;
 pub use async_store::{AsyncJwtRevocationStore, JwtRevocationMode};
+mod memory;
+pub use memory::InMemoryJwtRevocationStore;
+mod quota;
 #[cfg(feature = "sqlite")]
 mod sqlite;
 #[cfg(feature = "sqlite")]
@@ -104,110 +106,6 @@ pub trait JwtRevocationStore: Send + Sync {
     fn mode(&self) -> JwtRevocationMode;
 
     fn is_revoked(&self, claims: &ApplicationJwtClaims, now: u64) -> Result<bool, JwtError>;
-}
-
-/// Bounded deterministic revocation state for development and single-process tests.
-pub struct InMemoryJwtRevocationStore {
-    state: Mutex<InMemoryRevocationState>,
-    max_entries: usize,
-}
-
-#[derive(Default)]
-struct InMemoryRevocationState {
-    revoked_tokens: HashMap<String, u64>,
-    subject_versions: HashMap<String, u64>,
-}
-
-impl InMemoryJwtRevocationStore {
-    pub fn new(max_entries: usize) -> Result<Self, JwtError> {
-        if !(1..=1_000_000).contains(&max_entries) {
-            return Err(JwtError::InvalidConfiguration("max_entries"));
-        }
-        Ok(Self {
-            state: Mutex::new(InMemoryRevocationState::default()),
-            max_entries,
-        })
-    }
-
-    pub fn revoke_token(&self, claims: &ApplicationJwtClaims) -> Result<(), JwtError> {
-        if !valid_identifier(&claims.jti, 64) {
-            return Err(JwtError::InvalidConfiguration("jti"));
-        }
-        let now = unix_time()?;
-        if claims.exp <= now {
-            return Ok(());
-        }
-        let mut state = self.lock_state()?;
-        state
-            .revoked_tokens
-            .retain(|_, expires_at| *expires_at > now);
-        if !state.revoked_tokens.contains_key(&claims.jti)
-            && Self::entry_count_locked(&state) >= self.max_entries
-        {
-            return Err(JwtError::RevocationStoreCapacity);
-        }
-        state.revoked_tokens.insert(claims.jti.clone(), claims.exp);
-        Ok(())
-    }
-
-    /// Rejects subject tokens whose `session_version` is lower than this value.
-    pub fn revoke_subject_before(
-        &self,
-        subject: impl Into<String>,
-        minimum_session_version: u64,
-    ) -> Result<(), JwtError> {
-        let subject = subject.into();
-        if !valid_identity(&subject) || minimum_session_version == 0 {
-            return Err(JwtError::InvalidConfiguration("subject revocation"));
-        }
-        let mut state = self.lock_state()?;
-        if !state.subject_versions.contains_key(&subject)
-            && Self::entry_count_locked(&state) >= self.max_entries
-        {
-            return Err(JwtError::RevocationStoreCapacity);
-        }
-        state
-            .subject_versions
-            .entry(subject)
-            .and_modify(|version| *version = (*version).max(minimum_session_version))
-            .or_insert(minimum_session_version);
-        Ok(())
-    }
-
-    pub fn entry_count(&self) -> Result<usize, JwtError> {
-        let state = self.lock_state()?;
-        Ok(Self::entry_count_locked(&state))
-    }
-
-    fn entry_count_locked(state: &InMemoryRevocationState) -> usize {
-        state.revoked_tokens.len() + state.subject_versions.len()
-    }
-
-    fn lock_state(&self) -> Result<MutexGuard<'_, InMemoryRevocationState>, JwtError> {
-        self.state
-            .lock()
-            .map_err(|_| JwtError::RevocationBackend("in-memory lock poisoned".to_string()))
-    }
-}
-
-impl JwtRevocationStore for InMemoryJwtRevocationStore {
-    fn mode(&self) -> JwtRevocationMode {
-        JwtRevocationMode::ProcessLocal
-    }
-
-    fn is_revoked(&self, claims: &ApplicationJwtClaims, now: u64) -> Result<bool, JwtError> {
-        let mut state = self.lock_state()?;
-        state
-            .revoked_tokens
-            .retain(|_, expires_at| *expires_at > now);
-        if state.revoked_tokens.contains_key(&claims.jti) {
-            return Ok(true);
-        }
-        Ok(state
-            .subject_versions
-            .get(&claims.sub)
-            .is_some_and(|minimum| claims.session_version < *minimum))
-    }
 }
 
 /// Issuer/verifier policy with one active key and bounded previous verification keys.

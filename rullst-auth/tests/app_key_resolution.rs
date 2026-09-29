@@ -12,6 +12,7 @@ use std::{
 
 const CHILD_CASE: &str = "RULLST_APP_KEY_TEST_CASE";
 const VALID_KEY: &str = "0123456789abcdefghijklmnopqrstuv";
+const DOTENV_CANARY: &str = "sk_live_dotenv_redaction_canary_7Qx2";
 
 struct IsolatedDirectory(PathBuf);
 
@@ -56,12 +57,17 @@ fn run_isolated_case(case: &str, setup: impl FnOnce(&Path)) {
         .current_dir(directory.path());
 
     match case {
-        "process_environment_precedes_dotenv" | "secure_cookie_in_production" => {
+        "process_environment_precedes_dotenv"
+        | "secure_cookie_in_production"
+        | "process_environment_skips_malformed_dotenv" => {
             command.env("APP_KEY", VALID_KEY);
         }
         _ => {}
     }
-    if case == "secure_cookie_in_production" {
+    if matches!(
+        case,
+        "secure_cookie_in_production" | "process_environment_skips_malformed_dotenv"
+    ) {
         command.env("RULLST_ENV", "production");
     }
     #[cfg(unix)]
@@ -129,6 +135,40 @@ fn app_key_resolution_is_fail_closed_and_durable() {
         .expect("development key fixture should be written");
     });
     run_isolated_case("development_key_is_created_privately", |_| {});
+}
+
+fn write_malformed_dotenv(directory: &Path) {
+    // An unclosed quote makes dotenvy's parse error carry the rest of the file.
+    fs::write(
+        directory.join(".env"),
+        format!(
+            "RULLST_ENV=development
+DATABASE_URL=\"postgres://unterminated\nSTRIPE_SECRET={DOTENV_CANARY}\n"
+        ),
+    )
+    .expect("malformed dotenv fixture should be written");
+}
+
+#[test]
+// TM-AUTH-02: configuration errors never echo `Rullst.toml` content.
+fn malformed_rullst_toml_errors_are_redacted() {
+    run_isolated_case("malformed_toml_is_redacted", |directory| {
+        fs::write(
+            directory.join("Rullst.toml"),
+            format!("[app]\nenv = \"production\"\n[database]\nurl = \"postgres://owner:{DOTENV_CANARY}@db.example/app\n"),
+        )
+        .expect("malformed Rullst.toml fixture should be written");
+    });
+}
+
+#[test]
+// TM-AUTH-02: configuration errors never echo `.env` content.
+fn malformed_dotenv_errors_are_redacted_and_skipped_when_selected_by_process() {
+    run_isolated_case("malformed_dotenv_is_redacted", write_malformed_dotenv);
+    run_isolated_case(
+        "process_environment_skips_malformed_dotenv",
+        write_malformed_dotenv,
+    );
 }
 
 #[test]
@@ -251,6 +291,33 @@ fn app_key_resolution_child() {
                     & 0o777;
                 assert_eq!(mode, 0o600);
             }
+        }
+        "malformed_dotenv_is_redacted" => {
+            let error = get_app_key().expect_err("malformed dotenv must fail closed");
+            for rendered in [error.to_string(), format!("{error:?}")] {
+                assert!(!rendered.contains(DOTENV_CANARY), "{rendered}");
+                assert!(!rendered.contains("postgres://"), "{rendered}");
+            }
+            assert!(matches!(error, AuthError::General(message) if message.contains(".env")));
+            assert!(make_logout_cookie().contains("; Secure"));
+        }
+        "malformed_toml_is_redacted" => {
+            let key_error = get_app_key().expect_err("malformed Rullst.toml must fail closed");
+            let cookie_error =
+                make_login_cookie(42).expect_err("malformed Rullst.toml must fail closed");
+            for error in [key_error, cookie_error] {
+                for rendered in [error.to_string(), format!("{error:?}")] {
+                    assert!(!rendered.contains(DOTENV_CANARY), "{rendered}");
+                    assert!(!rendered.contains("postgres://"), "{rendered}");
+                    assert!(rendered.contains("line 4"), "{rendered}");
+                }
+            }
+        }
+        "process_environment_skips_malformed_dotenv" => {
+            // Both selectors come from the process, so `.env` is not needed.
+            let cookie = make_login_cookie(42).expect("process configuration should suffice");
+            assert!(cookie.contains("; Secure"));
+            assert!(make_logout_cookie().contains("; Secure"));
         }
         unexpected => panic!("unexpected isolated app-key case: {unexpected}"),
     }

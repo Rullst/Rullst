@@ -6,7 +6,9 @@
 //! Mount request/consume endpoints behind independent ingress abuse controls,
 //! secure headers, CSRF and no-store/referrer-policy protections.
 
+mod connection;
 mod crypto;
+mod failures;
 mod outbox;
 mod store;
 mod transactions;
@@ -33,6 +35,9 @@ pub enum RecoveryError {
     Crypto,
     #[error("recovery capacity or request limit reached")]
     Limited,
+    /// Too many failed attempts for this reset token; retry after the window.
+    #[error("too many failed attempts; retry later")]
+    Throttled,
 }
 
 impl From<sqlx::Error> for RecoveryError {

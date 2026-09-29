@@ -29,7 +29,13 @@ umbrella defaults when a backend-exclusive dependency graph is required.
    by application/tenant with separate databases and secrets; a public request
    cannot select a tenant or supply a database URL.
    SQLite filesystem paths must be URL-encoded; use `sqlite:PATH?mode=rwc`
-   without an authority for Windows drive letters. During shutdown, stop the
+   without an authority for Windows drive letters. A remote PostgreSQL host
+   always uses `sslmode=verify-full` (certificate and hostname verification),
+   whatever the URL requests; supply `sslrootcert` for a private CA. Loopback
+   hosts and Unix sockets keep the configured mode. Query options other than
+   `sslmode`, `sslrootcert`, `sslcert`, `sslkey`, `host`, `hostaddr`, `port`,
+   `dbname`, `user` and `password` fail with `Configuration` before connecting.
+   During shutdown, stop the
    request/worker tasks and await `close()` before moving or deleting a database;
    it closes the connection pool shared by every store clone.
 3. Register new accounts with `register_account_with_locale`. Account creation
@@ -38,6 +44,10 @@ umbrella defaults when a backend-exclusive dependency graph is required.
    deterministic fallback. Existing accounts require an application migration;
    there is no automatic import of arbitrary password tables.
 4. Use `authenticate`, `create_session` and `verify_session` for this registry.
+   Passwords contain at least 12 characters and at most 72 bytes, the Argon2
+   input limit. Registration, reset and `authenticate` reject longer input with
+   `InvalidInput` before any account lookup, so the outcome does not reveal
+   whether an email is registered; unknown accounts still perform Argon2 work.
    Verify the opaque session on every authenticated request. Set it in a Secure,
    HttpOnly, appropriately SameSite cookie. Use `revoke_session` for logout.
    Legacy encrypted-only session cookies do **not** gain revocation implicitly.
@@ -70,8 +80,13 @@ arbitrary database delays or establish indistinguishability under outages.
   and creation of a password-changed notice share one database transaction.
   Failure to persist the outbox rolls the password change back.
 - Recovery requests have a three-per-account/15-minute limit and a global
-  120-per-minute ceiling. Consumption has an independent global 60-per-minute
-  ceiling before expensive password hashing. These are bounded defaults, not a
+  120-per-minute ceiling. Consumption looks the code up before any Argon2 work,
+  so unknown, expired or consumed codes cost one indexed read. Each code has its
+  own budget of 10 attempts per minute, counting attempts in flight; only a
+  failed lookup keeps its unit. An exhausted code receives
+  `RecoveryError::Throttled` (map it to a generic "try again later"), while
+  other members' codes are never blocked. The budget is process-local and
+  bounded to 10,000 recent codes. These are bounded defaults, not a
   substitute for per-client/distributed ingress controls.
 - The outbox encrypts recipient and reset code, with per-record authenticated
   encryption. The recovery credential remains digest-only; the delivery copy is
