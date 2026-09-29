@@ -191,7 +191,10 @@ Typed subqueries passed to `where_exists`, `or_where_exists`, `with_cte` and
 final statement is numbered once, in textual order, so nested scopes, CTEs and
 joins keep every tenant and caller binding at its own `$n` position.
 Generated `Model::search()` uses those same model-wide and tenant scopes for
-both its SQL fallback and external Scout result IDs. Missing tenant context
+both its SQL fallback and external Scout result IDs. The SQL fallback never
+matches `#[orm(hidden)]`, `#[orm(encrypted)]`, `#[orm(masked)]` or
+`SecretString` columns, treats `%` and `_` in the query literally, and rejects
+queries over 1,024 bytes or with control characters. Missing tenant context
 fails before contacting Scout, and an empty provider result remains an empty
 match even when a database contains an explicitly inserted ID of zero. Search
 index access controls still belong to the application/operator.
