@@ -25,6 +25,22 @@ fn test_passkey_config_builder() {
 }
 
 #[test]
+fn challenge_ttl_is_bounded_to_one_day() {
+    let config = |seconds| {
+        PasskeyConfig::new("App", "app.com", "https://app.com").with_challenge_ttl_seconds(seconds)
+    };
+    for seconds in [86_401, u64::MAX / 2, u64::MAX] {
+        assert!(matches!(
+            PasskeyAuth::new(&config(seconds)),
+            Err(crate::error::AuthError::PasskeyError(message)) if message.contains("86400")
+        ));
+    }
+    let auth = PasskeyAuth::new(&config(86_400)).unwrap();
+    let (options, _) = auth.start_register(7, "user", "User").unwrap();
+    assert_eq!(options.public_key.challenge.len(), 43);
+}
+
+#[test]
 fn test_passkey_auth_start_register() {
     let config = PasskeyConfig::new("App", "app.com", "https://app.com");
     let auth = PasskeyAuth::new(&config).unwrap();
