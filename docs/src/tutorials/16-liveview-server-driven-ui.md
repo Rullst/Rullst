@@ -100,5 +100,8 @@ let app = Router::new().route(
 - The current component state lives in one socket task. Authentication,
   authorization, reconnect/replay, backpressure and multi-process state remain
   application concerns.
+- `live_ws_handler` accepts WebSocket frames and messages of at most 64 KiB; a
+  larger message closes the session before it is parsed. Origin checks,
+  connection caps and idle timeouts are still route-level policy.
 - Include and pin the HTMX WebSocket extension; Rullst does not inject that
   browser dependency automatically.

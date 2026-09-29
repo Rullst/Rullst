@@ -1130,6 +1130,9 @@ bounded malformed/slow peers and recovery after an application restart. Domain
 persistence, transactional revision checks, HTML escaping, authorization policy,
 replication and proxy configuration remain explicit application responsibilities.
 No automatic durability or upgrade of legacy `LiveComponent` code is implied.
+The legacy `live_ws_handler` bounds incoming WebSocket frames and messages to
+64 KiB before JSON parsing; its origin, admission and idle policy stay with the
+application route.
 The implementation and its local protocol/Chromium acceptance are recorded in
 [the recovery guide](live-recovery.md). Hosted workspace/platform/package
 admission passed in PR #236; final release admission remains separate.
