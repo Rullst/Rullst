@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790694334469,
+  "lastUpdate": 1790698697826,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -12561,6 +12561,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 3737,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27148ab5253cb70d54745b10344462e374207a8a",
+          "message": "Merge pull request #317 from Rullst/refactor/v13-portfolio-templates\n\nfix(cli): escape portfolio CMS values and move the portfolio sources into templates",
+          "timestamp": "2026-09-29T12:58:35-03:00",
+          "tree_id": "d34bc86165a71709898c377d2fc7c18c83519141",
+          "url": "https://github.com/Rullst/Rullst/commit/27148ab5253cb70d54745b10344462e374207a8a"
+        },
+        "date": 1790698696639,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 748,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 636,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1423,
+            "range": "± 104",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 1814,
+            "range": "± 44",
             "unit": "ns/iter"
           }
         ]
