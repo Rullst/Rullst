@@ -41,10 +41,9 @@ hmac = { workspace = true }
 sha2 = { workspace = true }
 secrecy = "0.10"
 aws-sdk-sesv2 = { workspace = true, optional = true }
-# Smithy JSON 0.63 cannot compile with the Document changes in types 1.7.
-# Keep fresh consumer resolution compatible until the SDK/JSON train is upgraded
-# together and its re-exported API has passed SemVer and native SES checks.
-aws-smithy-types = { version = "=1.6.4", default-features = false, optional = true }
+# Types 1.7.0 broke Smithy JSON 0.63 and was yanked; 1.8 restores compatibility.
+# Keep this floor so SES consumers never resolve below the fixed 1.8 line.
+aws-smithy-types = { version = "1.8.1", default-features = false, optional = true }
 sqlx = { workspace = true, optional = true, features = ["runtime-tokio"] }
 url = { version = "2.5.8", optional = true }
 
