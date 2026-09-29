@@ -10,6 +10,8 @@ use std::time::Duration;
 use tokio::sync::{mpsc, watch};
 use tokio::task::{JoinHandle, JoinSet};
 
+mod execution;
+
 /// Type alias for asynchronous job handler closures.
 pub type JobHandler = Box<
     dyn Fn(
@@ -56,6 +58,11 @@ impl Worker {
     }
 
     /// Sets the maximum duration of an individual handler execution.
+    ///
+    /// A handler still running at the deadline is aborted and its job is
+    /// failed as timed out. A handler that cannot be interrupted (for example
+    /// one that blocks its thread) and then returns is recorded from its own
+    /// result instead.
     pub fn job_timeout(mut self, timeout: Duration) -> Self {
         self.job_timeout = timeout;
         self
@@ -144,6 +151,10 @@ impl WorkerHandle {
 
     /// Stops polling, cancels active handlers, and requeues interrupted jobs
     /// when the driver supports recoverable processing states.
+    ///
+    /// Only a handler that was actually cancelled is requeued. A handler that
+    /// finishes before its cancellation takes effect is completed or failed
+    /// from its own result, so a success is not run a second time.
     ///
     /// A claim that is already in flight is allowed to finish, so shutdown can
     /// wait for one `pop` call. A job claimed after shutdown was requested is
@@ -358,64 +369,9 @@ async fn dispatch_job(
         return;
     };
 
-    jobs.spawn(execute_job(driver, handler, job, timeout, shutdown));
-}
-
-#[cfg_attr(mutants, mutants::skip)]
-async fn execute_job(
-    driver: Arc<Box<dyn QueueDriver>>,
-    handler: Arc<JobHandler>,
-    job: QueuedJob,
-    timeout: Duration,
-    mut shutdown: watch::Receiver<bool>,
-) -> Result<(), QueueError> {
-    let job_id = job.id.clone();
-    let job_name = job.name.clone();
-    let mut execution = AbortOnDrop(tokio::spawn(async move { handler(job.payload).await }));
-    let deadline = tokio::time::sleep(timeout);
-    tokio::pin!(deadline);
-
-    tokio::select! {
-        outcome = &mut execution.0 => match outcome {
-            Ok(Ok(())) => driver.mark_complete(&job_id).await
-                .map_err(|error| state_error(&job_id, "mark_complete", error)),
-            Ok(Err(error)) => {
-                let failure = QueueError::JobFailed(format!("'{job_name}' ({job_id}): {error}"));
-                driver.mark_failed(&job_id, &failure.to_string()).await
-                    .map_err(|error| state_error(&job_id, "mark_failed", error))?;
-                Err(failure)
-            }
-            Err(error) if error.is_panic() => {
-                let failure = QueueError::JobPanicked { job_id: job_id.clone() };
-                driver.mark_failed(&job_id, &failure.to_string()).await
-                    .map_err(|error| state_error(&job_id, "mark_failed_after_panic", error))?;
-                Err(failure)
-            }
-            Err(error) => {
-                let failure = QueueError::WorkerTask(error.to_string());
-                driver.mark_failed(&job_id, &failure.to_string()).await
-                    .map_err(|error| state_error(&job_id, "mark_failed_after_cancel", error))?;
-                Err(failure)
-            }
-        },
-        _ = &mut deadline => {
-            execution.0.abort();
-            let _ = (&mut execution.0).await;
-            let failure = QueueError::JobTimedOut {
-                job_id: job_id.clone(),
-                timeout_ms: duration_millis_u64(timeout),
-            };
-            driver.mark_failed(&job_id, &failure.to_string()).await
-                .map_err(|error| state_error(&job_id, "mark_failed_after_timeout", error))?;
-            Err(failure)
-        }
-        _ = wait_for_shutdown(&mut shutdown) => {
-            execution.0.abort();
-            let _ = (&mut execution.0).await;
-            driver.requeue(&job_id, "worker shutdown interrupted execution").await
-                .map_err(|error| state_error(&job_id, "requeue_after_shutdown", error))
-        }
-    }
+    jobs.spawn(execution::execute_job(
+        driver, handler, job, timeout, shutdown,
+    ));
 }
 
 fn report_outcome(
