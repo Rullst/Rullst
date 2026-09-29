@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790694615512,
+  "lastUpdate": 1790698982921,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -10449,6 +10449,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 539,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27148ab5253cb70d54745b10344462e374207a8a",
+          "message": "Merge pull request #317 from Rullst/refactor/v13-portfolio-templates\n\nfix(cli): escape portfolio CMS values and move the portfolio sources into templates",
+          "timestamp": "2026-09-29T12:58:35-03:00",
+          "tree_id": "d34bc86165a71709898c377d2fc7c18c83519141",
+          "url": "https://github.com/Rullst/Rullst/commit/27148ab5253cb70d54745b10344462e374207a8a"
+        },
+        "date": 1790698981699,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1070,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 226,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 504,
+            "range": "± 22",
             "unit": "ns/iter"
           }
         ]
