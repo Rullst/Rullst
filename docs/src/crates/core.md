@@ -91,6 +91,10 @@ for upgraded connections and detached tasks; supervisors own their shutdown.
 - **Opt-in completed-job monitoring:** SQLite can retain and atomically prune a
   configured number of successful jobs; the privacy-safe default remains
   immediate deletion.
+- **Bounded token-bucket rate limiter:** `RateLimiter` keys IPv4 peers per
+  address and IPv6 peers per /64 by default. It tracks at most 100,000 keys,
+  drops fully refilled buckets and evicts the least recently used ones beyond
+  that cap; state is process-local, not a distributed limit.
 - **Bounded cache metadata:** Memory and Redis expose value length and TTL for
   at most 200 sorted entries, never cached values. Rullst Studio renders keyed
   opaque identifiers and one-entry invalidation rather than exact keys or bulk

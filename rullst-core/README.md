@@ -15,6 +15,9 @@
   during startup, dependency unavailability, and graceful drain. It accepts at
   most 32 immutable component labels and exposes counts—not labels or errors—on
   `/ready`; dependency checks and multi-replica coordination remain host work.
+- **Bounded Rate Limiting:** `RateLimiter` keys IPv4 peers per address and
+  IPv6 peers per /64, and bounds its process-local bucket map to 100,000 keys
+  by dropping refilled buckets and evicting the least recently used ones.
 - **Typed Failures:** Server, scheduler, queue, storage, and resilience APIs expose structured errors for fallible paths. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
 - **Dependency Injection:** Type-safe, intuitive global state management across routes and background workers.
 - **Environment Management:** Native `dotenv` and TOML configuration loaders for different deployment targets (Staging, Production, Local).
