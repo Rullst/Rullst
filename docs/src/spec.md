@@ -1339,6 +1339,10 @@ the same server-authoritative controls.
 * **XSS Protection:** Dynamic display values in the supported `{expr}` syntax
   are HTML-escaped by the generated code.
 * **Raw Unescaped HTML:** Explicitly bypassed using the wrapper `rullst::html::RawHtml(String)`.
+* **Memoize keys:** `#[memoize]` keys its process-local cache entries by the
+  function's `module_path!()`, name and attribute location plus the serialized
+  arguments, so same-named functions in different modules, crates or `impl`
+  blocks never share results. It remains tenant- and invalidation-unaware.
 * **Example:**
   ```rust
   use rullst::html;
