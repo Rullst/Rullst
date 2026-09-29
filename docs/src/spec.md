@@ -1488,6 +1488,13 @@ while portability and semantic review remain the model author's responsibility.
 * Generated builders assemble bindings by emitted clause position (CTE, JOIN,
   WHERE/HAVING, ORDER BY), not by the order in which fluent methods were
   called. Nested typed subqueries export that ordered binding sequence.
+* `where_exists`, `or_where_exists`, `with_cte` and `with_recursive` embed a
+  subquery with portable `?` markers, even when its own `to_sql()` rendered
+  PostgreSQL `$n` markers. The outermost statement (including `delete_all`) is
+  numbered once, so `$n` follows textual order and the mandatory tenant or
+  model-wide scope binding can never shift onto a nested or caller value. A
+  custom subquery whose `$n` markers are mixed with `?`, reference a missing
+  binding or leave a binding unused fails closed with a `Validation` error.
 * Generated magic filters bind supported primitive fields to their Rust type at
   compile time (`String`, `i32`, `f64`, and `bool`), and generated column enums
   make unknown columns unrepresentable on typed paths. String-column builders,

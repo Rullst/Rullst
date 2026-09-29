@@ -460,7 +460,9 @@ pub fn generate_execution_methods(
             if rullst_orm::schema::is_query_log_enabled() {
                 println!("[SQL Debug] {:?} | Bindings: [{} parameter(s) redacted for security]", query_str, self.scope_bindings.len() + self.bindings.len());
             }
-            let query_str = rullst_orm::replace_placeholders(&query_str);
+            // Embedded subqueries are portable, so one pass numbers every
+            // marker in textual order; MySQL and SQLite keep `?` markers.
+            let query_str = self.format_postgres(&query_str);
             let result = {
                 let mut query = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(query_str.as_str()));
                 for binding in query_bindings {
