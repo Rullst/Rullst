@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790718392055,
+  "lastUpdate": 1790721209765,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -12080,6 +12080,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 30,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c5095331efef2f09ae50a449f1ddbec3cd83ac32",
+          "message": "Merge pull request #328 from Rullst/fix/v13-orm-exposure-fixes\n\nfix(orm): stop tenant binding shifts and plaintext leaks of protected fields",
+          "timestamp": "2026-09-29T19:13:33-03:00",
+          "tree_id": "942b6d9bcb447f6d6850ddbc55a729394bb25451",
+          "url": "https://github.com/Rullst/Rullst/commit/c5095331efef2f09ae50a449f1ddbec3cd83ac32"
+        },
+        "date": 1790721209068,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5244,
+            "range": "± 89",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 678,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 27,
             "range": "± 0",
             "unit": "ns/iter"
           }
