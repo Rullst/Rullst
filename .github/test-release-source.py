@@ -74,8 +74,10 @@ class ReleaseSourceTests(unittest.TestCase):
             filters = re.findall(r"(?m)^    branches: \[([^\]]+)\]$", source)
             with self.subTest(workflow=requirement["workflow"]):
                 self.assertEqual(len(filters), 2, "review push and PR trigger layout")
-                for value in filters:
-                    self.assertEqual({part.strip(' \"\'') for part in value.split(',')}, {"main", "v12", "v13"})
+                push, pull_request = ({part.strip(' \"\'') for part in value.split(',')} for value in filters)
+                self.assertEqual(push, {"main", "v12", "v13"})
+                # Heavy checks may skip PRs to main; maintained lines keep PR runs.
+                self.assertIn(pull_request, ({"main", "v12", "v13"}, {"v12", "v13"}))
 
     def test_wrong_branch_unprotected_or_stale_head_are_rejected(self):
         for state in ({**self.state, "name": "v13"}, {**self.state, "name": "v12"},

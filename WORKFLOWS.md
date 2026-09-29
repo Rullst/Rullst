@@ -53,10 +53,17 @@ the crates.io deployment approval remain mandatory. Fuzz receipts are limited
 to the candidate's release line, including the source policy of reused runs.
 
 `ci.yml` deliberately treats the expensive operating-system matrix differently.
-Format and Clippy continue to give feedback on draft pull requests. The complete
-Linux/macOS/Windows test matrix, blocking line coverage, SemVer fan-out and
-CodeQL analysis start for a pull request only when it is ready
-for review, and it can always be requested manually. Each operating system
+Format and Clippy continue to give feedback on draft pull requests. A ready pull
+request to `main` runs the fast Linux gate: the `workspace` and `cli-standard`
+shards, MSRV, strict database features, Redis/S3 contracts, generated access,
+facade composition, AI evals and Labs isolation. Line coverage, SemVer and
+CodeQL skip pull requests to `main`. The resulting `main` push runs every Linux
+shard, public feature boundaries, the threat-model minimum, coverage, SemVer and
+CodeQL. A nightly scheduled run (05:30 UTC) executes the complete
+Linux/macOS/Windows matrix on the default branch. Ready pull requests to the
+maintained `v12` line and transitional `v13` keep the complete matrix, blocking
+line coverage, SemVer fan-out and CodeQL before merge. Any matrix can be
+requested manually. Each operating system
 executes eight parallel shards: the non-CLI workspace, ordinary CLI targets,
 the LMS contract, three public-profile groups and two generated-blueprint groups.
 The basic/relational/polyglot and foundation/product partitions retain every original
@@ -66,17 +73,16 @@ Hosted CI permits two nested compiler jobs for the otherwise serial generated
 profile/blueprint builds; constrained local runs retain their one-job default.
 Each CLI
 shard fetches the locked registry inventory before its generated applications
-prove that they compile without network access. After that
-reviewed commit is merged, the automatic `main` or `v13` push repeats Linux rather than
-paying for the same macOS and Windows proof twice. A direct push to either branch
-therefore has Linux evidence only until a maintainer explicitly runs `ci.yml`;
-release candidates must use the manual full matrix when no successful ready-PR
-run points to the exact candidate tree.
+prove that they compile without network access. After a
+reviewed commit is merged, the automatic `main` or `v13` push runs Linux only;
+for `main`, macOS and Windows evidence comes from the nightly run. Release
+candidates must use the manual full matrix when no successful full-matrix run
+points to the exact candidate tree.
 
-The SHA-bound quality scorecard is generated only by a ready pull request or a
-manual full-matrix run. It is deliberately skipped on the Linux-only automatic
-branch run, because that execution cannot honestly award cross-platform
-verification credit. Run `ci.yml` manually on a final release-branch candidate to
+The SHA-bound quality scorecard is generated only by a ready pull request to a
+maintained line, the nightly run or a manual full-matrix run. It is deliberately
+skipped on Linux-only runs (automatic branch pushes and pull requests to
+`main`), because they cannot honestly award cross-platform verification credit. Run `ci.yml` manually on a final release-branch candidate to
 produce the exact-SHA release scorecard. Manual diagnostic runs may select one
 operating system and one test shard; those deliberately do not produce a
 full-matrix scorecard and do not replace final-candidate evidence.
@@ -170,7 +176,7 @@ These workflows are **periodic and manually runnable**:
 
 | Cadence | Workflows | Mode |
 | :--- | :--- | :--- |
-| Daily | `audit.yml`, `sanitizers.yml` | Cargo Audit is blocking; TSan/ASan are blocking when executed. |
+| Daily | `audit.yml`, `ci.yml`, `sanitizers.yml` | Cargo Audit (default branch and `v12` locks) is blocking; the nightly `ci.yml` run executes the complete Linux/macOS/Windows matrix on `main`; TSan/ASan are blocking when executed. |
 | Weekly | `bench.yml`, `cargo-deny.yml`, `codeql.yml`, `corpus-sync.yml`, `coverage.yml`, `documentation.yml`, `pqc-compliance.yml`, `proptest.yml`, `scorecards.yml`, `security-audit.yml`, `trufflehog.yml`, `udeps.yml` | The inventory below identifies which results are blocking, automated evidence, or informational. Corpus sync warms and minimizes the same 42 validated target corpora with bounded parallelism. |
 
 All remaining test/build workflows run on the documented push, pull-request or
@@ -319,13 +325,28 @@ defaults disabled and every public feature enabled. A partial hand-maintained
 feature allowlist therefore cannot make a monorepo-only integration appear
 release-ready.
 
-## Recommended `main` branch-protection profile
+## Recommended branch-protection profiles
 
-Require every job emitted by the following workflows before merging into
-`main`: Rust CI, GitHub Actions Lint, Documentation, End-to-End Smoke Tests, Cargo Audit,
-Security Audit, Cargo Deny, CodeQL, Test Coverage, Cargo Machete, SemVer Checks,
-Spellcheck, Crate Architecture Policy, TruffleHog, Unsafe Policy, WebAssembly Matrix, Zero
-Panics, no-std Build, IoT Integration, and PR Security Evidence.
+**`main` (v13 development)** requires the fast gate that every ready pull
+request emits: Code Quality & Format; Run Tests (ubuntu-latest / workspace) and
+(ubuntu-latest / cli-standard); Check MSRV (Rust 1.96.0); ORM strict-sqlite,
+strict-postgres and strict-mysql; Redis live contracts; Generated release access
+boundaries; Facade shared-local recovery composition; Versioned deterministic AI
+evals; Build book and validate local links; Validate workflow syntax and
+expressions; Enforce Zero Panics (published runtime targets); Enforce production
+unsafe boundary; Check Dependencies (Licenses, Vulnerabilities); Scan for leaked
+secrets; Enforce reviewed internal dependency graph; and Typo Check. It does not
+require an up-to-date base: the full `main` push run and the nightly matrix
+detect interactions between independently green pull requests, and each
+additional rebase would otherwise repeat the whole gate. The two Cargo Audit
+workflows emit an ambiguous `audit` context, so Cargo Deny's advisory check is
+the required vulnerability gate. The macOS/Windows and CLI-profile shards,
+public feature boundaries, threat-model minimum, coverage, SemVer and CodeQL run
+after merge, nightly or weekly. They remain release-admission requirements.
+
+**`v12` (stable maintenance)** keeps the complete profile with an up-to-date
+base: every Linux/macOS/Windows test shard, public feature boundaries, the
+threat-model minimum, CodeQL, documentation and workflow lint.
 
 Do not configure a path-filtered, scheduled, manual, deployment, or tag-only
 workflow as a universal required check: an intentionally skipped workflow may
@@ -608,12 +629,12 @@ dependency graph make static estimates unreliable.
 | [`audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/audit.yml) | main/v12/v13 push and PR, daily, manual | Blocking | Cargo Audit over the production lock and all eleven fuzz-package locks with one advisory-database fetch. The v12 candidate applies no advisory exceptions; future exceptions must pass the separate owner/expiry governance check. |
 | [`bench.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/bench.yml) | main push, weekly, manual | Automated evidence | Eight published groups backed by nine Criterion binaries, with non-blocking 20% regression alerts and gh-pages data consumed by the benchmark hub. Scheduled runs use the repository default branch. |
 | [`cargo-deny.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cargo-deny.yml) | main/v12/v13 push and PR, weekly, manual | Blocking | Advisory, license, ban, and source policy from `deny.toml`. |
-| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, eight-shard multi-OS tests including Cargo-aware doctests sourced from all 52 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
+| [`ci.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/ci.yml) | main/v12/v13 push and PR (Linux gate on PRs to main), nightly full matrix, manual | Blocking plus observational report | Format, all-target/all-feature Clippy, eight-shard multi-OS tests including Cargo-aware doctests sourced from all 52 tutorials, four-way feature/threat partitions, the SQLite transactional outbox contract and Messaging concurrency suite, relational/polyglot live matrices, isolated strict-DB/feature boundaries, MSRV, and a ready-PR/manual full-matrix SHA-bound per-crate quality scorecard artifact. A targeted manual OS/shard run is diagnostic and cannot emit the full scorecard. |
 | [`cli-artifacts.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cli-artifacts.yml) | reusable call from manual Rust CI or admitted tag release | Blocking caller job | Builds and runs both CLI entry points on four explicit native targets; stages bounded executables and source/version/platform/digest inventories. CI artifacts are diagnostic; only the tag pipeline adds separate provenance and release assets. No installation occurs. |
 | [`cli-artifacts.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/cli-artifacts.yml) | Reusable, called by full/CLI manual CI and tag release | Required release evidence | Builds and executes both CLI entry points on four native targets; records bounded assets, versions, digests and source metadata before attestation. |
-| [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main/v12/v13 push and PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check, plus JavaScript/TypeScript analysis. |
+| [`codeql.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/codeql.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking run | Rust CodeQL after an all-target/all-feature workspace check, plus JavaScript/TypeScript analysis. |
 | [`corpus-sync.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/corpus-sync.yml) | weekly, manual | Informational | Validates the shared 42-target inventory and eleven package lockfiles, restores each real target corpus, performs a bounded warm-up, minimizes it, uploads the result and warms the campaign's content-addressed compiler cache; individual target failures are retained but tolerated, while dependency-lock drift remains a hard failure. |
-| [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main/v12/v13 push and PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation with a pinned, zero-retry, bounded-concurrency nextest scheduler and retained JUnit inventory; a focused default-SQLite pass for ORM/Studio/Nexus/the facade; exact local 90% floors; and blocking OIDC-authenticated Codecov upload. Scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |
+| [`coverage.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/coverage.yml) | main/v12/v13 push, v12/v13 PR, weekly, manual | Blocking plus observational job | LLVM LCOV generation with a pinned, zero-retry, bounded-concurrency nextest scheduler and retained JUnit inventory; a focused default-SQLite pass for ORM/Studio/Nexus/the facade; exact local 90% floors; and blocking OIDC-authenticated Codecov upload. Scheduled/manual branch instrumentation is non-blocking and uses the pinned verifier-only nightly. |
 | [`dast-zap.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/dast-zap.yml) | manual | Blocking generated targets plus informational showcase | Pins the ZAP image by digest, scans fresh release/migrated REST API and complete LMS surfaces as blocking gates, scans the CDN-backed blog showcase informationally, and uploads separate reports plus application logs. |
 | [`documentation.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/documentation.yml) | main/v12/v13 push and PR, weekly, manual | Blocking plus informational external scan | Builds the mdBook; validates landing/benchmark templates, project identity, the README workflow count, local assets, pinned external chart scripts and all requested social links. Real Chromium checks desktop/390px/320px layout, keyboard/mobile navigation, clipboard success/denial, privacy disclosure, reduced motion, no-JS navigation, and absence of external landing requests/browser storage. This is a bounded browser contract, not WCAG certification. Also validates the 190-claim historical roadmap denominator and repository-local links. Scheduled/manual runs preserve an informational external-link report. |
 | [`e2e-smoke.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/e2e-smoke.yml) | main/v12/v13 push and PR, manual | Blocking | Boots the release Blog application and checks HTTP, headers, CSRF form flow, SQLite persistence, and the persisted page parsed by real headless Chromium. |
@@ -634,7 +655,7 @@ dependency graph make static estimates unreliable.
 | [`sanitizers.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/sanitizers.yml) | daily, manual | Blocking run | TSan and ASan library matrices on pinned `nightly-2026-08-21`; this verifier toolchain does not change Rullst's stable compiler or MSRV. |
 | [`scorecards.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/scorecards.yml) | main push, weekly, manual | Automated evidence | OpenSSF Scorecard analysis and SARIF/artifact upload; not SLSA certification. |
 | [`security-audit.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/security-audit.yml) | main/v12/v13 push and PR, weekly, manual | Blocking | Cross-checks active advisory IDs and expiry metadata across the ledger, Cargo Deny, and scanner workflows, then independently reruns Cargo Audit. |
-| [`semver.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/semver.yml) | main/v12/v13 push and PR, manual | Blocking | Fans out one job per machine-readable release-order entry and compares each supported, already-published library API with its exact latest non-yanked crates.io baseline. Never-published packages and proc-macro/binary API surfaces unsupported by `cargo-semver-checks` are reported explicitly. |
+| [`semver.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/semver.yml) | main/v12/v13 push, v12/v13 PR, manual | Blocking | Fans out one job per machine-readable release-order entry and compares each supported, already-published library API with its exact latest non-yanked crates.io baseline. Never-published packages and proc-macro/binary API surfaces unsupported by `cargo-semver-checks` are reported explicitly. |
 | [`spellcheck.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/spellcheck.yml) | main/v12/v13 push and PR, manual | Blocking | Repository typo scan. |
 | [`trufflehog.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/trufflehog.yml) | main/v12/v13 push and PR, weekly, manual | Blocking | Verified-secret scan over the configured Git history range. |
 | [`udeps.yml`](https://github.com/Rullst/Rullst/blob/main/.github/workflows/udeps.yml) | weekly, manual | Informational | `cargo-udeps` signal on pinned `nightly-2026-08-21`; command failures are tolerated. |

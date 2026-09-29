@@ -3,8 +3,10 @@ name: SemVer Checks
 on:
   push:
     branches: [main, v12, v13]
+  # PRs to main skip this heavy check; it runs after each main push,
+  # on manual runs and on PRs to the maintained lines.
   pull_request:
-    branches: [main, v12, v13]
+    branches: [v12, v13]
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
 
