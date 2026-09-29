@@ -426,13 +426,15 @@ fn audit_after_tx(table_name: &str) -> TokenStream {
                 Some(self.to_json())
             ).await?;
         } else if let Some(old_model) = old_model_for_audit {
-            rullst_orm::audit::log_audit_diff_with_tx(
+            let redacted_changes = self.__rullst_redacted_changes(&old_model);
+            rullst_orm::audit::log_audit_diff_redacted_with_tx(
                 tx,
                 #table_name,
                 self.id,
                 "updated",
                 &old_model.to_json(),
-                &self.to_json()
+                &self.to_json(),
+                &redacted_changes,
             ).await?;
         }
     }

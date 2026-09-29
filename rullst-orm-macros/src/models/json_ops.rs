@@ -12,15 +12,75 @@ pub fn generate_json_methods(parsed: &ParsedModel) -> TokenStream {
         relation_field_idents.push(rel.field_name.clone());
     }
 
+    // `to_json()` feeds audit rows and committed events: hidden fields are
+    // omitted and encrypted/masked values are replaced by the audit marker.
+    // The Scout document omits every hidden, encrypted and masked field.
     let mut to_json_fields = vec![];
+    let mut search_fields = vec![];
     for field_name in normal_fields {
         let field_name_str = field_name.to_string();
-        if !hidden_fields.contains(field_name) {
+        if hidden_fields.contains(field_name) {
+            continue;
+        }
+        if parsed.is_redacted(field_name) {
             to_json_fields.push(quote! {
-                map.insert(#field_name_str.to_string(), rullst_orm::_serde_json::json!(self.#field_name));
+                map.insert(
+                    #field_name_str.to_string(),
+                    rullst_orm::_serde_json::Value::String(rullst_orm::audit::REDACTED_VALUE.to_string()),
+                );
             });
+        } else {
+            let insert = quote! {
+                map.insert(#field_name_str.to_string(), rullst_orm::_serde_json::json!(self.#field_name));
+            };
+            to_json_fields.push(insert.clone());
+            search_fields.push(insert);
         }
     }
+    let search_json = if parsed.searchable {
+        quote! {
+            /// Search-provider document without hidden, encrypted or masked fields.
+            fn __rullst_search_json(&self) -> String {
+                let mut map = rullst_orm::_serde_json::Map::new();
+                #(#search_fields)*
+                rullst_orm::_serde_json::Value::Object(map).to_string()
+            }
+        }
+    } else {
+        quote! {}
+    };
+    let redacted_changes = if parsed.auditable {
+        let comparisons = normal_fields
+            .iter()
+            .filter(|field| !hidden_fields.contains(field) && parsed.is_redacted(field))
+            .map(|field| {
+                let key = field.to_string();
+                if parsed.encrypted_fields.iter().any(|encrypted| encrypted.name == *field) {
+                    quote! {
+                        if self.#field != previous.#field {
+                            changed.push(#key);
+                        }
+                    }
+                } else {
+                    quote! {
+                        if rullst_orm::audit::redacted_value_changed(&self.#field, &previous.#field) {
+                            changed.push(#key);
+                        }
+                    }
+                }
+            });
+        quote! {
+            /// Names of redacted fields whose in-memory values differ from `previous`.
+            fn __rullst_redacted_changes(&self, previous: &Self) -> Vec<&'static str> {
+                #[allow(unused_mut)]
+                let mut changed = Vec::new();
+                #(#comparisons)*
+                changed
+            }
+        }
+    } else {
+        quote! {}
+    };
 
     let skip_tail = if skipped_fields.is_empty() {
         // No `#[orm(skip)]` / `#[sqlx(skip)]` fields, so the
@@ -94,10 +154,15 @@ pub fn generate_json_methods(parsed: &ParsedModel) -> TokenStream {
             Self::from_json_array(json_str)
         }
 
+        /// Audit/event projection: hidden fields are omitted and
+        /// `#[orm(encrypted)]`/`#[orm(masked)]` values become `"***"`.
         pub fn to_json(&self) -> String {
             let mut map = rullst_orm::_serde_json::Map::new();
             #(#to_json_fields)*
             rullst_orm::_serde_json::Value::Object(map).to_string()
         }
+
+        #search_json
+        #redacted_changes
     }
 }
