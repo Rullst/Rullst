@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790593664832,
+  "lastUpdate": 1790655303746,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -10305,6 +10305,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 713,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "518b544a53e04dc019097c41c7a41a1b701f6d67",
+          "message": "Merge pull request #295 from Rullst/dependabot/github_actions/main/ci-tools-c19673763f\n\nchore(deps): bump the ci-tools group with 7 updates",
+          "timestamp": "2026-09-29T00:35:51-03:00",
+          "tree_id": "2d8ee0fdf61e7611980e74ef81af667c393e1417",
+          "url": "https://github.com/Rullst/Rullst/commit/518b544a53e04dc019097c41c7a41a1b701f6d67"
+        },
+        "date": 1790655302755,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1664,
+            "range": "± 48",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 375,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 754,
+            "range": "± 16",
             "unit": "ns/iter"
           }
         ]
