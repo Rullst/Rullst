@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790718607493,
+  "lastUpdate": 1790721404342,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -9308,6 +9308,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c5095331efef2f09ae50a449f1ddbec3cd83ac32",
+          "message": "Merge pull request #328 from Rullst/fix/v13-orm-exposure-fixes\n\nfix(orm): stop tenant binding shifts and plaintext leaks of protected fields",
+          "timestamp": "2026-09-29T19:13:33-03:00",
+          "tree_id": "942b6d9bcb447f6d6850ddbc55a729394bb25451",
+          "url": "https://github.com/Rullst/Rullst/commit/c5095331efef2f09ae50a449f1ddbec3cd83ac32"
+        },
+        "date": 1790721403642,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 24,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 7,
             "range": "± 0",
             "unit": "ns/iter"
           }
