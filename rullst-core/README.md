@@ -28,6 +28,9 @@
 - **Durable Scheduled Queues:** SQLite and Redis persist bounded `dispatch_at`
   timestamps and never claim a job before its millisecond due time. Delivery is
   poll-dependent and at-least-once.
+- **Bounded Background Errors:** `WorkerHandle` and `SchedulerHandle` buffer at
+  most 256 undrained errors; overflow is dropped, counted by `dropped_errors()`
+  and logged as a `tracing` warning. Drain `next_error` to observe every failure.
 - **Explicit Completion History:** SQLite deletes successful payloads by
   default. `Queue::sqlite_with_completed_history` opts into a bounded retained
   history for Studio/operations, with atomic pruning and an explicit purge API.

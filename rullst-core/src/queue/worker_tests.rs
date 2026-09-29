@@ -227,6 +227,60 @@ async fn handler_timeouts_are_contained_and_failed() {
     handle.shutdown().await.unwrap();
 }
 
+/// Driver whose every claim fails, like an unreachable Redis server.
+struct UnavailableDriver(Arc<AtomicUsize>);
+
+#[async_trait]
+impl QueueDriver for UnavailableDriver {
+    async fn push(&self, _id: &str, _name: &str, _payload: &str) -> Result<(), QueueError> {
+        Ok(())
+    }
+
+    async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
+        self.0.fetch_add(1, Ordering::SeqCst);
+        Err(QueueError::Driver("backend unavailable".to_string()))
+    }
+
+    async fn mark_complete(&self, _job_id: &str) -> Result<(), QueueError> {
+        Ok(())
+    }
+
+    async fn mark_failed(&self, _job_id: &str, _error: &str) -> Result<(), QueueError> {
+        Ok(())
+    }
+
+    async fn pending_count(&self) -> Result<u64, QueueError> {
+        Ok(0)
+    }
+}
+
+#[tokio::test]
+async fn undrained_worker_errors_are_bounded_and_counted() {
+    let polls = Arc::new(AtomicUsize::new(0));
+    let queue = Queue::custom(Box::new(UnavailableDriver(Arc::clone(&polls))));
+    let mut handle = Worker::new(&queue).poll_interval(1).run().unwrap();
+    let capacity = crate::error_buffer::ERROR_BUFFER_CAPACITY;
+
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while polls.load(Ordering::SeqCst) <= capacity + 16 {
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .unwrap();
+
+    let mut buffered = 0;
+    while handle.try_next_error().is_some() {
+        buffered += 1;
+    }
+    assert_eq!(buffered, capacity);
+    assert!(handle.dropped_errors() >= 16);
+    assert!(matches!(
+        handle.shutdown().await,
+        Ok(()) | Err(QueueError::Driver(_))
+    ));
+}
+
 /// A handler that blocks its thread cannot be interrupted by `abort`, so it
 /// still returns `Ok` after the deadline branch was selected. Its side effects
 /// happened; the worker must record a completion, not a timeout.
