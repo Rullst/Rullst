@@ -81,6 +81,32 @@ A prepared version section does not establish that its tag or crates exist.
   releases. Select Tauri 2.11.6 for its upstream channel IPC isolation fix;
   existing shells require an explicit application-owned dependency update.
 
+### Auth review fixes
+
+- `SqlRecoveryStore` rejects passwords over 72 bytes with `InvalidInput` before
+  the account lookup in `authenticate`, registration and reset. Before, a 73 to
+  1024-byte password revealed whether an email was registered through the
+  result and its timing.
+- `SqlRecoveryStore::connect` requires `sslmode=verify-full` for remote
+  PostgreSQL hosts and accepts only connection and TLS query options, like the
+  email-login and API-token services. Pass `sslrootcert` for a private CA.
+- Email-login redemption charges only failed attempts, per browser binding, and
+  an exhausted binding gets `RecoveryError::Throttled`. Before, 60 bad links
+  from any client blocked every user's sign-in for a minute.
+- `complete_password_reset` checks the token before any Argon2 work and budgets
+  attempts per reset token (10 per minute, including attempts in flight), so
+  one client can no longer block other members' password resets.
+- `PasskeyAuth::new` rejects challenge TTLs above 86,400 seconds, and challenge
+  expiry uses checked arithmetic, so a huge TTL can no longer panic and disable
+  passkeys until restart.
+- Malformed `.env` and `Rullst.toml` errors report only a position, never file
+  contents such as `APP_KEY` or connection strings, and the cookie helpers skip
+  `.env` when `RULLST_ENV` or `APP_ENV` is set.
+- JWT revocation stores cap token rows per subject and keep a reserve for
+  subject revocations, falling back to a subject issue-time cutoff, so one
+  subject can no longer block logout for everyone. The SQLite store adds two
+  backward-compatible columns; upgrade every process that shares a store file.
+
 ### OAuth authorization-code request maintenance
 
 - Explicitly request `response_type=code` in the built-in Google, Microsoft,
