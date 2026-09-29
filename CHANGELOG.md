@@ -153,6 +153,9 @@ A prepared version section does not establish that its tag or crates exist.
   full hosted campaign must pass before this candidate is admitted.
 - Refresh immutable CodeQL, Rust toolchain installer, tool installer,
   TruffleHog wrapper and Codecov Action references together across v13 workflows.
+- Update Studio's API playground to utoipa 6.0.0 and utoipa-swagger-ui 10.0.1
+  together, including the `rullst` and `rullst-studio` fuzz locks.
+  `Studio::with_openapi` now accepts a utoipa 6 `OpenApi` (breaking for v13).
 
 ### Unpublished v13 privacy foundation
 
