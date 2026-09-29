@@ -19,6 +19,12 @@ A prepared version section does not establish that its tag or crates exist.
   empty `source_findings` array. The catalog becomes `rullst-upgrade-rules-v3`,
   so earlier preparations must be prepared again.
 
+### CLI error messages
+
+- `cargo rullst` and `rullst` print a failed command's message instead of its
+  internal debug form (for example `Error: NotRullstProject`) and exit with
+  status 1.
+
 ### Release provenance and governance
 
 - Preserve the original signed Sigstore bundle as a release asset and verify all
