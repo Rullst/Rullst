@@ -38,6 +38,9 @@ built-in SQLite and Redis drivers. SQLite filters claims by local wall-clock
 milliseconds; Redis atomically promotes bounded batches using Redis server time.
 Neither backend claims a scheduled job early. Execution starts on the first
 worker poll after it becomes due and retains the queue's at-least-once semantics.
+`Worker` drives each `pop` to completion instead of racing it against
+completions or shutdown, because both built-in claims commit before the future
+resolves. A job claimed after graceful shutdown was requested is requeued.
 Custom drivers return `QueueError::Unsupported` for future timestamps unless
 they explicitly implement durable scheduling.
 

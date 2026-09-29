@@ -58,7 +58,11 @@ async fn configure() -> Result<(Queue, WorkerHandle), QueueError> {
 ```
 
 Dropping `WorkerHandle` stops processing. On graceful shutdown, call
-`handle.shutdown().await` and inspect its typed error.
+`handle.shutdown().await` and inspect its typed error. The worker never cancels
+a claim in flight: graceful shutdown waits for the current `pop`, and a job
+claimed after shutdown was requested is requeued instead of dispatched.
+Dropping the handle aborts immediately, so such a claim returns only through
+stalled-lease recovery.
 
 Use `Queue::redis(redis_url)` with the `queue-redis` feature when independent
 processes must share work. SQLite is durable local state and supports atomic
