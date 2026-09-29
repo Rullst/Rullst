@@ -34,8 +34,8 @@ pub(crate) fn command() -> Command {
         .arg(
             Arg::new("tenant-ref")
                 .long("tenant-ref")
-                .required_if_eq("blueprint", "saas")
-                .help("Server-owned SaaS tenant"),
+                .required(true)
+                .help("Server-owned SaaS tenant, fixed at generation"),
         )
         .arg(
             Arg::new("replay-store")
@@ -54,7 +54,7 @@ pub(crate) fn run(matches: &ArgMatches) -> Result<(), Box<dyn std::error::Error>
         .get_one::<u8>("minimum-age")
         .ok_or_else(|| invalid("minimum age is required"))?;
     let version = argument(matches, "policy-version")?;
-    let tenant = matches.get_one::<String>("tenant-ref").map(String::as_str);
+    let tenant = argument(matches, "tenant-ref")?;
     let consumer = argument(matches, "blueprint")?;
     let profile = argument(matches, "replay-store")?;
     let edits = plan(&root, source, minimum, version, tenant, profile, consumer)?;
@@ -81,14 +81,14 @@ fn plan(
     source: Option<&Path>,
     minimum: u8,
     version: &str,
-    tenant: Option<&str>,
+    tenant: &str,
     profile: &str,
     consumer: &str,
 ) -> Result<Vec<Edit>, Box<dyn std::error::Error>> {
-    if !matches!((consumer, tenant), ("saas", Some(_))) {
-        return Err(invalid("the SaaS dashboard requires --tenant-ref").into());
+    if consumer != "saas" {
+        return Err(invalid("make:age-gate supports only the SaaS dashboard").into());
     }
-    for token in std::iter::once(version).chain(tenant) {
+    for token in [version, tenant] {
         if token.is_empty()
             || token.len() > 128
             || !token
@@ -154,12 +154,7 @@ fn plan(
         .replace("__STORE_TYPE__", store_type)
         .replace("__STORE_OPEN__", store_open)
         .replace("__POLICY_VERSION__", &format!("{version:?}"))
-        .replace(
-            "__TENANT_CONFIG__",
-            &tenant
-                .map(|tenant| format!("Some({tenant:?}.to_owned())"))
-                .unwrap_or_else(|| "None".to_owned()),
-        )
+        .replace("__TENANT_REF__", &format!("{tenant:?}"))
         .replace("__AUDIENCE__", "\"saas-dashboard\"")
         .replace("__MINIMUM_AGE__", &minimum.to_string());
     for (name, content) in [
@@ -171,10 +166,6 @@ fn plan(
         (
             "src/controllers/age_gate/page.rs",
             include_str!("page.rs.template").to_owned(),
-        ),
-        (
-            "src/controllers/age_gate/selection.rs",
-            include_str!("selection.rs.template").to_owned(),
         ),
     ] {
         syn::parse_file(&content)?;
@@ -200,4 +191,62 @@ fn plan(
         include_str!("README.md.template").replace("__PROFILE__", profile),
     )?);
     Ok(edits)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generated_dashboard_binds_only_the_fixed_tenant() {
+        let temporary = tempfile::tempdir().unwrap();
+        let root = temporary.path();
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[package]\nname = \"consumer\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\nrullst = \"13\"\n",
+        )
+        .unwrap();
+        crate::blueprints::apply(
+            crate::blueprints::SAAS_BLUEPRINT_ID,
+            root,
+            "consumer",
+            "consumer",
+            false,
+            false,
+            true,
+            "Active Record",
+            "Zero-Bundle HTMX",
+        )
+        .unwrap();
+        for tenant in ["", "tenant/other", "tenant?school=x"] {
+            assert!(plan(root, None, 18, "dashboard-v1", tenant, "sqlite", "saas").is_err());
+        }
+        let edits = plan(
+            root,
+            None,
+            18,
+            "dashboard-v1",
+            "tenant-alpha",
+            "sqlite",
+            "saas",
+        )
+        .unwrap();
+        writes::apply(&edits).unwrap();
+        let controllers = root.join("src/controllers");
+        let config = std::fs::read_to_string(controllers.join("age_gate/config.rs")).unwrap();
+        assert!(config.contains("const TENANT_REF: &str = \"tenant-alpha\";"));
+        let page = std::fs::read_to_string(controllers.join("age_gate/page.rs")).unwrap();
+        assert!(page.contains("action=\"/dashboard\""));
+        assert!(!controllers.join("age_gate/selection.rs").exists());
+        for name in [
+            "age_controller.rs",
+            "age_gate/config.rs",
+            "age_gate/page.rs",
+        ] {
+            let source = std::fs::read_to_string(controllers.join(name)).unwrap();
+            for removed in ["school", "TenantContext", "Option<String>"] {
+                assert!(!source.contains(removed), "{name} still contains {removed}");
+            }
+        }
+    }
 }

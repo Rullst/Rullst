@@ -43,6 +43,17 @@ A prepared version section does not establish that its tag or crates exist.
   internal debug form (for example `Error: NotRullstProject`) and exit with
   status 1.
 
+### CLI consumer and configuration-error cleanup
+
+- `make:age-gate` and `make:privacy` no longer generate the unreachable LMS
+  multi-school path (school selector, `TenantContext` extraction, optional
+  tenant, `?school=` URLs). The tenant is a generated constant from the
+  now-required `--tenant-ref`, and generated privacy routes still answer 403 to
+  any query string or `x-school-id` header.
+- `cargo rullst dev` and `foundry:deploy` no longer echo configuration content
+  in parse errors: a malformed `Rullst.toml` or `Foundry.toml` reports only the
+  file, line and column, and a malformed `.env` reports only the entry number.
+
 ### Release provenance and governance
 
 - Preserve the original signed Sigstore bundle as a release asset and verify all
