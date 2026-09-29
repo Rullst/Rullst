@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790698063022,
+  "lastUpdate": 1790702766196,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -21315,6 +21315,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1307,
             "range": "± 80",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "81cfbe7458299e3f2a9a020d47af44990bc2ccd5",
+          "message": "Merge pull request #319 from Rullst/fix/v13-core-review-fixes\n\nfix(security): linear PII masking and injective tenant namespaces",
+          "timestamp": "2026-09-29T14:06:00-03:00",
+          "tree_id": "c1f331d26bb824ee7ac2e113ecb327cd387afde0",
+          "url": "https://github.com/Rullst/Rullst/commit/81cfbe7458299e3f2a9a020d47af44990bc2ccd5"
+        },
+        "date": 1790702764036,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 731,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 987,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 8,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 641,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2206,
+            "range": "± 46",
             "unit": "ns/iter"
           }
         ]
