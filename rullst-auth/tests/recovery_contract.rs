@@ -424,3 +424,98 @@ async fn postgres_urls_use_the_hardened_connection_policy_before_connecting() {
         assert!(started.elapsed() < std::time::Duration::from_secs(1));
     }
 }
+
+#[cfg(feature = "recovery-sqlite")]
+async fn store_with_reset_token(
+    subject: &str,
+    password: &str,
+    now: u64,
+) -> (SqlRecoveryStore, String) {
+    let store = SqlRecoveryStore::connect("sqlite::memory:", keys())
+        .await
+        .unwrap();
+    store.migrate().await.unwrap();
+    store
+        .register_account(subject, EMAIL, password, now)
+        .await
+        .unwrap();
+    consume_welcome(&store, now).await;
+    store.request_password_reset(EMAIL, now + 1).await.unwrap();
+    let claim = store.claim_notice(now + 2).await.unwrap().unwrap();
+    let token = claim.notice().token().unwrap().expose().to_owned();
+    store.complete_notice(&claim, now + 3).await.unwrap();
+    (store, token)
+}
+
+#[cfg(feature = "recovery-sqlite")]
+#[tokio::test]
+async fn failed_reset_attempts_never_block_another_members_valid_reset() {
+    // Resets used to share one 60-per-minute budget charged before the token
+    // check, so any unauthenticated client could block every member's reset.
+    let now = 1_800_000_000;
+    let (password, new) = (fixture_password(), fixture_password());
+    let (store, token) = store_with_reset_token("reset-member", password.as_str(), now).await;
+    let replayed = "A".repeat(43);
+    let mut throttled = 0;
+    for attempt in 0..100 {
+        let guess = if attempt % 2 == 0 {
+            replayed.clone()
+        } else {
+            format!(
+                "{:032x}{:011x}",
+                rand::random::<u128>(),
+                rand::random::<u64>() >> 20
+            )
+        };
+        match store
+            .complete_password_reset(&guess, new.as_str(), now + 5)
+            .await
+        {
+            Err(RecoveryError::InvalidAction) => {}
+            Err(RecoveryError::Throttled) => throttled += 1,
+            other => panic!("unexpected reset outcome: {other:?}"),
+        }
+    }
+    // Only the replayed token exhausts its own budget (10 failures per minute).
+    assert_eq!(throttled, 40);
+    store
+        .complete_password_reset(&token, new.as_str(), now + 5)
+        .await
+        .unwrap();
+    assert!(
+        store
+            .authenticate(EMAIL, new.as_str())
+            .await
+            .unwrap()
+            .is_some()
+    );
+    // The replayed token's budget recovers after its window.
+    assert_eq!(
+        store
+            .complete_password_reset(&replayed, new.as_str(), now + 65)
+            .await,
+        Err(RecoveryError::InvalidAction)
+    );
+    store.close().await;
+}
+
+#[cfg(feature = "recovery-sqlite")]
+#[tokio::test]
+async fn concurrent_attempts_with_one_valid_reset_token_are_bounded() {
+    // Argon2 runs only after the token lookup. In-flight attempts hold a unit of
+    // the token's budget, so a flood with one valid token cannot multiply work.
+    let now = 1_800_000_000;
+    let (password, new) = (fixture_password(), fixture_password());
+    let (store, token) = store_with_reset_token("reset-flood", password.as_str(), now).await;
+    let results = futures_util::future::join_all(
+        (0..20).map(|_| store.complete_password_reset(&token, new.as_str(), now + 5)),
+    )
+    .await;
+    let count = |expected: Result<(), RecoveryError>| {
+        results.iter().filter(|result| **result == expected).count()
+    };
+    assert_eq!(count(Ok(())), 1);
+    assert_eq!(count(Err(RecoveryError::Throttled)), 10);
+    assert_eq!(count(Err(RecoveryError::InvalidAction)), 9);
+    store.close().await;
+}

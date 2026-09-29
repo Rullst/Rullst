@@ -1,6 +1,6 @@
 use super::{
-    RecoveryError, RecoveryNotice, RecoveryNoticeKind, RecoverySecrets, normalized_email,
-    timestamp, valid_subject,
+    RecoveryError, RecoveryNotice, RecoveryNoticeKind, RecoverySecrets, failures::FailureBudget,
+    normalized_email, timestamp, valid_subject,
 };
 use sqlx::{Any, AnyPool, Row, Transaction};
 use std::sync::Arc;
@@ -13,6 +13,8 @@ pub struct SqlRecoveryStore {
     pub(super) pool: AnyPool,
     pub(super) keys: Arc<RecoverySecrets>,
     pub(super) instance: Arc<()>,
+    /// Process-local failed-lookup budget for password-reset tokens.
+    pub(super) reset_failures: FailureBudget,
 }
 
 /// Proof of successful password verification, bound to the current session version.
@@ -92,6 +94,7 @@ impl SqlRecoveryStore {
             pool,
             keys: Arc::new(secrets),
             instance: Arc::new(()),
+            reset_failures: FailureBudget::password_reset(),
         })
     }
 
@@ -115,6 +118,7 @@ impl SqlRecoveryStore {
         let sealed = self
             .keys
             .seal("rullst.auth.config.v1", binding.as_bytes())?;
+        // The unused `consume` row is kept for older releases sharing the database.
         for id in ["request", "consume", "write"] {
             sqlx::query("INSERT INTO rullst_recovery_control (id, window_start, attempts, binding) VALUES ($1, 0, 0, $2) ON CONFLICT(id) DO NOTHING")
                 .bind(id).bind(&sealed).execute(&mut *tx).await?;

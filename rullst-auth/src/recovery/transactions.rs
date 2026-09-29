@@ -84,7 +84,13 @@ impl SqlRecoveryStore {
 
     /// Atomically replaces the password, consumes all reset tokens, revokes every
     /// session and persists the encrypted password-change notice. Never logs in
-    /// automatically. Independent consume limits run before Argon2 work.
+    /// automatically. The token is looked up before any Argon2 work.
+    ///
+    /// Attempts are budgeted per reset-token digest: 10 per 60 seconds, counting
+    /// attempts in flight, and only a failed token lookup keeps its unit. An
+    /// exhausted token receives `RecoveryError::Throttled`. The budget is
+    /// process-local, so other tokens (and other members' resets) are never
+    /// blocked by it; ingress limits remain required.
     pub async fn complete_password_reset(
         &self,
         token: &str,
@@ -92,21 +98,44 @@ impl SqlRecoveryStore {
         now: u64,
     ) -> Result<(), RecoveryError> {
         let now = timestamp(now)?;
-        let mut limit = self.pool.begin().await?;
-        self.lock_writes(&mut limit).await?;
-        let allowed = take_limit(&mut limit, "consume", now, 60).await?;
-        limit.commit().await?;
-        if !allowed {
-            return Err(RecoveryError::Limited);
-        }
         if token.len() != 43 {
             return Err(RecoveryError::InvalidAction);
         }
-        let hash = super::store::password_hash(new_password.into()).await?;
+        let digest = self.keys.digest("password-reset", token);
+        if !self.reset_failures.try_take(&digest, now)? {
+            return Err(RecoveryError::Throttled);
+        }
+        let result = self.reset_password(&digest, new_password.into(), now).await;
+        // Only a failed token lookup (`InvalidAction`) keeps the unit.
+        if result != Err(RecoveryError::InvalidAction) {
+            self.reset_failures.refund(&digest)?;
+        }
+        result
+    }
+
+    async fn reset_password(
+        &self,
+        digest: &str,
+        new_password: String,
+        now: i64,
+    ) -> Result<(), RecoveryError> {
+        // Unknown, expired and consumed tokens never reach Argon2 work. The
+        // write transaction below checks the token again before any change.
+        let pending: Option<i64> = sqlx::query_scalar(
+            "SELECT expires_at FROM rullst_recovery_tokens WHERE token_digest = $1 AND expires_at > $2",
+        )
+        .bind(digest)
+        .bind(now)
+        .fetch_optional(&self.pool)
+        .await?;
+        if pending.is_none() {
+            return Err(RecoveryError::InvalidAction);
+        }
+        let hash = super::store::password_hash(new_password).await?;
         let mut tx = self.pool.begin().await?;
         self.lock_writes(&mut tx).await?;
         let row = sqlx::query("SELECT a.subject, a.email_ciphertext, a.session_version, a.suppressed, a.locale FROM rullst_recovery_tokens t JOIN rullst_recovery_accounts a ON a.subject = t.subject WHERE t.token_digest = $1 AND t.expires_at > $2")
-            .bind(self.keys.digest("password-reset", token)).bind(now).fetch_optional(&mut *tx).await?
+            .bind(digest).bind(now).fetch_optional(&mut *tx).await?
             .ok_or(RecoveryError::InvalidAction)?;
         let subject: String = row.try_get("subject")?;
         let version: i64 = row.try_get("session_version")?;

@@ -86,6 +86,7 @@ pub(super) async fn open(
             pool,
             keys: Arc::new(keys),
             instance: Arc::new(()),
+            reset_failures: super::failures::FailureBudget::password_reset(),
         },
         postgres,
     ))

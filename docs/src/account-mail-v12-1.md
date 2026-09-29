@@ -80,8 +80,13 @@ arbitrary database delays or establish indistinguishability under outages.
   and creation of a password-changed notice share one database transaction.
   Failure to persist the outbox rolls the password change back.
 - Recovery requests have a three-per-account/15-minute limit and a global
-  120-per-minute ceiling. Consumption has an independent global 60-per-minute
-  ceiling before expensive password hashing. These are bounded defaults, not a
+  120-per-minute ceiling. Consumption looks the code up before any Argon2 work,
+  so unknown, expired or consumed codes cost one indexed read. Each code has its
+  own budget of 10 attempts per minute, counting attempts in flight; only a
+  failed lookup keeps its unit. An exhausted code receives
+  `RecoveryError::Throttled` (map it to a generic "try again later"), while
+  other members' codes are never blocked. The budget is process-local and
+  bounded to 10,000 recent codes. These are bounded defaults, not a
   substitute for per-client/distributed ingress controls.
 - The outbox encrypts recipient and reset code, with per-record authenticated
   encryption. The recovery credential remains digest-only; the delivery copy is
