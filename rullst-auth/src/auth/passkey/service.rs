@@ -23,6 +23,8 @@ const FLAG_BACKUP_STATE: u8 = 0x10;
 const FLAG_ATTESTED_CREDENTIAL_DATA: u8 = 0x40;
 const FLAG_EXTENSION_DATA: u8 = 0x80;
 const MAX_CREDENTIAL_ID_BYTES: usize = 1_023;
+/// Longest accepted one-time challenge lifetime (one day).
+const MAX_CHALLENGE_TTL_SECONDS: u64 = 86_400;
 
 #[derive(Deserialize)]
 struct CollectedClientData {
@@ -62,6 +64,11 @@ impl PasskeyAuth {
             return Err(passkey_error(
                 "challenge TTL and pending-challenge limit must be greater than zero",
             ));
+        }
+        if config.challenge_ttl_seconds > MAX_CHALLENGE_TTL_SECONDS {
+            return Err(passkey_error(format!(
+                "challenge TTL must not exceed {MAX_CHALLENGE_TTL_SECONDS} seconds"
+            )));
         }
 
         let parsed_origin = Url::parse(&config.rp_origin)

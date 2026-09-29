@@ -51,7 +51,8 @@ fn round_trip(user_id: i32) -> Result<i32, AuthError> {
 
 ## WebAuthn/passkeys
 
-`PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges,
+`PasskeyAuth` validates exact RP origin and ID binding, one-time expiring challenges
+(`challenge_ttl_seconds` from 1 to 86,400; `PasskeyAuth::new` rejects other values),
 client-data ceremony type, user-presence/user-verification flags, ES256 COSE keys, P-256 points,
 credential IDs, signatures, and monotonic counters. Only `none` attestation is advertised and
 accepted. With `sqlite`, `SqlitePasskeyStore` supplies bounded file-backed
