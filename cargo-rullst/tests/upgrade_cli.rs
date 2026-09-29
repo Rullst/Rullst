@@ -126,6 +126,8 @@ fn retired_pre_v12_sources_are_rejected_with_guidance() {
             "{name}: {text}"
         );
         assert!(text.contains("--version '^12'"), "{name}: {text}");
+        // The binary reports the Display message, not the Debug variant.
+        assert!(!text.contains("RetiredSourceMajor"), "{name}: {text}");
         assert_eq!(
             std::fs::read_to_string(fixture.app().join("Cargo.toml")).expect("manifest after"),
             manifest

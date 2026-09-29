@@ -411,7 +411,7 @@ fn automatic_migration_rejects_database_identifiers_that_could_inject_source() {
             "crafted schema was accepted: {text}"
         );
         assert!(
-            text.contains("InvalidIdentifier"),
+            text.contains("cannot produce a safe Rust identifier"),
             "unexpected rejection: {text}"
         );
         assert!(
