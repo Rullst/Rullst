@@ -150,7 +150,9 @@ drain/migration plan.
 
 ## Real-time boundary
 
-Core's current WebSocket broadcast/presence helpers are process-local. Redis
+Core's current WebSocket broadcast/presence helpers are process-local. They
+release channels without subscribers and empty presence rooms, so the registry
+tracks live rooms rather than every name ever used. Redis
 Streams, Redis Pub/Sub, Kafka, and RabbitMQ transports remain roadmap work; do
 not describe the cache or queue adapter as cross-instance real-time sync.
 
