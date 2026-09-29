@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Fixed
+
+- The generated portfolio page escapes CMS values and renders only `http(s)`
+  URLs as links. Project, experience and skill fields were inserted as raw
+  HTML, so anyone with Nexus write access could store script in the public
+  page. The generated page ships a test for this contract. Previously
+  generated applications are copied code and must apply the same change.
+
 ## [12.1.2] - 2026-09-27
 
 Compatible maintenance on `v12`, preserving public APIs and Rust 1.96.0.
