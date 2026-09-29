@@ -2324,10 +2324,10 @@ sending.
   and enrollment can emit an `otpauth://` URI or bounded SVG QR. Secret custody,
   recovery workflow and durable rate limiting belong to the application.
   `verify_totp_code` is stateless and accepts steps -1/0/+1, so it does not
-  reject a replayed code. RFC 6238 section 5.2 replay protection requires the
-  application to find the matched step (`mfa::generate_totp_at_counter`),
-  persist the last accepted step per secret atomically and reject any step
-  less than or equal to it.
+  reject a replayed code. `verify_totp_step_after` implements RFC 6238
+  section 5.2 by accepting only a step newer than the caller-supplied last
+  accepted step; the application must persist the returned step per secret
+  atomically before admitting the login.
 * **Security CLI:** CycloneDX generation, MSRV/tool diagnostics, unsafe/IDOR
   source heuristics, network observations and compliance evidence are bounded
   checks. They do not certify a deployment, prove absence of vulnerabilities or
