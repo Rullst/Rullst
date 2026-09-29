@@ -328,3 +328,79 @@ async fn outbox_insert_failure_rolls_back_password_token_and_session_changes() {
     store.close().await;
     std::fs::remove_file(path).unwrap();
 }
+
+#[cfg(feature = "recovery-sqlite")]
+#[tokio::test]
+async fn overlong_passwords_share_one_error_for_known_and_unknown_accounts() {
+    // Argon2 helpers accept at most 72 bytes. An 80-byte password must not
+    // distinguish a registered email (Argon2 then `Ok(None)`) from an unknown
+    // one (fast `Err(Crypto)`), and registration/reset must reject it as input.
+    let now = 1_800_000_000;
+    let password = fixture_password();
+    let overlong = "p".repeat(80);
+    let store = SqlRecoveryStore::connect("sqlite::memory:", keys())
+        .await
+        .unwrap();
+    store.migrate().await.unwrap();
+    store
+        .register_account("member-long", EMAIL, password.as_str(), now)
+        .await
+        .unwrap();
+    consume_welcome(&store, now).await;
+
+    let known = store.authenticate(EMAIL, overlong.as_str()).await;
+    let unknown = store
+        .authenticate("absent@example.com", overlong.as_str())
+        .await;
+    assert_eq!(known.err(), Some(RecoveryError::InvalidInput));
+    assert_eq!(unknown.err(), Some(RecoveryError::InvalidInput));
+    // A wrong in-bound password for an unknown account keeps the uniform result.
+    assert!(
+        store
+            .authenticate("absent@example.com", password.as_str())
+            .await
+            .unwrap()
+            .is_none()
+    );
+
+    assert_eq!(
+        store
+            .register_account("member-over", "over@example.com", overlong.as_str(), now)
+            .await,
+        Err(RecoveryError::InvalidInput)
+    );
+    let boundary = "b".repeat(72);
+    store
+        .register_account("member-edge", "edge@example.com", boundary.as_str(), now)
+        .await
+        .unwrap();
+    assert!(
+        store
+            .authenticate("edge@example.com", boundary.as_str())
+            .await
+            .unwrap()
+            .is_some()
+    );
+
+    store.request_password_reset(EMAIL, now + 1).await.unwrap();
+    let mut token = None;
+    while let Some(claim) = store.claim_notice(now + 2).await.unwrap() {
+        if let Some(value) = claim.notice().token() {
+            token = Some(value.expose().to_owned());
+        }
+        store.complete_notice(&claim, now + 3).await.unwrap();
+    }
+    let token = token.expect("reset notice");
+    assert_eq!(
+        store
+            .complete_password_reset(&token, overlong.as_str(), now + 4)
+            .await,
+        Err(RecoveryError::InvalidInput)
+    );
+    // The rejected reset leaves the credential usable with a bounded password.
+    store
+        .complete_password_reset(&token, password.as_str(), now + 5)
+        .await
+        .unwrap();
+    store.close().await;
+}

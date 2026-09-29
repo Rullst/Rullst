@@ -25,9 +25,13 @@ const SECURE_LOGOUT_COOKIE: &str = "rullst_session=; Path=/; HttpOnly; SameSite=
 /// WebAuthn and Passkey authentication submodule.
 pub mod passkey;
 
+/// Largest password, in UTF-8 bytes, accepted by the Argon2 helpers and the
+/// recovery registry. Longer input is rejected rather than silently truncated.
+pub(crate) const MAX_PASSWORD_BYTES: usize = 72;
+
 /// Hashes a plain-text password using Argon2id with a cryptographically secure random salt.
 pub fn hash_password(password: &str) -> Result<String, AuthError> {
-    if password.len() > 72 {
+    if password.len() > MAX_PASSWORD_BYTES {
         return Err(AuthError::PasswordHashError(
             "Password exceeds maximum length of 72 characters".to_string(),
         ));
@@ -52,7 +56,7 @@ pub async fn hash_password_async(password: impl Into<String>) -> Result<String, 
 pub fn verify_password(password: &str, hash: &str) -> bool {
     let parsed_hash_result = PasswordHash::new(hash);
 
-    if password.len() > 72 {
+    if password.len() > MAX_PASSWORD_BYTES {
         dummy_verify(Some(hash));
         return false;
     }
