@@ -1,8 +1,45 @@
-// src/blueprints/erp.rs — ERP Pocket blueprint templates.
-
+// src/blueprints/erp.rs — ERP Pocket blueprint: products, orders and stock with a
+// Nexus CMS, in Active Record, Repository or Hybrid mode.
+// The templates under `erp/src/` mirror the generated project's layout.
 use super::common;
 
 const ERP_STYLES: &str = include_str!("erp/styles.css");
+
+/// Files every ERP variant emits unchanged, in manifest order.
+const COMMON_FILES: [(&str, &str); 8] = [
+    (
+        "src/migrations/mod.rs",
+        include_str!("erp/src/migrations/mod.rs.template"),
+    ),
+    (
+        "src/migrations/m20260601000000_create_erp_tables.rs",
+        include_str!("erp/src/migrations/m20260601000000_create_erp_tables.rs.template"),
+    ),
+    (
+        "src/models/mod.rs",
+        include_str!("erp/src/models/mod.rs.template"),
+    ),
+    (
+        "src/models/product.rs",
+        include_str!("erp/src/models/product.rs.template"),
+    ),
+    (
+        "src/models/order.rs",
+        include_str!("erp/src/models/order.rs.template"),
+    ),
+    (
+        "src/controllers/mod.rs",
+        include_str!("erp/src/controllers/mod.rs.template"),
+    ),
+    (
+        "src/controllers/erp_controller.rs",
+        include_str!("erp/src/controllers/erp_controller.rs.template"),
+    ),
+    (
+        "src/pages/mod.rs",
+        include_str!("erp/src/pages/mod.rs.template"),
+    ),
+];
 
 pub fn file_manifest(
     project_name_safe: &str,
@@ -10,664 +47,43 @@ pub fn file_manifest(
     orm_pattern: &str,
     frontend_engine: &str,
 ) -> Vec<(&'static str, String)> {
+    let repo_mod_decl = common::repo_mod_decl(orm_pattern);
     let mut manifest = Vec::new();
-    let is_repo = common::is_repo_mode(orm_pattern);
-    let _ = (project_name_safe, frontend_engine);
 
     if hot_reload {
-        let repo_decl = common::repo_mod_decl(orm_pattern);
-        let lib_rs = format!(
-            r##"use rullst::{{routes, Router}};
-
-pub mod migrations;
-pub mod models;
-{repo_decl}pub mod controllers;
-pub mod pages;
-
-pub fn router() -> Result<Router, Box<dyn std::error::Error>> {{
-    let admin_access = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
-    let nexus = rullst::nexus::Nexus::new()
-        .with_auth_policy(admin_access.clone())
-        .with_brand("ERP Admin")
-        .register::<models::product::Product>()
-        .register::<models::order::Order>()
-        .try_build()?;
-
-    let admin_routes = routes![
-        post("/products" => controllers::erp_controller::store_product),
-        // rullst-access: admin — protected by admin_access.protect_router below.
-        post("/products/{{id}}/add-stock" => controllers::erp_controller::add_stock),
-        post("/orders" => controllers::erp_controller::store_order),
-    ];
-    let admin_routes = admin_access.protect_router(admin_routes.into_axum())?;
-
-    Ok(routes![
-        get("/" => controllers::erp_controller::index),
-    ]
-    .merge_axum(admin_routes)
-    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
-    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
-    .nest_axum("/nexus", nexus))
-}}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn rullst_router_init() -> *mut Router {{
-    let router = match router() {{
-        Ok(router) => router,
-        Err(error) => {{
-            eprintln!("Nexus startup configuration error: {{error}}");
-            Router::new()
-        }}
-    }};
-    Box::into_raw(Box::new(router))
-}}
-"##,
-            repo_decl = repo_decl
-        );
-        manifest.push(("src/lib.rs", lib_rs));
-
-        let main_rs = format!(
-            r##"pub mod migrations;
-pub mod models;
-{repo_decl}pub mod controllers;
-pub mod pages;
-
-#[rullst::runtime::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {{
-    rullst::artisan!(crate::migrations::get_migrations());
-    #[cfg(debug_assertions)]
-    {{
-        rullst::runtime::spawn(async {{
-            if let Err(error) = rullst::studio::run_studio(5555).await {{
-                eprintln!("Rullst Studio could not start: {{error}}");
-            }}
-        }});
-        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
-    }}
-    println!("🚀 ERP Pocket server starting on port 3000...");
-    let is_hot = std::env::var("HOT_RELOAD").is_ok();
-
-    let server = if is_hot {{
-        let lib_path = if cfg!(target_os = "windows") {{
-            format!("target/debug/{{}}", "{project_name_safe}")
-        }} else {{
-            format!("target/debug/lib{{}}", "{project_name_safe}")
-        }};
-        rullst::Server::new_hot(&lib_path)
-    }} else {{
-        let router = {project_name_safe}::router()?;
-        rullst::Server::new(router)
-    }};
-
-    server.run(3000).await?;
-
-    Ok(())
-}}
-"##,
-            repo_decl = repo_decl,
-            project_name_safe = project_name_safe
-        );
-        manifest.push(("src/main.rs", main_rs));
+        manifest.push((
+            "src/lib.rs",
+            include_str!("erp/src/lib.rs.template").replace("__REPO_MOD_DECL__", repo_mod_decl),
+        ));
+        // The caller-supplied name is substituted last so it is never re-expanded.
+        manifest.push((
+            "src/main.rs",
+            include_str!("erp/src/main.hot.rs.template")
+                .replace("__REPO_MOD_DECL__", repo_mod_decl)
+                .replace("__PROJECT_NAME_SAFE__", project_name_safe),
+        ));
     } else {
-        let repo_decl = common::repo_mod_decl(orm_pattern);
-        let main_rs = format!(
-            r##"use rullst::{{routes, Server}};
-
-pub mod migrations;
-pub mod models;
-{repo_decl}pub mod controllers;
-pub mod pages;
-
-#[rullst::runtime::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {{
-    // Run migrations on startup
-    rullst::artisan!(crate::migrations::get_migrations());
-
-    let admin_access = rullst::nexus::NexusAuthPolicy::local_development_or_basic_from_env()?;
-    let nexus = rullst::nexus::Nexus::new()
-        .with_auth_policy(admin_access.clone())
-        .with_brand("ERP Admin")
-        .register::<models::product::Product>()
-        .register::<models::order::Order>()
-        .try_build()?;
-
-    let admin_routes = routes![
-        post("/products" => controllers::erp_controller::store_product),
-        // rullst-access: admin — protected by admin_access.protect_router below.
-        post("/products/{{id}}/add-stock" => controllers::erp_controller::add_stock),
-        post("/orders" => controllers::erp_controller::store_order),
-    ];
-    let admin_routes = admin_access.protect_router(admin_routes.into_axum())?;
-
-    let router = routes![
-        get("/" => controllers::erp_controller::index),
-    ]
-    .merge_axum(admin_routes)
-    .layer(rullst::server::from_fn(rullst::security::csrf_middleware))
-    .layer(rullst::server::from_fn(rullst::security::headers_middleware))
-    .nest_axum("/nexus", nexus);
-
-    #[cfg(debug_assertions)]
-    {{
-        rullst::runtime::spawn(async {{
-            if let Err(error) = rullst::studio::run_studio(5555).await {{
-                eprintln!("Rullst Studio could not start: {{error}}");
-            }}
-        }});
-        println!("📊 Rullst Studio running on http://127.0.0.1:5555");
-    }}
-    println!("🚀 ERP Pocket server starting on port 3000...");
-    Server::new(router)
-        .run(3000)
-        .await?;
-
-    Ok(())
-}}
-"##,
-            repo_decl = repo_decl
-        );
-        manifest.push(("src/main.rs", main_rs));
+        manifest.push((
+            "src/main.rs",
+            include_str!("erp/src/main.rs.template").replace("__REPO_MOD_DECL__", repo_mod_decl),
+        ));
     }
 
-    // 2. Migrations mod.rs
-    let migrations_mod = r##"// Generated by Rullst.
-pub mod m20260601000000_create_erp_tables;
-
-pub fn get_migrations() -> Vec<Box<dyn rullst::db::schema::Migration>> {
-    vec![
-        Box::new(m20260601000000_create_erp_tables::MigrationImpl),
-    ]
-}
-"##;
-    manifest.push(("src/migrations/mod.rs", migrations_mod.to_string()));
-
-    // 3. Migration Implementation
-    let migration_impl = r##"use rullst::db::schema::{Schema, Migration};
-use rullst::db::async_trait;
-
-pub struct MigrationImpl;
-
-#[async_trait]
-impl Migration for MigrationImpl {
-    fn name(&self) -> &'static str {
-        "m20260601000000_create_erp_tables"
-    }
-
-    async fn up(&self) -> Result<(), rullst_orm::error::RullstError> {
-        // Create products table
-        Schema::create("products", |table| {
-            table.id();
-            table.string("name").not_null();
-            table.string("sku").not_null();
-            table.float("price").not_null();
-            table.integer("stock").not_null();
-            table.timestamps();
-        }).await?;
-
-        // Create orders table
-        Schema::create("orders", |table| {
-            table.id();
-            table.string("customer_name").not_null();
-            table.integer("product_id").not_null();
-            table.integer("quantity").not_null();
-            table.float("total_price").not_null();
-            table.string("status").not_null();
-            table.timestamps();
-        }).await?;
-
-        // Seed initial products and orders
-        let pool = rullst::db::Orm::pool()?;
-        
-        rullst::db::sqlx::query(
-            "INSERT INTO products (id, name, sku, price, stock, created_at, updated_at) VALUES 
-             (1, 'Specialty Arabica Coffee', 'CAF-001', 34.90, 18, datetime('now'), datetime('now')),
-             (2, 'Rullst Ceramic Mug', 'CAN-002', 19.90, 4, datetime('now'), datetime('now')),
-             (3, 'French Press', 'PRE-003', 89.00, 12, datetime('now'), datetime('now'))"
-        ).execute(pool).await?;
-
-        rullst::db::sqlx::query(
-            "INSERT INTO orders (id, customer_name, product_id, quantity, total_price, status, created_at, updated_at) VALUES 
-             (1, 'Carlos Silva', 1, 2, 69.80, 'Paid', datetime('now'), datetime('now')),
-             (2, 'Mariana Souza', 2, 1, 19.90, 'Pending', datetime('now'), datetime('now'))"
-        ).execute(pool).await?;
-
-        Ok(())
-    }
-
-    async fn down(&self) -> Result<(), rullst_orm::error::RullstError> {
-        Schema::drop_if_exists("orders").await?;
-        Schema::drop_if_exists("products").await?;
-        Ok(())
-    }
-}
-"##;
+    manifest.extend(
+        COMMON_FILES
+            .iter()
+            .map(|(path, template)| (*path, (*template).to_string())),
+    );
     manifest.push((
-        "src/migrations/m20260601000000_create_erp_tables.rs",
-        migration_impl.to_string(),
+        "src/pages/erp.rs",
+        include_str!("erp/src/pages/erp.rs.template").replace(
+            "__FE_IMPORTS__",
+            &common::frontend_page_imports(frontend_engine),
+        ),
     ));
-
-    // 4. Models mod.rs
-    let models_mod = r##"pub mod product;
-pub mod order;
-"##;
-    manifest.push(("src/models/mod.rs", models_mod.to_string()));
-
-    // 5. Product Model
-    let product_model = r##"use rullst::db::{Orm, FromRow};
-use rullst::nexus::{NexusModel, FieldMeta, FieldKind};
-
-#[derive(Debug, Clone, FromRow, Orm)]
-#[orm(table = "products")]
-pub struct Product {
-    pub id: i32,
-    pub name: String,
-    pub sku: String,
-    pub price: f64,
-    pub stock: i32,
-}
-
-impl NexusModel for Product {
-    fn nexus_table() -> &'static str { "products" }
-    fn nexus_label() -> &'static str { "Products" }
-    fn nexus_icon() -> &'static str { "📦" }
-    fn nexus_fields() -> Vec<FieldMeta> {
-        vec![
-            FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
-            FieldMeta { name: "name", label: "Name", kind: FieldKind::Text, hidden: false, readonly: false },
-            FieldMeta { name: "sku", label: "SKU", kind: FieldKind::Text, hidden: false, readonly: false },
-            FieldMeta { name: "price", label: "Price", kind: FieldKind::Number, hidden: false, readonly: false },
-            FieldMeta { name: "stock", label: "Stock", kind: FieldKind::Number, hidden: false, readonly: false },
-        ]
-    }
-}
-"##;
-    manifest.push(("src/models/product.rs", product_model.to_string()));
-
-    // 6. Order Model
-    let order_model = r##"use rullst::db::{Orm, FromRow};
-use rullst::nexus::{NexusModel, FieldMeta, FieldKind};
-
-#[derive(Debug, Clone, FromRow, Orm)]
-#[orm(table = "orders")]
-pub struct Order {
-    pub id: i32,
-    pub customer_name: String,
-    pub product_id: i32,
-    pub quantity: i32,
-    pub total_price: f64,
-    pub status: String,
-}
-
-impl NexusModel for Order {
-    fn nexus_table() -> &'static str { "orders" }
-    fn nexus_label() -> &'static str { "Orders" }
-    fn nexus_icon() -> &'static str { "🛒" }
-    fn nexus_fields() -> Vec<FieldMeta> {
-        vec![
-            FieldMeta { name: "id", label: "ID", kind: FieldKind::Number, hidden: true, readonly: true },
-            FieldMeta { name: "customer_name", label: "Customer Name", kind: FieldKind::Text, hidden: false, readonly: false },
-            FieldMeta { name: "product_id", label: "Product ID", kind: FieldKind::Number, hidden: false, readonly: false },
-            FieldMeta { name: "quantity", label: "Quantity", kind: FieldKind::Number, hidden: false, readonly: false },
-            FieldMeta { name: "total_price", label: "Total Price", kind: FieldKind::Number, hidden: false, readonly: false },
-            FieldMeta { name: "status", label: "Status", kind: FieldKind::Text, hidden: false, readonly: false },
-        ]
-    }
-}
-"##;
-    manifest.push(("src/models/order.rs", order_model.to_string()));
-
-    // 7. Controllers mod.rs
-    let controllers_mod = r##"pub mod erp_controller;
-"##;
-    manifest.push(("src/controllers/mod.rs", controllers_mod.to_string()));
-
-    // 8. ERP Controller
-    let erp_controller = r##"use rullst::server::{
-    Path,
-    IntoResponse, Redirect,
-    Extension, Form
-};
-use rullst::response::Html;
-use crate::models::product::Product;
-use crate::models::order::Order;
-use crate::pages::erp;
-use serde::Deserialize;
-
-pub async fn index(
-    Extension(csrf_token): Extension<rullst::security::CsrfToken>,
-    Extension(csp_nonce): Extension<rullst::security::CspNonce>,
-) -> impl IntoResponse {
-    let products = Product::all().await.unwrap_or_default();
-    let orders = Order::all().await.unwrap_or_default();
-    Html(erp::dashboard_page(
-        products,
-        orders,
-        csrf_token.as_str(),
-        csp_nonce.as_str(),
-    ))
-}
-
-#[derive(Deserialize)]
-pub struct CreateProductPayload {
-    pub name: String,
-    pub sku: String,
-    pub price: f64,
-    pub stock: i32,
-}
-
-pub async fn store_product(Form(payload): Form<CreateProductPayload>) -> impl IntoResponse {
-    let mut product = Product {
-        id: 0,
-        name: payload.name,
-        sku: payload.sku,
-        price: payload.price,
-        stock: payload.stock,
-    };
-    let _ = product.save().await;
-
-    Redirect::to("/")
-}
-
-pub async fn add_stock(Path(id): Path<i32>) -> impl IntoResponse {
-    let mut stock = 0;
-    if let Ok(Some(mut product)) = Product::find(id).await {
-        product.stock += 1;
-        let _ = product.save().await;
-        stock = product.stock;
-    }
-    
-    // Render only the updated stock badge with HTMX
-    let badge_color = if stock <= 5 { "text-rose-400 bg-rose-950/40" } else { "text-emerald-400 bg-emerald-950/40" };
-    Html(format!(
-        r#"<span id="stock-badge-{}" class="px-2.5 py-1 text-xs font-semibold rounded-full {}">{} Units</span>"#,
-        id, badge_color, stock
-    ))
-}
-
-#[derive(Deserialize)]
-pub struct CreateOrderPayload {
-    pub customer_name: String,
-    pub product_id: i32,
-    pub quantity: i32,
-}
-
-pub async fn store_order(Form(payload): Form<CreateOrderPayload>) -> impl IntoResponse {
-    if let Ok(Some(mut product)) = Product::find(payload.product_id).await {
-        if product.stock >= payload.quantity {
-            // Deduct stock and save order
-            product.stock -= payload.quantity;
-            let _ = product.save().await;
-
-            let total_price = product.price * (payload.quantity as f64);
-
-            let mut order = Order {
-                id: 0,
-                customer_name: payload.customer_name,
-                product_id: payload.product_id,
-                quantity: payload.quantity,
-                total_price,
-                status: "Paid".to_string(),
-            };
-            let _ = order.save().await;
-        }
-    }
-
-    // Redirect to main page to refresh dashboard state
-    Redirect::to("/")
-}
-"##;
-    manifest.push((
-        "src/controllers/erp_controller.rs",
-        erp_controller.to_string(),
-    ));
-
-    // 9. Pages mod.rs
-    let pages_mod = r##"pub mod erp;
-"##;
-    manifest.push(("src/pages/mod.rs", pages_mod.to_string()));
-
-    // 10. ERP Page View
-    let fe_imports = common::frontend_page_imports(frontend_engine);
-    let erp_page = format!(
-        r##"{fe_imports}use crate::models::product::Product;
-use crate::models::order::Order;"##,
-        fe_imports = fe_imports
-    ) + r##"
-
-pub fn dashboard_page(
-    products: Vec<Product>,
-    orders: Vec<Order>,
-    csrf_token: &str,
-    csp_nonce: &str,
-) -> String {
-    let total_sales: f64 = orders.iter()
-        .filter(|o| o.status == "Paid")
-        .map(|o| o.total_price)
-        .sum();
-    let low_stock_alerts = products.iter().filter(|p| p.stock <= 5).count();
-    let total_orders = orders.len();
-
-    let document = html! {
-        <html lang="pt-BR" class="dark">
-            <head>
-                <meta charset="UTF-8" />
-                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                <title>"Rullst ERP Pocket — Inventory Dashboard"</title>
-                <link rel="icon" type="image/png" href="/static/rullst.png" />
-                <link rel="stylesheet" href="/static/rullst.css" />
-                <script nonce={csp_nonce} src="/static/htmx-1.9.12.min.js"></script>
-            </head>
-            <body class="text-slate-100 min-height-screen pb-12">
-                <div class="max-w-6xl mx-auto px-4 pt-8">
-                    { rullst::html::RawHtml::new(render_header()) }
-                    { rullst::html::RawHtml::new(render_kpi_cards(total_sales, total_orders, low_stock_alerts)) }
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div class="lg:col-span-2 flex flex-col gap-8">
-                            { rullst::html::RawHtml::new(render_products_table(&products, csrf_token)) }
-                            { rullst::html::RawHtml::new(render_orders_table(&orders)) }
-                        </div>
-                        <div class="flex flex-col gap-8">
-                            { rullst::html::RawHtml::new(render_forms(&products, csrf_token)) }
-                        </div>
-                    </div>
-                </div>
-            </body>
-        </html>
-    };
-    format!("<!DOCTYPE html>{document}")
-}
-
-fn render_header() -> String {
-    html! {
-        <header class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-10 pb-6 border-b border-slate-800/40">
-            <div>
-                <span class="px-3 py-1 text-xs font-semibold text-orange-400 bg-orange-950/40 rounded-full border border-orange-800/40">"ERP Pocket"</span>
-                <h1 class="text-3xl font-extrabold tracking-tight mt-2 bg-gradient-to-r from-emerald-400 via-teal-300 to-orange-400 bg-clip-text text-transparent">"Rullst ERP & Stock Portal"</h1>
-                <p class="text-sm text-slate-400 mt-1">"Agile inventory and sales management at runtime."</p>
-            </div>
-            <div class="flex flex-col items-end gap-1">
-                <div class="flex gap-3">
-                    <a href="/nexus" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"⚙️ Nexus CMS"</a>
-                    <a href="http://127.0.0.1:5555" target="_blank" class="glass px-4 py-2 text-sm font-semibold rounded-lg hover:border-orange-500/50 hover:bg-slate-900/40 transition-all">"📊 Rullst Studio (local)"</a>
-                </div>
-                <span class="text-[10px] text-slate-500 mr-2">"Nexus: local in debug; credentials in release"</span>
-            </div>
-        </header>
-    }
-}
-
-fn render_kpi_cards(total_sales: f64, total_orders: usize, low_stock_alerts: usize) -> String {
-    html! {
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="glass p-6 rounded-2xl flex flex-col justify-between">
-                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Total Revenue"</span>
-                <span class="text-3xl font-bold mt-2 text-emerald-400">"$ "{format!("{:.2}", total_sales)}</span>
-                <span class="text-xs text-emerald-500/80 mt-1">"&uarr; Confirmed revenues"</span>
-            </div>
-            <div class="glass p-6 rounded-2xl flex flex-col justify-between">
-                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Orders Placed"</span>
-                <span class="text-3xl font-bold mt-2 text-orange-400">{format!("{}", total_orders)}</span>
-                <span class="text-xs text-orange-400/80 mt-1">"Active sales flow"</span>
-            </div>
-            <div class="glass p-6 rounded-2xl flex flex-col justify-between">
-                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">"Critical Stock Alerts"</span>
-                <span class="text-3xl font-bold mt-2 text-rose-400">{format!("{}", low_stock_alerts)}</span>
-                <span class="text-xs text-rose-400/80 mt-1">"Items with stock &le; 5 units"</span>
-            </div>
-        </div>
-    }
-}
-
-fn render_products_table(products: &[Product], csrf_token: &str) -> String {
-    html! {
-        <div class="glass p-6 rounded-2xl">
-            <h2 class="text-xl font-bold mb-4 text-slate-200">"Product Inventory"</h2>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase">
-                            <th class="py-3 px-4">"Product"</th>
-                            <th class="py-3 px-4">"SKU"</th>
-                            <th class="py-3 px-4">"Price"</th>
-                            <th class="py-3 px-4">"Stock"</th>
-                            <th class="py-3 px-4 text-right">"Actions"</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-800/40 text-sm">
-                        { rullst::html::RawHtml::new(products.iter().map(|p| {
-                            let badge_color = if p.stock <= 5 { "text-rose-400 bg-rose-950/40" } else { "text-emerald-400 bg-emerald-950/40" };
-                            html! {
-                                <tr>
-                                    <td class="py-3.5 px-4 font-medium text-white">{&p.name}</td>
-                                    <td class="py-3.5 px-4 text-slate-400 font-mono">{&p.sku}</td>
-                                    <td class="py-3.5 px-4 text-slate-300">"$ "{format!("{:.2}", p.price)}</td>
-                                    <td class="py-3.5 px-4">
-                                        <span id={format!("stock-badge-{}", p.id)} class={format!("px-2.5 py-1 text-xs font-semibold rounded-full {}", badge_color)}>
-                                            {format!("{}", p.stock)} " Units"
-                                        </span>
-                                    </td>
-                                    <td class="py-3.5 px-4 text-right">
-                                        <form method="post" action={format!("/products/{}/add-stock", p.id)} hx-post={format!("/products/{}/add-stock", p.id)} hx-target={format!("#stock-badge-{}", p.id)} hx-swap="outerHTML">
-                                            <input type="hidden" name="_token" value={csrf_token} />
-                                            <button type="submit" class="px-2.5 py-1 text-xs font-bold text-orange-400 border border-orange-500/20 hover:border-orange-400 bg-orange-950/20 rounded-md transition-all active:scale-95">
-                                                "+1 Stock"
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            }
-                        }).collect::<Vec<_>>().join("")) }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    }
-}
-
-fn render_orders_table(orders: &[Order]) -> String {
-    html! {
-        <div class="glass p-6 rounded-2xl">
-            <h2 class="text-xl font-bold mb-4 text-slate-200">"Recent Orders"</h2>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase">
-                            <th class="py-3 px-4">"ID"</th>
-                            <th class="py-3 px-4">"Customer"</th>
-                            <th class="py-3 px-4">"Qty / Prod ID"</th>
-                            <th class="py-3 px-4">"Total"</th>
-                            <th class="py-3 px-4">"Status"</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-800/40 text-sm">
-                        { rullst::html::RawHtml::new(orders.iter().map(|o| html! {
-                            <tr>
-                                <td class="py-3.5 px-4 text-slate-400 font-mono">"#"{format!("{}", o.id)}</td>
-                                <td class="py-3.5 px-4 font-medium text-white">{&o.customer_name}</td>
-                                <td class="py-3.5 px-4 text-slate-400">{format!("{} un. (Ref: Product #{})", o.quantity, o.product_id)}</td>
-                                <td class="py-3.5 px-4 text-emerald-400 font-medium">"$ "{format!("{:.2}", o.total_price)}</td>
-                                <td class="py-3.5 px-4">
-                                    <span class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-950/60 text-emerald-400 border border-emerald-900/60">
-                                        {&o.status}
-                                    </span>
-                                </td>
-                            </tr>
-                        }).collect::<Vec<_>>().join("")) }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    }
-}
-
-fn render_forms(products: &[Product], csrf_token: &str) -> String {
-    html! {
-        <div class="flex flex-col">
-            <div class="glass p-6 rounded-2xl border border-indigo-900/20">
-                <h3 class="text-lg font-bold mb-4 text-indigo-400">"Register New Sale"</h3>
-                <form action="/orders" method="POST" class="space-y-4">
-                    <input type="hidden" name="_token" value={csrf_token} />
-                    <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">"Customer Name"</label>
-                        <input type="text" name="customer_name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" placeholder="e.g., John Doe" />
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">"Select Product"</label>
-                        <select name="product_id" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200">
-                            { rullst::html::RawHtml::new(products.iter().map(|p| {
-                                let disabled_flag = if p.stock <= 0 { " (Out of Stock)" } else { "" };
-                                html! {
-                                    <option value={format!("{}", p.id)}>{&p.name} " - $ "{format!("{:.2}", p.price)}{disabled_flag}</option>
-                                }
-                            }).collect::<Vec<_>>().join("")) }
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">"Quantity"</label>
-                        <input type="number" name="quantity" min="1" value="1" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 text-slate-200" />
-                    </div>
-                    <button type="submit" aria-label="Complete Order" aria-busy="false" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
-                        "Complete Order"
-                    </button>
-                </form>
-            </div>
-
-            <div class="glass p-6 rounded-2xl mt-8">
-                <h3 class="text-lg font-bold mb-4 text-slate-200">"Register Product"</h3>
-                <form action="/products" method="POST" class="space-y-4">
-                    <input type="hidden" name="_token" value={csrf_token} />
-                    <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">"Product Name"</label>
-                        <input type="text" name="name" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="e.g., Hario V60 Filter" />
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs text-slate-400 font-medium mb-1">"SKU"</label>
-                            <input type="text" name="sku" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="HAR-100" />
-                        </div>
-                        <div>
-                            <label class="block text-xs text-slate-400 font-medium mb-1">"Unit Price"</label>
-                            <input type="number" step="0.01" name="price" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="49.90" />
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-xs text-slate-400 font-medium mb-1">"Initial Stock"</label>
-                        <input type="number" name="stock" required="true" class="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500 text-slate-200" placeholder="10" />
-                    </div>
-                    <button type="submit" aria-label="Save Product" aria-busy="false" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg text-sm transition-all active:scale-98">
-                        "Save Product"
-                    </button>
-                </form>
-            </div>
-        </div>
-    }
-}
-"##;
-    manifest.push(("src/pages/erp.rs", erp_page.to_string()));
     manifest.push(("static/rullst.css", ERP_STYLES.to_string()));
 
-    // Repository layer (if applicable)
-    if is_repo {
+    if common::is_repo_mode(orm_pattern) {
         manifest.push((
             "src/repositories/product_repository.rs",
             common::generate_repository("Product", "products"),
