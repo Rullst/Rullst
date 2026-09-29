@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, v12, v13]
     paths:
-      - "cargo-rullst/src/cli.rs"
+      - "cargo-rullst/src/cli/**"
       - "cargo-rullst/src/generators/desktop/**"
       - "cargo-rullst/tests/android_release_cli.rs"
       - "cargo-rullst/tests/omni_packaging_cli.rs"
@@ -18,7 +18,7 @@ on:
   pull_request:
     branches: [main, v12, v13]
     paths:
-      - "cargo-rullst/src/cli.rs"
+      - "cargo-rullst/src/cli/**"
       - "cargo-rullst/src/generators/desktop/**"
       - "cargo-rullst/tests/android_release_cli.rs"
       - "cargo-rullst/tests/omni_packaging_cli.rs"
