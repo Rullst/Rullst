@@ -433,7 +433,10 @@ let provider = OidcProvider::discover(
 ).await?;
 ```
 
-Discovery requires the returned issuer to match the requested issuer. Discovered token,
+Discovery requires the returned issuer to match the requested issuer after URL
+normalization; a trailing slash may differ. ID tokens must carry the discovered `issuer` exactly as the provider
+published it, so an Auth0 tenant whose issuer is `https://TENANT/` is validated with
+the trailing slash. `OidcProvider::issuer` holds that published value. Discovered token,
 authorization, userinfo, and JWKS endpoints must use HTTPS. HTTP is accepted only when
 both the issuer and endpoint use the same exact loopback origin. JWKS entries are refreshed
 after their TTL and immediately when a token presents an unknown `kid`; stale keys are
