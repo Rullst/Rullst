@@ -98,6 +98,23 @@ Apple refresh verifies the returned ID token separately from its opaque access
 token. A refresh response without an ID token cannot establish a fresh Apple
 identity through this API.
 
+### Tokens supplied by native or mobile clients
+
+`Provider::get_user_from_token` is **not** a way to sign in a user whose app
+sends you a provider access token. Except for Apple, it asks the provider's
+userinfo or profile endpoint who owns the bearer token. That proves only that
+the token is valid for *some* client of the provider, not that it was issued to
+your `client_id`. Another app that holds a user's token for its own client ID
+could replay it to your backend and be signed in as that user.
+
+Sign users in with your own authorization-code exchange (`get_user` with state,
+PKCE and, for OIDC, nonce), or with an ID token whose signature, issuer,
+audience (your `client_id`), expiry and nonce are verified for your client.
+Keep `get_user_from_token` for tokens your server obtained itself. Apple's
+adapter treats its argument as an ID token and checks signature, issuer,
+audience and expiry but no nonce, so a captured Apple ID token for your client
+can be replayed until it expires.
+
 Token responses may omit `expires_in`, but a supplied value must be an integer
 from one second through 366 days, matching the managed refresh-state bound.
 Negative, zero, excessive and malformed lifetimes fail closed instead of

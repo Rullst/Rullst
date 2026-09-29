@@ -98,6 +98,24 @@ Official support for 11 core providers:
 10. **LinkedIn**
 11. **OIDC (OpenID Connect Custom Provider)**
 
+### Tokens supplied by native or mobile clients
+
+`Provider::get_user_from_token` is **not** an authentication primitive for a
+token that a client (for example a native or mobile app) sends to your backend.
+Except for Apple, it sends the bearer token to the provider's userinfo or profile
+endpoint, which proves only that the token is valid for *some* client of the
+provider, not that it was issued to your `client_id`. Another app that obtained
+a user's token for its own client ID could replay it and be signed in as that
+user.
+
+Sign users in with your own authorization-code exchange (`get_user` with state,
+PKCE and, for OIDC, nonce), or with an ID token whose signature, issuer,
+audience (your `client_id`), expiry and nonce are verified for your client.
+Use `get_user_from_token` only for tokens your server obtained itself. Apple's
+adapter treats its argument as an ID token and checks signature, issuer,
+audience and expiry but no nonce, so a captured Apple ID token for your client
+can be replayed until it expires.
+
 Remote token revocation is deliberately narrower than login support. Use
 `Provider::revoke_token` for an access token and
 `Provider::revoke_refresh_token` for a refresh token; Auth0/Cognito accept only

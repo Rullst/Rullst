@@ -233,6 +233,9 @@ Before release, test the exact deployed provider and browser path:
    the provider's real or restricted environment.
 5. Account creation/linking cannot attach an attacker-controlled provider
    identity to an existing local account.
+   Native or mobile clients do not sign in by sending a provider access token
+   to `get_user_from_token`: a userinfo response does not prove the token was
+   issued to this application's `client_id`.
 6. Denial, timeout, provider outage and abandoned-login recovery have bounded
    user-visible behavior without logging credentials.
 
