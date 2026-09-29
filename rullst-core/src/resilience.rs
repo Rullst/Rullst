@@ -394,16 +394,23 @@ fn refill_token_count(current_tokens: f64, elapsed_secs: f64, config: &RateLimit
 }
 
 /// Thread-safe Token-Bucket rate limiter powered by Shared-Memory DashMap.
+///
+/// Clones share one bucket map. It tracks at most 100,000 keys: buckets that
+/// have refilled completely are dropped (a new bucket behaves identically),
+/// and beyond the cap the least recently used buckets are evicted, which gives
+/// those clients a fresh burst.
 #[derive(Clone)]
 pub struct RateLimiter {
     pub(crate) config: RateLimitConfig,
     buckets: Arc<DashMap<String, TokenBucket>>,
     key_extractor: Arc<dyn Fn(&Request) -> String + Send + Sync>,
+    new_keys: Arc<AtomicUsize>,
+    max_buckets: usize,
 }
 
 impl RateLimiter {
     /// Creates a new `RateLimiter` from the given config, using the transport
-    /// peer address as the default key.
+    /// peer address as the default key (IPv4 per address, IPv6 per /64).
     ///
     /// Forwarded headers are untrusted and deliberately ignored. Deployments
     /// behind a trusted proxy can install an explicit key extractor after
@@ -413,6 +420,8 @@ impl RateLimiter {
             config,
             buckets: Arc::new(DashMap::new()),
             key_extractor: Arc::new(default_key_extractor),
+            new_keys: Arc::new(AtomicUsize::new(0)),
+            max_buckets: buckets::MAX_RATE_LIMIT_BUCKETS,
         }
     }
 
@@ -428,6 +437,9 @@ impl RateLimiter {
     /// Evaluates if the bucket for `key` can consume 1 token, refilling dynamic tokens incrementally.
     pub fn check_and_consume(&self, key: &str) -> bool {
         let now = Instant::now();
+        if !self.buckets.contains_key(key) {
+            self.make_room_for_new_key(now);
+        }
         let mut entry = self
             .buckets
             .entry(key.to_string())
@@ -450,12 +462,15 @@ impl RateLimiter {
 }
 
 /// Default key extractor based only on Axum's transport peer address.
+///
+/// IPv4 peers are keyed per address (`192.0.2.7`) and IPv6 peers per /64
+/// prefix (`2001:db8:1:2::/64`); IPv4-mapped IPv6 peers are keyed as IPv4.
 pub fn default_key_extractor(req: &Request) -> String {
     if let Some(conn_info) = req
         .extensions()
         .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
     {
-        return conn_info.0.ip().to_string();
+        return buckets::peer_rate_limit_key(conn_info.0.ip());
     }
 
     "missing-peer-address".to_string()
@@ -768,9 +783,16 @@ mod tests {
     }
 }
 
+#[path = "resilience_buckets.rs"]
+mod buckets;
+
 #[cfg(test)]
 #[path = "resilience_contract_tests.rs"]
 mod contract_tests;
+
+#[cfg(test)]
+#[path = "resilience_rate_limit_tests.rs"]
+mod rate_limit_tests;
 
 #[cfg(kani)]
 #[cfg_attr(mutants, mutants::skip)]
