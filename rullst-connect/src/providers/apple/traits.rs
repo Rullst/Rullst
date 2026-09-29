@@ -53,6 +53,11 @@ impl Provider for AppleProvider {
     }
 
     /// For Apple, `access_token` parameter should actually be the `id_token` JWT string.
+    ///
+    /// The signature, issuer, audience (this `client_id`) and expiry are
+    /// validated, but no nonce is checked, so a captured ID token issued to
+    /// this client can be replayed until it expires. See
+    /// [`Provider::get_user_from_token`].
     async fn get_user_from_token(
         &self,
         id_token_str: &str,
@@ -90,10 +95,7 @@ impl Provider for AppleProvider {
 
         if let Some(err) = token_res["error"].as_str() {
             let err_desc = token_res["error_description"].as_str().unwrap_or_default();
-            return Err(crate::error::ConnectError::Token(format!(
-                "Provider returned error: {} - {}",
-                err, err_desc
-            )));
+            return Err(crate::error::provider_returned_error(err, err_desc));
         }
 
         let access_token = token_res["access_token"].as_str().ok_or_else(|| {

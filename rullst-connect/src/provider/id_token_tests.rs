@@ -362,3 +362,49 @@ async fn oauth_only_adapters_reject_nonce_requirements_before_transport() {
     }
     assert_eq!(client.0.load(Ordering::SeqCst), 0);
 }
+
+#[tokio::test]
+#[cfg_attr(miri, ignore)]
+async fn oidc_issuer_with_a_trailing_slash_is_validated_exactly_as_published() {
+    // Auth0 publishes `https://TENANT/` and signs `iss` with that trailing slash.
+    let published = "https://issuer.example/";
+    let mut header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::RS256);
+    header.kid = Some("audit-key".into());
+    let key = jsonwebtoken::EncodingKey::from_rsa_pem(RSA_KEY).unwrap();
+    for configured in [published, "https://issuer.example"] {
+        for (token_issuer, accepted) in [(published, true), ("https://issuer.example", false)] {
+            let mut payload = claims("oidc");
+            payload["iss"] = json!(token_issuer);
+            let client = Arc::new(SignedClient {
+                issuer: published,
+                id_token: Some(jsonwebtoken::encode(&header, &payload, &key).unwrap()),
+                userinfo_calls: AtomicUsize::new(0),
+                token_forms: std::sync::Mutex::new(Vec::new()),
+            });
+            let provider = OidcProvider::discover_with_client(
+                configured,
+                "client-id",
+                "test-secret",
+                "https://app.example/callback",
+                client,
+            )
+            .await
+            .expect("a trailing-slash difference still matches during discovery");
+            let result = provider
+                .get_user(ExchangeParams {
+                    auth_code: "code",
+                    expected_nonce: Some("challenge-nonce"),
+                    ..Default::default()
+                })
+                .await;
+            assert_eq!(
+                result.is_ok(),
+                accepted,
+                "configured {configured}, token iss {token_issuer}: {result:?}"
+            );
+            assert_eq!(provider.issuer, published, "store the raw issuer");
+        }
+    }
+}
+
+mod verify;

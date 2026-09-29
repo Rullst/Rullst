@@ -1178,11 +1178,34 @@ The built-in Connect authorization-code providers explicitly request
 state, PKCE, and combined trait variants each contain exactly one response
 type and retain the configured client, redirect, scopes and encoded state/PKCE.
 Apple retains `response_mode=form_post`; offline mock redirects remain local
-fixtures rather than real authorization requests. Application configuration,
+fixtures rather than real authorization requests. The managed `AuthSession`
+extractor reads only the callback query string, so it does not complete Apple's
+cross-site POST callback; an Apple host keeps its state, PKCE verifier and
+nonce behind a `SameSite=None; Secure` challenge cookie and validates the
+posted form itself. The unpublished v13 `AuthSessionForm` extractor consumes the
+same managed challenge from a `POST` `application/x-www-form-urlencoded` body of
+at most 16 KiB, rejecting another method, content type or oversized body before
+touching the challenge; the `SameSite=None; Secure` cookie requirement remains. Application configuration,
 nonce/callback validation and provider-account interoperability remain separate.
 The generic `build_oauth_params` helper and exported redirect macro remain
 response-type-neutral for downstream custom providers. Callers own optional
 endpoint query data and must not supply conflicting reserved parameters.
+
+### Client-supplied token invariant
+
+`Provider::get_user_from_token` is a profile lookup for a token the server
+obtained for its own client. It is not an authentication primitive for a token
+supplied by a native or mobile client: except for Apple, the adapters ask the
+provider's userinfo/profile endpoint about the bearer token, which does not
+prove that the token was issued to the configured `client_id`. Sign-in must use
+the application's own authorization-code exchange or an ID token verified for
+this client's issuer, audience, expiry, signature and nonce. Apple's adapter
+validates an ID token's audience there, but checks no nonce. In the unpublished
+v13 source, `GoogleProvider::verify_id_token` and
+`OidcProvider::verify_id_token` are that audience-bound entry point: they
+require a non-empty expected nonce, reuse the code-exchange ID-token validation
+(JWKS signature, exact issuer, `aud`/`azp` equal to the client ID, `exp`/`iat`,
+nonce) and never call userinfo.
 
 ### Shared-local facade composition invariant
 

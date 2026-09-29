@@ -67,7 +67,7 @@ state of those checks for the referenced commit; they are not an absolute securi
 - 🔏 **Encrypted token snapshots**: Versioned AES-256-GCM envelopes bind a
   refresh generation to one trusted provider/account pair and an explicit key
   rotation ID before application-owned persistence.
-- 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, refresh on unknown `kid`, and bounded stale-if-error behavior.
+- 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, single-flight refresh on unknown `kid` (at most once per 30 seconds per JWKS URL, after rejecting malformed `kid` values without I/O), and bounded stale-if-error behavior.
 - 🚪 **Typed remote revocation**: Access and refresh tokens are distinct API
   operations. Google, GitHub, Discord, Apple, Auth0 and Cognito have bounded
   protocol adapters; unsupported providers fail explicitly and offline
@@ -98,6 +98,49 @@ Official support for 11 core providers:
 9. **Discord**
 10. **LinkedIn**
 11. **OIDC (OpenID Connect Custom Provider)**
+
+### Tokens supplied by native or mobile clients
+
+`Provider::get_user_from_token` is **not** an authentication primitive for a
+token that a client (for example a native or mobile app) sends to your backend.
+Except for Apple, it sends the bearer token to the provider's userinfo or profile
+endpoint, which proves only that the token is valid for *some* client of the
+provider, not that it was issued to your `client_id`. Another app that obtained
+a user's token for its own client ID could replay it and be signed in as that
+user.
+
+Sign users in with your own authorization-code exchange (`get_user` with state,
+PKCE and, for OIDC, nonce), or with an ID token whose signature, issuer,
+audience (your `client_id`), expiry and nonce are verified for your client.
+Use `get_user_from_token` only for tokens your server obtained itself. Apple's
+adapter treats its argument as an ID token and checks signature, issuer,
+audience and expiry but no nonce, so a captured Apple ID token for your client
+can be replayed until it expires.
+
+The unpublished v13 development source adds that audience-bound entry point for
+Google and `OidcProvider`: `verify_id_token(id_token, expected_nonce)` verifies
+the signature through the provider's rotating JWKS and requires the exact
+issuer, `aud` equal to your `client_id` (and a matching `azp` when present),
+valid `exp`/`iat` and the nonce your server issued for that sign-in attempt. It
+never calls userinfo. The returned `ConnectUser` carries the verified ID token
+in `access_token`; there is no provider access or refresh token in this flow.
+
+```rust,no_run
+use rullst_connect::prelude::{ConnectError, ConnectUser, GoogleProvider};
+
+async fn sign_in_native_google_user(
+    google: &GoogleProvider,
+    id_token: &str,
+    nonce_issued_for_this_attempt: &str,
+) -> Result<ConnectUser, ConnectError> {
+    google
+        .verify_id_token(id_token, nonce_issued_for_this_attempt)
+        .await
+}
+```
+
+Generate the nonce on your server, give it to the client for the provider
+sign-in request, and consume it once, just like an OAuth `state`.
 
 Remote token revocation is deliberately narrower than login support. Use
 `Provider::revoke_token` for an access token and
@@ -223,8 +266,22 @@ async fn start_github_authorization(
 }
 ```
 
-Use `begin_oidc_session` instead for Google, Apple, or a custom OIDC provider.
-It adds and stores an OIDC nonce as well.
+Use `begin_oidc_session` instead for Google or a custom OIDC provider. It adds
+and stores an OIDC nonce as well.
+
+Sign in with Apple is different: `AppleProvider` always requests
+`response_mode=form_post`, so Apple returns `code`, `state` and `id_token` in a
+cross-site POST body. `AuthSession` reads only the query string, and a
+`SameSite=Lax` or `Strict` session cookie is not sent on that POST, so the
+managed `begin_oidc_session` + `AuthSession` flow cannot complete an Apple
+login with a 12.x release. Use the manual state/PKCE/nonce flow with a
+dedicated `SameSite=None; Secure; HttpOnly` challenge cookie, as described in
+[Sign in with Apple: form POST callback](../tutorials/42-server-bound-oauth-sessions.md#sign-in-with-apple-form-post-callback).
+
+The unpublished v13 development source adds `AuthSessionForm`, which consumes
+the `begin_oidc_session` challenge from the form POST body (at most 16 KiB).
+The session cookie that holds that challenge must still be
+`SameSite=None; Secure`, so give the Apple routes their own session layer.
 
 ### 3. Consume the Callback and Get the User
 

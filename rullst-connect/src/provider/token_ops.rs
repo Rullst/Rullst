@@ -145,11 +145,8 @@ pub async fn fetch_access_token(
         .await?;
 
     if let Some(err) = token_res["error"].as_str() {
-        let err_desc = token_res["error_description"].as_str().unwrap_or("");
-        return Err(crate::error::ConnectError::Token(format!(
-            "Provider returned error: {} - {}",
-            err, err_desc
-        )));
+        let err_desc = token_res["error_description"].as_str().unwrap_or_default();
+        return Err(crate::error::provider_returned_error(err, err_desc));
     }
 
     let access_token = token_res["access_token"]
@@ -190,11 +187,8 @@ pub async fn fetch_refresh_token(
         .await?;
 
     if let Some(err) = token_res["error"].as_str() {
-        let err_desc = token_res["error_description"].as_str().unwrap_or("");
-        return Err(crate::error::ConnectError::Token(format!(
-            "Provider returned error: {} - {}",
-            err, err_desc
-        )));
+        let err_desc = token_res["error_description"].as_str().unwrap_or_default();
+        return Err(crate::error::provider_returned_error(err, err_desc));
     }
 
     let access_token = token_res["access_token"]

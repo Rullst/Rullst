@@ -120,6 +120,30 @@ A prepared version section does not establish that its tag or crates exist.
   cover all eleven providers without claiming live account interoperability.
   This is a compatible stable correction, with no new provider or public API.
 
+### Connect review fixes
+
+- Provider error responses with localized text no longer panic:
+  `error_for_status` cuts messages (512 bytes) and OAuth error codes (128
+  bytes) on a UTF-8 character boundary, and OAuth errors returned with a
+  success status are bounded the same way.
+- `Oauth2TokenResponse`, `ExchangeParams`, `AuthCallback` and
+  `DeviceAuthorizationResponse` redact tokens, authorization codes, CSRF state,
+  PKCE verifiers, nonces and device codes from `Debug` output.
+- `OidcProvider` validates ID tokens against the issuer exactly as discovered,
+  so Auth0 issuers ending in `/` work; `OidcProvider::issuer` now holds the
+  published value.
+- JWKS caches reject malformed `kid` values before any I/O, let an unknown
+  `kid` force at most one refresh per 30 seconds per URL, and make refreshes
+  single-flight, so a client can no longer force a fetch per request.
+- `Provider::get_user_from_token` is documented as not authenticating tokens
+  supplied by native or mobile clients. New `GoogleProvider::verify_id_token`
+  and `OidcProvider::verify_id_token` verify a client-supplied ID token against
+  this client ID and a server-issued nonce.
+- Sign in with Apple guidance is corrected: the query-string `AuthSession` flow
+  cannot receive Apple's `form_post` callback. New `AuthSessionForm` consumes
+  the same stored challenge from a bounded form POST, and tutorial 42 explains
+  the `SameSite=None; Secure` challenge cookie it needs.
+
 ### HTML macro caller bindings
 
 - Keep generated `html!` buffers hygienically separate from caller variables.

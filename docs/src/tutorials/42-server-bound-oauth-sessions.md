@@ -35,8 +35,10 @@ let sessions = SessionManagerLayer::new(MemoryStore::default())
 let app = app.layer(sessions);
 ```
 
-`SameSite::Lax` permits the ordinary top-level OAuth callback while reducing
-cross-site cookie exposure. Production still requires HTTPS, a durable shared
+`SameSite::Lax` permits the ordinary top-level OAuth callback, a cross-site
+`GET` redirect, while reducing cross-site cookie exposure. It does not cover a
+provider that returns the callback as a cross-site `POST`; see
+[Sign in with Apple](#sign-in-with-apple-form-post-callback). Production still requires HTTPS, a durable shared
 store where multiple instances are used, bounded store retention, protected
 keys and an explicit reverse-proxy policy.
 
@@ -65,7 +67,7 @@ The returned URL contains the random state and the SHA-256 PKCE challenge. The
 
 ## Start OpenID Connect with nonce
 
-Use the OIDC variant for Google, Apple, or a discovered custom OIDC provider:
+Use the OIDC variant for Google or a discovered custom OIDC provider:
 
 ```rust,ignore
 let authorization = begin_oidc_session(&session, &oidc_provider).await?;
@@ -75,6 +77,125 @@ Ok(Redirect::temporary(authorization.url()))
 This stores another random value and sends it as `nonce`. The provider adapter
 receives that same expected nonce later and validates it against the signed ID
 token in the adapters whose documented contract includes ID-token validation.
+The query-string `AuthSession` callback does not support Apple; see the next
+section.
+
+## Sign in with Apple: form POST callback
+
+`AppleProvider` always requests `response_mode=form_post`, which Apple requires
+when the `name` or `email` scope is requested. Apple then returns `code`,
+`state`, `id_token` and, on the first sign-in only, `user` in an
+`application/x-www-form-urlencoded` POST from `appleid.apple.com`. Two parts of
+the query-string flow do not fit that request:
+
+- `AuthSession` reads the callback from the query string only, so the POST has
+  no state to compare and the extraction fails;
+- the POST is cross-site, and browsers send a cookie on a cross-site POST only
+  when it is `SameSite=None; Secure`. The `SameSite::Lax` session cookie shown
+  above is not sent, so the callback cannot find its stored challenge.
+
+Do not relax the application's authenticated session cookie to
+`SameSite=None` to work around this. Keep the Apple challenge in a dedicated,
+short-lived store reached through its own `SameSite=None; Secure; HttpOnly`
+cookie scoped to the Apple routes. With a 12.x release, validate the posted form
+with the framework-neutral primitives:
+
+```rust,ignore
+use rullst_connect::extractors::AuthCallback;
+use rullst_connect::pkce::{generate_oauth_state, generate_pkce};
+use rullst_connect::prelude::*;
+use rullst_connect::provider::ExchangeParams;
+
+// Start: generate the same values the managed flow would store.
+let state = generate_oauth_state();
+let nonce = generate_oauth_state();
+let (code_verifier, code_challenge) = generate_pkce();
+let mut url = url::Url::parse(
+    &apple.redirect_url_with_pkce_and_state(&code_challenge, &state),
+)?;
+url.query_pairs_mut().append_pair("nonce", &nonce);
+// Application-provided: store the three values for ten minutes under a random
+// ID and set `apple_challenge=<ID>; Path=/auth/apple; Max-Age=600; Secure;
+// HttpOnly; SameSite=None` on the redirect response.
+store_apple_challenge(&state, &nonce, &code_verifier).await?;
+
+// Callback: `POST /auth/apple/callback` with a small body limit.
+async fn apple_callback(
+    axum::Form(callback): axum::Form<AuthCallback>,
+) -> Result<ConnectUser, ConnectError> {
+    // Application-provided: atomically remove the challenge named by the
+    // `apple_challenge` cookie, failing if it is missing or expired.
+    let challenge = take_apple_challenge().await?;
+    callback.verify_state(&challenge.state)?;
+    if let Some(error) = &callback.error {
+        return Err(ConnectError::Provider(format!("Apple returned {error}")));
+    }
+    let code = callback
+        .code
+        .as_deref()
+        .ok_or_else(|| ConnectError::Token("missing code".to_string()))?;
+    apple
+        .get_user(ExchangeParams {
+            auth_code: code,
+            code_verifier: Some(&challenge.code_verifier),
+            expected_nonce: Some(&challenge.nonce),
+        })
+        .await
+}
+```
+
+`AuthCallback` ignores the extra `id_token` and `user` fields. `get_user`
+redeems the code and verifies the returned ID token's signature, issuer,
+audience, expiry and nonce. The unsigned `user` JSON is the only place Apple
+sends the user's name; parse it separately if needed and treat it as
+unverified. After a successful callback, rotate or create the application's own
+authenticated session as usual.
+
+### Managed form POST callback
+
+The unpublished v13 development source adds `AuthSessionForm`, the form POST
+counterpart of `AuthSession`. It reads an `application/x-www-form-urlencoded`
+`POST` body of at most 16 KiB, ignores `id_token` and `user`, and consumes the
+same challenge that `begin_oidc_session` stored, with the same expiry,
+constant-time state comparison and single use. A non-`POST` request, another
+content type or an oversized body is rejected before the challenge is touched.
+
+```rust
+use rullst_connect::prelude::*;
+
+async fn apple_callback(
+    callback: AuthSessionForm,
+    apple: &AppleProvider,
+) -> Result<ConnectUser, ConnectError> {
+    apple.get_user(callback.exchange_params()?).await
+}
+```
+
+The cookie requirement does not change: the session that holds the challenge
+must be `SameSite=None; Secure`. Give the Apple start and callback routes their
+own session layer rather than relaxing the application session:
+
+```rust,ignore
+use tower_sessions::{cookie::SameSite, MemoryStore, SessionManagerLayer};
+
+let apple_challenges = SessionManagerLayer::new(MemoryStore::default())
+    .with_name("apple_oauth_challenge")
+    .with_path("/auth/apple")
+    .with_http_only(true)
+    .with_secure(true)
+    .with_same_site(SameSite::None);
+
+let apple_routes = Router::new()
+    .route("/auth/apple/start", get(start_apple)) // begin_oidc_session
+    .route("/auth/apple/callback", post(apple_callback)) // AuthSessionForm
+    .layer(apple_challenges);
+```
+
+An inner session layer replaces the outer `Session` for those routes, so the
+callback cannot also write the application session. Hand the verified identity
+over with an application-owned one-time step, for example a random single-use
+handoff ID that expires within a minute and is redeemed by a same-site route
+under the application session layer.
 
 ## Consume the callback
 
@@ -201,6 +322,8 @@ The managed contract is intentionally small:
 - the challenge is removed and saved before state, nonce or PKCE-dependent
   exchange;
 - missing, mismatched, expired and later sequential callbacks fail closed;
+- the form POST variant accepts only a `POST` with a form body of at most
+  16 KiB and leaves the challenge untouched when it rejects the request shape;
 - provider error text is bounded before it becomes a typed error;
 - callback codes, state, nonce, verifier and authorization URLs are redacted
   from the managed types' `Debug` output.
@@ -233,6 +356,10 @@ Before release, test the exact deployed provider and browser path:
    the provider's real or restricted environment.
 5. Account creation/linking cannot attach an attacker-controlled provider
    identity to an existing local account.
+   Native or mobile clients do not sign in by sending a provider access token
+   to `get_user_from_token`: a userinfo response does not prove the token was
+   issued to this application's `client_id`. Verify their ID token with
+   `verify_id_token` (Google, `OidcProvider`) and a server-issued nonce.
 6. Denial, timeout, provider outage and abandoned-login recovery have bounded
    user-visible behavior without logging credentials.
 

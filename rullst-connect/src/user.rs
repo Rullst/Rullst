@@ -111,7 +111,7 @@ pub trait IntoDatabaseUser<T> {
 }
 
 /// Represents the response from a device authorization request (RFC 8628).
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct DeviceAuthorizationResponse {
     pub device_code: String,
     pub user_code: String,
@@ -121,10 +121,41 @@ pub struct DeviceAuthorizationResponse {
     pub interval: Option<u64>,
 }
 
+/// Redacts `device_code`, the secret the device polls with. `user_code` is
+/// shown to the user by design and stays visible.
+impl std::fmt::Debug for DeviceAuthorizationResponse {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("DeviceAuthorizationResponse")
+            .field("device_code", &"[REDACTED]")
+            .field("user_code", &self.user_code)
+            .field("verification_uri", &self.verification_uri)
+            .field("verification_uri_complete", &self.verification_uri_complete)
+            .field("expires_in", &self.expires_in)
+            .field("interval", &self.interval)
+            .finish()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn device_authorization_debug_redacts_the_device_code() {
+        let response = DeviceAuthorizationResponse {
+            device_code: "device-secret-canary".to_string(),
+            user_code: "WDJB-MJHT".to_string(),
+            verification_uri: "https://example.com/device".to_string(),
+            verification_uri_complete: None,
+            expires_in: 900,
+            interval: Some(5),
+        };
+        let debug = format!("{response:?}");
+        assert!(!debug.contains("device-secret-canary"), "{debug}");
+        assert!(debug.contains("WDJB-MJHT"), "{debug}");
+    }
 
     #[test]
     fn connect_user_serialization_never_exposes_tokens() {
