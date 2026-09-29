@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790693656447,
+  "lastUpdate": 1790697044522,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -21207,6 +21207,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1742,
             "range": "± 20",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "27e56cac813f4017094865a7f26f36fe692f58a2",
+          "message": "Merge pull request #315 from Rullst/refactor/v13-lms-starter-only\n\nrefactor(cli): replace the Academy LMS scaffold with the LMS starter",
+          "timestamp": "2026-09-29T12:40:57-03:00",
+          "tree_id": "fc5e37cd7ad8535ac4ce4763355b1c331362777f",
+          "url": "https://github.com/Rullst/Rullst/commit/27e56cac813f4017094865a7f26f36fe692f58a2"
+        },
+        "date": 1790697042398,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 445,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 639,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 426,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1113,
+            "range": "± 106",
             "unit": "ns/iter"
           }
         ]
