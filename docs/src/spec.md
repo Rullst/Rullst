@@ -1512,7 +1512,9 @@ while portability and semantic review remain the model author's responsibility.
   soft-delete `UPDATE` that `cascade_soft_delete` issues for child rows, keeps
   `?` markers on MySQL/MariaDB and SQLite; the SQLite test and the live
   PostgreSQL, MySQL and MariaDB matrices execute filtered, tenant-scoped and
-  cascading bulk deletes.
+  cascading bulk deletes. Instance `restore()` and `force_delete()` statements,
+  including their tenant predicate, are numbered the same way and run in those
+  matrices too.
 * Generated magic filters bind supported primitive fields to their Rust type at
   compile time (`String`, `i32`, `f64`, and `bool`), and generated column enums
   make unknown columns unrepresentable on typed paths. String-column builders,

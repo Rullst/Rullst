@@ -412,27 +412,42 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         }
     };
 
-    let restore_logic = if let Some(cfg) = soft_delete_config {
+    let (restore_logic, restore_sql_method) = if let Some(cfg) = soft_delete_config {
         let set_clause = if cfg.value.trim().eq_ignore_ascii_case("null") || cfg.value.is_empty() {
             format!("{} = NULL", cfg.column)
         } else {
             format!("{} = {}", cfg.column, cfg.value)
         };
-        let set_clause_lit = set_clause;
-        quote! {
-            let pool = rullst_orm::Orm::try_pool()?;
-            use rullst_orm::_sqlx::query_builder::QueryBuilder;
-            let mut query_builder = QueryBuilder::new("UPDATE ");
-            query_builder.push(#table_name);
-            query_builder.push(format!(" SET {} WHERE id = ?{}", #set_clause_lit, #tenant_where_clause));
-            let query = query_builder.build();
-            let exec = query.bind(self.id) #tenant_binding;
-            let mutation_result = rullst_orm::execute_query!(exec, execute, pool)?;
-            #tenant_rows_check
-        }
+        let restore_sql = format!(
+            "UPDATE {} SET {} WHERE id = ?{}",
+            table_name, set_clause, tenant_where_clause
+        );
+        (
+            quote! {
+                let query = Self::__rullst_restore_sql(rullst_orm::Orm::driver()?);
+                let exec = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(query.as_str()))
+                    .bind(self.id) #tenant_binding;
+                let mutation_result = rullst_orm::execute_query!(exec, execute, pool)?;
+                #tenant_rows_check
+            },
+            quote! {
+                /// Renders the soft-delete restore statement for `driver`.
+                fn __rullst_restore_sql(driver: &str) -> String {
+                    if driver == "postgres" {
+                        rullst_orm::replace_placeholders(#restore_sql)
+                    } else {
+                        #restore_sql.to_string()
+                    }
+                }
+            },
+        )
     } else {
-        quote! {}
+        (quote! {}, quote! {})
     };
+    let force_delete_sql = format!(
+        "DELETE FROM {} WHERE id = ?{}",
+        table_name, tenant_where_clause
+    );
 
     let policy_check_delete = if !parsed.policy.is_empty() {
         let policy_type = syn::Ident::new(&parsed.policy, parsed.name.span());
@@ -659,16 +674,23 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             rullst_orm::__transaction_access::ensure_allowed()?;
             #tenant_guard
             #policy_check_force_delete
-            let pool = rullst_orm::Orm::try_pool()?;
-            use rullst_orm::_sqlx::query_builder::QueryBuilder;
-            let mut query_builder = QueryBuilder::new("DELETE FROM ");
-            query_builder.push(#table_name);
-            query_builder.push(format!(" WHERE id = ?{}", #tenant_where_clause));
-            let query = query_builder.build();
-            let exec = query.bind(self.id) #tenant_binding;
+            let query = Self::__rullst_force_delete_sql(rullst_orm::Orm::driver()?);
+            let exec = rullst_orm::_sqlx::query(rullst_orm::_sqlx::AssertSqlSafe(query.as_str()))
+                .bind(self.id) #tenant_binding;
             let mutation_result = rullst_orm::execute_query!(exec, execute, pool)?;
             #tenant_rows_check
             Ok(())
         }
+
+        /// Renders the permanent-delete statement for `driver`.
+        fn __rullst_force_delete_sql(driver: &str) -> String {
+            if driver == "postgres" {
+                rullst_orm::replace_placeholders(#force_delete_sql)
+            } else {
+                #force_delete_sql.to_string()
+            }
+        }
+
+        #restore_sql_method
     }
 }

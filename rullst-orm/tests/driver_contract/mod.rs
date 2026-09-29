@@ -5,10 +5,12 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 mod bulk_delete;
+mod soft_delete_lifecycle;
 mod timestamps;
 
 /// Runs every driver-neutral contract against the initialized ORM.
 pub async fn exercise() {
     timestamps::exercise().await;
     bulk_delete::exercise().await;
+    soft_delete_lifecycle::exercise().await;
 }
