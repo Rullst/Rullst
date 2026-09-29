@@ -51,7 +51,7 @@ jobs:
           python3 .github/validate-action-pins.py
 
       - name: Parse workflows and enforce immutable Action references
-        uses: zgosalvez/github-actions-ensure-sha-pinned-actions@60e3a74c7b74a319e8e53e46bc455205f7173e1a # v5.0.8
+        uses: zgosalvez/github-actions-ensure-sha-pinned-actions@62574f011e0d1967d555a862bd28a7abba8684fe # v5.0.9
 
       - name: Validate shared fuzz target inventory
         run: python3 .github/validate-fuzz-targets.py
