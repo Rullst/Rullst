@@ -344,6 +344,23 @@ pub fn middleware_to_snake_case(s: &str) -> String {
     clean_result.trim_matches('_').to_string()
 }
 
+/// Locates a TOML parse failure as `line L, column C`, without its message.
+/// The `toml` error text quotes the offending source line, which can hold a
+/// secret such as `app_key` or a database URL, so it is never reported.
+pub(crate) fn toml_error_position(content: &str, error: &toml::de::Error) -> String {
+    let Some(span) = error.span() else {
+        return "an unknown position".to_owned();
+    };
+    let before = content.get(..span.start).unwrap_or(content);
+    let line = before.matches('\n').count() + 1;
+    let column = before
+        .rsplit('\n')
+        .next()
+        .map_or(0, |text| text.chars().count())
+        + 1;
+    format!("line {line}, column {column}")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
