@@ -81,16 +81,18 @@ impl DistributedTelemetry {
         let counters = Arc::new(Counters::default());
         let offline = config.endpoint.is_none();
         let exporter = if let Some(endpoint) = &config.endpoint {
-            Destination::Remote(
+            Destination::Remote(Box::new(
                 opentelemetry_otlp::SpanExporter::builder()
                     .with_http()
                     .with_endpoint(endpoint)
                     .with_protocol(opentelemetry_otlp::Protocol::HttpBinary)
                     .with_timeout(config.timeout)
                     .with_http_client(BoundedOtlpClient::new(&config, counters.clone())?)
+                    // OTLP 0.33 retries by default; each batch gets one bounded attempt.
+                    .with_retry_policy(opentelemetry_otlp::RetryPolicy::disabled())
                     .build()
                     .map_err(|_| TelemetryError::InvalidConfig)?,
-            )
+            ))
         } else {
             Destination::Offline(counters.clone())
         };

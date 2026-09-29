@@ -153,6 +153,18 @@ A prepared version section does not establish that its tag or crates exist.
   full hosted campaign must pass before this candidate is admitted.
 - Refresh immutable CodeQL, Rust toolchain installer, tool installer,
   TruffleHog wrapper and Codecov Action references together across v13 workflows.
+- Update jsonschema to 0.57.0 in the workspace and the four fuzz locks that
+  resolve it (`rullst`, `rullst-nexus`, `rullst-security`, `rullst-studio`).
+- Replace the exact aws-smithy-types 1.6.4 pin with a 1.8.1 floor: the
+  incompatible 1.7.0 release was yanked and 1.8 compiles with Smithy JSON 0.63.
+  v12 keeps its exact 1.6.4 pin.
+- Update Studio's API playground to utoipa 6.0.0 and utoipa-swagger-ui 10.0.1
+  together, including the `rullst` and `rullst-studio` fuzz locks.
+  `Studio::with_openapi` now accepts a utoipa 6 `OpenApi` (breaking for v13).
+- Update OpenTelemetry (API, SDK, OTLP, HTTP and proto) to 0.33 together with
+  tracing-opentelemetry 0.34. OTLP 0.33 retries exports by default; both
+  exporters now disable retries explicitly to keep the documented
+  single-attempt contract. No OpenTelemetry type is part of Rullst's public API.
 
 ### Unpublished v13 privacy foundation
 
