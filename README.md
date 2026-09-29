@@ -3,17 +3,15 @@
 </div>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/Rullst.png" alt="Rullst Logo" width="260">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/hero-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/hero-light.svg">
+    <img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/hero-dark-static.webp" alt="Rullst — build secure apps in Rust without the suffering. Batteries included, secure by default, designed for humans and AI." width="100%">
+  </picture>
 </p>
 
 <h1 align="center">🌐🦀📜 Rullst 📜🦀🌐</h1>
 <h3 align="center"><i>Intelligent, Security-Conscious, and Designed for Effortless Productivity — Because With Rullst, We Rule!</i></h3>
-
-<p align="center">
-  <b>The batteries-included Rust framework for web apps, APIs and SaaS.</b><br>
-  Rust for those who want to build securely and easily — without the suffering.<br>
-  Built on Axum and Tokio. Designed for humans <i>and</i> AI assistants.
-</p>
 
 <p align="center">
   <a href="https://crates.io/crates/rullst"><img src="https://img.shields.io/crates/v/rullst?style=for-the-badge&color=10b981&logo=rust" alt="Crates.io"></a>
@@ -39,9 +37,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif.gif" alt="The Rullst CLI generating an LMS blueprint" width="85%"/>
-  <br>
-  <sub>One command: pick a blueprint and a database, and get a working app made of ordinary Rust that you own.</sub>
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/terminal.svg" alt="Terminal: cargo rullst new asks for the app name, blueprint and database, creates a SaaS starter with SQLite, then cargo rullst dev compiles it and serves it at http://localhost:3000." width="92%">
 </p>
 
 <a id="quickstart"></a>
@@ -63,6 +59,17 @@ full version such as `--version 12.1.2` to reproduce a specific release.
 · [Zero-to-Hero tutorial](https://rullst.github.io/Rullst/book/tutorials/01-hello-world.html)
 · [Build a JSON REST API](https://rullst.github.io/Rullst/book/tutorials/rest-api-quickstart.html)
 · [CLI reference](https://rullst.github.io/Rullst/book/cli_reference.html)
+
+<details>
+<summary><strong>Prefer an interactive dashboard? Run <code>cargo rullst dash</code></strong></summary>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/cargo-rullst-dash.png" alt="Rullst terminal dashboard with project information, logs and controls" width="100%"/>
+</p>
+
+Recorded screenshot; layout and controls can differ by version. [Development workflow](https://rullst.github.io/Rullst/book/tutorials/51-authenticated-hot-reload.html).
+
+</details>
 
 ## 🦀 Code that says what it does
 
@@ -136,63 +143,15 @@ curl http://127.0.0.1:3000/api/health
 
 </details>
 
-## ✨ Everything a real product needs, in one workspace
+<a id="features"></a>
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <h3>🔐 Security by default</h3>
-      Argon2id passwords, sessions, passkeys, OAuth2/OIDC, CSRF protection,
-      strict secure headers, WAF and login-jail defenses, and ownership checks
-      for data routes.
-    </td>
-    <td width="50%" valign="top">
-      <h3>🗄️ Data that stays correct</h3>
-      Active Record and repositories with transactions, migrations and an
-      outbox on SQLite, PostgreSQL and MySQL — plus durable queues and
-      messaging for background work.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <h3>🧱 Six real blueprints</h3>
-      Blank/API, Blog, SaaS, LMS, Portfolio and ERP — generated as ordinary Rust
-      that you read, change and own, with a terminal dashboard and assisted
-      upgrades.
-    </td>
-    <td valign="top">
-      <h3>🤖 Made for AI-assisted coding</h3>
-      Explicit APIs, compile-time macros, typed errors and no runtime
-      reflection, so assistants (and humans) write code that compiles and
-      stays safe.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <h3>💳 Payments, email and AI</h3>
-      Stripe billing with signed webhooks, transactional email (Resend,
-      SendGrid, Postmark, SMTP) and guarded LLM clients (OpenAI, Claude,
-      Gemini, DeepSeek, Ollama) with prompt-injection filtering and PII masking.
-    </td>
-    <td valign="top">
-      <h3>📊 See inside your app</h3>
-      Studio, a local control room fed by real runtime telemetry, and Nexus,
-      an auto-generated admin with explicit access policy and a security radar.
-    </td>
-  </tr>
-  <tr>
-    <td valign="top">
-      <h3>🖥️ Web first, native when you want</h3>
-      Server-rendered HTML with HTMX, JSON APIs, and Omni-generated Tauri
-      desktop and mobile shells around the same application.
-    </td>
-    <td valign="top">
-      <h3>⚙️ Standard Rust underneath</h3>
-      Axum, Tokio, Tower and SQLx. Use their routers and pools directly
-      whenever you need to, and adopt Rullst incrementally.
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/features-dark.webp">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/features-light.webp">
+    <img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/features-dark.webp" alt="One framework, the whole product. Secure by default: Argon2id, sessions, passkeys, OAuth2/OIDC, CSRF, strict headers, WAF and login jail. Data that stays correct: Active Record, transactions, migrations and an outbox on SQLite, PostgreSQL and MySQL. Six real blueprints: API, Blog, SaaS, LMS, Portfolio and ERP. Made for AI coding: explicit APIs, compile-time macros, typed errors, no runtime reflection. Payments and email: Stripe billing with signed webhooks; Resend, SendGrid, Postmark and SMTP. AI built in: OpenAI, Claude, Gemini, DeepSeek and Ollama with prompt-injection filtering and PII masking. See inside your app: Studio telemetry and the Nexus admin with a security radar. Web first, native too: HTMX, JSON APIs, and Tauri desktop and mobile shells via Omni." width="100%">
+  </picture>
+</p>
 
 Every capability has a documented boundary — security middleware does not
 replace your authorization rules, and databases are not interchangeable. See the
@@ -202,58 +161,85 @@ replace your authorization rules, and databases are not interchangeable. See the
 
 <a id="live-examples"></a>
 
-## 🧪 See it running
+## 🌍 Built with Rullst
 
-Real applications built with Rullst, with their code and deployment recipes in
-[Rullst/examples](https://github.com/Rullst/examples):
+Real applications running today, every one of them built with Rullst. Click to explore — their code and
+deployment recipes live in [Rullst/examples](https://github.com/Rullst/examples).
 
-| Application | Explore |
-| :--- | :--- |
-| 🌐 **Showcase** — blog, SSR and integration demonstrations | [Open Showcase ↗](https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/) |
-| 🎓 **LMS** — course catalog and learning platform | [Open LMS ↗](https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/) |
-| 💼 **Portfolio** — projects, skills and experience | [Open Portfolio ↗](https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/) |
-| 🛒 **SaaS in production** — real purchases and the founding-member offer | [Open SaaS ↗](https://saas.rullst.win/) |
+<table>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/"><img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/demo-showcase.webp" alt="Showcase built with Rullst: SSR, LiveView, Wasm, ORM, billing, security and AI demos" width="100%"></a>
+      <br><b>🌐 Showcase</b> — SSR, LiveView, Wasm, ORM, billing, security and AI demos · <a href="https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/">Open ↗</a>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/"><img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/demo-lms.webp" alt="LMS built with Rullst: course catalog and learning platform" width="100%"></a>
+      <br><b>🎓 LMS</b> — course catalog and learning platform · <a href="https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/">Open ↗</a>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/"><img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/demo-portfolio.webp" alt="Portfolio built with Rullst: projects, experience, Nexus and Studio" width="100%"></a>
+      <br><b>💼 Portfolio</b> — projects, experience, Nexus and Studio · <a href="https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/">Open ↗</a>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="https://saas.rullst.win/"><img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/demo-saas.webp" alt="SaaS in production built with Rullst: real purchases with Stripe" width="100%"></a>
+      <br><b>🛒 SaaS in production</b> — real purchases with Stripe · <a href="https://saas.rullst.win/">Open ↗</a>
+    </td>
+  </tr>
+</table>
 
 > The demos scale to zero when idle, so the first visit can take a few seconds
 > to wake up — that is hosting startup, not Rullst's request time. The **SaaS
 > checkout is live and charges real money**; the Showcase payment demos are not.
+
+▶️ **[Watch: how to build a SaaS with Rullst](https://www.youtube.com/watch?v=nDXLeNM327g)**
 
 Prefer to run something locally? The [reproducible SaaS example](https://github.com/Rullst/Rullst/tree/main/examples/saas)
 covers generation, login and tenant-scoped notes on a disposable SQLite database,
 and the [WebGPU wave example](https://github.com/Rullst/Rullst/tree/main/examples/webgpu)
 serves browser graphics from Rullst.
 
-## 🎬 A closer look
+<a id="the-rullst-ecosystem"></a>
 
-<table align="center" width="100%">
-  <tr>
-    <th align="center" width="50%">SaaS blueprint</th>
-    <th align="center" width="50%">LMS blueprint</th>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif1.gif" alt="Generating and running the SaaS blueprint" width="100%" />
-    </td>
-    <td align="center">
-      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/gifs/gif2.gif" alt="Generating and running the LMS blueprint" width="100%" />
-    </td>
-  </tr>
-  <tr>
-    <th align="center">Development dashboard</th>
-    <th align="center">Watch: build a SaaS with Rullst</th>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/cargo-rullst-dash.png" alt="Rullst terminal dashboard with project information, logs and controls" width="100%" />
-    </td>
-    <td align="center">
-      <a href="https://www.youtube.com/watch?v=nDXLeNM327g"><img src="https://img.youtube.com/vi/nDXLeNM327g/hqdefault.jpg" alt="How to build a SaaS with Rullst (video)" width="100%" /></a>
-    </td>
-  </tr>
-</table>
+## 🏗️ Architecture
 
-<p align="center"><sub>Recorded previews. The current CLI and dashboards can differ in labels and layout.
-<a href="https://rullst.github.io/Rullst/book/tutorials/51-authenticated-hot-reload.html">Development workflow</a>.</sub></p>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/architecture-dark.webp">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/architecture-light.webp">
+    <img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/architecture-dark.webp" alt="Rullst architecture. Your app (API, Blog, SaaS, LMS, Portfolio, ERP) sits on four layers: Product (rullst-capital payments, rullst-mail email, rullst-ai AI and RAG, rullst-messaging queues, rullst-connect OAuth2/OIDC); Trust (rullst-auth identity and sessions, rullst-security WAF, headers, CSRF and RASP); Data (rullst-orm Active Record, migrations and transactions, rullst-orm-macros); Runtime (rullst-core HTTP runtime and routing, rullst-macros html!). Everything runs on Axum, Tokio, Tower and SQLx. Tools: cargo-rullst CLI, rullst-studio control room, rullst-nexus admin. One facade crate, rullst, enables only the features you need." width="100%">
+  </picture>
+</p>
+
+Rullst is a family of focused crates in one versioned workspace — select only
+what your application needs. The stable v12 release publishes sixteen crates;
+detailed feature and provider boundaries live in the
+[specification](https://rullst.github.io/Rullst/book/spec.html).
+
+<details>
+<summary><strong>Browse the crate directory</strong></summary>
+
+| Crate | Focus |
+| :--- | :--- |
+| [rullst](https://github.com/Rullst/Rullst/tree/main/rullst) | Public framework facade and feature selection |
+| [rullst-core](https://github.com/Rullst/Rullst/tree/main/rullst-core) | HTTP runtime, routing, lifecycle and telemetry |
+| [rullst-orm](https://github.com/Rullst/Rullst/tree/main/rullst-orm) | Relational models, transactions and capability-specific persistence |
+| [rullst-auth](https://github.com/Rullst/Rullst/tree/main/rullst-auth) | Passwords, sessions, passkeys and authorization helpers |
+| [rullst-security](https://github.com/Rullst/Rullst/tree/main/rullst-security) | Defense-in-depth middleware, guards and audit helpers |
+| [rullst-connect](https://github.com/Rullst/Rullst/tree/main/rullst-connect) | OAuth2/OIDC identity integrations |
+| [rullst-ai](https://github.com/Rullst/Rullst/tree/main/rullst-ai) | Guarded local/cloud clients and tenant-aware retrieval |
+| [rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital) | Payment/payout adapters, webhooks and bounded billing helpers |
+| [rullst-mail](https://github.com/Rullst/Rullst/tree/main/rullst-mail) | Transactional email and delivery controls |
+| [rullst-messaging](https://github.com/Rullst/Rullst/tree/main/rullst-messaging) | Broker-neutral contracts and durable local messaging |
+| [rullst-studio](https://github.com/Rullst/Rullst/tree/main/rullst-studio) | Local developer control room |
+| [rullst-nexus](https://github.com/Rullst/Rullst/tree/main/rullst-nexus) | Registered-model admin with explicit access policy |
+| [rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot) | Bounded no_std helpers and signed OTA verification, not device integration |
+| [rullst-macros](https://github.com/Rullst/Rullst/tree/main/rullst-macros) | Compile-time HTML and application macros |
+| [rullst-orm-macros](https://github.com/Rullst/Rullst/tree/main/rullst-orm-macros) | Typed ORM code generation |
+| [cargo-rullst](https://github.com/Rullst/Rullst/tree/main/cargo-rullst) | Project scaffolding, development and upgrade CLI |
+
+</details>
 
 ## 🎓 Learn with Rullst Academy
 
@@ -352,39 +338,6 @@ The branch-protection profiles and the exact scope of all
 > 🧭 **[Capability Status & Vision Decisions](https://github.com/Rullst/Rullst/blob/main/docs/src/capability-ledger.md)** preserves ambitious features that are partial or not implemented, with an explicit recommendation and rationale for each one.
 >
 > 📋 **[Simple Capability Status](https://github.com/Rullst/Rullst/blob/main/docs/src/capability-status.md)** and the **[per-commit quality scorecard](https://github.com/Rullst/Rullst/blob/main/docs/src/quality-scorecard.md)** keep feature progress separate from SHA-bound engineering evidence.
-
-</details>
-
-<a id="the-rullst-ecosystem"></a>
-
-## 🏛️ Explore the ecosystem
-
-Rullst is a family of focused crates in one versioned workspace — select only
-what your application needs. The stable v12 release publishes sixteen crates;
-detailed feature and provider boundaries live in the
-[specification](https://rullst.github.io/Rullst/book/spec.html).
-
-<details>
-<summary><strong>Browse the crate directory</strong></summary>
-
-| Crate | Focus |
-| :--- | :--- |
-| [rullst](https://github.com/Rullst/Rullst/tree/main/rullst) | Public framework facade and feature selection |
-| [rullst-core](https://github.com/Rullst/Rullst/tree/main/rullst-core) | HTTP runtime, routing, lifecycle and telemetry |
-| [rullst-orm](https://github.com/Rullst/Rullst/tree/main/rullst-orm) | Relational models, transactions and capability-specific persistence |
-| [rullst-auth](https://github.com/Rullst/Rullst/tree/main/rullst-auth) | Passwords, sessions, passkeys and authorization helpers |
-| [rullst-security](https://github.com/Rullst/Rullst/tree/main/rullst-security) | Defense-in-depth middleware, guards and audit helpers |
-| [rullst-connect](https://github.com/Rullst/Rullst/tree/main/rullst-connect) | OAuth2/OIDC identity integrations |
-| [rullst-ai](https://github.com/Rullst/Rullst/tree/main/rullst-ai) | Guarded local/cloud clients and tenant-aware retrieval |
-| [rullst-capital](https://github.com/Rullst/Rullst/tree/main/rullst-capital) | Payment/payout adapters, webhooks and bounded billing helpers |
-| [rullst-mail](https://github.com/Rullst/Rullst/tree/main/rullst-mail) | Transactional email and delivery controls |
-| [rullst-messaging](https://github.com/Rullst/Rullst/tree/main/rullst-messaging) | Broker-neutral contracts and durable local messaging |
-| [rullst-studio](https://github.com/Rullst/Rullst/tree/main/rullst-studio) | Local developer control room |
-| [rullst-nexus](https://github.com/Rullst/Rullst/tree/main/rullst-nexus) | Registered-model admin with explicit access policy |
-| [rullst-iot](https://github.com/Rullst/Rullst/tree/main/rullst-iot) | Bounded no_std helpers and signed OTA verification, not device integration |
-| [rullst-macros](https://github.com/Rullst/Rullst/tree/main/rullst-macros) | Compile-time HTML and application macros |
-| [rullst-orm-macros](https://github.com/Rullst/Rullst/tree/main/rullst-orm-macros) | Typed ORM code generation |
-| [cargo-rullst](https://github.com/Rullst/Rullst/tree/main/cargo-rullst) | Project scaffolding, development and upgrade CLI |
 
 </details>
 
