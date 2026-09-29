@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790655400261,
+  "lastUpdate": 1790684320882,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -8997,6 +8997,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/518b544a53e04dc019097c41c7a41a1b701f6d67"
         },
         "date": 1790655399382,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c2125a1eeb448752b7722dd587665d3c4060bb17",
+          "message": "Merge pull request #288 from Rullst/fix/v13-fuzz-reviewed-context\n\nfix(ci): preserve reviewed fuzz evidence across development publication docs",
+          "timestamp": "2026-09-29T08:53:16-03:00",
+          "tree_id": "d31f1ecfaa4ec95a08c2e5f28ca493c445dd4e86",
+          "url": "https://github.com/Rullst/Rullst/commit/c2125a1eeb448752b7722dd587665d3c4060bb17"
+        },
+        "date": 1790684319898,
         "tool": "cargo",
         "benches": [
           {
