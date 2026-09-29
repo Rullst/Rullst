@@ -9,6 +9,7 @@ use crate::{RullstPool, RullstPoolOptions};
 const POOL_SLOW_ACQUIRE_THRESHOLD: std::time::Duration = std::time::Duration::from_millis(500);
 
 mod placeholders;
+mod savepoint;
 mod telemetry;
 #[doc(hidden)]
 pub use placeholders::portable_subquery;

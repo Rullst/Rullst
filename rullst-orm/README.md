@@ -226,6 +226,15 @@ SQLx transactions still support plain `get_with_tx` reads, but eager-loading or
 `after_fetch` configurations fail with an actionable error because their
 secondary queries require the managed executor context.
 
+A nested `Orm::transaction` joins the active transaction through a savepoint
+instead of opening a second pooled transaction. An error inside it rolls back
+only the nested work; a success commits (or rolls back) with the outer
+transaction, and its `after_commit` callbacks run after the outer commit. A
+helper that wraps `Outbox::enqueue` or model saves in its own
+`Orm::transaction` is therefore atomic with its caller. The returned future is
+`Send`, so it can also run in a spawned task. Do not hold the shared handle's
+lock across a nested call.
+
 A transaction-backed stream retains exclusive access to the transaction until
 it is consumed or dropped. Consume/drop it before starting another operation
 on that transaction. Transactional streams reject `after_fetch` hooks to avoid

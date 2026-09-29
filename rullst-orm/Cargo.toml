@@ -16,6 +16,11 @@ categories = ["database"]
 [dependencies]
 rullst-orm-macros = { workspace = true, features = ["runtime-driver-codecs"] }
 sqlx = { workspace = true, features = ["any", "runtime-tokio", "macros", "json", "tls-rustls"] }
+# `TransactionManager` lets a nested `Orm::transaction` open, release and roll
+# back a savepoint on the task-scoped transaction with SQLx's own depth
+# tracking. The `sqlx` facade does not re-export that trait; sqlx pins this
+# exact sqlx-core version, so no second copy is resolved.
+sqlx-core = { version = "0.9.0", default-features = false }
 tokio = { workspace = true, features = ["full"] }
 async-trait = { workspace = true }
 futures = "0.3"

@@ -125,7 +125,10 @@ generated API.
   idempotent event with relational domain state. Exact lease tokens, bounded
   retry and dead-letter are shared by SQLite, PostgreSQL, MySQL and MariaDB.
   Delivery is at least once, so the application dispatcher and consumer remain
-  idempotent; generated observers are not silently converted into events. See
+  idempotent; generated observers are not silently converted into events.
+  A nested `Orm::transaction` joins the active transaction through a
+  savepoint, so a helper that enqueues inside its own transaction stays atomic
+  with its caller. See
   the [transactional outbox tutorial](../tutorials/38-transactional-outbox.md).
 - **Database-first introspection:** `cargo rullst generate:models` reads SQLite,
   PostgreSQL, or MySQL metadata using bound schema/table parameters, normalizes

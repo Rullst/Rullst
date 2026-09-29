@@ -1648,6 +1648,17 @@ while portability and semantic review remain the model author's responsibility.
 
 ### 5.5. Process-Local Post-Commit Contract
 
+* A nested `Orm::transaction` (called while another managed or task-scoped
+  transaction is active on the same task) does not open a second pooled
+  transaction. It opens a SQLx-tracked savepoint on the active transaction and
+  passes the same shared handle to its closure. An `Err` rolls back only to
+  that savepoint and returns `DatabaseError`; a success releases it, so the
+  nested work commits or rolls back with the outer transaction. Its
+  `after_commit` callbacks are promoted to the outer commit boundary only on
+  success. Dropping an unfinished nested future rolls its savepoint back.
+  The returned future is `Send` for `Send` results and errors, so it can be
+  nested in a transaction closure or spawned. Holding the shared handle's lock
+  across a nested call deadlocks, as it does for generated model methods.
 * `Orm::transaction` and direct generated model `save()`/`delete()`/
   `restore()`/`force_delete()` operations own a post-commit callback scope. `after_commit` callbacks registered within
   it run only after SQLx confirms commit and are discarded on rollback. When no
@@ -1688,7 +1699,8 @@ while portability and semantic review remain the model author's responsibility.
 ### 5.6. Durable Transactional Outbox Contract
 
 * `Outbox::enqueue` accepts only a currently managed `Orm::transaction` and
-  writes `rullst_outbox` through that same transaction. A domain rollback also
+  writes `rullst_outbox` through that same transaction (for a nested call,
+  through the outer transaction's savepoint). A domain rollback also
   removes the event. `enqueue_with_tx` provides the equivalent explicit path
   for a caller-owned SQLx transaction. No implicit independent commit is
   permitted.
