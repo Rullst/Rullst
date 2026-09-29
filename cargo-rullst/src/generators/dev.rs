@@ -196,19 +196,45 @@ pub(super) fn report(logs: &mpsc::Sender<LogMsg>, dashboard: bool, message: Stri
 }
 
 fn configured_port() -> io::Result<u16> {
-    let dotenv: std::collections::HashMap<String, String> = if Path::new(".env").is_file() {
-        dotenvy::from_read_iter(std::fs::read(".env")?.as_slice())
-            .collect::<Result<_, _>>()
-            .map_err(io::Error::other)?
+    let dotenv = if Path::new(".env").is_file() {
+        parse_dotenv(&std::fs::read(".env")?)?
     } else {
         Default::default()
     };
-    let config: toml::Value = if Path::new("Rullst.toml").is_file() {
-        toml::from_str(&std::fs::read_to_string("Rullst.toml")?).map_err(io::Error::other)?
+    let config = if Path::new("Rullst.toml").is_file() {
+        parse_rullst_toml(&std::fs::read_to_string("Rullst.toml")?)?
     } else {
         toml::Value::Table(Default::default())
     };
     resolve_configured_port(std::env::var_os("PORT"), &dotenv, &config)
+}
+
+/// dotenvy's parse error quotes the unparsed remainder of the file, which can
+/// hold secrets, so a failure reports only the 1-based entry number.
+fn parse_dotenv(source: &[u8]) -> io::Result<std::collections::HashMap<String, String>> {
+    let mut values = std::collections::HashMap::new();
+    for (index, entry) in dotenvy::from_read_iter(source).enumerate() {
+        let (key, value) = entry.map_err(|error| {
+            io::Error::other(match error {
+                dotenvy::Error::LineParse(..) => {
+                    format!("invalid .env syntax in entry {}", index + 1)
+                }
+                dotenvy::Error::Io(error) => format!("failed to read .env: {}", error.kind()),
+                _ => "invalid .env file".to_owned(),
+            })
+        })?;
+        values.insert(key, value);
+    }
+    Ok(values)
+}
+
+fn parse_rullst_toml(source: &str) -> io::Result<toml::Value> {
+    toml::from_str(source).map_err(|error| {
+        io::Error::other(format!(
+            "Rullst.toml is not valid TOML at {}",
+            super::toml_error_position(source, &error)
+        ))
+    })
 }
 
 fn resolve_configured_port(
