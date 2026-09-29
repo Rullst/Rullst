@@ -274,3 +274,142 @@ async fn volatile_and_corrupt_revocation_databases_are_rejected() {
     ));
     remove_database(&path);
 }
+
+fn claims_issued_at(jti: String, subject: &str, issued_at: u64) -> ApplicationJwtClaims {
+    let mut claims = claims(jti, subject.to_string());
+    claims.iat = issued_at;
+    claims.nbf = issued_at;
+    claims
+}
+
+async fn revoked(store: &SqliteJwtRevocationStore, claims: &ApplicationJwtClaims) -> bool {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock should follow epoch")
+        .as_secs();
+    rullst_auth::AsyncJwtRevocationStore::is_revoked(store, claims, now)
+        .await
+        .expect("read revocation")
+}
+
+#[tokio::test]
+// TM-AUTH-06: one subject's repeated logout cannot exhaust shared capacity.
+async fn one_subject_cannot_exhaust_shared_revocation_capacity() {
+    let path = temporary_database("per-subject");
+    let url = database_url(&path);
+    let store = SqliteJwtRevocationStore::connect(&url, 128)
+        .await
+        .expect("store");
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock should follow epoch")
+        .as_secs();
+    let mut abusive = Vec::new();
+    for index in 0..200 {
+        let claims = claims_issued_at(format!("abusive-{index}"), "learner-a", now - 10);
+        store
+            .revoke_token(&claims)
+            .await
+            .expect("revocation never fails for the capped subject");
+        abusive.push(claims);
+    }
+    for claims in &abusive {
+        assert!(revoked(&store, claims).await);
+    }
+    let later = claims_issued_at("abusive-later".to_string(), "learner-a", now);
+    assert!(!revoked(&store, &later).await);
+
+    let bystander = claims_issued_at("bystander".to_string(), "learner-b", now - 10);
+    let sibling = claims_issued_at("bystander-sibling".to_string(), "learner-b", now - 20);
+    store
+        .revoke_token(&bystander)
+        .await
+        .expect("another subject can still log out");
+    assert!(revoked(&store, &bystander).await);
+    assert!(!revoked(&store, &sibling).await);
+    store
+        .revoke_subject_before("learner-c", 2)
+        .await
+        .expect("subject revocation still has capacity");
+    let snapshot = store.snapshot().await.expect("snapshot");
+    assert_eq!(snapshot.token_revocations(), 65);
+    assert_eq!(snapshot.subject_revocations(), 2);
+    store.close().await;
+
+    // The cutoff survives restart.
+    let reopened = SqliteJwtRevocationStore::connect(&url, 128)
+        .await
+        .expect("reopen");
+    assert!(revoked(&reopened, &abusive[199]).await);
+    assert!(!revoked(&reopened, &later).await);
+    reopened.close().await;
+    remove_database(&path);
+}
+
+#[tokio::test]
+async fn legacy_revocation_files_gain_additive_columns_and_stay_compatible() {
+    let path = temporary_database("legacy");
+    let url = database_url(&path);
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock should follow epoch")
+        .as_secs();
+    let expires_at = i64::try_from(now + 3_600).unwrap();
+    let pool = sqlx::SqlitePool::connect(&format!("{url}?mode=rwc"))
+        .await
+        .expect("legacy fixture");
+    for statement in [
+        "CREATE TABLE rullst_auth_jwt_meta (id INTEGER PRIMARY KEY CHECK (id = 1), schema_version INTEGER NOT NULL CHECK (schema_version > 0), max_entries INTEGER NOT NULL CHECK (max_entries > 0))",
+        "CREATE TABLE rullst_auth_jwt_tokens (jti TEXT PRIMARY KEY, expires_at INTEGER NOT NULL CHECK (expires_at > 0))",
+        "CREATE TABLE rullst_auth_jwt_subjects (subject TEXT PRIMARY KEY, minimum_session_version INTEGER NOT NULL CHECK (minimum_session_version > 0))",
+        "INSERT INTO rullst_auth_jwt_meta VALUES (1, 1, 16)",
+        "INSERT INTO rullst_auth_jwt_subjects VALUES ('instructor-2', 5)",
+    ] {
+        sqlx::query(statement)
+            .execute(&pool)
+            .await
+            .expect("legacy schema");
+    }
+    sqlx::query("INSERT INTO rullst_auth_jwt_tokens VALUES ('legacy-jti', ?)")
+        .bind(expires_at)
+        .execute(&pool)
+        .await
+        .expect("legacy token row");
+    pool.close().await;
+
+    let store = SqliteJwtRevocationStore::connect(&url, 16)
+        .await
+        .expect("additive migration");
+    let legacy = claims_issued_at("legacy-jti".to_string(), "learner-7", now);
+    assert!(revoked(&store, &legacy).await);
+    let mut old_session = claims_issued_at("old-session".to_string(), "instructor-2", now);
+    old_session.session_version = 4;
+    assert!(revoked(&store, &old_session).await);
+    store
+        .revoke_token(&claims_issued_at("new-jti".to_string(), "learner-7", now))
+        .await
+        .expect("new revocation");
+    store.close().await;
+
+    // An older release keeps writing with its explicit two-column statements.
+    let pool = sqlx::SqlitePool::connect(&url).await.expect("older writer");
+    sqlx::query("INSERT INTO rullst_auth_jwt_subjects (subject, minimum_session_version) VALUES ('learner-9', 2)")
+        .execute(&pool)
+        .await
+        .expect("older subject write");
+    sqlx::query("INSERT INTO rullst_auth_jwt_tokens (jti, expires_at) VALUES ('older-jti', ?)")
+        .bind(expires_at)
+        .execute(&pool)
+        .await
+        .expect("older token write");
+    pool.close().await;
+    let reopened = SqliteJwtRevocationStore::connect(&url, 16)
+        .await
+        .expect("idempotent migration");
+    assert_eq!(
+        reopened.snapshot().await.expect("snapshot").total_entries(),
+        5
+    );
+    reopened.close().await;
+    remove_database(&path);
+}

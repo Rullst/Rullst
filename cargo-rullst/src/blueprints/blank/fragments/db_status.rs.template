@@ -1,0 +1,8 @@
+    // ORM usage example: verify availability without exposing database details.
+    let db_status = match User::all().await {
+        Ok(_) => "Database connected.".to_string(),
+        Err(error) => {
+            tracing::warn!(error = %error, "database status check failed");
+            "Database unavailable.".to_string()
+        }
+    };

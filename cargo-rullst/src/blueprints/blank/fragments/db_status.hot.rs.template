@@ -1,0 +1,3 @@
+    // Server::run validates the configured database before loading the hot router.
+    // The dynamic library must not create a second Tokio/SQLx runtime boundary.
+    let db_status = "Database connected.".to_string();

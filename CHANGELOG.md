@@ -43,6 +43,17 @@ A prepared version section does not establish that its tag or crates exist.
   internal debug form (for example `Error: NotRullstProject`) and exit with
   status 1.
 
+### CLI consumer and configuration-error cleanup
+
+- `make:age-gate` and `make:privacy` no longer generate the unreachable LMS
+  multi-school path (school selector, `TenantContext` extraction, optional
+  tenant, `?school=` URLs). The tenant is a generated constant from the
+  now-required `--tenant-ref`, and generated privacy routes still answer 403 to
+  any query string or `x-school-id` header.
+- `cargo rullst dev` and `foundry:deploy` no longer echo configuration content
+  in parse errors: a malformed `Rullst.toml` or `Foundry.toml` reports only the
+  file, line and column, and a malformed `.env` reports only the entry number.
+
 ### Release provenance and governance
 
 - Preserve the original signed Sigstore bundle as a release asset and verify all
@@ -111,6 +122,33 @@ A prepared version section does not establish that its tag or crates exist.
   releases. Select Tauri 2.11.6 for its upstream channel IPC isolation fix;
   existing shells require an explicit application-owned dependency update.
 
+### Auth review fixes
+
+- `SqlRecoveryStore` rejects passwords over 72 bytes with `InvalidInput` before
+  the account lookup in `authenticate`, registration and reset. Before, a 73 to
+  1024-byte password revealed whether an email was registered through the
+  result and its timing.
+- `SqlRecoveryStore::connect` requires `sslmode=verify-full` for remote
+  PostgreSQL hosts and accepts only connection and TLS query options, like the
+  email-login and API-token services. Pass `sslrootcert` for a private CA.
+- Email-login redemption charges only failed attempts, per browser binding, and
+  an exhausted binding gets `RecoveryError::Throttled`. Before, 60 bad links
+  from any client blocked every user's sign-in for a minute.
+- `complete_password_reset` checks the token before any Argon2 work and budgets
+  attempts per reset token (10 per minute, including attempts in flight), so
+  one client can no longer block other members' password resets.
+- `PasskeyAuth::new` rejects challenge TTLs above 86,400 seconds, and challenge
+  expiry uses checked arithmetic, so a huge TTL can no longer panic and disable
+  passkeys until restart.
+- Malformed `.env` and `Rullst.toml` errors, in rullst-auth and at server
+  startup, report only a position, never file contents such as `APP_KEY` or
+  connection strings, and the cookie helpers skip `.env` when `RULLST_ENV` or
+  `APP_ENV` is set.
+- JWT revocation stores cap token rows per subject and keep a reserve for
+  subject revocations, falling back to a subject issue-time cutoff, so one
+  subject can no longer block logout for everyone. The SQLite store adds two
+  backward-compatible columns; upgrade every process that shares a store file.
+
 ### OAuth authorization-code request maintenance
 
 - Explicitly request `response_type=code` in the built-in Google, Microsoft,
@@ -154,6 +192,25 @@ A prepared version section does not establish that its tag or crates exist.
 - Add macro/facade regressions and an archive-only consumer compile probe.
   This forward-ports the compatible stable maintenance correction; it adds no
   new macro syntax or v13-only rendering behavior.
+
+### ORM review fixes
+
+- Typed subqueries in `where_exists`, `or_where_exists`, `with_cte` and
+  `with_recursive` no longer shift PostgreSQL bindings. Before, a subquery with
+  its own tenant scope made the outer mandatory tenant predicate bind to a
+  caller-supplied value. `delete_all` no longer sends `$n` markers to MySQL.
+- `#[orm(encrypted)]` and `#[orm(masked)]` values no longer reach audit rows,
+  committed events, Redis `orm:events:*`, Scout documents or `save_to_redis`
+  hashes in plaintext: projections write `"***"`, search documents omit them,
+  and Redis hashes store the same encrypted envelope as SQL. A change to such a
+  field is audited as `"***"` and makes that revision non-restorable. Existing
+  audit rows and search indexes are not rewritten.
+- `SecretString` serializes as an encrypted envelope (or `"***"` in generated
+  projections), never plaintext; the query cache still round-trips the real
+  value. Serializing it without a configured key now fails.
+- The `Model::search()` SQL fallback no longer matches hidden, encrypted,
+  masked or `SecretString` columns, treats LIKE wildcards literally and applies
+  the Scout query limits.
 
 ### Nexus stored-value escaping maintenance
 

@@ -1,6 +1,6 @@
 use super::{
-    RecoveryError, RecoveryNotice, RecoveryNoticeKind, RecoverySecrets, normalized_email,
-    timestamp, valid_subject,
+    RecoveryError, RecoveryNotice, RecoveryNoticeKind, RecoverySecrets, failures::FailureBudget,
+    normalized_email, timestamp, valid_subject,
 };
 use sqlx::{Any, AnyPool, Row, Transaction};
 use std::sync::Arc;
@@ -13,6 +13,8 @@ pub struct SqlRecoveryStore {
     pub(super) pool: AnyPool,
     pub(super) keys: Arc<RecoverySecrets>,
     pub(super) instance: Arc<()>,
+    /// Process-local failed-lookup budget for password-reset tokens.
+    pub(super) reset_failures: FailureBudget,
 }
 
 /// Proof of successful password verification, bound to the current session version.
@@ -44,6 +46,14 @@ impl SqlRecoveryStore {
     /// Connects without changing schema. Call `migrate` explicitly during deployment.
     /// SQLite filenames must be URL-encoded. Prefer `sqlite:PATH?mode=rwc`
     /// (without an authority) for absolute paths, including Windows drive letters.
+    ///
+    /// PostgreSQL URLs follow the email-login/API-token connection policy: a
+    /// non-loopback, non-socket host always uses `sslmode=verify-full`
+    /// (certificate and hostname verification; add `sslrootcert` for a private
+    /// CA), and only `sslmode`, `sslrootcert`, `sslcert`, `sslkey`, `host`,
+    /// `hostaddr`, `port`, `dbname`, `user` and `password` (plus their SQLx
+    /// aliases) are accepted as query options. Anything else fails with
+    /// `Configuration` before connecting.
     pub async fn connect(
         url: impl Into<String>,
         secrets: RecoverySecrets,
@@ -57,8 +67,13 @@ impl SqlRecoveryStore {
         {
             return Err(RecoveryError::Configuration);
         }
+        let postgres_options = if postgres {
+            Some(super::connection::postgres_options(&url)?)
+        } else {
+            None
+        };
         sqlx::any::install_default_drivers();
-        let pool = sqlx::any::AnyPoolOptions::new()
+        let pool_options = sqlx::any::AnyPoolOptions::new()
             .max_connections(if sqlite { 1 } else { 5 })
             .acquire_timeout(std::time::Duration::from_secs(5))
             .after_connect(move |connection, _| {
@@ -70,13 +85,16 @@ impl SqlRecoveryStore {
                     }
                     Ok(())
                 })
-            })
-            .connect(&url)
-            .await?;
+            });
+        let pool = match postgres_options {
+            Some(options) => pool_options.connect_with(options).await?,
+            None => pool_options.connect(&url).await?,
+        };
         Ok(Self {
             pool,
             keys: Arc::new(secrets),
             instance: Arc::new(()),
+            reset_failures: FailureBudget::password_reset(),
         })
     }
 
@@ -100,6 +118,7 @@ impl SqlRecoveryStore {
         let sealed = self
             .keys
             .seal("rullst.auth.config.v1", binding.as_bytes())?;
+        // The unused `consume` row is kept for older releases sharing the database.
         for id in ["request", "consume", "write"] {
             sqlx::query("INSERT INTO rullst_recovery_control (id, window_start, attempts, binding) VALUES ($1, 0, 0, $2) ON CONFLICT(id) DO NOTHING")
                 .bind(id).bind(&sealed).execute(&mut *tx).await?;
@@ -172,6 +191,8 @@ impl SqlRecoveryStore {
     }
 
     /// Checks the authoritative password. Hosts must independently throttle login.
+    /// Passwords above the 72-byte Argon2 input limit fail with `InvalidInput`
+    /// before the account lookup, so the result never depends on registration.
     pub async fn authenticate(
         &self,
         email: impl Into<String>,
@@ -179,16 +200,16 @@ impl SqlRecoveryStore {
     ) -> Result<Option<AuthenticatedRecoveryAccount>, RecoveryError> {
         let email = normalized_email(&email.into())?;
         let password = password.into();
-        if password.len() > 1024 {
+        if password.len() > crate::auth::MAX_PASSWORD_BYTES {
             return Err(RecoveryError::InvalidInput);
         }
         let row = sqlx::query("SELECT subject, password_hash, session_version FROM rullst_recovery_accounts WHERE email_key = $1")
             .bind(self.keys.digest("email", &email)).fetch_optional(&self.pool).await?;
         let Some(row) = row else {
-            // Match the current Argon2 work factor without a fast unknown-account branch.
-            let _dummy = crate::hash_password_async(password)
-                .await
-                .map_err(|_| RecoveryError::Crypto)?;
+            // Match the current Argon2 work factor without a fast unknown-account
+            // branch. Its outcome is ignored: a known account's failed verification
+            // also yields `Ok(None)`, never a distinct error.
+            let _ = crate::hash_password_async(password).await;
             return Ok(None);
         };
         let hash: String = row.try_get("password_hash")?;
@@ -244,8 +265,9 @@ impl SqlRecoveryStore {
     }
 }
 
+/// Registration and reset share the Argon2 helper's 72-byte input limit.
 pub(super) async fn password_hash(password: String) -> Result<String, RecoveryError> {
-    if password.chars().count() < 12 || password.len() > 1024 {
+    if password.chars().count() < 12 || password.len() > crate::auth::MAX_PASSWORD_BYTES {
         return Err(RecoveryError::InvalidInput);
     }
     crate::hash_password_async(password)

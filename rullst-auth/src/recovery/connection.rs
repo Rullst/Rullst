@@ -1,14 +1,40 @@
 use super::*;
-use sqlx::{ConnectOptions, any::AnyConnectOptions};
-use std::{collections::BTreeSet, str::FromStr, sync::Arc, time::Duration};
+use sqlx::any::AnyConnectOptions;
+use std::str::FromStr;
 use url::Url;
 
+const MAX_URL_BYTES: usize = 8192;
+
+/// Parses a PostgreSQL URL with the policy shared by every recovery-family
+/// pool: bounded length, no fragment, allowlisted connection/TLS options and
+/// `sslmode=verify-full` for every non-loopback, non-socket host.
+pub(super) fn postgres_options(url: &str) -> Result<AnyConnectOptions, RecoveryError> {
+    if url.len() > MAX_URL_BYTES {
+        return Err(RecoveryError::Configuration);
+    }
+    let mut url = Url::parse(url).map_err(|_| RecoveryError::Configuration)?;
+    if url.fragment().is_some() || !matches!(url.scheme(), "postgres" | "postgresql") {
+        return Err(RecoveryError::Configuration);
+    }
+    configure_postgres(&mut url)?;
+    AnyConnectOptions::from_str(url.as_str()).map_err(|_| RecoveryError::Configuration)
+}
+
+#[cfg(any(
+    feature = "email-login-sqlite",
+    feature = "email-login-postgres",
+    feature = "api-tokens-sqlite",
+    feature = "api-tokens-postgres"
+))]
 pub(super) async fn open(
     url: String,
     keys: RecoverySecrets,
     initialize: bool,
 ) -> Result<(SqlRecoveryStore, bool), RecoveryError> {
-    if url.len() > 8192 {
+    use sqlx::ConnectOptions;
+    use std::{sync::Arc, time::Duration};
+
+    if url.len() > MAX_URL_BYTES {
         return Err(RecoveryError::Configuration);
     }
     let mut url = Url::parse(&url).map_err(|_| RecoveryError::Configuration)?;
@@ -60,14 +86,15 @@ pub(super) async fn open(
             pool,
             keys: Arc::new(keys),
             instance: Arc::new(()),
+            reset_failures: super::failures::FailureBudget::password_reset(),
         },
         postgres,
     ))
 }
 
-#[cfg(any(feature = "email-login-postgres", feature = "api-tokens-postgres"))]
+#[cfg(feature = "recovery-postgres")]
 fn configure_postgres(url: &mut Url) -> Result<(), RecoveryError> {
-    let mut seen = BTreeSet::new();
+    let mut seen = std::collections::BTreeSet::new();
     if url.query_pairs().any(|(key, _)| {
         !matches!(
             key.as_ref(),
@@ -114,7 +141,7 @@ fn configure_postgres(url: &mut Url) -> Result<(), RecoveryError> {
     Ok(())
 }
 
-#[cfg(not(any(feature = "email-login-postgres", feature = "api-tokens-postgres")))]
+#[cfg(not(feature = "recovery-postgres"))]
 fn configure_postgres(_: &mut Url) -> Result<(), RecoveryError> {
     Err(RecoveryError::Configuration)
 }
@@ -124,7 +151,7 @@ fn configure_sqlite(url: &mut Url, initialize: bool) -> Result<(), RecoveryError
     if url.scheme() != "sqlite" || url.host_str().is_some() {
         return Err(RecoveryError::Configuration);
     }
-    let mut seen = BTreeSet::new();
+    let mut seen = std::collections::BTreeSet::new();
     if url
         .query_pairs()
         .any(|(key, _)| !matches!(key.as_ref(), "mode" | "cache") || !seen.insert(key.into_owned()))
@@ -153,7 +180,10 @@ fn configure_sqlite(url: &mut Url, initialize: bool) -> Result<(), RecoveryError
     Ok(())
 }
 
-#[cfg(not(any(feature = "email-login-sqlite", feature = "api-tokens-sqlite")))]
+#[cfg(all(
+    any(feature = "email-login-postgres", feature = "api-tokens-postgres"),
+    not(any(feature = "email-login-sqlite", feature = "api-tokens-sqlite"))
+))]
 fn configure_sqlite(_: &mut Url, _: bool) -> Result<(), RecoveryError> {
     Err(RecoveryError::Configuration)
 }
@@ -163,7 +193,7 @@ fn configure_sqlite(_: &mut Url, _: bool) -> Result<(), RecoveryError> {
 mod tests {
     use super::*;
 
-    #[cfg(any(feature = "email-login-postgres", feature = "api-tokens-postgres"))]
+    #[cfg(feature = "recovery-postgres")]
     #[test]
     fn remote_transport_cannot_disable_certificate_or_hostname_verification() {
         for address in [
@@ -188,6 +218,81 @@ mod tests {
                 Err(RecoveryError::Configuration)
             );
         }
+    }
+
+    #[cfg(feature = "recovery-postgres")]
+    fn ssl_mode(options: &AnyConnectOptions) -> sqlx::postgres::PgSslMode {
+        sqlx::postgres::PgConnectOptions::from_str(options.database_url.as_str())
+            .unwrap()
+            .get_ssl_mode()
+    }
+
+    #[cfg(feature = "recovery-postgres")]
+    #[test]
+    fn recovery_store_postgres_options_verify_remote_tls_and_keep_loopback() {
+        use sqlx::postgres::PgSslMode;
+        // No sslmode used to mean SQLx `prefer`: unverified and plaintext-capable.
+        for address in [
+            "postgres://user:secret@db.example/accounts",
+            "postgresql://db.example:6543/accounts?sslmode=prefer",
+            "postgres://db.example/accounts?sslmode=disable&sslrootcert=%2Fetc%2Fca.pem",
+            "postgres://[2001:db8::1]/accounts?sslmode=require",
+        ] {
+            let options = postgres_options(address).unwrap();
+            assert!(
+                matches!(ssl_mode(&options), PgSslMode::VerifyFull),
+                "{address}"
+            );
+        }
+        let custom_ca =
+            postgres_options("postgres://db.example/a?sslrootcert=%2Fetc%2Fca.pem").unwrap();
+        assert!(
+            custom_ca
+                .database_url
+                .query_pairs()
+                .any(|(key, value)| key == "sslrootcert" && value == "/etc/ca.pem")
+        );
+        // Loopback and Unix-socket development connections keep the caller's mode.
+        for (address, expected) in [
+            (
+                "postgres://localhost/accounts?sslmode=disable",
+                PgSslMode::Disable,
+            ),
+            ("postgres://127.0.0.1/accounts", PgSslMode::Prefer),
+            (
+                "postgres://[::1]/accounts?sslmode=require",
+                PgSslMode::Require,
+            ),
+            (
+                "postgres:///accounts?host=%2Fvar%2Frun%2Fpostgresql",
+                PgSslMode::Prefer,
+            ),
+        ] {
+            let options = postgres_options(address).unwrap();
+            assert_eq!(
+                std::mem::discriminant(&ssl_mode(&options)),
+                std::mem::discriminant(&expected),
+                "{address}"
+            );
+        }
+        for address in [
+            "postgres://db.example/accounts?application_name=recovery",
+            "postgres://db.example/accounts?sslmode=disable&sslmode=disable",
+            "postgres://db.example/accounts#fragment",
+            "sqlite:accounts.db",
+            "not a url",
+        ] {
+            assert_eq!(
+                postgres_options(address).err(),
+                Some(RecoveryError::Configuration),
+                "{address}"
+            );
+        }
+        let oversized = format!("postgres://db.example/{}", "a".repeat(MAX_URL_BYTES));
+        assert_eq!(
+            postgres_options(&oversized).err(),
+            Some(RecoveryError::Configuration)
+        );
     }
 
     #[cfg(any(feature = "email-login-sqlite", feature = "api-tokens-sqlite"))]

@@ -1,0 +1,1 @@
+    let db_status = "Database features are disabled for this project.".to_string();
