@@ -47,6 +47,10 @@ worker poll after it becomes due and retains the queue's at-least-once semantics
 `Worker` drives each `pop` to completion instead of racing it against
 completions or shutdown, because both built-in claims commit before the future
 resolves. A job claimed after graceful shutdown was requested is requeued.
+When a handler finishes while its timeout or a graceful shutdown is being
+processed, the worker records the handler's own result: only a handler that
+was actually cancelled is failed as timed out or requeued, so a success is
+never reported as a timeout or run again.
 Custom drivers return `QueueError::Unsupported` for future timestamps unless
 they explicitly implement durable scheduling.
 
