@@ -1,3 +1,4 @@
+use super::bans::BanList;
 use crate::error::SecurityError;
 use axum::{
     body::Body,
@@ -5,7 +6,7 @@ use axum::{
     http::{Request, Response, StatusCode},
     response::IntoResponse,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::future::Future;
 use std::net::{IpAddr, SocketAddr};
 use std::pin::Pin;
@@ -21,9 +22,14 @@ pub const DEFAULT_MAX_HONEYPOT_BANS: usize = 100_000;
 /// Upper bound for configured exact trap paths.
 pub const MAX_HONEYPOT_TRAP_PATHS: usize = 1_024;
 
+/// Shared honeypot configuration and bounded, expiring peer bans.
+///
+/// A request lookup touches only its own peer entry. Expired bans are pruned in
+/// expiry order when a ban is added or counted, and at capacity the ban that
+/// expires soonest is evicted, so neither path scans every retained ban.
 #[derive(Clone, Debug)]
 pub struct HoneypotState {
-    banned_ips: Arc<Mutex<HashMap<IpAddr, Instant>>>,
+    banned_ips: Arc<Mutex<BanList>>,
     trap_paths: Arc<Vec<String>>,
     ban_ttl: Duration,
     max_bans: usize,
@@ -115,7 +121,7 @@ impl HoneypotState {
 
     fn new_inner(trap_paths: Vec<String>, ban_ttl: Duration, max_bans: usize) -> Self {
         Self {
-            banned_ips: Arc::new(Mutex::new(HashMap::new())),
+            banned_ips: Arc::new(Mutex::new(BanList::default())),
             trap_paths: Arc::new(trap_paths),
             ban_ttl,
             max_bans,
@@ -130,13 +136,11 @@ impl HoneypotState {
     }
 
     fn is_peer_banned(&self, ip: IpAddr) -> bool {
-        let now = Instant::now();
         let Ok(mut bans) = self.banned_ips.lock() else {
             // A poisoned security state must not silently allow requests.
             return true;
         };
-        bans.retain(|_, expires_at| *expires_at > now);
-        bans.contains_key(&ip)
+        bans.is_banned(ip, Instant::now())
     }
 
     pub fn ban_ip(&self, ip: String) {
@@ -147,24 +151,14 @@ impl HoneypotState {
 
     fn ban_peer(&self, ip: IpAddr) {
         let now = Instant::now();
-        let Ok(mut bans) = self.banned_ips.lock() else {
-            return;
-        };
-        bans.retain(|_, expires_at| *expires_at > now);
-
-        if bans.len() >= self.max_bans
-            && !bans.contains_key(&ip)
-            && let Some(oldest_ip) = bans
-                .iter()
-                .min_by_key(|(_, expires_at)| **expires_at)
-                .map(|(ip, _)| *ip)
-        {
-            bans.remove(&oldest_ip);
-        }
         let Some(expires_at) = now.checked_add(self.ban_ttl) else {
             return;
         };
-        bans.insert(ip, expires_at);
+        let Ok(mut bans) = self.banned_ips.lock() else {
+            return;
+        };
+        bans.prune_expired(now);
+        bans.insert(ip, expires_at, self.max_bans);
     }
 
     /// Matches only a complete configured URI path; substrings and prefixes are not traps.
@@ -175,11 +169,10 @@ impl HoneypotState {
     }
 
     pub fn banned_count(&self) -> usize {
-        let now = Instant::now();
         let Ok(mut bans) = self.banned_ips.lock() else {
             return self.max_bans;
         };
-        bans.retain(|_, expires_at| *expires_at > now);
+        bans.prune_expired(Instant::now());
         bans.len()
     }
 }
@@ -320,6 +313,57 @@ mod tests {
         state.ban_ip("192.0.2.2".to_string());
         state.ban_ip("192.0.2.3".to_string());
         assert_eq!(state.banned_count(), 2);
+    }
+
+    #[test]
+    fn request_lookup_touches_only_the_requested_peer() {
+        let state =
+            HoneypotState::try_with_limits(vec!["/.env".to_string()], Duration::from_secs(60), 4)
+                .expect("valid honeypot state");
+        state.ban_ip("192.0.2.3".to_string());
+        let expired = Instant::now() - Duration::from_secs(1);
+        {
+            let mut bans = state.banned_ips.lock().unwrap();
+            for index in 1..=2 {
+                bans.insert(IpAddr::from([192, 0, 2, index]), expired, state.max_bans);
+            }
+        }
+
+        assert!(state.is_banned("192.0.2.3"));
+        assert!(!state.is_banned("198.51.100.1"));
+        assert_eq!(state.banned_ips.lock().unwrap().len(), 3);
+
+        assert!(!state.is_banned("192.0.2.1"));
+        assert_eq!(state.banned_ips.lock().unwrap().len(), 2);
+
+        assert_eq!(state.banned_count(), 1);
+    }
+
+    #[test]
+    fn full_ban_list_evicts_the_soonest_expiring_ban_and_refreshes_existing_peers() {
+        let state =
+            HoneypotState::try_with_limits(vec!["/.env".to_string()], Duration::from_secs(60), 2)
+                .expect("valid honeypot state");
+        let now = Instant::now();
+        {
+            let mut bans = state.banned_ips.lock().unwrap();
+            let first = IpAddr::from([192, 0, 2, 1]);
+            bans.insert(first, now + Duration::from_secs(10), state.max_bans);
+            bans.insert(
+                IpAddr::from([192, 0, 2, 2]),
+                now + Duration::from_secs(20),
+                state.max_bans,
+            );
+            // Refreshing an existing peer moves it behind the other ban.
+            bans.insert(first, now + Duration::from_secs(30), state.max_bans);
+        }
+        assert_eq!(state.banned_count(), 2);
+
+        state.ban_ip("192.0.2.3".to_string());
+        assert_eq!(state.banned_count(), 2);
+        assert!(state.is_banned("192.0.2.1"));
+        assert!(!state.is_banned("192.0.2.2"));
+        assert!(state.is_banned("192.0.2.3"));
     }
 
     #[test]

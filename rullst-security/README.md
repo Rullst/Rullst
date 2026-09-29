@@ -9,7 +9,7 @@
 ### 🍯 1. Rullst Honey (`rullst::security::honey`)
 *Deception Security & Botnet Mitigation Engine*
 - **Synthetic Honeypot Traps:** Intercepts reconnaissance bots attempting to scan paths like `/.env`, `/admin.php`, `/wp-login.php`, `/.git/config`.
-- **Bounded In-Memory Ban List:** Tracks verified socket peers with an explicit TTL and cardinality limit.
+- **Bounded In-Memory Ban List:** Tracks verified socket peers with an explicit TTL and cardinality limit. A request checks only its own peer; expired bans are pruned in expiry order when bans are added or counted, and a full list evicts the ban that expires soonest.
 - **Exact Route Matching:** Trap paths are matched as complete paths; untrusted forwarding headers are not used as ban identities.
 
 ### 🧹 2. Rullst Sanitizer (`rullst::security::sanitizer`)
