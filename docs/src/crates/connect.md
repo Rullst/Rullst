@@ -67,7 +67,7 @@ state of those checks for the referenced commit; they are not an absolute securi
 - 🔏 **Encrypted token snapshots**: Versioned AES-256-GCM envelopes bind a
   refresh generation to one trusted provider/account pair and an explicit key
   rotation ID before application-owned persistence.
-- 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, refresh on unknown `kid`, and bounded stale-if-error behavior.
+- 🔐 **OIDC Security**: Strict discovery validation plus isolated JWKS caches with TTL, single-flight refresh on unknown `kid` (at most once per 30 seconds per JWKS URL, after rejecting malformed `kid` values without I/O), and bounded stale-if-error behavior.
 - 🚪 **Typed remote revocation**: Access and refresh tokens are distinct API
   operations. Google, GitHub, Discord, Apple, Auth0 and Cognito have bounded
   protocol adapters; unsupported providers fail explicitly and offline
