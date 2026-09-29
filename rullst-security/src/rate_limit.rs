@@ -35,6 +35,10 @@ impl Default for AdmissionState {
     }
 }
 
+/// Process-global store used by [`is_rate_limited`].
+///
+/// Entries are keyed by client key and policy (see [`is_rate_limited`]), not
+/// by the client key alone.
 pub fn global_rate_limit_store() -> &'static DashMap<String, (Instant, AtomicU64)> {
     RATE_LIMIT_STORE.get_or_init(DashMap::new)
 }
@@ -138,11 +142,18 @@ impl RateLimiter {
             key,
             self.max_requests,
             self.window,
+            StoreKey::Client,
         )
     }
 }
 
 /// Bounded in-memory fixed-window IP rate limiter checking request rates.
+///
+/// This legacy helper shares one process-global store across all callers.
+/// Each `(client_ip, max_requests, window_duration)` combination has its own
+/// budget: callers that use different policies for the same key neither share
+/// a count nor reset each other's window. All policies share the global
+/// 16,384-entry capacity, so prefer one [`RateLimiter`] instance per policy.
 pub fn is_rate_limited(client_ip: &str, max_requests: u64, window_duration: Duration) -> bool {
     is_rate_limited_in(
         global_rate_limit_store(),
@@ -150,7 +161,30 @@ pub fn is_rate_limited(client_ip: &str, max_requests: u64, window_duration: Dura
         client_ip,
         max_requests,
         window_duration,
+        StoreKey::ClientAndPolicy,
     )
+}
+
+/// How a validated client key maps to a store entry.
+#[derive(Clone, Copy)]
+enum StoreKey {
+    /// One policy owns the store, so the client key is sufficient.
+    Client,
+    /// Several policies share the store; scope the entry to the policy.
+    ClientAndPolicy,
+}
+
+impl StoreKey {
+    fn entry_key(self, client_ip: &str, max_requests: u64, window_duration: Duration) -> String {
+        match self {
+            Self::Client => client_ip.to_string(),
+            // The numeric prefix is unambiguous for any client key.
+            Self::ClientAndPolicy => format!(
+                "{max_requests}/{}ns/{client_ip}",
+                window_duration.as_nanos()
+            ),
+        }
+    }
 }
 
 fn is_rate_limited_in(
@@ -159,6 +193,7 @@ fn is_rate_limited_in(
     client_ip: &str,
     max_requests: u64,
     window_duration: Duration,
+    store_key: StoreKey,
 ) -> bool {
     if max_requests == 0
         || window_duration.is_zero()
@@ -184,12 +219,13 @@ fn is_rate_limited_in(
         });
         admission.last_cleanup = now;
     }
-    if !store.contains_key(client_ip) && store.len() >= MAX_RATE_LIMIT_IDENTITIES {
+    let entry_key = store_key.entry_key(client_ip, max_requests, window_duration);
+    if !store.contains_key(&entry_key) && store.len() >= MAX_RATE_LIMIT_IDENTITIES {
         return record_block();
     }
 
     let mut entry = store
-        .entry(client_ip.to_string())
+        .entry(entry_key)
         .or_insert_with(|| (now, AtomicU64::new(0)));
 
     let (start_time, count) = entry.value_mut();
@@ -324,6 +360,32 @@ mod tests {
         assert!(!is_rate_limited(ip, 3, window));
         // 4th request exceeds max_requests=3
         assert!(is_rate_limited(ip, 3, window));
+    }
+
+    #[test]
+    fn global_helper_keeps_a_separate_budget_per_policy_on_the_same_key() {
+        let key = "per-policy-regression-key";
+        let hourly = Duration::from_secs(3_600);
+        let short = Duration::from_millis(1);
+
+        assert!(!is_rate_limited(key, 2, hourly));
+        assert!(!is_rate_limited(key, 2, hourly));
+        assert!(is_rate_limited(key, 2, hourly));
+
+        // A shorter window on the same key has its own budget and resetting it
+        // must not reopen the hourly budget.
+        std::thread::sleep(Duration::from_millis(5));
+        assert!(!is_rate_limited(key, 5, short));
+        std::thread::sleep(Duration::from_millis(5));
+        assert!(!is_rate_limited(key, 5, short));
+        assert!(is_rate_limited(key, 2, hourly));
+
+        // Same window, different maximum: counts are not shared either.
+        for _ in 0..3 {
+            assert!(!is_rate_limited(key, 3, hourly));
+        }
+        assert!(is_rate_limited(key, 3, hourly));
+        assert!(is_rate_limited(key, 2, hourly));
     }
 
     #[test]

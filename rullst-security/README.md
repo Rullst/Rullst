@@ -56,7 +56,10 @@
 - **Local rate limiter:** Fixed-window counters retain at most 16,384 identities
   with keys up to 256 bytes, reclaim expired identities on subsequent requests,
   and reject zero budgets or exhausted admission. Clones share state; this is
-  not a distributed limit across application instances.
+  not a distributed limit across application instances. Prefer one
+  `RateLimiter` per policy. The legacy global `is_rate_limited` helper keeps a
+  separate budget per `(key, max_requests, window)`, so policies on the same
+  key neither share a count nor reset each other, but they share its capacity.
 
 ### 🔎 7. Bounded Payload, Log & Asset Guards
 
