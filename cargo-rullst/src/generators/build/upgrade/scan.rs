@@ -1,19 +1,17 @@
 use std::path::PathBuf;
 use walkdir::{DirEntry, WalkDir};
 
-pub(super) const RULE_CATALOG_VERSION: &str = "rullst-upgrade-rules-v2";
+pub(super) const RULE_CATALOG_VERSION: &str = "rullst-upgrade-rules-v3";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub(super) enum FindingSeverity {
-    Blocker,
     Review,
 }
 
 impl std::fmt::Display for FindingSeverity {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Blocker => formatter.write_str("BLOCKER"),
             Self::Review => formatter.write_str("REVIEW"),
         }
     }
@@ -38,30 +36,6 @@ struct Rule {
 }
 
 const RULES: &[Rule] = &[
-    Rule {
-        needle: "#[routes]",
-        code: "V5-ROUTES-ATTRIBUTE",
-        severity: FindingSeverity::Blocker,
-        message: "replace attribute-style registration with the explicit routes! macro",
-        source_major_at_most: 5,
-        target_major_at_least: 12,
-    },
-    Rule {
-        needle: "Server::new()",
-        code: "V5-SERVER-CONSTRUCTOR",
-        severity: FindingSeverity::Blocker,
-        message: "v12 Server::new requires an explicit Router",
-        source_major_at_most: 5,
-        target_major_at_least: 12,
-    },
-    Rule {
-        needle: ".run()",
-        code: "V5-SERVER-PORT",
-        severity: FindingSeverity::Blocker,
-        message: "v12 Server::run requires an explicit port",
-        source_major_at_most: 5,
-        target_major_at_least: 12,
-    },
     Rule {
         needle: "Nexus::build(",
         code: "V5-NEXUS-POLICY",
@@ -161,27 +135,29 @@ mod tests {
     use super::*;
 
     #[test]
-    fn reports_known_v5_markers_with_lines_and_ignores_target() {
+    fn reports_known_v11_markers_with_lines_and_ignores_target() {
         let root =
             std::env::temp_dir().join(format!("rullst-upgrade-scan-{}", rand::random::<u64>()));
         std::fs::create_dir_all(root.join("src")).unwrap();
         std::fs::create_dir_all(root.join("target/generated")).unwrap();
         std::fs::write(
             root.join("src/main.rs"),
-            "#[routes]\nfn home() {}\nfn boot() { Server::new(); }\n",
+            "fn boot() { Nexus::build(); }\nfn home() {}\n// STUDIO_PASSWORD\n",
         )
         .unwrap();
         std::fs::write(root.join("target/generated/old.rs"), "APP_ENV").unwrap();
 
         let findings = scan_workspace(
             std::slice::from_ref(&root),
-            &std::collections::BTreeSet::from([5]),
+            &std::collections::BTreeSet::from([11]),
             12,
         )
         .unwrap();
         assert_eq!(findings.len(), 2);
         assert_eq!(findings[0].line, 1);
-        assert_eq!(findings[0].severity, FindingSeverity::Blocker);
+        assert_eq!(findings[0].code, "V5-NEXUS-POLICY");
+        assert_eq!(findings[0].severity, FindingSeverity::Review);
+        assert_eq!(findings[1].line, 3);
 
         let future_findings = scan_workspace(
             std::slice::from_ref(&root),

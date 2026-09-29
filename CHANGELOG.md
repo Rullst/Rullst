@@ -9,6 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### CLI upgrade catalog v3
+
+- Retire the v5 and v6 source migrations from the v13 CLI. `cargo rullst upgrade`
+  and project preparation accept Rullst 11, 12 and 13 sources and direct older
+  applications to upgrade to v12 with the v12 CLI first. The v5-only source rules
+  and their blocker severity are removed; the catalog becomes
+  `rullst-upgrade-rules-v3`, so earlier preparations must be prepared again.
+
 ### Release provenance and governance
 
 - Preserve the original signed Sigstore bundle as a release asset and verify all

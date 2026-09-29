@@ -446,10 +446,10 @@ actual major-version behavior; it is not a publication or stable-release claim.
 The privacy package joins the candidate inventory with explicit optional facade
 features; registry publication remains subject to package and ownership admission.
 
-The `rullst-upgrade-rules-v2` migration catalog recognizes source major 13 as
-well as 5, 6, 11 and 12, keeps exact target-major CLI selection and rejects
-downgrades. Preparations from the previous catalog require fresh preparation
-and verification. The [12.1-to-13 source inventory](migration-v13.md) adds opt-in privacy APIs,
+The `rullst-upgrade-rules-v3` migration catalog recognizes source majors 11, 12
+and 13; v5 and v6 applications first upgrade to v12 with the v12 CLI. It keeps
+exact target-major CLI selection and rejects downgrades. Preparations from a
+previous catalog require fresh preparation and verification. The [12.1-to-13 source inventory](migration-v13.md) adds opt-in privacy APIs,
 consumer generators and security header composition, without a known required
 replacement of existing application APIs. Automatic preparation is therefore
 limited to supported dependency manifests and the existing compiler/check/test
@@ -2740,7 +2740,7 @@ assistant, not a claim that compilation proves production compatibility.
   A failed gate restores the
   snapshot by default; `--keep-on-failure` is explicit, and `--restore` can
   recover a persisted, path-validated snapshot after an interruption.
-  Process fixtures independently select the v5, v6 and v11 rule sets, prove
+  Process fixtures select the v11 rule set, reject retired v5/v6 origins, prove
   restoration across multiple workspace members, preserve a failed edit
   only when explicitly requested, restore that persisted review state, and
   reject symlinked Rust sources before starting the transaction.

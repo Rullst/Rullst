@@ -198,10 +198,10 @@ fn preserves_dirty_untracked_deleted_and_ignored_lock_inputs_without_running_bui
 
 #[test]
 fn source_findings_are_review_data_and_never_execution_authority() {
-    let fixture = Fixture::new("5", "5.0.0");
+    let fixture = Fixture::new("11", "11.0.0");
     fs::write(
         fixture.app.join("src/main.rs"),
-        "#[routes]\nfn main() { Server::new(); }\n",
+        "fn main() { Nexus::build(); }\n",
     )
     .unwrap();
     let output = fixture.prepare();
@@ -216,12 +216,12 @@ fn source_findings_are_review_data_and_never_execution_authority() {
             .as_array()
             .unwrap()
             .iter()
-            .any(|finding| finding["code"] == "V5-ROUTES-ATTRIBUTE")
+            .any(|finding| finding["code"] == "V5-NEXUS-POLICY")
     );
     assert!(
         fs::read_to_string(fixture.app.join("src/main.rs"))
             .unwrap()
-            .contains("#[routes]")
+            .contains("Nexus::build")
     );
 }
 
@@ -271,7 +271,12 @@ fn virtual_workspace_prepares_members_and_records_an_absent_lockfile() {
 #[test]
 fn rejects_unknown_catalog_downgrades_and_unversioned_dependencies_without_retaining_staging() {
     let unknown = Fixture::new("7", "7.0.0");
-    unknown.assert_clean_failure(&unknown.prepare(), "source majors 5, 6, 11, 12 and 13");
+    unknown.assert_clean_failure(&unknown.prepare(), "source majors 11, 12 and 13");
+    let retired = Fixture::new("5", "5.0.0");
+    retired.assert_clean_failure(
+        &retired.prepare(),
+        "upgrade v5/v6 applications to v12 with the v12 CLI first",
+    );
     let mut newer = semver::Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
     newer.patch += 1;
     newer.pre = semver::Prerelease::EMPTY;
@@ -316,13 +321,13 @@ fn rejects_oversized_inputs_and_reports_instead_of_filling_storage() {
             .unwrap()
             .replace(
                 &format!("version = \"{}\"", env!("CARGO_PKG_VERSION")),
-                "version = \"5\"",
+                "version = \"11\"",
             ),
     )
     .unwrap();
     fs::write(
         fixture.app.join("src/main.rs"),
-        "#[routes]\n".repeat(10_001),
+        "Nexus::build(\n".repeat(10_001),
     )
     .unwrap();
     fixture.assert_clean_failure(&fixture.prepare(), "findings exceed 10,000");

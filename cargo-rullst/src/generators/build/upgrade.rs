@@ -17,6 +17,9 @@ use semver::Version;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// v5 and v6 migrations were retired in v13; older projects upgrade with the v12 CLI first.
+const OLDEST_SUPPORTED_SOURCE_MAJOR: u64 = 11;
+
 fn portable_path(path: &Path) -> String {
     path.to_string_lossy()
         .replace(std::path::MAIN_SEPARATOR, "/")
@@ -90,6 +93,20 @@ pub fn run_upgrade(options: UpgradeOptions) -> Result<(), Box<dyn std::error::Er
 
     if matched == 0 {
         return Err(UpgradeError::NoManagedDependencies.into());
+    }
+    let retired = source_majors
+        .iter()
+        .filter(|major| **major < OLDEST_SUPPORTED_SOURCE_MAJOR)
+        .map(|major| format!("v{major}"))
+        .collect::<Vec<_>>();
+    if !retired.is_empty() {
+        // A plain message: the binary prints errors with Debug formatting, which
+        // would hide a typed variant's guidance.
+        return Err(format!(
+            "this project depends on Rullst {}; this CLI upgrades from v11 or later. Upgrade to v12 first with `cargo install cargo-rullst --version '^12' --locked` and `cargo rullst upgrade`, then rerun this CLI",
+            retired.join(", ")
+        )
+        .into());
     }
 
     let findings = scan::scan_workspace(&package_roots, &source_majors, target.major)?;
@@ -300,7 +317,7 @@ fn render_report(
         }
     }
     report.push_str(
-        "\n## Mandatory manual gates\n\n- Review every diff and the v5 → v12 migration guide.\n- Restore a database backup into a disposable environment and rehearse migrations and rollback.\n- Run formatting, Clippy, the complete application tests, authorization negatives and a production-profile smoke test.\n- Revalidate Nexus, Studio, providers, proxy trust, CSRF/CORS and secrets.\n",
+        "\n## Mandatory manual gates\n\n- Review every diff and the migration guide for the target major.\n- Restore a database backup into a disposable environment and rehearse migrations and rollback.\n- Run formatting, Clippy, the complete application tests, authorization negatives and a production-profile smoke test.\n- Revalidate Nexus, Studio, providers, proxy trust, CSRF/CORS and secrets.\n",
     );
     report
 }
