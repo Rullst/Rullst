@@ -38,7 +38,7 @@ pub enum LmsModuleError {
         "unsupported LMS module combination `{0}`; currently use `auth`, `auth,learning`, `auth,learning,assessment`, `auth,learning,gamification`, or omit --lms-modules for the complete starter"
     )]
     UnsupportedCombination(String),
-    #[error("detached LMS module profiles do not yet support hot reload")]
+    #[error("hot reload is available for the `auth,learning` LMS profile only")]
     HotReloadUnsupported,
 }
 
@@ -75,10 +75,18 @@ pub fn validate_module_selection(
     hot_reload: bool,
 ) -> Result<(), LmsModuleError> {
     validate_foundation(modules)?;
-    if hot_reload {
+    if hot_reload && !supports_hot_reload(modules) {
         return Err(LmsModuleError::HotReloadUnsupported);
     }
     Ok(())
+}
+
+/// The auth + learning starter exports a reloadable router library; the other
+/// detached profiles keep a single binary.
+pub(super) fn supports_hot_reload(modules: &[LmsModule]) -> bool {
+    let mut selected = modules.to_vec();
+    selected.sort_unstable();
+    selected == [LmsModule::Auth, LmsModule::Learning]
 }
 
 /// Generates the bounded detached LMS profile selected by `modules`.
@@ -92,6 +100,7 @@ pub fn file_manifest_for_modules(
     validate_module_selection(modules, hot_reload)?;
     super::foundation::select(
         super::file_manifest(project_name_safe, hot_reload, orm_pattern, frontend_engine),
+        project_name_safe,
         hot_reload,
         modules,
     )

@@ -9,6 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### LMS starter hot reload
+
+- Support hot reload in the `auth,learning` LMS profile: it emits a reloadable
+  `src/lib.rs` router library and a `src/main.rs` that loads it when
+  `HOT_RELOAD` is set, matching the other blueprints. The remaining detached
+  profiles still reject hot reload explicitly.
+
 ### Release provenance and governance
 
 - Preserve the original signed Sigstore bundle as a release asset and verify all
