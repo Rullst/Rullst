@@ -1,6 +1,9 @@
 //! Bounded secret-pattern redaction helper for application-owned log pipelines.
 
-use crate::{dlp::mask_response_payload, telemetry::SecurityStore};
+use crate::{
+    dlp::{SegmentRewriter, mask_response_payload},
+    telemetry::SecurityStore,
+};
 
 const MAX_LOG_RECORD_BYTES: usize = 64 * 1024;
 const REDACTION_MARKER: &str = "[REDACTED]";
@@ -34,9 +37,15 @@ pub fn redact_secrets(input: &str) -> String {
         "cookie",
         "session",
     ] {
-        redacted |= redact_assignment_values(&mut result, key);
+        if let Some(next) = redact_assignment_values(&result, key) {
+            result = next;
+            redacted = true;
+        }
     }
-    redacted |= redact_bearer_tokens(&mut result);
+    if let Some(next) = redact_bearer_tokens(&result) {
+        result = next;
+        redacted = true;
+    }
 
     if redacted {
         SecurityStore::global().inc_log_redactions();
@@ -44,14 +53,14 @@ pub fn redact_secrets(input: &str) -> String {
     result
 }
 
-fn redact_bearer_tokens(value: &mut String) -> bool {
-    let mut changed = false;
+// Each pass lowercases the record once. ASCII lowercasing preserves byte
+// offsets, so `lower` indexes the unmodified `value`; replacements are written
+// to a separate buffer, keeping the pass linear in the record length.
+fn redact_bearer_tokens(value: &str) -> Option<String> {
+    let lower = value.to_ascii_lowercase();
+    let mut rewriter = SegmentRewriter::new(value);
     let mut cursor = 0;
-    loop {
-        let lower = value.to_ascii_lowercase();
-        let Some(offset) = lower[cursor..].find("bearer ") else {
-            break;
-        };
+    while let Some(offset) = lower[cursor..].find("bearer ") {
         let mut start = cursor + offset + "bearer ".len();
         while value
             .as_bytes()
@@ -65,25 +74,20 @@ fn redact_bearer_tokens(value: &mut String) -> bool {
             cursor = start;
             continue;
         }
-        if &value[start..end] == REDACTION_MARKER {
-            cursor = end;
-            continue;
+        if &value[start..end] != REDACTION_MARKER {
+            rewriter.replace(start, end, REDACTION_MARKER);
         }
-        value.replace_range(start..end, "[REDACTED]");
-        changed = true;
-        cursor = start + "[REDACTED]".len();
+        cursor = end;
     }
-    changed
+    rewriter.finish()
 }
 
-fn redact_assignment_values(value: &mut String, key: &str) -> bool {
-    let mut changed = false;
+fn redact_assignment_values(value: &str, key: &str) -> Option<String> {
+    let lower = value.to_ascii_lowercase();
+    let bytes = value.as_bytes();
+    let mut rewriter = SegmentRewriter::new(value);
     let mut cursor = 0;
-    loop {
-        let lower = value.to_ascii_lowercase();
-        let Some(offset) = lower[cursor..].find(key) else {
-            break;
-        };
+    while let Some(offset) = lower[cursor..].find(key) {
         let key_start = cursor + offset;
         let key_end = key_start + key.len();
         let boundary_before = key_start == 0
@@ -94,7 +98,6 @@ fn redact_assignment_values(value: &mut String, key: &str) -> bool {
             continue;
         }
 
-        let bytes = value.as_bytes();
         let mut separator = key_end;
         if bytes
             .get(separator)
@@ -128,30 +131,24 @@ fn redact_assignment_values(value: &mut String, key: &str) -> bool {
             .filter(|byte| matches!(byte, b'"' | b'\''));
         let mut start = separator + usize::from(quote.is_some());
         if key == "authorization" {
-            let lower_value = value[start..].to_ascii_lowercase();
-            if lower_value.starts_with("bearer ") {
+            if lower[start..].starts_with("bearer ") {
                 start += "bearer ".len();
-            } else if lower_value.starts_with("basic ") {
+            } else if lower[start..].starts_with("basic ") {
                 start += "basic ".len();
             }
-            while value
-                .as_bytes()
-                .get(start)
-                .is_some_and(u8::is_ascii_whitespace)
-            {
+            while bytes.get(start).is_some_and(u8::is_ascii_whitespace) {
                 start += 1;
             }
         }
         let end = secret_value_end(value, start, quote);
-        if end == start || &value[start..end] == "[REDACTED]" {
+        if end == start || &value[start..end] == REDACTION_MARKER {
             cursor = end.max(key_end);
             continue;
         }
-        value.replace_range(start..end, "[REDACTED]");
-        changed = true;
-        cursor = start + "[REDACTED]".len();
+        rewriter.replace(start, end, REDACTION_MARKER);
+        cursor = end;
     }
-    changed
+    rewriter.finish()
 }
 
 fn secret_value_end(value: &str, start: usize, quote: Option<u8>) -> usize {
@@ -185,6 +182,43 @@ fn secret_value_end(value: &str, start: usize, quote: Option<u8>) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::{Duration, Instant};
+
+    /// Linear passes need a few milliseconds for a maximum-size record in a
+    /// debug build; the previous per-match lowercasing of the whole record took
+    /// more than a second for each of these records.
+    const MAX_RECORD_BUDGET: Duration = Duration::from_millis(250);
+
+    fn redact_within_budget(record: &str) -> String {
+        assert!(record.len() <= MAX_LOG_RECORD_BYTES);
+        let started = Instant::now();
+        let clean = redact_secrets(record);
+        let elapsed = started.elapsed();
+        assert!(
+            elapsed < MAX_RECORD_BUDGET,
+            "{} byte record took {elapsed:?}",
+            record.len()
+        );
+        clean
+    }
+
+    #[test]
+    fn maximum_size_records_with_many_matches_are_redacted_in_linear_time() {
+        let unassigned = "token ".repeat(MAX_LOG_RECORD_BYTES / 6);
+        assert_eq!(redact_within_budget(&unassigned), unassigned);
+
+        let assignments = "token=a ".repeat(MAX_LOG_RECORD_BYTES / 8);
+        assert_eq!(
+            redact_within_budget(&assignments),
+            "token=[REDACTED] ".repeat(MAX_LOG_RECORD_BYTES / 8)
+        );
+
+        let headers = "Authorization=Bearer x ".repeat(MAX_LOG_RECORD_BYTES / 23);
+        assert_eq!(
+            redact_within_budget(&headers),
+            "Authorization=Bearer [REDACTED] ".repeat(MAX_LOG_RECORD_BYTES / 23)
+        );
+    }
 
     #[test]
     fn quoted_secrets_with_escaped_quotes_are_completely_redacted() {
