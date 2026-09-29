@@ -81,6 +81,24 @@ A prepared version section does not establish that its tag or crates exist.
   the tenant ID is one normal path segment. Before, tenant `.` resolved into
   another tenant's storage root.
 
+### Core state review fixes
+
+- The legacy `live_ws_handler` limits incoming WebSocket frames and messages
+  to 64 KiB (previously the 64 MiB transport default) and closes the session on
+  larger ones before parsing JSON, so one client can no longer exhaust memory.
+- The queue worker no longer cancels an in-flight `pop`, so a job claimed while
+  another finished or during shutdown no longer sits in `processing` until
+  stalled recovery. Graceful shutdown requeues such a claim.
+- `BroadcastManager` no longer keeps channels without subscribers (publishing
+  no longer creates one) and `PresenceTracker` removes empty rooms, fixing
+  unbounded memory growth. A released channel name gets a new `Channel`.
+- The Redis cache and queue drivers share one lazily opened multiplexed
+  connection per driver and reconnect after failures, instead of opening a TCP
+  connection per operation.
+- `RateLimiter` keys IPv6 peers per /64 and caps its bucket map at 100,000
+  keys, dropping refilled buckets and evicting the least recently used ones.
+  Clients in one IPv6 /64 now share a limit.
+
 ### Portfolio blueprint escaping
 
 - The generated portfolio page escapes CMS values and renders only `http(s)`
