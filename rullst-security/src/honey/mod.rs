@@ -1,3 +1,4 @@
+mod bans;
 pub mod middleware;
 
 pub use middleware::{

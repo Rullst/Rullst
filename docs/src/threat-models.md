@@ -73,6 +73,12 @@ application ↔ session/challenge store; operator ↔ key store.
 passkey, replayed challenge, wrong RP, invalid callback state and repeated login
 failure.
 
+**TOTP replay (`AUTH-07`):** `verify_totp_code` is stateless and accepts the
+previous, current and next 30-second step, so an observed code verifies again
+for about 90 seconds. `verify_totp_step_after` accepts only a step newer than
+the supplied last accepted step (RFC 6238 section 5.2); persisting the returned
+step per secret atomically before admitting the login is application-owned.
+
 ## TM-CONNECT-1 — durable local OAuth token generations
 
 **Assets:** access and refresh tokens, provider identity, application-account
