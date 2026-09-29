@@ -211,6 +211,24 @@ A prepared version section does not establish that its tag or crates exist.
 - The `Model::search()` SQL fallback no longer matches hidden, encrypted,
   masked or `SecretString` columns, treats LIKE wildcards literally and applies
   the Scout query limits.
+- A nested `Orm::transaction` joins the active transaction through a
+  savepoint: an inner error rolls back only the inner part, and an inner
+  success commits with the outer transaction. The `Orm::transaction` future is
+  now `Send`.
+- `restore()` and `force_delete()` work on PostgreSQL (their placeholders are
+  numbered) and run the mutation lifecycle in a savepoint: hooks, observers,
+  audit (`force_deleted`/`restored`) and the post-commit cache, Redis,
+  committed-event and Scout effects. On auditable models they now need an
+  `AuditContext`.
+- `delete_all()` and `cascade_soft_delete` keep `?` markers on MySQL, MariaDB
+  and SQLite, now covered by tests and the live matrices.
+- Eager loads fail with a `Validation` error naming the relation instead of
+  silently truncating related rows at the global query limit.
+- `paginate()` clamps `per_page` to the global query limit, and
+  `PaginationResult` reports the effective page size.
+- `Blueprint::timestamps()` and other TEXT/BLOB/JSON defaults emit the
+  `DEFAULT (expr)` form on MySQL and MariaDB, so MySQL migrations no longer
+  fail with error 1101.
 
 ### Nexus stored-value escaping maintenance
 
