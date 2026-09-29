@@ -226,3 +226,155 @@ async fn handler_timeouts_are_contained_and_failed() {
     assert_eq!(state.failed.load(Ordering::SeqCst), 1);
     handle.shutdown().await.unwrap();
 }
+
+/// Driver whose claim of the `gated` job commits immediately (like the SQLite
+/// `UPDATE ... RETURNING` and Redis `EVAL` claims) but resolves only after the
+/// test releases it, so a worker that drops the pop future strands the job.
+struct GatedClaimState {
+    jobs: Mutex<VecDeque<QueuedJob>>,
+    gated_claim_started: tokio::sync::Notify,
+    release_gated_claim: tokio::sync::Notify,
+    completed: Mutex<Vec<String>>,
+    requeued: Mutex<Vec<String>>,
+}
+
+impl GatedClaimState {
+    fn with_jobs(ids: &[&str]) -> Arc<Self> {
+        let jobs = ids
+            .iter()
+            .map(|id| QueuedJob {
+                id: (*id).to_string(),
+                name: "test".to_string(),
+                payload: serde_json::json!({ "id": id }),
+                attempts: 1,
+            })
+            .collect();
+        Arc::new(Self {
+            jobs: Mutex::new(jobs),
+            gated_claim_started: tokio::sync::Notify::new(),
+            release_gated_claim: tokio::sync::Notify::new(),
+            completed: Mutex::new(Vec::new()),
+            requeued: Mutex::new(Vec::new()),
+        })
+    }
+}
+
+struct GatedClaimDriver(Arc<GatedClaimState>);
+
+#[async_trait]
+impl QueueDriver for GatedClaimDriver {
+    async fn push(&self, _id: &str, _name: &str, _payload: &str) -> Result<(), QueueError> {
+        Ok(())
+    }
+
+    async fn pop(&self) -> Result<Option<QueuedJob>, QueueError> {
+        let claimed = self.0.jobs.lock().unwrap().pop_front();
+        if claimed.as_ref().is_some_and(|job| job.id == "gated") {
+            self.0.gated_claim_started.notify_one();
+            self.0.release_gated_claim.notified().await;
+        }
+        Ok(claimed)
+    }
+
+    async fn mark_complete(&self, job_id: &str) -> Result<(), QueueError> {
+        self.0.completed.lock().unwrap().push(job_id.to_string());
+        Ok(())
+    }
+
+    async fn mark_failed(&self, _job_id: &str, _error: &str) -> Result<(), QueueError> {
+        Ok(())
+    }
+
+    async fn requeue(&self, job_id: &str, _reason: &str) -> Result<(), QueueError> {
+        self.0.requeued.lock().unwrap().push(job_id.to_string());
+        Ok(())
+    }
+
+    async fn recover_stalled(&self, _stale_after: Duration) -> Result<u64, QueueError> {
+        Ok(0)
+    }
+
+    async fn pending_count(&self) -> Result<u64, QueueError> {
+        Ok(self.0.jobs.lock().unwrap().len() as u64)
+    }
+}
+
+#[tokio::test]
+async fn a_claim_in_flight_is_dispatched_even_when_a_handler_finishes_first() {
+    let state = GatedClaimState::with_jobs(&["first", "gated"]);
+    let queue = Queue::custom(Box::new(GatedClaimDriver(Arc::clone(&state))));
+    let release_first = Arc::new(tokio::sync::Notify::new());
+    let release_for_handler = Arc::clone(&release_first);
+    let mut worker = Worker::new(&queue).poll_interval(2);
+    worker.register("test", move |payload| {
+        let release_first = Arc::clone(&release_for_handler);
+        async move {
+            if payload["id"] == "first" {
+                release_first.notified().await;
+                return Err("first job failed".into());
+            }
+            Ok(())
+        }
+    });
+    let mut handle = worker.run().unwrap();
+    let wait = Duration::from_secs(1);
+
+    // `first` is running and the claim of `gated` has committed but not resolved.
+    tokio::time::timeout(wait, state.gated_claim_started.notified())
+        .await
+        .unwrap();
+    // `first` finishes while the claim is in flight; the worker observes that
+    // outcome before the claim resolves.
+    release_first.notify_one();
+    let error = tokio::time::timeout(wait, handle.next_error())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(matches!(error, QueueError::JobFailed(_)));
+    state.release_gated_claim.notify_one();
+
+    tokio::time::timeout(wait, async {
+        while !state
+            .completed
+            .lock()
+            .unwrap()
+            .contains(&"gated".to_string())
+        {
+            tokio::time::sleep(Duration::from_millis(1)).await;
+        }
+    })
+    .await
+    .expect("the claimed job must be dispatched, not stranded in processing");
+    handle.shutdown().await.unwrap();
+    assert!(state.requeued.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn shutdown_during_a_claim_requeues_the_claimed_job() {
+    let state = GatedClaimState::with_jobs(&["gated"]);
+    let queue = Queue::custom(Box::new(GatedClaimDriver(Arc::clone(&state))));
+    let mut worker = Worker::new(&queue).poll_interval(2);
+    worker.register("test", |_| async {
+        std::future::pending::<()>().await;
+        Ok(())
+    });
+    let handle = worker.run().unwrap();
+
+    tokio::time::timeout(Duration::from_secs(1), state.gated_claim_started.notified())
+        .await
+        .unwrap();
+    let mut stopping = tokio::spawn(handle.shutdown());
+    // A worker that races the claim against shutdown stops here and drops it.
+    let early = tokio::time::timeout(Duration::from_millis(100), &mut stopping).await;
+    state.release_gated_claim.notify_one();
+    let stopped = match early {
+        Ok(joined) => joined,
+        Err(_) => tokio::time::timeout(Duration::from_secs(1), stopping)
+            .await
+            .unwrap(),
+    };
+    stopped.unwrap().unwrap();
+
+    assert_eq!(*state.requeued.lock().unwrap(), vec!["gated".to_string()]);
+    assert!(state.completed.lock().unwrap().is_empty());
+}

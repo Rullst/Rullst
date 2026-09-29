@@ -31,6 +31,13 @@ async fn local_exchange() -> Result<RealtimeMessage, RealtimeError> {
 `Channel` uses `tokio::sync::broadcast`: a slow receiver can lag, and publishing
 without any receiver returns `RealtimeError::BroadcastError`.
 
+The registry keeps a channel only while it has a subscriber or a caller holds
+the `Arc<Channel>` from `get_or_create`. Publishing never creates a channel, and
+idle channels are released by a publish that finds no receivers or by an
+amortized sweep when new channels are created; a released name gets a new
+channel on its next `get_or_create`. `PresenceTracker` removes a room when its
+last user leaves.
+
 ## Bind channels and presence to an authenticated tenant
 
 Construct `TenantContext` only from trusted authentication/membership state.

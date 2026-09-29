@@ -158,7 +158,11 @@ This is a control mapping, not a claim of complete OWASP Top 10 coverage.
 ## Identity and network trust
 
 Rate limiting, bans, honeypots, and audit attribution use the direct peer address
-unless a trusted-proxy policy explicitly accepts forwarded metadata. Never trust
+unless a trusted-proxy policy explicitly accepts forwarded metadata. Core's
+`RateLimiter` keys IPv4 peers per address and IPv6 peers per /64, so rotating
+addresses inside one delegated prefix shares a bucket. Its process-local map
+tracks at most 100,000 keys: fully refilled buckets are dropped and, beyond the
+cap, the least recently used buckets are evicted and restart with a full burst. Never trust
 `X-Forwarded-For`, tenant headers, or role headers directly from an arbitrary
 client. Tenant membership and roles must come from an authenticated session or a
 cryptographically trusted internal gateway.

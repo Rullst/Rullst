@@ -49,8 +49,10 @@ Ok(())
 ```
 
 Constructing the driver validates the Redis URL but does not establish a
-connection. Operations open a multiplexed async connection and return a typed
-`CacheError` if Redis is unavailable. Choose an application-specific policy:
+connection. The first operation opens one multiplexed async connection that
+later operations share; it is not reopened per command. When that connection
+breaks, the failing operation returns a typed `CacheError` and the next one
+reconnects. Operations also return `CacheError` if Redis is unavailable. Choose an application-specific policy:
 fail startup, retry with bounds, or explicitly select `Cache::memory()` for a
 documented single-instance development mode.
 
@@ -140,7 +142,8 @@ Ok(())
 
 With `queue-redis`, construct `Queue::redis(redis_url)` instead. The Redis
 driver uses atomic Lua transitions for pending, processing, failed, and
-dead-letter state. Production validation must still cover Redis persistence,
+dead-letter state. Like the cache, each driver shares one lazily opened
+multiplexed connection and reconnects after a failed operation. Production validation must still cover Redis persistence,
 eviction policy, credentials/TLS, failover, monitoring, and worker recovery in
 the target topology.
 
@@ -150,7 +153,9 @@ drain/migration plan.
 
 ## Real-time boundary
 
-Core's current WebSocket broadcast/presence helpers are process-local. Redis
+Core's current WebSocket broadcast/presence helpers are process-local. They
+release channels without subscribers and empty presence rooms, so the registry
+tracks live rooms rather than every name ever used. Redis
 Streams, Redis Pub/Sub, Kafka, and RabbitMQ transports remain roadmap work; do
 not describe the cache or queue adapter as cross-instance real-time sync.
 

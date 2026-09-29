@@ -69,6 +69,11 @@ pub mod radar;
 #[cfg(not(target_arch = "wasm32"))]
 /// Native Real-Time Engine (Channels, Broadcast, Presence).
 pub mod realtime;
+#[cfg(all(
+    not(target_arch = "wasm32"),
+    any(feature = "cache-redis", feature = "queue-redis")
+))]
+mod redis_connection;
 #[cfg(not(target_arch = "wasm32"))]
 /// Network and service resilience (rate limits, traffic shield, load shedding).
 pub mod resilience;

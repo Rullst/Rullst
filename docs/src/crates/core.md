@@ -24,6 +24,8 @@ authorized diagnostic boundary; its `Debug` output redacts the key. Custom
 drivers return `CacheError::InspectionUnsupported` unless they implement the
 bounded method. The live Redis CI/release contract checks metadata, TTL and
 non-disclosure; it does not prove cluster/failover or operator authorization.
+The Redis cache and queue drivers each keep one lazily opened multiplexed
+connection for all operations and replace it after a connection-level failure.
 
 SQLite deletes successful jobs by default. Applications that need a real
 Studio/operations history can opt in with
@@ -38,6 +40,9 @@ built-in SQLite and Redis drivers. SQLite filters claims by local wall-clock
 milliseconds; Redis atomically promotes bounded batches using Redis server time.
 Neither backend claims a scheduled job early. Execution starts on the first
 worker poll after it becomes due and retains the queue's at-least-once semantics.
+`Worker` drives each `pop` to completion instead of racing it against
+completions or shutdown, because both built-in claims commit before the future
+resolves. A job claimed after graceful shutdown was requested is requeued.
 Custom drivers return `QueueError::Unsupported` for future timestamps unless
 they explicitly implement durable scheduling.
 
@@ -88,6 +93,10 @@ exercises this boundary through a real proxy; full hosted admission remains pend
 - **Opt-in completed-job monitoring:** SQLite can retain and atomically prune a
   configured number of successful jobs; the privacy-safe default remains
   immediate deletion.
+- **Bounded token-bucket rate limiter:** `RateLimiter` keys IPv4 peers per
+  address and IPv6 peers per /64 by default. It tracks at most 100,000 keys,
+  drops fully refilled buckets and evicts the least recently used ones beyond
+  that cap; state is process-local, not a distributed limit.
 - **Bounded cache metadata:** Memory and Redis expose value length and TTL for
   at most 200 sorted entries, never cached values. Rullst Studio renders keyed
   opaque identifiers and one-entry invalidation rather than exact keys or bulk

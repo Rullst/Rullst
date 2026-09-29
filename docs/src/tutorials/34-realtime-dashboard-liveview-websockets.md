@@ -88,3 +88,5 @@ load a pinned HTMX WebSocket extension in the page.
 - The current implementation re-renders an HTML fragment after each valid JSON
   event. It does not provide distributed state, replay, authorization or a
   metrics source automatically.
+- Incoming events are limited to 64 KiB per WebSocket message; larger messages
+  close the session.
