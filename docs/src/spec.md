@@ -1397,7 +1397,9 @@ and short-lived signed GET URLs. Use the maintained AWS SigV4 signer, explicit
 provider endpoint/region rules, HTTPS, no redirects or ambient proxies, bounded
 request/body budgets and redacted errors. A separate development configuration
 may target a literal loopback endpoint for disposable protocol acceptance; it
-must not pass a production-configuration check. Empty or `mock_*` credentials
+must not pass a production-configuration check. Request paths are the SigV4
+canonical URI: the bucket and each key segment are `UriEncode`d once, leaving
+only unreserved `A-Z a-z 0-9 - . _ ~` and `/` separators literal. Empty or `mock_*` credentials
 select a deterministic bounded in-memory fallback, also rejected by that check.
 No mock URL may impersonate a signed provider URL.
 
