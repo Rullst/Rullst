@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790698762117,
+  "lastUpdate": 1790703563834,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -7815,6 +7815,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 329,
             "range": "± 16",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "81cfbe7458299e3f2a9a020d47af44990bc2ccd5",
+          "message": "Merge pull request #319 from Rullst/fix/v13-core-review-fixes\n\nfix(security): linear PII masking and injective tenant namespaces",
+          "timestamp": "2026-09-29T14:06:00-03:00",
+          "tree_id": "c1f331d26bb824ee7ac2e113ecb327cd387afde0",
+          "url": "https://github.com/Rullst/Rullst/commit/81cfbe7458299e3f2a9a020d47af44990bc2ccd5"
+        },
+        "date": 1790703563163,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 540,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
