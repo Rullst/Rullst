@@ -73,3 +73,21 @@ fn every_portfolio_variant_keeps_responsive_and_reduced_motion_styles() {
         }
     }
 }
+
+#[test]
+fn portfolio_page_escapes_cms_values_and_ships_its_escape_test() {
+    let manifest = file_manifest("portfolio_app", false, "Active Record", "Zero-Bundle HTMX");
+    let page = file(&manifest, "src/pages/home.rs");
+    for raw in ["|s| format!(", "|e| format!(", "|p| format!("] {
+        assert!(!page.contains(raw), "CMS values bypass html! via {raw}");
+    }
+    for guarded in [
+        "href={safe_link(&profile.website)}",
+        "href={safe_link(&profile.github_url)}",
+        "href={safe_link(&profile.linkedin_url)}",
+        "href={safe_link(&p.url)}",
+        "fn cms_values_render_as_text_and_only_http_urls_become_links()",
+    ] {
+        assert!(page.contains(guarded), "missing {guarded}");
+    }
+}

@@ -628,6 +628,17 @@ fn cv_styles() -> String {{
     "#.to_string()
 }}
 
+/// CMS values are data, not markup: `html!` escapes them, and only http(s)
+/// URLs become links, so a stored `javascript:` URL renders as an inert `#`.
+fn safe_link(url: &str) -> &str {{
+    let scheme = url.get(..8).unwrap_or(url).to_ascii_lowercase();
+    if scheme.starts_with("https://") || scheme.starts_with("http://") {{
+        url
+    }} else {{
+        "#"
+    }}
+}}
+
 fn render_sidebar(profile: &Profile, skills: &[Skill]) -> String {{
     html! {{
         <aside class="sidebar">
@@ -643,15 +654,17 @@ fn render_sidebar(profile: &Profile, skills: &[Skill]) -> String {{
             
             <div class="contact-info">
                 <div class="contact-item">"📧 "{{&profile.email}}</div>
-                <div class="contact-item">"🌐 "<a href={{&profile.website}} target="_blank" style="color: var(--accent);">{{&profile.website}}</a></div>
-                <div class="contact-item">"💻 "<a href={{&profile.github_url}} target="_blank" style="color: var(--text-muted);">{{&profile.github_url}}</a></div>
-                <div class="contact-item">"💼 "<a href={{&profile.linkedin_url}} target="_blank" style="color: var(--text-muted);">{{&profile.linkedin_url}}</a></div>
+                <div class="contact-item">"🌐 "<a href={{safe_link(&profile.website)}} target="_blank" style="color: var(--accent);">{{&profile.website}}</a></div>
+                <div class="contact-item">"💻 "<a href={{safe_link(&profile.github_url)}} target="_blank" style="color: var(--text-muted);">{{&profile.github_url}}</a></div>
+                <div class="contact-item">"💼 "<a href={{safe_link(&profile.linkedin_url)}} target="_blank" style="color: var(--text-muted);">{{&profile.linkedin_url}}</a></div>
             </div>
 
             <div>
                 <div class="skill-cat">"Technical Skills"</div>
                 <div class="tags">
-                    {{ rullst::html::RawHtml::new(skills.iter().map(|s| format!("<span class=\"tag\">{{}}</span>", s.name)).collect::<Vec<_>>().join("")) }}
+                    {{ rullst::html::RawHtml::new(skills.iter().map(|s| html! {{
+                        <span class="tag">{{&s.name}}</span>
+                    }}).collect::<Vec<_>>().join("")) }}
                 </div>
             </div>
         </aside>
@@ -664,29 +677,28 @@ fn render_content(projects: &[Project], experiences: &[Experience]) -> String {{
             <section>
                 <h2 class="section-title">"Experience"</h2>
                 <div class="timeline">
-                    {{ rullst::html::RawHtml::new(experiences.iter().map(|e| format!(
-                        "<div class=\"timeline-item\">\
-                            <div class=\"exp-period\">{{}}</div>\
-                            <h3 class=\"exp-role\">{{}}</h3>\
-                            <div class=\"exp-company\">{{}}</div>\
-                            <p class=\"exp-desc\">{{}}</p>\
-                        </div>", e.period, e.role, e.company, e.description
-                    )).collect::<Vec<_>>().join("")) }}
+                    {{ rullst::html::RawHtml::new(experiences.iter().map(|e| html! {{
+                        <div class="timeline-item">
+                            <div class="exp-period">{{&e.period}}</div>
+                            <h3 class="exp-role">{{&e.role}}</h3>
+                            <div class="exp-company">{{&e.company}}</div>
+                            <p class="exp-desc">{{&e.description}}</p>
+                        </div>
+                    }}).collect::<Vec<_>>().join("")) }}
                 </div>
             </section>
 
             <section>
                 <h2 class="section-title">"Projects Showcase"</h2>
                 <div class="projects-grid">
-                    {{ rullst::html::RawHtml::new(projects.iter().map(|p| format!(
-                        "<div class=\"project-card\">\
-                            <h3 class=\"project-title\">{{}}</h3>\
-                            <p class=\"project-desc\">{{}}</p>\
-                            <div class=\"tags\"><span class=\"tag\">{{}}</span></div>\
-                            <a href=\"{{}}\" target=\"_blank\" class=\"project-link\">View Project &rarr;</a>\
-                        </div>",
-                        p.title, p.description, p.tags, p.url
-                    )).collect::<Vec<_>>().join("")) }}
+                    {{ rullst::html::RawHtml::new(projects.iter().map(|p| html! {{
+                        <div class="project-card">
+                            <h3 class="project-title">{{&p.title}}</h3>
+                            <p class="project-desc">{{&p.description}}</p>
+                            <div class="tags"><span class="tag">{{&p.tags}}</span></div>
+                            <a href={{safe_link(&p.url)}} target="_blank" class="project-link">"View Project →"</a>
+                        </div>
+                    }}).collect::<Vec<_>>().join("")) }}
                 </div>
             </section>
         </main>
@@ -694,6 +706,31 @@ fn render_content(projects: &[Project], experiences: &[Experience]) -> String {{
 }}
 
 {render_fn_code}
+
+#[cfg(test)]
+mod tests {{
+    use super::*;
+
+    #[test]
+    fn cms_values_render_as_text_and_only_http_urls_become_links() {{
+        let project = Project {{
+            id: 1,
+            title: "<script>alert(1)</script>".to_string(),
+            description: "\"><img src=x onerror=alert(2)>".to_string(),
+            url: " JavaScript:alert(3)".to_string(),
+            tags: "Rust".to_string(),
+            is_featured: 1,
+        }};
+        let page = render_content(&[project], &[]);
+        assert!(page.contains("&lt;script&gt;alert(1)&lt;/script&gt;"));
+        assert!(!page.contains("<script>") && !page.contains("<img"));
+        assert!(!page.to_ascii_lowercase().contains("javascript:"));
+        assert!(page.contains("href=\"#\""));
+        assert_eq!(safe_link("HTTPS://rullst.dev"), "HTTPS://rullst.dev");
+        assert_eq!(safe_link("http://127.0.0.1:3000"), "http://127.0.0.1:3000");
+        assert_eq!(safe_link("data:text/html,x"), "#");
+    }}
+}}
 "##,
         frontend_engine = frontend_engine,
         engine_imports = engine_imports,
