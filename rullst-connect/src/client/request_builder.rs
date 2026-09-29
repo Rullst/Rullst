@@ -1,6 +1,9 @@
 use serde_json::Value;
 
 use super::traits::{HttpClient, HttpRequest, HttpResponse};
+use crate::error::{
+    MAX_PROVIDER_ERROR_CODE_BYTES, MAX_PROVIDER_ERROR_MESSAGE_BYTES, bounded_provider_text,
+};
 
 /// A fluent builder for HTTP requests, matching the subset of reqwest used by providers.
 pub struct RequestBuilder<'a> {
@@ -74,34 +77,44 @@ pub struct ResponseWrapper {
 }
 
 impl ResponseWrapper {
+    /// Returns [`crate::error::ConnectError::ProviderApiError`] for a status of 400 or above.
+    ///
+    /// `code` is the provider's OAuth `error` value (at most 128 bytes) or
+    /// `HTTP_<status>`. `message` is the `error_description`, `message`, JSON
+    /// body or text body, at most 512 bytes. Longer provider text is cut at the
+    /// last UTF-8 character boundary within the limit and ends with
+    /// `... (truncated)`.
     pub fn error_for_status(self) -> Result<Self, crate::error::ConnectError> {
         if self.res.status >= 400 {
             tracing::error!("HTTP status {} received", self.res.status);
             let mut code = format!("HTTP_{}", self.res.status);
             let mut message_opt: Option<String> = None;
 
+            // Provider text is untrusted and may be localized: bound it by bytes
+            // without splitting a UTF-8 character, which would panic.
             if let Some(obj) = self.res.body.as_object() {
                 if let Some(err) = obj.get("error").and_then(|v| v.as_str()) {
-                    code = err.to_string();
+                    code = bounded_provider_text(err, MAX_PROVIDER_ERROR_CODE_BYTES);
                 }
                 if let Some(desc) = obj.get("error_description").and_then(|v| v.as_str()) {
-                    message_opt = Some(desc.to_string());
+                    message_opt = Some(bounded_provider_text(
+                        desc,
+                        MAX_PROVIDER_ERROR_MESSAGE_BYTES,
+                    ));
                 } else if let Some(msg) = obj.get("message").and_then(|v| v.as_str()) {
-                    message_opt = Some(msg.to_string());
+                    message_opt =
+                        Some(bounded_provider_text(msg, MAX_PROVIDER_ERROR_MESSAGE_BYTES));
                 } else {
-                    message_opt = Some(self.res.body.to_string());
+                    message_opt = Some(bounded_provider_text(
+                        &self.res.body.to_string(),
+                        MAX_PROVIDER_ERROR_MESSAGE_BYTES,
+                    ));
                 }
             } else if let Some(s) = self.res.body.as_str() {
-                message_opt = Some(s.to_string());
+                message_opt = Some(bounded_provider_text(s, MAX_PROVIDER_ERROR_MESSAGE_BYTES));
             }
 
-            let mut message = message_opt.unwrap_or_else(|| "Unknown error".to_string());
-
-            // Prevent sensitive information exposure or massive log spam
-            if message.len() > 512 {
-                message.truncate(512);
-                message.push_str("... (truncated)");
-            }
+            let message = message_opt.unwrap_or_else(|| "Unknown error".to_string());
 
             Err(crate::error::ConnectError::ProviderApiError { code, message })
         } else {
