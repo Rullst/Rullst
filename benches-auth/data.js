@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790703491759,
+  "lastUpdate": 1790705233878,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -12657,6 +12657,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4089,
             "range": "± 162",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1c64709bc12bedd2cd3b35bc0a8a01d224421c10",
+          "message": "Merge pull request #316 from Rullst/fix/v13-cli-error-display\n\nfix(cli): report command errors with their Display message",
+          "timestamp": "2026-09-29T14:47:36-03:00",
+          "tree_id": "dcb983e431669265e6f539df4e872658467edc7e",
+          "url": "https://github.com/Rullst/Rullst/commit/1c64709bc12bedd2cd3b35bc0a8a01d224421c10"
+        },
+        "date": 1790705232696,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1023,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 794,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1864,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4072,
+            "range": "± 74",
             "unit": "ns/iter"
           }
         ]
