@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790710144395,
+  "lastUpdate": 1790718392055,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -12026,6 +12026,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 25,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "46f5e7939371230559cb9c2af7cd3b5a13f8bce2",
+          "message": "Merge pull request #327 from Rullst/fix/v13-cli-consumer-cleanup\n\nfix(cli): drop the dead school path and keep configuration content out of dev errors",
+          "timestamp": "2026-09-29T18:23:32-03:00",
+          "tree_id": "97dd7e4aa90637ba0047875ab690387fd3abd10a",
+          "url": "https://github.com/Rullst/Rullst/commit/46f5e7939371230559cb9c2af7cd3b5a13f8bce2"
+        },
+        "date": 1790718391017,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5484,
+            "range": "± 37",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 747,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 30,
             "range": "± 0",
             "unit": "ns/iter"
           }
