@@ -62,6 +62,17 @@ v12 documents the existing-API workaround instead.
   HTML, so anyone with Nexus write access could store script in the public
   page. The generated page ships a test for this contract. Previously
   generated applications are copied code and must apply the same change.
+- `mask_pii` and `pii_masking_middleware` scan card-like digit runs in linear
+  time. A digit run longer than 19 digits was rescanned from every position, so
+  about 1 MB of digits in a masked response could stall a Tokio worker. Masked
+  output is unchanged.
+- Tenant-bound cache keys, realtime channels and presence rooms encode `%` and
+  `:` in the tenant segment, so `("a", "b:c")` and `("a:b", "c")` no longer
+  share a namespace. Tenant IDs without `:` or `%` keep their existing keys;
+  cached entries for IDs containing `:` miss once after upgrade. Tenant IDs made
+  only of dots are rejected, and `TenantStorage` returns
+  `StorageError::PathTraversal` unless the tenant ID is one normal path
+  segment. Before, tenant `.` resolved into another tenant's storage root.
 
 ## [12.1.2] - 2026-09-27
 
