@@ -29,7 +29,13 @@ umbrella defaults when a backend-exclusive dependency graph is required.
    by application/tenant with separate databases and secrets; a public request
    cannot select a tenant or supply a database URL.
    SQLite filesystem paths must be URL-encoded; use `sqlite:PATH?mode=rwc`
-   without an authority for Windows drive letters. During shutdown, stop the
+   without an authority for Windows drive letters. A remote PostgreSQL host
+   always uses `sslmode=verify-full` (certificate and hostname verification),
+   whatever the URL requests; supply `sslrootcert` for a private CA. Loopback
+   hosts and Unix sockets keep the configured mode. Query options other than
+   `sslmode`, `sslrootcert`, `sslcert`, `sslkey`, `host`, `hostaddr`, `port`,
+   `dbname`, `user` and `password` fail with `Configuration` before connecting.
+   During shutdown, stop the
    request/worker tasks and await `close()` before moving or deleting a database;
    it closes the connection pool shared by every store clone.
 3. Register new accounts with `register_account_with_locale`. Account creation

@@ -10,12 +10,6 @@
 pub mod api_tokens;
 mod clock;
 pub use clock::{AuthClock, SystemAuthClock};
-#[cfg(any(
-    feature = "email-login-sqlite",
-    feature = "email-login-postgres",
-    feature = "api-tokens-sqlite",
-    feature = "api-tokens-postgres"
-))]
 mod connection;
 mod crypto;
 #[cfg(any(feature = "email-login-sqlite", feature = "email-login-postgres"))]
