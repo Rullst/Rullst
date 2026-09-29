@@ -1184,6 +1184,17 @@ The generic `build_oauth_params` helper and exported redirect macro remain
 response-type-neutral for downstream custom providers. Callers own optional
 endpoint query data and must not supply conflicting reserved parameters.
 
+### Client-supplied token invariant
+
+`Provider::get_user_from_token` is a profile lookup for a token the server
+obtained for its own client. It is not an authentication primitive for a token
+supplied by a native or mobile client: except for Apple, the adapters ask the
+provider's userinfo/profile endpoint about the bearer token, which does not
+prove that the token was issued to the configured `client_id`. Sign-in must use
+the application's own authorization-code exchange or an ID token verified for
+this client's issuer, audience, expiry, signature and nonce. Apple's adapter
+validates an ID token's audience there, but checks no nonce.
+
 ### Shared-local facade composition invariant
 
 The umbrella features `auth-sqlite`, `capital-quota-sql`, `oauth-sqlite`,

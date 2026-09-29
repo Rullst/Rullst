@@ -53,6 +53,11 @@ impl Provider for AppleProvider {
     }
 
     /// For Apple, `access_token` parameter should actually be the `id_token` JWT string.
+    ///
+    /// The signature, issuer, audience (this `client_id`) and expiry are
+    /// validated, but no nonce is checked, so a captured ID token issued to
+    /// this client can be replayed until it expires. See
+    /// [`Provider::get_user_from_token`].
     async fn get_user_from_token(
         &self,
         id_token_str: &str,

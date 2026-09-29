@@ -68,6 +68,28 @@ pub trait Provider: Send + Sync {
 
     /// Fetches the user's profile using an existing access token.
     /// This bypasses the authorization code exchange step.
+    ///
+    /// # Security
+    ///
+    /// This is **not** an authentication primitive for a token supplied by a
+    /// client, such as a native or mobile app that sends its provider access
+    /// token to your backend. Except for Apple, the adapters send the bearer
+    /// token to the provider's userinfo or profile endpoint. A successful
+    /// response proves only that the token is valid for *some* client of that
+    /// provider, not that it was issued to this application's `client_id`.
+    /// Another application that obtained a user's token for its own
+    /// `client_id` could replay it here and be signed in as that user.
+    ///
+    /// Sign users in with this application's own authorization-code exchange
+    /// ([`Self::get_user`] with state, PKCE and, for OpenID Connect, nonce), or
+    /// with an ID token whose signature, issuer, audience (this `client_id`),
+    /// expiry and nonce are verified for this client. Use this method only for
+    /// a token that this server obtained for this client, for example to
+    /// reload profile data.
+    ///
+    /// Apple expects an ID token here and validates its signature, issuer,
+    /// audience and expiry, but no nonce, so a captured Apple ID token issued
+    /// to this client can be replayed until it expires.
     async fn get_user_from_token(
         &self,
         access_token: &str,
