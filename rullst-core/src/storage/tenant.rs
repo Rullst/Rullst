@@ -1,3 +1,5 @@
+use std::path::{Component, Path};
+
 use super::{Storage, StorageError, normalized_object_key};
 use crate::security::TenantContext;
 
@@ -5,8 +7,11 @@ use crate::security::TenantContext;
 ///
 /// Object keys are placed below `tenants/<tenant_id>/`; callers cannot escape
 /// that prefix through absolute paths, parent components, or backslashes. The
-/// wrapper provides namespace isolation, while membership authorization and
-/// backend bucket policy remain application and deployment responsibilities.
+/// tenant identifier itself must be exactly one normal path segment: object
+/// operations fail with [`StorageError::PathTraversal`] when it is empty,
+/// contains `/` or `\`, or consists only of dots. The wrapper provides
+/// namespace isolation, while membership authorization and backend bucket
+/// policy remain application and deployment responsibilities.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct TenantStorage {
@@ -30,8 +35,9 @@ impl TenantStorage {
 
     /// Returns the backend object key confined below the tenant namespace.
     pub fn object_key(&self, relative_path: &str) -> Result<String, StorageError> {
+        let tenant = tenant_root_segment(&self.tenant_id)?;
         let path = normalized_object_key(relative_path)?;
-        Ok(format!("tenants/{}/{path}", self.tenant_id))
+        Ok(format!("tenants/{tenant}/{path}"))
     }
 
     /// Stores bytes below this instance's immutable tenant prefix.
@@ -50,6 +56,28 @@ impl TenantStorage {
     pub fn url(&self, relative_path: &str) -> Result<String, StorageError> {
         self.storage.url(&self.object_key(relative_path)?)
     }
+}
+
+/// Re-checks that the tenant identifier is a single normal path segment.
+///
+/// [`TenantContext::tenant_id`] is a public field, so the storage root must not
+/// rely on construction-time validation alone: `.` would otherwise collapse
+/// `tenants/./<path>` into another tenant's root.
+fn tenant_root_segment(tenant_id: &str) -> Result<&str, StorageError> {
+    let mut components = Path::new(tenant_id).components();
+    let single_normal = matches!(
+        (components.next(), components.next()),
+        (Some(Component::Normal(segment)), None) if segment.to_str() == Some(tenant_id)
+    );
+    if !single_normal
+        || tenant_id.contains(['/', '\\', '\0'])
+        || tenant_id.bytes().all(|byte| byte == b'.')
+    {
+        return Err(StorageError::PathTraversal(
+            "tenant identifier is not a single path segment".to_string(),
+        ));
+    }
+    Ok(tenant_id)
 }
 
 #[cfg(test)]
@@ -95,6 +123,55 @@ mod tests {
             alpha.get("../school-beta/secret.txt").await,
             Err(StorageError::PathTraversal(_))
         ));
+
+        std::fs::remove_dir_all(root).expect("tenant storage cleanup");
+    }
+
+    #[tokio::test]
+    // TM-TENANT-04
+    async fn tenant_ids_that_are_not_one_path_segment_are_rejected() {
+        let suffix = uuid::Uuid::new_v4();
+        let root = std::env::temp_dir().join(format!("rullst-tenant-segment-{suffix}"));
+        let storage = Storage::local(root.to_string_lossy());
+        let acme_context = TenantContext::try_new("acme").expect("valid tenant");
+        let acme = TenantStorage::from_context(storage.clone(), &acme_context);
+        acme.put("secret.txt", b"acme").await.expect("acme write");
+
+        // `TenantContext::tenant_id` is public, so it can change after validation.
+        for tenant_id in ["", ".", "..", "...", "acme/x", "acme\\x", "/acme", "acme/"] {
+            let mut context = acme_context.clone();
+            context.tenant_id = tenant_id.to_string();
+            let tenant = TenantStorage::from_context(storage.clone(), &context);
+            assert!(
+                matches!(
+                    tenant.object_key("acme/secret.txt"),
+                    Err(StorageError::PathTraversal(_))
+                ),
+                "{tenant_id:?}"
+            );
+            assert!(matches!(
+                tenant.get("acme/secret.txt").await,
+                Err(StorageError::PathTraversal(_))
+            ));
+            assert!(matches!(
+                tenant.put("acme/secret.txt", b"overwrite").await,
+                Err(StorageError::PathTraversal(_))
+            ));
+        }
+        assert_eq!(acme.get("secret.txt").await.expect("acme read"), b"acme");
+
+        assert_eq!(
+            acme.object_key("courses/1/lesson.txt").expect("acme key"),
+            "tenants/acme/courses/1/lesson.txt"
+        );
+        let colon = TenantStorage::from_context(
+            storage,
+            &TenantContext::try_new("acme:prod").expect("valid tenant"),
+        );
+        assert_eq!(
+            colon.object_key("lesson.txt").expect("colon key"),
+            "tenants/acme:prod/lesson.txt"
+        );
 
         std::fs::remove_dir_all(root).expect("tenant storage cleanup");
     }

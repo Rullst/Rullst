@@ -121,7 +121,7 @@ receives a denial before data or side effects are exposed.
 | Misconfiguration | Nonce-based CSP and a strict HTTP-header baseline. | Proxies and page content change the deployed policy; no scanner grade is guaranteed. |
 | Authentication abuse | Login jail, local limiter, optional atomic Redis limiter, timing helpers, TOTP, subject-bound recovery-code verifiers and WebAuthn integration. | Real Redis topology/failover, durable transactional recovery consumption and UX, RP/origin configuration, trusted peer identity, and capacity planning remain application concerns. |
 | Data integrity | HMAC audit records plus an opt-in bounded HMAC-chained local SIEM journal with named rotation keys. | Whole-tail rollback detection, independent checkpoints, multi-writer operation, key protection, retention and remote delivery require external storage and operations. |
-| Data leakage | Text-aware DLP, PII masking, and log redaction helpers. | Unsupported content types, encodings, streams, and oversize bodies follow explicit policy and must be tested. |
+| Data leakage | Text-aware DLP, PII masking, and log redaction helpers. | Unsupported content types, encodings, streams, and oversize bodies follow explicit policy and must be tested. Core response masking buffers at most 2 MiB of identity-encoded text and scans it in linear time; it is a heuristic for emails and 13-19 digit card-like runs, not complete PII detection. |
 | AI input risk | Prompt-injection heuristics and PII masking in the high-level AI client. | No heuristic can prove a prompt safe or guarantee detection of every secret. |
 
 This is a control mapping, not a claim of complete OWASP Top 10 coverage.
