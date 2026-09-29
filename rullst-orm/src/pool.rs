@@ -10,6 +10,8 @@ const POOL_SLOW_ACQUIRE_THRESHOLD: std::time::Duration = std::time::Duration::fr
 
 mod placeholders;
 mod telemetry;
+#[doc(hidden)]
+pub use placeholders::portable_subquery;
 pub use placeholders::replace_placeholders;
 
 #[cfg(not(any(

@@ -177,6 +177,10 @@ is still deliberately a bulk operation. Model-wide, tenant, and soft-delete
 scopes constrain every user `OR` branch, and keyset traversal applies its cursor
 to the entire original filter. Nested generated subqueries propagate validation
 errors, including a missing tenant context, into their containing query.
+Typed subqueries passed to `where_exists`, `or_where_exists`, `with_cte` and
+`with_recursive` are embedded with portable `?` markers; on PostgreSQL the
+final statement is numbered once, in textual order, so nested scopes, CTEs and
+joins keep every tenant and caller binding at its own `$n` position.
 Generated `Model::search()` uses those same model-wide and tenant scopes for
 both its SQL fallback and external Scout result IDs. Missing tenant context
 fails before contacting Scout, and an empty provider result remains an empty
