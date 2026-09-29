@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790716528523,
+  "lastUpdate": 1790717548740,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -21639,6 +21639,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2236,
             "range": "± 58",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "46f5e7939371230559cb9c2af7cd3b5a13f8bce2",
+          "message": "Merge pull request #327 from Rullst/fix/v13-cli-consumer-cleanup\n\nfix(cli): drop the dead school path and keep configuration content out of dev errors",
+          "timestamp": "2026-09-29T18:23:32-03:00",
+          "tree_id": "97dd7e4aa90637ba0047875ab690387fd3abd10a",
+          "url": "https://github.com/Rullst/Rullst/commit/46f5e7939371230559cb9c2af7cd3b5a13f8bce2"
+        },
+        "date": 1790717545809,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 749,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1005,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 696,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2166,
+            "range": "± 62",
             "unit": "ns/iter"
           }
         ]
