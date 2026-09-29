@@ -28,6 +28,10 @@
 - **Typed Failures:** Server, scheduler, queue, storage, and resilience APIs expose structured errors for fallible paths. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
 - **Dependency Injection:** Type-safe, intuitive global state management across routes and background workers.
 - **Environment Management:** Native `dotenv` and TOML configuration loaders for different deployment targets (Staging, Production, Local).
+  `Server` and the Artisan `db:*`/`studio` commands resolve the database the
+  same way: process `DATABASE_URL`, then `./.env` (never overriding the
+  process), then `[database].url`. Database commands without a configured
+  database fail instead of creating a SQLite file.
 - **Durable Scheduled Queues:** SQLite and Redis persist bounded `dispatch_at`
   timestamps and never claim a job before its millisecond due time. Delivery is
   poll-dependent and at-least-once.
