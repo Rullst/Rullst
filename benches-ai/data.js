@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790703806166,
+  "lastUpdate": 1790705562224,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -10544,6 +10544,54 @@ window.BENCHMARK_DATA = {
           {
             "name": "ai_pii_masking/mask_pii",
             "value": 380,
+            "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1c64709bc12bedd2cd3b35bc0a8a01d224421c10",
+          "message": "Merge pull request #316 from Rullst/fix/v13-cli-error-display\n\nfix(cli): report command errors with their Display message",
+          "timestamp": "2026-09-29T14:47:36-03:00",
+          "tree_id": "dcb983e431669265e6f539df4e872658467edc7e",
+          "url": "https://github.com/Rullst/Rullst/commit/1c64709bc12bedd2cd3b35bc0a8a01d224421c10"
+        },
+        "date": 1790705561044,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1647,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 374,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 366,
             "range": "± 3",
             "unit": "ns/iter"
           }
