@@ -21,9 +21,12 @@ generated paths and matching runtime features stay aligned.
 - `#[live_component]` and `#[live_event]` generate the bounded process-local
   Live component bridge. Authentication, reconnect, ordering, backpressure,
   and browser interoperability belong to the host contract.
-- `#[memoize]` uses Rullst's process-local memory cache. It is not tenant-aware,
-  distributed, invalidation-aware, or suitable for secrets/authorization
-  decisions.
+- `#[memoize]` uses Rullst's process-local memory cache. Keys combine the
+  function's `module_path!()`, name and attribute location (`file!()`,
+  `line!()`, `column!()`) with the JSON-serialized arguments, so same-named
+  functions in different modules, crates or `impl` blocks never share entries.
+  It is not tenant-aware, distributed, invalidation-aware, or suitable for
+  secrets/authorization decisions.
 
 ## Compile-time diagnostics
 
