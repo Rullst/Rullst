@@ -160,7 +160,9 @@ not describe the cache or queue adapter as cross-instance real-time sync.
   explicit.
 - Never commit Redis credentials; prefer TLS and least-privilege network access.
 - Namespace application/tenant keys above the built-in driver prefix where
-  isolation is required. `TenantCache` supplies validated tenant namespaces.
+  isolation is required. `TenantCache` supplies validated tenant namespaces as
+  `tenants:<tenant>:<key>`, where `%` and `:` in the tenant segment are written
+  as `%25` and `%3A` so a key containing `:` cannot reach another tenant.
 - Test disconnects, timeouts, retries, eviction, restart, and worker recovery.
 - Benchmark the deployed service. Rullst does not claim universal cache latency,
   memory usage, or infrastructure cost.

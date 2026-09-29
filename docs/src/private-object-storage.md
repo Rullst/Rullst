@@ -65,10 +65,12 @@ before obtaining `TenantStorage` or issuing a signed URL. A tenant prefix does
 not authorize every member to access every object in that tenant.
 
 `TenantStorage` applies `tenants/<tenant>/` to upload, download, metadata,
-deletion and download grants. Cloud keys reject empty/parent/dot components,
-backslashes, control characters and more than 1,024 UTF-8 bytes. Filenames with
-spaces, Unicode and literal percent signs are encoded as object keys. The
-[archive consumer](../../.github/fixtures/storage-facade.rs) demonstrates
+deletion and download grants, and fails with `StorageError::PathTraversal` when
+the tenant identifier is not exactly one normal path segment (empty, containing
+`/` or `\`, or only dots such as `.`). Cloud keys reject empty/parent/dot
+components, backslashes, control characters and more than 1,024 UTF-8 bytes.
+Filenames with spaces, Unicode and literal percent signs are encoded as object
+keys. The [archive consumer](../../.github/fixtures/storage-facade.rs) demonstrates
 owner/tenant enforcement, including denial of an administrator from another
 tenant, using the same facade API shipped in the archive.
 

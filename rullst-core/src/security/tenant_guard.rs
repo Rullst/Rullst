@@ -17,6 +17,9 @@ pub struct TenantContext {
 
 impl TenantContext {
     /// Creates a validated [`TenantContext`] from a trusted identity claim.
+    ///
+    /// Identifiers are 1 to 128 bytes of ASCII letters, digits, `-`, `_`, `.`
+    /// and `:`, and must not consist only of dots.
     pub fn try_new(tenant_id: impl Into<String>) -> Result<Self, TenantContextError> {
         let tenant_id = tenant_id.into();
         validate_tenant_id(&tenant_id)?;
@@ -107,9 +110,14 @@ pub enum TenantContextError {
     TenantNotInMembership(String),
 }
 
-fn validate_tenant_id(tenant_id: &str) -> Result<(), TenantContextError> {
+/// Validates the bounded tenant identifier character set.
+///
+/// Identifiers made only of dots (`.`, `..`, `...`) are rejected because they
+/// are relative path components rather than tenant names.
+pub(crate) fn validate_tenant_id(tenant_id: &str) -> Result<(), TenantContextError> {
     if tenant_id.is_empty()
         || tenant_id.len() > 128
+        || tenant_id.bytes().all(|byte| byte == b'.')
         || !tenant_id
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b':'))
@@ -117,6 +125,29 @@ fn validate_tenant_id(tenant_id: &str) -> Result<(), TenantContextError> {
         return Err(TenantContextError::InvalidTenantId(tenant_id.to_string()));
     }
     Ok(())
+}
+
+/// Builds the canonical `tenants:<tenant>:<logical>` backend name shared by
+/// tenant-bound cache keys, realtime channels and presence rooms.
+///
+/// Only the tenant segment is encoded: `%` becomes `%25` and `:` becomes
+/// `%3A`. The segment therefore never contains the `:` delimiter, so distinct
+/// `(tenant, logical)` pairs always yield distinct names even when the logical
+/// name contains `:`. Identifiers without `%` or `:` keep their previous name.
+pub(crate) fn tenant_namespaced_name(tenant_id: &str, logical_name: &str) -> String {
+    const PREFIX: &str = "tenants:";
+    let mut name = String::with_capacity(PREFIX.len() + tenant_id.len() + 1 + logical_name.len());
+    name.push_str(PREFIX);
+    for c in tenant_id.chars() {
+        match c {
+            '%' => name.push_str("%25"),
+            ':' => name.push_str("%3A"),
+            other => name.push(other),
+        }
+    }
+    name.push(':');
+    name.push_str(logical_name);
+    name
 }
 
 fn apply_authenticated_default(req: &mut Request) {
@@ -155,5 +186,45 @@ pub async fn strict_tenant_guard_middleware(mut req: Request, next: Next) -> Res
             "Authenticated tenant context is required",
         )
             .into_response()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    // TM-TENANT-04
+    fn dot_only_tenant_ids_are_rejected() {
+        for tenant_id in [".", "..", "..."] {
+            assert_eq!(
+                TenantContext::try_new(tenant_id),
+                Err(TenantContextError::InvalidTenantId(tenant_id.to_string()))
+            );
+            assert!(TenantMembership::try_new([tenant_id]).is_err());
+        }
+        for tenant_id in ["acme", "acme.eu", ".acme", "acme.", "acme:prod", "a-b_c"] {
+            assert!(TenantContext::try_new(tenant_id).is_ok(), "{tenant_id}");
+        }
+    }
+
+    #[test]
+    // TM-TENANT-04
+    fn tenant_namespaced_names_are_injective() {
+        assert_eq!(
+            tenant_namespaced_name("acme", "leaderboard:x"),
+            "tenants:acme:leaderboard:x"
+        );
+        assert_eq!(tenant_namespaced_name("a", "b:c"), "tenants:a:b:c");
+        assert_eq!(tenant_namespaced_name("a:b", "c"), "tenants:a%3Ab:c");
+        assert_eq!(tenant_namespaced_name("a%3Ab", "c"), "tenants:a%253Ab:c");
+        assert_ne!(
+            tenant_namespaced_name("a", "b:c"),
+            tenant_namespaced_name("a:b", "c")
+        );
+        assert_ne!(
+            tenant_namespaced_name("a:b", "c"),
+            tenant_namespaced_name("a%3Ab", "c")
+        );
     }
 }

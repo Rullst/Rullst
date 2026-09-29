@@ -12,6 +12,8 @@ use axum::{
 };
 
 const MAX_BUFFERED_RESPONSE_BYTES: u64 = 2 * 1024 * 1024;
+/// Longest digit run masked as a single payment card number.
+const MAX_CARD_DIGITS: usize = 19;
 
 pub(super) const fn card_mask_count(digit_count: usize) -> Option<usize> {
     if digit_count >= 13 && digit_count <= 19 {
@@ -138,40 +140,78 @@ pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
     Response::from_parts(parts, axum::body::Body::from(masked_body))
 }
 
+/// Returns the exclusive end and the digit count of the card-like run that
+/// starts with the ASCII digit at `start`.
+///
+/// A run continues through ASCII digits separated by at most two consecutive
+/// spaces or hyphens. It ends before any other character, after a third
+/// consecutive separator, or at the end of input. Separators consumed after
+/// the last digit belong to the run.
+fn measure_digit_run(chars: &[char], start: usize) -> (usize, usize) {
+    let mut end = start;
+    let mut digits = 0;
+    let mut separators = 0;
+    while separators < 3 {
+        let Some(&c) = chars.get(end) else {
+            break;
+        };
+        if c.is_ascii_digit() {
+            digits += 1;
+            separators = 0;
+        } else if c == ' ' || c == '-' {
+            separators += 1;
+        } else {
+            break;
+        }
+        end += 1;
+    }
+    (end, digits)
+}
+
+/// Masks card-like digit runs in one linear pass.
+///
+/// A run of 13 to 19 digits keeps only its last four digits. A longer run is
+/// treated as ending in a 19-digit card number: its leading digits stay
+/// visible, the next 15 digits are masked and the last four stay visible.
+/// Every run is measured once and the scan resumes after it, so the cost is
+/// linear in the input length.
+#[cfg_attr(mutants, mutants::skip)]
+fn mask_card_numbers(chars: &mut [char]) {
+    let mut start = 0;
+    while let Some(&c) = chars.get(start) {
+        if !c.is_ascii_digit() {
+            start += 1;
+            continue;
+        }
+
+        let (end, count) = measure_digit_run(chars, start);
+        let window = count.min(MAX_CARD_DIGITS);
+        if let Some(mask_count) = card_mask_count(window) {
+            let first_masked = count - window;
+            let mut ordinal = 0;
+            for c in chars.iter_mut().take(end).skip(start) {
+                if c.is_ascii_digit() {
+                    if ordinal >= first_masked && ordinal < first_masked + mask_count {
+                        *c = '*';
+                    }
+                    ordinal += 1;
+                }
+            }
+        }
+        start = end;
+    }
+}
+
 /// Helper function to perform lightweight regex-free PII masking for emails and credit card numbers.
+///
+/// Card masking treats ASCII digits separated by at most two consecutive
+/// spaces or hyphens as one run. A run of 13 to 19 digits keeps only its last
+/// four digits; a longer run masks only the first 15 of its trailing 19 digits.
+/// The card and email passes each run in time linear in the number of characters.
 #[cfg_attr(mutants, mutants::skip)]
 pub fn mask_pii(text: &str) -> String {
     let mut chars: Vec<char> = text.chars().collect();
-    let mut i = 0;
-    while i < chars.len() {
-        if chars[i].is_ascii_digit() {
-            let mut digit_indices = vec![i];
-            let mut j = i + 1;
-            let mut non_digits = 0;
-            while j < chars.len() && non_digits < 3 {
-                let c = chars[j];
-                if c.is_ascii_digit() {
-                    digit_indices.push(j);
-                    non_digits = 0;
-                } else if c == ' ' || c == '-' {
-                    non_digits += 1;
-                } else {
-                    break;
-                }
-                j += 1;
-            }
-
-            let count = digit_indices.len();
-            if let Some(mask_count) = card_mask_count(count) {
-                for idx in 0..mask_count {
-                    chars[digit_indices[idx]] = '*';
-                }
-                i = j;
-                continue;
-            }
-        }
-        i += 1;
-    }
+    mask_card_numbers(&mut chars);
 
     let mut idx = 0;
     while idx < chars.len() {
@@ -214,4 +254,144 @@ pub fn mask_pii(text: &str) -> String {
     }
 
     chars.into_iter().collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{card_mask_count, mask_card_numbers, mask_pii};
+    use std::time::{Duration, Instant};
+
+    /// The former per-position rescan, kept as a differential oracle for the
+    /// masking result. It is quadratic on long runs; only call it on short input.
+    fn legacy_mask_card_numbers(chars: &mut [char]) {
+        let mut i = 0;
+        while i < chars.len() {
+            if chars[i].is_ascii_digit() {
+                let mut digit_indices = vec![i];
+                let mut j = i + 1;
+                let mut non_digits = 0;
+                while j < chars.len() && non_digits < 3 {
+                    let c = chars[j];
+                    if c.is_ascii_digit() {
+                        digit_indices.push(j);
+                        non_digits = 0;
+                    } else if c == ' ' || c == '-' {
+                        non_digits += 1;
+                    } else {
+                        break;
+                    }
+                    j += 1;
+                }
+                if let Some(mask_count) = card_mask_count(digit_indices.len()) {
+                    for index in digit_indices.iter().take(mask_count) {
+                        chars[*index] = '*';
+                    }
+                    i = j;
+                    continue;
+                }
+            }
+            i += 1;
+        }
+    }
+
+    fn assert_matches_legacy(input: &str) {
+        let mut expected: Vec<char> = input.chars().collect();
+        legacy_mask_card_numbers(&mut expected);
+        let mut actual: Vec<char> = input.chars().collect();
+        mask_card_numbers(&mut actual);
+        assert_eq!(
+            actual.iter().collect::<String>(),
+            expected.iter().collect::<String>(),
+            "input: {input:?}"
+        );
+    }
+
+    #[test]
+    fn long_digit_runs_keep_legacy_trailing_window_masking() {
+        for (input, expected) in [
+            ("1234567890123456789", "***************6789"),
+            ("12345678901234567890", "1***************7890"),
+            ("1234567890123456789012345", "123456***************2345"),
+            ("x12345678901234567890123 y", "x1234***************0123 y"),
+            (
+                "1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1",
+                "1 1 * * * * * * * * * * * * * * * 1 1 1 1",
+            ),
+            (
+                "1-2-3-4-5-6-7-8-9-0-1-2-3-4-5-6-7-8-9-0-1-2",
+                "1-2-3-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-9-0-1-2",
+            ),
+            (
+                "1234  5678 1234 5678 9999 1111",
+                "1234  5*** **** **** **** 1111",
+            ),
+            (
+                "1234   5678123456789999 1111",
+                "1234   5*************** 1111",
+            ),
+        ] {
+            assert_eq!(mask_pii(input), expected, "input: {input:?}");
+        }
+    }
+
+    #[test]
+    fn linear_card_scan_matches_legacy_rescan() {
+        for digits in 1..=45 {
+            for separator in ["", " ", "-", "  ", "- ", "   ", "x"] {
+                let run = vec!["7"; digits].join(separator);
+                assert_matches_legacy(&run);
+                assert_matches_legacy(&format!("a{run}  -12 34@b.co"));
+            }
+        }
+
+        let alphabet: Vec<char> = "01234567890123456789012345678901234567  --- x@.*"
+            .chars()
+            .collect();
+        let mut state: u64 = 0x9E37_79B9_7F4A_7C15;
+        for _ in 0..3_000 {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            let len = (state % 64) as usize;
+            let input: String = (0..len)
+                .map(|_| {
+                    state ^= state << 13;
+                    state ^= state >> 7;
+                    state ^= state << 17;
+                    alphabet[(state % alphabet.len() as u64) as usize]
+                })
+                .collect();
+            assert_matches_legacy(&input);
+        }
+    }
+
+    #[test]
+    fn over_long_digit_runs_are_masked_in_linear_time() {
+        // Linear scanning finishes in milliseconds. The former per-position
+        // rescan performs roughly n^2 / 2 steps (about 2 * 10^10 here) plus one
+        // allocation per start position, which takes minutes.
+        let started = Instant::now();
+
+        let digits = "7".repeat(200_000);
+        let masked = mask_pii(&digits);
+        assert_eq!(masked.len(), digits.len());
+        assert_eq!(&masked[..199_981], &digits[..199_981]);
+        assert_eq!(&masked[199_981..], "***************7777");
+
+        let spaced = "1 ".repeat(100_000);
+        let masked = mask_pii(&spaced);
+        assert_eq!(masked.len(), spaced.len());
+        let tail_start = spaced.len() - 38;
+        assert_eq!(&masked[..tail_start], &spaced[..tail_start]);
+        assert_eq!(
+            &masked[tail_start..],
+            format!("{}1 1 1 1 ", "* ".repeat(15))
+        );
+
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "masking 400,000 characters took {:?}",
+            started.elapsed()
+        );
+    }
 }

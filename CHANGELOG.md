@@ -48,6 +48,22 @@ A prepared version section does not establish that its tag or crates exist.
   SemVer and CodeQL to the post-merge push, a nightly full-matrix run and weekly
   schedules. `v12` pull requests and release admission keep the complete set.
 
+### Core security review fixes
+
+- `mask_pii` and `pii_masking_middleware` scan card-like digit runs in linear
+  time. Before, a digit run longer than 19 digits (including `1 1 1 …` or
+  `1-1-1…` patterns) was rescanned from every position, so about 1 MB of
+  digits in a masked response could stall a Tokio worker. Masked output is
+  unchanged.
+- Tenant-bound cache keys, realtime channels and presence rooms encode `%` and
+  `:` in the tenant segment (`%25`, `%3A`), so `("a", "b:c")` and
+  `("a:b", "c")` no longer share a namespace. Tenant IDs without `:` or `%`
+  keep their existing keys; cached entries for IDs containing `:` miss once
+  after upgrade. Tenant IDs made only of dots are rejected, including by upload
+  admission, and `TenantStorage` returns `StorageError::PathTraversal` unless
+  the tenant ID is one normal path segment. Before, tenant `.` resolved into
+  another tenant's storage root.
+
 ### Portfolio blueprint escaping
 
 - The generated portfolio page escapes CMS values and renders only `http(s)`
