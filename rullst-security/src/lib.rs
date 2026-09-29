@@ -46,7 +46,8 @@ pub use log_redactor::redact_secrets;
 pub use login_guard::LoginGuard;
 pub use mfa::{
     MIN_TOTP_SECRET_BYTES, build_mfa_qr_svg, build_otpauth_uri, decode_base32, generate_mfa_secret,
-    generate_totp_code, try_generate_mfa_secret, verify_totp_code,
+    generate_totp_code, try_generate_mfa_secret, verify_totp_code, verify_totp_step,
+    verify_totp_step_after,
 };
 pub use rasp::{RaspInspector, RaspSecurityLayer, RaspSecurityService};
 pub use rate_limit::{

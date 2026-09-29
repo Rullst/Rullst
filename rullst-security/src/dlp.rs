@@ -14,6 +14,10 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use tower::{Layer, Service};
 
+mod masking;
+
+pub(crate) use masking::SegmentRewriter;
+
 const MAX_BUFFERED_RESPONSE_BYTES: u64 = 2 * 1024 * 1024;
 
 fn textual_media_type(headers: &HeaderMap) -> Option<&str> {
@@ -95,6 +99,14 @@ fn body_collection_failure() -> Response<Body> {
 }
 
 /// Masks sensitive patterns from response payloads. Returns (sanitized_bytes, was_masked).
+///
+/// Masks complete PEM private-key blocks, 20-character AWS access-key IDs and
+/// the password in `postgres://`, `postgresql://`, `mysql://` and `redis://`
+/// URLs. Each pass is linear in the input length. A URL password is masked
+/// only when it appears inside the URL authority: credentials must be RFC 3986
+/// percent-encoded, and the authority ends at the first `/`, `?`, `#`,
+/// whitespace, quote, `<`, `>`, backtick or control character, or after
+/// 2,048 bytes. The last `@` in the authority ends the userinfo.
 pub fn mask_response_payload(input: &[u8]) -> (Vec<u8>, bool) {
     if input.is_empty() {
         return (Vec::new(), false);
@@ -103,102 +115,20 @@ pub fn mask_response_payload(input: &[u8]) -> (Vec<u8>, bool) {
     let Ok(text) = std::str::from_utf8(input) else {
         return (input.to_vec(), false);
     };
-    let mut sanitized = text.to_owned();
-    let mut modified = false;
 
-    // 1. Mask Private Keys (RSA / OpenSSH / Generic)
-    for (begin, end_marker) in [
-        ("-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----"),
-        (
-            "-----BEGIN RSA PRIVATE KEY-----",
-            "-----END RSA PRIVATE KEY-----",
-        ),
-        (
-            "-----BEGIN OPENSSH PRIVATE KEY-----",
-            "-----END OPENSSH PRIVATE KEY-----",
-        ),
-    ] {
-        let mut cursor = 0;
-        while let Some(offset) = sanitized[cursor..].find(begin) {
-            let start = cursor + offset;
-            let search_from = start + begin.len();
-            let Some(end_offset) = sanitized[search_from..].find(end_marker) else {
-                break;
-            };
-            let end = search_from + end_offset + end_marker.len();
-            sanitized.replace_range(start..end, "[DLP_BLOCKED_PRIVATE_KEY]");
-            modified = true;
-            cursor = start + "[DLP_BLOCKED_PRIVATE_KEY]".len();
+    match masking::mask_text(text) {
+        Some(sanitized) => {
+            let store = SecurityStore::global();
+            store.inc_dlp_masked();
+
+            store.push_local_event(LiveSecurityEvent::local(
+                "DLP_SECRET_LEAK_PREVENTED",
+                "Neutralized secret credentials/key from outgoing HTTP response",
+                "unknown",
+            ));
+            (sanitized.into_bytes(), true)
         }
-    }
-
-    // 2. Mask all AWS Access Keys (AKIA...)
-    let mut cursor = 0;
-    while let Some(offset) = sanitized[cursor..].find("AKIA") {
-        let start = cursor + offset;
-        let remainder = &sanitized.as_bytes()[start..];
-        let is_access_key = remainder.len() >= 20
-            && remainder[..20]
-                .iter()
-                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit());
-
-        if is_access_key {
-            sanitized.replace_range(start..start + 20, "AKIA****************");
-            modified = true;
-            cursor = start + 20;
-        } else {
-            cursor = start + 4;
-        }
-        if cursor >= sanitized.len() {
-            break;
-        }
-    }
-
-    // 3. Mask all database connection string passwords (postgres://user:pass@host:5432/db)
-    for scheme in &["postgres://", "postgresql://", "mysql://", "redis://"] {
-        let mut cursor = 0;
-        while let Some(offset) = sanitized[cursor..].find(scheme) {
-            let start = cursor + offset;
-            let rest = &sanitized[start + scheme.len()..];
-            if let Some(at_idx) = rest.find('@') {
-                let auth_part = &rest[..at_idx];
-                if let Some(colon_idx) = auth_part.find(':') {
-                    let pass_start = start + scheme.len() + colon_idx + 1;
-                    let pass_end = start + scheme.len() + at_idx;
-                    if &sanitized[pass_start..pass_end] != "*****" {
-                        sanitized.replace_range(pass_start..pass_end, "*****");
-                        modified = true;
-                        // The replacement can shorten the URL. Continue immediately after
-                        // the `@` in the updated string instead of reusing its stale offset.
-                        cursor = pass_start + "*****".len() + 1;
-                    } else {
-                        cursor = pass_end + 1;
-                    }
-                    if cursor >= sanitized.len() {
-                        break;
-                    }
-                    continue;
-                }
-            }
-            cursor = start + scheme.len();
-            if cursor >= sanitized.len() {
-                break;
-            }
-        }
-    }
-
-    if modified {
-        let store = SecurityStore::global();
-        store.inc_dlp_masked();
-
-        store.push_local_event(LiveSecurityEvent::local(
-            "DLP_SECRET_LEAK_PREVENTED",
-            "Neutralized secret credentials/key from outgoing HTTP response",
-            "unknown",
-        ));
-        (sanitized.into_bytes(), true)
-    } else {
-        (input.to_vec(), false)
+        None => (input.to_vec(), false),
     }
 }
 
