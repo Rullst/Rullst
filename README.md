@@ -264,7 +264,7 @@ Rullst is maintained with the rigor you expect from security software:
   Linux/macOS/Windows matrix every night and before every release.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/Rullst-security.png" alt="Nexus security radar with WAF, honeypot, prompt-injection and audit counters" width="90%"/>
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/security-radar.webp" alt="Nexus SOC Threat Radar with WAF, honeypot, prompt-injection and audit counters" width="100%"/>
   <br>
   <sub>The Nexus security radar (recorded screenshot).</sub>
 </p>
