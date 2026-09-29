@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790710021035,
+  "lastUpdate": 1790718260537,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -7905,6 +7905,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 428,
             "range": "± 8",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "46f5e7939371230559cb9c2af7cd3b5a13f8bce2",
+          "message": "Merge pull request #327 from Rullst/fix/v13-cli-consumer-cleanup\n\nfix(cli): drop the dead school path and keep configuration content out of dev errors",
+          "timestamp": "2026-09-29T18:23:32-03:00",
+          "tree_id": "97dd7e4aa90637ba0047875ab690387fd3abd10a",
+          "url": "https://github.com/Rullst/Rullst/commit/46f5e7939371230559cb9c2af7cd3b5a13f8bce2"
+        },
+        "date": 1790718259293,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 537,
+            "range": "± 1",
             "unit": "ns/iter"
           }
         ]
