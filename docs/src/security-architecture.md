@@ -143,7 +143,11 @@ but application queries must still use binds and access control.
 DLP modifies only supported textual responses whose body can be safely buffered
 within configured limits. Applications must test JSON, HTML, binary, compressed,
 SSE, streaming, and oversized responses so headers and bodies remain
-protocol-correct.
+protocol-correct. Masking and log redaction run in time linear in the inspected
+length. Database URL passwords are masked only inside the URL authority, which
+ends at the first `/`, `?`, `#`, whitespace, quote, `<`, `>`, backtick or
+control character, or after 2,048 bytes; unencoded delimiters in a password
+therefore end detection early.
 
 ## Audit chains
 
