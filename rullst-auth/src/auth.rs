@@ -186,11 +186,28 @@ fn load_dotenv_values() -> Result<HashMap<String, String>, AuthError> {
         return Ok(HashMap::new());
     }
 
-    let content =
-        fs::read_to_string(".env").map_err(|error| AuthError::General(error.to_string()))?;
-    dotenvy::from_read_iter(content.as_bytes())
-        .map(|entry| entry.map_err(|error| AuthError::General(error.to_string())))
-        .collect()
+    let content = fs::read_to_string(".env")
+        .map_err(|error| AuthError::General(format!("failed to read .env: {}", error.kind())))?;
+    parse_dotenv(&content)
+}
+
+/// Parses dotenv content with errors that never contain file content: dotenvy's
+/// own parse error embeds the unparsed remainder, which can include secrets.
+fn parse_dotenv(content: &str) -> Result<HashMap<String, String>, AuthError> {
+    let mut values = HashMap::new();
+    for (index, entry) in dotenvy::from_read_iter(content.as_bytes()).enumerate() {
+        let (name, value) = entry.map_err(|error| {
+            AuthError::General(match error {
+                dotenvy::Error::LineParse(..) => {
+                    format!("invalid .env syntax in entry {}", index + 1)
+                }
+                dotenvy::Error::Io(error) => format!("failed to read .env: {}", error.kind()),
+                _ => "invalid .env file".to_string(),
+            })
+        })?;
+        values.insert(name, value);
+    }
+    Ok(values)
 }
 
 fn read_process_environment(name: &str) -> Result<Option<String>, AuthError> {
@@ -230,6 +247,12 @@ fn detect_environment_with_dotenv(
 }
 
 fn detect_environment() -> Result<rullst_core::config::Environment, AuthError> {
+    // Process selectors outrank `.env`; when one is set, never read the file.
+    if read_process_environment("RULLST_ENV")?.is_some()
+        || read_process_environment("APP_ENV")?.is_some()
+    {
+        return detect_environment_with_dotenv(&HashMap::new());
+    }
     detect_environment_with_dotenv(&load_dotenv_values()?)
 }
 
@@ -796,6 +819,27 @@ mod tests {
         // We avoid mutating `std::env::set_var` here because it races with concurrent tests.
         let key = get_app_key().unwrap();
         assert!(key.len() > 1); // Kills Ok(vec![1]) mutant
+    }
+
+    #[test]
+    fn dotenv_errors_never_echo_file_content() {
+        let secret = "sk_live_unit_redaction_canary";
+        let content = format!(
+            "# comment\nAPP_ENV=production\nDATABASE_URL=\"postgres://open\nSTRIPE_SECRET={secret}\n"
+        );
+        let error = parse_dotenv(&content).unwrap_err();
+        assert_eq!(
+            error,
+            AuthError::General("invalid .env syntax in entry 2".to_string())
+        );
+        for rendered in [error.to_string(), format!("{error:?}")] {
+            assert!(!rendered.contains(secret));
+            assert!(!rendered.contains("postgres://"));
+        }
+
+        let values = parse_dotenv("A=1\n\n# note\nB='two words'\nA=3\n").unwrap();
+        assert_eq!(values.get("A").map(String::as_str), Some("3"));
+        assert_eq!(values.get("B").map(String::as_str), Some("two words"));
     }
 
     #[test]
