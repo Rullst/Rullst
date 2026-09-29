@@ -4,9 +4,9 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/hero-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/hero-light.svg">
-    <img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/hero-dark-static.webp" alt="Rullst — build secure apps in Rust without the suffering. Batteries included, secure by default, designed for humans and AI." width="100%">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/hero-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/hero-light.svg">
+    <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/hero-dark-static.webp" alt="Rullst — build secure apps in Rust without the suffering. Batteries included, secure by default, designed for humans and AI." width="100%">
   </picture>
 </p>
 
@@ -37,7 +37,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/terminal.svg" alt="Terminal: cargo rullst new asks for the app name, blueprint and database, creates a SaaS starter with SQLite, then cargo rullst dev compiles it and serves it at http://localhost:3000." width="92%">
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/terminal.svg" alt="Terminal: cargo rullst new asks for the app name, blueprint and database, creates a SaaS starter with SQLite, then cargo rullst dev compiles it and serves it at http://localhost:3000." width="92%">
 </p>
 
 <a id="quickstart"></a>
@@ -147,9 +147,9 @@ curl http://127.0.0.1:3000/api/health
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/features-dark.webp">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/features-light.webp">
-    <img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/features-dark.webp" alt="One framework, the whole product. Secure by default: Argon2id, sessions, passkeys, OAuth2/OIDC, CSRF, strict headers, WAF and login jail. Data that stays correct: Active Record, transactions, migrations and an outbox on SQLite, PostgreSQL and MySQL. Six real blueprints: API, Blog, SaaS, LMS, Portfolio and ERP. Made for AI coding: explicit APIs, compile-time macros, typed errors, no runtime reflection. Payments and email: Stripe billing with signed webhooks; Resend, SendGrid, Postmark and SMTP. AI built in: OpenAI, Claude, Gemini, DeepSeek and Ollama with prompt-injection filtering and PII masking. See inside your app: Studio telemetry and the Nexus admin with a security radar. Web first, native too: HTMX, JSON APIs, and Tauri desktop and mobile shells via Omni." width="100%">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/features-dark.webp">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/features-light.webp">
+    <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/features-dark.webp" alt="One framework, the whole product. Secure by default: Argon2id, sessions, passkeys, OAuth2/OIDC, CSRF, strict headers, WAF and login jail. Data that stays correct: Active Record, transactions, migrations and an outbox on SQLite, PostgreSQL and MySQL. Six real blueprints: API, Blog, SaaS, LMS, Portfolio and ERP. Made for AI coding: explicit APIs, compile-time macros, typed errors, no runtime reflection. Payments and email: Stripe billing with signed webhooks; Resend, SendGrid, Postmark and SMTP. AI built in: OpenAI, Claude, Gemini, DeepSeek and Ollama with prompt-injection filtering and PII masking. See inside your app: Studio telemetry and the Nexus admin with a security radar. Web first, native too: HTMX, JSON APIs, and Tauri desktop and mobile shells via Omni." width="100%">
   </picture>
 </p>
 
@@ -169,21 +169,21 @@ deployment recipes live in [Rullst/examples](https://github.com/Rullst/examples)
 <table>
   <tr>
     <td width="50%" align="center" valign="top">
-      <a href="https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/"><img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/demo-showcase.webp" alt="Showcase built with Rullst: SSR, LiveView, Wasm, ORM, billing, security and AI demos" width="100%"></a>
+      <a href="https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/"><img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/demo-showcase.webp" alt="Showcase built with Rullst: SSR, LiveView, Wasm, ORM, billing, security and AI demos" width="100%"></a>
       <br><b>🌐 Showcase</b> — SSR, LiveView, Wasm, ORM, billing, security and AI demos · <a href="https://rullst-showcase.redpond-24d9228d.eastus.azurecontainerapps.io/">Open ↗</a>
     </td>
     <td width="50%" align="center" valign="top">
-      <a href="https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/"><img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/demo-lms.webp" alt="LMS built with Rullst: course catalog and learning platform" width="100%"></a>
+      <a href="https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/"><img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/demo-lms.webp" alt="LMS built with Rullst: course catalog and learning platform" width="100%"></a>
       <br><b>🎓 LMS</b> — course catalog and learning platform · <a href="https://rullst-lms.redpond-24d9228d.eastus.azurecontainerapps.io/">Open ↗</a>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center" valign="top">
-      <a href="https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/"><img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/demo-portfolio.webp" alt="Portfolio built with Rullst: projects, experience, Nexus and Studio" width="100%"></a>
+      <a href="https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/"><img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/demo-portfolio.webp" alt="Portfolio built with Rullst: projects, experience, Nexus and Studio" width="100%"></a>
       <br><b>💼 Portfolio</b> — projects, experience, Nexus and Studio · <a href="https://rullst-portfolio.redpond-24d9228d.eastus.azurecontainerapps.io/">Open ↗</a>
     </td>
     <td width="50%" align="center" valign="top">
-      <a href="https://saas.rullst.win/"><img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/demo-saas.webp" alt="SaaS in production built with Rullst: real purchases with Stripe" width="100%"></a>
+      <a href="https://saas.rullst.win/"><img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/demo-saas.webp" alt="SaaS in production built with Rullst: real purchases with Stripe" width="100%"></a>
       <br><b>🛒 SaaS in production</b> — real purchases with Stripe · <a href="https://saas.rullst.win/">Open ↗</a>
     </td>
   </tr>
@@ -206,9 +206,9 @@ serves browser graphics from Rullst.
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/architecture-dark.webp">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/architecture-light.webp">
-    <img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/architecture-dark.webp" alt="Rullst architecture. Your app (API, Blog, SaaS, LMS, Portfolio, ERP) sits on four layers: Product (rullst-capital payments, rullst-mail email, rullst-ai AI and RAG, rullst-messaging queues, rullst-connect OAuth2/OIDC); Trust (rullst-auth identity and sessions, rullst-security WAF, headers, CSRF and RASP); Data (rullst-orm Active Record, migrations and transactions, rullst-orm-macros); Runtime (rullst-core HTTP runtime and routing, rullst-macros html!). Everything runs on Axum, Tokio, Tower and SQLx. Tools: cargo-rullst CLI, rullst-studio control room, rullst-nexus admin. One facade crate, rullst, enables only the features you need." width="100%">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/architecture-dark.webp">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/architecture-light.webp">
+    <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/architecture-dark.webp" alt="Rullst architecture. Your app (API, Blog, SaaS, LMS, Portfolio, ERP) sits on four layers: Product (rullst-capital payments, rullst-mail email, rullst-ai AI and RAG, rullst-messaging queues, rullst-connect OAuth2/OIDC); Trust (rullst-auth identity and sessions, rullst-security WAF, headers, CSRF and RASP); Data (rullst-orm Active Record, migrations and transactions, rullst-orm-macros); Runtime (rullst-core HTTP runtime and routing, rullst-macros html!). Everything runs on Axum, Tokio, Tower and SQLx. Tools: cargo-rullst CLI, rullst-studio control room, rullst-nexus admin. One facade crate, rullst, enables only the features you need." width="100%">
   </picture>
 </p>
 
@@ -264,7 +264,7 @@ Rullst is maintained with the rigor you expect from security software:
   Linux/macOS/Windows matrix every night and before every release.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Rullst/Rullst/docs/v13-readme-wow/images/readme/security-radar.webp" alt="Nexus SOC Threat Radar with WAF, honeypot, prompt-injection and audit counters" width="100%"/>
+  <img src="https://raw.githubusercontent.com/Rullst/Rullst/main/images/readme/security-radar.webp" alt="Nexus SOC Threat Radar with WAF, honeypot, prompt-injection and audit counters" width="100%"/>
   <br>
   <sub>The Nexus security radar (recorded screenshot).</sub>
 </p>
