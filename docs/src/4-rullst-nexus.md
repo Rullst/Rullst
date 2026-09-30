@@ -303,7 +303,9 @@ applies to the panel unchanged, so there is no reason to add `'unsafe-inline'`,
 `'unsafe-eval'` or a CDN to the application-wide `security.csp`. A custom
 policy must keep `'self'` for scripts, styles and `connect-src`, and `data:`
 for images. Nothing is requested from GitHub, unpkg or Google Fonts; the panel
-uses system fonts.
+uses system fonts. htmx's history cache is disabled, so admin pages and open
+edit forms are never snapshotted into origin-wide `localStorage`; Back reloads
+the page from the server.
 
 ## Benefits of Nexus
 

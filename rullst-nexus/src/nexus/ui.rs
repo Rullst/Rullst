@@ -84,6 +84,10 @@ pub fn render_sidebar(state: &NexusState, active_table: Option<&str>) -> String 
     out
 }
 
+const HTMX_CONFIG_META: &str = "<meta name=\"htmx-config\" content='{\"allowEval\":false,\
+     \"allowScriptTags\":false,\"includeIndicatorStyles\":false,\"historyCacheSize\":0,\
+     \"refreshOnHistoryMiss\":true}' />\n";
+
 pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String {
     let brand = rullst_core::html::escape_str(state.brand.as_str());
     let mut out = String::new();
@@ -98,7 +102,10 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
     // Same-origin assets only: the production CSP (`script-src 'self'`,
     // `style-src 'self'`, `img-src 'self' data:`) must not need relaxing.
     // htmx must not evaluate code or inject a style element under that policy.
-    out.push_str("<meta name=\"htmx-config\" content='{\"allowEval\":false,\"allowScriptTags\":false,\"includeIndicatorStyles\":false}' />\n");
+    // It must not snapshot admin pages (records, open edit forms) into
+    // localStorage either, which outlives the session and is shared with the
+    // whole origin: Back re-fetches the page instead.
+    out.push_str(HTMX_CONFIG_META);
     let _ = std::fmt::Write::write_fmt(
         &mut out,
         format_args!(
@@ -161,6 +168,27 @@ pub const NEXUS_CSS: &str = include_str!("../../assets/nexus.css");
 #[cfg(test)]
 mod icon_tests {
     use super::{safe_icon_html, wants_fragment};
+
+    #[test]
+    fn htmx_never_caches_admin_pages_in_local_storage() {
+        let state = crate::nexus::NexusState {
+            registry: std::sync::Arc::new(Vec::new()),
+            brand: std::sync::Arc::new("Nexus".to_string()),
+            audit_policy: crate::nexus::NexusAuditPolicy::Disabled,
+        };
+        let html = super::render_shell(&state, "", "");
+        let config = html
+            .split("<meta name=\"htmx-config\" content='")
+            .nth(1)
+            .and_then(|rest| rest.split('\'').next())
+            .expect("htmx config meta");
+        let config: serde_json::Value = serde_json::from_str(config).expect("JSON htmx config");
+        assert_eq!(config["historyCacheSize"], 0);
+        assert_eq!(config["refreshOnHistoryMiss"], true);
+        assert_eq!(config["allowEval"], false);
+        assert_eq!(config["allowScriptTags"], false);
+        assert_eq!(config["includeIndicatorStyles"], false);
+    }
 
     #[test]
     fn history_restores_receive_the_full_shell() {

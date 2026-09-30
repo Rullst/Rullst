@@ -222,7 +222,10 @@ default production CSP (`script-src 'self' 'nonce-…'; style-src 'self' 'nonce-
 therefore runs Nexus unchanged; do not add `'unsafe-inline'`, `'unsafe-eval'` or a
 CDN to `security.csp` for Nexus. A custom policy must keep `'self'` in
 `script-src`, `style-src` and `connect-src`, and `data:` in `img-src`. htmx runs
-with `allowEval`, `allowScriptTags` and `includeIndicatorStyles` disabled.
+with `allowEval`, `allowScriptTags` and `includeIndicatorStyles` disabled, and
+with its history cache off (`historyCacheSize: 0`, `refreshOnHistoryMiss: true`):
+admin pages and open edit forms are never snapshotted into origin-wide
+`localStorage`, and Back reloads the page from the server.
 The asset routes sit behind the same authentication policy as the panel.
 
 `assets/htmx-2.0.4.min.js` is the unmodified upstream
