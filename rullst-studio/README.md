@@ -9,7 +9,8 @@ telemetry views from the sources explicitly supplied by the application.
 - **Database inspector:** Read and filter configured SQLx tables, edit bounded
   primitive non-key values, delete one primary-key-selected row with explicit
   confirmation, and inspect a live ER diagram. Mutation contracts run against
-  SQLite, PostgreSQL, MySQL, and MariaDB.
+  SQLite, PostgreSQL, MySQL, and MariaDB; PostgreSQL runs under both the
+  default `sqlx::Any` build and `strict-postgres`.
 - **API playground:** Mount interactive Swagger UI from an `OpenApi` document
   explicitly supplied by the application; Studio does not infer arbitrary Axum
   routes.

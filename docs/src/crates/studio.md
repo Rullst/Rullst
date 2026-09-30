@@ -15,7 +15,8 @@ views from the sources explicitly supplied by the application.
   exact confirmation, and inspect a live ER diagram. Tables whose key includes
   a column outside the ASCII identifier boundary stay read-only, and each write
   commits only when exactly one row changed. SQLite, PostgreSQL, MySQL and
-  MariaDB run executable mutation contracts.
+  MariaDB run executable mutation contracts; PostgreSQL runs under both the
+  default `sqlx::Any` build and `strict-postgres`.
 - **API playground:** Mount interactive Swagger UI from an `OpenApi` document
   explicitly supplied by the application; Studio does not infer arbitrary Axum
   routes.

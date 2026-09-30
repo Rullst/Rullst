@@ -1,6 +1,6 @@
 //! Composite-key regression shared by the Studio mutation matrix.
 
-use super::response_text;
+use super::{fixture, response_text};
 use axum::{
     body::Body,
     http::{Request, StatusCode, header},
@@ -36,8 +36,7 @@ pub(super) async fn exercise_incomplete_primary_key(
         .push(" VARCHAR(32) NOT NULL, qty BIGINT NOT NULL, PRIMARY KEY (branch, ")
         .push(&key_column)
         .push("))");
-    create
-        .build()
+    fixture(&mut create, driver)
         .execute(pool)
         .await
         .expect("create Studio incomplete-key table");
@@ -55,8 +54,7 @@ pub(super) async fn exercise_incomplete_primary_key(
             .push(", ")
             .push_bind(quantity)
             .push(")");
-        insert
-            .build()
+        fixture(&mut insert, driver)
             .execute(pool)
             .await
             .expect("insert Studio incomplete-key row");
@@ -73,10 +71,10 @@ pub(super) async fn exercise_incomplete_primary_key(
             .push(" OR qty = ")
             .push_bind(20_i64)
             .push(")");
-        count
-            .build_query_scalar::<i64>()
+        fixture(&mut count, driver)
             .fetch_one(pool)
             .await
+            .and_then(|row| rullst_orm::_sqlx::Row::try_get::<i64, _>(&row, 0))
             .expect("read Studio incomplete-key rows")
     };
 

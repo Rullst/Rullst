@@ -5,6 +5,7 @@
 pub mod db;
 pub mod handlers;
 pub mod layout;
+pub(crate) mod portable;
 
 #[cfg(test)]
 mod tests;
