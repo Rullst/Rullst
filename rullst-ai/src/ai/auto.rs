@@ -3,8 +3,13 @@ use super::providers::{
     anthropic::AnthropicProvider, deepseek::DeepSeekProvider, gemini::GeminiProvider,
     ollama::OllamaProvider, openai::OpenAiProvider, openai_compatible::OpenAiCompatibleProvider,
 };
-use super::{AiClient, AiError, AiProvider, FallbackProvider};
+use super::{AiClient, AiError, AiProvider, FallbackProvider, mock::ProviderMode};
 use std::sync::Arc;
+
+/// Labels a value offline exactly when the provider constructor selects mock mode.
+fn offline_credential(credential: &str) -> bool {
+    ProviderMode::from_credential(credential).is_mock()
+}
 
 /// Validated provider configuration captured without sending requests.
 ///
@@ -62,7 +67,7 @@ impl AutoAiConfig {
             return Err(AiError::ConfigError("OPENAI_BASE_URL requires OPENAI_API_KEY and OPENAI_MODEL; use an explicit provider for unauthenticated local servers".into()));
         }
         if let Some(key) = openai_key {
-            let offline = key.starts_with("mock_");
+            let offline = offline_credential(&key);
             if let Some(base) = base_url {
                 let model = get("OPENAI_MODEL").ok_or_else(|| {
                     AiError::ConfigError("a custom OPENAI_BASE_URL requires OPENAI_MODEL".into())
@@ -91,7 +96,7 @@ impl AutoAiConfig {
             }
         }
         if let Some(key) = get("ANTHROPIC_API_KEY") {
-            let name = if key.starts_with("mock_") {
+            let name = if offline_credential(&key) {
                 "Anthropic Claude (offline mock)"
             } else {
                 "Anthropic Claude"
@@ -99,7 +104,7 @@ impl AutoAiConfig {
             config.push(AnthropicProvider::new(key), name);
         }
         if let Some(key) = get("GEMINI_API_KEY") {
-            let name = if key.starts_with("mock_") {
+            let name = if offline_credential(&key) {
                 "Google Gemini (offline mock)"
             } else {
                 "Google Gemini"
@@ -107,7 +112,7 @@ impl AutoAiConfig {
             config.push(GeminiProvider::new(key), name);
         }
         if let Some(key) = get("DEEPSEEK_API_KEY") {
-            let name = if key.starts_with("mock_") {
+            let name = if offline_credential(&key) {
                 "DeepSeek (offline mock)"
             } else {
                 "DeepSeek"
@@ -115,7 +120,7 @@ impl AutoAiConfig {
             config.push(DeepSeekProvider::new(key), name);
         }
         if let Some(key) = get("GROQ_API_KEY") {
-            let name = if key.starts_with("mock_") {
+            let name = if offline_credential(&key) {
                 "Groq (offline mock)"
             } else {
                 "Groq"
@@ -131,7 +136,7 @@ impl AutoAiConfig {
             );
         }
         if let Some(host) = get("OLLAMA_HOST") {
-            let name = if host.starts_with("mock_") {
+            let name = if offline_credential(&host) {
                 "Ollama Local (offline mock)"
             } else {
                 "Ollama Local"
@@ -218,6 +223,39 @@ mod tests {
                 .await
                 .unwrap()
                 .is_empty()
+        );
+    }
+
+    #[tokio::test]
+    async fn labels_follow_the_provider_mode_for_padded_mock_values() {
+        // OpenAI-compatible endpoints (custom and Groq) reject padded keys as
+        // malformed, so only these providers can run with one.
+        let config = resolve(&[
+            ("OPENAI_API_KEY", " mock_openai"),
+            ("ANTHROPIC_API_KEY", " mock_demo"),
+            ("GEMINI_API_KEY", "\tmock_gemini"),
+            ("DEEPSEEK_API_KEY", " mock_deepseek"),
+            ("OLLAMA_HOST", " mock_ollama"),
+        ])
+        .unwrap();
+        assert_eq!(
+            config.provider_names(),
+            [
+                "OpenAI (offline mock)",
+                "Anthropic Claude (offline mock)",
+                "Google Gemini (offline mock)",
+                "DeepSeek (offline mock)",
+                "Ollama Local (offline mock)",
+            ]
+        );
+        // The providers really run offline, as the labels now state.
+        assert!(
+            config
+                .into_client()
+                .prompt("Hello")
+                .await
+                .unwrap()
+                .starts_with("Mock response")
         );
     }
 

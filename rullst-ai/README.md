@@ -44,7 +44,8 @@ the product name alone is not treated as compatibility evidence.
 `AiClient::auto()` and Nexus use the same `AutoAiConfig` resolver. Its fallback
 order is OpenAI (or its explicitly configured compatible endpoint), Anthropic,
 Gemini, DeepSeek, Groq, then Ollama. Empty environment values are absent;
-`mock_*` credentials are labeled as offline. Configuration is not a health probe.
+`mock_*` credentials are labeled as offline using the same whitespace trimming
+the providers apply. Configuration is not a health probe.
 With no provider it retains the deterministic offline fallback.
 
 Groq uses `GROQ_API_KEY` and an explicit account-supported `GROQ_MODEL` through
