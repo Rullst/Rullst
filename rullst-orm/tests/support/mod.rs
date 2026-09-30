@@ -136,47 +136,61 @@ pub async fn exercise_outbox() {
 /// A transaction whose read snapshot predates a concurrently committed
 /// enqueue of the same key reuses that event (InnoDB REPEATABLE READ would
 /// otherwise hide the row from a plain SELECT).
+///
+/// The scenario needs a server that commits another transaction's write while
+/// this one keeps its read snapshot open. SQLite serializes writers against
+/// open readers instead: the shared-cache `sqlite::memory:` pool makes the
+/// other connection's INSERT wait for `late` to finish, which it never would,
+/// so SQLite skips it. The timeout turns any such self-deadlock into a failure.
 #[allow(dead_code)]
 async fn exercise_outbox_snapshot_reuse() {
     use rullst_orm::{Error, Orm, Outbox};
     use serde_json::json;
 
-    let payload = json!({"snapshot": true});
-    let mut late = Orm::begin_transaction()
-        .await
-        .expect("begin the late transaction");
-    let _: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_outbox")
-        .fetch_one(&mut *late)
-        .await
-        .expect("establish the late transaction's read snapshot");
-    let committed_payload = payload.clone();
-    let committed = Orm::transaction(move |_| {
-        Box::pin(async move {
-            Outbox::enqueue(
-                "matrix-snapshot",
-                "snapshot-event",
-                "matrix.created",
-                &committed_payload,
-            )
+    if Orm::driver().expect("initialized driver") == "sqlite" {
+        return;
+    }
+    let scenario = async {
+        let payload = json!({"snapshot": true});
+        let mut late = Orm::begin_transaction()
             .await
+            .expect("begin the late transaction");
+        let _: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_outbox")
+            .fetch_one(&mut *late)
+            .await
+            .expect("establish the late transaction's read snapshot");
+        let committed_payload = payload.clone();
+        let committed = Orm::transaction(move |_| {
+            Box::pin(async move {
+                Outbox::enqueue(
+                    "matrix-snapshot",
+                    "snapshot-event",
+                    "matrix.created",
+                    &committed_payload,
+                )
+                .await
+            })
         })
-    })
-    .await
-    .expect("the first enqueue commits");
-    assert!(committed.inserted);
+        .await
+        .expect("the first enqueue commits");
+        assert!(committed.inserted);
 
-    let reused = Outbox::enqueue_with_tx(
-        &mut late,
-        "matrix-snapshot",
-        "snapshot-event",
-        "matrix.created",
-        &payload,
-    )
-    .await
-    .unwrap_or_else(|error: Error| panic!("the committed key must be reused: {error}"));
-    assert!(!reused.inserted);
-    assert_eq!(reused.id, committed.id);
-    late.commit().await.expect("commit the late transaction");
+        let reused = Outbox::enqueue_with_tx(
+            &mut late,
+            "matrix-snapshot",
+            "snapshot-event",
+            "matrix.created",
+            &payload,
+        )
+        .await
+        .unwrap_or_else(|error: Error| panic!("the committed key must be reused: {error}"));
+        assert!(!reused.inserted);
+        assert_eq!(reused.id, committed.id);
+        late.commit().await.expect("commit the late transaction");
+    };
+    tokio::time::timeout(std::time::Duration::from_secs(60), scenario)
+        .await
+        .expect("the outbox snapshot scenario must not wait on its own open transaction");
 }
 
 /// Audit payloads larger than MySQL/MariaDB's 64 KiB `TEXT` are stored
