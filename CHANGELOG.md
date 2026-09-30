@@ -99,6 +99,28 @@ A prepared version section does not establish that its tag or crates exist.
   keys, dropping refilled buckets and evicting the least recently used ones.
   Clients in one IPv6 /64 now share a limit.
 
+### Core queue and cache hardening
+
+- SQLite and Redis fence lease transitions on the claimed attempt number, so a
+  stale worker can no longer complete, fail or requeue a job that was recovered
+  and claimed again. New `QueueDriver::*_attempt` methods default to the
+  unfenced behaviour for custom drivers.
+- A worker without a handler for a job hands it back with a five-second delay
+  instead of failing it, so mixed handler sets and rolling deploys no longer
+  fail each other's jobs.
+- Workers record a handler's own result when it finishes as a timeout or
+  graceful shutdown is processed; a success is no longer failed as timed out or
+  requeued.
+- `WorkerHandle` and `SchedulerHandle` buffer at most 256 undrained errors;
+  overflow is dropped, counted by the new `dropped_errors()` and logged.
+- The Redis queue retains at most 10,000 failed jobs and 10,000 dead letters by
+  default, evicting the oldest atomically (`RedisDriver::try_with_failure_retention`
+  sets 1 to 100,000). The Redis driver also implements `list_all_jobs` (at most
+  1,000 rows), `retry_failed_job` and `purge_failed_jobs`.
+- `Cache::memory()` no longer panics on a TTL too large for the monotonic clock
+  (such entries never expire), and expiry on read no longer deletes a value
+  written concurrently.
+
 ### Portfolio blueprint escaping
 
 - The generated portfolio page escapes CMS values and renders only `http(s)`
