@@ -62,6 +62,15 @@ stale handler may still have run its side effects (delivery stays
 at-least-once), and SQLite `retry_failed_job` restarts the attempt counter, so
 a worker that stays stale across a manual retry and a new claim with the same
 attempt number is not fenced.
+A worker that claims a job whose name it has no handler for hands the claim
+back instead of failing it. SQLite and Redis make the job claimable again after
+five seconds, behind jobs that are already due, so a worker that registered the
+name (for example a newer version during a rolling deploy) can run it; the
+delay keeps the claiming worker out of a hot loop, and it still reports
+`HandlerNotFound` each time. A job that no running worker can handle therefore
+stays pending and is re-offered every five seconds instead of being failed.
+Custom drivers that do not implement `QueueDriver::requeue_attempt_after` keep
+the previous behaviour and fail the job.
 `WorkerHandle` and `SchedulerHandle` buffer at most 256 undrained errors. Once
 the buffer is full, newer errors are dropped, counted by `dropped_errors()` and
 emitted as `tracing` warnings, so a handle that is kept alive but never drained

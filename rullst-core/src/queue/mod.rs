@@ -233,6 +233,25 @@ pub trait QueueDriver: Send + Sync {
     ) -> Result<(), QueueError> {
         self.requeue(job_id, reason).await
     }
+    /// Returns the exact claim returned by [`Self::pop`] to the pending state,
+    /// not claimable again until `delay` has passed.
+    ///
+    /// [`Worker`] uses this to hand back a job whose name it has no handler
+    /// for, so a worker that registered that name (for example a newer version
+    /// during a rolling deploy) can run it. Fenced like
+    /// [`Self::mark_complete_attempt`]. The default returns
+    /// [`QueueError::Unsupported`], and the worker then fails the job instead.
+    async fn requeue_attempt_after(
+        &self,
+        _job_id: &str,
+        _attempt: u32,
+        _reason: &str,
+        _delay: Duration,
+    ) -> Result<(), QueueError> {
+        Err(QueueError::Unsupported(
+            "this driver cannot defer claimed jobs".to_string(),
+        ))
+    }
     /// Recover processing leases left behind by a crashed worker.
     async fn recover_stalled(&self, _stale_after: std::time::Duration) -> Result<u64, QueueError> {
         Err(QueueError::Unsupported(

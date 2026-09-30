@@ -13,6 +13,9 @@ use tokio::task::{JoinHandle, JoinSet};
 
 mod execution;
 
+/// Delay before a job handed back for lack of a handler can be claimed again.
+pub(crate) const UNHANDLED_JOB_RETRY_DELAY: Duration = Duration::from_secs(5);
+
 /// Type alias for asynchronous job handler closures.
 pub type JobHandler = Box<
     dyn Fn(
@@ -371,21 +374,40 @@ async fn dispatch_job(
     errors: &ErrorReporter<QueueError>,
 ) {
     let Some(handler) = handlers.get(&job.name).cloned() else {
-        let missing = QueueError::HandlerNotFound(job.name.clone());
-        if let Err(error) = driver
-            .mark_failed_attempt(&job.id, job.attempts, &missing.to_string())
-            .await
-        {
-            errors.report(state_error(&job.id, "mark_failed", error));
-        } else {
-            errors.report(missing);
-        }
+        hand_back_unhandled(&job, &**driver, errors).await;
         return;
     };
 
     jobs.spawn(execution::execute_job(
         driver, handler, job, timeout, shutdown,
     ));
+}
+
+/// Returns a job this worker has no handler for to the queue, so a worker
+/// that registered its name can claim it. The delay keeps this worker from
+/// re-claiming the job in a hot loop; `HandlerNotFound` is still reported.
+/// Drivers without delayed requeue keep the previous behaviour and fail it.
+async fn hand_back_unhandled(
+    job: &QueuedJob,
+    driver: &dyn QueueDriver,
+    errors: &ErrorReporter<QueueError>,
+) {
+    let missing = QueueError::HandlerNotFound(job.name.clone());
+    let reason = missing.to_string();
+    let transition = match driver
+        .requeue_attempt_after(&job.id, job.attempts, &reason, UNHANDLED_JOB_RETRY_DELAY)
+        .await
+    {
+        Err(QueueError::Unsupported(_)) => driver
+            .mark_failed_attempt(&job.id, job.attempts, &reason)
+            .await
+            .map_err(|error| state_error(&job.id, "mark_failed", error)),
+        deferred => deferred.map_err(|error| state_error(&job.id, "requeue_unhandled", error)),
+    };
+    match transition {
+        Ok(()) => errors.report(missing),
+        Err(error) => errors.report(error),
+    }
 }
 
 fn report_outcome(

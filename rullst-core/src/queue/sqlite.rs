@@ -248,17 +248,21 @@ impl SqliteDriver {
         ensure_claim_transition(result.rows_affected(), job_id, "mark_failed", attempt)
     }
 
+    /// Returns a processing job to pending, claimable from `available_at_ms`
+    /// (`0` means immediately).
     async fn requeue_claim(
         &self,
         job_id: &str,
         attempt: Option<u32>,
         reason: &str,
+        available_at_ms: i64,
     ) -> Result<(), QueueError> {
         let attempt = attempt.map(i64::from);
         let result = sqlx::query(
-            "UPDATE rullst_jobs SET status = 'pending', error = ?, available_at_ms = 0, updated_at = datetime('now') WHERE id = ? AND status = 'processing' AND attempts = COALESCE(?, attempts)",
+            "UPDATE rullst_jobs SET status = 'pending', error = ?, available_at_ms = ?, updated_at = datetime('now') WHERE id = ? AND status = 'processing' AND attempts = COALESCE(?, attempts)",
         )
         .bind(reason)
+        .bind(available_at_ms)
         .bind(job_id)
         .bind(attempt)
         .execute(&self.pool)
@@ -384,7 +388,7 @@ impl QueueDriver for SqliteDriver {
     }
 
     async fn requeue(&self, job_id: &str, reason: &str) -> Result<(), QueueError> {
-        self.requeue_claim(job_id, None, reason).await
+        self.requeue_claim(job_id, None, reason, 0).await
     }
 
     async fn mark_complete_attempt(&self, job_id: &str, attempt: u32) -> Result<(), QueueError> {
@@ -406,7 +410,26 @@ impl QueueDriver for SqliteDriver {
         attempt: u32,
         reason: &str,
     ) -> Result<(), QueueError> {
-        self.requeue_claim(job_id, Some(attempt), reason).await
+        self.requeue_claim(job_id, Some(attempt), reason, 0).await
+    }
+
+    async fn requeue_attempt_after(
+        &self,
+        job_id: &str,
+        attempt: u32,
+        reason: &str,
+        delay: Duration,
+    ) -> Result<(), QueueError> {
+        let due = SystemTime::now().checked_add(delay).ok_or_else(|| {
+            QueueError::InvalidConfiguration("requeue delay exceeds the clock range".to_string())
+        })?;
+        let available_at_ms = i64::try_from(unix_timestamp_millis_ceil(due)?).map_err(|_| {
+            QueueError::InvalidConfiguration(
+                "requeue timestamp exceeds SQLite integer range".to_string(),
+            )
+        })?;
+        self.requeue_claim(job_id, Some(attempt), reason, available_at_ms)
+            .await
     }
 
     async fn recover_stalled(&self, stale_after: Duration) -> Result<u64, QueueError> {
