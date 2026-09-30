@@ -14,7 +14,7 @@ use crate::nexus::crud::mutation::{create_record, delete_record, update_record};
 use crate::nexus::crud::query::{PaginationParams, find_entry};
 use crate::nexus::crud::views::{render_record_form, render_table_rows, render_table_view};
 use crate::nexus::types::{NexusState, RegistryEntry};
-use crate::nexus::ui::{render_shell, render_sidebar, safe_icon_html};
+use crate::nexus::ui::{render_shell, render_sidebar, safe_icon_html, wants_fragment};
 use rullst_core::security::TenantContext;
 
 #[derive(Debug, Clone, Copy)]
@@ -82,7 +82,7 @@ pub async fn nexus_dashboard(
     content.push_str("<a href=\"/nexus/chat\" class=\"nexus-btn nexus-btn-ai\" hx-get=\"/nexus/chat\" hx-target=\"#nexus-content\" hx-push-url=\"true\">&#129302; Open AI Query Assistant</a>");
     content.push_str("</div>");
 
-    if headers.contains_key("hx-request") {
+    if wants_fragment(&headers) {
         Html(content)
     } else {
         Html(render_shell(&state, &models_sidebar, &content))
@@ -118,7 +118,7 @@ pub async fn nexus_table_view(
     let order = params.order.as_deref();
 
     let content = render_table_view(&state, entry, page, &q, sort_by, order, tenant_id).await;
-    if headers.contains_key("hx-request") {
+    if wants_fragment(&headers) {
         Html(content).into_response()
     } else {
         Html(render_shell(

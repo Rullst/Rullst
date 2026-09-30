@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::nexus::ai_chat::detect_ai_provider;
 use crate::nexus::types::NexusState;
-use crate::nexus::ui::{render_shell, render_sidebar};
+use crate::nexus::ui::{render_shell, render_sidebar, wants_fragment};
 
 /// Nothing in Core, the ORM or the AI client records spans automatically.
 const EMPTY_SPANS_HTML: &str = "<div class=\"nexus-span-empty\">No local spans have been \
@@ -112,7 +112,7 @@ pub async fn nexus_telemetry_page(
         tokio_latency, rss_metric, ai_metric_sub, spans_html
     ));
 
-    if headers.contains_key("hx-request") {
+    if wants_fragment(&headers) {
         Html(content)
     } else {
         Html(render_shell(

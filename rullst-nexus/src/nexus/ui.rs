@@ -25,6 +25,15 @@ pub(crate) fn safe_icon_html(icon: &str) -> String {
     rullst_core::html::escape_str(&decoded).into_owned()
 }
 
+/// True when a page handler may answer with only its content fragment.
+///
+/// htmx swaps navigation responses into `#nexus-content`, but a history
+/// cache miss (`HX-History-Restore-Request`) swaps the response into the
+/// whole `<body>`, which therefore needs the complete shell.
+pub(crate) fn wants_fragment(headers: &axum::http::HeaderMap) -> bool {
+    headers.contains_key("hx-request") && !headers.contains_key("hx-history-restore-request")
+}
+
 pub fn render_sidebar(state: &NexusState, active_table: Option<&str>) -> String {
     let mut out = String::new();
     for m in state.registry.iter() {
@@ -151,7 +160,20 @@ pub const NEXUS_CSS: &str = include_str!("../../assets/nexus.css");
 
 #[cfg(test)]
 mod icon_tests {
-    use super::safe_icon_html;
+    use super::{safe_icon_html, wants_fragment};
+
+    #[test]
+    fn history_restores_receive_the_full_shell() {
+        let mut headers = axum::http::HeaderMap::new();
+        assert!(!wants_fragment(&headers));
+        headers.insert("hx-request", axum::http::HeaderValue::from_static("true"));
+        assert!(wants_fragment(&headers));
+        headers.insert(
+            "hx-history-restore-request",
+            axum::http::HeaderValue::from_static("true"),
+        );
+        assert!(!wants_fragment(&headers));
+    }
 
     #[test]
     fn icon_renderer_decodes_numeric_entities_and_escapes_markup() {

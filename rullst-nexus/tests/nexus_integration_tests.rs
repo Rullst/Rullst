@@ -269,8 +269,27 @@ async fn test_nexus_htmx_partial_headers() {
         .body(Body::empty())
         .unwrap();
 
-    let res = app.oneshot(req).await.unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
+
+    // An htmx history cache miss swaps the response into <body>, so every
+    // page answers it with the complete shell, never a bare fragment.
+    for route in ["/", "/table/users", "/chat", "/security", "/telemetry"] {
+        let req = local_request()
+            .uri(route)
+            .header("hx-request", "true")
+            .header("hx-history-restore-request", "true")
+            .body(Body::empty())
+            .unwrap();
+        let res = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "{route}");
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let html = String::from_utf8_lossy(&body);
+        assert!(html.starts_with("<!DOCTYPE html>"), "{route}");
+        assert!(html.contains("id=\"nexus-content\""), "{route}");
+    }
 }
 
 #[test]
