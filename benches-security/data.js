@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790738300484,
+  "lastUpdate": 1790742018345,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -12404,6 +12404,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dbe8e82b5a693ce1a6f33ee6d1f92ab5749f904b",
+          "message": "Merge pull request #340 from Rullst/fix/v13-capital-review-fixes\n\nfix(capital): fail closed on unsigned Wise webhooks, tighten Paddle and Razorpay handling",
+          "timestamp": "2026-09-30T00:44:35-03:00",
+          "tree_id": "3de7ba1079519b769c5aae74121b00a73b21643e",
+          "url": "https://github.com/Rullst/Rullst/commit/dbe8e82b5a693ce1a6f33ee6d1f92ab5749f904b"
+        },
+        "date": 1790742017165,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 3085,
+            "range": "± 35",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 430,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 6,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 3,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 18,
             "range": "± 0",
             "unit": "ns/iter"
           }
