@@ -385,3 +385,37 @@ fn authorization_is_bound_to_the_signed_embedded_dps() {
         );
     }
 }
+
+#[test]
+fn stored_gzip_base64_rebuilds_the_exact_request() {
+    let request = NfseIssueRequest::try_from_signed_dps(signed_dps()).expect("request");
+    let rebuilt = NfseIssueRequest::try_from_dps_xml_gzip_base64(request.dps_xml_gzip_base64())
+        .expect("rebuilt request");
+    assert_eq!(rebuilt, request);
+
+    // Bytes from another deflate backend or level are kept as stored, so a
+    // journal digest over to_json() does not depend on this build's compressor.
+    let mut encoder = GzBuilder::new().write(Vec::new(), Compression::none());
+    encoder
+        .write_all(signed_dps().as_bytes())
+        .expect("write GZip");
+    let stored = STANDARD.encode(encoder.finish().expect("finish GZip"));
+    assert_ne!(stored, request.dps_xml_gzip_base64());
+    let other = NfseIssueRequest::try_from_dps_xml_gzip_base64(&stored).expect("other bytes");
+    assert_eq!(other.dps_xml_gzip_base64(), stored);
+    assert_eq!(other.dps_id(), DPS_ID);
+    assert_eq!(other.environment(), NfseApiEnvironment::Homologation);
+
+    let unsigned = format!(
+        "<DPS xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.01\"><infDPS Id=\"{DPS_ID}\"><tpAmb>2</tpAmb></infDPS></DPS>"
+    );
+    for invalid in [
+        String::new(),
+        "not base64!".to_string(),
+        STANDARD.encode(b"not gzip"),
+        encoded_xml(&unsigned),
+        format!("{}\n", request.dps_xml_gzip_base64()),
+    ] {
+        assert!(NfseIssueRequest::try_from_dps_xml_gzip_base64(&invalid).is_err());
+    }
+}

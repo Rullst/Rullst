@@ -91,6 +91,34 @@ impl NfseIssueRequest {
         })
     }
 
+    /// Rebuilds a request from its exact stored `dpsXmlGZipB64` value.
+    ///
+    /// GZip output is reproducible only for one deflate backend, and Cargo
+    /// feature unification can switch `flate2`'s backend between builds, so
+    /// recompressing a stored signed DPS may change the request digest a
+    /// [`crate::fiscal::FiscalCommandJournal`] recorded. Recover pending
+    /// commands from the persisted [`Self::dps_xml_gzip_base64`] instead: the
+    /// value must be canonical Base64 of bounded GZip whose decompressed DPS
+    /// passes the same checks as [`Self::try_from_signed_dps`], and it is
+    /// kept byte for byte. New in 13.0.
+    pub fn try_from_dps_xml_gzip_base64(value: &str) -> Result<Self, FiscalError> {
+        let malformed = || invalid_dps("stored DPS must be canonical Base64 of bounded GZip");
+        if value.is_empty() || value.len() > MAX_COMPRESSED_DPS_BYTES.div_ceil(3) * 4 {
+            return Err(malformed());
+        }
+        let compressed = STANDARD.decode(value).map_err(|_| malformed())?;
+        if compressed.len() > MAX_COMPRESSED_DPS_BYTES || STANDARD.encode(&compressed) != value {
+            return Err(malformed());
+        }
+        let signed_xml = gunzip_bounded(&compressed, MAX_DPS_XML_BYTES).map_err(|_| malformed())?;
+        let (dps_id, environment) = validate_signed_dps_shape(&signed_xml)?;
+        Ok(Self {
+            dps_id,
+            environment,
+            dps_xml_gzip_base64: value.to_owned(),
+        })
+    }
+
     pub fn dps_id(&self) -> &str {
         &self.dps_id
     }

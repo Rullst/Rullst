@@ -201,7 +201,12 @@ impl FiscalPendingCommand {
         self.environment
     }
 
-    /// Returns the lowercase SHA-256 digest of the deterministic signed request envelope.
+    /// Returns the lowercase SHA-256 digest of the signed request envelope.
+    ///
+    /// Rebuild the request for recovery with
+    /// `NfseIssueRequest::try_from_dps_xml_gzip_base64` from the stored
+    /// `dpsXmlGZipB64`; recompressing the XML with another deflate backend can
+    /// change this digest.
     pub fn request_digest(&self) -> &str {
         &self.request_digest
     }

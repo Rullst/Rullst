@@ -929,7 +929,7 @@ an outbox, idempotent consumers, and reconciliation.
 The local pipeline now implements a bounded ordinary-service DPS 1.01 builder,
 checksum-pinned validation against official production/restricted XSD sources,
 PKCS#12 RSA-SHA256 XMLDSig with inclusive C14N 1.0, independent local
-signature verification, deterministic GZip/Base64 issuance JSON, bounded
+signature verification, deterministic (per build) GZip/Base64 issuance JSON, bounded
 signed-authorization and structured-rejection parsing, and rustls mTLS client
 construction. The signed request now carries its parsed `tpAmb`, so a caller
 cannot reinterpret a homologation DPS as production (or the reverse). An
@@ -964,6 +964,11 @@ An HTTP 500 answer returns `IndeterminateResponse` and leaves the command
 pending, because the NFS-e may have been issued; a recorded rejection is final,
 so reconcile a rejection of a retransmitted DPS (for example "DPS already
 exists") by consultation before recording it.
+Persist each request's `dps_xml_gzip_base64()` and rebuild it after a restart
+with the v13 `NfseIssueRequest::try_from_dps_xml_gzip_base64`: recompressing
+the signed XML is reproducible only within one deflate backend, and a build
+whose dependencies select another deflate backend would compute a different
+request digest and conflict with the pending command.
 `record_response` records a wall-clock step backwards as the preparation time,
 while `record_response_at` with an earlier explicit time returns
 `ClockRegression`; a selected environment that differs from the signed `tpAmb`
