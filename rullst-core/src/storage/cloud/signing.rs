@@ -25,15 +25,45 @@ pub(crate) fn validate_key(key: &str) -> Result<(), CloudError> {
     Ok(())
 }
 
+/// Builds the path-style object URL whose path is already the SigV4
+/// canonical URI: the bucket and every key segment are `UriEncode`d once.
+///
+/// S3 (and R2/MinIO) verify signatures against that exact form. The `url`
+/// crate's path encoding leaves sub-delimiters such as `:`, `=`, `+`, `(` and
+/// `)` literal, which the signer would then sign in a form S3 never computes.
 pub(super) fn object_url(endpoint: &Url, bucket: &str, key: &str) -> Result<Url, CloudError> {
     validate_key(key)?;
+    if endpoint.cannot_be_a_base() {
+        return Err(CloudError::Configuration);
+    }
+    let mut path = endpoint.path().trim_end_matches('/').to_string();
+    for segment in std::iter::once(bucket).chain(key.split('/')) {
+        path.push('/');
+        push_uri_encoded(&mut path, segment);
+    }
     let mut url = endpoint.clone();
-    url.path_segments_mut()
-        .map_err(|_| CloudError::Configuration)?
-        .pop_if_empty()
-        .push(bucket)
-        .extend(key.split('/'));
+    url.set_path(&path);
+    // The encoded path contains only unreserved characters, `%XX` and `/`,
+    // so the URL parser must keep it byte for byte.
+    if url.path() != path {
+        return Err(CloudError::InvalidKey);
+    }
     Ok(url)
+}
+
+/// AWS SigV4 `UriEncode` of one path segment: every byte except the
+/// unreserved `A-Z a-z 0-9 - . _ ~` becomes `%XX` with uppercase hex.
+fn push_uri_encoded(path: &mut String, segment: &str) {
+    const HEX: &[u8; 16] = b"0123456789ABCDEF";
+    for &byte in segment.as_bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~') {
+            path.push(char::from(byte));
+        } else {
+            path.push('%');
+            path.push(char::from(HEX[usize::from(byte >> 4)]));
+            path.push(char::from(HEX[usize::from(byte & 0x0F)]));
+        }
+    }
 }
 
 pub(super) fn headers(
@@ -57,6 +87,27 @@ pub(super) fn headers_with_extra(
     now: SystemTime,
     mut headers: HeaderMap,
 ) -> Result<HeaderMap, CloudError> {
+    if *method == Method::PUT && !headers.contains_key(reqwest::header::CONTENT_TYPE) {
+        headers.insert(
+            reqwest::header::CONTENT_TYPE,
+            HeaderValue::from_static("application/octet-stream"),
+        );
+    }
+    sign_headers(config, region, method, url, body, now, headers)
+}
+
+/// Signs `headers` (plus `host`, `x-amz-date` and `x-amz-content-sha256`)
+/// exactly as given; the URL path must already be the canonical URI.
+#[allow(clippy::too_many_arguments)]
+fn sign_headers(
+    config: &CloudStorageConfig,
+    region: &str,
+    method: &Method,
+    url: &Url,
+    body: &[u8],
+    now: SystemTime,
+    mut headers: HeaderMap,
+) -> Result<HeaderMap, CloudError> {
     check_expiry(config, now)?;
     let identity = config.credentials.credentials.clone().into();
     let mut settings = settings();
@@ -70,12 +121,6 @@ pub(super) fn headers_with_extra(
         .build()
         .map_err(|_| CloudError::Signing)?
         .into();
-    if *method == Method::PUT && !headers.contains_key(reqwest::header::CONTENT_TYPE) {
-        headers.insert(
-            reqwest::header::CONTENT_TYPE,
-            HeaderValue::from_static("application/octet-stream"),
-        );
-    }
     let signable_headers: Vec<_> = headers
         .iter()
         .map(|(name, value)| {
@@ -188,3 +233,8 @@ fn check_expiry(config: &CloudStorageConfig, at: SystemTime) -> Result<(), Cloud
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[path = "signing_tests.rs"]
+mod tests;

@@ -133,6 +133,23 @@ A prepared version section does not establish that its tag or crates exist.
   policy, so a short-window caller no longer resets a longer policy's counter.
   Keys in `global_rate_limit_store()` now include the policy.
 
+### Core runtime and storage review fixes
+
+- Artisan `db:*` and `studio` pick the database exactly like `Server`: the
+  process `DATABASE_URL`, then `./.env` (never overriding the process), then
+  `[database].url` parsed as TOML. Database commands with no configured
+  database, configuration errors and `Orm::init` failures exit with status 1
+  instead of silently migrating `db.sqlite`, `rullst.db` or another database.
+- `LocalDriver::put` replaces objects atomically (a unique same-directory
+  temporary file, `sync_all`, then rename), so concurrent writers and readers
+  see one complete version and a failed overwrite keeps the previous object.
+- `#[memoize]` cache keys include the module path, function name and attribute
+  location, so same-named functions in different modules, crates or `impl`
+  blocks no longer share cached results.
+- S3/R2 SigV4 request paths percent-encode the bucket and every key segment
+  with AWS `UriEncode`, fixing `SignatureDoesNotMatch` for keys or tenant IDs
+  that contain characters such as `:`, `=`, `+`, `(`, `)` or `$`.
+
 ### Omni dependency compatibility maintenance
 
 - Keep generated Omni shells on a compatible Tauri runtime/macro/build family

@@ -69,8 +69,11 @@ deletion and download grants, and fails with `StorageError::PathTraversal` when
 the tenant identifier is not exactly one normal path segment (empty, containing
 `/` or `\`, or only dots such as `.`). Cloud keys reject empty/parent/dot
 components, backslashes, control characters and more than 1,024 UTF-8 bytes.
-Filenames with spaces, Unicode and literal percent signs are encoded as object
-keys. The [archive consumer](../../.github/fixtures/storage-facade.rs) demonstrates
+Request paths are the SigV4 canonical URI: the bucket and each key segment are
+percent-encoded once with AWS `UriEncode`, so only `A-Z a-z 0-9 - . _ ~` and
+the `/` separators stay literal. Keys and tenant identifiers containing spaces,
+Unicode, `%`, `:`, `=`, `+`, `(`, `)` or other reserved characters therefore
+sign and resolve as the provider expects. The [archive consumer](../../.github/fixtures/storage-facade.rs) demonstrates
 owner/tenant enforcement, including denial of an administrator from another
 tenant, using the same facade API shipped in the archive.
 
