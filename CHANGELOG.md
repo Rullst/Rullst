@@ -475,6 +475,28 @@ A prepared version section does not establish that its tag or crates exist.
   This forward-ports the compatible stable maintenance correction; it adds no
   new macro syntax or v13-only rendering behavior.
 
+### ORM low-severity review fixes
+
+- An update whose audit restore patch would exceed its bounds is saved and
+  audited as a non-restorable revision instead of being rolled back.
+- Generated writes clear the Redis query cache of the tenant active at the
+  write, even when that `with_tenant` scope ended before the commit.
+- Generated migrations compile; `status` and `rollback` ignore `migrations`
+  tables in other schemas; concurrent migrators are serialized on PostgreSQL
+  and MySQL/MariaDB; `sail:install` needs `--force` to replace a compose file
+  and binds ports to loopback.
+- Every `Orm::init*` rejects placeholder DSNs, out-of-range pool options return
+  an error instead of panicking, SQLite `mode=ro`/`mode=rw` never creates a
+  file and in-memory SQLite databases survive idle periods.
+- Outbox replays with reordered JSON keys count as the same event, conflict
+  errors no longer echo the stream or key, and claim/ack/fail are refused
+  inside `Orm::transaction`.
+- PostgreSQL enums with mixed-case type names bind and decode correctly.
+- Turso `None` filters match `IS NULL` and filtering or ordering on encrypted
+  columns is an error (`TursoModel::opaque_columns`); SurrealDB stores
+  all-digit document IDs as strings and `replace` no longer recreates a deleted
+  document; `[::1]` works in every loopback-only mode.
+
 ### ORM second-pass review fixes
 
 - Concurrent nested `Orm::transaction` calls take turns on the shared
