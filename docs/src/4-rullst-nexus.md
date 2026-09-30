@@ -78,6 +78,18 @@ writes a new value exactly as typed and does **not** hash it. Keep hash columns
 `readonly` (or `hidden`) in Nexus and change them through an application flow
 that hashes; a field named `password_hash` is hidden by the derive.
 
+On an ORM model the derive also follows the `#[derive(Orm)]` field markers:
+
+- `#[orm(skip)]` and `#[sqlx(skip)]` fields have no column and are omitted.
+- `#[orm(encrypted)]` and `SecretString` fields are hidden, read-only
+  `password` fields: Nexus never lists, searches, sorts, renders or writes
+  them, so an edit cannot store plaintext in an encrypted column. Any other
+  `#[nexus(kind/options)]` on them is a compile error.
+- `#[orm(hidden)]` fields are hidden and read-only; only an explicit
+  `#[nexus(kind = "password")]` exposes one, as a write-only `password` field.
+- `#[orm(masked)]` fields default to the `password` widget; an explicit
+  `#[nexus(kind = ...)]` deliberately shows them.
+
 `id` is the default primary key. Use `#[nexus(primary_key)]` on a field or
 `#[nexus(primary_key = "uuid")]` on the struct for another key. Field options
 also include `label`, `hidden`, `readonly`, and the `text`, `textarea`, `email`,

@@ -13,7 +13,7 @@ directly, because generated code calls the matching runtime API.
 | `#[rullst_orm::test]` | Runs an async test inside the task-scoped ORM transaction and rolls it back. Code that opens a separate connection is outside that sandbox. |
 | `#[derive(PersonalData)]` | Declares application-selected personal-data fields; it is metadata, not automatic privacy compliance. |
 | `#[derive(Enum)]` | Generates a closed bounded label contract shared by string parsing/display, Serde, `RullstValue` and SQLx codecs. `#[rullst_enum(type_name = "...", rename_all = "snake_case")]` and per-variant `rename` are validated at compile time; schema DDL is owned by `Blueprint::native_enum`. |
-| `#[derive(Nexus)]` | Generates bounded model metadata consumed by the authenticated Nexus runtime. `#[orm(tenant = "organization_id")]` or the equivalent `#[nexus(...)]` opts a text field into Nexus-wide trusted-context scoping and makes it hidden/read-only. Other shared `#[orm(...)]` options are skipped, and ORM relation fields are left out of the metadata. |
+| `#[derive(Nexus)]` | Generates bounded model metadata consumed by the authenticated Nexus runtime. `#[orm(tenant = "organization_id")]` or the equivalent `#[nexus(...)]` opts a text field into Nexus-wide trusted-context scoping and makes it hidden/read-only. ORM relation fields and `#[orm(skip)]`/`#[sqlx(skip)]` fields are left out of the metadata; `#[orm(encrypted)]`, `SecretString` and `#[orm(hidden)]` fields become hidden, read-only `Password` fields (only `#[nexus(kind = "password")]` exposes an `#[orm(hidden)]` field, write-only), and `#[orm(masked)]` fields default to `Password`. Other shared `#[orm(...)]` options are skipped. |
 
 ## Compile-time safety boundaries
 
