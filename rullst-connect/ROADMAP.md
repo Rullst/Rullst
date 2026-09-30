@@ -60,7 +60,7 @@ identity sections remain roadmap work.
   can be deserialized by either ecosystem; only Axum and Actix have native
   extractor implementations.
 - [x] **Integration Tests with Mock Servers (`wiremock`):** Cover the real HTTP flow to guarantee that the parser correctly handles incomplete responses, expired tokens, or network failures. (Done in v5.2.0)
-- [x] **Rate Limiting & Advanced Retry Policies:** Offer integrated wrappers (e.g., via `reqwest-middleware` and `reqwest-retry`) to perform native exponential backoff when providers reject requests due to rate limits (HTTP 429).
+- [x] **Rate Limiting & Advanced Retry Policies:** Offer integrated wrappers (e.g., via `reqwest-middleware` and `reqwest-retry`) to perform native exponential backoff when providers reject requests due to rate limits (HTTP 429). Token, device-poll and revocation POSTs are retried only after an HTTP 429; timeouts, connection failures and 5xx responses are retried only for GET/HEAD/OPTIONS, so a single-use code or refresh token is never replayed.
 - [x] **Unified Provider Error Extraction:** Map error responses from providers (like "invalid_grant") into structured enums within `ConnectError` to drastically improve debugging experience.
 
 ## 🚀 Phase 5: High-Value & Developer Experience (Immediate Value)
