@@ -1721,7 +1721,10 @@ while portability and semantic review remain the model author's responsibility.
   persisted `String`, `i32`, `f64`, or `bool` tenant field. The derive rejects a
   missing or unsupported field type.
 * Generated queries fail closed when called outside `with_tenant(...)` and bind
-  the active tenant inside the scope. Generated full/partial updates and
+  the active tenant inside the scope, converted to the tenant field's type; a
+  context of another type fails with `Validation` for reads and bulk deletes
+  exactly as for mutations, instead of reaching a predicate that MySQL would
+  compare numerically across tenants. Generated full/partial updates and
   instance delete/restore paths reject a model from another tenant.
 * `Model::unscoped()` is the explicit global escape hatch. Deciding who may use
   it, deriving tenant identity from authenticated state, and database-level RLS

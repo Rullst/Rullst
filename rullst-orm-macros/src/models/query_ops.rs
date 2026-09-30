@@ -92,11 +92,28 @@ pub fn generate_query_methods(parsed: &ParsedModel, builder_name: &syn::Ident) -
         quote! {}
     };
 
-    let tenant_scope_logic = if !parsed.tenant_column.is_empty() {
+    let tenant_field_type = parsed
+        .normal_fields
+        .iter()
+        .zip(parsed.normal_fields_types.iter())
+        .find(|(field, _)| *field == parsed.tenant_column.as_str())
+        .map(|(_, ty)| ty);
+    let tenant_scope_logic = if let Some(tenant_type) = tenant_field_type {
         let col = &parsed.tenant_column;
+        // Bind the context as the tenant field's type, like the mutation
+        // paths: a mistyped context must not reach the mandatory predicate,
+        // where MySQL would compare it numerically across tenants.
         quote! {
             if let Some(tenant) = rullst_orm::tenant::get_tenant_id() {
-                builder = builder.where_eq(#col, tenant);
+                let typed: Result<#tenant_type, _> = tenant.try_into();
+                match typed {
+                    Ok(tenant) => builder = builder.where_eq(#col, tenant),
+                    Err(_) => builder.errors.push(rullst_orm::Error::Validation(format!(
+                        "tenant context type does not match `{}.{}`",
+                        #table_name,
+                        #col
+                    ))),
+                }
             } else {
                 builder.errors.push(rullst_orm::Error::Validation(format!(
                     "tenant context is required to query `{}`; use with_tenant(...) or the explicit unscoped() escape hatch",
@@ -104,8 +121,11 @@ pub fn generate_query_methods(parsed: &ParsedModel, builder_name: &syn::Ident) -
                 )));
             }
         }
-    } else {
+    } else if parsed.tenant_column.is_empty() {
         quote! {}
+    } else {
+        // The structured model parser rejects this before code generation.
+        quote! { compile_error!("tenant column is missing from the model"); }
     };
 
     quote! {
@@ -178,6 +198,20 @@ mod tests {
             );
         }
         assert!(generated.contains("LIKE ? ESCAPE '!'"));
+    }
+
+    #[test]
+    fn query_binds_the_tenant_context_as_the_tenant_field_type() {
+        let input: DeriveInput = parse_quote! {
+            #[orm(table = "orders", tenant_column = "org")]
+            struct Order { id: i32, org: String }
+        };
+        let parsed = crate::parser::parse(&input).expect("test model should parse");
+        let builder = quote::format_ident!("OrderQueryBuilder");
+        let generated = generate_query_methods(&parsed, &builder).to_string();
+        assert!(generated.contains("let typed : Result < String , _ > = tenant . try_into ()"));
+        assert!(generated.contains("tenant context type does not match"));
+        assert!(!generated.contains("where_eq (\"org\" , tenant) ;"));
     }
 
     #[test]

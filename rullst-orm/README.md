@@ -64,7 +64,8 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   global query cap fails with a `Validation` error instead of silently
   returning partial relations.
 - **Fail-Closed Tenant Scopes**: Models declaring `tenant_column` require
-  `with_tenant`, inject the tenant predicate into generated queries, protect
+  `with_tenant`, inject the tenant predicate (typed as the tenant field, so a
+  mistyped context fails closed) into generated queries, protect
   instance mutations, and reserve explicit `unscoped()` for reviewed global
   paths. Authentication and permission to use that escape hatch remain the
   application's responsibility.
