@@ -100,13 +100,22 @@ impl LlmFirewall {
     ];
 
     /// Scrutinizes an incoming prompt string against multi-vector heuristic rules.
+    ///
+    /// A blocked prompt is recorded in security telemetry with the client
+    /// `unknown`; [`ai_firewall_middleware`] records the request's peer address.
     pub fn inspect_prompt(raw_prompt: &str) -> PromptSafetyReport {
+        Self::inspect_prompt_from(raw_prompt, UNKNOWN_CLIENT)
+    }
+
+    /// Inspects a prompt and attributes a block to `client_ip`, a canonical IP
+    /// address or `unknown`.
+    fn inspect_prompt_from(raw_prompt: &str, client_ip: &str) -> PromptSafetyReport {
         SecurityStore::global().record_prompt_inspected();
 
         // 1. Detect invisible unicode poisoning
         if Self::contains_invisible_unicode(raw_prompt) {
             let matched = "Zero-width unicode detected".to_string();
-            SecurityStore::global().record_prompt_injection_blocked("0.0.0.0", &matched);
+            SecurityStore::global().record_prompt_injection_blocked(client_ip, &matched);
             return PromptSafetyReport {
                 is_safe: false,
                 threat_category: Some(PromptThreatCategory::InvisibleUnicode),
@@ -120,7 +129,7 @@ impl LlmFirewall {
         // 2. Direct Jailbreaks
         for pattern in Self::JAILBREAK_PATTERNS {
             if normalized.contains(pattern) {
-                SecurityStore::global().record_prompt_injection_blocked("0.0.0.0", pattern);
+                SecurityStore::global().record_prompt_injection_blocked(client_ip, pattern);
                 return PromptSafetyReport {
                     is_safe: false,
                     threat_category: Some(PromptThreatCategory::DirectJailbreak),
@@ -133,7 +142,7 @@ impl LlmFirewall {
         // 3. System Prompt Leakage
         for pattern in Self::LEAKAGE_PATTERNS {
             if normalized.contains(pattern) {
-                SecurityStore::global().record_prompt_injection_blocked("0.0.0.0", pattern);
+                SecurityStore::global().record_prompt_injection_blocked(client_ip, pattern);
                 return PromptSafetyReport {
                     is_safe: false,
                     threat_category: Some(PromptThreatCategory::SystemPromptLeakage),
@@ -146,7 +155,7 @@ impl LlmFirewall {
         // 4. Tokenizer Delimiter Collision
         for pattern in Self::DELIMITER_PATTERNS {
             if normalized.contains(pattern) {
-                SecurityStore::global().record_prompt_injection_blocked("0.0.0.0", pattern);
+                SecurityStore::global().record_prompt_injection_blocked(client_ip, pattern);
                 return PromptSafetyReport {
                     is_safe: false,
                     threat_category: Some(PromptThreatCategory::DelimiterHijacking),
@@ -161,7 +170,7 @@ impl LlmFirewall {
             && (normalized.contains("http://") || normalized.contains("https://"))
         {
             let matched = "Markdown image callback beacon".to_string();
-            SecurityStore::global().record_prompt_injection_blocked("0.0.0.0", &matched);
+            SecurityStore::global().record_prompt_injection_blocked(client_ip, &matched);
             return PromptSafetyReport {
                 is_safe: false,
                 threat_category: Some(PromptThreatCategory::DataExfiltration),
@@ -210,35 +219,55 @@ impl LlmFirewall {
     }
 }
 
-fn find_unsafe_prompt(value: &serde_json::Value) -> Option<PromptSafetyReport> {
+/// Telemetry client for an inspection without a known peer address.
+const UNKNOWN_CLIENT: &str = "unknown";
+
+fn find_unsafe_prompt(value: &serde_json::Value, client_ip: &str) -> Option<PromptSafetyReport> {
     match value {
         serde_json::Value::Object(fields) => fields.iter().find_map(|(key, value)| {
             if matches!(key.as_str(), "prompt" | "content" | "message") {
-                inspect_prompt_value(value)
+                inspect_prompt_value(value, client_ip)
             } else {
-                find_unsafe_prompt(value)
+                find_unsafe_prompt(value, client_ip)
             }
         }),
-        serde_json::Value::Array(values) => values.iter().find_map(find_unsafe_prompt),
+        serde_json::Value::Array(values) => values
+            .iter()
+            .find_map(|value| find_unsafe_prompt(value, client_ip)),
         _ => None,
     }
 }
 
-fn inspect_prompt_value(value: &serde_json::Value) -> Option<PromptSafetyReport> {
+fn inspect_prompt_value(value: &serde_json::Value, client_ip: &str) -> Option<PromptSafetyReport> {
     match value {
         serde_json::Value::String(prompt) => {
-            let report = LlmFirewall::inspect_prompt(prompt);
+            let report = LlmFirewall::inspect_prompt_from(prompt, client_ip);
             (!report.is_safe).then_some(report)
         }
-        serde_json::Value::Array(values) => values.iter().find_map(inspect_prompt_value),
-        serde_json::Value::Object(fields) => fields.values().find_map(inspect_prompt_value),
+        serde_json::Value::Array(values) => values
+            .iter()
+            .find_map(|value| inspect_prompt_value(value, client_ip)),
+        serde_json::Value::Object(fields) => fields
+            .values()
+            .find_map(|value| inspect_prompt_value(value, client_ip)),
         _ => None,
     }
 }
 
 /// Axum middleware intercepting JSON requests to AI endpoints (`/ai/*`, `/api/chat`),
 /// inspecting payload `"prompt"`, `"content"`, or `"message"` fields.
+///
+/// A blocked prompt is attributed in telemetry to the request's
+/// `ConnectInfo<SocketAddr>` peer (the resolved client behind Core's trusted
+/// proxy layer), or to `unknown` when the server provides no peer address.
 pub async fn ai_firewall_middleware(req: Request, next: Next) -> Response {
+    let client_ip = req
+        .extensions()
+        .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
+        .map_or_else(
+            || UNKNOWN_CLIENT.to_string(),
+            |connect_info| connect_info.0.ip().to_canonical().to_string(),
+        );
     let declared_json = req
         .headers()
         .get(axum::http::header::CONTENT_TYPE)
@@ -263,7 +292,7 @@ pub async fn ai_firewall_middleware(req: Request, next: Next) -> Response {
         return (StatusCode::BAD_REQUEST, "AI request body is not valid JSON").into_response();
     }
     if let Ok(json) = parsed
-        && let Some(report) = find_unsafe_prompt(&json)
+        && let Some(report) = find_unsafe_prompt(&json, &client_ip)
     {
         let threat = report
             .threat_category
