@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790730142031,
+  "lastUpdate": 1790734637296,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -12993,6 +12993,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4527,
             "range": "± 274",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "346377ee9b2309c8f47c1ff05224af8837dce495",
+          "message": "Merge pull request #335 from Rullst/fix/v13-orm-low-fixes\n\nfix(orm): rollback bookkeeping, driver detection, DDL literals and generated-code robustness",
+          "timestamp": "2026-09-29T22:58:16-03:00",
+          "tree_id": "a3219ab0aff4c606df30a3ba952e26e36bcd155f",
+          "url": "https://github.com/Rullst/Rullst/commit/346377ee9b2309c8f47c1ff05224af8837dce495"
+        },
+        "date": 1790734636697,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1014,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 806,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1857,
+            "range": "± 75",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4505,
+            "range": "± 22",
             "unit": "ns/iter"
           }
         ]
