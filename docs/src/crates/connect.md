@@ -89,7 +89,14 @@ Official support for 11 core providers:
 
 1. **Google**
 2. **GitHub**
-3. **Microsoft / Azure AD**
+3. **Microsoft / Azure AD** (uses the multi-tenant `common` authority, so any
+   Entra tenant and personal Microsoft accounts can sign in, and returns no
+   tenant ID; `email` is Graph `mail` or, failing that, `userPrincipalName`,
+   which tenant administrators control and which may not be a mailbox, so
+   `email_verified` is `None`. Never link accounts or grant tenant access on
+   it; for a single tenant use `OidcProvider` with the
+   `https://login.microsoftonline.com/<tenant-id>/v2.0` issuer, whose ID
+   tokens bind that tenant)
 4. **Apple** (Sign in with Apple)
 5. **Auth0**
 6. **AWS Cognito**
