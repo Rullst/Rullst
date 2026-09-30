@@ -373,9 +373,14 @@ async fn call_provider_api(
 ```
 
 The default checks 60 seconds before expiration. Refresh calls cannot overlap;
-callers waiting behind a successful refresh reuse its state. A response can
-replace the refresh token only after the lifetime and original provider user ID
-validate. Use `access_token_at` in deterministic workers/tests. Seal
+callers waiting behind a successful refresh reuse its state. A response
+replaces the access token only after the lifetime and original provider user ID
+validate. If a response for the original user is otherwise rejected (for
+example it omits `expires_in`), its rotated refresh token is still kept and the
+generation advances, because the provider has already consumed the prior one;
+the call fails and the next call refreshes with the rotation. Persist the
+snapshot after such a failure too. Use `access_token_at` in deterministic
+workers/tests. Seal
 `state_snapshot()` with `EncryptedTokenSnapshot` before writing it to a
 dedicated application store:
 

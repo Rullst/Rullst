@@ -240,3 +240,42 @@ fn user(
         expires_in,
     }
 }
+
+#[tokio::test]
+async fn a_rejected_response_keeps_the_rotated_refresh_token() {
+    let provider = CountingProvider::default();
+    provider.rotate.store(true, Ordering::SeqCst);
+    provider.omit_expiry.store(true, Ordering::SeqCst);
+    let session = AutoRefreshingSession::from_user_at(
+        &provider,
+        &user(
+            "access-0",
+            Some(SecretString::from("refresh-0".to_string())),
+            Some(10),
+        ),
+        1_000,
+    )
+    .expect("session")
+    .with_refresh_leeway(0)
+    .expect("leeway");
+
+    // The provider rotated refresh-0 to refresh-1 but omitted the lifetime.
+    assert!(session.access_token_at(1_010).await.is_err());
+    let state = session.state_snapshot().await;
+    assert_eq!(state.access_token().expose_secret(), "access-0");
+    assert!(
+        state.refresh_token().expose_secret() == "refresh-1",
+        "the consumed refresh token must be replaced by its rotation"
+    );
+    assert_eq!(state.generation(), 1);
+
+    // The next call retries with the rotation instead of the consumed token.
+    provider.omit_expiry.store(false, Ordering::SeqCst);
+    let lease = session
+        .access_token_at(1_010)
+        .await
+        .expect("retried refresh");
+    assert!(lease.was_refreshed());
+    assert_eq!(lease.access_token().expose_secret(), "access-2");
+    assert_eq!(lease.generation(), 2);
+}

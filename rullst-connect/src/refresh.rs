@@ -149,6 +149,17 @@ impl RefreshableTokenState {
         Ok(state)
     }
 
+    /// Keeps only a provider-rotated refresh token, leaving the due access
+    /// token in place so the next call refreshes again with the rotation.
+    fn adopt_rotated_refresh_token(&mut self, rotated: Option<&SecretString>, generation: u64) {
+        if let Some(rotated) = rotated
+            && validate_token("refresh token", rotated).is_ok()
+        {
+            self.refresh_token = rotated.clone();
+            self.generation = generation;
+        }
+    }
+
     fn try_restore(
         provider_user_id: String,
         access_token: String,
@@ -240,8 +251,12 @@ impl std::fmt::Debug for AccessTokenLease {
 
 /// Process-local, statically dispatched automatic refresh coordinator.
 ///
-/// A Tokio mutex serializes refresh calls and the state changes only after a
-/// complete, validated provider response. Cross-process leases, encrypted
+/// A Tokio mutex serializes refresh calls and the access token changes only
+/// after a complete, validated provider response. When a response for the same
+/// provider user is rejected (for example because it omits `expires_in`), a
+/// rotated refresh token is still kept and the generation advances, because
+/// the provider has already consumed the prior one; the call returns the
+/// error and the next call refreshes again. Cross-process leases, encrypted
 /// persistence and account authorization remain application responsibilities.
 pub struct AutoRefreshingSession<'provider, SelectedProvider>
 where
@@ -315,15 +330,30 @@ where
             .provider
             .refresh_token(state.refresh_token.expose_secret())
             .await?;
-        let replacement = RefreshableTokenState::from_refresh(
+        match RefreshableTokenState::from_refresh(
             &refreshed,
             &state.provider_user_id,
             &state.refresh_token,
             now,
             next_generation,
-        )?;
-        *state = replacement;
-        Ok(lease_from(&state, true))
+        ) {
+            Ok(replacement) => {
+                *state = replacement;
+                Ok(lease_from(&state, true))
+            }
+            Err(error) => {
+                // The provider may already have consumed the prior refresh
+                // token. Keep a rotation issued for the same identity so the
+                // next call retries with it instead of a dead credential.
+                if refreshed.id == state.provider_user_id {
+                    state.adopt_rotated_refresh_token(
+                        refreshed.refresh_token.as_ref(),
+                        next_generation,
+                    );
+                }
+                Err(error)
+            }
+        }
     }
 
     /// Clones the current redacting state for encrypted persistence.
