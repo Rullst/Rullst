@@ -458,6 +458,31 @@ async fn redis_fails_a_job_whose_lease_keeps_stalling() {
 }
 
 #[tokio::test]
+async fn redis_stalled_lease_ceiling_is_configurable() {
+    assert!(
+        RedisDriver::new("redis://127.0.0.1:1")
+            .unwrap()
+            .try_with_max_stalled_leases(0)
+            .is_err()
+    );
+    let Some((_container, redis_url)) = live_redis().await else {
+        return;
+    };
+    let driver = RedisDriver::new(redis_url)
+        .expect("Redis queue configuration")
+        .try_with_namespace(unique_namespace("fragile"))
+        .expect("isolated queue namespace")
+        .try_with_max_stalled_leases(1)
+        .expect("valid ceiling");
+    driver.push("fragile", "job", "{}").await.expect("push");
+    driver.pop().await.expect("claim").expect("job");
+    assert_eq!(driver.recover_stalled(Duration::ZERO).await.unwrap(), 1);
+    assert!(driver.pop().await.expect("empty queue").is_none());
+    let jobs = driver.list_all_jobs(10).await.expect("list jobs");
+    assert_eq!(jobs[0].status, "failed");
+}
+
+#[tokio::test]
 async fn redis_configuration_and_connection_failures_are_typed() {
     assert!(RedisDriver::new("not a redis URL").is_err());
     let driver = RedisDriver::new("redis://127.0.0.1:1")

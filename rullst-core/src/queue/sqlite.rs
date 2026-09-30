@@ -56,6 +56,20 @@ impl SqliteDriver {
         Ok(self)
     }
 
+    /// Sets how many times a job's lease may stall before recovery fails the
+    /// job instead of requeuing it (default
+    /// [`super::DEFAULT_MAX_STALLED_LEASES`]; `1` fails on the first stall).
+    ///
+    /// Unpublished v13 API.
+    ///
+    /// # Errors
+    /// Returns [`QueueError::InvalidConfiguration`] outside
+    /// `1..=`[`super::MAX_STALLED_LEASES_LIMIT`].
+    pub fn try_with_max_stalled_leases(mut self, leases: u32) -> Result<Self, QueueError> {
+        self.max_stalled_leases = super::validate_max_stalled_leases(leases)?;
+        Ok(self)
+    }
+
     /// Returns a reference to the internal SQLite pool.
     pub fn get_pool(&self) -> &sqlx::SqlitePool {
         &self.pool

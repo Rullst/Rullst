@@ -116,3 +116,32 @@ async fn an_existing_table_gains_the_stalled_lease_counter() {
     assert_eq!(row(&driver, "legacy").await.1, 0);
     assert_eq!(driver.pop().await.unwrap().unwrap().id, "legacy");
 }
+
+#[tokio::test]
+async fn the_stalled_lease_ceiling_is_configurable_and_bounded() {
+    let driver = SqliteDriver::new("sqlite::memory:")
+        .await
+        .unwrap()
+        .try_with_max_stalled_leases(1)
+        .unwrap();
+    driver.push("fragile", "job", "{}").await.unwrap();
+    claim_and_stall(&driver, "fragile").await;
+    assert_eq!(
+        driver
+            .recover_stalled(Duration::from_secs(1))
+            .await
+            .unwrap(),
+        1
+    );
+    assert_eq!(row(&driver, "fragile").await.0, "failed");
+
+    for invalid in [0, super::MAX_STALLED_LEASES_LIMIT + 1] {
+        let error = SqliteDriver::new("sqlite::memory:")
+            .await
+            .unwrap()
+            .try_with_max_stalled_leases(invalid)
+            .err()
+            .expect("an out-of-range ceiling is rejected");
+        assert!(matches!(error, super::QueueError::InvalidConfiguration(_)));
+    }
+}

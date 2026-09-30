@@ -74,7 +74,10 @@ A job that crashes, aborts or hangs its worker would otherwise be recovered and
 claimed forever, so the SQLite and Redis drivers count stalled leases per job
 and fail the job, instead of requeuing it, when its fifth lease stalls. The
 failure is listed and retryable like any other failed job, and
-`retry_failed_job` restarts the count.
+`retry_failed_job` restarts the count. In the unpublished v13 source,
+`SqliteDriver::try_with_max_stalled_leases` and
+`RedisDriver::try_with_max_stalled_leases` change the ceiling (1–1,000, default
+`DEFAULT_MAX_STALLED_LEASES` = 5).
 Worker transitions are fenced by the claim's attempt number. The SQLite and
 Redis drivers complete, fail or requeue a job only while it is still processing
 under the attempt that `pop` returned, so a worker whose lease was recovered and

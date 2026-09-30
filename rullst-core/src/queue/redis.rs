@@ -120,6 +120,21 @@ pub mod redis_driver {
             Ok(self)
         }
 
+        /// Sets how many times a job's lease may stall before recovery fails
+        /// the job instead of requeuing it (default
+        /// [`super::super::DEFAULT_MAX_STALLED_LEASES`]; `1` fails on the
+        /// first stall). The failure uses the configured failed-job retention.
+        ///
+        /// Unpublished v13 API.
+        ///
+        /// # Errors
+        /// Returns [`QueueError::InvalidConfiguration`] outside
+        /// `1..=`[`super::super::MAX_STALLED_LEASES_LIMIT`].
+        pub fn try_with_max_stalled_leases(mut self, leases: u32) -> Result<Self, QueueError> {
+            self.max_stalled_leases = super::super::validate_max_stalled_leases(leases)?;
+            Ok(self)
+        }
+
         fn from_client(client: redis::Client, queue_key: String) -> Self {
             Self {
                 processing_key: format!("{queue_key}:processing"),

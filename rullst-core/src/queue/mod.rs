@@ -59,11 +59,27 @@ const MAX_SCHEDULE_DELAY: Duration = Duration::from_secs(366 * 24 * 60 * 60);
 
 /// Stalled leases after which the built-in drivers fail a job instead of
 /// requeuing it, so a job that keeps killing its worker cannot loop forever.
+///
+/// Configure it with `SqliteDriver::try_with_max_stalled_leases` or
+/// `RedisDriver::try_with_max_stalled_leases`. Unpublished v13 API.
+pub const DEFAULT_MAX_STALLED_LEASES: u32 = 5;
+/// Largest value accepted by the drivers' `try_with_max_stalled_leases`.
+/// Unpublished v13 API.
+pub const MAX_STALLED_LEASES_LIMIT: u32 = 1_000;
+
 #[cfg_attr(
     not(any(feature = "queue-sqlite", feature = "queue-redis")),
     allow(dead_code)
 )]
-pub(crate) const DEFAULT_MAX_STALLED_LEASES: u32 = 5;
+fn validate_max_stalled_leases(leases: u32) -> Result<u32, QueueError> {
+    if (1..=MAX_STALLED_LEASES_LIMIT).contains(&leases) {
+        Ok(leases)
+    } else {
+        Err(QueueError::InvalidConfiguration(format!(
+            "the stalled-lease ceiling must be between 1 and {MAX_STALLED_LEASES_LIMIT}"
+        )))
+    }
+}
 
 // ─── Error Types ────────────────────────────────────────────────────────────
 
@@ -265,8 +281,9 @@ pub trait QueueDriver: Send + Sync {
     /// Recover processing leases left behind by a crashed worker.
     ///
     /// The built-in SQLite and Redis drivers fail a job, instead of returning
-    /// it to pending, when its lease has stalled five times, and report both
-    /// requeued and failed leases in the returned count.
+    /// it to pending, when its lease has stalled [`DEFAULT_MAX_STALLED_LEASES`]
+    /// times (configurable per driver), and report both requeued and failed
+    /// leases in the returned count.
     async fn recover_stalled(&self, _stale_after: std::time::Duration) -> Result<u64, QueueError> {
         Err(QueueError::Unsupported(
             "this driver cannot recover stalled jobs".to_string(),
