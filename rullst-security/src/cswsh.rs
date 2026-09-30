@@ -90,6 +90,25 @@ impl NormalizedOrigin {
     }
 }
 
+/// Scheme the client used for this request, when the server can know it: a
+/// scheme reported by a trusted proxy through Core's `ClientAddr`, otherwise
+/// an absolute request URI (HTTP/2 `:scheme`). `None` for an ordinary
+/// HTTP/1.1 origin-form request without trusted proxy evidence.
+fn request_scheme(req: &Request) -> Option<&'static str> {
+    if let Some(proto) = req
+        .extensions()
+        .get::<rullst_core::security::ClientAddr>()
+        .and_then(|client| client.forwarded_proto())
+    {
+        return Some(proto.as_str());
+    }
+    match req.uri().scheme_str() {
+        Some(scheme) if scheme.eq_ignore_ascii_case("https") => Some("https"),
+        Some(scheme) if scheme.eq_ignore_ascii_case("http") => Some("http"),
+        _ => None,
+    }
+}
+
 fn normalize_port(scheme: &str, port: Option<u16>) -> Option<u16> {
     match (scheme, port) {
         ("http", Some(80)) | ("https", Some(443)) => None,
@@ -103,7 +122,12 @@ fn normalize_port(scheme: &str, port: Option<u16>) -> Option<u16> {
 ///
 /// Without an explicit [`CswsPolicy`] allowlist, the `Origin` must name the
 /// request's own host and port: the `Host` header or, when it is absent (as in
-/// HTTP/2), the request `:authority`.
+/// HTTP/2), the request `:authority`. When the request scheme is known, from a
+/// trusted proxy's forwarded scheme (Core `ClientAddr::forwarded_proto`) or an
+/// HTTP/2 `:scheme`, the `Origin` scheme must equal it, so `http://host` is
+/// not same-origin with an HTTPS endpoint. An HTTP/1.1 request carries no
+/// scheme: behind TLS, enable `trust_forwarded_proto` on the trusted proxy
+/// policy or configure the exact `https` origin in a [`CswsPolicy`].
 pub async fn cswsh_guard_middleware(req: Request, next: Next) -> Response {
     let is_ws_upgrade = req
         .headers()
@@ -128,12 +152,16 @@ pub async fn cswsh_guard_middleware(req: Request, next: Next) -> Response {
         };
 
         let policy = req.extensions().get::<CswsPolicy>();
+        let scheme = request_scheme(&req);
         let valid = match origin.and_then(NormalizedOrigin::parse) {
             Some(parsed_origin) => match policy {
                 Some(policy) if !policy.allowed_origins.is_empty() => {
                     policy.allowed_origins.contains(&parsed_origin)
                 }
-                _ => host.is_some_and(|host| parsed_origin.matches_host(host)),
+                _ => {
+                    scheme.is_none_or(|scheme| parsed_origin.scheme == scheme)
+                        && host.is_some_and(|host| parsed_origin.matches_host(host))
+                }
             },
             None if origin.is_none() => policy.is_some_and(|policy| policy.allow_missing_origin),
             None => false,
@@ -226,6 +254,71 @@ mod tests {
         assert_eq!(
             app.oneshot(no_authority).await.unwrap().status(),
             StatusCode::FORBIDDEN
+        );
+    }
+
+    #[tokio::test]
+    async fn a_known_request_scheme_must_match_the_origin_scheme() {
+        use rullst_core::security::{TrustedProxyConfig, TrustedProxyLayer};
+        use std::net::SocketAddr;
+
+        let proxies = TrustedProxyConfig::new(["127.0.0.1"])
+            .unwrap()
+            .trust_forwarded_proto(true);
+        let app = guarded_app().layer(TrustedProxyLayer::new(proxies));
+        let upgrade = |origin: &str| {
+            let mut request = HttpRequest::builder()
+                .uri("/")
+                .header(header::UPGRADE, "websocket")
+                .header(header::HOST, "app.example.com")
+                .header(header::ORIGIN, origin)
+                .header("x-forwarded-for", "203.0.113.7")
+                .header("x-forwarded-proto", "https")
+                .body(Body::empty())
+                .unwrap();
+            let peer: SocketAddr = "127.0.0.1:41000".parse().unwrap();
+            request
+                .extensions_mut()
+                .insert(axum::extract::ConnectInfo(peer));
+            request
+        };
+        let downgraded = upgrade("http://app.example.com");
+        assert_eq!(
+            app.clone().oneshot(downgraded).await.unwrap().status(),
+            StatusCode::FORBIDDEN
+        );
+        let same_origin = upgrade("https://app.example.com");
+        assert_eq!(
+            app.oneshot(same_origin).await.unwrap().status(),
+            StatusCode::OK
+        );
+
+        let h2 = Router::new()
+            .route("/ws", axum::routing::any(|| async { "upgraded" }))
+            .layer(middleware::from_fn(cswsh_guard_middleware));
+        let connect = |origin: &str| {
+            HttpRequest::builder()
+                .version(axum::http::Version::HTTP_2)
+                .method(axum::http::Method::CONNECT)
+                .uri("https://app.example.com/ws")
+                .header(header::ORIGIN, origin)
+                .body(Body::empty())
+                .unwrap()
+        };
+        assert_eq!(
+            h2.clone()
+                .oneshot(connect("http://app.example.com"))
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::FORBIDDEN
+        );
+        assert_eq!(
+            h2.oneshot(connect("https://app.example.com"))
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::OK
         );
     }
 
