@@ -553,6 +553,11 @@ while portability and semantic review remain the model author's responsibility.
   cascading bulk deletes. Instance `restore()` and `force_delete()` statements,
   including their tenant predicate, are numbered the same way and run in those
   matrices too.
+* The PostgreSQL renumbering skips quoted text using PostgreSQL's default
+  `standard_conforming_strings = on` rules: a backslash escapes the next
+  character only inside `E'...'` strings, so a raw fragment such as
+  `ESCAPE '\'` does not hide the markers after it. A server configured with
+  `standard_conforming_strings = off` is outside this contract.
 * Generated magic filters bind supported primitive fields to their Rust type at
   compile time (`String`, `i32`, `f64`, and `bool`), and generated column enums
   make unknown columns unrepresentable on typed paths. String-column builders,
