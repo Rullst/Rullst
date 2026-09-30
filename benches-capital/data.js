@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790747187069,
+  "lastUpdate": 1790756055019,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -9590,6 +9590,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/parse_status_active",
             "value": 21,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c5c43890fbd711638bd354a84f42a912b7f8eda9",
+          "message": "Merge pull request #342 from Rullst/fix/v13-nexus-review-fixes\n\nfix(nexus): proxy-safe lockout, same-origin assets under CSP, hidden passwords, edit-only-changed",
+          "timestamp": "2026-09-30T04:48:15-03:00",
+          "tree_id": "5e5d75fe28a1aaf8795c403f8ba571dbcd6e17aa",
+          "url": "https://github.com/Rullst/Rullst/commit/c5c43890fbd711638bd354a84f42a912b7f8eda9"
+        },
+        "date": 1790756054228,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
             "range": "± 0",
             "unit": "ns/iter"
           },
