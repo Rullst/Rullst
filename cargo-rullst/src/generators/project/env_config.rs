@@ -171,6 +171,20 @@ RULLST_ENV=development
         env_example_content.push_str(example);
     }
 
+    // `Mail` facade sends (such as `make:mail` mailables) take this sender
+    // when a message sets none. Development falls back to the log driver;
+    // staging and production need an explicit MAIL_DRIVER before sending.
+    let mail_template = r#"
+# ── Mail ──────────────────────────────────────────────────────
+# Default sender for messages without `from`, e.g. MAIL_FROM="App <no-reply@example.com>";
+# use an address your mail provider has verified.
+MAIL_FROM=
+# Staging/production must select a driver before sending mail, e.g.:
+# MAIL_DRIVER=resend
+"#;
+    env_content.push_str(mail_template);
+    env_example_content.push_str(mail_template);
+
     if blueprint_selection != BLANK_BLUEPRINT_ID {
         let mut rng = rand::rng();
         let nexus_username = format!("nexus_{}", Alphanumeric.sample_string(&mut rng, 12));
@@ -353,6 +367,15 @@ mod tests {
                 fs::read_to_string(root.join(filename)).expect("generated environment file");
             assert!(generated.contains("RULLST_ENV=development"));
             assert!(!generated.contains("APP_ENV="));
+            // An empty MAIL_FROM is unset; the driver stays a comment so the
+            // development log fallback keeps working when the file is loaded.
+            assert!(generated.contains("\nMAIL_FROM=\n"));
+            assert!(generated.contains("\n# MAIL_DRIVER=resend\n"));
+            assert!(
+                !generated
+                    .lines()
+                    .any(|line| line.starts_with("MAIL_DRIVER="))
+            );
         }
 
         fs::remove_dir_all(root).expect("temporary project cleanup");

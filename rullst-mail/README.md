@@ -249,6 +249,10 @@ explicit stages, while due-date calculation, scheduling, entitlement changes,
 and account state remain application responsibilities. Both templates execute
 the mandatory pre-flight while building and fail on unsafe links.
 
+Generated mailables set no `from`; configure the default sender with
+`MAIL_FROM` (or `from` under `[mail]` in `Rullst.toml`), which new projects
+list in `.env.example`. Staging and production must also select a driver.
+
 For a payment-bound native PDF rather than the scaffolded fiscal template,
 enable `rullst-mail/capital-invoice` (or umbrella `rullst/capital-mail`) and use
 `PaidInvoiceDelivery::prepare`, then set the verified sender with
