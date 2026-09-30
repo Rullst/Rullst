@@ -56,7 +56,7 @@ Updating Capital does not rewrite existing controllers or apply new migrations.
 | **InfinitePay** | Billing | Offline fixtures; live plan-only checkout and body-only callback verification are unsupported. |
 | **Polar** | Billing | Current typed product checkout, external customer binding and signed subscription events; legacy price-only checkout is unsupported. |
 | **Paddle** | Billing | Typed customer/transaction checkout, approved Paddle.js payment page, bound signed subscription events and current-state reads; legacy email-only checkout is unsupported. |
-| **Razorpay** | Billing | Adapter and signed-webhook foundation. |
+| **Razorpay** | Billing | Plan checkout adapter for a fixed 12-cycle subscription and signed-webhook foundation; completion is reported as `Canceled`. |
 | **Mercado Pago** | Billing | Offline checkout fixture; live plan-only checkout and body-only webhook verification are unavailable. |
 | **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
 | **PicPay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
@@ -489,13 +489,23 @@ Razorpay subscription normalization requires the subscription's own bounded ID,
 customer ID and plan ID, plus an event/entity state match. Authentication alone
 and standalone payment/order events cannot activate a subscription. Activated,
 charged and resumed events require `active`; pending, halted, paused and
-cancelled events require their corresponding provider state. Completed and
-authenticated states remain unsupported by the v12 normalized contract. Email
+cancelled events require their corresponding provider state.
+`subscription.completed` requires `completed` and maps to the non-entitled
+`Canceled` status: Razorpay stops charging after the subscription's last
+billing cycle, so the host must end or renew access explicitly. The
+authenticated state remains unsupported by the v12 normalized contract. Email
 is optional contact data. The application still owns customer/tenant binding,
 event ordering, durable processing and reconciliation; `Active` is a lifecycle
 state, not proof that a particular invoice was paid. See Razorpay's
 [subscription states](https://razorpay.com/docs/payments/subscriptions/states/)
 and [webhook payloads](https://razorpay.com/docs/webhooks/subscriptions/).
+
+The legacy Razorpay `create_checkout_session` creates a subscription with a
+fixed `total_count` of 12 billing cycles for every plan period, so a weekly
+plan ends after 12 weeks and a yearly plan after 12 years. Handle
+`subscription.completed` to learn when billing ends. The `redirect_url`
+argument is recorded in the subscription `notes` only; the adapter does not
+send it as a callback or return URL.
 
 ---
 

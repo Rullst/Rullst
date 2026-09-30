@@ -2366,7 +2366,11 @@ sending.
   and standalone payment/order events cannot establish an active subscription.
   Email is optional contact data; durable owner binding, event ordering and
   reconciliation remain application responsibilities. Lifecycle activation is
-  not a receipt proving settlement of an invoice.
+  not a receipt proving settlement of an invoice. `subscription.completed`
+  with entity status `completed` is the terminal event after the last billing
+  cycle and maps to the non-entitled `Canceled` status. The legacy plan
+  checkout requests a fixed `total_count` of 12 cycles regardless of the plan
+  period, and its `redirect_url` is recorded in `notes` only.
 * Paddle's legacy `handle_webhook`, which the canonical middleware calls,
   normalizes only documented `subscription.*` lifecycle events (created,
   updated, imported, activated, resumed, trialing, past_due, paused and

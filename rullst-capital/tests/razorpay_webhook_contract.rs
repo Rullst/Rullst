@@ -35,6 +35,7 @@ fn accepted_subscription_events_preserve_identity_and_agree_with_entity_state() 
         ("pending", "pending", SubscriptionStatus::PastDue),
         ("halted", "halted", SubscriptionStatus::Unpaid),
         ("paused", "paused", SubscriptionStatus::Paused),
+        ("completed", "completed", SubscriptionStatus::Canceled),
     ] {
         let mut payload = event(&format!("subscription.{kind}"), state);
         let result = verify(&payload).unwrap();
@@ -46,6 +47,22 @@ fn accepted_subscription_events_preserve_identity_and_agree_with_entity_state() 
         assert!(result.customer_email.is_empty());
         payload["payload"]["subscription"]["entity"]["status"] = json!("inconsistent");
         assert!(verify(&payload).is_err());
+    }
+}
+
+#[test]
+fn completion_after_the_last_billing_cycle_is_reported_as_terminal() {
+    let completed = verify(&event("subscription.completed", "completed")).unwrap();
+    assert_eq!(completed.status, SubscriptionStatus::Canceled);
+    assert_eq!(completed.subscription_id, "sub_fixture");
+    let mut ended = event("subscription.completed", "completed");
+    ended["payload"]["subscription"]["entity"]["current_end"] = Value::Null;
+    assert_eq!(verify(&ended).unwrap().ends_at, None);
+    for state in ["active", "cancelled", "expired"] {
+        assert!(
+            verify(&event("subscription.completed", state)).is_err(),
+            "{state}"
+        );
     }
 }
 
