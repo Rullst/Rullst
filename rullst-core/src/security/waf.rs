@@ -55,33 +55,12 @@ fn forbidden_response() -> Response {
     )
 }
 
-fn body_media_type(headers: &HeaderMap) -> Option<&str> {
-    headers
-        .get(header::CONTENT_TYPE)?
-        .to_str()
-        .ok()?
-        .split(';')
-        .next()
-        .map(str::trim)
-}
-
 fn should_inspect_body(headers: &HeaderMap) -> bool {
-    let Some(media_type) = body_media_type(headers) else {
-        return false;
-    };
-
-    media_type
-        .get(..5)
-        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("text/"))
-        || media_type.eq_ignore_ascii_case("application/json")
-        || media_type.eq_ignore_ascii_case("application/x-www-form-urlencoded")
-        || media_type.eq_ignore_ascii_case("application/xml")
-        || media_type
-            .strip_suffix("+json")
-            .is_some_and(|prefix| prefix.starts_with("application/"))
-        || media_type
-            .strip_suffix("+xml")
-            .is_some_and(|prefix| prefix.starts_with("application/"))
+    headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .map(super::media_type::essence)
+        .is_some_and(super::media_type::is_inspected_request_body)
 }
 
 fn has_identity_encoding(headers: &HeaderMap) -> bool {
@@ -240,4 +219,44 @@ pub async fn waf_middleware(mut req: Request, next: Next) -> Response {
     };
 
     next.run(req).await
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+    use axum::{Router, body::Bytes, http::Request, routing::post};
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn case_and_suffix_variants_cannot_skip_body_inspection() {
+        let app = Router::new()
+            .route("/items", post(|body: Bytes| async move { body }))
+            .route_layer(axum::middleware::from_fn(waf_middleware));
+        for (media_type, body) in [
+            (
+                "application/vnd.api+JSON",
+                r#"{"bio":"<script>document.cookie</script>"}"#,
+            ),
+            (
+                "Application/problem+json",
+                r#"{"q":"x' union select pw from users--"}"#,
+            ),
+            ("application/json+patch", r#"{"path":"../../etc/passwd"}"#),
+            (
+                "application/x-www-form-urlencodedX",
+                "q=x%27%20union%20select%20pw%20from%20users--",
+            ),
+        ] {
+            let request = Request::post("/items")
+                .header(header::CONTENT_TYPE, media_type)
+                .body(Body::from(body))
+                .unwrap();
+            assert_eq!(
+                app.clone().oneshot(request).await.unwrap().status(),
+                StatusCode::FORBIDDEN,
+                "{media_type} body was not inspected"
+            );
+        }
+    }
 }
