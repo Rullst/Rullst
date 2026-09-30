@@ -36,6 +36,11 @@ Fields whose names contain password, token, secret, API key, credential, cookie
 or similar markers must use `#[orm(masked)]` on auditable models. Their values
 are never retained in audit payloads or reverse patches.
 
+`#[orm(masked)]` and `#[orm(encrypted)]` fields appear as `"***"` in every
+generated audit payload, whatever their name. When an update changes one of
+them, the audit row still records the field (as `"***"` on both sides) so the
+change is visible without its value, and that revision cannot be restored.
+
 ## 2. Bind a mutation to trusted context
 
 ```rust,no_run
@@ -104,7 +109,8 @@ Restoration fails for:
 - legacy v1, create, or delete entries;
 - a revision from another model, record, or tenant;
 - a row changed again after the selected revision;
-- a patch containing a redacted/sensitive change;
+- a patch containing a redacted/sensitive change, including any change to an
+  `#[orm(masked)]` or `#[orm(encrypted)]` field;
 - malformed, empty, too deep, too large, or excessively wide patches.
 
 Those refusals prevent audit history from becoming an unsafe generic backup

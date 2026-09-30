@@ -3,7 +3,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
 use super::*;
-use crate::artisan::runner::translate_artisan_args;
+use crate::artisan::runner::{ArtisanError, run_artisan_command, translate_artisan_args};
 use crate::artisan::studio_server::{
     handle_rollback_migrations, handle_run_migrations, handle_run_seeders,
 };
@@ -11,6 +11,8 @@ use crate::artisan::studio_views::{
     is_ai_configured, studio_ai_handler, studio_capital_handler, studio_data_handler,
     studio_home_handler, studio_security_handler, studio_telemetry_handler, studio_traces_handler,
 };
+use crate::server::ServerError;
+use crate::server::database_url::resolve_project_database_url;
 
 #[test]
 fn test_translate_artisan_args_none() {
@@ -130,4 +132,199 @@ async fn studio_mutations_never_claim_success_without_an_application_registry() 
     )
     .await;
     assert_registry_operation_fails_closed(handle_run_seeders().await, "run seeders").await;
+}
+
+/// A process environment containing at most `DATABASE_URL`.
+fn environment(
+    database_url: Option<&'static str>,
+) -> impl Fn(&str) -> Result<Option<String>, ServerError> {
+    move |name| {
+        Ok(database_url
+            .filter(|_| name == "DATABASE_URL")
+            .map(str::to_string))
+    }
+}
+
+/// A unique project directory under the system temporary directory, removed on drop.
+struct ProjectDir(std::path::PathBuf);
+
+impl ProjectDir {
+    fn path(&self) -> &std::path::Path {
+        &self.0
+    }
+}
+
+impl Drop for ProjectDir {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+fn project(dotenv: Option<&str>, rullst_toml: Option<&str>) -> ProjectDir {
+    let project =
+        ProjectDir(std::env::temp_dir().join(format!("rullst-artisan-{}", uuid::Uuid::new_v4())));
+    std::fs::create_dir_all(project.path()).expect("temporary project");
+    if let Some(dotenv) = dotenv {
+        std::fs::write(project.path().join(".env"), dotenv).expect(".env");
+    }
+    if let Some(rullst_toml) = rullst_toml {
+        std::fs::write(project.path().join("Rullst.toml"), rullst_toml).expect("Rullst.toml");
+    }
+    project
+}
+
+#[tokio::test]
+async fn artisan_database_url_uses_server_precedence() {
+    let project = project(
+        Some("DATABASE_URL=sqlite://stale-dev.db\n"),
+        Some("[database]\nurl = \"sqlite://from-toml.db\"\n"),
+    );
+    let resolve = |explicit: Option<&'static str>, database_url: Option<&'static str>| {
+        resolve_project_database_url(project.path(), explicit, environment(database_url))
+    };
+
+    // A deployment's process environment wins over a stale `.env`.
+    assert_eq!(
+        resolve(None, Some("postgres://prod"))
+            .await
+            .unwrap()
+            .as_deref(),
+        Some("postgres://prod")
+    );
+    // `.env` supplies the URL only when the process environment has none.
+    assert_eq!(
+        resolve(None, None).await.unwrap().as_deref(),
+        Some("sqlite://stale-dev.db")
+    );
+    // A `Server::with_db` value wins over every file and variable.
+    assert_eq!(
+        resolve(Some("postgres://explicit"), Some("postgres://prod"))
+            .await
+            .unwrap()
+            .as_deref(),
+        Some("postgres://explicit")
+    );
+
+    let toml_only = self::project(None, Some("[database]\nurl = \"sqlite://from-toml.db\"\n"));
+    assert_eq!(
+        resolve_project_database_url(toml_only.path(), None, environment(None))
+            .await
+            .unwrap()
+            .as_deref(),
+        Some("sqlite://from-toml.db")
+    );
+}
+
+#[tokio::test]
+async fn artisan_database_url_reads_only_the_database_table_with_a_toml_parser() {
+    let url = "postgres://app:secret@db/app?sslmode=require&application_name=rullst";
+    let project = project(
+        None,
+        Some(&format!(
+            "[database]\nurl = \"{url}\"\n\n[cache]\nurl = \"redis://127.0.0.1/\"\n"
+        )),
+    );
+    assert_eq!(
+        resolve_project_database_url(project.path(), None, environment(None))
+            .await
+            .unwrap()
+            .as_deref(),
+        Some(url)
+    );
+
+    // Neither a `url` key in another table nor a stray SQLite file selects a database.
+    let unrelated = self::project(None, Some("[cache]\nurl = \"redis://127.0.0.1/\"\n"));
+    std::fs::write(unrelated.path().join("rullst.db"), b"").unwrap();
+    assert_eq!(
+        resolve_project_database_url(unrelated.path(), None, environment(None))
+            .await
+            .unwrap(),
+        None
+    );
+}
+
+#[tokio::test]
+async fn artisan_database_url_errors_never_echo_configuration_content() {
+    let canary = "artisan-secret-canary";
+    for (dotenv, rullst_toml) in [
+        (
+            Some(format!("DATABASE_URL=\"postgres://owner:{canary}@db\n")),
+            None,
+        ),
+        (
+            None,
+            Some(format!(
+                "[database]\nurl = \"postgres://owner:{canary}@db\n"
+            )),
+        ),
+    ] {
+        let project = project(dotenv.as_deref(), rullst_toml.as_deref());
+        let error = resolve_project_database_url(project.path(), None, environment(None))
+            .await
+            .expect_err("malformed configuration must fail");
+        assert!(matches!(error, ServerError::Configuration(_)));
+        assert!(!format!("{error} {error:?}").contains(canary));
+    }
+}
+
+#[tokio::test]
+async fn artisan_command_fails_without_a_configured_database() {
+    let project = project(None, None);
+    std::fs::write(project.path().join("rullst.db"), b"").unwrap();
+    for command in ["db:migrate", "db:rollback", "db:status", "db:seed"] {
+        let args = translate_artisan_args(&["app".to_string(), command.to_string()]).unwrap();
+        let error = run_artisan_command(
+            command,
+            &args,
+            vec![],
+            vec![],
+            None,
+            project.path(),
+            environment(None),
+        )
+        .await
+        .expect_err("a database command needs a configured database");
+        assert!(matches!(&error, ArtisanError::DatabaseNotConfigured(name) if name == command));
+        assert!(error.to_string().contains("DATABASE_URL"));
+    }
+    assert!(!project.path().join("db.sqlite").exists());
+}
+
+#[tokio::test]
+async fn artisan_command_propagates_configuration_and_database_failures() {
+    let canary = "artisan-command-canary";
+    let malformed = project(
+        Some(&format!("DATABASE_URL=\"postgres://owner:{canary}@db\n")),
+        None,
+    );
+    let args = translate_artisan_args(&["app".to_string(), "db:migrate".to_string()]).unwrap();
+    let error = run_artisan_command(
+        "db:migrate",
+        &args,
+        vec![],
+        vec![],
+        None,
+        malformed.path(),
+        environment(None),
+    )
+    .await
+    .expect_err("malformed .env must fail");
+    assert!(matches!(error, ArtisanError::Configuration(_)));
+    assert!(!error.to_string().contains(canary));
+
+    // `Orm::init` rejects the unconfigured placeholder before connecting.
+    let empty = project(None, None);
+    let error = run_artisan_command(
+        "db:migrate",
+        &args,
+        vec![],
+        vec![],
+        None,
+        empty.path(),
+        environment(Some("postgres://[your-database-id]/app")),
+    )
+    .await
+    .expect_err("an initialization failure must not be discarded");
+    assert!(matches!(error, ArtisanError::Database(_)));
+    assert!(rullst_orm::Orm::try_pool().is_err());
 }

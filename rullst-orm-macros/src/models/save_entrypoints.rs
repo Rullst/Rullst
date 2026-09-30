@@ -246,9 +246,7 @@ fn revision_restore(table_name: &str, lookup: &TokenStream) -> TokenStream {
                         .await?
                         .ok_or(rullst_orm::Error::RecordNotFound)?;
                     current_model.__rullst_decrypt_encrypted_fields()?;
-                    let current_json = rullst_orm::_serde_json::from_str(
-                        &current_model.to_cache_json(),
-                    )?;
+                    let current_json = current_model.__rullst_cache_json_value()?;
                     let restored_json = rullst_orm::audit::apply_reverse_patch(
                         current_json,
                         revision.restore_patch(),
@@ -426,13 +424,15 @@ fn audit_after_tx(table_name: &str) -> TokenStream {
                 Some(self.to_json())
             ).await?;
         } else if let Some(old_model) = old_model_for_audit {
-            rullst_orm::audit::log_audit_diff_with_tx(
+            let redacted_changes = self.__rullst_redacted_changes(&old_model);
+            rullst_orm::audit::log_audit_diff_redacted_with_tx(
                 tx,
                 #table_name,
                 self.id,
                 "updated",
                 &old_model.to_json(),
-                &self.to_json()
+                &self.to_json(),
+                &redacted_changes,
             ).await?;
         }
     }

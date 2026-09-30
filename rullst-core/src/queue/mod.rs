@@ -176,6 +176,11 @@ pub trait QueueDriver: Send + Sync {
         }
     }
     /// Pop the next available job from the queue (FIFO).
+    ///
+    /// [`Worker`] always drives this future to completion and never cancels an
+    /// in-flight claim, so implementations may commit the claim before they
+    /// return. Graceful worker shutdown waits for that call, so it should not
+    /// block indefinitely.
     async fn pop(&self) -> Result<Option<QueuedJob>, QueueError>;
     /// Mark a job as successfully completed.
     ///

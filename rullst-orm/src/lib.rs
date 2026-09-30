@@ -124,6 +124,8 @@ pub use polyglot::{
     QdrantConfig, QdrantStore, VectorCollectionName, VectorDimensions, VectorMatch, VectorPoint,
     VectorQueryLimit, VectorRepository,
 };
+#[doc(hidden)]
+pub use pool::portable_subquery;
 pub use pool::{
     Orm, PaginationResult, RagContext, RullstModel, Seeder, is_lazy_loading_prevented,
     prevent_lazy_loading, replace_placeholders,
@@ -150,6 +152,10 @@ pub use value::RullstValue;
 #[doc(hidden)]
 #[path = "transaction_access.rs"]
 pub mod __transaction_access;
+
+#[doc(hidden)]
+#[path = "eager_limit.rs"]
+pub mod __eager_limit;
 
 tokio::task_local! {
     pub static CURRENT_TX: std::sync::Arc<tokio::sync::Mutex<Option<crate::db::Transaction<'static>>>>;

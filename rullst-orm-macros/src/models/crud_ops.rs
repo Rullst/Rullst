@@ -1,3 +1,6 @@
+use crate::models::mutation_parts::{
+    TenantPredicate, deleted_effects, instance_hook, tenant_guard, tenant_predicate,
+};
 use crate::models::save_entrypoints;
 use crate::parser::{EncryptedFieldKind, ParsedModel};
 use proc_macro2::TokenStream;
@@ -28,7 +31,7 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
                 #table_name,
                 self.id,
                 operation,
-                self.to_json(),
+                self.__rullst_search_json(),
             );
             rullst_orm::after_commit(move || async move {
                 if let Some(engine) = rullst_orm::scout::get_search_engine() {
@@ -267,12 +270,6 @@ pub fn generate_save_method(parsed: &ParsedModel) -> TokenStream {
 pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
     let name = &parsed.name;
     let table_name = &parsed.table_name;
-    let tenant_field_type = parsed
-        .normal_fields
-        .iter()
-        .zip(parsed.normal_fields_types.iter())
-        .find(|(field, _)| *field == parsed.tenant_column.as_str())
-        .map(|(_, ty)| ty);
     let has_soft_deletes = parsed.has_soft_deletes;
     let soft_delete_config = if has_soft_deletes {
         let Some(config) = parsed.soft_delete.as_ref() else {
@@ -287,67 +284,15 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         None
     };
 
-    let hook_before_delete = if !parsed.before_delete.is_empty() {
-        let method = syn::Ident::new(&parsed.before_delete, name.span());
-        quote! { rullst_orm::__transaction_access::run(self.#method()).await?; }
-    } else {
-        quote! {}
-    };
-    let hook_after_delete = if !parsed.after_delete.is_empty() {
-        let method = syn::Ident::new(&parsed.after_delete, name.span());
-        quote! { rullst_orm::__transaction_access::run(self.#method()).await?; }
-    } else {
-        quote! {}
-    };
-
-    let tenant_guard = if let Some(tenant_field_type) = tenant_field_type {
-        let col_ident = syn::Ident::new(&parsed.tenant_column, name.span());
-        quote! {
-            let tenant = rullst_orm::tenant::get_tenant_id().ok_or_else(|| {
-                rullst_orm::Error::Validation(format!(
-                    "tenant context is required to mutate `{}`",
-                    #table_name
-                ))
-            })?;
-            let expected_tenant: #tenant_field_type = tenant.try_into().map_err(|_| {
-                rullst_orm::Error::Validation(format!(
-                    "tenant context type does not match `{}.{}`",
-                    #table_name,
-                    stringify!(#col_ident)
-                ))
-            })?;
-            if self.#col_ident != expected_tenant {
-                return Err(rullst_orm::Error::Validation(
-                    "record is outside the active tenant scope".to_string()
-                ));
-            }
-        }
-    } else {
-        quote! {}
-    };
-
-    let tenant_where_clause = if !parsed.tenant_column.is_empty() {
-        format!(" AND {} = ?", parsed.tenant_column)
-    } else {
-        String::new()
-    };
-    let tenant_binding = if !parsed.tenant_column.is_empty() {
-        let col_ident = syn::Ident::new(&parsed.tenant_column, name.span());
-        quote! { .bind(self.#col_ident.clone()) }
-    } else {
-        quote! {}
-    };
-    let tenant_rows_check = if !parsed.tenant_column.is_empty() {
-        quote! {
-            if mutation_result.rows_affected() != 1 {
-                return Err(rullst_orm::Error::Validation(
-                    "record is outside the active tenant scope".to_string()
-                ));
-            }
-        }
-    } else {
-        quote! {}
-    };
+    let hook_before_delete = instance_hook(parsed, &parsed.before_delete);
+    let hook_after_delete = instance_hook(parsed, &parsed.after_delete);
+    let tenant_guard = tenant_guard(parsed);
+    let TenantPredicate {
+        clause: tenant_where_clause,
+        binding: tenant_binding,
+        rows_check: tenant_rows_check,
+    } = tenant_predicate(parsed);
+    let deleted_effects = deleted_effects(parsed);
 
     let audit_after_delete_with_tx = if parsed.auditable {
         quote! {
@@ -359,25 +304,6 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
                 Some(self.to_json()),
                 None
             ).await?;
-        }
-    } else {
-        quote! {}
-    };
-
-    let scout_delete_after_commit = if parsed.searchable {
-        quote! {
-            let event = rullst_orm::ModelCommittedEvent::new(
-                #table_name,
-                self.id,
-                rullst_orm::ModelOperation::Deleted,
-                self.to_json(),
-            );
-            rullst_orm::after_commit(move || async move {
-                if let Some(engine) = rullst_orm::scout::get_search_engine() {
-                    engine.delete(event.table, event.id).await?;
-                }
-                Ok(())
-            }).await?;
         }
     } else {
         quote! {}
@@ -412,55 +338,11 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
         }
     };
 
-    let restore_logic = if let Some(cfg) = soft_delete_config {
-        let set_clause = if cfg.value.trim().eq_ignore_ascii_case("null") || cfg.value.is_empty() {
-            format!("{} = NULL", cfg.column)
-        } else {
-            format!("{} = {}", cfg.column, cfg.value)
-        };
-        let set_clause_lit = set_clause;
-        quote! {
-            let pool = rullst_orm::Orm::try_pool()?;
-            use rullst_orm::_sqlx::query_builder::QueryBuilder;
-            let mut query_builder = QueryBuilder::new("UPDATE ");
-            query_builder.push(#table_name);
-            query_builder.push(format!(" SET {} WHERE id = ?{}", #set_clause_lit, #tenant_where_clause));
-            let query = query_builder.build();
-            let exec = query.bind(self.id) #tenant_binding;
-            let mutation_result = rullst_orm::execute_query!(exec, execute, pool)?;
-            #tenant_rows_check
-        }
-    } else {
-        quote! {}
-    };
-
     let policy_check_delete = if !parsed.policy.is_empty() {
         let policy_type = syn::Ident::new(&parsed.policy, parsed.name.span());
         quote! {
             if !rullst_orm::__transaction_access::run(<#policy_type as rullst_orm::Policy<Self>>::can_delete(self)).await? {
                 return Err(rullst_orm::Error::Validation("Policy prevents deleting this record".to_string()));
-            }
-        }
-    } else {
-        quote! {}
-    };
-
-    let policy_check_restore = if !parsed.policy.is_empty() {
-        let policy_type = syn::Ident::new(&parsed.policy, parsed.name.span());
-        quote! {
-            if !<#policy_type as rullst_orm::Policy<Self>>::can_restore(self).await? {
-                return Err(rullst_orm::Error::Validation("Policy prevents restoring this record".to_string()));
-            }
-        }
-    } else {
-        quote! {}
-    };
-
-    let policy_check_force_delete = if !parsed.policy.is_empty() {
-        let policy_type = syn::Ident::new(&parsed.policy, parsed.name.span());
-        quote! {
-            if !<#policy_type as rullst_orm::Policy<Self>>::can_force_delete(self).await? {
-                return Err(rullst_orm::Error::Validation("Policy prevents force deleting this record".to_string()));
             }
         }
     } else {
@@ -602,72 +484,7 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
             let futures = observers.iter().map(|obs| obs.deleted(&*self));
             rullst_orm::__transaction_access::run(rullst_orm::_futures::future::try_join_all(futures)).await?;
             #hook_after_delete
-            #[cfg(feature = "redis")]
-            {
-                let event = rullst_orm::ModelCommittedEvent::new(
-                    #table_name,
-                    self.id,
-                    rullst_orm::ModelOperation::Deleted,
-                    self.to_json(),
-                );
-                rullst_orm::after_commit(move || async move {
-                    use rullst_orm::_redis::AsyncCommands;
-                    rullst_orm::query_cache::invalidate_table(event.table).await?;
-                    if let Ok(mut connection) = rullst_orm::Orm::redis_manager() {
-                        let topic = format!("orm:events:{}:deleted", event.table);
-                        let _: usize = connection.publish(&topic, &event.payload).await?;
-                    }
-                    Ok(())
-                }).await?;
-            }
-            let event = rullst_orm::ModelCommittedEvent::new(
-                #table_name,
-                self.id,
-                rullst_orm::ModelOperation::Deleted,
-                self.to_json(),
-            );
-            rullst_orm::after_commit(move || async move {
-                let futures = observers.iter().map(|observer| observer.committed(&event));
-                rullst_orm::_futures::future::try_join_all(futures).await?;
-                Ok(())
-            }).await?;
-            #scout_delete_after_commit
-            Ok(())
-        }
-
-        #[rullst_orm::_tracing::instrument(
-            name = "rullst.orm.query",
-            target = "rullst_orm",
-            skip(self),
-            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "restore")
-        )]
-        pub async fn restore(&self) -> Result<(), rullst_orm::Error> {
-            rullst_orm::__transaction_access::ensure_allowed()?;
-            #tenant_guard
-            #policy_check_restore
-            #restore_logic
-            Ok(())
-        }
-
-        #[rullst_orm::_tracing::instrument(
-            name = "rullst.orm.query",
-            target = "rullst_orm",
-            skip(self),
-            fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "force_delete")
-        )]
-        pub async fn force_delete(&self) -> Result<(), rullst_orm::Error> {
-            rullst_orm::__transaction_access::ensure_allowed()?;
-            #tenant_guard
-            #policy_check_force_delete
-            let pool = rullst_orm::Orm::try_pool()?;
-            use rullst_orm::_sqlx::query_builder::QueryBuilder;
-            let mut query_builder = QueryBuilder::new("DELETE FROM ");
-            query_builder.push(#table_name);
-            query_builder.push(format!(" WHERE id = ?{}", #tenant_where_clause));
-            let query = query_builder.build();
-            let exec = query.bind(self.id) #tenant_binding;
-            let mutation_result = rullst_orm::execute_query!(exec, execute, pool)?;
-            #tenant_rows_check
+            #deleted_effects
             Ok(())
         }
     }

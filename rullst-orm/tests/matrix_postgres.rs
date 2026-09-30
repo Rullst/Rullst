@@ -2,6 +2,9 @@
 
 mod support;
 
+// Driver-neutral contracts, also run on SQLite by `driver_contract_sqlite`.
+mod driver_contract;
+
 use rullst_orm::schema::{Blueprint, Schema};
 use rullst_orm::{FromRow, Orm};
 use testcontainers::runners::AsyncRunner;
@@ -13,6 +16,23 @@ struct User {
     pub id: i32,
     pub name: String,
     pub email: String,
+}
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "pg_tenant_posts", tenant_column = "tenant_id")]
+struct TenantPost {
+    pub id: i32,
+    pub tenant_id: String,
+    pub author_id: i32,
+}
+
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "pg_tenant_comments", tenant_column = "tenant_id")]
+struct TenantComment {
+    pub id: i32,
+    pub tenant_id: String,
+    pub post_id: i32,
+    pub status: String,
 }
 
 #[derive(rullst_orm::Enum, Debug, Clone, Copy, PartialEq, Eq)]
@@ -125,11 +145,79 @@ async fn test_matrix_postgres_crud() {
     assert!(not_found.is_none());
 
     support::exercise_outbox().await;
+    exercise_tenant_subqueries().await;
 
     #[cfg(feature = "strict-postgres")]
     exercise_native_enum().await;
     #[cfg(not(feature = "strict-postgres"))]
     exercise_dynamic_pool_enum_refusal().await;
+    driver_contract::exercise().await;
+}
+
+/// Tenant scope, typed CTEs and EXISTS subqueries must share one `$n` sequence.
+async fn exercise_tenant_subqueries() {
+    let pool = Orm::pool().expect("PostgreSQL pool");
+    for statement in [
+        "CREATE TABLE pg_tenant_posts (id SERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, author_id INTEGER NOT NULL)",
+        "CREATE TABLE pg_tenant_comments (id SERIAL PRIMARY KEY, tenant_id TEXT NOT NULL, post_id INTEGER NOT NULL, status TEXT NOT NULL)",
+        "CREATE TABLE pg_tenant_authors (id INTEGER PRIMARY KEY, region TEXT NOT NULL)",
+        "INSERT INTO pg_tenant_posts (id, tenant_id, author_id) VALUES (1, 'acme', 1), (2, 'acme', 2), (3, 'other', 1), (4, 'acme', 1)",
+        "INSERT INTO pg_tenant_comments (tenant_id, post_id, status) VALUES ('acme', 1, 'open'), ('acme', 2, 'open'), ('other', 3, 'open'), ('acme', 4, 'published'), ('other', 4, 'open')",
+        "INSERT INTO pg_tenant_authors (id, region) VALUES (1, 'eu'), (2, 'us')",
+    ] {
+        sqlx::query(statement)
+            .execute(pool)
+            .await
+            .expect("seed PostgreSQL tenant subquery fixture");
+    }
+
+    let open_comment = || {
+        TenantComment::query()
+            .where_column("pg_tenant_comments.post_id", "pg_tenant_posts.id")
+            .where_eq("status", "open")
+    };
+    let (ids, count, deleted, remaining) = rullst_orm::with_tenant("acme", async {
+        let query = TenantPost::query()
+            .with_cte(
+                "published_comments",
+                TenantComment::query().where_eq("status", "published"),
+            )
+            .with_cte(
+                "open_comments",
+                TenantComment::query()
+                    .where_exists(TenantComment::query().where_eq("status", "open"))
+                    .where_eq("status", "open"),
+            )
+            .join_constrained("pg_tenant_authors", |join| {
+                join.on("pg_tenant_authors.id", "=", "pg_tenant_posts.author_id")
+                    .on_eq("pg_tenant_authors.region", "eu")
+            })
+            .where_exists(open_comment());
+        let ids = query
+            .clone()
+            .order_by("pg_tenant_posts.id")
+            .pluck_i32("pg_tenant_posts.id")
+            .await
+            .expect("PostgreSQL tenant EXISTS with CTEs and JOIN");
+        let count = query.count().await.expect("PostgreSQL ordered count");
+        let deleted = TenantPost::query()
+            .where_exists(open_comment())
+            .delete_all()
+            .await
+            .expect("PostgreSQL delete_all with an embedded subquery");
+        let remaining = TenantPost::query()
+            .order_by("id")
+            .pluck_i32("id")
+            .await
+            .expect("remaining PostgreSQL tenant rows");
+        (ids, count, deleted, remaining)
+    })
+    .await;
+
+    assert_eq!(ids, vec![1]);
+    assert_eq!(count, 1);
+    assert_eq!(deleted, 2);
+    assert_eq!(remaining, vec![4]);
 }
 
 #[cfg(feature = "strict-postgres")]

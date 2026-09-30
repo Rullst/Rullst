@@ -90,7 +90,9 @@ ignored = ["async-trait", "rullst-core", "subtle", "serde", "axum", "serde_json"
 
 [dev-dependencies]
 criterion = { workspace = true, features = ["async_tokio"] }
+futures-util = { workspace = true, features = ["sink"] }
 testcontainers = "0.27.3"
+tokio-tungstenite = { version = "0.29.0", default-features = false, features = ["connect", "handshake"] }
 
 [[bench]]
 name = "core_bench"

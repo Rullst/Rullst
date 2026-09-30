@@ -221,7 +221,8 @@ impl Server {
     {
         let dotenv = Self::load_dotenv_values().await?;
         #[cfg(feature = "orm")]
-        let _ = crate::artisan::check_and_run_artisan(vec![], vec![]).await;
+        crate::artisan::runner::intercept_artisan_command(vec![], vec![], self.db_url.as_deref())
+            .await;
         let _ = crate::telemetry::init_telemetry();
         let app_config = Self::load_config().await?;
         let environment = resolve_environment(&app_config, &dotenv)?;
@@ -255,23 +256,13 @@ impl Server {
 
     #[cfg_attr(mutants, mutants::skip)]
     async fn load_dotenv_values() -> Result<HashMap<String, String>, ServerError> {
-        if !std::path::Path::new(".env").exists() {
-            return Ok(HashMap::new());
-        }
-
-        let content = tokio::fs::read_to_string(".env").await?;
-        parse_dotenv(&content)
+        super::database_url::load_dotenv_file(std::path::Path::new(".env")).await
     }
 
     #[cfg_attr(mutants, mutants::skip)]
     async fn load_config() -> Result<crate::config::RullstConfig, ServerError> {
-        let app_config = if std::path::Path::new("Rullst.toml").exists() {
-            crate::config::RullstConfig::load_from_file("Rullst.toml")
-                .await
-                .map_err(|error| ServerError::Configuration(error.to_string()))?
-        } else {
-            crate::config::RullstConfig::new()
-        };
+        let app_config =
+            super::database_url::load_config_file(std::path::Path::new("Rullst.toml")).await?;
 
         app_config
             .validate()
@@ -292,13 +283,12 @@ impl Server {
         }
 
         if self.db_url.is_none() {
-            if let Some(env_db_url) = read_optional_environment_variable("DATABASE_URL")? {
-                self.db_url = Some(env_db_url);
-            } else if let Some(dotenv_db_url) = dotenv.get("DATABASE_URL") {
-                self.db_url = Some(dotenv_db_url.clone());
-            } else if let Some(ref url) = app_config.database.url {
-                self.db_url = Some(url.clone());
-            }
+            self.db_url = super::database_url::resolve_database_url(
+                None,
+                read_optional_environment_variable,
+                dotenv,
+                app_config,
+            )?;
         }
 
         if let Some(db_url) = &self.db_url {
@@ -319,10 +309,13 @@ impl Server {
         app_config: &crate::config::RullstConfig,
         dotenv: &HashMap<String, String>,
     ) -> Result<(), ServerError> {
-        let database_requested = self.db_url.is_some()
-            || app_config.database.url.is_some()
-            || dotenv.contains_key("DATABASE_URL")
-            || read_optional_environment_variable("DATABASE_URL")?.is_some();
+        let database_requested = super::database_url::resolve_database_url(
+            self.db_url.as_deref(),
+            read_optional_environment_variable,
+            dotenv,
+            app_config,
+        )?
+        .is_some();
 
         if database_requested {
             return Err(ServerError::Database(
@@ -576,7 +569,9 @@ impl Server {
     }
 }
 
-fn read_optional_environment_variable(name: &str) -> Result<Option<String>, ServerError> {
+pub(crate) fn read_optional_environment_variable(
+    name: &str,
+) -> Result<Option<String>, ServerError> {
     match std::env::var(name) {
         Ok(value) => Ok(Some(value)),
         Err(std::env::VarError::NotPresent) => Ok(None),
@@ -673,7 +668,7 @@ fn mark_lifecycle_stopped(lifecycle: Option<&ApplicationLifecycle>) {
 
 /// Parses dotenv content with errors that never contain file content: dotenvy's
 /// own parse error embeds the unparsed remainder, which can include secrets.
-fn parse_dotenv(content: &str) -> Result<HashMap<String, String>, ServerError> {
+pub(super) fn parse_dotenv(content: &str) -> Result<HashMap<String, String>, ServerError> {
     let mut values = HashMap::new();
     for (index, entry) in dotenvy::from_read_iter(content.as_bytes()).enumerate() {
         let (name, value) = entry.map_err(|error| {

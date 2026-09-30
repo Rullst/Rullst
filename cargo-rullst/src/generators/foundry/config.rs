@@ -2,7 +2,8 @@
 
 #[derive(Debug, thiserror::Error, PartialEq, Eq)]
 pub enum FoundryConfigError {
-    #[error("Foundry.toml is not valid TOML: {0}")]
+    /// Holds only `line L, column C`; the TOML message can quote secrets.
+    #[error("Foundry.toml is not valid TOML at {0}")]
     Parse(String),
     #[error("invalid Foundry configuration: {0}")]
     Invalid(String),
@@ -84,8 +85,9 @@ pub struct FoundryConfig {
 }
 
 pub fn parse_foundry_config(content: &str) -> Result<FoundryConfig, FoundryConfigError> {
-    let document = toml::from_str::<toml::Value>(content)
-        .map_err(|error| FoundryConfigError::Parse(error.to_string()))?;
+    let document = toml::from_str::<toml::Value>(content).map_err(|error| {
+        FoundryConfigError::Parse(crate::generators::toml_error_position(content, &error))
+    })?;
     let value = |section: &str, key: &str| {
         document
             .get(section)
@@ -308,5 +310,36 @@ mod tests {
             Err(FoundryConfigError::Invalid(_))
         ));
         assert!(parse_foundry_config("[app\nname = 1").is_err());
+    }
+
+    #[test]
+    fn parse_errors_report_position_without_foundry_content() {
+        let canary = "sk_live_foundry_redaction_canary";
+        for (content, line) in [
+            (format!("[env]\nAPP_KEY = \"{canary}\n"), 2),
+            (
+                format!("[database]\nurl = \"postgres://owner:{canary}@db\" trailing\n"),
+                2,
+            ),
+            (
+                format!("[env]\nAPP_KEY = \"x\"\nAPP_KEY = \"{canary}\"\n"),
+                3,
+            ),
+        ] {
+            let raw = toml::from_str::<toml::Value>(&content).unwrap_err();
+            assert!(
+                raw.to_string().contains(canary),
+                "fixture must exercise the leak"
+            );
+            let error = parse_foundry_config(&content).err().unwrap();
+            let rendered = format!("{error} {error:?}");
+            assert!(!rendered.contains(canary), "{rendered}");
+            assert!(!rendered.contains("postgres://"), "{rendered}");
+            assert!(
+                matches!(&error, FoundryConfigError::Parse(position)
+                    if position.starts_with(&format!("line {line}, column "))),
+                "{rendered}"
+            );
+        }
     }
 }

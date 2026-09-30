@@ -97,6 +97,14 @@ impl Blueprint {
         self.add_column(name, "TEXT")
     }
 
+    /// Adds nullable `created_at`/`updated_at` text columns that default to the
+    /// database's current timestamp.
+    ///
+    /// SQLite and PostgreSQL receive `TEXT DEFAULT CURRENT_TIMESTAMP`.
+    /// MySQL/MariaDB reject a literal default on a `TEXT` column, so they
+    /// receive the expression form `TEXT DEFAULT (CURRENT_TIMESTAMP)`
+    /// (MySQL 8.0.13+, MariaDB 10.2.1+). The column stays `TEXT` on every
+    /// driver so SQLx's `Any` driver can decode it as a string.
     pub fn timestamps(&mut self) {
         let mut created = Column::new("created_at", "TEXT");
         created.default(ColumnDefault::CurrentTimestamp);
@@ -170,7 +178,14 @@ impl Blueprint {
             }
             if let Some(default) = &col.default_value {
                 use std::fmt::Write;
-                let _ = write!(def, " DEFAULT {}", default.to_sql());
+                if driver == "mysql"
+                    && *default != ColumnDefault::Null
+                    && mysql_requires_expression_default(&col_type_str)
+                {
+                    let _ = write!(def, " DEFAULT ({})", default.to_sql());
+                } else {
+                    let _ = write!(def, " DEFAULT {}", default.to_sql());
+                }
             }
             defs.push(def);
         }
@@ -194,4 +209,28 @@ impl Blueprint {
         }
         Ok(definitions.into_values().collect())
     }
+}
+
+/// MySQL accepts a DEFAULT on BLOB, TEXT, GEOMETRY and JSON columns only as a
+/// parenthesized expression, even for a literal value (MySQL 8.0.13+).
+/// MariaDB 10.2.1+ accepts the same expression form.
+fn mysql_requires_expression_default(col_type: &str) -> bool {
+    let base = col_type
+        .split(|character: char| !character.is_ascii_alphanumeric())
+        .next()
+        .unwrap_or_default()
+        .to_ascii_uppercase();
+    matches!(
+        base.as_str(),
+        "TEXT"
+            | "TINYTEXT"
+            | "MEDIUMTEXT"
+            | "LONGTEXT"
+            | "BLOB"
+            | "TINYBLOB"
+            | "MEDIUMBLOB"
+            | "LONGBLOB"
+            | "JSON"
+            | "GEOMETRY"
+    )
 }

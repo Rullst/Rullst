@@ -415,4 +415,45 @@ mod tests {
             .to_string()
             .contains("cannot be combined"));
     }
+
+    #[test]
+    fn secret_string_fields_are_redacted_but_other_types_are_not() {
+        for type_name in [
+            "SecretString",
+            "rullst_orm::SecretString",
+            "Option<SecretString>",
+            "Option<rullst_orm::privacy::SecretString>",
+        ] {
+            let ty: syn::Type = syn::parse_str(type_name).expect("SecretString type");
+            assert!(is_secret_string_type(&ty), "{type_name}");
+        }
+        for plain in [
+            "String",
+            "Option<String>",
+            "Option<Option<SecretString>>",
+            "Vec<SecretString>",
+            "SecretString<u8>",
+        ] {
+            let ty: syn::Type = syn::parse_str(plain).expect("plain type");
+            assert!(!is_secret_string_type(&ty), "{plain}");
+        }
+
+        let input: DeriveInput = syn::parse_quote! {
+            struct Customer {
+                id: i32,
+                cpf: SecretString,
+                #[orm(masked)]
+                hint: String,
+                name: String,
+            }
+        };
+        let parsed = parse(&input).expect("customer should parse");
+        let redacted: Vec<String> = parsed
+            .normal_fields
+            .iter()
+            .filter(|field| parsed.is_redacted(field))
+            .map(ToString::to_string)
+            .collect();
+        assert_eq!(redacted, vec!["cpf", "hint"]);
+    }
 }

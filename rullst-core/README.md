@@ -15,15 +15,28 @@
   during startup, dependency unavailability, and graceful drain. It accepts at
   most 32 immutable component labels and exposes counts—not labels or errors—on
   `/ready`; dependency checks and multi-replica coordination remain host work.
+- **Bounded Rate Limiting:** `RateLimiter` keys IPv4 peers per address and
+  IPv6 peers per /64, and bounds its process-local bucket map to 100,000 keys
+  by dropping refilled buckets and evicting the least recently used ones.
 - **Typed Failures:** Server, scheduler, queue, storage, and resilience APIs expose structured errors for fallible paths. The repository's zero-panic policy is CI-scoped, not an absolute runtime guarantee.
 - **Dependency Injection:** Type-safe, intuitive global state management across routes and background workers.
 - **Environment Management:** Native `dotenv` and TOML configuration loaders for different deployment targets (Staging, Production, Local).
+  `Server` and the Artisan `db:*`/`studio` commands resolve the database the
+  same way: process `DATABASE_URL`, then `./.env` (never overriding the
+  process), then `[database].url`. Database commands without a configured
+  database fail instead of creating a SQLite file.
 - **Durable Scheduled Queues:** SQLite and Redis persist bounded `dispatch_at`
   timestamps and never claim a job before its millisecond due time. Delivery is
   poll-dependent and at-least-once.
 - **Explicit Completion History:** SQLite deletes successful payloads by
   default. `Queue::sqlite_with_completed_history` opts into a bounded retained
   history for Studio/operations, with atomic pruning and an explicit purge API.
+- **Atomic Local Writes:** `Storage::local`/`LocalDriver::put` writes a unique
+  temporary file beside the object, flushes it and renames it over the key.
+  Readers and concurrent writers see one complete version, and a failed write
+  leaves the previous object intact. Each put creates a new file with default
+  permissions; the directory is not fsynced, so a power loss can roll a
+  completed put back to the previous version.
 - **Metadata-only Cache Inspection:** Memory and Redis drivers can return a
   sorted snapshot of at most 200 logical keys, UTF-8 value lengths and TTLs
   without returning values. Custom drivers fail explicitly unless they opt in;

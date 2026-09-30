@@ -310,6 +310,13 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
         let pk_ident = quote::format_ident!("{}", if related_key.is_empty() { "id".to_string() } else { related_key.clone() });
         let morph_id_ident = quote::format_ident!("{}", if foreign_key.is_empty() { format!("{}_id", morph_name) } else { foreign_key.clone() });
 
+        // One query serves every parent: exceeding the row cap fails instead of dropping rows.
+        let guarded_fetch = quote! {
+            let eager_limit = rullst_orm::__eager_limit::guard(&mut query.limit);
+            let all_related = Box::pin(query.get()).await?;
+            rullst_orm::__eager_limit::ensure_complete(all_related.len(), eager_limit, stringify!(#name), stringify!(#method_name))?;
+        };
+
         let eager_load_assignment = match rel_type.as_str() {
             "has_many" => generate_eager_load_assignment(true, &fk_ident, &lk_ident, &method_name),
             "has_one" => generate_eager_load_assignment(false, &fk_ident, &lk_ident, &method_name),
@@ -328,7 +335,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                         if let Some(ref filter) = self.#filter_flag {
                             query = filter(query);
                         }
-                        let all_related = Box::pin(query.get()).await?;
+                        #guarded_fetch
                         #eager_load_assignment
                     }
                 }
@@ -342,7 +349,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                         if let Some(ref filter) = self.#filter_flag {
                             query = filter(query);
                         }
-                        let all_related = Box::pin(query.get()).await?;
+                        #guarded_fetch
                         #eager_load_assignment
                     }
                 }
@@ -362,7 +369,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                         if let Some(ref filter) = self.#filter_flag {
                             query = filter(query);
                         }
-                        let all_related = Box::pin(query.get()).await?;
+                        #guarded_fetch
                         let related_by_id: std::collections::HashMap<_, _> = all_related
                             .into_iter()
                             .map(|related| (related.#pk_ident.clone(), related))
@@ -393,7 +400,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                             if let Some(ref filter) = self.#filter_flag {
                                 query = filter(query);
                             }
-                            let all_related = Box::pin(query.get()).await?;
+                            #guarded_fetch
                             #eager_load_assignment
                         }
                     }
@@ -455,7 +462,7 @@ pub fn generate(parsed: &ParsedModel) -> GeneratedRelationships {
                                 if let Some(ref filter) = self.#filter_flag {
                                     query = filter(query);
                                 }
-                                let all_related: Vec<#rel_model_ident> = Box::pin(query.get()).await?;
+                                #guarded_fetch
 
                                 // related_id -> model lookup
                                 let mut related_map: std::collections::HashMap<i32, #rel_model_ident> =

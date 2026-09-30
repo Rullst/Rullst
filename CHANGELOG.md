@@ -9,6 +9,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Core and ORM review fixes
+
+Ported from the v13 review of rullst-core and the ORM. None adds public API.
+
+- **ORM:**
+  - Typed subqueries in `where_exists`, `or_where_exists`, `with_cte` and
+    `with_recursive` no longer shift PostgreSQL bindings. Before, the outer
+    mandatory tenant predicate could bind to a caller-supplied value.
+  - `#[orm(encrypted)]`, `#[orm(masked)]` and `SecretString` values no longer
+    reach audit rows, events, Redis or Scout in plaintext.
+  - The `search()` fallback skips protected columns and treats LIKE wildcards
+    literally.
+  - A nested `Orm::transaction` joins the active transaction through a
+    savepoint.
+  - `restore()` and `force_delete()` work on PostgreSQL and run hooks,
+    observers, audit and post-commit effects.
+  - `delete_all()` keeps `?` markers off PostgreSQL.
+  - Eager loads fail instead of silently truncating at the query limit, and
+    `paginate()` clamps `per_page`.
+  - `timestamps()` works on MySQL.
+- **Core:**
+  - The legacy `live_ws_handler` limits messages to 64 KiB.
+  - The queue worker no longer strands a claimed job.
+  - Idle realtime channels and empty presence rooms are released.
+  - Redis drivers reuse one multiplexed connection.
+  - `RateLimiter` is bounded and keys IPv6 peers per /64.
+  - Artisan resolves the database exactly like `Server` and fails closed.
+  - Local storage puts are atomic.
+  - `#[memoize]` keys include the function identity.
+- **CLI:** `cargo rullst dev` and Foundry parse errors no longer echo
+  configuration content.
+
 ### Security review fixes
 
 Ported from the v13 security review. None adds public API; where v13 adds one,

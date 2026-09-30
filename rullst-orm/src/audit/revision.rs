@@ -56,9 +56,20 @@ impl ValueState {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn build_reverse_patch(
     old_json: &str,
     new_json: &str,
+) -> Result<Option<String>, crate::Error> {
+    build_reverse_patch_with_redacted(old_json, new_json, &[])
+}
+
+/// Builds the reverse patch; each `redacted_changes` field changed while its
+/// value was withheld, so it is recorded as a non-restorable operation.
+pub(crate) fn build_reverse_patch_with_redacted(
+    old_json: &str,
+    new_json: &str,
+    redacted_changes: &[&str],
 ) -> Result<Option<String>, crate::Error> {
     let old: Value = serde_json::from_str(old_json)?;
     let new: Value = serde_json::from_str(new_json)?;
@@ -69,6 +80,18 @@ pub(crate) fn build_reverse_patch(
     }
     let mut operations = Vec::new();
     collect_operations(&old, &new, &mut Vec::new(), 0, &mut operations)?;
+    for field in redacted_changes {
+        let withheld = || ValueState {
+            present: true,
+            value: None,
+        };
+        operations.push(ReverseOperation {
+            path: vec![(*field).to_string()],
+            before: withheld(),
+            after: withheld(),
+            restorable: false,
+        });
+    }
     if operations.is_empty() {
         return Ok(None);
     }

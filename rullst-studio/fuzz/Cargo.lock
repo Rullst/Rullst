@@ -2300,6 +2300,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "sqlx-core",
  "syn 3.0.5",
  "thiserror",
  "tinyvec",

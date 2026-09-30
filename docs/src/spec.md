@@ -62,7 +62,7 @@ To guarantee consistency, both humans and AI coders must adhere to the following
 
 | Crate | Responsibilities | Status & Capabilities |
 | :--- | :--- | :--- |
-| **`rullst-core`** | Kernel HTTP runtime, `routes!`, Server bootstrap, HTML engine, async task queues, WebSockets, circular telemetry buffers, storage facade, and the default baseline CSRF/WAF/header/PII stack. | 🟢 **`[Implemented / Bounded]`**: Routing, server lifecycle, `html!` engine, graceful shutdown, backpressure guard, queues, and local storage with path-traversal protection. `ApplicationLifecycle` adds an opt-in process-local monotonic startup/ready/draining/stopped state, at most 32 immutable component readiness bits, secret-minimized `/ready`, fail-closed admission and a bounded drain wait. `Server` marks ready after binding, begins drain before Axum's graceful wait, and accepts an explicit supervisor shutdown future; deterministic tests cover startup failure, in-flight completion, rejection after drain and lock poisoning. It does not run dependency checks, coordinate replicas/load balancers or authorize domain requests. SQLite and Redis persist `dispatch_at` timestamps for at most 366 days and never claim them early; Redis promotion uses server time and a digest-pinned live CI/release contract. Execution starts on the first later worker poll and is at-least-once. Custom drivers fail closed for future scheduling until implemented. `TenantStorage`, `TenantCache`, `TenantRealtime` and `TenantPresence` bind those facades to a validated `TenantContext`, apply immutable tenant namespaces and prove same-name local non-interference; the realtime wrappers also bound channel/event/identity names and payload size. Memory and Redis caches expose an opt-in, at-most-200-entry metadata snapshot containing logical key, UTF-8 value length and remaining TTL but never the value; custom drivers fail explicitly unless they implement that method. Remote bucket policy, distributed transport/liveness, cache operator authorization and application room authorization remain deployment/application work.<br/>🟢 **`[Implemented / Bounded]`**: The in-memory upload admission contract enforces a hard size/allowlist boundary, canonical tenant/name, recognized signature versus MIME/extension, active-text denial, randomized tenant quarantine keys, SHA-256 binding and fail-closed scanner release. It is not multipart streaming, a deep parser, remote persistence or a production malware engine.<br/>🟢 **`[Implemented / Bounded]`**: Validated environment precedence is `RULLST_ENV`, legacy `APP_ENV`, then `[app].env`; invalid values fail instead of silently enabling development.<br/>🟢 **`[Implemented / Bounded]`**: `apply_security_baseline` and `Server` compose configured CSP nonce headers, exact-origin CORS with explicit credential opt-in, bounded WAF, double-submit CSRF and optional PII masking in one tested order, with the per-application config installed outside every middleware. Browser/proxy/TLS deployment evidence and application-owned session/auth/tenant/authorization remain separate. A fail-closed typed Academy boundary-assessment contract records those application observations without certifying them, and the extended `rullst-security` stack is still composed explicitly.<br/>🟢 **`[Implemented / Bounded]`**: `client_contract` exposes the portable `rullst.client` v1 typed JSON envelope, positive version negotiation, bounded correlation/idempotency/failure tokens, server-authored time and a fail-closed 2 MiB codec on native and Wasm. It deliberately contains no role, tenant or authorization assertion; durable replay and domain policy remain server/application work.<br/>🟢 **`[Implemented / Feature-gated Foundation]`**: native `offline-sync` adds bounded account state, FIFO idempotent proposals, server revisions/cursors, explicit conflicts/full resync/recovery/logical erasure, account-bound AES-256-GCM snapshots and a static-dispatch foreground coordinator with request budgets, timeout and cursor-stall checks. Platform persistence/secure-key adapters, browser offline storage, concrete authenticated HTTP/retry/background orchestration, future-schema migrations and device evidence remain application/platform work.<br/>🔵 **`[Roadmap]`**: Native S3/R2 direct cloud drivers. |
+| **`rullst-core`** | Kernel HTTP runtime, `routes!`, Server bootstrap, HTML engine, async task queues, WebSockets, circular telemetry buffers, storage facade, and the default baseline CSRF/WAF/header/PII stack. | 🟢 **`[Implemented / Bounded]`**: Routing, server lifecycle, `html!` engine, graceful shutdown, backpressure guard, queues, and local storage with path-traversal protection. The process-local `RateLimiter` keys IPv6 peers per /64 and tracks at most 100,000 buckets, dropping refilled ones and evicting the least recently used beyond that cap. `ApplicationLifecycle` adds an opt-in process-local monotonic startup/ready/draining/stopped state, at most 32 immutable component readiness bits, secret-minimized `/ready`, fail-closed admission and a bounded drain wait. `Server` marks ready after binding, begins drain before Axum's graceful wait, and accepts an explicit supervisor shutdown future; deterministic tests cover startup failure, in-flight completion, rejection after drain and lock poisoning. It does not run dependency checks, coordinate replicas/load balancers or authorize domain requests. SQLite and Redis persist `dispatch_at` timestamps for at most 366 days and never claim them early; Redis promotion uses server time and a digest-pinned live CI/release contract. The Redis cache and queue drivers share one lazily opened multiplexed connection per driver and reconnect after a connection-level failure instead of opening a connection per operation. Execution starts on the first later worker poll and is at-least-once. The worker never cancels an in-flight claim; graceful shutdown requeues a job claimed after the request. Custom drivers fail closed for future scheduling until implemented. `TenantStorage`, `TenantCache`, `TenantRealtime` and `TenantPresence` bind those facades to a validated `TenantContext`, apply immutable tenant namespaces and prove same-name local non-interference; the realtime wrappers also bound channel/event/identity names and payload size. `BroadcastManager` retains a channel only while it has a subscriber or an outstanding handle (publishing never creates one) and `PresenceTracker` drops empty rooms, so neither registry grows with abandoned names. Memory and Redis caches expose an opt-in, at-most-200-entry metadata snapshot containing logical key, UTF-8 value length and remaining TTL but never the value; custom drivers fail explicitly unless they implement that method. Remote bucket policy, distributed transport/liveness, cache operator authorization and application room authorization remain deployment/application work.<br/>🟢 **`[Implemented / Bounded]`**: The in-memory upload admission contract enforces a hard size/allowlist boundary, canonical tenant/name, recognized signature versus MIME/extension, active-text denial, randomized tenant quarantine keys, SHA-256 binding and fail-closed scanner release. It is not multipart streaming, a deep parser, remote persistence or a production malware engine.<br/>🟢 **`[Implemented / Bounded]`**: Validated environment precedence is `RULLST_ENV`, legacy `APP_ENV`, then `[app].env`; invalid values fail instead of silently enabling development.<br/>🟢 **`[Implemented / Bounded]`**: `apply_security_baseline` and `Server` compose configured CSP nonce headers, exact-origin CORS with explicit credential opt-in, bounded WAF, double-submit CSRF and optional PII masking in one tested order, with the per-application config installed outside every middleware. Browser/proxy/TLS deployment evidence and application-owned session/auth/tenant/authorization remain separate. A fail-closed typed Academy boundary-assessment contract records those application observations without certifying them, and the extended `rullst-security` stack is still composed explicitly.<br/>🟢 **`[Implemented / Bounded]`**: `client_contract` exposes the portable `rullst.client` v1 typed JSON envelope, positive version negotiation, bounded correlation/idempotency/failure tokens, server-authored time and a fail-closed 2 MiB codec on native and Wasm. It deliberately contains no role, tenant or authorization assertion; durable replay and domain policy remain server/application work.<br/>🟢 **`[Implemented / Feature-gated Foundation]`**: native `offline-sync` adds bounded account state, FIFO idempotent proposals, server revisions/cursors, explicit conflicts/full resync/recovery/logical erasure, account-bound AES-256-GCM snapshots and a static-dispatch foreground coordinator with request budgets, timeout and cursor-stall checks. Platform persistence/secure-key adapters, browser offline storage, concrete authenticated HTTP/retry/background orchestration, future-schema migrations and device evidence remain application/platform work.<br/>🔵 **`[Roadmap]`**: Native S3/R2 direct cloud drivers. |
 | **`rullst-orm`** | Active Record & Repository patterns, parameterized SQLx connection pool (PostgreSQL, MySQL/MariaDB, SQLite), typed Turso/libSQL primary profile, schema migrations, AES-256-GCM privacy, Scout search, typed pgvector/Qdrant queries, Redis native structures, and optional capability-oriented persistence adapters. | 🟢 **`[Implemented / Bounded]`**: Relational CRUD, eager loading, type-safe queries, migration runner, versioned field encryption, and connection-pool resilience for supported SQLx drivers/features. PostgreSQL, MySQL, MariaDB and SQLite have distinct executable matrix contracts, while MariaDB intentionally shares SQLx's MySQL protocol/backend.<br/>🟢 **`[Implemented / Bounded]`**: `#[derive(Orm)] #[orm(backend = "turso")]` supplies typed CRUD, equality filters, ordering, pagination/counts and generated/app-assigned keys through a process-wide `TursoOrm`. Its migrations are ordered, checksummed, drift-detecting and reversible. The blank/API CLI profile generates, compiles, migrates, reports status and rolls back locally, while the same typed contract passes against the official remote libSQL server. Unsupported SQLx-specific model behaviors fail during macro expansion rather than being ignored. Other SQLx-specific blueprints, ORM relations/hooks, schema auto-diff, seed generation and transparent embedded-replica synchronization are not part of this bounded Turso profile.<br/>🟢 **`[Implemented / Bounded]`**: The optional persistence boundary supplies portable document CRUD for MongoDB and SurrealDB, parameterized OLAP queries through in-process DuckDB, explicit parameterized Turso/libSQL SQL/transactions, and bounded read-only ISO GQL through SurrealDB. These capability APIs do not claim shared semantics or cross-store transactions. External adapters select deterministic offline behavior for empty or `mock_*` credentials where documented; SurrealDB uses its HTTP protocol rather than embedding the BSL-licensed SDK.<br/>🟢 **`[Implemented / Feature-gated]`**: `scout-http` provides bounded Meilisearch, Elasticsearch and Algolia indexing/search adapters plus deterministic mocks. Meilisearch has a digest-pinned live lifecycle; Elasticsearch/Algolia have protocol fixtures, not hosted-provider certification. Generated projections are process-local post-commit effects unless the application explicitly composes the transactional outbox.<br/>🟢 **`[Implemented / Feature-gated]`**: `pgvector` with `strict-postgres` supplies typed SQL vector helpers. `qdrant` supplies a separate bounded dense-vector collection/upsert/delete/cosine-query contract, while `redis` supplies namespaced Hash, Set and Sorted Set operations. All three have digest-pinned live lifecycles; RAG orchestration, authorization, production ANN tuning and Redis cluster/failover remain application/deployment boundaries.<br/>🟢 **`[Implemented / Benchmark Evidence]`**: A lockfile-pinned Criterion target compares five equivalent typed-SQLite shapes through one Rullst, Diesel and SeaORM connection under the same schema, seed and SQLite policy. It is per-run evidence, not a superiority, negligible-overhead, networked-database or full-application claim. |
 | **`rullst-auth`** | Argon2id password hashing, encrypted cookie sessions (AES-256-GCM), opt-in application JWTs, Passkey ceremony foundations, RBAC context guards. | 🟢 **`[Implemented / Bounded]`**: Non-blocking `spawn_blocking` Argon2id hashing, versioned expiring AES-256-GCM sessions, fail-closed `RequireRoleLayer`, compile-validated `#[rullst::require_role]`, named `Policy<User, Resource>` decisions, and a feature-gated application JWT policy with required versioned claims, bounded TTL/scopes, strong HS256 keys, `kid` rotation and revocation contracts that reject process-local state in production mode.<br/>🟢 **`[Implemented / Feature-gated]`**: `sqlite` supplies bounded shared local auth state. `SqliteJwtRevocationStore` persists JTI expiry and monotonic subject session versions through serialized transactions, stored quota/configuration and async verification. `SqlitePasskeyStore` persists validated public credentials, bounded device inventory/rename/revocation and optimistic signature-counter CAS; executable restart, replay, quota, corruption/configuration and two-instance contention evidence covers both stores. Authentication, role persistence, resource/tenant/device ownership, trusted file permissions/encryption, backup and multi-host replication remain application/deployment boundaries.<br/>🟠 **`[Partial]`**: Passkey registration/assertion validates the documented ES256/`none`-attestation scope, but challenge state remains process-local. Sticky ceremony routing or an application shared challenge layer is required across instances. Normative WebAuthn conformance or adoption of an audited full server library, refresh tokens and complete recovery/session UX remain required before a general stable claim. |
 | **`rullst-security`** | Explicit extended defense-in-depth layers: bounded RASP, authenticated Vault, Login Jail, Secure Headers, rate limiting, DLP and security telemetry. | 🟢 **`[Implemented / Bounded]`**: AES-256-GCM envelopes with rotation/AAD, bounded URI/header/body RASP heuristics, local abuse controls, CSWSH origin guard, OS-random TOTP with SVG enrollment QR, strict JSON transport inspection plus an explicitly mounted reusable JSON Schema 2020-12/OpenAPI 3.1-component policy, explicit log redaction, file-backed SRI hashes, and a versioned/bounded `LiveSecurityEvent` v1 dashboard envelope. `DurableSiemSpool` preserves the compatible unsigned local format, while `AuthenticatedSiemSpool` offers an explicit HMAC-SHA256-chained format with named active/historical keys, zeroized key material, sequence/predecessor validation and byte/record quotas. Restart, forgery, wrong/missing keys, reordering, interior deletion, quota, symlink and external-length-change paths fail closed. Whole valid-tail rollback requires a separately trusted checkpoint, and the caller owns directory/key trust, permissions, retention and exclusive-writer operation. Schema construction caps bytes/nodes/depth, accepts only local references, disables network/filesystem resolution and uses linear-time regexes; auth/ownership/domain rules and query/header/form validation remain application contracts. A deterministic Sentinel classifies three caller-supplied aggregate patterns and can issue HMAC-authenticated, subject-bound, expiring, one-shot process-local proof-of-work challenges; it is not AI attribution, automatic blocking or distributed replay protection. The CLI emits bounded fail-closed evidence and a CycloneDX 1.5 Cargo SBOM; it does not certify the application.<br/>🟢 **`[Implemented / Feature-gated]`**: `redis-rate-limit` provides namespaced atomic Redis fixed-window counters, hashes client keys and exposes an explicit process-local offline mode that production can reject with `require_distributed()`.<br/>🟠 **`[Partial]`**: Recovery-code consumption must be persisted transactionally by the application. Real Redis cross-instance/eviction/failover evidence is still required. CSP nonce composition is shared, but Core and Security are not yet one canonical Server stack; WebSocket CSRF tickets/frame crypto, trusted rollback checkpoints, spool compaction/remote acknowledgement and external SIEM delivery are not implemented. |
@@ -284,6 +284,14 @@ deployment order, dependent-object removal and rollback remain explicit,
 reviewed migration work. The schema helper does not auto-migrate an existing
 type or infer application compatibility.
 
+`Blueprint::timestamps()` adds nullable `created_at`/`updated_at` `TEXT`
+columns that default to the current timestamp on every SQLx driver. SQLite and
+PostgreSQL receive `DEFAULT CURRENT_TIMESTAMP`. MySQL/MariaDB accept a default
+on `TEXT`, `BLOB`, `JSON` or `GEOMETRY` columns only as an expression, so the
+builder emits `DEFAULT (CURRENT_TIMESTAMP)` and parenthesizes every other
+non-`NULL` default on those column types (MySQL 8.0.13+, MariaDB 10.2.1+).
+The columns stay `TEXT` so SQLx's `Any` driver can decode them as strings.
+
 The Capital row also includes one implemented, feature-gated quota boundary:
 `BillingSubject` binds a shared team/workspace counter to trusted tenant state,
 `Billable::quota_request` derives the limit from the subscription owner, and
@@ -399,6 +407,14 @@ PostgreSQL/MySQL contention evidence also remains open.
   emission, so an explicitly protected router remains valid when the production
   server wraps it. The cookie intentionally remains script-readable and must
   not be confused with an authentication or session cookie.
+* **Database URL Resolution:** `Server` and Artisan (`artisan!`,
+  `check_and_run_artisan`, `db:*`, `studio`) share one resolver: a
+  `Server::with_db` value when `Server::run` intercepts the command, the process
+  `DATABASE_URL`, `DATABASE_URL` in `./.env` (never overriding the process
+  environment), then `[database].url` parsed as TOML. There is no implicit
+  SQLite fallback: a `db:*` command without a configured database, and any
+  configuration or `Orm::init` failure, exits with status 1. Parse errors
+  report positions only, never file content.
 
 ### 4.2. Server-Side Rendering (`rullst::macros`)
 * **Macro:** `html!` expands supported HTML trees into ordinary Rust `String`
@@ -410,6 +426,10 @@ PostgreSQL/MySQL contention evidence also remains open.
 * **XSS Protection:** Dynamic display values in the supported `{expr}` syntax
   are HTML-escaped by the generated code.
 * **Raw Unescaped HTML:** Explicitly bypassed using the wrapper `rullst::html::RawHtml(String)`.
+* **Memoize keys:** `#[memoize]` keys its process-local cache entries by the
+  function's `module_path!()`, name and attribute location plus the serialized
+  arguments, so same-named functions in different modules, crates or `impl`
+  blocks never share results. It remains tenant- and invalidation-unaware.
 * **Example:**
   ```rust
   use rullst::html;
@@ -435,6 +455,19 @@ PostgreSQL/MySQL contention evidence also remains open.
   Rows contain the original payload, so Studio access, data minimization and
   retention policy remain host responsibilities. Redis/custom drivers expose
   inspection or history only when their capability implements it.
+
+### Local object replacement
+
+`LocalDriver::put`, and `Storage::local`/`TenantStorage` over it, never
+truncates an existing object. It writes a uniquely named temporary file in the
+validated destination directory (`create_new`), flushes it with `sync_all` and
+renames it over the destination. A failure removes the temporary file and
+leaves the previous version. Readers and concurrent writers observe exactly one
+complete version; the last rename wins. The replacement is a new file with
+default permissions, so permissions or hard links of the previous file are not
+carried over. The directory is not fsynced, so a power loss can roll a
+completed put back to the previous version. On Windows a replacement fails
+while another process holds the object open without delete sharing.
 
 ---
 
@@ -496,12 +529,56 @@ while portability and semantic review remain the model author's responsibility.
 * Generated builders assemble bindings by emitted clause position (CTE, JOIN,
   WHERE/HAVING, ORDER BY), not by the order in which fluent methods were
   called. Nested typed subqueries export that ordered binding sequence.
+* Generated builders start with the global row cap from
+  `Orm::set_max_query_limit` (1,000 by default; `0` disables it). `limit()`
+  clamps to it and `unsafe_unlimited()` removes it for one query.
+  `paginate(page, per_page)` clamps `per_page` to the same cap and reports the
+  effective value in `PaginationResult::per_page` and `last_page`.
+* `where_exists`, `or_where_exists`, `with_cte` and `with_recursive` embed a
+  subquery with portable `?` markers, even when its own `to_sql()` rendered
+  PostgreSQL `$n` markers. The outermost statement (including `delete_all`) is
+  numbered once, so `$n` follows textual order and the mandatory tenant or
+  model-wide scope binding can never shift onto a nested or caller value. A
+  custom subquery whose `$n` markers are mixed with `?`, reference a missing
+  binding or leave a binding unused fails closed with a `Validation` error.
+* Only PostgreSQL statements are renumbered. `delete_all()`, including the
+  soft-delete `UPDATE` that `cascade_soft_delete` issues for child rows, keeps
+  `?` markers on MySQL/MariaDB and SQLite; the SQLite test and the live
+  PostgreSQL, MySQL and MariaDB matrices execute filtered, tenant-scoped and
+  cascading bulk deletes. Instance `restore()` and `force_delete()` statements,
+  including their tenant predicate, are numbered the same way and run in those
+  matrices too.
 * Generated magic filters bind supported primitive fields to their Rust type at
   compile time (`String`, `i32`, `f64`, and `bool`), and generated column enums
   make unknown columns unrepresentable on typed paths. String-column builders,
   custom `RullstValue` conversions and raw SQL are explicit runtime-checked or
   caller-owned alternatives, not compile-time schema verification.
 * `String` and `Option<String>` fields annotated with `#[orm(encrypted)]` are encrypted before generated ORM writes and decrypted after generated model reads using AES-256-GCM. Randomized ciphertext cannot be filtered, ordered, grouped, or explicitly selected by generated query-builder methods; use a separately reviewed blind index when equality lookup is required. Raw SQL remains an explicit, non-transparent escape hatch.
+* Generated secondary projections never carry `#[orm(encrypted)]` or
+  `#[orm(masked)]` plaintext. `to_json()` (used for audit rows and committed
+  `ModelCommittedEvent`/Redis `orm:events:*` payloads) omits `#[orm(hidden)]`
+  fields and replaces encrypted and masked values with the fixed `"***"`
+  marker. An update that changes only such a field still writes an audit row
+  that records the field as `"***"` on both sides, and that revision cannot be
+  restored. Scout documents omit hidden, encrypted and masked fields entirely.
+  `save_to_redis` stores encrypted fields as the same table/column-bound
+  envelope as the SQL column and `get_from_redis` decrypts them; hashes written
+  by earlier versions with plaintext in those fields fail closed on read and
+  must be rewritten. Masked and hidden values keep their database
+  representation in Redis hashes and the query cache, like the SQL column.
+  Audit rows, search documents and events written by earlier versions are not
+  rewritten; purge or reindex them if they may contain plaintext.
+* `SecretString` never serializes its plaintext. Its SQLx codec encrypts and
+  decrypts the column. `Serialize` emits an authenticated `RULLST:v2` envelope
+  under the configured key, bound to a serde-specific context (a SQL-column
+  envelope is not accepted), and fails when no key is configured;
+  `Deserialize` decrypts such an envelope through the current key or keyring
+  and still accepts any other string as plaintext input. Generated `to_json()`
+  and search projections serialize it (also when nested) as `"***"`, and
+  `SecretString`/`Option<SecretString>` model fields are audited, excluded and
+  change-tracked like `#[orm(masked)]` fields. A plain `#[derive(Serialize)]`
+  on a model therefore emits the envelope; call `reveal_audited()` for
+  deliberate exposure.
 
 ### 5.3. Generated Relationship Contract
 
@@ -516,6 +593,14 @@ while portability and semantic review remain the model author's responsibility.
   `None` for a different target; eager loading batches each declared target and
   never guesses an undeclared runtime type. Target models used in eager inverse
   loading must implement `Clone`.
+* Each eager load (`has_many`, `has_one`, `belongs_to`, `morph_many`,
+  `morph_one`, `morph_to` and the related query of `belongs_to_many`) issues
+  one query for the whole parent batch. When that query still carries the
+  global row cap, it fetches one row beyond the cap and fails with a
+  `Validation` error if the cap would truncate it, so no parent silently
+  receives an empty or partial relation. A constrained eager load that sets an
+  explicit smaller `limit(n)` (applied to the whole batch) or
+  `unsafe_unlimited()` is honored as written.
 
 ### 5.4. Tenant Scope Contract
 
@@ -538,7 +623,8 @@ while portability and semantic review remain the model author's responsibility.
   explicit or task-scoped transaction is reused; otherwise `delete()` opens,
   commits, or rolls back its own transaction. Recursive descendant/cycle
   traversal remains a separate contract.
-* Generated `#[orm(auditable)]` instance `save()`/`delete()` operations write
+* Generated `#[orm(auditable)]` instance `save()`/`delete()` operations (and
+  `restore()`/`force_delete()`, recorded as `restored`/`force_deleted`) write
   their bounded audit entry through the same explicit, implicit, or task-scoped
   transaction as the model mutation. Audit write errors fail the mutation and
   roll its savepoint back; direct `log_audit` calls also honor a task-scoped
@@ -564,16 +650,39 @@ while portability and semantic review remain the model author's responsibility.
 
 ### 5.5. Process-Local Post-Commit Contract
 
-* `Orm::transaction` and direct generated model `save()`/`delete()` operations
-  own a post-commit callback scope. `after_commit` callbacks registered within
+* A nested `Orm::transaction` (called while another managed or task-scoped
+  transaction is active on the same task) does not open a second pooled
+  transaction. It opens a SQLx-tracked savepoint on the active transaction and
+  passes the same shared handle to its closure. An `Err` rolls back only to
+  that savepoint and returns `DatabaseError`; a success releases it, so the
+  nested work commits or rolls back with the outer transaction. Its
+  `after_commit` callbacks are promoted to the outer commit boundary only on
+  success. Dropping an unfinished nested future rolls its savepoint back.
+  The returned future is `Send` for `Send` results and errors, so it can be
+  nested in a transaction closure or spawned. Holding the shared handle's lock
+  across a nested call deadlocks, as it does for generated model methods.
+* `Orm::transaction` and direct generated model `save()`/`delete()`/
+  `restore()`/`force_delete()` operations own a post-commit callback scope. `after_commit` callbacks registered within
   it run only after SQLx confirms commit and are discarded on rollback. When no
   managed transaction is active, `after_commit` executes immediately for an
   already committed/autocommit operation.
 * Generated observers retain synchronous lifecycle callbacks such as
   `creating`, `created`, and `saved` for mutation validation. The separate
-  `committed(ModelCommittedEvent)` callback receives an owned, hidden-field-
-  aware snapshot after the managed commit. Generated Redis invalidation/pub-sub
+  `committed(ModelCommittedEvent)` callback receives an owned snapshot after
+  the managed commit; it omits hidden fields and carries `"***"` for encrypted
+  and masked fields. Generated Redis invalidation/pub-sub
   and Scout projections use this same post-commit boundary.
+* `force_delete()` and `restore()` check the tenant and their policy
+  (`can_force_delete`/`can_restore`) before the transaction, then run in a
+  savepoint. `force_delete()` runs the `before_delete`/`after_delete` hooks,
+  the `deleting`/`deleted` observers and the same post-commit cache
+  invalidation, Redis `deleted` event, `committed(Deleted)` and Scout removal
+  as `delete()`; it does not cascade to `cascade_soft_delete` relations.
+  `restore()` re-reads the restored row, runs the `updated`/`saved` observers
+  with it and registers the update effects of `save()` (cache invalidation,
+  Redis `updated`/`saved` events, `committed(Updated)`, Scout re-index). It
+  runs no save hooks or `saving`/`updating` observers because it writes only
+  the soft-delete column, and restoring a missing row is a no-op.
 * Savepoint-scoped generated saves/deletes and revision restores collect their
   callbacks in a nested scope. The callbacks are promoted to the enclosing
   commit boundary only after that savepoint succeeds, so catching a failed
@@ -592,7 +701,8 @@ while portability and semantic review remain the model author's responsibility.
 ### 5.6. Durable Transactional Outbox Contract
 
 * `Outbox::enqueue` accepts only a currently managed `Orm::transaction` and
-  writes `rullst_outbox` through that same transaction. A domain rollback also
+  writes `rullst_outbox` through that same transaction (for a nested call,
+  through the outer transaction's savepoint). A domain rollback also
   removes the event. `enqueue_with_tx` provides the equivalent explicit path
   for a caller-owned SQLx transaction. No implicit independent commit is
   permitted.
@@ -632,7 +742,9 @@ while portability and semantic review remain the model author's responsibility.
   without initializing Redis fails closed as a configuration error; transport
   failures and corrupt cached JSON fail open to the authoritative database.
 * Cache writes occur only after a successful database read and retain encrypted
-  model fields as ciphertext. Generated model `save()`/`delete()` operations
+  model fields as ciphertext; `SecretString` fields are cached as serde
+  envelopes and decrypted on a cache hit, and a result that cannot be
+  serialized (for example without an encryption key) is not cached. Generated model `save()`/`delete()` operations
   invalidate the active tenant/table's versioned keys only after commit through
   a bounded Redis `SCAN` plus asynchronous `UNLINK`; rollback preserves existing entries.
   Raw SQL, bulk builders, caller-owned raw transactions and writes from other
@@ -690,8 +802,15 @@ while portability and semantic review remain the model author's responsibility.
 
 ### 5.9. Scout Search Projection Contract
 
+* Without a configured engine, `Model::search(query)` falls back to
+  `CAST(column AS TEXT) LIKE ? ESCAPE '!'` over the persisted columns except
+  `#[orm(hidden)]`, `#[orm(encrypted)]`, `#[orm(masked)]` and `SecretString`
+  ones, so it cannot become a substring oracle for them. `%`, `_` and `!` in
+  the query match literally, and the query uses the provider bounds (1,024
+  bytes, no control characters).
 * `#[orm(searchable)]` projects generated save/delete operations only after a
-  managed relational commit. Search adapter failures remain visible; a failed
+  managed relational commit. The indexed document omits `#[orm(hidden)]`,
+  `#[orm(encrypted)]` and `#[orm(masked)]` fields. Search adapter failures remain visible; a failed
   query is not silently treated as an empty result, and `PostCommit` means a
   projection failed after the database mutation became durable.
 * `MockSearchEngine` is deterministic and always available. The optional

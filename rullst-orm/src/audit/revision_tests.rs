@@ -169,3 +169,23 @@ fn patch_application_rejects_broken_paths_and_missing_restore_values() {
     );
     assert!(apply_reverse_patch(json!({}), &encoded_patch(vec![missing_value])).is_err());
 }
+
+#[test]
+fn redacted_changes_are_recorded_without_values_and_refuse_restore() {
+    let before = json!({"id": 1, "name": "same", "diagnosis": "***"});
+    let after = json!({"id": 1, "name": "same", "diagnosis": "***"});
+    assert!(
+        build_reverse_patch(&before.to_string(), &after.to_string())
+            .expect("patch")
+            .is_none()
+    );
+    let patch =
+        build_reverse_patch_with_redacted(&before.to_string(), &after.to_string(), &["diagnosis"])
+            .expect("patch")
+            .expect("a redacted change must be recorded");
+    assert!(!patch.contains("\"value\":\"***\""));
+    assert!(matches!(
+        apply_reverse_patch(after, &patch),
+        Err(crate::Error::Validation(_))
+    ));
+}

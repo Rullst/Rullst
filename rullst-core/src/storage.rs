@@ -2,6 +2,7 @@
 
 use std::path::{Component, Path, PathBuf};
 
+mod local_write;
 mod tenant;
 pub use tenant::TenantStorage;
 
@@ -232,12 +233,15 @@ impl LocalDriver {
         Ok(canonical_parent.join(file_name))
     }
 
-    /// Put binary payload to target path
+    /// Put binary payload to target path.
+    ///
+    /// The bytes are written to a unique temporary file in the destination
+    /// directory, flushed to disk and renamed over the destination. Readers and
+    /// concurrent writers observe one complete version; a failed write leaves
+    /// the previous object untouched.
     pub async fn put(&self, path: &str, bytes: &[u8]) -> Result<(), StorageError> {
         let full_path = self.resolve_write_path(path).await?;
-        tokio::fs::write(full_path, bytes)
-            .await
-            .map_err(|e| StorageError::Io(e.to_string()))
+        local_write::replace_file(full_path, bytes.to_vec()).await
     }
 
     /// Check if target path exists
