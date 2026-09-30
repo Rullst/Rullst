@@ -173,6 +173,37 @@ pub async fn exercise_sql_webhook_replay(database_url: &str, backend: SqlWebhook
         .expect("live committed domain effect count");
     assert_eq!(committed_effects, 1);
 
+    // A caller transaction that read a table before claiming keeps its
+    // REPEATABLE READ snapshot on MySQL/MariaDB; a duplicate committed after
+    // that read must still be rejected rather than silently re-claimed.
+    let mut stale = second
+        .pool()
+        .begin()
+        .await
+        .expect("live webhook stale-snapshot transaction");
+    rullst_orm::sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM rullst_webhook_replay_effects")
+        .fetch_one(&mut *stale)
+        .await
+        .expect("live snapshot-establishing domain read");
+    first
+        .check_and_record_event_key("stripe", "evt_live_snapshot_1")
+        .await
+        .expect("concurrently committed webhook claim");
+    assert!(matches!(
+        second
+            .check_and_record_event_key_with_transaction(
+                &mut stale,
+                "stripe",
+                "evt_live_snapshot_1"
+            )
+            .await,
+        Err(CapitalError::WebhookReplay(_))
+    ));
+    stale
+        .rollback()
+        .await
+        .expect("live stale-snapshot rollback");
+
     let drifted = SqlWebhookReplayStore::connect(database_url, 33, Duration::from_secs(60))
         .await
         .expect("alternate webhook replay profile");
