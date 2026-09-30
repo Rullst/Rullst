@@ -86,6 +86,18 @@ pub enum ToolExecutionError {
     ExecutionFailed { tool: String },
     #[error("tool audit trail is unavailable: {0}")]
     AuditUnavailable(String),
+    /// The tool was executed, but the audit sink rejected its outcome record.
+    ///
+    /// Unlike [`ToolExecutionError::AuditUnavailable`], any side effect may
+    /// already have happened. `outcome` is the record that could not be stored
+    /// and `reason` is the sink's diagnostic. The tool output is discarded; do
+    /// not repeat the call without reconciling with the tool's own records.
+    #[error("tool '{tool}' ran but its {outcome:?} outcome could not be audited: {reason}")]
+    OutcomeUnaudited {
+        tool: String,
+        outcome: ToolAuditOutcome,
+        reason: String,
+    },
 }
 
 /// Registry of locally implemented tools. Every execution requires a policy,
