@@ -164,7 +164,8 @@ async fn deliver_invoice(receipt: &ChargeReceipt) -> Result<(), Box<dyn std::err
     };
 
     let paid = invoice.bind_succeeded_charge(receipt)?;
-    let delivery = PaidInvoiceDelivery::prepare(&paid)?;
+    // Real providers require a sender on a domain verified for the account.
+    let delivery = PaidInvoiceDelivery::prepare(&paid)?.from("billing@example.com")?;
 
     // In production, atomically claim this stable key in a durable outbox.
     let _delivery_key = delivery.delivery_key();
@@ -177,7 +178,9 @@ The binding rejects `Processing`, `Mock`, a mismatched recipient, amount or
 currency. The default PDF is paginated, bounded to sixteen MiB and supports
 WinAnsi text (including common Portuguese characters); pass a checked TTF/OTF
 to Capital for other scripts. Mail applies its mandatory pre-flight before the
-facade queues or sends the HTML message and attachment.
+facade queues or sends the HTML message and attachment; `from` re-runs it for
+the verified sender, which SendPulse, Mailjet, Mailtrap and ACS require and
+without which other real drivers fall back to a placeholder sender.
 
 This helper does not subscribe to webhooks by itself. Reconcile the provider
 event, build the authoritative invoice and insert `delivery_key` under a unique

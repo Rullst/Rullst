@@ -19,7 +19,7 @@ pub mod refresh;
 pub mod user;
 
 pub use configuration::CredentialMode;
-pub use error::ConnectError;
+pub use error::{ConnectError, IssuedTokens};
 
 pub use provider::Provider;
 pub use refresh::{

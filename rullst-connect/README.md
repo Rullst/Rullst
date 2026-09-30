@@ -81,10 +81,13 @@ Official support for 11 core providers:
 5. **Auth0**
 6. **AWS Cognito**
 7. **Facebook**
-8. **X (Twitter)** (Strict PKCE requirement)
+8. **X (Twitter)** (Strict PKCE requirement; confidential clients authenticate
+   to the token endpoint with HTTP Basic, `client_secret_basic`)
 9. **Discord**
 10. **LinkedIn**
-11. **OIDC (OpenID Connect Custom Provider)**
+11. **OIDC (OpenID Connect Custom Provider)** (sends the client secret in the
+    token request body unless discovery lists `client_secret_basic` without
+    `client_secret_post`, in which case it uses HTTP Basic)
 
 ID-token verification is implemented by Google, Apple and `OidcProvider`.
 Those paths require signed `iss`, `aud`, `sub`, `exp` and `iat` claims, bind the
@@ -118,7 +121,8 @@ can be replayed until it expires.
 The unpublished v13 development source adds that audience-bound entry point for
 Google and `OidcProvider`: `verify_id_token(id_token, expected_nonce)` verifies
 the signature through the provider's rotating JWKS and requires the exact
-issuer, `aud` equal to your `client_id` (and a matching `azp` when present),
+issuer, `aud` equal to your `client_id` (and, when present, an `azp` equal to
+it or, for Google, to a configured native presenter),
 valid `exp`/`iat` and the nonce your server issued for that sign-in attempt. It
 never calls userinfo. The returned `ConnectUser` carries the verified ID token
 in `access_token`; there is no provider access or refresh token in this flow.
@@ -139,6 +143,15 @@ async fn sign_in_native_google_user(
 
 Generate the nonce on your server, give it to the client for the provider
 sign-in request, and consume it once, just like an OAuth `state`.
+
+Android Credential Manager and iOS Google Sign-In request the ID token for your
+server (web) client ID, so `aud` is that ID and `azp` is the Android or iOS
+client ID. Configure the server client ID on `GoogleProvider` and list the
+native client IDs with
+`try_with_authorized_presenters(["ANDROID_CLIENT_ID", "IOS_CLIENT_ID"])` (at
+most 16). `aud` must still equal the server client ID; any other `azp` is
+rejected, and the authorization-code flow keeps requiring `azp` to equal the
+server client ID.
 
 Token responses may omit `expires_in`, but a supplied value must be an integer
 from one second through 366 days, matching the managed refresh-state bound.
@@ -389,7 +402,13 @@ async fn authorized_call(
 The coordinator uses a 60-second early-refresh window, prevents overlapping
 provider calls, lets waiters reuse a successful refresh, retains a provider that
 does not rotate its refresh token, adopts a validated rotation and binds every
-response to the original provider user. Seal `state_snapshot()` with
+response to the original provider user. When a response for that user is
+otherwise rejected (for example it omits `expires_in`), the rotated refresh
+token is still kept and the generation advances, so persist the snapshot after
+that failure too; the next call refreshes with the rotation. If the grant
+succeeds but the follow-up profile or ID-token step fails, adapters return
+`ConnectError::RefreshIncomplete` with the issued tokens (`IssuedTokens`), and
+the session keeps the rotation the same way. Seal `state_snapshot()` with
 `EncryptedTokenSnapshot` before writing it to application-owned storage:
 
 ```rust

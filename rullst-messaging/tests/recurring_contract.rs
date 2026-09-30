@@ -7,6 +7,8 @@ mod broker;
 mod failures;
 #[path = "recurring/lifecycle.rs"]
 mod lifecycle;
+#[path = "recurring/skew.rs"]
+mod skew;
 #[path = "recurring/support.rs"]
 mod support;
 use support::*;
@@ -45,6 +47,7 @@ async fn postgres_recurring_contract() {
     let url = url();
     lifecycle::run(&url).await;
     failures::run(&url).await;
+    skew::run(&url).await;
     #[cfg(feature = "sqlite")]
     broker::run(&url).await;
 }

@@ -144,8 +144,10 @@ contract. Set `MAIL_DRIVER=azure-acs` and
 `AZURE_COMMUNICATION_EMAIL_ENDPOINT=https://RESOURCE.communication.azure.com`.
 In Azure Container Apps, `AzureManagedIdentity` uses the platform-injected
 loopback `IDENTITY_ENDPOINT`/`IDENTITY_HEADER` and optional user-assigned
-`AZURE_CLIENT_ID` for the Communication Services resource. The host must grant
-the identity email-sending permission and verify its domain/sender.
+`AZURE_CLIENT_ID` for the Communication Services resource. The endpoint must be
+plain HTTP on a literal loopback IP or the exact name `localhost`, which the
+identity client pins to `127.0.0.1`/`::1` instead of resolving. The host must
+grant the identity email-sending permission and verify its domain/sender.
 
 The driver disables engagement tracking, bounds payload/response sizes,
 validates the operation-polling origin, and accepts only a terminal successful

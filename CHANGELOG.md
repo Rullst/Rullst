@@ -193,6 +193,34 @@ A prepared version section does not establish that its tag or crates exist.
   with AWS `UriEncode`, fixing `SignatureDoesNotMatch` for keys or tenant IDs
   that contain characters such as `:`, `=`, `+`, `(`, `)` or `$`.
 
+### Connect and core second-pass review fixes
+
+- Connect keeps a rotated refresh token when a refresh response is rejected or
+  its profile or ID-token step fails; the new `ConnectError::RefreshIncomplete`
+  carries the issued tokens.
+- Connect requests JSON from the token endpoint on refresh, so GitHub refresh
+  works, and X and basic-only OIDC providers authenticate token requests with
+  HTTP Basic.
+- `GoogleProvider::try_with_authorized_presenters` accepts native Android and
+  iOS presenters in `verify_id_token`; `aud` must still be the server client ID.
+- `/health` and `/ready` are exempt from the Server rate limiter and Traffic
+  Shield, so a database incident no longer fails liveness probes.
+- `Scheduler::task` uses POSIX weekday numbering (0 and 7 are Sunday) and the
+  day-of-month OR day-of-week rule, evaluated in UTC. Numeric weekdays in
+  existing schedules change meaning; messaging's durable schedules keep their
+  documented numbering.
+- Request-path console output no longer panics when stdout or stderr is
+  closed.
+- `DbFeatureDriver` caches missing and failed lookups for the TTL and serves the
+  last known value on error.
+- HTMX validation fragments are sent with 200 and
+  `X-Rullst-Validation-Status`, so htmx swaps them; other clients keep 400/422.
+- Queue workers record their own stalled-lease threshold with each claim
+  (`QueueDriver::pop_with_lease`), and a job whose lease stalls 5 times fails
+  instead of being requeued forever (`try_with_max_stalled_leases`).
+- The Server logs scheduler task failures and no longer turns a past task
+  failure into a failed shutdown.
+
 ### Core runtime hardening
 
 - `ValidatedForm` and `ValidatedJson` no longer echo deserializer errors:
@@ -315,6 +343,30 @@ A prepared version section does not establish that its tag or crates exist.
   cannot receive Apple's `form_post` callback. New `AuthSessionForm` consumes
   the same stored challenge from a bounded form POST, and tutorial 42 explains
   the `SameSite=None; Secure` challenge cookie it needs.
+
+### Mail, capital and messaging second-pass review fixes
+
+- Azure Communication Services sends work again: the driver no longer builds
+  `emails:send` as a URL scheme, which made every real delivery fail. The
+  `http://localhost:<port>` managed-identity endpoint that Azure Container Apps
+  injects is accepted and pinned to loopback addresses.
+- The homograph check compares scripts per host label and ignores the query,
+  so single-script Greek or Cyrillic IDN links and non-Latin query text no
+  longer block delivery, while Latin-lookalike labels are still rejected.
+- `PaidInvoiceDelivery::from` sets a verified sender.
+- Queued attachment bytes are stored as base64 (legacy integer arrays are still
+  accepted), cutting enqueue and worker memory from about 32x to about 1.3x the
+  attachment size. Upgrade workers before producers.
+- Strict attachment inspection again rejects unrecognized declared types such
+  as `text/html` behind a benign extension.
+- `FailoverDriver` forwards tenant context to its primary and fallbacks.
+- Wise status reads no longer report bounced, charged-back, unknown or
+  mismatched transfers as Processing; `get_transfer_state` returns the typed
+  state and `with_sandbox_api()` targets the sandbox.
+- MySQL/MariaDB webhook replay claims inside a caller transaction reject an
+  event claimed concurrently after the transaction's snapshot.
+- Recurring publication instances tolerate up to 5 s of cross-host clock skew
+  instead of failing with `Clock`.
 
 ### Capital review fixes
 

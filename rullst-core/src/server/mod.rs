@@ -2,14 +2,17 @@
 
 /// Fluent server builder and HTTP runner.
 pub mod builder;
+pub(crate) mod console;
 pub(crate) mod database_url;
 mod dev_reload;
 /// Dynamic library router loader for hot-reload mode.
 pub mod dylib_loader;
 /// Atomic hot-swappable Tower service.
 pub mod hotswap;
+mod scheduler_supervision;
 /// Server-level HTTP middlewares (HMR script injection, static asset compression).
 pub mod server_middleware;
+mod traffic;
 
 #[cfg(test)]
 pub(crate) static TEST_ENV_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());

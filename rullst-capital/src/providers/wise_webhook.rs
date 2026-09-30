@@ -51,7 +51,7 @@ pub enum WiseTransferState {
 }
 
 impl WiseTransferState {
-    fn parse(value: &str) -> Option<Self> {
+    pub(super) fn parse(value: &str) -> Option<Self> {
         Some(match value {
             "incoming_payment_waiting" => Self::IncomingPaymentWaiting,
             "incoming_payment_initiated" => Self::IncomingPaymentInitiated,

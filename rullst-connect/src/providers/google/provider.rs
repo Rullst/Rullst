@@ -16,6 +16,7 @@ pub struct GoogleProvider {
     pub(crate) pkce_challenge: Option<String>,
     pub(crate) credential_mode: crate::configuration::CredentialMode,
     pub(crate) jwks_cache: crate::provider::JwksCache,
+    pub(crate) authorized_presenters: Vec<String>,
 }
 
 impl GoogleProvider {
@@ -42,6 +43,7 @@ impl GoogleProvider {
             pkce_challenge: None,
             credential_mode,
             jwks_cache: crate::provider::JwksCache::default(),
+            authorized_presenters: Vec::new(),
         })
     }
 
@@ -84,6 +86,7 @@ impl GoogleProvider {
             pkce_challenge: None,
             credential_mode,
             jwks_cache: crate::provider::JwksCache::default(),
+            authorized_presenters: Vec::new(),
         }
     }
 
@@ -139,6 +142,35 @@ impl GoogleProvider {
         self
     }
 
+    /// Trusts native Google Sign-In clients as authorized presenters (`azp`)
+    /// in [`Self::verify_id_token`].
+    ///
+    /// Android Credential Manager and iOS Google Sign-In request an ID token
+    /// for the server (web) client ID: `aud` is this provider's `client_id`
+    /// and `azp` is the Android or iOS client ID. List those native client
+    /// IDs here. `aud` must still be exactly this `client_id`, the list never
+    /// adds an audience, and the authorization-code flow keeps requiring
+    /// `azp` (when present) to equal this `client_id`.
+    ///
+    /// At most 16 distinct IDs of 1–255 visible ASCII characters are accepted;
+    /// calling this again replaces the list. Unpublished v13 API.
+    ///
+    /// # Errors
+    /// Returns [`crate::error::ConnectError::InvalidConfiguration`] for an
+    /// empty, oversized or non-printable ID or more than 16 IDs.
+    pub fn try_with_authorized_presenters<I, S>(
+        mut self,
+        presenters: I,
+    ) -> Result<Self, crate::error::ConnectError>
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.authorized_presenters =
+            crate::provider::id_token::validate_authorized_presenters(presenters)?;
+        Ok(self)
+    }
+
     /// Overrides JWKS freshness bounds for this provider instance.
     pub fn with_jwks_cache_policy(mut self, policy: crate::provider::JwksCachePolicy) -> Self {
         self.jwks_cache = crate::provider::JwksCache::new(policy);
@@ -178,7 +210,7 @@ impl GoogleProvider {
 
         let mut user = if let Some(id_token) = &token_res.id_token {
             let claims = self
-                .verify_id_token_claims(id_token, expected_nonce)
+                .verify_id_token_claims(id_token, &[], expected_nonce)
                 .await?;
             user_from_id_token_claims(claims, access_token.into())?
         } else {
@@ -203,8 +235,11 @@ impl GoogleProvider {
     /// to your server. Unlike [`crate::provider::Provider::get_user_from_token`],
     /// the result is bound to this application: the RS256 signature is verified
     /// through Google's rotating JWKS, `iss` must be Google, `aud` exactly this
-    /// `client_id`, `azp` (when present) this `client_id`, and `exp`, `iat` and
-    /// `nonce` must be valid. Generate `expected_nonce` on the server for this
+    /// `client_id`, `azp` (when present) this `client_id` or a native client
+    /// ID configured with [`Self::try_with_authorized_presenters`], and `exp`,
+    /// `iat` and `nonce` must be valid. Android and iOS Google Sign-In tokens
+    /// requested for this server client carry the native client ID in `azp`,
+    /// so configure those IDs before accepting them. Generate `expected_nonce` on the server for this
     /// sign-in attempt, let the client pass it to Google, and consume it once.
     ///
     /// The returned user carries the verified ID token in `access_token`; this
@@ -235,7 +270,7 @@ impl GoogleProvider {
             return crate::provider::id_token::mock_verified_user("google", id_token);
         }
         let claims = self
-            .verify_id_token_claims(id_token, Some(expected_nonce))
+            .verify_id_token_claims(id_token, &self.authorized_presenters, Some(expected_nonce))
             .await?;
         user_from_id_token_claims(claims, secrecy::SecretString::from(id_token.to_owned()))
     }
@@ -246,6 +281,7 @@ impl GoogleProvider {
     pub(crate) async fn verify_id_token_claims(
         &self,
         id_token: &str,
+        presenters: &[String],
         expected_nonce: Option<&str>,
     ) -> Result<Value, crate::error::ConnectError> {
         let header = jsonwebtoken::decode_header(id_token).map_err(|e| {
@@ -296,7 +332,12 @@ impl GoogleProvider {
             })?;
 
         let claims = token_data.claims;
-        crate::provider::id_token::validate_claims(&claims, &self.client_id, expected_nonce)?;
+        crate::provider::id_token::validate_claims_with_presenters(
+            &claims,
+            &self.client_id,
+            presenters,
+            expected_nonce,
+        )?;
         Ok(claims)
     }
 }

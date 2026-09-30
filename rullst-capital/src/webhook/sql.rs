@@ -277,14 +277,23 @@ impl SqlWebhookReplayStore {
             return Err(CapitalError::WebhookReplayStoreFull);
         }
 
-        let inserted = rullst_orm::sqlx::query(insert_claim_sql(self.backend))
+        let inserted = match rullst_orm::sqlx::query(insert_claim_sql(self.backend))
             .bind(provider)
             .bind(key)
             .bind(accepted_at)
             .bind(expires_at)
             .execute(&mut **transaction)
             .await
-            .map_err(|_| CapitalError::WebhookReplayStoreUnavailable)?;
+        {
+            Ok(inserted) => inserted,
+            // A caller-owned MySQL/MariaDB REPEATABLE READ transaction can miss
+            // a claim committed after its snapshot in the SELECT above; the
+            // plain INSERT then reports it as a duplicate key.
+            Err(rullst_orm::sqlx::Error::Database(error)) if error.is_unique_violation() => {
+                return Err(CapitalError::WebhookReplay(key.to_string()));
+            }
+            Err(_) => return Err(CapitalError::WebhookReplayStoreUnavailable),
+        };
         if inserted.rows_affected() != 1 {
             return Err(CapitalError::WebhookReplay(key.to_string()));
         }
@@ -483,8 +492,10 @@ fn insert_claim_sql(backend: SqlWebhookBackend) -> &'static str {
         SqlWebhookBackend::Sqlite => {
             "INSERT INTO rullst_webhook_replay_claims (provider, replay_hash, accepted_at, expires_at) VALUES (?, ?, ?, ?) ON CONFLICT (provider, replay_hash) DO NOTHING"
         }
+        // Not an upsert: sqlx connects with CLIENT_FOUND_ROWS, so an
+        // `ON DUPLICATE KEY UPDATE` no-op would still report one affected row.
         SqlWebhookBackend::Mysql => {
-            "INSERT INTO rullst_webhook_replay_claims (provider, replay_hash, accepted_at, expires_at) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE replay_hash = VALUES(replay_hash)"
+            "INSERT INTO rullst_webhook_replay_claims (provider, replay_hash, accepted_at, expires_at) VALUES (?, ?, ?, ?)"
         }
     }
 }

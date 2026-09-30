@@ -61,7 +61,7 @@ Updating Capital does not rewrite existing controllers or apply new migrations.
 | **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
 | **PicPay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
 | **Alipay** | Billing | Explicit mock credentials only; live checkout and RSA2 webhook verification are unsupported. |
-| **Wise** | Payout | Transfer-status read and RSA-verified transfer state-change webhooks (v13 candidate); legacy email-based live transfer and the unauthenticated webhook parser are unsupported with live credentials. |
+| **Wise** | Payout | Transfer-status read bound to the requested transfer, typed state read, sandbox API option and RSA-verified transfer state-change webhooks (v13 candidate); legacy email-based live transfer and the unauthenticated webhook parser are unsupported with live credentials. |
 
 The shared `create_customer_portal(email, return_url)` methods do not have a
 reviewed live provider-session contract and return `UnsupportedOperation` for
@@ -113,7 +113,15 @@ Wise's empty/`mock_*` transfer mock returns a `wise_tr_mock_` ID derived from a
 hash instead of the recipient email, and its status read reports only those
 mock-issued IDs. Any other transfer ID returns `UnsupportedOperation` instead
 of a fabricated `OutgoingPaymentSent`, so an unset token cannot mark real
-transfers as sent.
+transfers as sent. With a live token, the status read accepts only a positive
+decimal transfer ID and a response whose `id` matches it. A missing, `unknown`
+or undocumented state fails the provider response contract, and a
+`bounced_back` or `charged_back` transfer returns `UnsupportedOperation`
+because `PayoutStatus` cannot express a returned or reversed payout; it is
+never reported as `Processing`. The additive v13 `get_transfer_state` returns
+the typed `WiseTransferState` from the same bound read, and
+`with_sandbox_api()` sends reads to `https://api.sandbox.transferwise.tech`
+for sandbox tokens.
 
 `WiseProvider::parse_webhook_payload` performs no signature verification and
 cannot distinguish a Wise delivery from a forged request. It is an offline
@@ -881,8 +889,11 @@ When a verified provider protocol supplies a stable event ID, prefer
 `check_and_record_event_key` over payload-only replay detection. A relational
 handler that uses the provider's low-level signature contract can call
 `check_and_record_event_key_with_transaction` and write its domain mutation
-through the same transaction before one commit. Do not pre-claim the same event
-through SQL middleware on this atomic path. This is atomic only inside that
+through the same transaction before one commit. The claim may follow earlier
+reads in that transaction: on MySQL/MariaDB a duplicate committed after the
+transaction's REPEATABLE READ snapshot is still rejected by the claim insert's
+duplicate key. Do not pre-claim the same event through SQL middleware on this
+atomic path. This is atomic only inside that
 database: provider API calls, e-mail, queues, and other systems still require
 an outbox, idempotent consumers, and reconciliation.
 

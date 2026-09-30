@@ -129,21 +129,39 @@ pub(crate) async fn revoke_json_with_basic_delete(
     Ok(())
 }
 
-/// Helper to exchange an authorization code for access tokens using standard OAuth2.
-pub async fn fetch_access_token(
-    client: &dyn crate::client::HttpClient,
-    token_url: &str,
-    form: &TokenExchangeForm<'_>,
-) -> Result<Oauth2TokenResponse, crate::error::ConnectError> {
-    let token_res = client
-        .post(token_url)
-        .form(form)
-        .send()
-        .await?
-        .error_for_status()?
-        .json::<serde_json::Value>()
-        .await?;
+/// How a confidential client authenticates at a token endpoint (RFC 6749 §2.3.1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ClientAuthentication {
+    /// `client_secret_post`: the secret travels in the form body.
+    RequestBody,
+    /// `client_secret_basic`: the secret travels in an HTTP Basic header.
+    HttpBasic,
+}
 
+impl ClientAuthentication {
+    /// Returns the secret to place in the form body, if any.
+    pub(crate) fn body_secret(self, client_secret: &str) -> Option<&str> {
+        (self == Self::RequestBody).then_some(client_secret)
+    }
+
+    /// Adds the HTTP Basic header when this method requires it.
+    pub(crate) fn authorize<'client>(
+        self,
+        request: crate::client::RequestBuilder<'client>,
+        client_id: &str,
+        client_secret: &str,
+    ) -> crate::client::RequestBuilder<'client> {
+        match self {
+            Self::RequestBody => request,
+            Self::HttpBasic => request.basic_auth(client_id, Some(client_secret)),
+        }
+    }
+}
+
+fn parse_token_response(
+    token_res: &serde_json::Value,
+    missing_access_token: &str,
+) -> Result<Oauth2TokenResponse, crate::error::ConnectError> {
     if let Some(err) = token_res["error"].as_str() {
         let err_desc = token_res["error_description"].as_str().unwrap_or_default();
         return Err(crate::error::provider_returned_error(err, err_desc));
@@ -151,11 +169,11 @@ pub async fn fetch_access_token(
 
     let access_token = token_res["access_token"]
         .as_str()
-        .ok_or_else(|| crate::error::ConnectError::Token("Failed to get access_token".to_owned()))?
+        .ok_or_else(|| crate::error::ConnectError::Token(missing_access_token.to_owned()))?
         .to_owned();
 
     let refresh_token = token_res["refresh_token"].as_str().map(String::from);
-    let expires_in = crate::provider::token_lifetime(&token_res)?;
+    let expires_in = crate::provider::token_lifetime(token_res)?;
 
     Ok(Oauth2TokenResponse {
         access_token,
@@ -164,7 +182,52 @@ pub async fn fetch_access_token(
     })
 }
 
+/// Helper to exchange an authorization code for access tokens using standard OAuth2.
+pub async fn fetch_access_token(
+    client: &dyn crate::client::HttpClient,
+    token_url: &str,
+    form: &TokenExchangeForm<'_>,
+) -> Result<Oauth2TokenResponse, crate::error::ConnectError> {
+    request_access_token(client, token_url, form, ClientAuthentication::RequestBody).await
+}
+
+/// Exchanges an authorization code with the selected client authentication.
+///
+/// For [`ClientAuthentication::HttpBasic`], `form.client_secret` supplies the
+/// Basic password and is never serialized into the body.
+pub(crate) async fn request_access_token(
+    client: &dyn crate::client::HttpClient,
+    token_url: &str,
+    form: &TokenExchangeForm<'_>,
+    authentication: ClientAuthentication,
+) -> Result<Oauth2TokenResponse, crate::error::ConnectError> {
+    let secret = form.client_secret.unwrap_or_default();
+    let body = TokenExchangeForm {
+        client_id: form.client_id,
+        client_secret: form
+            .client_secret
+            .and_then(|secret| authentication.body_secret(secret)),
+        code: form.code,
+        grant_type: form.grant_type,
+        redirect_uri: form.redirect_uri,
+        code_verifier: form.code_verifier,
+    };
+    let token_res = authentication
+        .authorize(client.post(token_url), form.client_id, secret)
+        .form(&body)
+        .send()
+        .await?
+        .error_for_status()?
+        .json::<serde_json::Value>()
+        .await?;
+    parse_token_response(&token_res, "Failed to get access_token")
+}
+
 /// Helper to exchange a refresh token for new access tokens using standard OAuth2.
+///
+/// The request asks for a JSON response (`Accept: application/json`), which
+/// providers such as GitHub require before they stop answering with a
+/// form-encoded body.
 pub async fn fetch_refresh_token(
     client: &dyn crate::client::HttpClient,
     token_url: &str,
@@ -172,42 +235,43 @@ pub async fn fetch_refresh_token(
     client_secret: &str,
     refresh_token: &str,
 ) -> Result<Oauth2TokenResponse, crate::error::ConnectError> {
-    let token_res = client
-        .post(token_url)
-        .form(&[
-            ("client_id", client_id),
-            ("client_secret", client_secret),
-            ("refresh_token", refresh_token),
-            ("grant_type", "refresh_token"),
-        ])
+    request_refresh_token(
+        client,
+        token_url,
+        client_id,
+        client_secret,
+        refresh_token,
+        ClientAuthentication::RequestBody,
+    )
+    .await
+}
+
+/// Performs a refresh grant with the selected client authentication.
+pub(crate) async fn request_refresh_token(
+    client: &dyn crate::client::HttpClient,
+    token_url: &str,
+    client_id: &str,
+    client_secret: &str,
+    refresh_token: &str,
+    authentication: ClientAuthentication,
+) -> Result<Oauth2TokenResponse, crate::error::ConnectError> {
+    let mut form = vec![("client_id", client_id)];
+    if let Some(secret) = authentication.body_secret(client_secret) {
+        form.push(("client_secret", secret));
+    }
+    form.push(("refresh_token", refresh_token));
+    form.push(("grant_type", "refresh_token"));
+    let token_res = authentication
+        .authorize(client.post(token_url), client_id, client_secret)
+        .header("Accept", "application/json")
+        .form(&form)
         .send()
         .await?
         .error_for_status()?
         .json::<serde_json::Value>()
         .await?;
-
-    if let Some(err) = token_res["error"].as_str() {
-        let err_desc = token_res["error_description"].as_str().unwrap_or_default();
-        return Err(crate::error::provider_returned_error(err, err_desc));
-    }
-
-    let access_token = token_res["access_token"]
-        .as_str()
-        .ok_or_else(|| {
-            crate::error::ConnectError::Token(
-                "Failed to get access_token during refresh".to_owned(),
-            )
-        })?
-        .to_owned();
-
-    let refresh_token = token_res["refresh_token"].as_str().map(String::from);
-    let expires_in = crate::provider::token_lifetime(&token_res)?;
-
-    Ok(Oauth2TokenResponse {
-        access_token,
-        refresh_token,
-        expires_in,
-    })
+    parse_token_response(&token_res, "Failed to get access_token during refresh")
+        .map_err(|source| crate::error::refresh_incomplete(&token_res, source))
 }
 
 /// Helper to exchange an authorization code and build the ConnectUser profile.
@@ -224,7 +288,69 @@ where
 {
     require_oauth_only(expected_nonce)?;
     let token = fetch_access_token(client, token_url, form).await?;
+    user_with_tokens(provider, token).await
+}
 
+/// Refreshes with the selected client authentication and loads the profile.
+pub(crate) async fn refresh_with_authentication<P>(
+    provider: &P,
+    client: &dyn crate::client::HttpClient,
+    token_url: &str,
+    client_id: &str,
+    client_secret: &secrecy::SecretString,
+    refresh_token: &str,
+    authentication: ClientAuthentication,
+) -> Result<ConnectUser, crate::error::ConnectError>
+where
+    P: Provider + ?Sized,
+{
+    let token = request_refresh_token(
+        client,
+        token_url,
+        client_id,
+        secrecy::ExposeSecret::expose_secret(client_secret),
+        refresh_token,
+        authentication,
+    )
+    .await?;
+    refreshed_user_with_tokens(provider, token).await
+}
+
+/// Like [`user_with_tokens`] for a refresh grant: a failed profile lookup
+/// returns [`crate::error::ConnectError::RefreshIncomplete`] carrying the
+/// issued tokens, so a rotated refresh token is never silently dropped.
+pub(crate) async fn refreshed_user_with_tokens<P>(
+    provider: &P,
+    token: Oauth2TokenResponse,
+) -> Result<ConnectUser, crate::error::ConnectError>
+where
+    P: Provider + ?Sized,
+{
+    match provider.get_user_from_token(&token.access_token).await {
+        Ok(mut user) => {
+            user.refresh_token = token.refresh_token.map(secrecy::SecretString::from);
+            user.expires_in = token.expires_in;
+            Ok(user)
+        }
+        Err(source) => Err(crate::error::ConnectError::RefreshIncomplete {
+            tokens: Box::new(crate::error::IssuedTokens::new(
+                token.access_token,
+                token.refresh_token,
+                token.expires_in,
+            )),
+            source: Box::new(source),
+        }),
+    }
+}
+
+/// Loads the profile for freshly issued tokens and attaches their metadata.
+pub(crate) async fn user_with_tokens<P>(
+    provider: &P,
+    token: Oauth2TokenResponse,
+) -> Result<ConnectUser, crate::error::ConnectError>
+where
+    P: Provider + ?Sized,
+{
     let mut user = provider.get_user_from_token(&token.access_token).await?;
     user.refresh_token = token.refresh_token.map(secrecy::SecretString::from);
     user.expires_in = token.expires_in;
@@ -232,6 +358,10 @@ where
 }
 
 /// Helper to refresh an access token and fetch the updated ConnectUser profile.
+///
+/// If the refresh grant succeeds but the response lifetime or the profile
+/// lookup fails, the error is [`crate::error::ConnectError::RefreshIncomplete`]
+/// and carries the issued tokens.
 pub async fn refresh_and_get_user<P>(
     provider: &P,
     client: &dyn crate::client::HttpClient,
@@ -243,19 +373,16 @@ pub async fn refresh_and_get_user<P>(
 where
     P: Provider + ?Sized,
 {
-    let token = fetch_refresh_token(
+    refresh_with_authentication(
+        provider,
         client,
         token_url,
         client_id,
-        secrecy::ExposeSecret::expose_secret(client_secret),
+        client_secret,
         refresh_token,
+        ClientAuthentication::RequestBody,
     )
-    .await?;
-
-    let mut user = provider.get_user_from_token(&token.access_token).await?;
-    user.refresh_token = token.refresh_token.map(secrecy::SecretString::from);
-    user.expires_in = token.expires_in;
-    Ok(user)
+    .await
 }
 pub(crate) fn validate_token_lifetime(
     lifetime: Option<u64>,

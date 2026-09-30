@@ -143,6 +143,11 @@ impl Server {
 
     /// Attach a task scheduler that runs alongside the HTTP server.
     ///
+    /// The server owns the scheduler handle: every task failure is logged as
+    /// a `tracing` error on the `rullst::scheduler` target when it is
+    /// reported, and task failures never make a clean shutdown fail. Only a
+    /// failed scheduler loop is returned as [`ServerError::Scheduler`].
+    ///
     /// # Example
     /// ```rust,no_run
     /// use rullst_core::{Server, Scheduler, routes, routing::get};
@@ -166,12 +171,16 @@ impl Server {
     }
 
     /// Attaches an adaptive TrafficShield to the server to protect against CPU/DB saturation.
+    ///
+    /// Exact `GET`/`HEAD /health` and `/ready` probes are never shed.
     pub fn shield(mut self, shield: crate::resilience::TrafficShield) -> Self {
         self.shield = Some(shield);
         self
     }
 
     /// Attaches a global RateLimiter to the server.
+    ///
+    /// Exact `GET`/`HEAD /health` and `/ready` probes do not consume tokens.
     pub fn rate_limit(mut self, limiter: crate::resilience::RateLimiter) -> Self {
         self.limiter = Some(limiter);
         self
@@ -228,24 +237,28 @@ impl Server {
 
         self.init_database(&app_config, &dotenv).await?;
         let addr = Self::setup_networking(port, app_config.app.port, environment, &dotenv)?;
-        let scheduler_handle = self.start_scheduler()?;
+        let mut scheduler_handle = self.start_scheduler()?;
         let shield_lifecycle = self.start_traffic_shield()?;
 
-        let server_result = if let Some(lib_path) = self.hot_reload_lib.take() {
-            self.run_hot_reload(lib_path, addr, environment, shutdown)
-                .await
-        } else {
-            self.run_static(app_config, addr, environment, shutdown)
-                .await
+        let server = async move {
+            if let Some(lib_path) = self.hot_reload_lib.take() {
+                self.run_hot_reload(lib_path, addr, environment, shutdown)
+                    .await
+            } else {
+                self.run_static(app_config, addr, environment, shutdown)
+                    .await
+            }
         };
+        // The server owns the only scheduler handle: log task failures as
+        // they happen and keep them out of the clean-shutdown result.
+        let server_result =
+            super::scheduler_supervision::serve_while_draining(server, scheduler_handle.as_mut())
+                .await;
 
         if let Some(shield) = shield_lifecycle {
             shield.shutdown();
         }
-        let scheduler_result = match scheduler_handle {
-            Some(handle) => handle.shutdown().await.map_err(ServerError::from),
-            None => Ok(()),
-        };
+        let scheduler_result = super::scheduler_supervision::stop_scheduler(scheduler_handle).await;
 
         match server_result {
             Err(error) => Err(error),
@@ -480,21 +493,7 @@ impl Server {
         app = super::dev_reload::mount(app, is_dev, std::env::var("RULLST_DEV_GENERATION").ok());
 
         app = app.layer(axum::middleware::from_fn(
-            |req: axum::extract::Request, next: axum::middleware::Next| async move {
-                let method = req.method().to_string();
-                let path = req.uri().path().to_string();
-                let start = std::time::Instant::now();
-                let res = next.run(req).await;
-                let status = res.status().as_u16();
-                let elapsed = start.elapsed().as_secs_f64() * 1000.0;
-                if !path.starts_with("/_rullst_hmr") {
-                    println!(
-                        "[HTTP] {} {} -> {} ({:.2} ms)",
-                        method, path, status, elapsed
-                    );
-                }
-                res
-            },
+            super::console::access_log_middleware,
         ));
 
         if std::path::Path::new("static").exists() {
@@ -521,17 +520,7 @@ impl Server {
                 ));
         }
 
-        if let Some(limiter) = self.limiter {
-            app = app.layer(axum::middleware::from_fn(move |req, next| {
-                crate::resilience::rate_limit_middleware(limiter.clone(), req, next)
-            }));
-        }
-
-        if let Some(shield) = self.shield {
-            app = app.layer(axum::middleware::from_fn(move |req, next| {
-                crate::resilience::backpressure_middleware(shield.clone(), req, next)
-            }));
-        }
+        app = super::traffic::apply_traffic_controls(app, self.limiter, self.shield);
 
         if let Some(lifecycle) = self.lifecycle.clone() {
             app = apply_lifecycle(app, lifecycle);
@@ -648,10 +637,10 @@ pub async fn shutdown_signal() {
 
     tokio::select! {
         _ = ctrl_c => {
-            println!("\n🛑 [Rullst Shutdown] Received SIGINT (Ctrl+C). Draining in-flight requests...");
+            super::console::stdout_line(format_args!("\n🛑 [Rullst Shutdown] Received SIGINT (Ctrl+C). Draining in-flight requests..."));
         },
         _ = terminate => {
-            println!("\n🛑 [Rullst Shutdown] Received SIGTERM. Draining in-flight requests...");
+            super::console::stdout_line(format_args!("\n🛑 [Rullst Shutdown] Received SIGTERM. Draining in-flight requests..."));
         },
     }
 }
