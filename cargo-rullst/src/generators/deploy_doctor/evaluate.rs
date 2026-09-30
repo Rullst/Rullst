@@ -15,7 +15,7 @@ pub(super) fn inspect(snapshot: &Snapshot, report: &mut Report) {
         report.add("unrecognized_configuration", "REVIEW", "Some fields are not consumed by Core configuration. Check for typos or application-specific settings; their values are not inspected.");
     }
     if snapshot.config.validate().is_err() {
-        report.add("security_configuration", "FAIL", "Core rejected the browser security configuration. Review CSP/header syntax, COEP, SameSite, exact CORS origins and exact signed-webhook paths.");
+        report.add("security_configuration", "FAIL", "Core rejected the browser security configuration. Review CSP/header syntax, COEP, SameSite, exact CORS origins, exact signed-webhook paths and trusted-proxy networks.");
     } else {
         report.add("security_configuration", "PASS", "Core accepted configuration syntax. Mounted middleware and effective browser behavior require runtime tests.");
     }
@@ -31,6 +31,9 @@ pub(super) fn inspect(snapshot: &Snapshot, report: &mut Report) {
         || security.cors_allow_credentials
     {
         report.add("browser_policy_exceptions", "REVIEW", "Review the explicit browser-policy exceptions and credentialed cross-origin behavior in a browser test.");
+    }
+    if !security.trusted_proxies.is_empty() {
+        report.add("trusted_proxy_networks", "REVIEW", "Every host inside the configured trusted-proxy networks can choose the client address. Confirm they contain only your proxies and that proxies overwrite forwarded scheme headers when trust_forwarded_proto is enabled.");
     }
     if !security.csrf_signed_webhook_paths.is_empty() {
         report.add("signed_webhook_exemptions", "REVIEW", "Every configured CSRF exemption needs mandatory signature verification on that exact route; this command does not inspect routing.");
