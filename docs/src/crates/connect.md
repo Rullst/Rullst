@@ -259,6 +259,10 @@ fn github_through_corporate_proxy(
 }
 ```
 
+With the `retry` feature, a provider's `with_retry` replaces its transport with
+a new direct client, so call it before `with_http_client`, or not at all: the
+proxy constructors already apply the bounded retry policy.
+
 `OidcProvider::discover` fetches its metadata before `with_http_client` can
 apply, so pass the proxy client to `OidcProvider::discover_with_client` instead
 (unpublished v13 API); discovery, JWKS and token calls then share it.

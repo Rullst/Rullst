@@ -125,8 +125,13 @@ macro_rules! define_provider {
                 self
             }
 
-            /// Configures the built-in HTTP client to use exponential backoff retries.
-            /// This is only available when the `retry` feature is enabled.
+            /// Replaces the provider's HTTP transport with a new direct `ReqwestClient` using
+            /// the method-aware retry policy of `ReqwestClient::new_with_retry` (at most 10
+            /// retries). Any client installed with `with_http_client`, including an explicit
+            /// corporate proxy, is discarded. With the `retry` feature, the proxy constructors
+            /// `ReqwestClient::try_with_proxy*` already apply that policy with three retries,
+            /// so pass the proxy client last instead of calling this method.
+            /// Only available with the `retry` feature.
             #[cfg(feature = "retry")]
             pub fn with_retry(mut self, max_retries: u32) -> Self {
                 if matches!(self.credential_mode, $crate::configuration::CredentialMode::Live) {
