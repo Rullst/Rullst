@@ -41,8 +41,11 @@ umbrella defaults when a backend-exclusive dependency graph is required.
 3. Register new accounts with `register_account_with_locale`. Account creation
    and the encrypted welcome notice commit together. The supported recorded
    locales are English, Brazilian Portuguese and Spanish; the worker supplies a
-   deterministic fallback. Existing accounts require an application migration;
-   there is no automatic import of arbitrary password tables.
+   deterministic fallback. An email or subject that is already registered
+   returns `InvalidAction` (without naming which), not the `Storage` error of a
+   database failure; present it without confirming that the email exists.
+   Existing accounts require an application migration; there is no automatic
+   import of arbitrary password tables.
 4. Use `authenticate`, `create_session` and `verify_session` for this registry.
    Passwords contain at least 12 characters and at most 72 bytes, the Argon2
    input limit. Registration, reset and `authenticate` reject longer input with
@@ -92,7 +95,10 @@ arbitrary database delays or establish indistinguishability under outages.
   encryption. The recovery credential remains digest-only; the delivery copy is
   decryptable using the application encryption key until expiry/terminal cleanup.
   Retention is bounded at 10,000 records, with six attempts, 60-second leases and
-  exponential retry delay. Old workers cannot acknowledge a newer lease.
+  exponential retry delay. When the outbox is full, the oldest delivered or
+  failed (ciphertext-free) records are evicted first, so only pending and leased
+  notices can block registration or silently drop a reset request. Old workers
+  cannot acknowledge a newer lease.
 - Reset emails render an absolute UTC expiry, keeping the body identical across
   retries. Stable delivery IDs reach Resend through observation, inspection,
   suppression, resolver and failover wrappers. Other transports remain

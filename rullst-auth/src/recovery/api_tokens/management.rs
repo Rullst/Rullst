@@ -248,8 +248,8 @@ impl ApiTokenService {
         finished: i64,
         expiry: i64,
     ) -> Result<i64, RecoveryError> {
-        let current = now(clock)?;
-        if current < finished || current >= expiry {
+        let current = advance_clock(now(clock)?, finished)?;
+        if current >= expiry {
             Err(RecoveryError::InvalidAction)
         } else {
             Ok(current)

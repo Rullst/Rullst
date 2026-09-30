@@ -363,13 +363,17 @@ impl AiProvider for FallbackProvider {
         Err(Self::no_provider_error(last_error))
     }
 
+    /// Uses the first provider that supports embeddings and returns its error.
+    /// Vectors from different models are not comparable, so a failure never
+    /// falls back to another embedding model; only providers that report
+    /// `UnsupportedCapability` are skipped.
     async fn embed(&self, text: &str) -> Result<Vec<f32>, AiError> {
         let text = AiGuardrails::prepare(text)?;
         let mut last_error = None;
         for provider in &self.providers {
             match provider.embed(&text).await {
-                Ok(embedding) => return Ok(embedding),
-                Err(error) => last_error = Some(error),
+                Err(error @ AiError::UnsupportedCapability { .. }) => last_error = Some(error),
+                result => return result,
             }
         }
         Err(Self::no_provider_error(last_error))
@@ -459,6 +463,27 @@ mod tests {
             Arc::new(MockProvider { succeeds: true }),
         ]);
         assert_eq!(provider.prompt("hello").await.unwrap(), "hello");
+    }
+
+    #[tokio::test]
+    async fn embeddings_stay_with_the_first_embedding_provider() {
+        // A failing embedding model is not replaced by another vector space.
+        let provider = FallbackProvider::new(vec![
+            Arc::new(MockProvider { succeeds: false }),
+            Arc::new(MockProvider { succeeds: true }),
+        ]);
+        assert!(matches!(
+            provider.embed("hello").await,
+            Err(AiError::ApiError(message)) if message == "failed"
+        ));
+
+        // A provider without embeddings, such as Anthropic, is skipped.
+        let provider = FallbackProvider::new(vec![
+            Arc::new(crate::ai::providers::anthropic::AnthropicProvider::new(
+                "mock_chat",
+            )),
+            Arc::new(MockProvider { succeeds: true }),
+        ]);
         assert_eq!(provider.embed("hello").await.unwrap(), vec![1.0]);
     }
 

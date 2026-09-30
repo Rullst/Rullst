@@ -104,8 +104,10 @@ update verified in the same process targets the same inactive bank.
 
 The store contract requires power-loss-safe persistence before returning
 success. If a store reports a failure after committing, for example because an
-acknowledgement was lost, a retry completes the commit once the store reports,
-and a fresh `load` confirms, exactly the manifest's counter. The framework tests
+acknowledgement was lost, a retry of that same manifest completes the commit
+once the store reports, and a fresh `load` confirms, exactly its counter. A
+stale manager, or a different image with the same counter, still receives the
+conflict. The framework tests
 restart/replay, transient retry, corruption and stale-writer conflict at the
 adapter boundary, but those tests do not certify a particular flash, secure
 element or board. A failure after the durable counter advances can require

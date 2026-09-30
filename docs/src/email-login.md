@@ -47,6 +47,15 @@ registration, step-up MFA, verified age or guardian authorization.
    replaces the prior link and pending/leased notice. Links expire after exactly
    15 minutes. Account opt-out, password recovery or another account-epoch
    change invalidates the pending link.
+   An account has one pending link and one request budget, whichever browser
+   asks. Anyone who knows an enrolled address can therefore replace the owner's
+   pending link (the new link only works in the requester's browser) and spend
+   the three requests of each window, blocking email login for that account at
+   about 12 requests per hour. This bounded budget is what prevents mail
+   flooding; a per-browser budget would not, because browser bindings are free
+   to mint. Email login is an optional route: keep password login and recovery
+   available, apply per-client and per-target ingress limits, and let users
+   disable email login if it is abused against them.
 4. A trusted worker calls `claim_notice`, constructs Mail `AccountEvent::EmailLoginAt`
    with `ActionLink`, the server-configured origin and `expires_at`, then sends
    with the stable `delivery_id`. Use the recorded locale, with explicit fallback.
@@ -64,7 +73,8 @@ registration, step-up MFA, verified age or guardian authorization.
    failures within 60 seconds, that binding receives `RecoveryError::Throttled`
    until its window passes, before any database work, even for a valid link.
    Other bindings and valid redemptions are never charged or blocked, so one
-   client cannot lock other users out. The budget is process-local, keyed by an
+   client cannot lock other users out of redemption (request replacement and
+   the per-account request budget are described in step 3). The budget is process-local, keyed by an
    HMAC digest of the binding and bounded to 10,000 recent bindings. It is not a
    global brute-force bound: an attacker can rotate bindings, and a multi-host
    deployment keeps one budget per service instance, so ingress limits remain
@@ -98,8 +108,11 @@ uses a bounded four-connection pool, verified remote TLS, five-second SQL/lock
 limits, permanent tables, `fsync`/`full_page_writes` and synchronous commit on a
 writable primary. Public methods have a ten-second operation timeout (plus the
 minimum request delay). All state mutations serialize through the account
-registry's write lock and recheck clock observations. A lock wait cannot extend
-a link's expiry. An uncertain commit or cancellation never returns a session.
+registry's write lock and recheck clock observations. The namespace keeps a
+monotonic clock high-water mark: a host whose clock trails it by at most five
+seconds, as synchronized hosts do around each whole-second boundary, adopts the
+recorded time, while a larger backward step fails with `InvalidAction`. A lock
+wait or skew adoption cannot extend a link's expiry. An uncertain commit or cancellation never returns a session.
 
 PostgreSQL bootstrap serializes explicit initializers. Normal startup performs
 no DDL or missing-namespace repair. Runtime needs SELECT/INSERT/UPDATE/DELETE on

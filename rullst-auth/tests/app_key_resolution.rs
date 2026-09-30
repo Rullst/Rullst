@@ -135,6 +135,7 @@ fn app_key_resolution_is_fail_closed_and_durable() {
         .expect("development key fixture should be written");
     });
     run_isolated_case("development_key_is_created_privately", |_| {});
+    run_isolated_case("concurrent_first_calls_agree_on_one_key", |_| {});
 }
 
 fn write_malformed_dotenv(directory: &Path) {
@@ -291,6 +292,28 @@ fn app_key_resolution_child() {
                     & 0o777;
                 assert_eq!(mode, 0o600);
             }
+        }
+        "concurrent_first_calls_agree_on_one_key" => {
+            let start = std::sync::Arc::new(std::sync::Barrier::new(16));
+            let callers: Vec<_> = (0..16)
+                .map(|_| {
+                    let start = std::sync::Arc::clone(&start);
+                    std::thread::spawn(move || {
+                        start.wait();
+                        get_app_key().expect("development key should resolve")
+                    })
+                })
+                .collect();
+            let keys: Vec<Vec<u8>> = callers
+                .into_iter()
+                .map(|caller| caller.join().expect("caller thread"))
+                .collect();
+            let persisted = general_purpose::STANDARD
+                .decode(fs::read_to_string(".rullst_dev_key").expect("persisted key"))
+                .expect("persisted development key should be base64");
+            // Compare without formatting key material into assertion output.
+            assert!(keys.iter().all(|key| *key == persisted));
+            assert!(get_app_key().expect("cached key") == persisted);
         }
         "malformed_dotenv_is_redacted" => {
             let error = get_app_key().expect_err("malformed dotenv must fail closed");

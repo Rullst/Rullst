@@ -86,7 +86,11 @@ Token operations serialize with recovery/account changes through the existing
 registry write lock. This favors explicit revocation ordering over unlimited
 parallel throughput; size and load-test this shared registry for the application.
 Expiry and persisted clock observations are rechecked after database waits and
-before a credential or principal is returned. Cancellation/uncertain commit
+before a credential or principal is returned. The namespace keeps a monotonic
+clock high-water mark: a host whose clock trails it by at most five seconds, as
+synchronized hosts do around each whole-second boundary, adopts the recorded
+time, so no lifetime is extended; a larger backward step fails with
+`InvalidAction`. Cancellation/uncertain commit
 never returns a new bearer. Revocation has a database ordering point; work
 already authorized before it cannot be recalled or made atomic with a later
 external side effect. Never replace SQL checks with positive local caching.

@@ -228,7 +228,9 @@ impl SqlitePasskeyStore {
         validate_subject(subject)?;
         validate_credential_id(credential_id)?;
         let now = i64::try_from(unix_time()?).map_err(|_| corrupt("revocation time"))?;
-        let changed = sqlx::query("UPDATE rullst_auth_passkey_devices SET revoked_at = COALESCE(revoked_at, ?) WHERE subject = ? AND credential_id = ?")
+        // Clamped so a wall clock stepped back below `created_at` cannot fail
+        // the schema check and block revocation.
+        let changed = sqlx::query("UPDATE rullst_auth_passkey_devices SET revoked_at = COALESCE(revoked_at, MAX(?, created_at)) WHERE subject = ? AND credential_id = ?")
             .bind(now)
             .bind(subject)
             .bind(credential_id)
@@ -330,7 +332,7 @@ impl SqlitePasskeyStore {
             return Err(PasskeyStoreError::InvalidCredential);
         }
         let now = i64::try_from(unix_time()?).map_err(|_| corrupt("usage time"))?;
-        let changed = sqlx::query("UPDATE rullst_auth_passkey_devices SET sign_count = ?, last_used_at = ? WHERE subject = ? AND credential_id = ? AND public_key = ? AND sign_count = ? AND revoked_at IS NULL")
+        let changed = sqlx::query("UPDATE rullst_auth_passkey_devices SET sign_count = ?, last_used_at = MAX(?, created_at) WHERE subject = ? AND credential_id = ? AND public_key = ? AND sign_count = ? AND revoked_at IS NULL")
             .bind(i64::from(updated.sign_count))
             .bind(now)
             .bind(subject)

@@ -93,9 +93,7 @@ impl EmailLoginService {
         .await?;
         let finished = self.finish_time(&mut tx, clock, current, expiry).await?;
         tx.commit().await?;
-        if now(clock)? < finished {
-            return Err(RecoveryError::InvalidAction);
-        }
+        advance_clock(now(clock)?, finished)?;
         Ok(LoginRequestAccepted)
     }
 
@@ -166,8 +164,7 @@ impl EmailLoginService {
         self.cancel_pending(&mut tx, &subject).await?;
         let finished = self.finish_time(&mut tx, clock, finished, expiry).await?;
         tx.commit().await?;
-        let after = now(clock)?;
-        if after < finished || after >= expiry {
+        if advance_clock(now(clock)?, finished)? >= expiry {
             return Err(RecoveryError::InvalidAction);
         }
         Ok(EmailLoginSession {

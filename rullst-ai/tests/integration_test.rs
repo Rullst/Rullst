@@ -69,9 +69,12 @@ async fn test_fallback_provider_failover() {
     assert!(chat_res.is_ok());
     assert_eq!(chat_res.unwrap(), "Secondary: chatted 1 messages");
 
+    // Embeddings never fall back across models: the vectors would not be comparable.
     let embed_res = fallback.embed("sample text").await;
-    assert!(embed_res.is_ok());
-    assert_eq!(embed_res.unwrap(), vec![0.1, 0.2, 0.3]);
+    assert!(matches!(
+        embed_res,
+        Err(AiError::ApiError(message)) if message == "embedding failed"
+    ));
 }
 
 #[tokio::test]

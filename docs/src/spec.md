@@ -2849,7 +2849,7 @@ sending.
 
 ### 8.1. Ed25519 OTA Firmware Gate
 * **Firmware Verification:** Strict Ed25519 signature validation over a cryptographic manifest `[target, version, rollback_counter, firmware_len, firmware_sha256]`.
-* **Anti-Rollback Protection:** Verification rejects any counter lower than or equal to the state loaded into the manager. The recommended `RollbackCounterStore` path additionally performs an exact compare-and-set and may report success only after a strictly increasing value is durably committed across reset. A retry after an ambiguous store failure completes only when the store reports, and a fresh load confirms, exactly the verified manifest's counter. Atomicity, integrity, wear-leveling and power-loss behavior are obligations of the caller's platform adapter and require hardware-specific evidence.
+* **Anti-Rollback Protection:** Verification rejects any counter lower than or equal to the state loaded into the manager. The recommended `RollbackCounterStore` path additionally performs an exact compare-and-set and may report success only after a strictly increasing value is durably committed across reset. A retry of the same verified manifest after an ambiguous store failure completes only when the store reports, and a fresh load confirms, exactly that manifest's counter; an equal stored counter without such an earlier attempt remains a conflict. Atomicity, integrity, wear-leveling and power-loss behavior are obligations of the caller's platform adapter and require hardware-specific evidence.
 * **Commit Invariant:** In-memory partition selection and store-backed counter commit are blocked until full cryptographic verification succeeds. `verified_target_partition` exposes the inactive bank (opposite `current_partition`) for platform flash/read-back before commit. The v13 `new_with_running_partition` constructor takes the bank the bootloader started, while the older constructors assume `PartitionA` and require platform code to set `current_partition`; a commit selects the other bank for the next boot but does not change `current_partition`, so an update verified again before reboot never targets the running bank. The compatibility `commit_verified_update` path is process-local and does not claim persistence, flash or bootloader control.
 
 ### 8.2. Embedded Sensor Frames (`#![no_std]`)
@@ -2862,8 +2862,8 @@ sending.
 * `MqttPublish` encodes one bounded MQTT 5 PUBLISH packet with validated topic,
   minimal Remaining Length, QoS/packet-identifier invariants and an empty
   property section. `CoapRequest` encodes bounded RFC 7252 base requests with
-  a token, ordered URI-Path (1-255 bytes per segment)/Content-Format options
-  and a non-empty payload marker. Both compile under `no_std`; neither opens a socket or owns protocol
+  a token, ordered URI-Path (1-255 bytes per segment, never `.` or
+  `..`)/Content-Format options and a non-empty payload marker. Both compile under `no_std`; neither opens a socket or owns protocol
   session state.
 * 🔵 **`[Roadmap]` MQTT/CoAP Transport:** Async connections, TLS/DTLS, broker
   negotiation, acknowledgements, retransmission/congestion control, block-wise
@@ -2909,7 +2909,8 @@ sending.
 * Retrieved documents carry the trusted tenant tag. The pipeline rejects
   mismatches, over-return, injection heuristics, empty context, non-finite
   embeddings, and unavailable mandatory audit evidence rather than silently
-  generating an ungrounded response.
+  generating an ungrounded response. A guardrail block of the assembled prompt
+  is audited as `ContextRejected` before any provider call.
 * Context limits count Unicode scalar values per document and in total. The
   audit event omits raw question, context, embeddings, provider bodies, and
   answer; its SHA-256 query digest is correlation metadata, not encryption.
@@ -2929,8 +2930,8 @@ sending.
   `TenantContext` and validated `ConversationId`, loads only the configured even
   number of recent messages, applies the guarded `AiClient`, and persists the
   user/assistant exchange only after generation succeeds. A response that the
-  guardrail would block on replay is rejected as a generation failure and not
-  persisted.
+  guardrail would block on replay, or that is empty or larger than 64 KiB, is
+  rejected as a generation failure and not persisted.
 * `InMemoryChatMemory` is deterministic, tenant-partitioned, cardinality-bound,
   and intended for tests/local use. The opt-in `sql-memory` adapter supports
   SQLite, PostgreSQL, MySQL, and MariaDB through a dedicated SQLx Any pool.

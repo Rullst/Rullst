@@ -122,21 +122,21 @@ impl EmailLoginService {
         Ok(now)
     }
 
+    /// Records the shared time for this operation and returns it. A host whose
+    /// clock trails the recorded time within the skew tolerance adopts it.
     pub(super) async fn observe(
         &self,
         tx: &mut Transaction<'_, Any>,
         now: i64,
-    ) -> Result<(), RecoveryError> {
+    ) -> Result<i64, RecoveryError> {
         self.durable(tx).await?;
-        if now < self.metadata(tx).await? {
-            return Err(RecoveryError::InvalidAction);
-        }
+        let now = advance_clock(now, self.metadata(tx).await?)?;
         sqlx::query("UPDATE rullst_email_login_control SET last_now = $1 WHERE namespace = $2")
             .bind(now)
             .bind(&self.config.namespace)
             .execute(&mut **tx)
             .await?;
-        Ok(())
+        Ok(now)
     }
 
     /// Enables/disables this account only after the host's recent authentication,
@@ -193,11 +193,9 @@ impl EmailLoginService {
         sqlx::query("INSERT INTO rullst_email_login_accounts (namespace,subject,enabled,revision,request_window,requests) VALUES ($1,$2,$3,$4,0,0) ON CONFLICT(namespace,subject) DO UPDATE SET enabled=excluded.enabled,revision=excluded.revision")
             .bind(&self.config.namespace).bind(&account.subject).bind(i64::from(enabled)).bind(revision).execute(&mut *tx).await?;
         self.cancel_pending(&mut tx, &account.subject).await?;
-        self.finish_time(&mut tx, clock, now, i64::MAX).await?;
+        let finished = self.finish_time(&mut tx, clock, now, i64::MAX).await?;
         tx.commit().await?;
-        if super::super::timestamp(clock.now()?)? < now {
-            return Err(RecoveryError::InvalidAction);
-        }
+        advance_clock(super::super::timestamp(clock.now()?)?, finished)?;
         Ok(())
     }
 

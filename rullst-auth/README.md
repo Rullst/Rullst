@@ -103,7 +103,9 @@ then atomically advances the stored counter; a concurrent stale update fails.
 Multi-statement SQLite mutations use cancellation-safe transactions: dropping
 an unfinished registration rolls it back before the pooled connection is reused.
 Revoked entries remain visible in device inventory and continue to count toward
-the configured quota so revocation history is not silently recycled.
+the configured quota so revocation history is not silently recycled. If the
+wall clock is stepped back below a credential's creation time, its last use and
+revocation are recorded at that creation time instead of failing.
 
 WebAuthn challenge state remains bounded and process-local inside `PasskeyAuth`.
 The optional v13 `passkey-postgres` path adds
@@ -131,6 +133,8 @@ scope policy, and `kid`-based key rotation. Every verification receives a
 `JwtRevocationStore`. Production policies reject the bundled bounded in-memory
 store because it is process-local.
 
+Lifetimes are whole seconds: a fractional TTL is truncated, and a TTL or
+`max_ttl` under one second is rejected because it could never verify.
 Token expiration is an exclusive deadline: verification rejects `now >= exp`,
 including when clock skew is configured. Skew only tolerates a future `iat` or
 `nbf`; it cannot revive an expired token after its revocation entry is pruned.
@@ -166,7 +170,10 @@ adds a `subject` and a `revoked_through_iat` column to an existing file. Earlier
 still open it but ignore subject cutoffs, so upgrade every process sharing the file.
 
 The SQLite adapter is durable across restarts and shared across local processes,
-not replicated across hosts. The deployment owns its trusted directory, file
+not replicated across hosts. `SqliteJwtRevocationStore` and `SqlitePasskeyStore`
+therefore accept only an ordinary database file: `:memory:` in any form, `file:`
+URI filenames and the `vfs`, `immutable` and `mode=memory` URL parameters fail
+with `InvalidConfiguration`. The deployment owns its trusted directory, file
 permissions/encryption, backup, availability and disaster recovery. This API
 does not verify third-party OAuth/OIDC tokens or provide refresh tokens.
 

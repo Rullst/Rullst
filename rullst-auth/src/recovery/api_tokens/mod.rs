@@ -7,6 +7,7 @@ mod storage;
 mod types;
 mod verification;
 
+use super::clock::advance_clock;
 use super::{
     AuthClock, AuthenticatedRecoveryAccount, RecoveryError, RecoverySecrets, SecretToken,
     SessionLabel, SqlRecoveryStore,

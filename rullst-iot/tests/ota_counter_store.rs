@@ -311,3 +311,65 @@ fn retry_completes_a_commit_whose_acknowledgement_was_lost() {
         assert_eq!(store.value, 21);
     }
 }
+
+#[test]
+fn only_a_retry_of_an_uncertain_commit_adopts_an_equal_stored_counter() {
+    // A stale manager whose store another writer advanced to exactly this
+    // manifest's counter made no earlier attempt, so the conflict stands.
+    for monotonic_first in [false, true] {
+        let mut store = MemoryCounterStore::new(30);
+        store.monotonic_first = monotonic_first;
+        let mut stale = manager(&mut store);
+        let (manifest, firmware, signature) = signed_update(32);
+        stale
+            .verify_update(&manifest, &firmware, &signature)
+            .unwrap();
+        store.value = 32;
+        assert!(matches!(
+            stale.commit_verified_update_with_store(&mut store),
+            Err(OtaError::RollbackCounterStore(
+                RollbackCounterError::Conflict { actual: 32, .. }
+                    | RollbackCounterError::NonMonotonic { current: 32, .. }
+            ))
+        ));
+        assert_eq!(stale.rollback_counter(), 30);
+        assert_eq!(stale.status, OtaStatus::Verified);
+    }
+
+    // After an uncertain commit of X, a different image Y with the same
+    // counter is not reported as committed, but a retry of X still is.
+    let mut store = MemoryCounterStore::new(20);
+    let (first, first_firmware, first_signature) = signed_update(21);
+    let other_firmware = b"other-image-with-counter-21".to_vec();
+    let other =
+        OtaManifest::from_firmware("counter-test-board", "12.1.1", 21, &other_firmware).unwrap();
+    let other_signature = signing_key()
+        .sign(&other.signing_bytes().unwrap())
+        .to_bytes()
+        .to_vec();
+    let mut ota = manager(&mut store);
+    ota.verify_update(&first, &first_firmware, &first_signature)
+        .unwrap();
+    store.lost_acknowledgement = Some(RollbackCounterError::Unavailable);
+    assert!(ota.commit_verified_update_with_store(&mut store).is_err());
+    assert_eq!(store.value, 21);
+
+    ota.verify_update(&other, &other_firmware, &other_signature)
+        .unwrap();
+    assert_eq!(
+        ota.commit_verified_update_with_store(&mut store),
+        Err(OtaError::RollbackCounterStore(
+            RollbackCounterError::Conflict {
+                expected: 20,
+                actual: 21,
+            }
+        ))
+    );
+    assert_eq!(ota.firmware_version, "12.0.0");
+
+    ota.verify_update(&first, &first_firmware, &first_signature)
+        .unwrap();
+    let receipt = ota.commit_verified_update_with_store(&mut store).unwrap();
+    assert_eq!(receipt.version(), "12.1.0");
+    assert_eq!(receipt.rollback_counter(), 21);
+}

@@ -422,7 +422,7 @@
       "target_kind": "lib",
       "target": "lib",
       "test_filter": "ai::memory::sql::tests::sqlite_history_is_atomic_tenant_bound_and_deletable",
-      "source": "rullst-ai/src/ai/memory/sql.rs",
+      "source": "rullst-ai/src/ai/memory/sql/tests.rs",
       "marker": "TM-AI-08"
     },
     {

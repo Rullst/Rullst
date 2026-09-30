@@ -85,3 +85,42 @@ fn short_session_cookies_reject_internal_non_graphic_bytes() {
         Some("left-right".into())
     );
 }
+
+fn raw_headers(values: &[&[u8]]) -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    for value in values {
+        headers.append(
+            COOKIE,
+            HeaderValue::from_bytes(value).expect("valid HTTP header fixture"),
+        );
+    }
+    headers
+}
+
+#[test]
+fn unrelated_malformed_cookies_do_not_hide_the_session() {
+    for values in [
+        &[b"rullst_session=abc; consent".as_slice()][..],
+        &[b"consent; rullst_session=abc"],
+        &[b"rullst_session=abc;"],
+        &[b"rullst_session=abc; ; other=1"],
+        &[b"theme=caf\xc3\xa9; rullst_session=abc"],
+        &[b"theme=caf\xc3\xa9", b"rullst_session=abc"],
+    ] {
+        assert_eq!(
+            extract_session_cookie(&raw_headers(values)),
+            Some("abc".to_string())
+        );
+    }
+    // Duplicates and non-graphic session values still fail closed, even in a
+    // header that also carries non-ASCII bytes.
+    for values in [
+        &[
+            b"rullst_session=abc".as_slice(),
+            b"x=\xc3\xa9; rullst_session=def",
+        ][..],
+        &[b"theme=caf\xc3\xa9; rullst_session=ab\xc3\xa9"],
+    ] {
+        assert_eq!(extract_session_cookie(&raw_headers(values)), None);
+    }
+}

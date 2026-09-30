@@ -140,6 +140,66 @@ pub async fn run(url: &str) {
     );
     other.close().await;
     assert_eq!(other_verify_closed(url).await, RecoveryError::Storage);
+    clock_skew(url).await;
+}
+/// Two hosts sharing the database cross each whole second at slightly
+/// different instants: one trailing the recorded time by up to five seconds
+/// adopts it without extending any lifetime, a larger regression fails closed.
+async fn clock_skew(url: &str) {
+    let namespace = unique();
+    let ahead = Clock::new();
+    let service = ApiTokenService::initialize(url, keys(), config(&namespace))
+        .await
+        .unwrap();
+    let peer = ApiTokenService::connect(url, keys(), config(&namespace))
+        .await
+        .unwrap();
+    let (owner, _, _) = account(&service, &ahead).await;
+    let token = service
+        .issue(&owner, read(), label(), 600, &ahead)
+        .await
+        .unwrap();
+    ahead.advance(1);
+    service
+        .verify(token.expose_bearer(), &read(), &ahead)
+        .await
+        .unwrap();
+    let behind = Clock::new();
+    assert!(
+        peer.verify(token.expose_bearer(), &read(), &behind)
+            .await
+            .is_ok()
+    );
+    behind.set(1_800_000_000 - 4);
+    assert!(
+        peer.verify(token.expose_bearer(), &read(), &behind)
+            .await
+            .is_ok()
+    );
+    behind.set(1_800_000_000 - 5);
+    assert_eq!(
+        peer.verify(token.expose_bearer(), &read(), &behind)
+            .await
+            .unwrap_err(),
+        RecoveryError::InvalidAction
+    );
+    // The adopted time is the recorded one, so expiry is never extended.
+    ahead.set(1_800_000_000 + 600);
+    assert!(
+        service
+            .verify(token.expose_bearer(), &read(), &ahead)
+            .await
+            .is_err()
+    );
+    behind.set(1_800_000_000 + 598);
+    assert_eq!(
+        peer.verify(token.expose_bearer(), &read(), &behind)
+            .await
+            .unwrap_err(),
+        RecoveryError::InvalidAction
+    );
+    peer.close().await;
+    service.close().await;
 }
 async fn other_verify_closed(url: &str) -> RecoveryError {
     let clock = Clock::new();

@@ -149,6 +149,9 @@ impl SqlRecoveryStore {
     }
 
     /// Registers the user's explicit language preference with the account event.
+    ///
+    /// An existing subject or email returns `RecoveryError::InvalidAction`,
+    /// without saying which one conflicted; `Storage` remains a backend failure.
     pub async fn register_account_with_locale(
         &self,
         subject: impl Into<String>,
@@ -171,8 +174,12 @@ impl SqlRecoveryStore {
         )?;
         let mut tx = self.pool.begin().await?;
         self.lock_writes(&mut tx).await?;
-        sqlx::query("INSERT INTO rullst_recovery_accounts (subject, email_key, email_ciphertext, password_hash, session_version, reset_window, reset_count, suppressed, locale) VALUES ($1, $2, $3, $4, 1, 0, 0, 0, $5)")
+        let inserted = sqlx::query("INSERT INTO rullst_recovery_accounts (subject, email_key, email_ciphertext, password_hash, session_version, reset_window, reset_count, suppressed, locale) VALUES ($1, $2, $3, $4, 1, 0, 0, 0, $5) ON CONFLICT DO NOTHING")
             .bind(&subject).bind(email_key).bind(email_ciphertext).bind(hash).bind(locale.map_or("", |value| value.as_str())).execute(&mut *tx).await?;
+        if inserted.rows_affected() != 1 {
+            // Dropping the transaction rolls it back; no welcome notice is queued.
+            return Err(RecoveryError::InvalidAction);
+        }
         self.enqueue(
             &mut tx,
             &subject,

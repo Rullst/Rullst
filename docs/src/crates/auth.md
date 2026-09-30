@@ -78,13 +78,17 @@ replicate the database, or replace application device-ownership policy.
 
 The `jwt` feature provides `ApplicationJwtPolicy`, versioned HS256 claims, strong
 key validation, required issuer/audience/subject/time/JTI claims, bounded TTL and
-scope policy, and `kid`-based key rotation. Every verification receives a
+scope policy, and `kid`-based key rotation. Lifetimes are whole seconds; a TTL
+or `max_ttl` under one second is rejected. Every verification receives a
 `JwtRevocationStore`. Production policies reject the bundled bounded in-memory
 store because it is process-local. With `sqlite`,
 `SqliteJwtRevocationStore` persists token IDs and monotonic subject session
 versions behind a stored quota. Its `BEGIN IMMEDIATE` mutations are visible to
 local processes, expired token rows are pruned before capacity checks, and
-`ApplicationJwtPolicy::verify_async` checks that shared state.
+`ApplicationJwtPolicy::verify_async` checks that shared state. This store and
+`SqlitePasskeyStore` accept only an ordinary database file: `:memory:` in any
+form, `file:` URI filenames and the `vfs`, `immutable` and `mode=memory` URL
+parameters fail with `InvalidConfiguration`.
 
 Both bundled stores cap token-ID rows at three quarters of the quota and at 64
 active rows per subject. Past either cap, `revoke_token` records a subject cutoff

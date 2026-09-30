@@ -61,11 +61,8 @@ impl EmailLoginService {
         let started = now(clock)?;
         let mut tx = self.store.pool.begin().await?;
         self.store.lock_writes(&mut tx).await?;
-        let current = now(clock)?;
-        if current < started {
-            return Err(RecoveryError::InvalidAction);
-        }
-        self.observe(&mut tx, current).await?;
+        let current = advance_clock(now(clock)?, started)?;
+        let current = self.observe(&mut tx, current).await?;
         Ok((tx, current))
     }
 
@@ -135,11 +132,14 @@ impl EmailLoginService {
         started: i64,
         expiry: i64,
     ) -> Result<i64, RecoveryError> {
-        let current = now(clock)?;
-        if current < started || current >= expiry {
+        let current = advance_clock(now(clock)?, started)?;
+        if current >= expiry {
             return Err(RecoveryError::InvalidAction);
         }
-        self.observe(tx, current).await?;
+        let current = self.observe(tx, current).await?;
+        if current >= expiry {
+            return Err(RecoveryError::InvalidAction);
+        }
         Ok(current)
     }
 
