@@ -523,7 +523,11 @@ For Resend, SendGrid, Postmark, SendPulse, Mailjet, Mailtrap, ACS and the SES
 fixture/proxy,
 an empty credential or one beginning with `mock_` selects the deterministic
 offline fallback. Use `driver.delivery_mode()` and
-`OfflineMailMock::deliveries()` to assert this explicitly in tests.
+`OfflineMailMock::deliveries()` to assert this explicitly in tests. The
+process-wide capture keeps only the newest 1,000 deliveries and at most 64 MiB
+of their subject, body and attachment bytes, and the first capture in a process
+logs a `mail.offline_mock.active` warning, because an empty production secret
+also selects this fallback.
 
 Every real transport requires an explicit `from` address that the provider
 account has verified; a message without one fails with `MailError::ConfigError`
