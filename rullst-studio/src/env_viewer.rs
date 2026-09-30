@@ -1,5 +1,6 @@
 #![cfg_attr(mutants, mutants::skip)]
 use axum::{Router, response::Html, routing::get};
+use std::ffi::OsString;
 
 pub fn router() -> Router {
     Router::new().route("/", get(render_env_viewer))
@@ -45,14 +46,19 @@ fn may_display_environment_value(key: &str) -> bool {
         || normalized.starts_with("LC_")
 }
 
-async fn render_env_viewer() -> Html<String> {
-    let mut vars: Vec<(String, String)> = std::env::vars().collect();
+/// Renders one table row per variable. `std::env::vars` panics on a key or
+/// value that is not valid Unicode, so the OS strings are rendered lossily.
+fn render_environment_rows(vars: impl IntoIterator<Item = (OsString, OsString)>) -> String {
+    let mut vars = vars
+        .into_iter()
+        .map(|(key, value)| (key.to_string_lossy().into_owned(), value))
+        .collect::<Vec<_>>();
     vars.sort_by(|a, b| a.0.cmp(&b.0));
 
     let mut rows = String::new();
     for (key, val) in vars {
         let display_val = if may_display_environment_value(&key) {
-            val
+            val.to_string_lossy().into_owned()
         } else {
             "[REDACTED]".to_string()
         };
@@ -68,7 +74,11 @@ async fn render_env_viewer() -> Html<String> {
             val_html
         ));
     }
+    rows
+}
 
+async fn render_env_viewer() -> Html<String> {
+    let rows = render_environment_rows(std::env::vars_os());
     let config_rows = render_safe_config_rows();
 
     Html(format!(
@@ -224,6 +234,26 @@ mod tests {
         assert!(!html.contains("tok12"));
         assert!(!html.contains("postgres://admin:secret@db/app"));
         assert!(!html.contains("redis://:secret@cache/0"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn non_unicode_variables_render_lossily_instead_of_panicking() {
+        use std::os::unix::ffi::OsStringExt;
+
+        let rows = render_environment_rows([
+            (
+                OsString::from_vec(b"LEGACY_\xffPATH".to_vec()),
+                OsString::from("hidden"),
+            ),
+            (
+                OsString::from("LANG"),
+                OsString::from_vec(b"pt_BR.\xff".to_vec()),
+            ),
+        ]);
+        assert!(rows.contains("LEGACY_\u{fffd}PATH"));
+        assert!(rows.contains("pt_BR.\u{fffd}"));
+        assert!(!rows.contains("hidden"));
     }
 
     #[test]
