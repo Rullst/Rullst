@@ -1012,7 +1012,8 @@ on `Server` exempts only exact write-method/path pairs from browser CSRF after
 proving a strong bearer secret or an explicit host-supplied signed-webhook/mTLS
 verifier. Cookie/Origin/Sec-Fetch-Site inputs are rejected on these routes; body
 size is bounded and WAF/secure headers remain composed. Wildcards and weak
-secrets fail at construction. Applications own ingress limits, replay storage,
+secrets fail at construction; a static bearer token needs 32–200 printable
+ASCII bytes with at least 8 distinct values. Applications own ingress limits, replay storage,
 certificate trust and authorization; an unverified proxy header is not mTLS.
 
 The current [release audit](v12-release-audit.md) reopens earlier readiness
