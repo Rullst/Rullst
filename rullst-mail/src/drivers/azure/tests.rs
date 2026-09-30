@@ -184,3 +184,81 @@ async fn acs_send_posts_to_the_resource_and_polls_its_operation() {
     assert!(outcome.is_ok());
     server.await.unwrap();
 }
+
+/// Serves one identity-endpoint response per entry, then stops listening.
+async fn identity_fixture(responses: Vec<(u16, String)>) -> (String, tokio::task::JoinHandle<()>) {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}/msi/token", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move {
+        for (status, body) in responses {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            let _ = read_fixture_request(&mut socket).await;
+            socket
+                .write_all(format!("HTTP/1.1 {status} Fixture\r\nContent-Type: application/json\r\nRetry-After: 7\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len()).as_bytes())
+                .await
+                .unwrap();
+        }
+    });
+    (endpoint, server)
+}
+
+#[tokio::test]
+async fn managed_identity_reuses_tokens_until_the_refresh_margin() {
+    let far = r#"{"access_token":"fixture_access_token","token_type":"Bearer","expires_on":"4000000000"}"#;
+    let (endpoint, server) = identity_fixture(vec![(200, far.to_string())]).await;
+    let credential = AzureManagedIdentity::new(endpoint, "fixture_identity_header", None).unwrap();
+    for _ in 0..3 {
+        let token = credential.access_token().await.unwrap();
+        assert!(token.value.expose_secret() == "fixture_access_token");
+    }
+    server.await.unwrap();
+
+    // A token inside the refresh margin is fetched again.
+    let near = format!(
+        r#"{{"access_token":"fixture_access_token","token_type":"Bearer","expires_on":"{}"}}"#,
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            + 60
+    );
+    let (endpoint, server) = identity_fixture(vec![(200, near.clone()), (200, near)]).await;
+    let credential = AzureManagedIdentity::new(endpoint, "fixture_identity_header", None).unwrap();
+    credential.access_token().await.unwrap();
+    credential.access_token().await.unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(5), server)
+        .await
+        .expect("both near-expiry requests were served")
+        .unwrap();
+}
+
+#[tokio::test]
+async fn managed_identity_throttling_and_outages_are_retryable() {
+    let (endpoint, server) = identity_fixture(vec![
+        (429, "{}".to_string()),
+        (503, "{}".to_string()),
+        (403, "{}".to_string()),
+    ])
+    .await;
+    let credential = AzureManagedIdentity::new(endpoint, "fixture_identity_header", None).unwrap();
+    let throttled = credential.access_token().await.unwrap_err();
+    assert_eq!(
+        throttled.failure_class(),
+        crate::MailFailureClass::RateLimited
+    );
+    assert_eq!(
+        throttled.retry_after(),
+        Some(std::time::Duration::from_secs(7))
+    );
+    let unavailable = credential.access_token().await.unwrap_err();
+    assert_eq!(
+        unavailable.failure_class(),
+        crate::MailFailureClass::Transient
+    );
+    assert!(unavailable.is_failover_eligible());
+    assert!(matches!(
+        credential.access_token().await,
+        Err(MailError::ConfigError(_))
+    ));
+    server.await.unwrap();
+}

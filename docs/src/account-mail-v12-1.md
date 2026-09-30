@@ -149,7 +149,11 @@ loopback `IDENTITY_ENDPOINT`/`IDENTITY_HEADER` and optional user-assigned
 `AZURE_CLIENT_ID` for the Communication Services resource. The endpoint must be
 plain HTTP on a literal loopback IP or the exact name `localhost`, which the
 identity client pins to `127.0.0.1`/`::1` instead of resolving. The host must
-grant the identity email-sending permission and verify its domain/sender.
+grant the identity email-sending permission and verify its domain/sender. A
+credential reuses its token until five minutes before `expires_on`; identity
+endpoint throttling (HTTP 429) and 5xx outages are `RateLimited`/`Transient`,
+while other refusals remain a permanent `ConfigError`. The `Mail` facade builds
+a new credential per send, so reuse applies to a long-lived driver instance.
 
 The driver disables engagement tracking, bounds payload/response sizes,
 validates the operation-polling origin, and accepts only a terminal successful
