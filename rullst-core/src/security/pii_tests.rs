@@ -1,4 +1,6 @@
-use super::{card_mask_count, is_textual_response, mask_card_numbers, mask_pii};
+#![allow(clippy::expect_used)]
+
+use super::{card_mask_count, is_textual_response, mask_card_numbers, mask_json_strings, mask_pii};
 use std::time::{Duration, Instant};
 
 /// The former per-position rescan, kept as a differential oracle for the
@@ -132,6 +134,53 @@ fn over_long_digit_runs_are_masked_in_linear_time() {
         started.elapsed() < Duration::from_secs(5),
         "masking 400,000 characters took {:?}",
         started.elapsed()
+    );
+}
+
+#[test]
+fn json_masking_rewrites_strings_but_never_numbers() {
+    let body = r#"{"created_at":1727712000000,"id":1234567890123456789,"card":"4111 1111 1111 1111","note":"say \"hi\" to ana@example.com","ids":[9007199254740993]}"#;
+    let masked = mask_json_strings(body);
+    assert_eq!(
+        masked,
+        r#"{"created_at":1727712000000,"id":1234567890123456789,"card":"**** **** **** 1111","note":"say \"hi\" to a**@example.com","ids":[9007199254740993]}"#
+    );
+    let value: serde_json::Value = serde_json::from_str(&masked).expect("still valid JSON");
+    assert_eq!(value["created_at"], 1_727_712_000_000_u64);
+    // The plain-text masker still masks the same digit run.
+    assert!(mask_pii(body).contains("*********0000"));
+}
+
+#[tokio::test]
+async fn middleware_keeps_json_numbers_valid() {
+    use axum::http::{Request, header};
+    use tower::ServiceExt;
+
+    let app = axum::Router::new()
+        .route(
+            "/json",
+            axum::routing::get(|| async {
+                (
+                    [(header::CONTENT_TYPE, "application/problem+json")],
+                    r#"{"ts":1727712000000,"email":"ana@example.com"}"#,
+                )
+            }),
+        )
+        .layer(axum::middleware::from_fn(super::pii_masking_middleware));
+    let response = app
+        .oneshot(
+            Request::get("/json")
+                .body(axum::body::Body::empty())
+                .expect("request"),
+        )
+        .await
+        .expect("response");
+    let body = axum::body::to_bytes(response.into_body(), 1_024)
+        .await
+        .expect("body");
+    assert_eq!(
+        body.as_ref(),
+        br#"{"ts":1727712000000,"email":"a**@example.com"}"#
     );
 }
 

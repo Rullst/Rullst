@@ -44,6 +44,14 @@ fn is_textual_response(headers: &HeaderMap) -> bool {
         || media_type.eq_ignore_ascii_case("application/javascript")
 }
 
+fn is_json_response(headers: &HeaderMap) -> bool {
+    headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .map(super::media_type::essence)
+        .is_some_and(super::media_type::is_json)
+}
+
 fn has_identity_encoding(headers: &HeaderMap) -> bool {
     headers
         .get(header::CONTENT_ENCODING)
@@ -98,6 +106,11 @@ fn body_collection_failure() -> Response {
 }
 
 /// Automatic PII (Personally Identifiable Information) masking middleware for response payloads.
+///
+/// JSON responses (any `json` subtype or `+json` suffix) are masked only
+/// inside string literals, so JSON numbers are never rewritten and the body
+/// stays valid JSON. Other textual responses use [`mask_pii`] on the whole
+/// text.
 #[cfg_attr(mutants, mutants::skip)]
 pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
     let request_method = req.method().clone();
@@ -125,7 +138,11 @@ pub async fn pii_masking_middleware(req: Request, next: Next) -> Response {
         return Response::from_parts(parts, axum::body::Body::from(bytes));
     };
 
-    let masked_body = mask_pii(body_text);
+    let masked_body = if is_json_response(&parts.headers) {
+        mask_json_strings(body_text)
+    } else {
+        mask_pii(body_text)
+    };
     if masked_body.as_bytes() != bytes.as_ref() {
         update_representation_headers(&mut parts.headers, masked_body.len());
     }
@@ -233,7 +250,47 @@ fn has_email_domain(domain: &[char]) -> bool {
 #[cfg_attr(mutants, mutants::skip)]
 pub fn mask_pii(text: &str) -> String {
     let mut chars: Vec<char> = text.chars().collect();
-    mask_card_numbers(&mut chars);
+    mask_chars(&mut chars);
+    chars.into_iter().collect()
+}
+
+/// Masks PII only inside the string literals of a JSON document.
+///
+/// Numbers, `true`/`false`/`null` and structural characters are never
+/// rewritten, so a millisecond timestamp or a 64-bit ID stays a valid JSON
+/// number instead of becoming `*********0000`. Each string is masked on its
+/// own, and the scan is linear in the number of characters. Invalid JSON is
+/// scanned the same way; an unterminated string runs to the end.
+fn mask_json_strings(text: &str) -> String {
+    let mut chars: Vec<char> = text.chars().collect();
+    let mut index = 0;
+    while index < chars.len() {
+        if chars[index] != '"' {
+            index += 1;
+            continue;
+        }
+        let start = index + 1;
+        let mut end = start;
+        let mut escaped = false;
+        while let Some(&c) = chars.get(end) {
+            if escaped {
+                escaped = false;
+            } else if c == '\\' {
+                escaped = true;
+            } else if c == '"' {
+                break;
+            }
+            end += 1;
+        }
+        mask_chars(&mut chars[start..end]);
+        index = end + 1;
+    }
+    chars.into_iter().collect()
+}
+
+/// Applies the card and e-mail passes to one span of characters.
+fn mask_chars(chars: &mut [char]) {
+    mask_card_numbers(chars);
 
     let mut idx = 0;
     while idx < chars.len() {
@@ -278,8 +335,6 @@ pub fn mask_pii(text: &str) -> String {
         }
         idx += 1;
     }
-
-    chars.into_iter().collect()
 }
 
 #[cfg(test)]
