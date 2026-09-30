@@ -107,6 +107,9 @@ impl TrustedIssuer {
 
     /// Add an overlapping rotation key. Duplicate IDs are rejected. Retire keys
     /// by constructing the next issuer configuration while retaining replay state.
+    /// Small-order and non-canonical point encodings are rejected: Ed25519
+    /// verification does not check the key's order, so such a key would accept
+    /// signatures forged without any private key.
     pub fn with_key(
         mut self,
         key_id: impl Into<String>,
@@ -114,7 +117,7 @@ impl TrustedIssuer {
     ) -> Result<Self, AgeError> {
         let key_id = key_id.into();
         if !valid_token(&key_id)
-            || public_key == [0; 32]
+            || degenerate_key(&public_key)
             || self.keys.contains_key(&key_id)
             || self.keys.len() >= 8
         {
@@ -154,4 +157,45 @@ impl TrustedIssuer {
         }
         Ok(attestation.outcome)
     }
+}
+
+/// Canonical y coordinates of the eight small-order Edwards25519 points
+/// (y = 0, 1, p - 1 and the two order-8 values); the x sign bit is ignored,
+/// as in libsodium's `ge25519_has_small_order`.
+const SMALL_ORDER_Y: [[u8; 32]; 5] = [
+    [0; 32],
+    [
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0,
+    ],
+    [
+        0x26, 0xe8, 0x95, 0x8f, 0xc2, 0xb2, 0x27, 0xb0, 0x45, 0xc3, 0xf4, 0x89, 0xf2, 0xef, 0x98,
+        0xf0, 0xd5, 0xdf, 0xac, 0x05, 0xd3, 0xc6, 0x33, 0x39, 0xb1, 0x38, 0x02, 0x88, 0x6d, 0x53,
+        0xfc, 0x05,
+    ],
+    [
+        0xc7, 0x17, 0x6a, 0x70, 0x3d, 0x4d, 0xd8, 0x4f, 0xba, 0x3c, 0x0b, 0x76, 0x0d, 0x10, 0x67,
+        0x0f, 0x2a, 0x20, 0x53, 0xfa, 0x2c, 0x39, 0xcc, 0xc6, 0x4e, 0xc7, 0xfd, 0x77, 0x92, 0xac,
+        0x03, 0x7a,
+    ],
+    p_minus_one(),
+];
+
+/// Little-endian p - 1 = 2^255 - 20.
+const fn p_minus_one() -> [u8; 32] {
+    let mut bytes = [0xff; 32];
+    bytes[0] = 0xec;
+    bytes[31] = 0x7f;
+    bytes
+}
+
+/// True for a small-order point or a y coordinate that is not reduced mod p
+/// (which includes the non-canonical encodings of y = 0 and y = 1).
+fn degenerate_key(key: &[u8; 32]) -> bool {
+    let mut y = *key;
+    y[31] &= 0x7f;
+    // y >= p = 2^255 - 19 exactly when bytes 1..=30 are 0xff, the top byte
+    // (sign bit cleared) is 0x7f and the lowest byte is at least 0xed.
+    let non_canonical = y[31] == 0x7f && y[1..31].iter().all(|byte| *byte == 0xff) && y[0] >= 0xed;
+    non_canonical || SMALL_ORDER_Y.contains(&y)
 }

@@ -1,6 +1,11 @@
 use crate::{OpaqueId, SupervisionError as Error};
 
-/// Hard capacities apply to the whole local store, across all tenants.
+/// Retained sessions one learner (tenant and subject) may hold by default.
+pub(crate) const SUBJECT_SESSIONS: i64 = 64;
+
+/// Hard capacities apply to the whole local store, across all tenants. One
+/// learner may additionally retain at most 64 sessions (or `sessions`, when
+/// lower), so a single subject cannot fill the store-wide session budget.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Limits {
@@ -10,6 +15,7 @@ pub struct Limits {
     pub(crate) managed: i64,
     pub(crate) events_per_session: i64,
     pub(crate) event_interval: i64,
+    pub(crate) subject_sessions: i64,
 }
 
 impl Limits {
@@ -28,6 +34,7 @@ impl Limits {
             managed: managed.into(),
             events_per_session: 1024,
             event_interval: 1,
+            subject_sessions: SUBJECT_SESSIONS.min(sessions.into()),
         })
     }
 
@@ -42,6 +49,22 @@ impl Limits {
         self.events_per_session = per_session.into();
         self.event_interval = minimum_interval_seconds.into();
         Ok(self)
+    }
+
+    /// Sessions one learner (tenant and subject) may retain at once, from 1
+    /// to the store-wide `sessions` limit (v13). The default is 64, or
+    /// `sessions` when lower. Every opener must supply the same value.
+    pub fn subject_sessions(mut self, maximum: u32) -> Result<Self, Error> {
+        if maximum == 0 || i64::from(maximum) > self.sessions {
+            return Err(Error::InvalidInput);
+        }
+        self.subject_sessions = maximum.into();
+        Ok(self)
+    }
+
+    /// Whether the per-learner quota is the default derived from `sessions`.
+    pub(crate) fn default_subject_sessions(&self) -> bool {
+        self.subject_sessions == SUBJECT_SESSIONS.min(self.sessions)
     }
 }
 

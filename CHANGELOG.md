@@ -803,6 +803,30 @@ A prepared version section does not establish that its tag or crates exist.
   providers, verified guardianship and automatic global privacy compliance
   remain outside the unpublished package; see the v13 source inventory below.
 
+### Privacy, supervision, labs, media, macros and storage low-severity fixes
+
+- Privacy rejects small-order and non-canonical Ed25519 issuer keys, and a
+  consent or replay operation that lost the lock to a request from the next
+  second retries with a fresh clock sample instead of failing with
+  `ClockRollback`.
+- Supervision retains at most 64 sessions per learner (configurable with
+  `Limits::subject_sessions`), rows past retention no longer block admission,
+  and the latest-session lookup ignores rows that have left retention.
+- Labs adds a per-learner job quota (default 100, `StoreConfig::learner_jobs`),
+  shows a store-keyed exercise digest, reports another learner's job as
+  `NotFound`, refuses submissions that could never be claimed and documents the
+  receipt timing contract.
+- Media adds an optional per-tenant asset quota (`StoreConfig::tenant_assets`),
+  and tombstones no longer keep a digest of the deleted title and description.
+- The media, labs and supervision exact-schema checks no longer skip user
+  objects named `sqlite<X>...`.
+- `#[memoize]` no longer mixes up NaN, infinite or `Some(())` arguments or
+  caches such results, and `#[live_component]` dispatches path-qualified
+  `#[live_event]` handlers.
+- S3 public URLs work for China regions and dotted bucket names, local storage
+  treats directories and paths below files as not found, and upload names
+  reject bidi and invisible format characters.
+
 ### Media review fixes
 
 - `rullst-media` playback no longer takes the asset's exclusive 45-second

@@ -264,10 +264,13 @@ impl<C: Clock> Operation<'_, C> {
         {
             return Err(Error::RateLimited);
         }
-        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_supervision_events")
+        let mut count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM rullst_supervision_events")
             .fetch_one(&mut *self.tx)
             .await
             .map_err(storage)?;
+        if count >= self.config.limits.events {
+            count -= self.sweep_expired_events().await?;
+        }
         if count >= self.config.limits.events {
             return Err(Error::Capacity);
         }
