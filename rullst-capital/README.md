@@ -901,7 +901,10 @@ setup is explicit, active claims are never evicted to make room, configuration
 drift/corruption/storage failure fail closed, and the same backend can be
 passed to `WebhookMiddlewareState` through `Arc`. TTL decisions use the
 database clock inside the claim transaction so process clock skew cannot expire
-another node's proof early.
+another node's proof early. An in-memory SQLite URL (`sqlite::memory:` or
+`mode=memory`) keeps its single pooled connection for the pool's lifetime, as
+`SqlQuotaStore` does, because a replacement connection would open an empty
+database; its claims are still lost on restart.
 
 That middleware path records the payload before calling the handler, so it is
 a replay firewall rather than an exactly-once delivery protocol. A crash after

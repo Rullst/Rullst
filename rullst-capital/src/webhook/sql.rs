@@ -55,15 +55,19 @@ impl SqlWebhookReplayStore {
         let database_url = database_url.into();
         let backend = backend_from_url(&database_url)?;
         rullst_orm::sqlx::any::install_default_drivers();
-        let max_connections =
-            if database_url.contains(":memory:") || database_url.contains("mode=memory") {
-                1
-            } else {
-                5
-            };
-        let pool = AnyPoolOptions::new()
-            .max_connections(max_connections)
-            .acquire_timeout(Duration::from_secs(10))
+        let options = AnyPoolOptions::new().acquire_timeout(Duration::from_secs(10));
+        let options = if database_url.contains(":memory:") || database_url.contains("mode=memory") {
+            // A replacement connection would open a fresh empty database, so
+            // keep the single connection instead of retiring it when idle or old.
+            options
+                .max_connections(1)
+                .min_connections(1)
+                .idle_timeout(None)
+                .max_lifetime(None)
+        } else {
+            options.max_connections(5)
+        };
+        let pool = options
             .connect(&database_url)
             .await
             .map_err(|_| CapitalError::WebhookReplayStoreUnavailable)?;
@@ -651,6 +655,19 @@ mod tests {
         );
         reopened.close().await;
         std::fs::remove_file(path).expect("remove closed SQLite fixture");
+    }
+
+    #[tokio::test]
+    async fn in_memory_sqlite_keeps_its_only_connection() {
+        let store = SqlWebhookReplayStore::connect("sqlite::memory:", 1, Duration::from_secs(10))
+            .await
+            .expect("SQLite replay store");
+        let options = store.pool().options();
+        assert_eq!(options.get_max_connections(), 1);
+        assert_eq!(options.get_min_connections(), 1);
+        assert_eq!(options.get_idle_timeout(), None);
+        assert_eq!(options.get_max_lifetime(), None);
+        store.close().await;
     }
 
     #[tokio::test]
