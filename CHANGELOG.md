@@ -264,6 +264,29 @@ A prepared version section does not establish that its tag or crates exist.
 - `Blueprint::timestamps()` and other TEXT/BLOB/JSON defaults emit the
   `DEFAULT (expr)` form on MySQL and MariaDB, so MySQL migrations no longer
   fail with error 1101.
+- `migrate:rollback` removes each migration's tracking row as soon as its
+  `down()` succeeds, so a later failing `down()` no longer leaves reverted
+  migrations recorded as applied; the rollback DELETE also works on PostgreSQL.
+- On MySQL and MariaDB, outbox streams, event keys and claim tokens compare
+  case-sensitively (`ascii_bin`); run `Outbox::install()` once to convert an
+  existing table.
+- `Orm::driver()` reports `mariadb://` and uppercase-scheme DSNs by their real
+  driver, restoring `FOR UPDATE` row locks and MySQL DDL for them, and
+  `Orm::init` accepts bracketed IPv6 literal hosts.
+- `ColumnDefault::Text` and `Blueprint::enum_col` values containing a backslash
+  or control character fail schema building instead of breaking out of the
+  quoted literal on MySQL and MariaDB.
+- The PostgreSQL placeholder rewriter treats backslash as an escape only inside
+  `E'...'` strings.
+- `cascade_soft_delete` into a related model without soft deletes fails to
+  compile instead of permanently deleting the children of a restorable parent.
+- Non-auditable `save_with_tx()` and task-scoped `save()` run in a savepoint, so
+  a failed hook, observer or policy rolls the write back and restores `id`.
+- Models with columns named like builder helpers (`model`, `raw`, `desc`,
+  `exists`, `column`, `col`, `similar`) compile: colliding helpers are not
+  generated (use `where_eq`/`order_by`).
+- `#[derive(Nexus)]` accepts models that use any `#[derive(Orm)]` option, reads
+  `table_name` and omits relation fields.
 
 ### Nexus stored-value escaping maintenance
 

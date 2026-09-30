@@ -370,8 +370,15 @@ pub fn generate_delete_methods(parsed: &ParsedModel) -> TokenStream {
                     name.span(),
                 );
 
+                // Only soft-delete models define this method; a cascade into a
+                // hard-delete child is reported at the relation field instead of
+                // permanently deleting the children of a restorable parent.
+                let cascade = syn::Ident::new(
+                    "__rullst_cascade_soft_delete_with_tx",
+                    rel.field_name.span(),
+                );
                 cascade_deletes_with_tx.extend(quote! {
-                    #rel_model::query().where_eq(#fk, self.#lk.clone()).delete_all_with_tx(tx).await?;
+                    #rel_model::query().where_eq(#fk, self.#lk.clone()).#cascade(tx).await?;
                 });
             }
         }
