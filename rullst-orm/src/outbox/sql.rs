@@ -11,6 +11,14 @@ pub(super) const POSTGRES_INSERT: &str = "INSERT INTO rullst_outbox (stream, eve
 pub(super) const MYSQL_INSERT: &str = "INSERT INTO rullst_outbox (stream, event_key, event_kind, payload_json, status, attempts, claimed_by, claim_expires_at_epoch, last_error, available_at_epoch, created_at_epoch, insert_token, claim_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '') ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)";
 pub(super) const SQLITE_INSERT: &str = "INSERT INTO rullst_outbox (stream, event_key, event_kind, payload_json, status, attempts, claimed_by, claim_expires_at_epoch, last_error, available_at_epoch, created_at_epoch, insert_token, claim_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '') ON CONFLICT (stream, event_key) DO NOTHING";
 
+pub(super) const POSTGRES_ENQUEUED_SELECT: &str = "SELECT id, event_kind, payload_json, insert_token FROM rullst_outbox WHERE stream = $1 AND event_key = $2";
+// InnoDB's default REPEATABLE READ serves a plain SELECT from the snapshot of
+// the caller's first read, which misses a key committed later by a concurrent
+// enqueue. A locking read returns the latest committed row, which the
+// preceding upsert has already locked.
+pub(super) const MYSQL_ENQUEUED_SELECT: &str = "SELECT id, event_kind, payload_json, insert_token FROM rullst_outbox WHERE stream = ? AND event_key = ? FOR UPDATE";
+pub(super) const SQLITE_ENQUEUED_SELECT: &str = "SELECT id, event_kind, payload_json, insert_token FROM rullst_outbox WHERE stream = ? AND event_key = ?";
+
 pub(super) const POSTGRES_EXHAUST: &str = "UPDATE rullst_outbox SET status = $1, claimed_by = $2, claim_key = $3, claim_expires_at_epoch = $4, last_error = $5 WHERE stream = $6 AND attempts >= $7 AND (status = $8 OR (status = $9 AND claim_expires_at_epoch <= $10))";
 pub(super) const PORTABLE_EXHAUST: &str = "UPDATE rullst_outbox SET status = ?, claimed_by = ?, claim_key = ?, claim_expires_at_epoch = ?, last_error = ? WHERE stream = ? AND attempts >= ? AND (status = ? OR (status = ? AND claim_expires_at_epoch <= ?))";
 pub(super) const POSTGRES_CLAIM_SELECT: &str = "SELECT id FROM rullst_outbox WHERE stream = $1 AND ((status = $2 AND available_at_epoch <= $3) OR (status = $4 AND claim_expires_at_epoch <= $5)) AND attempts < $6 ORDER BY id ASC LIMIT 1 FOR UPDATE SKIP LOCKED";

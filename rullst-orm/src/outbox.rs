@@ -203,17 +203,23 @@ impl Outbox {
             .bind(&insert_token)
             .execute(&mut **transaction)
             .await?;
-        let select_sql = if driver == "postgres" {
-            "SELECT id, event_kind, payload_json, insert_token FROM rullst_outbox WHERE stream = $1 AND event_key = $2"
-        } else {
-            "SELECT id, event_kind, payload_json, insert_token FROM rullst_outbox WHERE stream = ? AND event_key = ?"
+        let select_sql = match driver {
+            "postgres" => POSTGRES_ENQUEUED_SELECT,
+            "mysql" => MYSQL_ENQUEUED_SELECT,
+            _ => SQLITE_ENQUEUED_SELECT,
         };
         let (id, stored_kind, stored_payload, stored_insert_token) =
             sqlx::query_as::<_, (i64, String, String, String)>(select_sql)
                 .bind(stream)
                 .bind(event_key)
-                .fetch_one(&mut **transaction)
-                .await?;
+                .fetch_optional(&mut **transaction)
+                .await?
+                .ok_or_else(|| {
+                    Error::DatabaseError(
+                        "outbox event could not be read back after its idempotent insert"
+                            .to_string(),
+                    )
+                })?;
         if stored_kind != event_kind || stored_payload != payload_json {
             return Err(Error::Validation(format!(
                 "outbox idempotency key '{event_key}' already exists in stream '{stream}' with different content"
