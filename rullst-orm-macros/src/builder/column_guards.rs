@@ -2,7 +2,8 @@
 //! filter, order, group or select: skipped fields, which the table does not
 //! have, randomized `#[orm(encrypted)]` ciphertext and `SecretString`
 //! envelopes. A `SecretString` column may still be selected, because its SQLx
-//! codec decrypts it when the model is decoded.
+//! codec decrypts it when the model is decoded. Unquoted SQL identifiers are
+//! case-insensitive, so the guards compare column names ignoring ASCII case.
 
 use crate::parser::ParsedModel;
 use proc_macro2::TokenStream;
@@ -22,12 +23,22 @@ pub fn generate_column_guards(parsed: &ParsedModel) -> TokenStream {
 
         fn is_skipped_column(column: &str) -> bool {
             let column = column.rsplit('.').next().unwrap_or(column);
-            Self::SKIPPED_COLUMNS.iter().any(|c| *c == column)
+            Self::SKIPPED_COLUMNS.iter().any(|c| c.eq_ignore_ascii_case(column))
+        }
+
+        /// The declared name of an `#[orm(encrypted)]` column; its envelopes
+        /// are bound to that name.
+        fn encrypted_column(column: &str) -> Option<&'static str> {
+            let column = column.rsplit('.').next().unwrap_or(column);
+            Self::ENCRYPTED_COLUMNS
+                .iter()
+                .copied()
+                .find(|candidate| candidate.eq_ignore_ascii_case(column))
         }
 
         fn is_secret_column(column: &str) -> bool {
             let column = column.rsplit('.').next().unwrap_or(column);
-            Self::SECRET_COLUMNS.iter().any(|c| *c == column)
+            Self::SECRET_COLUMNS.iter().any(|c| c.eq_ignore_ascii_case(column))
         }
 
         /// Guards WHERE / ORDER BY / GROUP BY columns.
@@ -48,7 +59,7 @@ pub fn generate_column_guards(parsed: &ParsedModel) -> TokenStream {
                     column
                 )));
                 true
-            } else if Self::ENCRYPTED_COLUMNS.iter().any(|candidate| *candidate == column) {
+            } else if Self::encrypted_column(column).is_some() {
                 self.errors.push(rullst_orm::Error::Validation(format!(
                     "column `{}` uses randomized `#[orm(encrypted)]` storage and cannot be used in WHERE / ORDER BY / GROUP BY / SELECT; query a separate blind-index column instead",
                     column

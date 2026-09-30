@@ -1735,6 +1735,9 @@ while portability and semantic review remain the model author's responsibility.
   reference under the reserved `__rullst_` prefix and emits no setter for a
   column named `save` or `save_with_tx`.
 * `String` and `Option<String>` fields annotated with `#[orm(encrypted)]` are encrypted before generated ORM writes and decrypted after generated model reads using AES-256-GCM. Randomized ciphertext cannot be filtered, ordered, grouped, or explicitly selected by generated query-builder methods; use a separately reviewed blind index when equality lookup is required. Raw SQL remains an explicit, non-transparent escape hatch.
+  The builder's encrypted, `SecretString` and skipped-column guards compare
+  the (unqualified) column name ignoring ASCII case, like unquoted SQL
+  identifiers, and `pluck_string` decrypts with the declared column name.
 * Generated secondary projections never carry `#[orm(encrypted)]` or
   `#[orm(masked)]` plaintext. `to_json()` (used for audit rows and committed
   `ModelCommittedEvent`/Redis `orm:events:*` payloads) omits `#[orm(hidden)]`

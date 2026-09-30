@@ -140,6 +140,35 @@ async fn encrypted_fields_round_trip_rotate_and_reject_unsafe_queries() {
         Err(rullst_orm::Error::Validation(_))
     ));
 
+    // Unquoted SQL identifiers are case-insensitive, and so is the guard.
+    assert_eq!(
+        EncryptedRecord::query()
+            .pluck_string("SECRET")
+            .await
+            .expect("a mixed-case encrypted projection must decrypt with the declared name"),
+        vec!["first secret"]
+    );
+    for query in [
+        EncryptedRecord::query().where_eq("Secret", "first secret"),
+        EncryptedRecord::query().order_by("ENCRYPTED_RECORDS.SECRET"),
+        EncryptedRecord::query().group_by("Secret"),
+        EncryptedRecord::query().select(&["SECRET"]),
+    ] {
+        assert!(matches!(
+            query.get().await,
+            Err(rullst_orm::Error::Validation(_))
+        ));
+    }
+    for plucked in [
+        EncryptedRecord::query().pluck_i32("Secret").await.err(),
+        EncryptedRecord::query()
+            .pluck_string("Optional_Secret")
+            .await
+            .err(),
+    ] {
+        assert!(matches!(plucked, Some(rullst_orm::Error::Validation(_))));
+    }
+
     configure_rotated_key();
     let mut loaded_with_old_key = EncryptedRecord::find(record.id)
         .await

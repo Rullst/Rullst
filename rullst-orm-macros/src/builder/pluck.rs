@@ -38,7 +38,7 @@ pub fn generate_pluck_methods(parsed: &ParsedModel) -> TokenStream {
         pub async fn pluck_string(&self, column: &str) -> Result<Vec<String>, rullst_orm::Error> {
             let field = self.validate_pluck_column(column)?;
             const ENCRYPTED_OPTIONAL_COLUMNS: &[&str] = &[#(#nullable_encrypted),*];
-            if ENCRYPTED_OPTIONAL_COLUMNS.contains(&field) {
+            if ENCRYPTED_OPTIONAL_COLUMNS.iter().any(|candidate| candidate.eq_ignore_ascii_case(field)) {
                 return Err(rullst_orm::Error::Validation(format!(
                     "pluck_string() cannot decode nullable encrypted column `{}`; load the model instead", column
                 )));
@@ -46,9 +46,11 @@ pub fn generate_pluck_methods(parsed: &ParsedModel) -> TokenStream {
             let rows = rullst_orm::dispatch_executor!(read_pool, |executor| {
                 self.pluck_strings_with_executor(column, executor).await
             })?;
-            if Self::ENCRYPTED_COLUMNS.contains(&field) {
+            // Envelopes are bound to the declared column name, whatever case
+            // the caller used.
+            if let Some(declared) = Self::encrypted_column(field) {
                 rows.into_iter().map(|value| {
-                    rullst_orm::privacy::decrypt_model_field(&value, #table_name, field).map_err(Into::into)
+                    rullst_orm::privacy::decrypt_model_field(&value, #table_name, declared).map_err(Into::into)
                 }).collect()
             } else {
                 Ok(rows)
@@ -57,7 +59,7 @@ pub fn generate_pluck_methods(parsed: &ParsedModel) -> TokenStream {
 
         pub async fn pluck_i32(&self, column: &str) -> Result<Vec<i32>, rullst_orm::Error> {
             let field = self.validate_pluck_column(column)?;
-            if Self::ENCRYPTED_COLUMNS.contains(&field) {
+            if Self::encrypted_column(field).is_some() {
                 return Err(rullst_orm::Error::Validation(format!(
                     "pluck_i32() cannot decode encrypted column `{}`; load the model instead", column
                 )));

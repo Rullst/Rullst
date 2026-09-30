@@ -94,6 +94,15 @@ struct SecretCustomer {
     tax_id: rullst_orm::SecretString,
 }
 
+#[derive(Clone, Debug, Default, rullst_orm::Orm, rullst_orm::FromRow)]
+#[orm(table = "cached_records")]
+struct CachedRecord {
+    id: i32,
+    #[allow(dead_code)]
+    #[sqlx(default, skip)]
+    session_cache: String,
+}
+
 fn rejects_secret_string(query: &SecretCustomerQueryBuilder) -> bool {
     matches!(
         query.errors.first(),
@@ -113,6 +122,26 @@ fn secret_string_columns_cannot_be_filtered_ordered_or_grouped() {
         SecretCustomer::query().group_by("tax_id"),
     ] {
         assert!(rejects_secret_string(&query), "{:?}", query.errors);
+    }
+    // Column names are case-insensitive in SQL, and so are the guards.
+    let mixed_case = SecretCustomer::query().where_eq("Tax_Id", "123");
+    assert!(
+        rejects_secret_string(&mixed_case),
+        "{:?}",
+        mixed_case.errors
+    );
+    for query in [
+        CachedRecord::query().where_eq("SESSION_CACHE", "x"),
+        CachedRecord::query().select(&["cached_records.Session_Cache"]),
+    ] {
+        assert!(
+            query
+                .errors
+                .iter()
+                .any(|error| error.to_string().contains("does not exist in the table")),
+            "{:?}",
+            query.errors
+        );
     }
     // The SQLx codec decrypts a selected column while decoding the model.
     let selected = SecretCustomer::query().select(&["id", "name", "tax_id"]);
