@@ -472,6 +472,16 @@ carried over. The directory is not fsynced, so a power loss can roll a
 completed put back to the previous version. On Windows a replacement fails
 while another process holds the object open without delete sharing.
 
+### Public object URLs
+
+`Storage::url` and `LocalDriver::url` percent-encode every byte of each key
+segment except the unreserved `A-Z a-z 0-9 - . _ ~`, so `#`, `?`, `%`, spaces
+and non-ASCII characters stay part of the object key. Local storage returns the
+root-relative `/storage/<key>` path whatever its base directory, so the
+filesystem path is never disclosed; the application must serve that directory
+at `/storage` (Rullst does not mount it). S3/R2 drivers return the provider's
+unsigned object URL.
+
 ---
 
 ## 🗄️ 5. Active Record ORM & Schema Engine (`rullst-orm`)
