@@ -10,8 +10,8 @@ use crate::{
 };
 
 impl<P: VideoProvider, C: Clock> MediaService<P, C> {
-    /// Purges only confirmed-deleted local tombstones older than the supplied
-    /// cutoff and at least 24 hours. The host owns retention/restore policy and
+    /// Purges only confirmed-deleted or explicitly discarded local tombstones
+    /// older than the supplied cutoff and at least 24 hours. The host owns retention/restore policy and
     /// must retire purged creation IDs: replay protection ends when purged.
     /// This does not erase provider backups or prove immediate CDN invalidation.
     pub async fn purge_deleted<A: Authorization>(

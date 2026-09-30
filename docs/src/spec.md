@@ -183,17 +183,28 @@ or playback entitlement through a checked authorization trait. Local asset IDs
 bind an immutable tenant/course/provider-library scope; provider IDs and signed
 webhooks never establish that ownership. Service operations recheck permission
 and local revision/state after external work and use bounded durable leases to
-reject concurrent/stale results. SQLite state binds its schema, provider mode,
+reject concurrent/stale mutation results. Playback is a read: it takes no lease,
+so concurrent viewers never serialize and an abandoned request leaves no intent;
+it fences withdrawal/deletion in the transaction that issues the grant. SQLite state binds its schema, provider mode,
 library and capacity, refuses clock rollback and requires trusted local files,
 backup policy and operator-owned keys. Multi-host replication is separate work.
-Only confirmed-deleted local tombstones may be purged, in batches up to 100 and
-after at least 24 hours; the host must retire purged creation IDs because their
-idempotency memory ends at that point. Provider backups/cache erasure is separate.
+Only confirmed-deleted or explicitly discarded local tombstones may be purged,
+in batches up to 100 and after at least 24 hours; the host must retire purged
+creation IDs because their idempotency memory ends at that point. Provider backups/cache erasure is separate.
 
 Creation is journaled before remote dispatch. Bunny's documented creation API
 does not supply an idempotency key: ambiguous creation must reconcile a persisted
 random opaque creation marker, never blindly retry or claim exactly-once remote
-creation. Updates/deletion are reconciled against authoritative reads. Webhook
+creation. Updates/deletion are reconciled against authoritative reads; a
+metadata update writes and verifies the same documented `description` meta tag,
+never Bunny's separate top-level Description that Smart Generate may rewrite.
+A create or update that fails for a non-transient reason (definitive refusal,
+unconfirmed marker search, missing remote video, full tag list or failed
+verification) stops with a bounded non-secret reason instead of staying pending;
+it is never retried automatically and an authorized host explicitly retries or
+discards it. Retrying an unconfirmed creation repeats only the marker search;
+discarding a creation leaves a local tombstone and may orphan an undiscovered
+remote video. Webhook
 v1 authenticates exact body bytes with the read-only library key but has no
 signed timestamp; bounded durable duplicate suppression and serialized provider
 refresh prevent replay/reordering from granting access or publishing assets.

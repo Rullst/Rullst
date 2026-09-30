@@ -304,3 +304,22 @@ async fn metadata_edits_preserve_unrelated_tags_and_refuse_to_overflow_the_provi
         serde_json::json!(full)
     );
 }
+
+#[tokio::test]
+async fn description_is_read_back_from_the_meta_tag_that_update_writes() {
+    let fixture = Fixture::new().await;
+    let provider = fixture.provider();
+    let video = provider
+        .create("rullst-video-2123456789abcdef0123456789abcdef")
+        .await
+        .unwrap();
+    // The top-level Description is a separate field that the provider may
+    // rewrite independently; only the written meta tag is authoritative here.
+    fixture.remote.lock().unwrap().generated_description = true;
+    provider.update(&video.id, &metadata()).await.unwrap();
+    let stored = fixture.remote.lock().unwrap().videos[video.id.as_str()].clone();
+    assert_ne!(stored["description"], metadata().description());
+    let current = provider.get(&video.id).await.unwrap().unwrap();
+    assert_eq!(current.title, metadata().title());
+    assert_eq!(current.description, metadata().description());
+}
