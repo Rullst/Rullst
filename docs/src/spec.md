@@ -1533,6 +1533,16 @@ while portability and semantic review remain the model author's responsibility.
   make unknown columns unrepresentable on typed paths. String-column builders,
   custom `RullstValue` conversions and raw SQL are explicit runtime-checked or
   caller-owned alternatives, not compile-time schema verification.
+* A per-column helper (`where_{column}`, `or_where_{column}`,
+  `where_not_{column}`, `order_by_{column}`, `order_by_{column}_desc`) is not
+  generated when its name equals a fixed builder method (for example
+  `where_raw`, `where_exists`, `where_column`, `where_col`, `where_similar` or
+  `order_by_desc` for columns `raw`, `exists`, `column`, `col`, `similar` or
+  `desc`) or when two columns would produce the same name (`x` and `not_x`
+  both yield `where_not_x`). Those columns remain available through the
+  string-column methods. The `update_partial()` builder keeps its model
+  reference under the reserved `__rullst_` prefix and emits no setter for a
+  column named `save` or `save_with_tx`.
 * `String` and `Option<String>` fields annotated with `#[orm(encrypted)]` are encrypted before generated ORM writes and decrypted after generated model reads using AES-256-GCM. Randomized ciphertext cannot be filtered, ordered, grouped, or explicitly selected by generated query-builder methods; use a separately reviewed blind index when equality lookup is required. Raw SQL remains an explicit, non-transparent escape hatch.
 * Generated secondary projections never carry `#[orm(encrypted)]` or
   `#[orm(masked)]` plaintext. `to_json()` (used for audit rows and committed

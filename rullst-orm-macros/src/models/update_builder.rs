@@ -2,6 +2,11 @@ use crate::parser::ParsedModel;
 use proc_macro2::TokenStream;
 use quote::quote;
 
+/// Fixed public methods of the generated update builder. The builder's own
+/// state uses the reserved `__rullst_` prefix, so any other column name can be
+/// a patch field.
+const UPDATE_BUILDER_METHODS: &[&str] = &["save", "save_with_tx"];
+
 #[cfg_attr(test, mutants::skip)]
 pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStream) {
     let name = &parsed.name;
@@ -16,14 +21,19 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
     let declarations = fields
         .iter()
         .map(|(field, ty)| quote! { #field: Option<#ty> });
-    let setters = fields.iter().map(|(field, ty)| {
-        quote! {
-            pub fn #field(mut self, value: #ty) -> Self {
-                self.#field = Some(value);
-                self
+    // A column named like a fixed builder method keeps its patch field but gets
+    // no setter, which would redefine that method.
+    let setters = fields
+        .iter()
+        .filter(|(field, _)| !UPDATE_BUILDER_METHODS.contains(&field.to_string().as_str()))
+        .map(|(field, ty)| {
+            quote! {
+                pub fn #field(mut self, value: #ty) -> Self {
+                    self.#field = Some(value);
+                    self
+                }
             }
-        }
-    });
+        });
     let changes = fields
         .iter()
         .map(|(field, _)| quote! { || self.#field.is_some() });
@@ -40,7 +50,7 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
     let struct_def = quote! {
         /// Typed logical patch merged into the current row through the normal save lifecycle.
         pub struct #builder<'a> {
-            model: &'a mut #name,
+            __rullst_model: &'a mut #name,
             #(#declarations),*
         }
 
@@ -71,7 +81,7 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
                     }
                 };
                 tx.commit().await?;
-                *self.model = candidate;
+                *self.__rullst_model = candidate;
                 callbacks.commit().await
             }
 
@@ -84,7 +94,7 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
             ) -> Result<(), rullst_orm::Error> {
                 if !self.__rullst_has_partial_changes() { return Ok(()); }
                 let (candidate, callbacks) = self.__rullst_apply_partial(tx).await?;
-                *self.model = candidate;
+                *self.__rullst_model = candidate;
                 callbacks.promote_to_parent().await
             }
 
@@ -94,7 +104,7 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
             ) -> Result<(#name, rullst_orm::post_commit::PostCommitScope), rullst_orm::Error> {
                 use rullst_orm::_sqlx::Acquire;
                 #tenant_guard
-                if self.model.id == 0 { return Err(rullst_orm::Error::RecordNotFound); }
+                if self.__rullst_model.id == 0 { return Err(rullst_orm::Error::RecordNotFound); }
                 let mut savepoint = (&mut **tx).begin().await?;
                 let callbacks = rullst_orm::post_commit::PostCommitScope::new();
                 let result = callbacks.run(async {
@@ -104,7 +114,7 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
                     if driver == "postgres" { sql = rullst_orm::replace_placeholders(&sql); }
                     let query = rullst_orm::_sqlx::query_as::<_, #name>(
                         rullst_orm::_sqlx::AssertSqlSafe(sql.as_str())
-                    ).bind(self.model.id) #tenant_bind;
+                    ).bind(self.__rullst_model.id) #tenant_bind;
                     let row = if let Some(timeout) = rullst_orm::schema::get_query_timeout() {
                         tokio::time::timeout(timeout, query.fetch_optional(&mut *savepoint))
                             .await.map_err(|_| rullst_orm::Error::DatabaseError(
@@ -134,7 +144,7 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
     let method_def = quote! {
         /// Selects logical field changes; saving refreshes the row and runs its full lifecycle.
         pub fn update_partial(&mut self) -> #builder<'_> {
-            #builder { model: self, #(#inits),* }
+            #builder { __rullst_model: self, #(#inits),* }
         }
     };
     (struct_def, method_def)
@@ -165,13 +175,34 @@ fn tenant_scope(parsed: &ParsedModel) -> (TokenStream, String, TokenStream) {
         let expected: #ty = tenant.try_into().map_err(|_|
             rullst_orm::Error::Validation("partial update tenant context type mismatch".to_string())
         )?;
-        if self.model.#column != expected {
+        if self.__rullst_model.#column != expected {
             return Err(rullst_orm::Error::Validation("record is outside the active tenant scope".to_string()));
         }
     };
     (
         guard,
         format!(" AND {} = ?", parsed.tenant_column),
-        quote! { .bind(self.model.#column.clone()) },
+        quote! { .bind(self.__rullst_model.#column.clone()) },
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use syn::{DeriveInput, parse_quote};
+
+    #[test]
+    fn columns_named_like_builder_members_still_compile() {
+        let input: DeriveInput = parse_quote! {
+            struct ChatLog { id: i32, model: String, save: String }
+        };
+        let parsed = crate::parser::parse(&input).expect("parse model");
+        let (builder, method) = super::generate_update_builder(&parsed);
+        let builder = builder.to_string();
+        assert!(builder.contains("__rullst_model : & 'a mut ChatLog"));
+        assert!(builder.contains("model : Option < String >"));
+        assert!(builder.contains("pub fn model (mut self"));
+        assert!(builder.contains("save : Option < String >"));
+        assert!(!builder.contains("pub fn save (mut self"));
+        assert!(method.to_string().contains("__rullst_model : self"));
+    }
 }

@@ -7,6 +7,54 @@ struct ValidationRecord {
     name: String,
 }
 
+// Columns whose generated helpers would repeat a fixed builder member name:
+// the update builder's model reference, `where_raw`, `where_exists`,
+// `where_column`, `where_col`, `where_similar`, `order_by_desc` and the
+// update builder's `save`.
+#[derive(Clone, Debug, rullst_orm::Orm, rullst_orm::FromRow)]
+#[orm(table = "chat_logs")]
+struct ChatLog {
+    id: i32,
+    model: String,
+    raw: String,
+    desc: String,
+    exists: String,
+    column: String,
+    col: String,
+    similar: String,
+    save: String,
+}
+
+#[test]
+fn columns_named_like_generated_helpers_compile_and_keep_fixed_methods() {
+    let query = ChatLog::query()
+        .where_model("gpt")
+        .where_raw("raw = ?", vec!["payload"])
+        .where_eq("exists", "yes")
+        .order_by_desc("desc");
+    assert!(query.errors.is_empty(), "{:?}", query.errors);
+    assert_eq!(
+        query.to_sql(),
+        "SELECT * FROM chat_logs WHERE ((model = ?) AND (raw = ?) AND (exists = ?)) ORDER BY desc DESC LIMIT 1000"
+    );
+
+    let mut log = ChatLog {
+        id: 1,
+        model: "gpt".to_string(),
+        raw: String::new(),
+        desc: String::new(),
+        exists: String::new(),
+        column: String::new(),
+        col: String::new(),
+        similar: String::new(),
+        save: String::new(),
+    };
+    let _patch = log
+        .update_partial()
+        .model("claude".to_string())
+        .raw(String::new());
+}
+
 #[test]
 fn joins_and_vector_helpers_reject_dynamic_sql_fragments_that_are_not_safe() {
     let injected_join = ValidationRecord::query().join(

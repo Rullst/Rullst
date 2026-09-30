@@ -54,6 +54,9 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   `.where_id(i32)` and `.where_name(impl Into<String>)` reject mismatched value
   types at compile time; string-column methods validate identifiers at runtime,
   while explicitly named raw methods remain caller-owned SQL escape hatches.
+  A column such as `raw` or `desc`, whose helper would repeat a fixed method
+  (`where_raw`, `order_by_desc`), gets no generated helper; use
+  `where_eq("raw", ...)` or `order_by("desc")` for it.
 - **Eager Loading**: Batch supported `has_many`, `belongs_to`, `morph_many`,
   `morph_one`, and typed `morph_to` targets. Inverse polymorphic fields use an
   explicit target per relation and a persisted `<morph_name>_id` plus
