@@ -37,7 +37,11 @@ pub struct TenantConfig {
     pub header_name: String,
     /// The name of the query parameter (used only with `TenantStrategy::Parameter`).
     pub parameter_name: String,
-    /// Fallback tenant ID to use when subdomain/header resolution fails or is absent.
+    /// Tenant ID requested by the `Subdomain` strategy when the request host
+    /// has no tenant subdomain or no host is present. It is still accepted
+    /// only when authenticated membership allows it. The `Header` and
+    /// `Parameter` strategies ignore it: without their input they use the
+    /// membership's default tenant.
     pub domain_fallback: Option<String>,
 }
 
@@ -67,7 +71,8 @@ impl TenantConfig {
         self
     }
 
-    /// Set a fallback tenant ID when domain extraction fails in Subdomain strategy.
+    /// Set the tenant ID the `Subdomain` strategy requests when the host has no
+    /// tenant subdomain. Other strategies ignore it.
     pub fn with_domain_fallback<S: Into<String>>(mut self, fallback: S) -> Self {
         self.domain_fallback = Some(fallback.into());
         self
