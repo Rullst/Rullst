@@ -2534,8 +2534,11 @@ explicit application work.
 
 `Invoice::generate_html` remains the source-compatible escaped HTML renderer.
 Trusted paths use `validate`/`try_generate_html`: the legacy public `f64` model
-accepts only bounded finite positive values with at most two decimal places,
-converts them to integer minor units, and requires the exact item sum.
+accepts only bounded finite positive values with no more decimals than the
+currency's ISO 4217 minor unit (none for JPY, three for KWD, two by default),
+converts them to integer minor units of that currency, and requires the exact
+item sum. HTML and PDF amounts use the same number of decimals, so the minor
+units match a provider receipt for zero- and three-decimal currencies too.
 
 The opt-in `invoice-pdf` feature adds bounded paginated A4 rendering. Its
 embedded Helvetica subset supports WinAnsi text; other scripts require a

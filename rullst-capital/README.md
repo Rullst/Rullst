@@ -787,7 +787,9 @@ has a rolling deduplication guarantee. Empty or `mock_*` keys return a stable
 ### Payment-Bound Invoice Delivery
 
 `Invoice::bind_succeeded_charge` accepts only final `Succeeded` evidence with
-an exact recipient, minor-unit amount and currency match. The resulting
+an exact recipient, minor-unit amount and currency match. Invoice amounts are
+scaled by the currency's ISO 4217 exponent, so `total: 2500.0` in JPY binds a
+2,500-yen receipt and `12.34` KWD binds a 12,340 minor-unit receipt. The resulting
 `PaidInvoice` can be rendered as escaped HTML or a bounded A4 PDF. Mail's opt-in
 `PaidInvoiceDelivery` bridge attaches both formats, runs mandatory pre-flight
 and sends through the configured facade, a tenant route or an explicit static
