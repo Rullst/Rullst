@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790775774968,
+  "lastUpdate": 1790786056583,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -13377,6 +13377,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4442,
             "range": "± 13",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd639f3d488732b423743a0652c319f44b3cabfc",
+          "message": "Merge pull request #348 from Rullst/fix/v13-studio-ai-iot-tail-fixes\n\nfix(studio,ai,iot): Studio form origins, Studio on PostgreSQL, case-exact MySQL chat memory and OTA bank selection",
+          "timestamp": "2026-09-30T13:15:41-03:00",
+          "tree_id": "5d38b619a63e463761ac2c24573241fdc66711c6",
+          "url": "https://github.com/Rullst/Rullst/commit/bd639f3d488732b423743a0652c319f44b3cabfc"
+        },
+        "date": 1790786055335,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1004,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 802,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1870,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4479,
+            "range": "± 19",
             "unit": "ns/iter"
           }
         ]
