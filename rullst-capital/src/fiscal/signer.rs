@@ -133,11 +133,15 @@ pub(crate) fn build_mtls_identity(
         ));
     }
 
-    let mut pem = Zeroizing::new(String::new());
-    append_pem_block(&mut pem, "PRIVATE KEY", key_chain.key().as_der());
-    for certificate in key_chain.certs() {
-        append_pem_block(&mut pem, "CERTIFICATE", certificate.as_der());
-    }
+    let blocks = std::iter::once(("PRIVATE KEY", key_chain.key().as_der()))
+        .chain(
+            key_chain
+                .certs()
+                .iter()
+                .map(|certificate| ("CERTIFICATE", certificate.as_der())),
+        )
+        .collect::<Vec<_>>();
+    let pem = encode_pem_blocks(&blocks)?;
     reqwest::Identity::from_pem(pem.as_bytes()).map_err(|_| {
         FiscalError::Certificate(
             "PKCS#12 key and certificate chain cannot form a rustls mTLS identity".to_string(),
@@ -159,19 +163,57 @@ fn certificate_store(certificate: &FiscalCertificate) -> Result<KeyStore, Fiscal
     })
 }
 
+// The buffer is sized exactly before any key material is written, because a
+// growing String frees its old allocation (holding the key's Base64) without
+// zeroizing it. The Base64 temporary is zeroized as well.
 #[cfg(feature = "nfse")]
-fn append_pem_block(output: &mut String, label: &str, der: &[u8]) {
+fn encode_pem_blocks(blocks: &[(&str, &[u8])]) -> Result<Zeroizing<String>, FiscalError> {
+    let size_error = || FiscalError::Certificate("PEM identity size overflow".to_string());
+    let capacity = blocks
+        .iter()
+        .try_fold(0_usize, |total, (label, der)| {
+            pem_block_len(label, der.len()).and_then(|length| total.checked_add(length))
+        })
+        .ok_or_else(size_error)?;
+    let mut pem = Zeroizing::new(String::with_capacity(capacity));
+    for (label, der) in blocks {
+        append_pem_block(&mut pem, label, der)?;
+    }
+    if pem.len() != capacity {
+        return Err(size_error());
+    }
+    Ok(pem)
+}
+
+#[cfg(feature = "nfse")]
+fn pem_block_len(label: &str, der_len: usize) -> Option<usize> {
+    let encoded = base64::encoded_len(der_len, true)?;
+    let framing = "-----BEGIN -----\n-----END -----\n".len();
+    encoded
+        .checked_add(encoded.div_ceil(64))?
+        .checked_add(framing)?
+        .checked_add(label.len().checked_mul(2)?)
+}
+
+#[cfg(feature = "nfse")]
+fn append_pem_block(output: &mut String, label: &str, der: &[u8]) -> Result<(), FiscalError> {
+    let encode_error = || FiscalError::Certificate("cannot encode PEM identity".to_string());
+    let length = base64::encoded_len(der.len(), true).ok_or_else(encode_error)?;
+    let mut encoded = Zeroizing::new(vec![0_u8; length]);
+    let written = STANDARD
+        .encode_slice(der, encoded.as_mut_slice())
+        .map_err(|_| encode_error())?;
     output.push_str("-----BEGIN ");
     output.push_str(label);
     output.push_str("-----\n");
-    let encoded = STANDARD.encode(der);
-    for chunk in encoded.as_bytes().chunks(64) {
+    for chunk in encoded.get(..written).ok_or_else(encode_error)?.chunks(64) {
         output.extend(chunk.iter().map(|byte| char::from(*byte)));
         output.push('\n');
     }
     output.push_str("-----END ");
     output.push_str(label);
     output.push_str("-----\n");
+    Ok(())
 }
 
 #[cfg(feature = "nfse")]
