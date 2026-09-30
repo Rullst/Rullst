@@ -221,7 +221,9 @@ let value: serde_json::Value = client
 ```
 
 Provider-side schema enforcement and Rust deserialization do not replace application-specific
-semantic validation.
+semantic validation. In offline mock mode the deterministic fixture follows at most 16 nesting
+levels, 32 items per array and 4,096 generated values; larger schemas fail with
+`AiError::InvalidSchema`.
 
 ## Current boundaries
 

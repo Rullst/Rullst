@@ -404,4 +404,6 @@ let value: serde_json::Value = client
 ```
 
 The schema is enforced by the provider API and the returned value is deserialized again in Rust.
-Application-specific semantic validation is still required.
+Application-specific semantic validation is still required. In offline mock mode the deterministic
+fixture follows at most 16 nesting levels, 32 items per array and 4,096 generated values; larger
+schemas fail with `AiError::InvalidSchema`.
