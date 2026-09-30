@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790760549811,
+  "lastUpdate": 1790775774968,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -13329,6 +13329,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 4516,
             "range": "± 116",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "40ac10fd72b9bc22cafdd25e00c6a1764924a7d0",
+          "message": "Merge pull request #346 from Rullst/fix/v13-nexus-logo\n\nfeat(nexus): serve the Rullst logo and favicon same-origin",
+          "timestamp": "2026-09-30T10:24:12-03:00",
+          "tree_id": "3dad3cf45dd71fd3cbdab665e5c483b836525989",
+          "url": "https://github.com/Rullst/Rullst/commit/40ac10fd72b9bc22cafdd25e00c6a1764924a7d0"
+        },
+        "date": 1790775774367,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 1023,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 792,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1882,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4442,
+            "range": "± 13",
             "unit": "ns/iter"
           }
         ]
