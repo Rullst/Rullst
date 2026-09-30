@@ -69,7 +69,7 @@ impl ResendDriver {
 
         let client = super::http::client()?;
 
-        let from_addr = message.from.as_deref().unwrap_or("noreply@rullst.dev");
+        let from_addr = super::rest::required_sender(message)?;
         let mut body = serde_json::json!({
             "to": message.to,
             "from": from_addr,

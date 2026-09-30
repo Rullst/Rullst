@@ -609,3 +609,22 @@ async fn tenant_context_selects_credentials_without_cross_tenant_delivery() {
 
 #[path = "lib_feature_tests.rs"]
 mod feature_tests;
+
+#[tokio::test]
+async fn real_transports_require_an_explicit_sender_before_network() {
+    let message = Message::new()
+        .to("user@example.com")
+        .subject("No sender")
+        .text("body");
+    let drivers: Vec<Box<dyn MailDriver>> = vec![
+        Box::new(ResendDriver::try_new("re_live_fixture").unwrap()),
+        Box::new(SendGridDriver::try_new("SG.live_fixture").unwrap()),
+        Box::new(PostmarkDriver::try_new("live-fixture-token").unwrap()),
+    ];
+    for driver in drivers {
+        assert!(matches!(
+            driver.send(&message).await,
+            Err(MailError::ConfigError(_))
+        ));
+    }
+}

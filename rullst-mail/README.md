@@ -511,6 +511,10 @@ an empty credential or one beginning with `mock_` selects the deterministic
 offline fallback. Use `driver.delivery_mode()` and
 `OfflineMailMock::deliveries()` to assert this explicitly in tests.
 
+Every real transport requires an explicit `from` address that the provider
+account has verified; a message without one fails with `MailError::ConfigError`
+before any request. No default sender is substituted.
+
 SMTP selects the offline fallback only explicitly: an empty or `mock_*`
 `MAIL_HOST`, or a `mock_*` username or password. A real host without
 credentials is an unauthenticated relay and receives real delivery, so

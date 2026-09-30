@@ -168,7 +168,7 @@ enum SmtpBody {
 fn build_smtp_message(message: &Message) -> Result<lettre::Message, MailError> {
     use lettre::Message as LettreMessage;
 
-    let from_addr = message.from.as_deref().unwrap_or("noreply@rullst.dev");
+    let from_addr = super::rest::required_sender(message)?;
     let mut builder = LettreMessage::builder()
         .from(
             from_addr
@@ -342,7 +342,10 @@ mod tests {
 
     #[test]
     fn smtp_builder_rejects_a_missing_body_without_panicking() {
-        let message = Message::new().to("alice@example.com").subject("No body");
+        let message = Message::new()
+            .to("alice@example.com")
+            .from("sender@example.com")
+            .subject("No body");
         assert!(matches!(
             build_smtp_message(&message),
             Err(MailError::ValidationError(message)) if message == "No email body provided"

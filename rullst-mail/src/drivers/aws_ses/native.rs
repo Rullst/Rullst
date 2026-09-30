@@ -47,7 +47,7 @@ impl NativeSesConfig {
         let content = build_content(message)?;
         let result = client
             .send_email()
-            .from_email_address(message.from.as_deref().unwrap_or("noreply@rullst.dev"))
+            .from_email_address(crate::drivers::rest::required_sender(message)?)
             .destination(destination)
             .content(content)
             .send()

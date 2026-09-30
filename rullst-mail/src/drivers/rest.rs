@@ -10,6 +10,12 @@ pub(super) fn sender(message: &Message) -> Result<&str, MailError> {
             "email requires nonempty text or HTML".into(),
         ));
     }
+    required_sender(message)
+}
+
+/// The explicit sender every real transport uses. No default address is
+/// substituted: it would claim a domain the application does not control.
+pub(super) fn required_sender(message: &Message) -> Result<&str, MailError> {
     message.from.as_deref().ok_or_else(|| {
         MailError::ConfigError("provider requires an explicit verified sender".into())
     })

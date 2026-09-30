@@ -270,6 +270,13 @@ async fn bearer_proxy_rejects_transport_schedule_and_deprecated_invalid_configur
             ..
         })
     ));
+    // No default sender is substituted; the request never leaves.
+    let mut anonymous = message();
+    anonymous.from = None;
+    assert!(matches!(
+        driver.send(&anonymous).await,
+        Err(MailError::ConfigError(_))
+    ));
 
     let scheduled = message().send_in(Duration::from_secs(60));
     assert!(matches!(
@@ -308,9 +315,11 @@ fn configuration_payload_and_debug_paths_are_bounded_and_secret_free() {
     let payload = proxy_payload(
         &Message::new()
             .to("recipient@example.com")
+            .from("sender@example.com")
             .subject("subject"),
+        "sender@example.com",
     );
-    assert_eq!(payload["FromEmailAddress"], "noreply@rullst.dev");
+    assert_eq!(payload["FromEmailAddress"], "sender@example.com");
     assert!(payload["Content"]["Simple"].get("Headers").is_none());
 }
 
@@ -347,6 +356,7 @@ fn one_click_post_header_is_limited_to_https_unsubscribe_urls() {
                 .to("recipient@example.com")
                 .from("sender@example.com")
                 .unsubscribe_url(url),
+            "sender@example.com",
         )
     };
     let names = |payload: serde_json::Value| -> Vec<String> {
