@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790798390929,
+  "lastUpdate": 1790801394365,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -22881,6 +22881,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1891,
             "range": "± 45",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2cb905357413b59ba51b2e313363fabb4d6886fe",
+          "message": "Merge pull request #357 from Rullst/fix/v13-mail-low-fixes\n\nfix(mail,core,cli): low-severity mail fixes, configured default sender and .env-aware mail settings",
+          "timestamp": "2026-09-30T17:43:37-03:00",
+          "tree_id": "ec96ac21ff087031101482c599339f927d005c1e",
+          "url": "https://github.com/Rullst/Rullst/commit/2cb905357413b59ba51b2e313363fabb4d6886fe"
+        },
+        "date": 1790801392281,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 842,
+            "range": "± 40",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 1014,
+            "range": "± 36",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 671,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2254,
+            "range": "± 47",
             "unit": "ns/iter"
           }
         ]
