@@ -134,6 +134,12 @@ for upgraded connections and detached tasks; supervisors own their shutdown.
   address and IPv6 peers per /64 by default. It tracks at most 100,000 keys,
   drops fully refilled buckets and evicts the least recently used ones beyond
   that cap; state is process-local, not a distributed limit.
+- **Feature flag buckets:** percentage rollouts and A/B variants in the Env,
+  TOML, Memory and DB drivers use `calculate_hash_bucket`, a versioned
+  SHA-256 hash over a domain tag, the length-prefixed flag and the identifier.
+  It gives every toolchain, platform and replica the same assignment.
+  Earlier releases used `std`'s unspecified `DefaultHasher`, so upgrading
+  reassigns users to buckets once; percentages and variant weights are kept.
 - **Bounded cache metadata:** Memory and Redis expose value length and TTL for
   at most 200 sorted entries, never cached values. Rullst Studio renders keyed
   opaque identifiers and one-entry invalidation rather than exact keys or bulk
