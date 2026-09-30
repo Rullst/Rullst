@@ -38,7 +38,8 @@ pub async fn nexus_telemetry_page(
             </div>"#,
         );
     } else {
-        for s in recorded_spans.iter().take(15) {
+        // The collector keeps spans oldest-first; show the most recent ones.
+        for s in recorded_spans.iter().rev().take(15) {
             let tone = match s.kind.as_str() {
                 "http" => "nexus-tone-cyan",
                 "sql" => "nexus-tone-amber",
@@ -119,5 +120,38 @@ pub async fn nexus_telemetry_page(
             &render_sidebar(&state, Some("telemetry")),
             &content,
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rullst_core::telemetry_spans::{TraceSpan, global_span_collector};
+
+    #[tokio::test]
+    async fn telemetry_lists_the_most_recent_spans() {
+        for index in 0..20 {
+            global_span_collector().record(TraceSpan {
+                name: format!("nexus-span-order-{index:02}"),
+                kind: "job".to_string(),
+                duration_us: 10,
+                timestamp: 1_700_000_000,
+            });
+        }
+        let state = Arc::new(NexusState {
+            registry: Arc::new(Vec::new()),
+            brand: Arc::new("Nexus".to_string()),
+            audit_policy: crate::nexus::NexusAuditPolicy::Disabled,
+        });
+        let mut headers = axum::http::HeaderMap::new();
+        headers.insert("hx-request", axum::http::HeaderValue::from_static("true"));
+        let Html(html) = nexus_telemetry_page(State(state), headers).await;
+
+        assert!(html.contains("nexus-span-order-19"));
+        assert!(html.contains("nexus-span-order-05"));
+        assert!(!html.contains("nexus-span-order-04"));
+        let newest = html.find("nexus-span-order-19").expect("newest span");
+        let older = html.find("nexus-span-order-18").expect("older span");
+        assert!(newest < older, "the newest span is listed first");
     }
 }
