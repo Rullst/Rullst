@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790790009381,
+  "lastUpdate": 1790794105420,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Auth Benchmark": [
@@ -13473,6 +13473,54 @@ window.BENCHMARK_DATA = {
             "name": "make_login_cookie",
             "value": 1937,
             "range": "± 23",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1bb72ddeba6eea38f4571ee6585b63bc52d56a73",
+          "message": "Merge pull request #349 from Rullst/fix/v13-mail-capital-messaging-tail-fixes\n\nfix(mail,capital,messaging): ACS sends, IDN homograph check, base64 queued attachments, Wise status and replay claims",
+          "timestamp": "2026-09-30T15:29:18-03:00",
+          "tree_id": "ea9f0ee221bb6ce03bd7d5065db521ca95301a4e",
+          "url": "https://github.com/Rullst/Rullst/commit/1bb72ddeba6eea38f4571ee6585b63bc52d56a73"
+        },
+        "date": 1790794104437,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "session_crypto/encrypt_session",
+            "value": 988,
+            "range": "± 18",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/decrypt_session",
+            "value": 790,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "session_crypto/round_trip_encrypt_decrypt",
+            "value": 1843,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "make_login_cookie",
+            "value": 4459,
+            "range": "± 33",
             "unit": "ns/iter"
           }
         ]
