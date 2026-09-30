@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790756055019,
+  "lastUpdate": 1790758658099,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -9627,6 +9627,48 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/Rullst/Rullst/commit/c5c43890fbd711638bd354a84f42a912b7f8eda9"
         },
         "date": 1790756054228,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 20,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 22,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e3b9e079eaa5aac12ab674c20d8f766309e9c3d2",
+          "message": "Merge pull request #344 from Rullst/fix/v13-ai-iot-review-fixes\n\nfix(ai,iot): CPF/CNPJ masking, system messages, replay-safe chat memory and block 5 lows",
+          "timestamp": "2026-09-30T05:33:59-03:00",
+          "tree_id": "eefd617604fc918e10594dfc3e03c54b1e2fb573",
+          "url": "https://github.com/Rullst/Rullst/commit/e3b9e079eaa5aac12ab674c20d8f766309e9c3d2"
+        },
+        "date": 1790758657134,
         "tool": "cargo",
         "benches": [
           {
