@@ -467,6 +467,12 @@ let users = User::query().where_like("email", "%@example.com")
     .await?;
 ```
 
+Generated `save_to_redis`/`get_from_redis`/`increment_redis_field` hashes are
+keyed by that namespace, the table and, for tenant models, an opaque digest of
+the active tenant: they require `with_tenant(...)` and never read or overwrite
+another tenant's hash. Hashes stored by earlier versions under
+`orm:<table>:<id>` are not read and must be rewritten.
+
 An explicitly remembered query outside a transaction requires Redis
 initialization. Connection/command failures and corrupt cache entries fall back
 to the database, while missing configuration fails closed. Explicit and

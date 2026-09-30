@@ -100,6 +100,11 @@ Ok(())
 }
 ```
 
+Generated `save_to_redis`/`get_from_redis`/`increment_redis_field` model
+hashes use the same namespace, and tenant models bind the active tenant into
+their key and require `with_tenant(...)`. Hashes written by earlier versions
+under `orm:<table>:<id>` are not read.
+
 Use a stable, unique namespace for every application that shares a Redis
 database. Query keys bind that namespace, an opaque digest of the active tenant
 scope, table, generated SQL and typed bindings. They do not expose raw tenant

@@ -1925,6 +1925,18 @@ while portability and semantic review remain the model author's responsibility.
   processes cannot be inferred. Callers must retain a defensive TTL and treat
   Redis cluster/failover and durable invalidation delivery as separate
   application contracts.
+* Generated `save_to_redis`/`get_from_redis`/`increment_redis_field` model
+  hashes use `rullst:orm:hash:v1:<namespace>:<scope>:table-<digest>:<id>`
+  keys, binding the application namespace, an opaque digest of the model's
+  tenant (or `global`) and of the table. For a tenant model all three require
+  `with_tenant(...)` with the tenant field's type, `save_to_redis` rejects a
+  handle from another tenant, `get_from_redis` rejects a decoded hash whose
+  tenant differs and the tenant column cannot be incremented; another tenant
+  simply misses. Hashes written by earlier versions under `orm:<table>:<id>`
+  are no longer read and must be rewritten. The `orm:events:*` pub/sub channel
+  names are unchanged and not namespaced, so subscribers keep working; use a
+  dedicated Redis database when applications must not observe each other's
+  events.
 
 ### 5.8. Polyglot Persistence Boundary
 
