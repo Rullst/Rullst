@@ -1,7 +1,10 @@
 mod browser_boundary;
+#[cfg(test)]
+mod proxy_tests;
 mod rate_limit;
 #[cfg(test)]
 mod tests;
+mod transport;
 
 use axum::{
     body::Body,
@@ -18,6 +21,7 @@ pub use rate_limit::{
 };
 use std::{fmt, net::SocketAddr, sync::Arc, time::Duration};
 use subtle::ConstantTimeEq;
+use transport::has_verified_tls;
 
 use super::principal::{NEXUS_ADMIN_ROLE, NexusPrincipal};
 
@@ -135,10 +139,9 @@ impl NexusBasicAuth {
 /// verified by the application.
 ///
 /// Basic credentials are cleartext at the HTTP layer. Nexus therefore refuses Basic Auth unless
-/// this marker is present. A URI scheme or forwarded header is not transport evidence.
-/// Applications behind a reverse proxy must
-/// insert this extension only from middleware that trusts the socket peer and verifies the
-/// terminator's transport metadata; never derive it from an arbitrary forwarded header.
+/// this marker is present or Core's `TrustedProxyLayer` reported HTTPS from a trusted proxy peer
+/// (`TrustedProxyConfig::trust_forwarded_proto`). A URI scheme or forwarded header alone is not
+/// transport evidence; never insert this marker from an arbitrary forwarded header.
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy)]
 pub struct NexusVerifiedTls {
@@ -386,10 +389,6 @@ fn has_valid_basic_credentials(request: &Request, credentials: &NexusBasicAuth) 
 
     constant_time_equal(username.as_bytes(), credentials.username.as_bytes())
         & constant_time_equal(password.as_bytes(), credentials.password.as_bytes())
-}
-
-fn has_verified_tls(request: &Request) -> bool {
-    request.extensions().get::<NexusVerifiedTls>().is_some()
 }
 
 fn constant_time_equal(candidate: &[u8], expected: &[u8]) -> bool {
