@@ -164,6 +164,50 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::unwrap_used, clippy::expect_used)]
+    async fn legacy_handler_keeps_the_session_across_control_frames() {
+        use futures_util::{SinkExt, StreamExt};
+        use tokio_tungstenite::tungstenite::Message;
+
+        let app = axum::Router::new().route(
+            "/ws",
+            axum::routing::get(live_ws_handler::<CountingComponent>),
+        );
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move { axum::serve(listener, app).await });
+        let (mut socket, _) = tokio_tungstenite::connect_async(format!("ws://{address}/ws"))
+            .await
+            .unwrap();
+
+        socket
+            .send(Message::Ping(b"keepalive".to_vec().into()))
+            .await
+            .unwrap();
+        socket
+            .send(Message::Pong(b"unsolicited".to_vec().into()))
+            .await
+            .unwrap();
+        socket.send(Message::Text("{}".into())).await.unwrap();
+
+        let rendered = tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            loop {
+                match socket.next().await {
+                    Some(Ok(Message::Pong(_))) => continue,
+                    other => break other,
+                }
+            }
+        })
+        .await
+        .unwrap();
+        assert!(
+            matches!(&rendered, Some(Ok(Message::Text(html))) if html.as_str() == "<p id=\"events\">1</p>"),
+            "control frames must not end the session: {rendered:?}"
+        );
+        server.abort();
+    }
+
+    #[tokio::test]
     async fn test_live_mount() {
         let html = Live::mount::<DummyComponent>("/ws/demo?a=1&b=2").await;
         assert!(html.contains("hx-ext=\"ws\""));
