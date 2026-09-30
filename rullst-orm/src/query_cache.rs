@@ -2,9 +2,23 @@ use sha2::{Digest, Sha256};
 
 use crate::{Error, Orm, RullstValue};
 
-const CACHE_KEY_VERSION: &str = "v3";
+const KEY_PREFIX: &str = "rullst:orm:cache:v3:";
 const MAX_NAMESPACE_LEN: usize = 64;
 const MAX_INVALIDATION_KEYS: usize = 10_000;
+/// Suffix of the per-table set that indexes the table's cached entries. It is
+/// not hexadecimal, so it can never equal an entry's digest segment.
+const INDEX_SUFFIX: &str = "keys";
+
+/// Stores an entry, records its key in the table index and extends the
+/// index's lifetime to the longest entry TTL, as one atomic step.
+const STORE_SCRIPT: &str = r"
+redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2])
+redis.call('SADD', KEYS[2], KEYS[1])
+if redis.call('TTL', KEYS[2]) < tonumber(ARGV[2]) then
+  redis.call('EXPIRE', KEYS[2], ARGV[2])
+end
+return 1
+";
 
 pub(crate) fn validate_namespace(namespace: &str) -> Result<(), Error> {
     if namespace.is_empty()
@@ -37,7 +51,6 @@ fn build_key(
 ) -> Result<String, Error> {
     validate_namespace(namespace)?;
 
-    let scope = scope_segment(tenant);
     let mut digest = Sha256::new();
     update_field(&mut digest, 1, namespace.as_bytes());
     if let Some(value) = tenant {
@@ -52,10 +65,64 @@ fn build_key(
     }
 
     Ok(format!(
-        "rullst:orm:cache:{CACHE_KEY_VERSION}:{namespace}:{scope}:table-{}:{}",
-        digest_bytes(table.as_bytes()),
+        "{}:{}",
+        table_prefix(namespace, tenant, table)?,
         hex_digest(&digest.finalize())
     ))
+}
+
+/// Common prefix of one namespace, tenant scope and table's cache keys.
+fn table_prefix(
+    namespace: &str,
+    tenant: Option<&RullstValue>,
+    table: &str,
+) -> Result<String, Error> {
+    validate_namespace(namespace)?;
+    Ok(format!(
+        "{KEY_PREFIX}{namespace}:{}:table-{}",
+        scope_segment(tenant),
+        digest_bytes(table.as_bytes())
+    ))
+}
+
+/// The index of the table that a generated entry key belongs to.
+fn entry_index_key(cache_key: &str) -> Result<String, Error> {
+    match cache_key.rsplit_once(':') {
+        Some((prefix, digest))
+            if prefix.starts_with(KEY_PREFIX)
+                && prefix.contains(":table-")
+                && digest.len() == 64
+                && digest.bytes().all(|byte| byte.is_ascii_hexdigit()) =>
+        {
+            Ok(format!("{prefix}:{INDEX_SUFFIX}"))
+        }
+        _ => Err(Error::Validation(
+            "query cache key is not a generated entry key".to_string(),
+        )),
+    }
+}
+
+/// Stores one generated query result and indexes its key under its table,
+/// so a committed write can invalidate the table without scanning Redis.
+#[doc(hidden)]
+pub async fn store_entry(cache_key: &str, payload: &str, ttl_seconds: u64) -> Result<(), Error> {
+    if ttl_seconds == 0 {
+        return Err(Error::Validation(
+            "query cache TTL must be greater than zero".to_string(),
+        ));
+    }
+    let index = entry_index_key(cache_key)?;
+    let mut connection = Orm::redis_manager()?;
+    let _: i64 = crate::_redis::cmd("EVAL")
+        .arg(STORE_SCRIPT)
+        .arg(2)
+        .arg(cache_key)
+        .arg(&index)
+        .arg(payload)
+        .arg(ttl_seconds)
+        .query_async(&mut connection)
+        .await?;
+    Ok(())
 }
 
 /// Deletes every generated query-cache entry for a table.
@@ -94,12 +161,7 @@ fn invalidation_pattern(
     tenant: Option<&RullstValue>,
     table: &str,
 ) -> Result<String, Error> {
-    validate_namespace(namespace)?;
-    Ok(format!(
-        "rullst:orm:cache:{CACHE_KEY_VERSION}:{namespace}:{}:table-{}:*",
-        scope_segment(tenant),
-        digest_bytes(table.as_bytes())
-    ))
+    Ok(format!("{}:*", table_prefix(namespace, tenant, table)?))
 }
 
 fn scope_segment(tenant: Option<&RullstValue>) -> String {
@@ -152,8 +214,29 @@ fn hex_digest(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{build_key, invalidation_pattern};
+    use super::{INDEX_SUFFIX, build_key, entry_index_key, invalidation_pattern, table_prefix};
     use crate::RullstValue;
+
+    #[test]
+    fn entry_keys_resolve_to_their_table_index() {
+        let tenant = RullstValue::Int(7);
+        let entry =
+            build_key("academy", Some(&tenant), "users", "SELECT *", &[]).expect("entry key");
+        let index = format!(
+            "{}:{INDEX_SUFFIX}",
+            table_prefix("academy", Some(&tenant), "users").expect("table prefix")
+        );
+        assert_eq!(entry_index_key(&entry).expect("entry index"), index);
+        assert_ne!(index, entry);
+        for foreign in [
+            "",
+            "session:abc",
+            "rullst:orm:cache:v3:academy:global:table-x:not-a-digest",
+            index.as_str(),
+        ] {
+            assert!(entry_index_key(foreign).is_err(), "{foreign}");
+        }
+    }
 
     #[test]
     fn keys_are_versioned_deterministic_and_domain_separated() {

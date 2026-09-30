@@ -40,15 +40,15 @@ pub fn generate_cache_write(name: &syn::Ident) -> TokenStream {
     quote! {
         #[cfg(feature = "redis")]
         if let (Some(ttl), Some(cache_key)) = (self.remember_ttl, cache_key.as_ref()) {
-            use rullst_orm::_redis::AsyncCommands;
             let ttl = u64::try_from(ttl).map_err(|_| rullst_orm::Error::Validation(
                 "remember() TTL exceeds the Redis-supported range".to_string()
             ))?;
             // A model that cannot be serialized safely (for example a
-            // `SecretString` without a configured key) is not cached.
+            // `SecretString` without a configured key) is not cached. The
+            // entry is indexed under its table for commit-time invalidation.
             if let Ok(serialized) = #name::__rullst_try_cache_json_array(&results) {
-                let mut conn = rullst_orm::Orm::redis_manager()?;
-                let _: Result<(), rullst_orm::_redis::RedisError> = conn.set_ex(cache_key, serialized, ttl).await;
+                let _: Result<(), rullst_orm::Error> =
+                    rullst_orm::query_cache::store_entry(cache_key, &serialized, ttl).await;
             }
         }
     }
