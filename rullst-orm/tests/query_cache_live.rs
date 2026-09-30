@@ -84,6 +84,19 @@ async fn redis_cache_is_live_bounded_and_never_replaces_transaction_state() {
     let ttl: i64 = redis.ttl(&cache_key).await.expect("inspect cache TTL");
     assert!(exists);
     assert!((1..=30).contains(&ttl));
+    // The entry is indexed under its table for commit-time invalidation, and
+    // the index lives at least as long as the entry.
+    let index_key = format!(
+        "{}:keys",
+        cache_key.rsplit_once(':').expect("generated entry key").0
+    );
+    let indexed: bool = redis
+        .sismember(&index_key, &cache_key)
+        .await
+        .expect("inspect cache index");
+    let index_ttl: i64 = redis.ttl(&index_key).await.expect("inspect index TTL");
+    assert!(indexed);
+    assert!(index_ttl >= ttl);
 
     sqlx::query("UPDATE query_cache_live_records SET name = ? WHERE id = ?")
         .bind("second")
