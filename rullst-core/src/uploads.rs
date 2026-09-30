@@ -48,7 +48,8 @@ pub enum UploadKind {
     Mp4,
     /// WebM/Matroska object recognized by its EBML header.
     WebM,
-    /// UTF-8 plain text without recognized active-content prefixes.
+    /// UTF-8 plain text that neither starts with markup (after whitespace,
+    /// byte-order marks and zero-width characters) nor contains `javascript:`.
     PlainText,
 }
 
@@ -338,15 +339,32 @@ fn detect_kind(bytes: &[u8]) -> Result<UploadKind, UploadError> {
     }) {
         return Err(UploadError::MediaTypeDenied);
     }
-    let normalized = text.trim_start().to_ascii_lowercase();
-    if ["<svg", "<html", "<!doctype", "<script"]
-        .iter()
-        .any(|prefix| normalized.starts_with(prefix))
-        || normalized.contains("javascript:")
-    {
+    if starts_with_markup(text) || text.to_ascii_lowercase().contains("javascript:") {
         return Err(UploadError::ActiveContentDenied);
     }
     Ok(UploadKind::PlainText)
+}
+
+/// Returns whether the first significant character opens markup.
+///
+/// Leading whitespace, byte-order marks (U+FEFF) and zero-width characters
+/// are skipped first. Any `<` followed by a letter, `!`, `?` or `/` then
+/// counts as markup: a start or end tag (`<svg`, `<body`, `<img`), a comment,
+/// doctype or CDATA section (`<!`), or an XML declaration or processing
+/// instruction (`<?`). A prolog or comment therefore cannot hide active
+/// SVG/HTML behind it. UTF-16 text is rejected earlier as invalid UTF-8 or
+/// for its NUL bytes. The scan is linear in the skipped prefix.
+fn starts_with_markup(text: &str) -> bool {
+    let mut characters = text
+        .trim_start_matches(|character: char| {
+            character.is_whitespace()
+                || matches!(character, '\u{FEFF}' | '\u{200B}'..='\u{200D}' | '\u{2060}')
+        })
+        .chars();
+    characters.next() == Some('<')
+        && characters.next().is_some_and(|character| {
+            character.is_ascii_alphabetic() || matches!(character, '!' | '?' | '/')
+        })
 }
 
 fn valid_evidence(value: &str) -> bool {
