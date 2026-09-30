@@ -166,12 +166,16 @@ impl Server {
     }
 
     /// Attaches an adaptive TrafficShield to the server to protect against CPU/DB saturation.
+    ///
+    /// Exact `GET`/`HEAD /health` and `/ready` probes are never shed.
     pub fn shield(mut self, shield: crate::resilience::TrafficShield) -> Self {
         self.shield = Some(shield);
         self
     }
 
     /// Attaches a global RateLimiter to the server.
+    ///
+    /// Exact `GET`/`HEAD /health` and `/ready` probes do not consume tokens.
     pub fn rate_limit(mut self, limiter: crate::resilience::RateLimiter) -> Self {
         self.limiter = Some(limiter);
         self
@@ -521,17 +525,7 @@ impl Server {
                 ));
         }
 
-        if let Some(limiter) = self.limiter {
-            app = app.layer(axum::middleware::from_fn(move |req, next| {
-                crate::resilience::rate_limit_middleware(limiter.clone(), req, next)
-            }));
-        }
-
-        if let Some(shield) = self.shield {
-            app = app.layer(axum::middleware::from_fn(move |req, next| {
-                crate::resilience::backpressure_middleware(shield.clone(), req, next)
-            }));
-        }
+        app = super::traffic::apply_traffic_controls(app, self.limiter, self.shield);
 
         if let Some(lifecycle) = self.lifecycle.clone() {
             app = apply_lifecycle(app, lifecycle);
