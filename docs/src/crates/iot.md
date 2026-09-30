@@ -71,14 +71,14 @@ fn process_incoming_ota<S: RollbackCounterStore>(
     )?;
 
     // 2. Load the last committed counter from the platform adapter
-    let mut manager = OtaManager::new_with_counter_store(
+    //    and the bank the platform bootloader started
+    let mut manager = OtaManager::new_with_running_partition(
         "esp32-sensor-node",
         "1.9.0",
+        running_partition,
         provisioned_public_key,
         counter_store,
     )?;
-    // Report the bank the bootloader started; construction assumes PartitionA.
-    manager.current_partition = running_partition;
 
     // 3. Cryptographically verify signature, target, and anti-rollback state
     manager.verify_update(&manifest, firmware_bytes, signature_bytes)?;
@@ -95,8 +95,10 @@ fn process_incoming_ota<S: RollbackCounterStore>(
 ```
 
 `verified_target_partition` and the receipt always name the bank opposite
-`current_partition`. A new manager assumes `PartitionA`, so platform code must
-report the bank its bootloader started before verifying an update. Committing
+`current_partition`. The v13 `new_with_running_partition` constructor takes the
+bank the bootloader started; `new_with_counter_store` and
+`new_with_trusted_key` assume `PartitionA`, so with them platform code must set
+`current_partition` before verifying an update. Committing
 does not change `current_partition`; until the platform reboots, a further
 update verified in the same process targets the same inactive bank.
 

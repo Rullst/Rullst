@@ -107,14 +107,14 @@ let manifest = OtaManifest::from_firmware(
     121,
     firmware,
 )?;
-let mut ota = OtaManager::new_with_counter_store(
+// `running_partition` is the bank the platform bootloader started.
+let mut ota = OtaManager::new_with_running_partition(
     "board-revision-a",
     "12.0.0",
+    running_partition,
     trusted_public_key,
     counter_store,
 )?;
-// Report the bank the bootloader started; construction assumes PartitionA.
-ota.current_partition = running_partition;
 
 ota.verify_update(&manifest, firmware, signature)?;
 let target = ota.verified_target_partition()?;
@@ -141,9 +141,11 @@ storage and boot selection one hardware-atomic operation.
 not provide persistent anti-rollback protection.
 
 `verified_target_partition` and the receipt always name the bank opposite
-`current_partition`. A new manager assumes the device runs from `PartitionA`,
-so after the device has rebooted into `PartitionB` the platform must set
-`current_partition` from its bootloader before verifying the next update.
+`current_partition`. The v13 constructor `new_with_running_partition` takes
+the bank the bootloader started. `new_with_counter_store` and
+`new_with_trusted_key` assume `PartitionA`, so with them the platform must set
+`current_partition` from its bootloader before verifying an update once the
+device has rebooted into `PartitionB`.
 Committing does not change `current_partition`: the device keeps running the
 old bank until the platform reboots, so a further update verified in the same
 process targets the same inactive bank, never the running one.

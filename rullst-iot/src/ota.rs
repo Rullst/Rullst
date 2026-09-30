@@ -176,10 +176,11 @@ impl OtaCommit {
 /// Fail-closed verifier and boot-selection state machine for signed firmware.
 #[non_exhaustive]
 pub struct OtaManager {
-    /// Bank the device is running from. Constructors assume
-    /// [`BootPartition::PartitionA`]; platform code must set the bank reported
-    /// by its bootloader before verifying an update, for example after the
-    /// device rebooted into [`BootPartition::PartitionB`]. A commit does not
+    /// Bank the device is running from. [`Self::new_with_running_partition`]
+    /// takes it explicitly; the other constructors assume
+    /// [`BootPartition::PartitionA`], so platform code must then set the bank
+    /// reported by its bootloader before verifying an update, for example after
+    /// the device rebooted into [`BootPartition::PartitionB`]. A commit does not
     /// change it: the receipt names the bank selected for the next boot, which
     /// runs only after the platform reboots into it.
     pub current_partition: BootPartition,
@@ -249,6 +250,30 @@ impl OtaManager {
             rollback_counter,
             trusted_public_key,
         )
+    }
+
+    /// Creates a verifier for a device running from `running_partition`, with
+    /// the last committed counter loaded from a platform store.
+    ///
+    /// `running_partition` must be the bank the platform bootloader started,
+    /// so that [`Self::verified_target_partition`] names the inactive bank.
+    /// [`Self::new_with_counter_store`] instead assumes
+    /// [`BootPartition::PartitionA`]. Added in 13.0.
+    pub fn new_with_running_partition<S: RollbackCounterStore>(
+        target: impl Into<String>,
+        current_version: impl Into<String>,
+        running_partition: BootPartition,
+        trusted_public_key: [u8; 32],
+        counter_store: &mut S,
+    ) -> Result<Self, OtaError> {
+        let mut manager = Self::new_with_counter_store(
+            target,
+            current_version,
+            trusted_public_key,
+            counter_store,
+        )?;
+        manager.current_partition = running_partition;
+        Ok(manager)
     }
 
     /// Returns the last committed monotonic counter.
