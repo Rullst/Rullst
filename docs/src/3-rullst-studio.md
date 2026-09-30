@@ -126,7 +126,8 @@ overhead.
   the verified local marker, so the raw `jobs_monitor::router` returns `403`
   for them when mounted outside `Studio::into_router`.
 - The ER view inspects SQLite, PostgreSQL, MySQL, or MariaDB metadata with bound
-  lookup values and normalizes Mermaid identifiers. An unconfigured or
+  lookup values and normalizes Mermaid identifiers. Each column is listed once,
+  and composite foreign keys pair their columns by key position. An unconfigured or
   unsupported source remains visibly unavailable.
 - The feature-flags page changes the database table used by `DbFeatureDriver`.
   Toggles require the verified local marker; the raw `feature_flags::router`

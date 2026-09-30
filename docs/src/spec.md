@@ -3003,7 +3003,8 @@ sending.
   another schema. This is not application authorization, tenant
   scoping, audit, rollback or shared-production administration. The ER diagram
   inspects the same relational backends with bound lookup values and strict
-  normalized Mermaid identifiers. Swagger requires an application-supplied
+  normalized Mermaid identifiers, lists each column once and pairs composite
+  foreign-key columns by key position. Swagger requires an application-supplied
   `OpenApi`.
 * Request SSE records method, URI, status, and latency without bodies or headers.
   Environment values are redacted by default and the typed config projection
