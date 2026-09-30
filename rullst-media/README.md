@@ -71,6 +71,11 @@ listing is limited to the authorized course and 100 items. `Asset.pending`,
 Metadata is plain text, with a 200-byte title and 4096-byte description.
 Updates preserve unrelated provider meta tags from a bounded current read. A
 full list without room for the description fails rather than dropping a tag.
+Bunny's update model has no description property, so the adapter writes the
+description as the `description` meta tag and verifies that same tag in the
+authoritative read. API 1.6.6 documents that this tag also updates the separate
+top-level Description, which Smart Generate may rewrite; that field is never
+compared, so a generated summary cannot leave an update unverifiable.
 The host must coordinate other tools writing the same remote video: Bunny does
 not supply a conditional-update token for atomic conflict detection between them.
 
@@ -99,8 +104,13 @@ is independent of TUS byte acceptance. Show processing/failure state, allow
 `refresh` for missed notifications, and require the instructor's explicit
 `publish` after the API reports Ready. Completion webhooks never publish.
 
-`playback` checks current entitlement, refreshes provider readiness, fences local
-revision and issues a grant bounded by permission expiry and at most 900 seconds.
+`playback` checks current entitlement, reads current provider readiness and
+fences local withdrawal/deletion in the transaction that issues a grant bounded
+by permission expiry and at most 900 seconds. It is a read, not a leased
+mutation: concurrent viewers never block one another, and a failed, timed-out
+or dropped request leaves no durable intent. It records a changed observation
+only when the revision is unchanged and no lease is live; a video that is no
+longer ready withdraws publication. Rate-limit the playback route per actor.
 Supported kinds are `Embed`, directory-protected `Hls`, and `Mp4_720p` only when
 the current API reports both MP4 fallback and that resolution. Return the grant
 using a private `Cache-Control: no-store` response and `Referrer-Policy: no-referrer`;
@@ -148,8 +158,9 @@ ledger. API and webhook numeric status mappings differ and are handled separatel
 | `Conflict` | Reload current revision/state before a deliberate new action |
 | `Busy` | Respect the in-flight lease; retry with bounded backoff |
 | `Unavailable`, `Uncertain`, timeout or process death | Inspect persisted intent; `reconcile` after its 45-second lease, rechecking management authorization |
-| Unknown create result | Search the persisted opaque marker; zero or multiple matches remain uncertain; never generate another create request automatically |
-| Pending refresh | Upload/playback or the same notification can resume it after lease expiry; they cannot take over pending update/delete/create |
+| Unknown create result | Search the persisted opaque marker; zero or multiple matches stop the intent as `CreationUnconfirmed`; never generate another create request automatically |
+| `Asset.failure` set (stopped create/update) | Never retried automatically; mutations, `reconcile` and upload return `Conflict` while withdrawal and playback still work. Fix the cause, then call `retry_failed` or `discard_failed` with the current revision |
+| Pending refresh | Upload or the same notification can resume it after lease expiry; they cannot take over pending update/delete/create. Playback neither takes nor waits for leases |
 | `Denied`, `Expired` | Reauthenticate/recheck entitlement; issue no capability |
 | `Protocol`, `Configuration`, `Storage`, clock rollback | Stop granting access; investigate rather than reset/repair the store |
 | `Capacity` | Review retention/capacity without deleting active or uncertain operations |
@@ -161,6 +172,19 @@ request and response sizes, with at most one GET retry and no automatic mutation
 retry. A timed-out future does not prove that the provider rolled back its work.
 Remote marker lookup is bounded to 100 results; out-of-band renaming before
 identity binding or ambiguous search needs operator investigation.
+
+A create or metadata update that fails for a non-transient reason stops rather
+than staying pending forever. The failing call returns the provider error and
+`Asset.failure` records a bounded, non-secret `OperationFailure`: `Rejected` (a
+definitive refusal; a refused create made no remote video), `CreationUnconfirmed`,
+`RemoteMissing`, `TagCapacity` or `VerificationMismatch`. Transient outcomes such
+as `Unavailable`, a timeout or a protocol violation keep the intent leased for
+`reconcile`. `retry_failed` resends a refused create, only searches the marker
+again for an unconfirmed one and re-executes a stopped update. `discard_failed`
+turns a stopped create into a local tombstone: retire its creation ID; a remote
+video carrying the marker that exists or appears later is neither owned nor
+deleted. A discarded update keeps the requested local metadata while the remote
+may keep earlier values; the asset can then be refreshed, published or deleted.
 
 ## Durable storage and operation
 
@@ -174,12 +198,13 @@ Key rotation with unchanged environment/library is accepted; it can invalidate
 old capabilities. Changing environment, origin, CDN host, mode or capacity needs
 an explicit reviewed migration, not silent opening of unrelated state.
 
-`purge_deleted` removes at most 100 confirmed local tombstones per authorized
-call, with a cutoff at least 24 hours old. It preserves active/pending assets.
-Once purged, **retire the creation ID**: its idempotency/replay memory ends there.
-Deletion clears local metadata before this retention step. This is not proof
-of physical disk, provider backup or CDN erasure. Restore policy must address
-stale permissions, keys, retired IDs and provider reconciliation.
+`purge_deleted` removes at most 100 confirmed or discarded local tombstones per
+authorized call, with a cutoff at least 24 hours old. It preserves active and
+pending assets. Once purged, **retire the creation ID**: its idempotency/replay
+memory ends there. Deletion clears local metadata before this retention step.
+This is not proof of physical disk, provider backup or CDN erasure. Restore
+policy must address stale permissions, keys, retired IDs and provider
+reconciliation.
 
 ## Acceptance and limits
 

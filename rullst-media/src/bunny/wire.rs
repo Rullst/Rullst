@@ -3,14 +3,18 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+/// Bunny's UpdateVideoModel has no description property. API 1.6.6 documents
+/// that a meta tag with this property also updates the separate Description
+/// field, which Smart Generate may rewrite independently. The adapter writes
+/// and verifies only this tag, never the top-level field.
+const DESCRIPTION: &str = "description";
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct Video {
     video_library_id: LibraryId,
     guid: VideoId,
     title: String,
-    #[serde(default)]
-    description: Option<String>,
     status: u8,
     length: u32,
     #[serde(rename = "hasMP4Fallback")]
@@ -24,21 +28,27 @@ impl Video {
     pub fn update_tags(&mut self, description: &str) -> Result<Vec<MetaTag>, Error> {
         let mut tags = self.meta_tags.take().unwrap_or_default();
         validate_tags(&tags)?;
-        if let Some(tag) = tags.iter_mut().find(|tag| tag.property == "description") {
+        if let Some(tag) = tags.iter_mut().find(|tag| tag.property == DESCRIPTION) {
             tag.value = Some(description.into());
         } else {
             if tags.len() == 50 {
                 return Err(Error::Capacity);
             }
             tags.push(MetaTag {
-                property: "description".into(),
+                property: DESCRIPTION.into(),
                 value: Some(description.into()),
             });
         }
         Ok(tags)
     }
     pub fn checked(self, library: LibraryId) -> Result<RemoteVideo, Error> {
-        validate_tags(self.meta_tags.as_deref().unwrap_or_default())?;
+        let tags = self.meta_tags.unwrap_or_default();
+        validate_tags(&tags)?;
+        let description = tags
+            .into_iter()
+            .find(|tag| tag.property == DESCRIPTION)
+            .and_then(|tag| tag.value)
+            .unwrap_or_default();
         let processing = match self.status {
             0 => Processing::AwaitingUpload,
             1..=3 | 7..=8 => Processing::Processing,
@@ -54,7 +64,7 @@ impl Video {
             id: self.guid,
             library: self.video_library_id,
             title: self.title,
-            description: self.description.unwrap_or_default(),
+            description,
             processing,
             length_seconds: self.length,
             mp4_720p: self.has_mp4_fallback && resolutions.split(',').any(|r| r == "720p"),

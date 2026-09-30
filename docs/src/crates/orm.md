@@ -97,6 +97,10 @@ generated API.
   vector/distance values in L2, cosine and inner-product helpers are bound, not
   interpolated. The strict PostgreSQL matrix creates the extension and runs a
   typed live lifecycle. See [RAG Systems & Vector Search](../tutorials/22-rag-vector-search.md).
+- **Generated embeddings:** `ai` implies `pgvector` and adds
+  `save_with_embedding(&rullst_ai::AiClient)` to models with an
+  `#[orm(embedding_for = "...")]` field; the application must also depend on
+  `rullst-ai`.
 - **Bounded Qdrant vectors:** `qdrant` keeps specialized dense-cosine
   collection/upsert/delete/query semantics separate from SQL Active Record,
   with resource/transport bounds, deterministic fallback, authenticated
@@ -226,6 +230,13 @@ Load fewer parents per query, raise the cap, or choose explicitly with
 `with_<relation>_constrained(...)`: an explicit smaller `limit(n)` there applies
 to the whole batch, and `unsafe_unlimited()` loads every related row.
 
+Parents that share a related row or group all receive it: every child of one
+`belongs_to` parent, parents whose non-unique `local_key` matches the same
+`has_many`/`has_one` rows, and duplicated parent rows. The shared value is
+cloned for all but the last such parent, so a related model without `Clone`
+loads normally until a row must be shared, and then `get()` fails with a
+`Validation` error instead of leaving a parent without its relation.
+
 ### Native database enums
 
 Generated applications should select a strict primary feature. PostgreSQL
@@ -269,6 +280,13 @@ PostgreSQL; the method is a validated no-op on the other backends. The enum
 type creation, its label check and `drop_native_enum` use the active
 `Orm::transaction` or test sandbox like the table DDL, so they roll back with it
 and the type can be dropped right after its tables in the same transaction.
+
+Builder filters on a model field whose type derives `Enum` (or
+`Option<...>` of it) work on every backend: on PostgreSQL the comparison,
+`IN` and `BETWEEN` markers of that column become `CAST(? AS "<type_name>")`,
+because a text parameter has no operator against a named enum type. This
+covers `where_eq`, `where_in`, the generated `where_<column>` helpers and
+their `or_`/`not_` variants; `where_like` and raw SQL are unchanged.
 
 `table.timestamps()` adds nullable `created_at`/`updated_at` `TEXT` columns
 that default to the current timestamp. MySQL/MariaDB reject a literal default

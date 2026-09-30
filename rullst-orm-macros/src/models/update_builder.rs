@@ -46,6 +46,22 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
     });
     let inits = fields.iter().map(|(field, _)| quote! { #field: None });
     let (tenant_guard, tenant_clause, tenant_bind) = tenant_scope(parsed);
+    let after_fetch = after_fetch_hook(parsed, &quote::format_ident!("candidate"));
+    // The setter stays for compatibility, but the soft-delete marker only
+    // changes through delete()/restore()/force_delete().
+    let soft_delete_guard = match parsed
+        .soft_delete_column()
+        .and_then(|column| fields.iter().find(|(field, _)| *field == column))
+    {
+        Some((field, _)) => quote! {
+            if self.#field.is_some() {
+                return Err(rullst_orm::Error::Validation(
+                    "update_partial() cannot change the soft-delete column; use delete() or restore()".to_string()
+                ));
+            }
+        },
+        None => quote! {},
+    };
 
     let struct_def = quote! {
         /// Typed logical patch merged into the current row through the normal save lifecycle.
@@ -103,6 +119,7 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
                 tx: &mut rullst_orm::db::Transaction<'_>,
             ) -> Result<(#name, rullst_orm::post_commit::PostCommitScope), rullst_orm::Error> {
                 use rullst_orm::_sqlx::Acquire;
+                #soft_delete_guard
                 #tenant_guard
                 if self.__rullst_model.id == 0 { return Err(rullst_orm::Error::RecordNotFound); }
                 let mut savepoint = (&mut **tx).begin().await?;
@@ -125,6 +142,8 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
                     };
                     let mut candidate = row.ok_or(rullst_orm::Error::RecordNotFound)?;
                     candidate.__rullst_decrypt_encrypted_fields()?;
+                    // The save lifecycle expects the representation every read returns.
+                    #after_fetch
                     #(#apply)*
                     candidate.save_with_tx(&mut savepoint).await?;
                     Ok::<_, rullst_orm::Error>(candidate)
@@ -148,6 +167,16 @@ pub fn generate_update_builder(parsed: &ParsedModel) -> (TokenStream, TokenStrea
         }
     };
     (struct_def, method_def)
+}
+
+/// Runs the model's `after_fetch` hook on a row loaded inside a mutation. The
+/// transaction stays borrowed, so reentrant ORM access from the hook fails closed.
+pub(super) fn after_fetch_hook(parsed: &ParsedModel, row: &syn::Ident) -> TokenStream {
+    if parsed.after_fetch.is_empty() {
+        return quote! {};
+    }
+    let method = syn::Ident::new(&parsed.after_fetch, parsed.name.span());
+    quote! { rullst_orm::__transaction_access::run(#row.#method()).await?; }
 }
 
 fn tenant_scope(parsed: &ParsedModel) -> (TokenStream, String, TokenStream) {

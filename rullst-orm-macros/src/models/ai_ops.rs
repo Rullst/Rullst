@@ -25,9 +25,10 @@ pub fn generate_ai_methods(parsed: &ParsedModel) -> TokenStream {
 
     let save_with_embedding = if let Some((embedding_field, text_field)) = &parsed.embedding_for {
         let text_field_ident = syn::Ident::new(text_field, proc_macro2::Span::call_site());
+        let ai_cfg = crate::feature_gates::ai();
         quote! {
             impl #name {
-                #[cfg(feature = "ai")]
+                #ai_cfg
                 pub async fn save_with_embedding(&mut self, client: &rullst_ai::AiClient) -> Result<(), rullst_orm::Error> {
                     let vector = client.embed(&self.#text_field_ident.to_string()).await.map_err(|e| rullst_orm::Error::DatabaseError(e.to_string()))?;
                     self.#embedding_field = Some(rullst_orm::_pgvector::Vector::from(vector));

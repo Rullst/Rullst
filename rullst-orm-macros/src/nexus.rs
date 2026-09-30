@@ -21,6 +21,11 @@ struct FieldOptions {
     readonly: bool,
     primary_key: bool,
     relation: bool,
+    /// `#[orm(skip)]` / `#[sqlx(skip)]`: the field has no column.
+    skipped: bool,
+    orm_hidden: bool,
+    masked: bool,
+    encrypted: bool,
 }
 
 /// ORM relation declarations; such fields hold related models, not columns.
@@ -81,6 +86,13 @@ fn parse_model_options(input: &DeriveInput) -> syn::Result<ModelOptions> {
 fn parse_field_options(field: &syn::Field) -> syn::Result<FieldOptions> {
     let mut options = FieldOptions::default();
     for attribute in &field.attrs {
+        if attribute.path().is_ident("sqlx") {
+            attribute.parse_nested_meta(|meta| {
+                options.skipped |= meta.path.is_ident("skip");
+                skip_orm_option(&meta)
+            })?;
+            continue;
+        }
         if !attribute.path().is_ident("nexus") && !attribute.path().is_ident("orm") {
             continue;
         }
@@ -106,6 +118,14 @@ fn parse_field_options(field: &syn::Field) -> syn::Result<FieldOptions> {
                 options.readonly = true;
             } else if nexus_attribute {
                 return Err(meta.error("unsupported Nexus field option"));
+            } else if meta.path.is_ident("skip") {
+                options.skipped = true;
+            } else if meta.path.is_ident("hidden") {
+                options.orm_hidden = true;
+            } else if meta.path.is_ident("masked") {
+                options.masked = true;
+            } else if meta.path.is_ident("encrypted") {
+                options.encrypted = true;
             } else {
                 options.relation |= ORM_RELATIONS.iter().any(|key| meta.path.is_ident(key));
                 skip_orm_option(&meta)?;
@@ -140,6 +160,49 @@ fn inferred_field_kind(field_type: &Type) -> TokenStream2 {
         "chrono::NaiveDate" | "NaiveDate" => quote!(::rullst::nexus::FieldKind::Date),
         _ => quote!(::rullst::nexus::FieldKind::Text),
     }
+}
+
+/// How the ORM's confidentiality markers constrain a field in Nexus.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Protection {
+    None,
+    /// `#[orm(masked)]`: a `Password` widget by default (never listed,
+    /// searched, sorted or pre-filled); an explicit `kind` may relax it.
+    Masked,
+    /// `#[orm(hidden)]`: hidden and read-only by default; an explicit
+    /// `kind = "password"` makes it a write-only `Password` field.
+    Hidden,
+    /// `#[orm(encrypted)]` or `SecretString`: the column holds an envelope that
+    /// Nexus must never list, search or overwrite with plaintext.
+    Sealed,
+}
+
+fn protection(field: &syn::Field, options: &FieldOptions) -> syn::Result<Protection> {
+    let sealed = options.encrypted || crate::parser::is_secret_string_type(&field.ty);
+    let explicit_widget = options.kind.is_some() || !options.options.is_empty();
+    let password_widget = options.kind.as_deref() == Some("password") && options.options.is_empty();
+    if sealed {
+        if explicit_widget && !password_widget {
+            return Err(syn::Error::new_spanned(
+                field,
+                "`#[orm(encrypted)]` and `SecretString` fields are hidden and read-only in Nexus; remove the #[nexus(kind/options)] override",
+            ));
+        }
+        return Ok(Protection::Sealed);
+    }
+    if options.orm_hidden {
+        if explicit_widget && !password_widget {
+            return Err(syn::Error::new_spanned(
+                field,
+                "`#[orm(hidden)]` fields are hidden in Nexus; only #[nexus(kind = \"password\")] may expose them as a write-only field",
+            ));
+        }
+        return Ok(Protection::Hidden);
+    }
+    if options.masked {
+        return Ok(Protection::Masked);
+    }
+    Ok(Protection::None)
 }
 
 fn configured_field_kind(field: &syn::Field, options: &FieldOptions) -> syn::Result<TokenStream2> {
@@ -240,9 +303,11 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
             .unwrap_or(&raw_field_name)
             .to_string();
         let options = parse_field_options(field)?;
-        if options.relation {
+        // Relations hold related models and skipped fields have no column.
+        if options.relation || options.skipped {
             continue;
         }
+        let protection = protection(field, &options)?;
         if tenant_column.as_deref() == Some(field_name.as_str())
             && (type_name(&field.ty) != "String"
                 || options.kind.as_deref().is_some_and(|kind| kind != "text")
@@ -257,7 +322,16 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
             inferred_primary_key = Some(field_name.clone());
         }
 
-        let kind = configured_field_kind(field, &options)?;
+        let password = quote!(::rullst::nexus::FieldKind::Password);
+        let kind = match protection {
+            Protection::Sealed | Protection::Hidden => password,
+            Protection::Masked if options.kind.is_none() && options.options.is_empty() => password,
+            Protection::Masked | Protection::None => configured_field_kind(field, &options)?,
+        };
+        // Sealed fields, and hidden ones without an explicit write-only
+        // widget, are never listed, searched, rendered or written.
+        let concealed = protection == Protection::Sealed
+            || (protection == Protection::Hidden && options.kind.is_none());
         let label = options
             .label
             .unwrap_or_else(|| humanize_field_name(&field_name));
@@ -265,9 +339,11 @@ fn expand_nexus(input: &DeriveInput) -> syn::Result<TokenStream2> {
             || options.primary_key
             || (configured_primary_key.is_none() && field_name == "id");
         let hidden = options.hidden
+            || concealed
             || is_primary_key
             || matches!(field_name.as_str(), "password_hash" | "deleted_at");
         let readonly = options.readonly
+            || concealed
             || is_primary_key
             || tenant_column.as_deref() == Some(field_name.as_str())
             || matches!(field_name.as_str(), "created_at" | "updated_at");
@@ -337,164 +413,4 @@ pub fn derive_nexus_impl(input: TokenStream) -> TokenStream {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use syn::parse_quote;
-
-    #[test]
-    fn generates_typed_metadata_and_explicit_widgets() {
-        let input: DeriveInput = parse_quote! {
-            #[nexus(table = "articles", label = "Articles", icon = "📰")]
-            struct Article {
-                #[nexus(primary_key)]
-                uuid: String,
-                #[nexus(kind = "textarea", label = "Article body")]
-                body: String,
-                #[nexus(kind = "enum", options = "draft, published")]
-                status: String,
-                published: bool,
-            }
-        };
-        let output = expand_nexus(&input)
-            .expect("valid Nexus derive")
-            .to_string();
-        assert!(output.contains("fn nexus_table"));
-        assert!(output.contains("\"articles\""));
-        assert!(output.contains("FieldKind :: Textarea"));
-        assert!(output.contains("FieldKind :: Enum"));
-        assert!(output.contains("\"draft\""));
-        assert!(output.contains("FieldKind :: Boolean"));
-        assert!(output.contains("\"uuid\""));
-    }
-
-    #[test]
-    fn rejects_invalid_widget_configuration_and_primary_key() {
-        let invalid_kind: DeriveInput = parse_quote! {
-            struct Article {
-                id: i64,
-                #[nexus(kind = "magic")]
-                body: String,
-            }
-        };
-        assert!(
-            expand_nexus(&invalid_kind)
-                .expect_err("invalid widget must fail")
-                .to_string()
-                .contains("unsupported Nexus field kind")
-        );
-
-        let invalid_pk: DeriveInput = parse_quote! {
-            #[nexus(primary_key = "missing")]
-            struct Article { id: i64 }
-        };
-        assert!(
-            expand_nexus(&invalid_pk)
-                .expect_err("missing primary key must fail")
-                .to_string()
-                .contains("is not a field")
-        );
-
-        let invalid_tenant: DeriveInput = parse_quote! {
-            #[nexus(tenant = "organization_id")]
-            struct Article { id: i64 }
-        };
-        assert!(
-            expand_nexus(&invalid_tenant)
-                .expect_err("missing tenant column must fail")
-                .to_string()
-                .contains("tenant column `organization_id` is not a field")
-        );
-
-        let invalid_tenant_type: DeriveInput = parse_quote! {
-            #[nexus(tenant = "organization_id")]
-            struct Article {
-                id: i64,
-                organization_id: Option<String>,
-            }
-        };
-        assert!(
-            expand_nexus(&invalid_tenant_type)
-                .expect_err("nullable tenant column must fail")
-                .to_string()
-                .contains("must use a non-optional `String` with text metadata")
-        );
-
-        let invalid_tenant_widget: DeriveInput = parse_quote! {
-            #[nexus(tenant = "organization_id")]
-            struct Article {
-                id: i64,
-                #[nexus(kind = "textarea")]
-                organization_id: String,
-            }
-        };
-        assert!(
-            expand_nexus(&invalid_tenant_widget)
-                .expect_err("non-text tenant metadata must fail")
-                .to_string()
-                .contains("must use a non-optional `String` with text metadata")
-        );
-    }
-
-    #[test]
-    fn skips_shared_orm_options_and_relation_fields() {
-        let input: DeriveInput = parse_quote! {
-            #[orm(
-                table_name = "projects",
-                tenant_column = "tenant_id",
-                policy = "ProjectPolicy",
-                soft_delete(column = "removed_at"),
-                auditable
-            )]
-            struct Project {
-                id: i32,
-                tenant_id: String,
-                #[orm(has_many = "Tag", foreign_key = "project_id", cascade_soft_delete)]
-                tags: Option<Vec<Tag>>,
-                #[orm(belongs_to = "Owner", foreign_key = "owner_id")]
-                owner: Option<Owner>,
-                owner_id: i32,
-                #[orm(masked)]
-                title: String,
-                removed_at: Option<String>,
-            }
-        };
-        let output = expand_nexus(&input)
-            .expect("shared ORM options must not break the Nexus derive")
-            .to_string();
-        assert!(output.contains("fn nexus_table () -> & 'static str { \"projects\" }"));
-        for column in ["id", "tenant_id", "owner_id", "title", "removed_at"] {
-            assert!(output.contains(&format!("name : \"{column}\"")), "{column}");
-        }
-        for relation in ["tags", "owner"] {
-            assert!(
-                !output.contains(&format!("name : \"{relation}\"")),
-                "{relation}"
-            );
-        }
-        assert!(!output.contains("fn nexus_tenant_column"));
-    }
-
-    #[test]
-    fn generates_readonly_hidden_tenant_scope_from_orm_metadata() {
-        let input: DeriveInput = parse_quote! {
-            #[orm(table = "articles", tenant = "organization_id")]
-            struct Article {
-                id: i64,
-                organization_id: String,
-                title: String,
-            }
-        };
-        let output = expand_nexus(&input)
-            .expect("valid tenant-scoped Nexus derive")
-            .to_string();
-
-        assert!(output.contains("fn nexus_tenant_column"));
-        assert!(output.contains("Some (\"organization_id\")"));
-        let tenant_field = output
-            .split("name : \"organization_id\"")
-            .nth(1)
-            .expect("tenant field metadata emitted");
-        assert!(tenant_field.contains("hidden : true"));
-        assert!(tenant_field.contains("readonly : true"));
-    }
-}
+mod tests;

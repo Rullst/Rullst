@@ -8,8 +8,9 @@ pub fn generate_cache_read(
     table_name: &str,
     decrypt_results: &TokenStream,
 ) -> TokenStream {
+    let redis_cfg = crate::feature_gates::redis();
     quote! {
-        #[cfg(feature = "redis")]
+        #redis_cfg
         let cache_key = if _allow_cache && self.remember_ttl.is_some() {
             Some(rullst_orm::query_cache::query_key(
                 #table_name,
@@ -20,7 +21,7 @@ pub fn generate_cache_read(
             None
         };
 
-        #[cfg(feature = "redis")]
+        #redis_cfg
         if let Some(cache_key) = cache_key.as_ref() {
             use rullst_orm::_redis::AsyncCommands;
             let mut conn = rullst_orm::Orm::redis_manager()?;
@@ -37,8 +38,9 @@ pub fn generate_cache_read(
 }
 
 pub fn generate_cache_write(name: &syn::Ident) -> TokenStream {
+    let redis_cfg = crate::feature_gates::redis();
     quote! {
-        #[cfg(feature = "redis")]
+        #redis_cfg
         if let (Some(ttl), Some(cache_key)) = (self.remember_ttl, cache_key.as_ref()) {
             let ttl = u64::try_from(ttl).map_err(|_| rullst_orm::Error::Validation(
                 "remember() TTL exceeds the Redis-supported range".to_string()

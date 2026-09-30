@@ -14,7 +14,7 @@ keywords = ["orm", "database", "sqlite", "postgres", "mysql"]
 categories = ["database"]
 
 [dependencies]
-rullst-orm-macros = { workspace = true, features = ["runtime-driver-codecs"] }
+rullst-orm-macros = { workspace = true, features = ["runtime-driver-codecs", "runtime-feature-gates"] }
 sqlx = { workspace = true, features = ["any", "runtime-tokio", "macros", "json", "tls-rustls"] }
 # `TransactionManager` lets a nested `Orm::transaction` open, release and roll
 # back a savepoint on the task-scoped transaction with SQLx's own depth
@@ -51,13 +51,17 @@ walkdir = "2.5.0"
 [features]
 default = ["drivers-all"]
 drivers-all = ["sqlx/sqlite", "sqlx/postgres", "sqlx/mysql"]
-redis = ["dep:redis", "dep:sha2", "dep:url"]
+redis = ["dep:redis", "dep:sha2", "dep:url", "rullst-orm-macros/redis"]
 mongodb = ["dep:mongodb"]
 duckdb = ["dep:duckdb"]
 turso = ["dep:reqwest", "dep:url", "dep:sha2", "sqlx/sqlite"]
 surrealdb = ["dep:reqwest"]
 scout-http = ["dep:reqwest", "dep:url"]
 pgvector = ["dep:pgvector"]
+# Generates `save_with_embedding` for `#[orm(embedding_for = "...")]` models.
+# The generated method takes `&rullst_ai::AiClient`, so the application must
+# also depend on `rullst-ai`.
+ai = ["pgvector", "rullst-orm-macros/ai"]
 qdrant = ["dep:reqwest", "dep:url"]
 polyglot = ["mongodb", "duckdb", "turso", "surrealdb", "qdrant"]
 strict-postgres = ["sqlx/postgres"]

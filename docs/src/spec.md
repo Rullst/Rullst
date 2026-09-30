@@ -183,17 +183,28 @@ or playback entitlement through a checked authorization trait. Local asset IDs
 bind an immutable tenant/course/provider-library scope; provider IDs and signed
 webhooks never establish that ownership. Service operations recheck permission
 and local revision/state after external work and use bounded durable leases to
-reject concurrent/stale results. SQLite state binds its schema, provider mode,
+reject concurrent/stale mutation results. Playback is a read: it takes no lease,
+so concurrent viewers never serialize and an abandoned request leaves no intent;
+it fences withdrawal/deletion in the transaction that issues the grant. SQLite state binds its schema, provider mode,
 library and capacity, refuses clock rollback and requires trusted local files,
 backup policy and operator-owned keys. Multi-host replication is separate work.
-Only confirmed-deleted local tombstones may be purged, in batches up to 100 and
-after at least 24 hours; the host must retire purged creation IDs because their
-idempotency memory ends at that point. Provider backups/cache erasure is separate.
+Only confirmed-deleted or explicitly discarded local tombstones may be purged,
+in batches up to 100 and after at least 24 hours; the host must retire purged
+creation IDs because their idempotency memory ends at that point. Provider backups/cache erasure is separate.
 
 Creation is journaled before remote dispatch. Bunny's documented creation API
 does not supply an idempotency key: ambiguous creation must reconcile a persisted
 random opaque creation marker, never blindly retry or claim exactly-once remote
-creation. Updates/deletion are reconciled against authoritative reads. Webhook
+creation. Updates/deletion are reconciled against authoritative reads; a
+metadata update writes and verifies the same documented `description` meta tag,
+never Bunny's separate top-level Description that Smart Generate may rewrite.
+A create or update that fails for a non-transient reason (definitive refusal,
+unconfirmed marker search, missing remote video, full tag list or failed
+verification) stops with a bounded non-secret reason instead of staying pending;
+it is never retried automatically and an authorized host explicitly retries or
+discards it. Retrying an unconfirmed creation repeats only the marker search;
+discarding a creation leaves a local tombstone and may orphan an undiscovered
+remote video. Webhook
 v1 authenticates exact body bytes with the read-only library key but has no
 signed timestamp; bounded durable duplicate suppression and serialized provider
 refresh prevent replay/reordering from granting access or publishing assets.
@@ -1260,6 +1271,11 @@ PostgreSQL enum creation, its label drift check and
 active, exactly like the table DDL: they roll back with it, and dropping the
 type after its tables in one transaction cannot block on that transaction's
 own locks from a second pooled connection.
+Generated builder comparisons (`=`, `!=`, `<`, `>`, `IN`, `BETWEEN`, with
+their `or_`/`not_` and `where_<column>` forms) on a persisted field whose type
+implements `DatabaseEnum` bind the value as `CAST(? AS "<type_name>")` on
+PostgreSQL, where a text parameter has no operator against a named enum; the
+other backends keep `?`. The live PostgreSQL matrix filters such columns.
 PostgreSQL through SQLx Any must fail before DDL because that driver cannot
 decode custom PostgreSQL types. Adding, removing or reordering variants,
 deployment order, dependent-object removal and rollback remain explicit,
@@ -1635,9 +1651,17 @@ while portability and semantic review remain the model author's responsibility.
   and building the schema rejects such text when it contains a backslash
   (an escape character in MySQL/MariaDB's default SQL mode) or a control
   character.
-* Generated builders assemble bindings by emitted clause position (CTE, JOIN,
-  WHERE/HAVING, ORDER BY), not by the order in which fluent methods were
-  called. Nested typed subqueries export that ordered binding sequence.
+* Generated builders assemble bindings by emitted clause position (CTE,
+  SELECT, JOIN, WHERE/HAVING, ORDER BY), not by the order in which fluent
+  methods were called. Nested typed subqueries export that ordered binding
+  sequence. Caller-owned raw CTE and select fragments supply their own values
+  through `with_raw_bindings`, `with_recursive_raw_bindings` and
+  `select_raw_bindings` (v13); a marker/binding count mismatch fails closed,
+  and `$n` markers are rewritten like typed subqueries. Pluck and count replace
+  the select list and therefore omit its values. `with_raw`,
+  `with_recursive_raw` and `select_raw` fail with `Validation` when their SQL
+  contains a bind marker, because `bind()` appends WHERE values and a marker
+  before FROM would take the tenant or model-wide scope binding.
 * Generated builders start with the global row cap from
   `Orm::set_max_query_limit` (1,000 by default; `0` disables it). `limit()`
   clamps to it and `unsafe_unlimited()` removes it for one query.
@@ -1650,6 +1674,10 @@ while portability and semantic review remain the model author's responsibility.
   model-wide scope binding can never shift onto a nested or caller value. A
   custom subquery whose `$n` markers are mixed with `?`, reference a missing
   binding or leave a binding unused fails closed with a `Validation` error.
+* `delete_all()` renders only the WHERE and soft-delete predicates. A builder
+  with an explicit `limit()` (the implicit global cap does not count),
+  `offset()`, `order_by()`, joins, `group_by()`/HAVING or CTEs fails with
+  `Validation` instead of silently deleting every matching row.
 * Only PostgreSQL statements are renumbered. `delete_all()`, including the
   soft-delete `UPDATE` that `cascade_soft_delete` issues for child rows, keeps
   `?` markers on MySQL/MariaDB and SQLite; the SQLite test and the live
@@ -1725,6 +1753,11 @@ while portability and semantic review remain the model author's responsibility.
   receives an empty or partial relation. A constrained eager load that sets an
   explicit smaller `limit(n)` (applied to the whole batch) or
   `unsafe_unlimited()` is honored as written.
+* Every parent receives the related rows it shares with other parents (one
+  `belongs_to` parent of many children, a non-unique `local_key`, or duplicated
+  parent rows). The shared value is cloned for every such parent but the last;
+  when the related model does not implement `Clone`, a shared row fails the
+  load with a `Validation` error instead of leaving a parent empty.
 
 ### 5.4. Tenant Scope Contract
 
@@ -1732,7 +1765,10 @@ while portability and semantic review remain the model author's responsibility.
   persisted `String`, `i32`, `f64`, or `bool` tenant field. The derive rejects a
   missing or unsupported field type.
 * Generated queries fail closed when called outside `with_tenant(...)` and bind
-  the active tenant inside the scope. Generated full/partial updates and
+  the active tenant inside the scope, converted to the tenant field's type; a
+  context of another type fails with `Validation` for reads and bulk deletes
+  exactly as for mutations, instead of reaching a predicate that MySQL would
+  compare numerically across tenants. Generated full/partial updates and
   instance delete/restore paths reject a model from another tenant.
 * `Model::unscoped()` is the explicit global escape hatch. Deciding who may use
   it, deriving tenant identity from authenticated state, and database-level RLS
@@ -1797,7 +1833,11 @@ while portability and semantic review remain the model author's responsibility.
   hooks, observers, encrypted fields, atomic audit entries and post-commit
   cache/Scout/observer effects. This is a logical partial change implemented
   through a full-row save, not a selected-column SQL optimization. Existing
-  model hooks can transform that candidate under the normal save contract.
+  model hooks can transform that candidate under the normal save contract:
+  the loaded row runs `after_fetch` before the patch is merged, as `find()`
+  would return it, and `restore_revision` runs it on the restored row before
+  saving. Both run inside the borrowed transaction, where reentrant ORM access
+  fails closed.
 * The caller's object is replaced with the fresh merged model only after the
   operation succeeds. A direct save waits for its transaction commit; an
   explicit or task-scoped save reflects the transaction's tentative state, so
@@ -1852,6 +1892,13 @@ while portability and semantic review remain the model author's responsibility.
   the managed commit; it omits hidden fields and carries `"***"` for encrypted
   and masked fields. Generated Redis invalidation/pub-sub
   and Scout projections use this same post-commit boundary.
+* Only `delete()`, `restore()` and `force_delete()` change the soft-delete
+  marker of an existing row. Generated `save()` leaves that column out of its
+  `UPDATE` (an `INSERT` still writes it), so a handle loaded before `delete()`
+  cannot undelete the row and bypass `can_restore`, the `restored` audit and
+  the restore observers. An auditable save copies the stored marker into the
+  handle before recording its diff, and `update_partial()` rejects a
+  soft-delete value with `Validation`.
 * `force_delete()` and `restore()` check the tenant and their policy
   (`can_force_delete`/`can_restore`) before the transaction, then run in a
   savepoint. `force_delete()` runs the `before_delete`/`after_delete` hooks,
@@ -1953,6 +2000,18 @@ while portability and semantic review remain the model author's responsibility.
   processes cannot be inferred. Callers must retain a defensive TTL and treat
   Redis cluster/failover and durable invalidation delivery as separate
   application contracts.
+* Generated `save_to_redis`/`get_from_redis`/`increment_redis_field` model
+  hashes use `rullst:orm:hash:v1:<namespace>:<scope>:table-<digest>:<id>`
+  keys, binding the application namespace, an opaque digest of the model's
+  tenant (or `global`) and of the table. For a tenant model all three require
+  `with_tenant(...)` with the tenant field's type, `save_to_redis` rejects a
+  handle from another tenant, `get_from_redis` rejects a decoded hash whose
+  tenant differs and the tenant column cannot be incremented; another tenant
+  simply misses. Hashes written by earlier versions under `orm:<table>:<id>`
+  are no longer read and must be rewritten. The `orm:events:*` pub/sub channel
+  names are unchanged and not namespaced, so subscribers keep working; use a
+  dedicated Redis database when applications must not observe each other's
+  events.
 
 ### 5.8. Polyglot Persistence Boundary
 
@@ -2020,6 +2079,13 @@ while portability and semantic review remain the model author's responsibility.
   `mock_*` credentials select the mock; keyless live constructors accept only
   loopback HTTP, while remote/custom origins require HTTPS without URL
   credentials, redirects, paths, queries or fragments.
+* A provider answers one shared per-table index and returns at most
+  `scout::MAX_SEARCH_HITS` (1,000) IDs before tenant, model-wide and
+  soft-delete scopes filter them. For a model with any of those scopes, an
+  answer of that size is treated as truncated: `search()` answers from the SQL
+  fallback instead, so one tenant's hits can never push another tenant's
+  matches out of the result. Below the cap the scoped provider IDs are used;
+  engine-side tenant filtering and relevance order are not provided.
 * Index names, positive IDs, object payloads, queries, response bytes and hit
   counts are bounded. Meilisearch/Algolia tasks use bounded polling;
   Elasticsearch requests use `refresh=wait_for`. Provider response bodies and
@@ -2113,6 +2179,15 @@ while portability and semantic review remain the model author's responsibility.
   The macro crate's default expansion remains compatible with the all-driver
   12.0 runtime; the opt-in helper expansion requires the matching 12.1 runtime.
   Standalone isolation checks include enum encoding/decoding as well as CRUD.
+* Optional generated APIs likewise follow the ORM's features, never features
+  of the consuming application. With `rullst-orm/redis`, models get
+  `.remember(...)`, commit-time query-cache invalidation, the `orm:events:*`
+  publications and the Redis hash helpers; with `rullst-orm/ai` (which implies
+  `pgvector`), `embedding_for` models get `save_with_embedding`. ORM 13 opts
+  its macro crate into `runtime-feature-gates` and forwards both features, so
+  the choice is made at expansion time. Without that opt-in (an older runtime
+  resolving a newer macro crate) the legacy output keeps its
+  application-evaluated `#[cfg(feature = ...)]` attributes.
 
 ### 5.12. ORM Telemetry Contract
 
@@ -3001,6 +3076,7 @@ sending.
 * A model may explicitly declare one text `tenant` column. Nexus then obtains the scope only from a trusted Core `TenantContext`, injects it on create, includes it in every built-in read/mutation/batch predicate, and denies a missing context. Models without that metadata remain global administrator models. Authentication and tenant-membership resolution remain host contracts.
 * Updates write only submitted fields, and the edit form (`data-nexus-mode="edit"`) submits only controls the administrator changed. NULL, unregistered enum values, offset or sub-millisecond date-times and undecodable values render without a widget default that could overwrite them. An emptied number/relation/date/date-time/enum/JSON value is NULL (omitted on create), never `''`; the semantic validator rejects `''` for those kinds.
 * `Password` fields are never rendered: list cells show a fixed mask (the column is not selected or sortable) and edit forms an empty input; an empty submission keeps the stored value. Non-empty values are written verbatim; Nexus neither hashes them nor runs ORM hooks, so credential-hash columns must be read-only in Nexus and changed by an application flow that hashes.
+* `#[derive(Nexus)]` follows ORM field semantics: `#[orm(skip)]`/`#[sqlx(skip)]` fields are not columns; `#[orm(encrypted)]`, `SecretString` and `#[orm(hidden)]` fields become hidden, read-only `Password` fields that are never listed, searched, sorted, rendered or written (only `#[nexus(kind = "password")]` turns an `#[orm(hidden)]` field into a write-only field, and any other widget override on these fields fails compilation); `#[orm(masked)]` fields default to `Password` unless an explicit `#[nexus(kind)]` shows them.
 * The panel loads only same-origin assets under `/nexus/assets/` (stylesheet, behaviour script and a vendored, unmodified htmx 2.0.4 with eval, script tags and injected indicator styles disabled). Nexus markup contains no inline script/style blocks, event-handler, `hx-on` or `style` attributes, so the default production nonce CSP applies unchanged; the application-wide `security.csp` must not be relaxed for Nexus.
 * `with_required_audit` requires the fixed `rullst_nexus_audits` schema and appends one minimized committed-mutation row in the same transaction. Audit unavailability rolls the data change back. This is not append-only, tamper-evident, denied-attempt, retention, backup, replication or external-SIEM evidence; those properties remain host responsibilities.
 

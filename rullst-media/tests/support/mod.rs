@@ -113,6 +113,13 @@ pub struct Remote {
     pub wrong_identity: bool,
     pub redirect: bool,
     pub bad_success: bool,
+    /// Simulates a top-level Description that differs from the written
+    /// `description` meta tag (for example a Smart Generate rewrite).
+    pub generated_description: bool,
+    /// Definitively refuses create requests (400) without creating a video.
+    pub reject_create: bool,
+    /// Acknowledges updates without applying them.
+    pub ignore_updates: bool,
     pub gate: Option<Arc<(tokio::sync::Notify, tokio::sync::Notify)>>,
 }
 pub struct Fixture {
@@ -173,6 +180,9 @@ async fn create(
     }
     let mut remote = state.lock().unwrap();
     remote.calls.push("create".into());
+    if remote.reject_create {
+        return StatusCode::BAD_REQUEST.into_response();
+    }
     remote.next_video += 1;
     let id = format!("12345678-1234-4234-8234-{:012x}", remote.next_video);
     let video = json!({"videoLibraryId":7,"guid":id,"title":body["title"],"description":"","status":0,"length":12,"hasMP4Fallback":false,"availableResolutions":"720p"});
@@ -253,11 +263,17 @@ async fn update(
     }
     let mut remote = state.lock().unwrap();
     remote.calls.push("update".into());
+    let generated = remote.generated_description;
+    let ignored = remote.ignore_updates;
     let Some(value) = remote.videos.get_mut(&video) else {
         return StatusCode::NOT_FOUND.into_response();
     };
+    if ignored {
+        return Json(json!({"success":true,"statusCode":200})).into_response();
+    }
     value["title"] = body["title"].clone();
     value["metaTags"] = body["metaTags"].clone();
+    // API 1.6.6: setting the `description` meta tag also updates Description.
     if let Some(tag) = body["metaTags"]
         .as_array()
         .unwrap()
@@ -265,6 +281,9 @@ async fn update(
         .find(|tag| tag["property"] == "description")
     {
         value["description"] = tag["value"].clone();
+    }
+    if generated {
+        value["description"] = json!("Provider-generated summary");
     }
     Json(json!({"success":!remote.bad_success,"statusCode":200})).into_response()
 }
