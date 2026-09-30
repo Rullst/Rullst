@@ -1,29 +1,31 @@
 // src/security.rs — Outbound Phishing, Homograph URL Interceptor & Threat Scanner.
 
 use crate::error::MailError;
+use std::collections::HashSet;
 
 /// Sanitizes all recognized credentials, AWS access keys, and private-key blocks.
+///
+/// Every pass is one forward scan that builds its output incrementally, so the
+/// cost grows linearly with the input instead of with `matches * length`.
 pub fn redact_email_secrets(input: &str) -> String {
-    let mut output = input.to_string();
-    redact_values_after(&mut output, "bearer ", false);
+    let mut output = redact_values_after(input, "bearer ", false);
     for key in ["password=", "secret=", "api_key=", "key=", "token="] {
-        redact_values_after(&mut output, key, true);
+        output = redact_values_after(&output, key, true);
     }
     redact_aws_access_keys(&mut output);
-    redact_pem_blocks(&mut output, "PRIVATE KEY");
-    redact_pem_blocks(&mut output, "RSA PRIVATE KEY");
-    output
+    let output = redact_pem_blocks(&output, "PRIVATE KEY");
+    redact_pem_blocks(&output, "RSA PRIVATE KEY")
 }
 
-fn redact_values_after(output: &mut String, marker: &str, stop_at_ampersand: bool) {
+fn redact_values_after(input: &str, marker: &str, stop_at_ampersand: bool) -> String {
+    // ASCII lowercasing preserves every byte offset and character boundary.
+    let lower = input.to_ascii_lowercase();
+    let mut output = String::with_capacity(input.len());
+    let mut copied = 0usize;
     let mut offset = 0usize;
-    loop {
-        let lower = output.to_ascii_lowercase();
-        let Some(relative) = lower.get(offset..).and_then(|tail| tail.find(marker)) else {
-            break;
-        };
+    while let Some(relative) = lower.get(offset..).and_then(|tail| tail.find(marker)) {
         let start = offset + relative + marker.len();
-        let Some(tail) = output.get(start..) else {
+        let Some(tail) = input.get(start..) else {
             break;
         };
         let end = tail
@@ -32,19 +34,20 @@ fn redact_values_after(output: &mut String, marker: &str, stop_at_ampersand: boo
                     || matches!(character, '"' | '\'' | ',' | '<')
                     || (stop_at_ampersand && character == '&')
             })
-            .map_or(output.len(), |relative_end| start + relative_end);
-        if end <= start {
-            offset = start;
-            continue;
+            .map_or(input.len(), |relative_end| start + relative_end);
+        if end > start {
+            output.push_str(input.get(copied..start).unwrap_or_default());
+            output.push_str("[REDACTED]");
+            copied = end;
         }
-        if output.get(start..end) != Some("[REDACTED]") {
-            output.replace_range(start..end, "[REDACTED]");
-        }
-        offset = start + "[REDACTED]".len();
+        offset = end;
     }
+    output.push_str(input.get(copied..).unwrap_or_default());
+    output
 }
 
 fn redact_aws_access_keys(output: &mut String) {
+    // Same-length replacement keeps this in-place pass linear.
     let mut offset = 0usize;
     while let Some(relative) = output.get(offset..).and_then(|tail| tail.find("AKIA")) {
         let start = offset + relative;
@@ -61,18 +64,23 @@ fn redact_aws_access_keys(output: &mut String) {
     }
 }
 
-fn redact_pem_blocks(output: &mut String, label: &str) {
+fn redact_pem_blocks(input: &str, label: &str) -> String {
     let begin = format!("-----BEGIN {label}-----");
     let end = format!("-----END {label}-----");
-    while let Some(start) = output.find(&begin) {
-        let search_start = start + begin.len();
-        let Some(relative_end) = output.get(search_start..).and_then(|tail| tail.find(&end)) else {
-            output.replace_range(start.., "[REDACTED PRIVATE KEY]");
-            break;
+    let mut output = String::with_capacity(input.len());
+    let mut remaining = input;
+    while let Some(start) = remaining.find(&begin) {
+        output.push_str(remaining.get(..start).unwrap_or_default());
+        output.push_str("[REDACTED PRIVATE KEY]");
+        let body = remaining.get(start + begin.len()..).unwrap_or_default();
+        let Some(relative_end) = body.find(&end) else {
+            // An unterminated block is redacted through the end of the input.
+            return output;
         };
-        let block_end = search_start + relative_end + end.len();
-        output.replace_range(start..block_end, "[REDACTED PRIVATE KEY]");
+        remaining = body.get(relative_end + end.len()..).unwrap_or_default();
     }
+    output.push_str(remaining);
+    output
 }
 
 /// Scans a URL string for internationalized domain name (IDN) homograph spoofing attacks.
@@ -113,8 +121,11 @@ pub fn is_dangerous_scheme(url: &str) -> bool {
 }
 
 /// Extracts all URL links (`href="..."` and plain `http://` / `https://` occurrences) from HTML/text.
+///
+/// Plain-text URLs are deduplicated through a hash set, so extraction stays
+/// linear in the content length even when it contains many links.
 pub fn extract_urls(content: &str) -> Vec<String> {
-    let mut urls = Vec::new();
+    let mut urls: Vec<&str> = Vec::new();
     let bytes = content.as_bytes();
 
     // 1. Extract href="..." occurrences case-insensitively without full heap clone
@@ -130,8 +141,7 @@ pub fn extract_urls(content: &str) -> Vec<String> {
                 && (quote_char == '"' || quote_char == '\'')
                 && let Some(end_quote) = rest[1..].find(quote_char)
             {
-                let link = &rest[1..=end_quote];
-                urls.push(link.to_string());
+                urls.push(&rest[1..=end_quote]);
                 pos = actual_idx + end_quote + 1;
                 continue;
             }
@@ -142,6 +152,7 @@ pub fn extract_urls(content: &str) -> Vec<String> {
     }
 
     // 2. Extract plain https:// and http:// words
+    let mut seen: HashSet<&str> = urls.iter().copied().collect();
     for word in content.split_whitespace() {
         let trimmed = word.trim_matches(|c| c == '"' || c == '\'' || c == '<' || c == '(');
         let start_pos = if trimmed.starts_with("https://")
@@ -173,13 +184,13 @@ pub fn extract_urls(content: &str) -> Vec<String> {
                 })
                 .unwrap_or(candidate.len());
             let clean = &candidate[..end_idx];
-            if !clean.is_empty() && !urls.contains(&clean.to_string()) {
-                urls.push(clean.to_string());
+            if !clean.is_empty() && seen.insert(clean) {
+                urls.push(clean);
             }
         }
     }
 
-    urls
+    urls.into_iter().map(str::to_string).collect()
 }
 
 /// Checks if an email header value (Subject, To, From, etc.) is safe from CRLF injection attacks (`\r` or `\n`).
@@ -238,6 +249,208 @@ mod tests {
             "Welcome to Rullst!\r\nBcc: evil@attacker.com"
         ));
         assert!(!is_crlf_safe("Subject\nInjected-Header: 123"));
+    }
+
+    /// Deterministic xorshift sequence for reproducible differential inputs.
+    fn tokens(seed: &mut u64, alphabet: &[&str], count: usize) -> String {
+        let mut output = String::new();
+        for _ in 0..count {
+            *seed ^= *seed << 13;
+            *seed ^= *seed >> 7;
+            *seed ^= *seed << 17;
+            output.push_str(alphabet[(*seed % alphabet.len() as u64) as usize]);
+        }
+        output
+    }
+
+    /// The previous quadratic redactor, kept only as a behavioural oracle.
+    fn legacy_redact(input: &str) -> String {
+        fn values_after(output: &mut String, marker: &str, stop_at_ampersand: bool) {
+            let mut offset = 0usize;
+            loop {
+                let lower = output.to_ascii_lowercase();
+                let Some(relative) = lower.get(offset..).and_then(|tail| tail.find(marker)) else {
+                    break;
+                };
+                let start = offset + relative + marker.len();
+                let Some(tail) = output.get(start..) else {
+                    break;
+                };
+                let end = tail
+                    .find(|character: char| {
+                        character.is_whitespace()
+                            || matches!(character, '"' | '\'' | ',' | '<')
+                            || (stop_at_ampersand && character == '&')
+                    })
+                    .map_or(output.len(), |relative_end| start + relative_end);
+                if end <= start {
+                    offset = start;
+                    continue;
+                }
+                if output.get(start..end) != Some("[REDACTED]") {
+                    output.replace_range(start..end, "[REDACTED]");
+                }
+                offset = start + "[REDACTED]".len();
+            }
+        }
+        fn pem(output: &mut String, label: &str) {
+            let begin = format!("-----BEGIN {label}-----");
+            let end = format!("-----END {label}-----");
+            while let Some(start) = output.find(&begin) {
+                let search_start = start + begin.len();
+                let Some(relative_end) =
+                    output.get(search_start..).and_then(|tail| tail.find(&end))
+                else {
+                    output.replace_range(start.., "[REDACTED PRIVATE KEY]");
+                    break;
+                };
+                output.replace_range(
+                    start..search_start + relative_end + end.len(),
+                    "[REDACTED PRIVATE KEY]",
+                );
+            }
+        }
+        let mut output = input.to_string();
+        values_after(&mut output, "bearer ", false);
+        for key in ["password=", "secret=", "api_key=", "key=", "token="] {
+            values_after(&mut output, key, true);
+        }
+        redact_aws_access_keys(&mut output);
+        pem(&mut output, "PRIVATE KEY");
+        pem(&mut output, "RSA PRIVATE KEY");
+        output
+    }
+
+    /// The previous extractor with linear-search deduplication.
+    fn legacy_extract(content: &str) -> Vec<String> {
+        let mut urls: Vec<String> = Vec::new();
+        let bytes = content.as_bytes();
+        let mut pos = 0;
+        while pos + 5 <= bytes.len() {
+            if bytes[pos..].starts_with(b"href=")
+                || bytes[pos..].starts_with(b"HREF=")
+                || bytes[pos..].starts_with(b"Href=")
+            {
+                let actual_idx = pos + 5;
+                let rest = &content[actual_idx..];
+                if let Some(quote_char) = rest.chars().next()
+                    && (quote_char == '"' || quote_char == '\'')
+                    && let Some(end_quote) = rest[1..].find(quote_char)
+                {
+                    urls.push(rest[1..=end_quote].to_string());
+                    pos = actual_idx + end_quote + 1;
+                    continue;
+                }
+                pos = actual_idx;
+            } else {
+                pos += 1;
+            }
+        }
+        for word in content.split_whitespace() {
+            let trimmed = word.trim_matches(|c| c == '"' || c == '\'' || c == '<' || c == '(');
+            let start_pos = if trimmed.starts_with("https://")
+                || trimmed.starts_with("http://")
+                || trimmed.starts_with("HTTPS://")
+                || trimmed.starts_with("HTTP://")
+            {
+                Some(0)
+            } else {
+                trimmed
+                    .find("https://")
+                    .or_else(|| trimmed.find("http://"))
+                    .or_else(|| trimmed.find("HTTPS://"))
+                    .or_else(|| trimmed.find("HTTP://"))
+            };
+            if let Some(url_start) = start_pos {
+                let candidate = &trimmed[url_start..];
+                let end_idx = candidate
+                    .find(['<', '>', '"', '\'', ')', '(', ']', '['])
+                    .unwrap_or(candidate.len());
+                let clean = &candidate[..end_idx];
+                if !clean.is_empty() && !urls.contains(&clean.to_string()) {
+                    urls.push(clean.to_string());
+                }
+            }
+        }
+        urls
+    }
+
+    #[test]
+    fn linear_redaction_matches_the_previous_redactor() {
+        let alphabet = [
+            "key=",
+            "KEY=",
+            "Key=",
+            "password=",
+            "token=",
+            "secret=",
+            "api_key=",
+            "Bearer ",
+            "bearer ",
+            "abc",
+            " ",
+            "&",
+            "\"",
+            "'",
+            ",",
+            "<",
+            "\n",
+            "AKIA",
+            "AKIAABCDEFGHIJKLMNOP",
+            "-----BEGIN PRIVATE KEY-----",
+            "-----END PRIVATE KEY-----",
+            "-----BEGIN RSA PRIVATE KEY-----",
+            "-----END RSA PRIVATE KEY-----",
+            "[REDACTED]",
+            "é",
+            "x",
+            "=",
+        ];
+        let mut seed = 0x9e37_79b9_7f4a_7c15_u64;
+        for round in 0..20_000 {
+            let input = tokens(&mut seed, &alphabet, round % 14);
+            assert_eq!(
+                redact_email_secrets(&input),
+                legacy_redact(&input),
+                "{input:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn hash_set_deduplication_matches_the_previous_extractor() {
+        let alphabet = [
+            "href=\"",
+            "href='",
+            "HREF=\"",
+            "Href='",
+            "\"",
+            "'",
+            "http://a",
+            "https://b",
+            "HTTP://C",
+            "HTTPS://d",
+            " ",
+            "(",
+            ")",
+            "<",
+            ">",
+            "[",
+            "]",
+            "x",
+            "/",
+            "\n",
+            "é",
+        ];
+        let mut seed = 0x2545_f491_4f6c_dd1d_u64;
+        for round in 0..20_000 {
+            let input = tokens(&mut seed, &alphabet, round % 16);
+            assert_eq!(extract_urls(&input), legacy_extract(&input), "{input:?}");
+        }
+        let distinct: String = (0..20_000)
+            .map(|index| format!("http://h{index} "))
+            .collect();
+        assert_eq!(extract_urls(&distinct).len(), 20_000);
     }
 
     #[test]
