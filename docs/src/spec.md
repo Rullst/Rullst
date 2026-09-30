@@ -2597,7 +2597,7 @@ sending.
 * **ORM Configuration:** `RULLST_ENCRYPTION_KEY`, `RULLST_ENCRYPTION_KEY_ID`, and `RULLST_ENCRYPTION_KEYRING` select the current and still-readable prior keys. Rullst does not provide key custody or automatic retirement.
 
 ### 7.2. Runtime Application Self-Protection (RASP)
-* **Bounded Heuristic Inspector:** ASCII case-insensitive signature matching covers selected SQL injection, traversal, SSRF, shell/JNDI patterns across URI, non-secret headers, and supported bounded textual/JSON bodies. Percent decoding and body/JSON inspection allocate; this control does not replace typed parsing, SQL binds, validation, authorization, or SSRF allowlists.
+* **Bounded Heuristic Inspector:** ASCII case-insensitive signature matching covers selected SQL injection, traversal, SSRF, shell/JNDI patterns across URI, non-secret headers, and supported bounded textual/JSON bodies. Core's WAF and this inspector classify body media types case-insensitively, including `+json`/`+xml` suffixes and every `application/x-www-form-urlencoded`-prefixed type, so a body that axum's `Json` or `Form` extractor accepts is inspected. Percent decoding and body/JSON inspection allocate; this control does not replace typed parsing, SQL binds, validation, authorization, or SSRF allowlists.
 * **Login Guard Tarpit:** `record_login_failure` returns progressive delay
   decisions and `record_login_failure_and_wait` applies them asynchronously;
   both share bounded, temporary in-memory jails keyed by a hashed identity.
@@ -2629,8 +2629,10 @@ sending.
 * Construction caps serialized bytes, node count and depth, rejects non-local
   `$ref`/`$dynamicRef`, disables network/filesystem retrieval and selects the
   linear-time regex engine. The route-scoped Axum middleware first enforces the
-  existing exact media-type, syntax, duplicate-key, payload-size and depth
-  boundary, then returns `422` for schema mismatch without echoing values.
+  existing media-type, syntax, duplicate-key, payload-size and depth boundary,
+  then returns `422` for schema mismatch without echoing values. A JSON media
+  type is recognized in every spelling axum's `Json` extractor accepts (any
+  ASCII case, parameters, a `json` subtype or `+json` suffix).
 * The policy validates JSON bodies only. Authentication, authorization,
   ownership, business invariants and query/header/form parameters remain
   separate application boundaries.

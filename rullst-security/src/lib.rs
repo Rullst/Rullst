@@ -11,6 +11,7 @@ pub mod headers;
 pub mod honey;
 pub mod log_redactor;
 pub mod login_guard;
+mod media_type;
 pub mod mfa;
 pub mod rasp;
 pub mod rate_limit;

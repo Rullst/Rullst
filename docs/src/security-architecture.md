@@ -173,7 +173,10 @@ cryptographically trusted internal gateway.
 
 RASP/WAF rules are bounded to avoid uncontrolled CPU or memory work. They can
 reject known suspicious patterns in supported URI, header, and bounded body data,
-but application queries must still use binds and access control.
+but application queries must still use binds and access control. Body media
+types are classified at least as broadly as axum's extractors: any ASCII case,
+parameters, a `json`/`xml` subtype or `+json`/`+xml` suffix, and any type that
+starts with `application/x-www-form-urlencoded`.
 
 DLP modifies only supported textual responses whose body can be safely buffered
 within configured limits. Applications must test JSON, HTML, binary, compressed,

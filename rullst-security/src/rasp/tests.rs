@@ -228,3 +228,59 @@ async fn middleware_fails_closed_for_uninspectable_textual_bodies() {
         StatusCode::PAYLOAD_TOO_LARGE
     );
 }
+
+#[test]
+fn media_types_accepted_by_axum_extractors_are_inspected() {
+    for media_type in [
+        "APPLICATION/JSON",
+        "application/vnd.api+JSON",
+        "Application/problem+json",
+        "application/json+patch",
+        "Application/Problem+XML",
+        "Text/Plain",
+        "APPLICATION/X-WWW-FORM-URLENCODED",
+        "application/x-www-form-urlencodedX",
+    ] {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::CONTENT_TYPE, HeaderValue::from_static(media_type));
+        assert!(should_inspect_body(&headers), "should inspect {media_type}");
+    }
+    let escaped = r#"{"q":"\u0075nion select pw"}"#;
+    assert!(RaspInspector::inspect_body(
+        escaped,
+        "application/vnd.api+JSON"
+    ));
+    assert!(RaspInspector::inspect_body(escaped, "Application/JSON"));
+    assert!(!RaspInspector::inspect_body(escaped, "text/plain"));
+}
+
+#[tokio::test]
+async fn case_and_suffix_variants_cannot_skip_body_inspection() {
+    let app = guarded_app();
+    for (media_type, body) in [
+        (
+            "application/vnd.api+JSON",
+            r#"{"q":"\u0075nion select pw"}"#,
+        ),
+        (
+            "Application/problem+json",
+            r#"{"q":"\u0075nion select pw"}"#,
+        ),
+        (
+            "application/x-www-form-urlencodedX",
+            "file=../../etc/passwd",
+        ),
+    ] {
+        let request = Request::builder()
+            .method("POST")
+            .uri("/echo")
+            .header(header::CONTENT_TYPE, media_type)
+            .body(Body::from(body))
+            .unwrap();
+        assert_eq!(
+            app.clone().oneshot(request).await.unwrap().status(),
+            StatusCode::FORBIDDEN,
+            "{media_type} body was not inspected"
+        );
+    }
+}

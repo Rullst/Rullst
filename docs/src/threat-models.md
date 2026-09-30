@@ -174,7 +174,7 @@ security telemetry.
 
 | Abuse case | Required disposition | Repository evidence or remaining work |
 | --- | --- | --- |
-| `SEC-16` malformed, ambiguous or schema-confused JSON body | Require exact JSON media type on unsafe schema-bound requests; reject malformed, duplicate-key, oversized or deeply nested input before applying a precompiled closed schema. Never fetch attacker-selected schema references. | The bounded route policy compiles JSON Schema 2020-12 or one OpenAPI 3.1 component with local references, no network/filesystem resolver and linear-time regexes. The exact negative covers shape/additional-property confusion and external references; middleware tests cover 415/400/422 and exact body preservation. Auth, ownership, domain rules and non-JSON parameters remain separate. |
+| `SEC-16` malformed, ambiguous or schema-confused JSON body | Require a JSON media type on unsafe schema-bound requests, classified as the route's JSON extractor does (any ASCII case, parameters, `json` subtype or `+json` suffix) so an accepted spelling cannot skip the checks; reject malformed, duplicate-key, oversized or deeply nested input before applying a precompiled closed schema. Never fetch attacker-selected schema references. | The bounded route policy compiles JSON Schema 2020-12 or one OpenAPI 3.1 component with local references, no network/filesystem resolver and linear-time regexes. The exact negative covers shape/additional-property confusion and external references; middleware tests cover 415/400/422 and exact body preservation. Auth, ownership, domain rules and non-JSON parameters remain separate. |
 
 Trust boundaries are application schema configuration ↔ compiled validator and
 untrusted HTTP body ↔ route handler.
