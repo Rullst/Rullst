@@ -258,7 +258,10 @@ Perform database authorization and any required row locking explicitly within
 the managed transaction before invoking the mutation; the policy can then
 validate trusted context and in-memory model values. Defer only post-commit
 effects to `after_commit`/`committed`, which run outside that callback scope.
-Failure in an `after_save` hook still rolls back the generated mutation.
+Failure in an `after_save` hook still rolls back the generated mutation. Inside
+an existing transaction (`save_with_tx`, or `save()` within `Orm::transaction`)
+the save runs in a savepoint, so catching that error and committing the outer
+transaction does not persist the failed write.
 Independently spawned tasks and separately retained raw connections do not
 inherit this executor contract and must not be used to bypass atomicity.
 

@@ -45,6 +45,32 @@ impl HookRecord {
     }
 }
 
+#[derive(Clone, Debug, rullst_orm::Orm, rullst_orm::FromRow)]
+#[orm(table = "mutation_callback_records", after_save = "reject_marked_name")]
+struct RejectingHookRecord {
+    id: i32,
+    name: String,
+}
+
+impl RejectingHookRecord {
+    async fn reject_marked_name(&mut self) -> Result<(), Error> {
+        if self.name.starts_with("rejected") {
+            return Err(Error::Validation(
+                "after_save rejected the record".to_string(),
+            ));
+        }
+        Ok(())
+    }
+}
+
+async fn named_rows(name: &str) -> i64 {
+    PlainRecord::query()
+        .where_eq("name", name)
+        .count()
+        .await
+        .expect("count named rows")
+}
+
 async fn rejected_reentry<T: std::fmt::Debug>(
     future: impl std::future::Future<Output = Result<T, Error>>,
 ) {
@@ -139,4 +165,50 @@ async fn mutation_policy_and_hooks_reject_reentry_without_losing_atomicity() {
     .await
     .expect("subsequent non-reentrant managed transaction");
     assert_eq!(PlainRecord::all().await.expect("final data").len(), 2);
+
+    // A save that fails after its INSERT and is caught inside the caller's
+    // transaction must not leave the row behind when that transaction commits.
+    Orm::transaction(|_| {
+        Box::pin(async {
+            let mut rejected = RejectingHookRecord {
+                id: 0,
+                name: "rejected in managed transaction".to_string(),
+            };
+            let caught = rejected.save().await;
+            assert!(matches!(caught, Err(Error::Validation(_))), "{caught:?}");
+            assert_eq!(rejected.id, 0, "failed after_save must restore the ID");
+            let mut kept = RejectingHookRecord {
+                id: 0,
+                name: "kept in managed transaction".to_string(),
+            };
+            kept.save().await
+        })
+    })
+    .await
+    .expect("managed transaction continues after a caught save failure");
+    assert_eq!(named_rows("rejected in managed transaction").await, 0);
+    assert_eq!(named_rows("kept in managed transaction").await, 1);
+
+    let mut transaction = Orm::begin_transaction()
+        .await
+        .expect("caller-owned transaction");
+    let mut rejected = RejectingHookRecord {
+        id: 0,
+        name: "rejected in caller transaction".to_string(),
+    };
+    assert!(rejected.save_with_tx(&mut transaction).await.is_err());
+    assert_eq!(rejected.id, 0, "failed after_save must restore the ID");
+    let mut kept = RejectingHookRecord {
+        id: 0,
+        name: "kept in caller transaction".to_string(),
+    };
+    kept.save_with_tx(&mut transaction)
+        .await
+        .expect("save after a caught failure");
+    transaction
+        .commit()
+        .await
+        .expect("commit caller-owned transaction");
+    assert_eq!(named_rows("rejected in caller transaction").await, 0);
+    assert_eq!(named_rows("kept in caller transaction").await, 1);
 }

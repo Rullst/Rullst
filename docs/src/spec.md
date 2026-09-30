@@ -696,7 +696,13 @@ while portability and semantic review remain the model author's responsibility.
 * Savepoint-scoped generated saves/deletes and revision restores collect their
   callbacks in a nested scope. The callbacks are promoted to the enclosing
   commit boundary only after that savepoint succeeds, so catching a failed
-  auditable mutation cannot leak a later `committed` effect.
+  mutation cannot leak a later `committed` effect.
+* Every `save_with_tx` (and a `save()` joining a task-scoped transaction), not
+  only an auditable one, runs in a savepoint of the caller's transaction. A
+  failed policy, hook, observer or SQL write rolls that savepoint back and
+  restores the model's `id`, so a caller that catches the error and commits
+  does not persist the failed write. A direct `save()` owns its transaction
+  and needs no savepoint.
 * Every queued callback is attempted. A failure is returned as `PostCommit`,
   whose contract explicitly means the database mutation is already durable.
   Applications must not retry the database mutation blindly from this error.
