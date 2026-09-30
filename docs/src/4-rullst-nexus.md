@@ -98,7 +98,9 @@ other kind is compared as text, even when it looks numeric.
 Search matches the typed text literally (`%` and `_` are not wildcards) in the
 visible text, textarea, e-mail and URL columns. It is case-insensitive on
 PostgreSQL (`ILIKE`), ASCII case-insensitive on SQLite and follows the column
-collation on MySQL/MariaDB.
+collation on MySQL/MariaDB. Live search keeps the current sort, starts again at
+page 1, rebuilds the sort and pagination links for the new query and records it
+in the URL, so saving a record refreshes the same view.
 
 A `password` field is never displayed: the list shows a fixed mask and the
 edit form an empty input, and leaving it empty keeps the stored value. Nexus

@@ -299,35 +299,44 @@ pub(crate) async fn table_view(entry: &RegistryEntry, view: &TableView<'_>) -> S
          &#43; New {safe_label}</button></div>"
     );
 
+    // The search box lives in its own GET form, so Enter searches instead of
+    // submitting the bulk form, and keeps the current sort. Live search
+    // swaps only the table region (rows, sort links and pagination rebuilt
+    // for the new query) so the input keeps focus and any newer keystrokes,
+    // and pushes the URL so a reload or a save refresh keeps the view.
+    let safe_q = rullst_core::html::escape_str(q);
+    let sort_inputs = [("sort_by", sort_by), ("order", order)]
+        .into_iter()
+        .filter_map(|(name, value)| {
+            value.map(|value| {
+                format!(
+                    "<input type=\"hidden\" name=\"{name}\" value=\"{}\" />",
+                    rullst_core::html::escape_str(value)
+                )
+            })
+        })
+        .collect::<String>();
+    let region_swap = "hx-target=\"#nexus-table-region\" hx-select=\"#nexus-table-region\" \
+         hx-swap=\"outerHTML\" hx-push-url=\"true\"";
     let _ = write!(
         out,
-        "<form id=\"batch-form-{table_path}\" method=\"POST\" action=\"/nexus/table/{table_path}/batch\" \
-         data-nexus-confirm=\"Apply bulk action?\">{token_field}\
-         <div class=\"nexus-toolbar\">\
-         <div class=\"nexus-search-wrap\">\
+        "<div class=\"nexus-toolbar\">\
+         <form class=\"nexus-search-wrap\" role=\"search\" method=\"GET\" action=\"/nexus/table/{table_path}\" \
+         hx-get=\"/nexus/table/{table_path}\" {region_swap}>\
          <span class=\"nexus-search-icon\">&#128269;</span>\
-         <input type=\"text\" class=\"nexus-search-input\" name=\"q\" value=\"{}\" placeholder=\"Search {safe_label}...\" \
-         hx-get=\"/nexus/table/{table_path}/search\" hx-trigger=\"keyup changed delay:300ms\" \
-         hx-target=\"#nexus-table-body\" hx-include=\"[name='q']\" />\
-         </div>\
-         <select name=\"action\" class=\"nexus-btn nexus-btn-ghost nexus-bulk-select\">\
+         <input type=\"text\" class=\"nexus-search-input\" id=\"nexus-search-{table_path}\" name=\"q\" \
+         value=\"{safe_q}\" placeholder=\"Search {safe_label}...\" aria-label=\"Search {safe_label}\" \
+         hx-get=\"/nexus/table/{table_path}\" hx-trigger=\"keyup changed delay:300ms\" \
+         hx-include=\"closest form\" {region_swap} />\
+         {sort_inputs}</form>\
+         <select name=\"action\" form=\"batch-form-{table_path}\" class=\"nexus-btn nexus-btn-ghost nexus-bulk-select\" \
+         aria-label=\"Bulk action\">\
          <option value=\"\">Bulk Actions</option>\
          <option value=\"delete\">Delete Selected</option>\
          {deactivate_option}\
          </select>\
-         <button type=\"submit\" class=\"nexus-btn nexus-btn-ghost\">Apply</button>\
-         </div>\
-         <div class=\"nexus-table-wrap\">\
-         <table class=\"nexus-table\">\
-         <thead><tr class=\"nexus-thead-row\">\
-         <th class=\"nexus-th nexus-th-check text-center\">\
-         <input type=\"checkbox\" data-nexus-select-all=\"true\" aria-label=\"Select all rows\" /></th>\
-         {th_cells}\
-         <th class=\"nexus-th nexus-th-actions\">Actions</th>\
-         </tr></thead>\
-         <tbody id=\"nexus-table-body\">{rows_html}</tbody>\
-         </table></div></form>",
-        rullst_core::html::escape_str(q)
+         <button type=\"submit\" form=\"batch-form-{table_path}\" class=\"nexus-btn nexus-btn-ghost\">Apply</button>\
+         </div>"
     );
 
     let query_param = urlencoding::encode(q);
@@ -340,7 +349,20 @@ pub(crate) async fn table_view(entry: &RegistryEntry, view: &TableView<'_>) -> S
 
     let _ = write!(
         out,
-        "<div class=\"nexus-pagination\">\
+        "<form id=\"batch-form-{table_path}\" method=\"POST\" action=\"/nexus/table/{table_path}/batch\" \
+         data-nexus-confirm=\"Apply bulk action?\">{token_field}\
+         <div id=\"nexus-table-region\">\
+         <div class=\"nexus-table-wrap\">\
+         <table class=\"nexus-table\">\
+         <thead><tr class=\"nexus-thead-row\">\
+         <th class=\"nexus-th nexus-th-check text-center\">\
+         <input type=\"checkbox\" data-nexus-select-all=\"true\" aria-label=\"Select all rows\" /></th>\
+         {th_cells}\
+         <th class=\"nexus-th nexus-th-actions\">Actions</th>\
+         </tr></thead>\
+         <tbody id=\"nexus-table-body\">{rows_html}</tbody>\
+         </table></div>\
+         <div class=\"nexus-pagination\">\
          <div class=\"nexus-page-indicator\">Page {page}</div>\
          <div class=\"nexus-pagination-links\">\
          <a href=\"/nexus/table/{table_path}?page={prev_page}&amp;q={query_param}{sort_param}{order_param}\" \
@@ -349,7 +371,7 @@ pub(crate) async fn table_view(entry: &RegistryEntry, view: &TableView<'_>) -> S
          <a href=\"/nexus/table/{table_path}?page={next_page}&amp;q={query_param}{sort_param}{order_param}\" \
          class=\"nexus-btn nexus-btn-ghost\" hx-get=\"/nexus/table/{table_path}?page={next_page}&amp;q={query_param}{sort_param}{order_param}\" \
          hx-target=\"#nexus-content\" hx-push-url=\"true\">Next &rarr;</a>\
-         </div></div>"
+         </div></div></div></form>"
     );
 
     out.push_str(

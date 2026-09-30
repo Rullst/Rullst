@@ -125,7 +125,11 @@
             if (response.ok) {
                 closeModal();
                 toast("Saved successfully!", "success");
-                window.htmx?.ajax("GET", window.location.pathname, { target: "#nexus-content", swap: "innerHTML" });
+                // Keep the current search, sort and page (pushed into the URL).
+                window.htmx?.ajax("GET", window.location.pathname + window.location.search, {
+                    target: "#nexus-content",
+                    swap: "innerHTML",
+                });
             } else {
                 response.text().then(text => toast("Save failed: " + text, "danger"));
             }
