@@ -157,8 +157,10 @@ impl<C: Clock> SqliteSupervision<C> {
             .begin_with("BEGIN IMMEDIATE")
             .await
             .map_err(storage)?;
+        // Only the literal `sqlite_` prefix is reserved; an unescaped `_` would
+        // also skip user objects such as a trigger named `sqliteXhook`.
         let records: Vec<(String, String)> =
-            sqlx::query_as("SELECT substr(name,1,129),substr(sql,1,2049) FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' LIMIT 10")
+            sqlx::query_as("SELECT substr(name,1,129),substr(sql,1,2049) FROM sqlite_schema WHERE name NOT LIKE 'sqlite\\_%' ESCAPE '\\' LIMIT 10")
                 .fetch_all(&mut *tx)
                 .await
                 .map_err(storage)?;
