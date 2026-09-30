@@ -117,7 +117,8 @@ authorized/success/failure audit events, while the payload itself is omitted to
 avoid duplicating secrets or personal data in the audit trail.
 
 The sink is called before and after execution. If it rejects the `Authorized`
-record, the tool does not run and the call returns
+record, the tool does not run, a matching approval stays in the context for a
+retry after the sink recovers, and the call returns
 `ToolExecutionError::AuditUnavailable`. If it rejects the outcome record after
 the tool ran, for example because a durable trail reached its record quota, the
 call returns `ToolExecutionError::OutcomeUnaudited` with the unrecorded outcome
