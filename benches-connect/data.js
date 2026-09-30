@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790796786705,
+  "lastUpdate": 1790799118220,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -8445,6 +8445,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 541,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "994cb6f78d62d2f7a9da4ac69187077cedb39add",
+          "message": "Merge pull request #356 from Rullst/fix/v13-candidates-macros-low-fixes\n\nfix(privacy,supervision,labs,media,macros,core): low-severity review fixes",
+          "timestamp": "2026-09-30T16:55:09-03:00",
+          "tree_id": "a947f3dc3b0ea9dd9a34fcc14181463c0b169b99",
+          "url": "https://github.com/Rullst/Rullst/commit/994cb6f78d62d2f7a9da4ac69187077cedb39add"
+        },
+        "date": 1790799117281,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 474,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
