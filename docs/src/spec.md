@@ -1786,7 +1786,11 @@ while portability and semantic review remain the model author's responsibility.
   hooks, observers, encrypted fields, atomic audit entries and post-commit
   cache/Scout/observer effects. This is a logical partial change implemented
   through a full-row save, not a selected-column SQL optimization. Existing
-  model hooks can transform that candidate under the normal save contract.
+  model hooks can transform that candidate under the normal save contract:
+  the loaded row runs `after_fetch` before the patch is merged, as `find()`
+  would return it, and `restore_revision` runs it on the restored row before
+  saving. Both run inside the borrowed transaction, where reentrant ORM access
+  fails closed.
 * The caller's object is replaced with the fresh merged model only after the
   operation succeeds. A direct save waits for its transaction commit; an
   explicit or task-scoped save reflects the transaction's tentative state, so

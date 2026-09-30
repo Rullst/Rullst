@@ -105,7 +105,9 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
     let revision_lookup = revision_lookup(parsed);
     let before_tx = audit_before_tx(&lookup);
     let after_tx = audit_after_tx(table_name);
-    let revision_restore = revision_restore(table_name, &revision_lookup);
+    let restored_after_fetch =
+        super::update_builder::after_fetch_hook(parsed, &quote::format_ident!("restored"));
+    let revision_restore = revision_restore(table_name, &revision_lookup, &restored_after_fetch);
 
     quote! {
         #[rullst_orm::_tracing::instrument(
@@ -199,7 +201,11 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
     }
 }
 
-fn revision_restore(table_name: &str, lookup: &TokenStream) -> TokenStream {
+fn revision_restore(
+    table_name: &str,
+    lookup: &TokenStream,
+    restored_after_fetch: &TokenStream,
+) -> TokenStream {
     quote! {
         /// Restores one bounded update revision and records the compensating
         /// mutation under the active audit principal.
@@ -285,6 +291,9 @@ fn revision_restore(table_name: &str, lookup: &TokenStream) -> TokenStream {
                             "audit revision attempted to change the model identity".to_string(),
                         ));
                     }
+                    // The patch matches stored values; the save lifecycle then
+                    // expects the representation every read returns.
+                    #restored_after_fetch
                     let restore_context = rullst_orm::audit::current_audit_context()
                         .ok_or_else(|| rullst_orm::Error::Validation(
                             "revision restore requires an active audit context".to_string(),

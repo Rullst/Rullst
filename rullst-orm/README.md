@@ -137,7 +137,8 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
   while explicit or task-scoped transactions are reused without nesting.
 - **Transactional Partial Updates (v13 candidate)**: `.update_partial()` merges
   selected values into the locked current row and runs the full save lifecycle,
-  including audit and post-commit effects. It refreshes the caller model after
+  including audit and post-commit effects. The loaded row runs `after_fetch`
+  first, like `find()`. It refreshes the caller model after
   success and offers `save_with_tx`; review the full-row SQL and rollback
   changes in [the migration guide](https://github.com/Rullst/Rullst/blob/main/docs/src/transactional-partial-updates.md).
 - **Native Relational Enums**: `#[derive(Enum)]` owns one closed label mapping
