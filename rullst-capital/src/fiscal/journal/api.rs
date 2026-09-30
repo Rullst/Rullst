@@ -145,6 +145,11 @@ impl FiscalCommandJournal {
         validate_observed_at(observed_at_unix_ms)?;
         let request_digest = evidence::request_fingerprint(request)?;
         let terminal = evidence::response_evidence(request, response)?;
+        // An HTTP 500 may follow an issued NFS-e (for example a lost 201 and a
+        // retry), so it must not become a final rejection.
+        if terminal.http_status == Some(500) {
+            return Err(FiscalJournalError::IndeterminateResponse);
+        }
         let mut state = self.lock_and_refresh()?;
         let existing = state
             .commands

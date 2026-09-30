@@ -72,6 +72,11 @@ pub enum FiscalJournalError {
     /// Earlier releases reported this as `ResponseMismatch`. New in 13.0.
     #[error("fiscal command observation time precedes its preparation")]
     ClockRegression,
+    /// The authority's answer (HTTP 500) does not settle the command, so it
+    /// stays pending for reconciliation instead of becoming a final
+    /// rejection. New in 13.0.
+    #[error("fiscal authority response is indeterminate; the command remains pending")]
+    IndeterminateResponse,
 }
 
 /// A named 256-bit HMAC key used to authenticate a local fiscal journal.

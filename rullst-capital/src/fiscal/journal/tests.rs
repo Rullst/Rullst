@@ -109,6 +109,19 @@ fn rejection() -> NfseIssueResponse {
         .expect("rejection")
 }
 
+fn server_error() -> NfseIssueResponse {
+    let body = serde_json::to_vec(&json!({
+        "tipoAmbiente": 2,
+        "versaoAplicativo": "SefinNacional_1.0",
+        "dataHoraProcessamento": "2026-08-30T21:47:12-03:00",
+        "erros": [{"Codigo": "E999", "Descricao": "Internal error fixture"}]
+    }))
+    .expect("server error JSON");
+    request()
+        .parse_response(500, NfseEnvironment::Homologation, &body)
+        .expect("server error")
+}
+
 fn signed_dps(id: &str) -> &'static str {
     if id == DPS_ID {
         static XML: OnceLock<String> = OnceLock::new();
@@ -358,6 +371,26 @@ fn authentication_tampering_capacity_and_competing_writers_are_explicit() {
         bounded.status("contains whitespace"),
         Err(FiscalJournalError::InvalidCommandId)
     );
+}
+
+#[test]
+fn server_error_keeps_the_command_pending_for_reconciliation() {
+    let file = TempJournal::new("indeterminate");
+    let journal = FiscalCommandJournal::try_open(file.path(), key(15)).expect("open journal");
+    journal
+        .prepare_at("invoice:500", NfseEnvironment::Homologation, request(), 10)
+        .expect("prepare");
+    assert_eq!(
+        journal.record_response_at("invoice:500", request(), &server_error(), 20),
+        Err(FiscalJournalError::IndeterminateResponse)
+    );
+    assert_eq!(journal.pending().expect("pending").len(), 1);
+    // Reconciliation later finds the NFS-e that the lost answer carried.
+    let receipt = journal
+        .record_response_at("invoice:500", request(), &authorization(), 30)
+        .expect("authorization after an indeterminate answer");
+    assert_eq!(receipt.status(), FiscalCommandStatus::Authorized);
+    assert_eq!(journal.snapshot().expect("snapshot").records(), 2);
 }
 
 #[test]

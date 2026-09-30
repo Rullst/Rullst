@@ -952,6 +952,10 @@ an independently retained exact-tip checkpoint detects valid-prefix
 truncation. The file contains only the opaque application command ID,
 request/result digests, environment, state, and bounded timestamps—not XML,
 access keys, certificate material, provider bodies, or processing messages.
+An HTTP 500 answer returns `IndeterminateResponse` and leaves the command
+pending, because the NFS-e may have been issued; a recorded rejection is final,
+so reconcile a rejection of a retransmitted DPS (for example "DPS already
+exists") by consultation before recording it.
 `record_response` records a wall-clock step backwards as the preparation time,
 while `record_response_at` with an earlier explicit time returns
 `ClockRegression`; a selected environment that differs from the signed `tpAmb`

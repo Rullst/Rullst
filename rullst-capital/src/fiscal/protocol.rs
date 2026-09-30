@@ -142,6 +142,9 @@ pub struct NfseIssueAuthorization {
 }
 
 /// Structured SEFIN rejection; it is not an authorization.
+///
+/// HTTP 500 is an indeterminate server outcome rather than proof that the DPS
+/// was refused: `FiscalCommandJournal` keeps such a command pending.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct NfseIssueRejection {
