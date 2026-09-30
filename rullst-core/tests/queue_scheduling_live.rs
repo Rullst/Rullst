@@ -335,6 +335,80 @@ async fn redis_failed_jobs_and_dead_letters_are_retained_up_to_the_limit() {
 }
 
 #[tokio::test]
+async fn redis_failed_jobs_can_be_listed_retried_and_purged() {
+    let Some((_container, redis_url)) = live_redis().await else {
+        return;
+    };
+    let driver = RedisDriver::new(redis_url)
+        .expect("Redis queue configuration")
+        .try_with_namespace(unique_namespace("operations"))
+        .expect("isolated queue namespace");
+
+    driver
+        .push("failing", "mail", r#"{"to":"a@example.com"}"#)
+        .await
+        .expect("push failing job");
+    let claim = driver.pop().await.expect("claim").expect("job");
+    driver
+        .mark_failed_attempt(&claim.id, claim.attempts, "smtp down")
+        .await
+        .expect("record failure");
+    driver
+        .push("invalid", "mail", "not-json")
+        .await
+        .expect("push malformed payload");
+    assert!(driver.pop().await.is_err());
+    driver
+        .push("waiting", "mail", "{}")
+        .await
+        .expect("push pending job");
+
+    let jobs = driver.list_all_jobs(10).await.expect("list jobs");
+    let listed: Vec<(&str, &str)> = jobs
+        .iter()
+        .map(|job| (job.id.as_str(), job.status.as_str()))
+        .collect();
+    assert_eq!(
+        listed,
+        vec![
+            ("failing", "failed"),
+            ("invalid", "dead-letter"),
+            ("waiting", "pending")
+        ]
+    );
+    assert_eq!(jobs[0].error.as_deref(), Some("smtp down"));
+    assert_eq!(jobs[0].payload, r#"{"to":"a@example.com"}"#);
+    assert!(!jobs[0].updated_at.is_empty());
+    assert_eq!(
+        driver.list_all_jobs(1).await.expect("bounded list").len(),
+        1
+    );
+
+    driver
+        .retry_failed_job("failing")
+        .await
+        .expect("retry failed job");
+    assert!(driver.retry_failed_job("failing").await.is_err());
+    let waiting = driver.pop().await.expect("claim").expect("job");
+    assert_eq!(waiting.id, "waiting");
+    let retried = driver.pop().await.expect("claim").expect("job");
+    assert_eq!(retried.id, "failing");
+    assert_eq!(retried.attempts, claim.attempts + 1);
+    driver
+        .mark_failed_attempt(&retried.id, retried.attempts, "still down")
+        .await
+        .expect("record second failure");
+
+    driver.purge_failed_jobs().await.expect("purge failures");
+    let remaining = driver.list_all_jobs(10).await.expect("list after purge");
+    let listed: Vec<(&str, &str)> = remaining
+        .iter()
+        .map(|job| (job.id.as_str(), job.status.as_str()))
+        .collect();
+    assert_eq!(listed, vec![("waiting", "processing")]);
+}
+
+#[tokio::test]
 async fn redis_configuration_and_connection_failures_are_typed() {
     assert!(RedisDriver::new("not a redis URL").is_err());
     let driver = RedisDriver::new("redis://127.0.0.1:1")

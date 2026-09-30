@@ -14,7 +14,13 @@ listing all jobs, retrying failures and purging failures return
 `QueueError::Unsupported`; they never fabricate an empty snapshot or successful
 mutation. `purge_failed_jobs` is the canonical facade method. The deprecated
 `purge_completed_jobs` name is retained only as a source-compatibility alias for
-the historical operation, which actually removed failed jobs.
+the historical operation, which actually removed failed jobs. The Redis driver
+implements all three: `list_all_jobs` returns at most 1,000 rows (failed jobs
+and dead letters newest first, then processing, pending and scheduled jobs, read
+without one atomic snapshot; `created_at` is empty because Redis does not record
+it), `retry_failed_job` moves a failed job to the tail of the pending list while
+keeping its attempt counter, and `purge_failed_jobs` deletes every failed job
+and dead letter.
 
 Cache diagnostics are driver-specific too. `Cache::inspect(limit)` accepts
 1–200 and returns sorted logical-key, UTF-8 value-length and remaining-TTL

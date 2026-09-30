@@ -43,6 +43,8 @@
 - **Bounded Redis Failure State:** Failed jobs and dead letters are each
   retained up to 10,000 entries (configurable with
   `RedisDriver::try_with_failure_retention`), evicting the oldest atomically.
+  Redis also implements bounded `list_all_jobs`, `retry_failed_job` and
+  `purge_failed_jobs`.
 - **Bounded Background Errors:** `WorkerHandle` and `SchedulerHandle` buffer at
   most 256 undrained errors; overflow is dropped, counted by `dropped_errors()`
   and logged as a `tracing` warning. Drain `next_error` to observe every failure.

@@ -5,15 +5,19 @@ mod scripts;
 #[cfg(feature = "queue-redis")]
 /// Redis queue driver implementation and its recoverable lease protocol.
 pub mod redis_driver {
-    use super::super::{QueueDriver, QueueError, QueuedJob, unix_timestamp_millis_ceil};
+    use super::super::{
+        QueueDriver, QueueError, QueuedJob, QueuedJobDetail, unix_timestamp_millis_ceil,
+    };
     use super::scripts::{
-        CLAIM_SCRIPT, COMPLETE_SCRIPT, FAIL_SCRIPT, PENDING_COUNT_SCRIPT, RECOVER_SCRIPT,
-        REJECT_SCRIPT, REQUEUE_AFTER_SCRIPT, REQUEUE_SCRIPT,
+        CLAIM_SCRIPT, PENDING_COUNT_SCRIPT, RECOVER_SCRIPT, REJECT_SCRIPT, REQUEUE_AFTER_SCRIPT,
     };
     use crate::redis_connection::{RedisConnection, SharedRedisConnection};
     use async_trait::async_trait;
     use serde::Deserialize;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    mod inspection;
+    mod transitions;
 
     /// Failed jobs and dead letters each retained by default (newest kept).
     pub const DEFAULT_FAILURE_RETENTION: usize = 10_000;
@@ -154,118 +158,6 @@ pub mod redis_driver {
                 .connection()
                 .await
                 .map_err(|error| QueueError::Driver(format!("Redis connection failed: {error}")))
-        }
-
-        async fn transition(
-            &self,
-            script: &str,
-            keys: &[&str],
-            arguments: &[&str],
-            job_id: &str,
-            operation: &'static str,
-            attempt: Option<u32>,
-        ) -> Result<(), QueueError> {
-            let mut connection = self.connection().await?;
-            let mut command = redis::cmd("EVAL");
-            command.arg(script).arg(keys.len());
-            for key in keys {
-                command.arg(key);
-            }
-            for argument in arguments {
-                command.arg(argument);
-            }
-            let changed: i64 = command
-                .query_async(&mut connection)
-                .await
-                .map_err(|error| QueueError::StateTransition {
-                    job_id: job_id.to_string(),
-                    operation,
-                    message: error.to_string(),
-                })?;
-            if changed == 1 {
-                return Ok(());
-            }
-            let message = match attempt {
-                Some(attempt) => format!(
-                    "expected one processing job at claim attempt {attempt}, affected {changed}; \
-                     the lease may have been recovered and claimed again"
-                ),
-                None => format!("expected one processing job, affected {changed}"),
-            };
-            Err(QueueError::StateTransition {
-                job_id: job_id.to_string(),
-                operation,
-                message,
-            })
-        }
-
-        async fn complete_claim(
-            &self,
-            job_id: &str,
-            attempt: Option<u32>,
-        ) -> Result<(), QueueError> {
-            let expected = attempt
-                .map(|attempt| attempt.to_string())
-                .unwrap_or_default();
-            self.transition(
-                COMPLETE_SCRIPT,
-                &[&self.processing_key, &self.processing_index_key],
-                &[job_id, &expected],
-                job_id,
-                "mark_complete",
-                attempt,
-            )
-            .await
-        }
-
-        async fn fail_claim(
-            &self,
-            job_id: &str,
-            attempt: Option<u32>,
-            error: &str,
-        ) -> Result<(), QueueError> {
-            let expected = attempt
-                .map(|attempt| attempt.to_string())
-                .unwrap_or_default();
-            let retention = self.failed_retention.to_string();
-            self.transition(
-                FAIL_SCRIPT,
-                &[
-                    &self.processing_key,
-                    &self.processing_index_key,
-                    &self.failed_key,
-                    &self.failed_index_key,
-                ],
-                &[job_id, error, &expected, &retention],
-                job_id,
-                "mark_failed",
-                attempt,
-            )
-            .await
-        }
-
-        async fn requeue_claim(
-            &self,
-            job_id: &str,
-            attempt: Option<u32>,
-            reason: &str,
-        ) -> Result<(), QueueError> {
-            let expected = attempt
-                .map(|attempt| attempt.to_string())
-                .unwrap_or_default();
-            self.transition(
-                REQUEUE_SCRIPT,
-                &[
-                    &self.processing_key,
-                    &self.processing_index_key,
-                    &self.queue_key,
-                ],
-                &[job_id, reason, &expected],
-                job_id,
-                "requeue",
-                attempt,
-            )
-            .await
         }
     }
 
@@ -438,6 +330,29 @@ pub mod redis_driver {
                 .map_err(|error| {
                     QueueError::Driver(format!("Failed to recover Redis jobs: {error}"))
                 })
+        }
+
+        /// Lists at most `limit` (capped at 1,000) jobs: failed jobs and dead
+        /// letters (newest first), then processing, pending and scheduled
+        /// ones. Failures recorded before the failure index existed are not
+        /// listed.
+        async fn list_all_jobs(&self, limit: u32) -> Result<Vec<QueuedJobDetail>, QueueError> {
+            self.list_jobs(limit).await
+        }
+
+        /// Moves a failed job to the tail of the pending list, keeping its
+        /// attempt counter (SQLite resets it).
+        async fn retry_failed_job(&self, job_id: &str) -> Result<(), QueueError> {
+            self.retry_failed(job_id).await
+        }
+
+        async fn purge_completed_jobs(&self) -> Result<(), QueueError> {
+            self.purge_failures().await
+        }
+
+        /// Deletes every failed job and every dead letter.
+        async fn purge_failed_jobs(&self) -> Result<(), QueueError> {
+            self.purge_failures().await
         }
 
         async fn pending_count(&self) -> Result<u64, QueueError> {

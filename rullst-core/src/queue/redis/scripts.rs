@@ -137,6 +137,20 @@ redis.call('LTRIM', KEYS[4], -tonumber(ARGV[2]), -1)
 return recovered
 "#;
 
+// Moves a failed job back to the tail of the pending list. The leased raw
+// envelope keeps its attempt counter, so the next claim still increments it
+// and older leases stay fenced.
+pub(super) const RETRY_FAILED_SCRIPT: &str = r#"
+local entry = redis.call('HGET', KEYS[1], ARGV[1])
+if not entry then return 0 end
+local ok, failure = pcall(cjson.decode, entry)
+if not ok or type(failure) ~= 'table' or type(failure.raw) ~= 'string' then return -1 end
+redis.call('HDEL', KEYS[1], ARGV[1])
+redis.call('ZREM', KEYS[2], ARGV[1])
+redis.call('RPUSH', KEYS[3], failure.raw)
+return 1
+"#;
+
 pub(super) const PENDING_COUNT_SCRIPT: &str = r#"
 return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
 "#;
