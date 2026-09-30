@@ -149,7 +149,8 @@ In traditional Rust database handling, you have to write raw SQL queries, manage
 - **Stable Keyset Chunking**: `.chunk_by_id()` traverses ascending generated
   `i32` IDs without offset drift when already processed rows are deleted, and
   propagates callback errors. `.chunk()` remains available for offset-based
-  compatibility.
+  compatibility and orders its pages by the primary key unless the query
+  sets `order_by`.
 - **Transaction-Aware Redis Query Cache**: `.remember(seconds)` uses a
   versioned SHA-256 key bound to the application namespace, active tenant,
   generated SQL and typed bindings. Generated reads bypass cache inside every

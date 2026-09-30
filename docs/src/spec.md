@@ -1828,7 +1828,10 @@ while portability and semantic review remain the model author's responsibility.
   fallible `chunk_by_id(...)`/`chunk_by_id_with_tx(...)` for stable ascending
   keyset traversal over the generated `i32` primary key. This prevents deletes
   of processed rows from shifting later rows behind an offset; it is not a
-  database-server cursor or a universal cross-shard snapshot.
+  database-server cursor or a universal cross-shard snapshot. Without an
+  `order_by`, `chunk(...)`/`chunk_with_tx(...)` order their pages by
+  `<table>.id`, because SQL gives consecutive offset queries no stable order
+  (a PostgreSQL synchronized scan, for example, can start mid-table).
 * A model delete with marked `cascade_soft_delete` has-one/has-many relations
   runs parent and direct-child mutations in one transaction. An existing
   explicit or task-scoped transaction is reused; otherwise `delete()` opens,

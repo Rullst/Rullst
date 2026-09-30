@@ -1,5 +1,6 @@
-//! Offset reads without a row cap must stay valid SQL on every driver:
-//! SQLite and MySQL/MariaDB accept `OFFSET` only after `LIMIT`.
+//! Offset reads without a row cap must stay valid SQL on every driver
+//! (SQLite and MySQL/MariaDB accept `OFFSET` only after `LIMIT`), and offset
+//! chunks follow a deterministic order.
 
 use rullst_orm::schema::{Blueprint, Schema};
 use rullst_orm::{FromRow, Orm};
@@ -45,4 +46,31 @@ pub(super) async fn exercise() {
         .await
         .unwrap_or_else(|error| panic!("{driver} uncapped offset pluck: {error}"));
     assert_eq!(names, ["c", "b", "a"], "{driver}");
+
+    // Offset pages need a deterministic order. With an index on `name`, the
+    // filtered scan may follow the index (reverse ID order here) unless
+    // `chunk()` orders by the primary key.
+    // MySQL stores `string` columns as TEXT, which needs an index prefix.
+    let index = if driver == "mysql" {
+        "CREATE INDEX contract_offset_rows_name ON contract_offset_rows (name(64))"
+    } else {
+        "CREATE INDEX contract_offset_rows_name ON contract_offset_rows (name)"
+    };
+    rullst_orm::_sqlx::query(index)
+        .execute(Orm::pool().expect("pool"))
+        .await
+        .expect("create name index");
+    let mut chunked = Vec::new();
+    ContractOffsetRow::query()
+        .where_gt("name", "")
+        .chunk(2, |rows| {
+            chunked.extend(rows.iter().map(|row| row.id));
+            async {}
+        })
+        .await
+        .unwrap_or_else(|error| panic!("{driver} chunk: {error}"));
+    let mut ascending = chunked.clone();
+    ascending.sort_unstable();
+    assert_eq!(chunked, ascending, "{driver}");
+    assert_eq!(chunked.len(), 5, "{driver}");
 }
