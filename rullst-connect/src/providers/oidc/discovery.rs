@@ -47,8 +47,15 @@ impl OidcProvider {
         Self::discover_with_client(issuer_url, client_id, client_secret, redirect_url, client).await
     }
 
-    /// Performs discovery with an injected client.
-    pub(crate) async fn discover_with_client(
+    /// Discovers and validates OIDC metadata through an explicit HTTP client.
+    ///
+    /// Use this with [`crate::client::ReqwestClient::try_with_proxy`] (or a
+    /// test transport) so the discovery request, JWKS and token calls all use
+    /// the same transport; [`Self::discover`] fetches metadata with the default
+    /// client and its ambient proxy settings. Empty or `mock_*` credentials
+    /// construct deterministic local metadata and never use `client`.
+    /// Unpublished v13 API.
+    pub async fn discover_with_client(
         issuer_url: impl Into<String>,
         client_id: impl Into<String>,
         client_secret: impl Into<String>,

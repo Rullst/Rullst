@@ -281,6 +281,10 @@ let proxy = ReqwestClient::try_with_proxy_basic_auth(
 let github = github.with_http_client(Arc::new(proxy));
 ```
 
+`OidcProvider::discover` fetches its metadata before `with_http_client` can
+apply, so pass the proxy client to `OidcProvider::discover_with_client` instead
+(unpublished v13 API); discovery, JWKS and token calls then share it.
+
 Proxy URLs are limited to an HTTP(S) scheme and authority, with no embedded
 credentials, path, query, or fragment. Authenticated non-loopback proxies must
 use HTTPS. The configured client uses only that explicit proxy; PAC/WPAD,
