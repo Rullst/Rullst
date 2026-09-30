@@ -105,9 +105,15 @@ once external delivery. Select the same broker namespace on every retry.
 Definitions and occurrence content use AES-256-GCM with explicit rotation keys,
 bound to namespace, purpose and generation/occurrence identity. Configuration
 has an authenticated encrypted binding; key/configuration drift fails closed.
-Retain old keys as long as records need them; automatic re-encryption is not
-included. Debug output omits content, headers and lease credentials. Metadata
-names are server-owned configuration and should not contain personal data.
+Retain old keys as long as records need them; automatic re-encryption of
+definitions and occurrences is not included. The namespace configuration binding
+is re-sealed under the current primary key by the first operation after a
+rotation, so the key present at initialization is not needed for it afterwards.
+Definitions and retained occurrence content sealed under a key still need it
+whenever they are read (ticks, relays and re-creating the same schedule name),
+and a keyring holds at most eight keys. Debug output omits content, headers and
+lease credentials. Metadata names are server-owned configuration and should not
+contain personal data.
 
 PostgreSQL must use permanent tables, fsync, full-page writes, synchronous commits
 and a writable primary. Remote connections require verified TLS. All operations

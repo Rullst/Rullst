@@ -145,17 +145,32 @@ impl<C: Clock> PostgresRecurringStore<C> {
         let last: i64 = row
             .try_get("last_now")
             .map_err(|_| RecurringError::Configuration)?;
-        if crypto::open(
+        let configuration = crypto::open(
             &self.keys,
             self.config.namespace(),
             "configuration",
             "v1",
             &binding,
-        )?
-        .as_slice()
-            != self.config.binding()
-        {
+        )?;
+        if configuration.as_slice() != self.config.binding() {
             return Err(RecurringError::Configuration);
+        }
+        // Keep the binding under the primary key, so the key that sealed it at
+        // initialization can leave the bounded keyring after a rotation.
+        if crypto::sealed_key_id(&binding) != Some(self.keys.primary_key_id()) {
+            let resealed = crypto::seal(
+                &self.keys,
+                self.config.namespace(),
+                "configuration",
+                "v1",
+                &configuration,
+            )?;
+            sqlx::query("UPDATE rullst_recurring_control SET binding=$1 WHERE namespace=$2")
+                .bind(resealed)
+                .bind(self.config.namespace())
+                .execute(&mut **tx)
+                .await
+                .map_err(|_| RecurringError::Storage)?;
         }
         if last < 0 {
             return Err(RecurringError::Clock);
