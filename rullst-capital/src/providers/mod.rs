@@ -19,6 +19,7 @@ mod paddle_portal;
 mod paddle_subscription;
 #[cfg(test)]
 mod paddle_test_support;
+mod paddle_webhook;
 pub mod picpay;
 pub mod polar;
 mod polar_checkout;
@@ -40,6 +41,7 @@ mod stripe_subscription;
 mod stripe_usage;
 mod stripe_webhook;
 pub mod wise;
+mod wise_webhook;
 
 pub use alipay::AlipayProvider;
 pub use coinbase::{CoinbaseCommerceProvider, CoinbaseProvider};
@@ -55,6 +57,7 @@ pub use polar::PolarProvider;
 pub use razorpay::RazorpayProvider;
 pub use stripe::StripeProvider;
 pub use wise::WiseProvider;
+pub use wise_webhook::{WiseTransferState, WiseTransferStateChange};
 
 /// Maximum clock drift accepted by timestamped webhook protocols by default.
 pub const DEFAULT_WEBHOOK_TOLERANCE: Duration = Duration::from_secs(5 * 60);

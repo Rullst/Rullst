@@ -34,6 +34,9 @@ pub(super) fn parse(json: &Value) -> Result<WebhookEvent, CapitalError> {
         Some("subscription.pending") => ("pending", SubscriptionStatus::PastDue),
         Some("subscription.halted") => ("halted", SubscriptionStatus::Unpaid),
         Some("subscription.paused") => ("paused", SubscriptionStatus::Paused),
+        // Razorpay stops charging after the last billing cycle; report that
+        // terminal state as non-entitled instead of rejecting the event.
+        Some("subscription.completed") => ("completed", SubscriptionStatus::Canceled),
         _ => {
             return Err(CapitalError::PayloadParseError(
                 "Unsupported Razorpay event".into(),

@@ -56,12 +56,12 @@ Updating Capital does not rewrite existing controllers or apply new migrations.
 | **InfinitePay** | Billing | Offline fixtures; live plan-only checkout and body-only callback verification are unsupported. |
 | **Polar** | Billing | Current typed product checkout, external customer binding and signed subscription events; legacy price-only checkout is unsupported. |
 | **Paddle** | Billing | Typed customer/transaction checkout, approved Paddle.js payment page, bound signed subscription events and current-state reads; legacy email-only checkout is unsupported. |
-| **Razorpay** | Billing | Adapter and signed-webhook foundation. |
+| **Razorpay** | Billing | Plan checkout adapter with an explicit `with_subscription_total_count` billing term (v13) and signed-webhook foundation; completion is reported as `Canceled`. |
 | **Mercado Pago** | Billing | Offline checkout fixture; live plan-only checkout and body-only webhook verification are unavailable. |
 | **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
 | **PicPay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
 | **Alipay** | Billing | Explicit mock credentials only; live checkout and RSA2 webhook verification are unsupported. |
-| **Wise** | Payout | Status/webhook foundation; legacy email-based live transfer is unsupported. |
+| **Wise** | Payout | Transfer-status read and RSA-verified transfer state-change webhooks (v13 candidate); legacy email-based live transfer and the unauthenticated webhook parser are unsupported with live credentials. |
 
 The shared `create_customer_portal(email, return_url)` methods do not have a
 reviewed live provider-session contract and return `UnsupportedOperation` for
@@ -108,6 +108,61 @@ identity, and transfer creation is not funding. Their offline mocks remain
 available. Polar and Paddle supply the explicit typed replacements below.
 Wise still requires a dedicated recipient/quote/transfer/funding contract.
 Provider-account sandbox acceptance remains separate from protocol tests.
+
+Wise's empty/`mock_*` transfer mock returns a `wise_tr_mock_` ID derived from a
+hash instead of the recipient email, and its status read reports only those
+mock-issued IDs. Any other transfer ID returns `UnsupportedOperation` instead
+of a fabricated `OutgoingPaymentSent`, so an unset token cannot mark real
+transfers as sent.
+
+`WiseProvider::parse_webhook_payload` performs no signature verification and
+cannot distinguish a Wise delivery from a forged request. It is an offline
+fixture restricted to an explicit `mock_*` API token: an empty token returns
+`ConfigurationError` and a live token returns `UnsupportedOperation` before
+the body is read. Do not re-issue, release or reconcile payouts from it.
+The fixture requires a positive transfer ID, recipient, ISO 4217 currency,
+amount and a documented transfer state; nothing missing is replaced with a
+default. Amounts are exact decimals scaled to the currency's minor units
+without floating point, and negative, zero, over-precise or overflowing
+values are rejected.
+
+### Verified Wise transfer webhooks (v13 candidate)
+
+`verify_transfer_state_change` checks Wise's Base64 `X-Signature-SHA256`
+RSA-SHA256 signature over the exact body before parsing it. Configure the
+public key Wise publishes for the matching environment; sandbox and production
+keys differ and Rullst bundles neither. Up to four keys may be configured for
+rotation.
+
+```rust,no_run
+use rullst_capital::{CapitalError, WiseProvider, WiseTransferState};
+use std::collections::HashMap;
+
+fn on_wise_webhook(
+    wise_public_key_pem: &str,
+    raw_body: &[u8],
+    lowercase_headers: &HashMap<String, String>,
+) -> Result<(), CapitalError> {
+    let provider = WiseProvider::new("mock_wise_token", "profile_id")
+        .with_webhook_public_key_pem(wise_public_key_pem)?;
+    let event = provider.verify_transfer_state_change(raw_body, lowercase_headers)?;
+    if event.current_state() == WiseTransferState::FundsRefunded {
+        // Load the application's transfer record by event.transfer_id() and
+        // read the transfer from Wise before moving money.
+    }
+    Ok(())
+}
+```
+
+Only `transfers#state-change` deliveries for a transfer resource with a
+positive numeric ID, a documented state and a valid `occurred_at` are accepted;
+missing or unknown values are rejected, not defaulted. The result carries no
+amount, currency or recipient because Wise does not send them. The signature
+covers no timestamp or delivery identity, so an exact replay verifies again:
+bind the transfer and profile to the application's own records, apply state
+transitions idempotently and read the transfer before re-issuing, releasing or
+refunding money. The billing webhook middleware does not mount this payout
+verifier.
 
 Lemon Squeezy live checkout uses the merchant's explicit positive numeric store
 ID: `LemonSqueezyProvider::new(key, webhook_secret).with_store_id(store_id)?`.
@@ -156,6 +211,15 @@ reference is correlation metadata. Persist it before dispatch and never blindly
 retry an uncertain creation. `retrieve_bound_customer` and
 `retrieve_transaction_checkout` reconcile independently recovered known IDs
 without mutation or email-based ownership claims.
+
+The legacy `handle_webhook` (used by the canonical middleware) normalizes only
+documented `subscription.*` lifecycle events: created, updated, imported,
+activated, resumed, trialing, past_due, paused and canceled. Transaction,
+adjustment, customer, price, address and other signed events return
+`PayloadParseError` instead of becoming subscription state. It requires Paddle
+`sub_`, `ctm_` and `pri_` identities, maps only Paddle subscription statuses
+and rejects an event whose status disagrees with its type. `plan_id` remains
+the first item's price, and the result carries no owner binding.
 
 `verify_checkout_subscription` binds signed events to the request and persisted
 transaction receipt. The first `subscription.created` must carry the matching
@@ -463,13 +527,26 @@ Razorpay subscription normalization requires the subscription's own bounded ID,
 customer ID and plan ID, plus an event/entity state match. Authentication alone
 and standalone payment/order events cannot activate a subscription. Activated,
 charged and resumed events require `active`; pending, halted, paused and
-cancelled events require their corresponding provider state. Completed and
-authenticated states remain unsupported by the v12 normalized contract. Email
+cancelled events require their corresponding provider state.
+`subscription.completed` requires `completed` and maps to the non-entitled
+`Canceled` status: Razorpay stops charging after the subscription's last
+billing cycle, so the host must end or renew access explicitly. The
+authenticated state remains unsupported by the v12 normalized contract. Email
 is optional contact data. The application still owns customer/tenant binding,
 event ordering, durable processing and reconciliation; `Active` is a lifecycle
 state, not proof that a particular invoice was paid. See Razorpay's
 [subscription states](https://razorpay.com/docs/payments/subscriptions/states/)
 and [webhook payloads](https://razorpay.com/docs/webhooks/subscriptions/).
+
+Live Razorpay `create_checkout_session` calls use the billing-cycle count set
+with `RazorpayProvider::with_subscription_total_count` (v13 candidate); there
+is no default, and without it live checkout returns `ConfigurationError` before
+any HTTP request. Choose a count that matches the plan period, for example 52
+weekly cycles for one year; Razorpay enforces its own maximum. Earlier releases
+sent a fixed `total_count` of 12 for every plan period. Handle
+`subscription.completed` to learn when billing ends. The `redirect_url`
+argument is recorded in the subscription `notes` only; the adapter does not
+send it as a callback or return URL. Offline fixtures need no count.
 
 ---
 
