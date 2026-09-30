@@ -8,6 +8,9 @@ use crate::message::Message;
 use crate::pipeline::DeliveryPipeline;
 use async_trait::async_trait;
 
+/// Furthest ahead SendGrid v3 accepts `send_at`; later schedules need a queue.
+const MAX_PROVIDER_SCHEDULE: chrono::TimeDelta = chrono::TimeDelta::hours(72);
+
 /// A SendGrid HTTP REST API driver
 pub struct SendGridDriver {
     /// SendGrid API token.
@@ -47,10 +50,20 @@ impl MailDriver for SendGridDriver {
         if self.delivery_mode() == DeliveryMode::OfflineMock {
             return record_offline_delivery("sendgrid", message);
         }
+        if message
+            .send_at
+            .as_ref()
+            .is_some_and(|send_at| *send_at > chrono::Utc::now() + MAX_PROVIDER_SCHEDULE)
+        {
+            return Err(MailError::ConfigError(
+                "SendGrid schedules delivery at most 72 hours ahead; initialize a durable Rullst queue for later delivery"
+                    .to_string(),
+            ));
+        }
 
         let client = super::http::client()?;
 
-        let from_addr = message.from.as_deref().unwrap_or("noreply@rullst.dev");
+        let from_addr = super::rest::required_sender(message)?;
 
         let personalizations = vec![serde_json::json!({
             "to": [{ "email": message.to }]
@@ -72,7 +85,7 @@ impl MailDriver for SendGridDriver {
 
         let mut body = serde_json::json!({
             "personalizations": personalizations,
-            "from": { "email": from_addr },
+            "from": super::rest::mailbox_json(from_addr, "email", "name")?,
             "subject": message.subject,
             "content": content
         });
@@ -103,7 +116,7 @@ impl MailDriver for SendGridDriver {
             let mut headers_obj = serde_json::json!({
                 "List-Unsubscribe": unsub
             });
-            if message.unsubscribe_url.is_some() {
+            if message.has_one_click_unsubscribe() {
                 headers_obj["List-Unsubscribe-Post"] =
                     serde_json::json!("List-Unsubscribe=One-Click");
             }

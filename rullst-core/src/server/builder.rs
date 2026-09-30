@@ -587,16 +587,7 @@ fn resolve_environment(
     config: &crate::config::RullstConfig,
     dotenv: &HashMap<String, String>,
 ) -> Result<crate::config::Environment, ServerError> {
-    let rullst_env = read_optional_environment_variable("RULLST_ENV")?;
-    let app_env = read_optional_environment_variable("APP_ENV")?;
-    let fallback = dotenv
-        .get("RULLST_ENV")
-        .or_else(|| dotenv.get("APP_ENV"))
-        .map(String::as_str)
-        .or(config.app.env.as_deref());
-
-    crate::config::Environment::resolve(rullst_env.as_deref(), app_env.as_deref(), fallback)
-        .map_err(|error| ServerError::Configuration(error.to_string()))
+    super::project_settings::resolve_environment(dotenv, config.app.env.as_deref())
 }
 
 /// Listens for OS termination signals (SIGINT / SIGTERM / Ctrl+C) to drain in-flight requests cleanly.

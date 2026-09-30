@@ -30,6 +30,10 @@ pub enum MailFeedbackError {
     Stale,
     InvalidPayload,
     MockNotAllowed,
+    /// The signature is valid, but the event type is not a delivery outcome
+    /// that Rullst classifies (for example `email.sent` or `email.opened`).
+    /// Adapters can acknowledge it without acting on it. (v13)
+    UnsupportedEvent,
 }
 
 impl std::fmt::Display for MailFeedbackError {
@@ -176,7 +180,9 @@ impl ResendFeedbackVerifier {
             }
             Some("email.complained") => MailFeedbackKind::Complaint,
             Some("email.failed") => MailFeedbackKind::Failed,
-            _ => return Err(MailFeedbackError::InvalidPayload),
+            // A bounce that cannot be classified must not look ignorable.
+            Some("email.bounced") | None => return Err(MailFeedbackError::InvalidPayload),
+            Some(_) => return Err(MailFeedbackError::UnsupportedEvent),
         };
         let recipients = data["to"]
             .as_array()

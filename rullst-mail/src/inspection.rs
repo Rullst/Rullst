@@ -260,12 +260,19 @@ fn inspect_pdf(content: &[u8]) -> Result<(), AttachmentInspectionError> {
     reject_active_pdf(content)
 }
 
+/// Rejects PDF names that run code or carry active content: JavaScript and
+/// launch actions, embedded files, XFA forms (whose XML carries JavaScript or
+/// FormCalc scripts), rich media, embedded go-to and data-import actions.
 fn reject_active_pdf(content: &[u8]) -> Result<(), AttachmentInspectionError> {
     for token in [
         b"/JavaScript".as_slice(),
         b"/JS",
         b"/Launch",
         b"/EmbeddedFile",
+        b"/XFA",
+        b"/RichMedia",
+        b"/GoToE",
+        b"/ImportData",
     ] {
         if contains_ascii_case_insensitive(content, token) {
             return Err(AttachmentInspectionError::Rejected("active_pdf_content"));
@@ -293,6 +300,9 @@ fn require_zip_signature(content: &[u8]) -> Result<(), AttachmentInspectionError
     }
 }
 
+/// PE, ELF, thin Mach-O and universal (fat) Mach-O headers in either byte
+/// order. The 32-bit fat magic is shared with Java class files, which are
+/// executable content as well.
 fn executable_magic(content: &[u8]) -> bool {
     content.starts_with(b"MZ")
         || content.starts_with(b"\x7fELF")
@@ -300,6 +310,10 @@ fn executable_magic(content: &[u8]) -> bool {
         || content.starts_with(&[0xce, 0xfa, 0xed, 0xfe])
         || content.starts_with(&[0xfe, 0xed, 0xfa, 0xcf])
         || content.starts_with(&[0xcf, 0xfa, 0xed, 0xfe])
+        || content.starts_with(&[0xca, 0xfe, 0xba, 0xbe])
+        || content.starts_with(&[0xbe, 0xba, 0xfe, 0xca])
+        || content.starts_with(&[0xca, 0xfe, 0xba, 0xbf])
+        || content.starts_with(&[0xbf, 0xba, 0xfe, 0xca])
 }
 
 #[cfg(test)]

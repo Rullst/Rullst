@@ -117,13 +117,21 @@ record or a legal-compliance certificate.
 
 MAIL-001/RULLST-005 is fixed in the mandatory pipeline: bounded opaque `token=`
 query values inside safe body URLs survive preparation, including HTML-escaped
-query separators. Other credentials and non-URL token text remain redacted.
+query separators and plain-text links wrapped in `<…>`, `(…)` or Markdown
+`[label](…)` or followed by sentence punctuation. Other credentials and non-URL
+token text remain redacted.
 `Message`, action links and recovery notices omit sensitive content from Debug;
 `LogDriver` emits delivery metadata only. Do not log values explicitly exposed
 for delivery by `expose_url`, `expose` or `into_message`.
 
 `ResendFeedbackVerifier` authenticates the exact raw body with Svix v1 HMAC and
 five-minute freshness. Reject duplicate signature headers at the HTTP boundary.
+It classifies `email.delivered`, `email.delivery_delayed`, `email.bounced`,
+`email.complained` and `email.failed`; subscribe the webhook to those. Another
+authentic event type (such as `email.sent` or `email.opened`) returns the v13
+`MailFeedbackError::UnsupportedEvent`, which an adapter can acknowledge without
+acting on it, while malformed or unclassifiable bounce payloads stay
+`InvalidPayload`.
 Use its `suppression_event()` with `MutableSuppressionStore::record`, then place
 `SuppressionGuard` around the worker transport. Permanent bounces and complaints
 suppress delivery; transient failures do not. A durable suppression store is
@@ -147,7 +155,11 @@ loopback `IDENTITY_ENDPOINT`/`IDENTITY_HEADER` and optional user-assigned
 `AZURE_CLIENT_ID` for the Communication Services resource. The endpoint must be
 plain HTTP on a literal loopback IP or the exact name `localhost`, which the
 identity client pins to `127.0.0.1`/`::1` instead of resolving. The host must
-grant the identity email-sending permission and verify its domain/sender.
+grant the identity email-sending permission and verify its domain/sender. A
+credential reuses its token until five minutes before `expires_on`; identity
+endpoint throttling (HTTP 429) and 5xx outages are `RateLimited`/`Transient`,
+while other refusals remain a permanent `ConfigError`. The `Mail` facade builds
+a new credential per send, so reuse applies to a long-lived driver instance.
 
 The driver disables engagement tracking, bounds payload/response sizes,
 validates the operation-polling origin, and accepts only a terminal successful

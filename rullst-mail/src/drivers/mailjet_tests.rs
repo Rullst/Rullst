@@ -77,3 +77,28 @@ async fn credential_pair_is_fail_closed_and_empty_pair_is_offline() {
             .is_err()
     );
 }
+
+#[test]
+fn display_name_senders_are_split_for_bare_address_fields() {
+    let message = Message::new()
+        .from("Acme Billing <billing@acme.com>")
+        .to("member@example.com")
+        .subject("Invoice")
+        .text("Paid");
+    let prepared = crate::DeliveryPipeline::prepare(&message).unwrap();
+    let body = payload(prepared.message(), false).unwrap();
+    assert_eq!(
+        body["Messages"][0]["From"],
+        serde_json::json!({"Email": "billing@acme.com", "Name": "Acme Billing"})
+    );
+    let bare = payload(&message.clone().from("billing@acme.com"), false).unwrap();
+    assert_eq!(
+        bare["Messages"][0]["From"],
+        serde_json::json!({"Email": "billing@acme.com"})
+    );
+    let malformed = message.from("Acme <billing@acme.com");
+    assert!(matches!(
+        crate::DeliveryPipeline::prepare(&malformed),
+        Err(MailError::ValidationError(_))
+    ));
+}

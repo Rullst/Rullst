@@ -1,7 +1,7 @@
 // src/drivers/failover.rs — Resilient multi-driver failover with lightweight circuit breaker.
 
 use super::traits::MailDriver;
-use crate::error::MailError;
+use crate::error::{MailError, MailFailureClass};
 use crate::message::Message;
 use crate::pipeline::DeliveryPipeline;
 use async_trait::async_trait;
@@ -189,6 +189,7 @@ impl FailoverDriver {
             return Err(primary_error);
         }
 
+        let mut rate_limit = None;
         for (idx, fallback) in self.fallbacks.iter().enumerate() {
             match dispatch_to(fallback.as_ref(), message, route).await {
                 Ok(()) => {
@@ -206,14 +207,29 @@ impl FailoverDriver {
                         failure.class = err.failure_class().as_str(),
                         "Fallback mail driver failed"
                     );
+                    // A permanent rejection (suppressed recipient, rejected
+                    // attachment, invalid message) or a fail-closed guard
+                    // outage ends the chain with its typed error, as it
+                    // does for the primary.
+                    if !err.is_failover_eligible() {
+                        return Err(err);
+                    }
+                    rate_limit = (err.failure_class() == MailFailureClass::RateLimited)
+                        .then(|| err.retry_after());
                 }
             }
         }
 
-        Err(MailError::transport(
-            "failover",
-            "All mail drivers in failover chain failed",
-        ))
+        const EXHAUSTED: &str = "All mail drivers in failover chain failed";
+        Err(match rate_limit {
+            // The last driver asked to slow down; keep its bounded delay.
+            Some(retry_after) => MailError::RateLimited {
+                provider: "failover",
+                message: EXHAUSTED.to_string(),
+                retry_after,
+            },
+            None => MailError::transport("failover", EXHAUSTED),
+        })
     }
 }
 
@@ -286,6 +302,45 @@ mod tests {
         async fn send(&self, _message: &Message) -> Result<(), MailError> {
             Err(MailError::transport("fixture", "unavailable"))
         }
+    }
+
+    struct Failing(MailError);
+
+    #[async_trait]
+    impl MailDriver for Failing {
+        async fn send(&self, _message: &Message) -> Result<(), MailError> {
+            Err(self.0.clone())
+        }
+    }
+
+    #[tokio::test]
+    async fn fallback_chain_keeps_typed_permanent_and_rate_limit_errors() {
+        let message = Message::new().to("user@example.com").subject("Chain");
+        let suppressed = MailError::SuppressedRecipient { reason: "manual" };
+        let (unguarded, unguarded_store) = MemoryDriver::isolated();
+        let failover = FailoverDriver::new(TransientFailure)
+            .with_fallback(Failing(suppressed.clone()))
+            .with_fallback(unguarded);
+        assert_eq!(failover.send(&message).await, Err(suppressed));
+        assert!(unguarded_store.lock().expect("store").is_empty());
+
+        let slow = MailError::from_provider_response(
+            "fixture",
+            429,
+            "slow down",
+            Some(Duration::from_secs(30)),
+        );
+        let failover = FailoverDriver::new(TransientFailure)
+            .with_fallback(TransientFailure)
+            .with_fallback(Failing(slow));
+        let error = failover.send(&message).await.expect_err("chain exhausted");
+        assert_eq!(error.failure_class(), MailFailureClass::RateLimited);
+        assert_eq!(error.retry_after(), Some(Duration::from_secs(30)));
+        assert!(
+            error
+                .to_string()
+                .contains("All mail drivers in failover chain failed")
+        );
     }
 
     #[tokio::test]

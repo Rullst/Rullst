@@ -120,6 +120,20 @@ async fn text_scanning_rejects_unsafe_links_and_invalid_utf8_without_leaking_con
         AttachmentInspectionError::Rejected("unsafe_link_content")
     );
     assert!(!error.to_string().contains("javascript"));
+
+    for label in [
+        "OPENSSH PRIVATE KEY",
+        "EC PRIVATE KEY",
+        "ENCRYPTED PRIVATE KEY",
+    ] {
+        let key = format!("-----BEGIN {label}-----\nb3BlbnNzaC1rZXk\n-----END {label}-----\n");
+        let attachment = Attachment::new("id_ed25519.txt", key.into_bytes(), "text/plain");
+        assert_eq!(
+            inspector.inspect(&attachment).await,
+            Err(AttachmentInspectionError::Rejected("secret_detected")),
+            "{label}"
+        );
+    }
 }
 
 #[tokio::test]
@@ -300,5 +314,95 @@ async fn inspection_sniffs_content_and_extension_instead_of_trusting_the_declare
                 .is_ok(),
             "{filename}"
         );
+    }
+}
+
+#[tokio::test]
+// TM-MAIL-01: executable and script-host extensions fail under both policies.
+async fn windows_launchable_extensions_are_rejected_under_every_policy() {
+    for inspector in [
+        LocalAttachmentInspector::strict(),
+        LocalAttachmentInspector::allowing_opaque(),
+    ] {
+        for extension in [
+            "msc",
+            "wsc",
+            "sct",
+            "appref-ms",
+            "application",
+            "settingcontent-ms",
+            "gadget",
+            "inf",
+            "ins",
+            "isp",
+            "mst",
+            "ps1xml",
+            "psc1",
+            "psd1",
+            "vhd",
+            "vhdx",
+            "xbap",
+            "website",
+            "jnlp",
+            "wsb",
+            "msh",
+        ] {
+            let filename = format!("invoice.{extension}");
+            for mime in ["application/octet-stream", "text/plain"] {
+                let attachment = Attachment::new(&filename, b"<xml/>".to_vec(), mime);
+                assert_eq!(
+                    inspector.inspect(&attachment).await,
+                    Err(AttachmentInspectionError::Rejected("executable_content")),
+                    "{filename} as {mime}"
+                );
+            }
+        }
+    }
+}
+
+#[tokio::test]
+// TM-MAIL-01: XFA forms and other active PDF actions fail under both policies.
+async fn xfa_forms_and_other_active_pdf_actions_are_rejected() {
+    for inspector in [
+        LocalAttachmentInspector::strict(),
+        LocalAttachmentInspector::allowing_opaque(),
+    ] {
+        for active in [
+            "/AcroForm << /XFA 5 0 R >>",
+            "/Annots [<< /Subtype /RichMedia >>]",
+            "/OpenAction << /S /GoToE /T << /R /C /N (x) >> >>",
+            "/OpenAction << /S /ImportData /F (data.fdf) >>",
+        ] {
+            let pdf = format!("%PDF-1.7\n1 0 obj << {active} >>\nendobj\n%%EOF");
+            let attachment = Attachment::new("form.pdf", pdf.into_bytes(), "application/pdf");
+            assert_eq!(
+                inspector.inspect(&attachment).await,
+                Err(AttachmentInspectionError::Rejected("active_pdf_content")),
+                "{active}"
+            );
+        }
+    }
+}
+
+#[tokio::test]
+// TM-MAIL-01: universal macOS binaries are executable magic under both policies.
+async fn universal_mach_o_binaries_are_rejected() {
+    for inspector in [
+        LocalAttachmentInspector::strict(),
+        LocalAttachmentInspector::allowing_opaque(),
+    ] {
+        for magic in [
+            [0xca, 0xfe, 0xba, 0xbe],
+            [0xbe, 0xba, 0xfe, 0xca],
+            [0xca, 0xfe, 0xba, 0xbf],
+            [0xbf, 0xba, 0xfe, 0xca],
+        ] {
+            let content = [magic.as_slice(), &[0, 0, 0, 2, 1, 2, 3]].concat();
+            let attachment = Attachment::new("Updater", content, "application/octet-stream");
+            assert_eq!(
+                inspector.inspect(&attachment).await,
+                Err(AttachmentInspectionError::Rejected("executable_content"))
+            );
+        }
     }
 }

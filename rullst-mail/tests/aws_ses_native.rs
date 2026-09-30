@@ -80,7 +80,7 @@ async fn native_driver_signs_ses_v2_payload_and_preserves_message_capabilities()
 async fn native_driver_maps_and_redacts_provider_rejections() {
     let (endpoint, request_rx, fixture) = fixture_server(
         400,
-        r#"{"message":"password=provider-secret","code":"BadRequestException"}"#,
+        r#"{"message":"Email address is not verified. The following identities failed the check in region US-EAST-1: recipient@example.com password=provider-secret","code":"MessageRejected"}"#,
         "application/json",
     );
     let driver = AwsSesDriver::try_native("us-east-1", ACCESS_KEY_ID, SECRET_ACCESS_KEY, None)
@@ -110,8 +110,19 @@ async fn native_driver_maps_and_redacts_provider_rejections() {
             ..
         }
     ));
-    assert!(!error.to_string().contains("provider-secret"));
-    assert!(error.to_string().contains("[REDACTED]"));
+    let display = error.to_string();
+    for private in [
+        "provider-secret",
+        "recipient@example.com",
+        "identities failed",
+    ] {
+        assert!(
+            !display.contains(private),
+            "SES rejection echoes provider text"
+        );
+    }
+    assert!(display.contains("[REDACTED]"));
+    assert!(display.contains("MessageRejected"));
 }
 
 #[tokio::test]
