@@ -225,7 +225,7 @@ pub fn build_dps_xml_v1_01(
     Ok(xml)
 }
 
-fn tax_regime_codes(regime: TaxRegime) -> (u8, Option<u8>) {
+pub(crate) fn tax_regime_codes(regime: TaxRegime) -> (u8, Option<u8>) {
     match regime {
         TaxRegime::RegimeNormal => (1, None),
         TaxRegime::SimplesNacional => (3, Some(1)),
