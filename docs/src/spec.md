@@ -1445,7 +1445,8 @@ the same server-authoritative controls.
   entries run uncached; otherwise expired and then the oldest entries are
   evicted. Arguments that `serde_json` cannot represent (a failing `Serialize`
   impl, or a `u128`/`i128` outside the 64-bit range) also run uncached instead
-  of panicking; an `#[island]` with such props renders its server HTML with an
+  of panicking, as do arguments whose JSON would equal another value's (NaN or
+  infinite floats, `Some(())`, `Some(None)`); such results are never cached; an `#[island]` with such props renders its server HTML with an
   empty `data-props`, so hydration is skipped.
 * **Example:**
   ```rust

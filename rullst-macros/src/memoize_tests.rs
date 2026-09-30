@@ -33,3 +33,15 @@ fn memoize_serializes_arguments_without_panicking_macros() {
     assert!(expanded.contains("serde_json :: to_value (& id) ?"));
     assert!(expanded.contains("serde_json :: to_value (& label) ?"));
 }
+
+#[test]
+fn memoize_skips_arguments_and_results_json_would_conflate() {
+    let function: syn::ItemFn =
+        syn::parse_str("fn ratio(a: f64, b: f64) -> Option<f64> { Some(a / b) }").expect("fn");
+    let expanded = expand_memoize(&function).to_string();
+
+    for argument in ["a", "b", "result"] {
+        let probe = format!("rullst :: cache :: memory :: is_exact_json (& {argument})");
+        assert!(expanded.contains(&probe), "missing {probe}");
+    }
+}
