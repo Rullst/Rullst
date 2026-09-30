@@ -109,6 +109,27 @@ A prepared version section does not establish that its tag or crates exist.
 - The portfolio blueprint's generated files move into template files under
   `blueprints/portfolio/src/`; their output is otherwise unchanged.
 
+### Storage, uploads and macro hardening
+
+- `Storage::url` and `LocalDriver::url` percent-encode key segments, and the
+  Local `Storage::url` returns `/storage/<key>` instead of the filesystem base
+  path; serve the base directory at `/storage` to use it.
+- PlainText upload admission denies any leading markup after whitespace,
+  byte-order marks or zero-width characters, closing BOM, XML-prolog and
+  comment bypasses of the active-text gate. Plain text that starts with a tag
+  is now rejected too.
+- The global `#[memoize]` store is bounded (4,096 entries, 32 MiB, 256 KiB per
+  entry) with oldest-first eviction, and `#[memoize]` runs uncached while
+  `#[island]` renders empty `data-props` instead of panicking when arguments
+  cannot be serialized to JSON.
+- `#[live_component]` dispatches only from the explicit `rullst_event`,
+  `action` or `event` field; other payload keys and values no longer trigger
+  handlers.
+- `html!` renders `#` for dynamic URL attributes whose value is a `javascript:`
+  or `vbscript:` URL, or a `data:` URL outside media elements.
+- **Breaking:** `html!` rejects dynamic `on*` and `hx-on*` attribute values at
+  compile time; attach data-driven handlers from a nonce'd script instead.
+
 ### Security crate review fixes
 
 - `LoginGuard` keeps jailing when its failure or jail map is full: it evicts the
