@@ -7,7 +7,8 @@ use super::TrackingError;
 ///
 /// Other elements keep their `href`: a `<link>` stylesheet or `<base>` that
 /// a mail client fetches on open must not register as a click or consume a
-/// one-time click token. `tracker_base` must already be escaped for an
+/// one-time click token. A destination that fails the pipeline's link or
+/// secret checks is left in place for that pipeline to reject or redact. `tracker_base` must already be escaped for an
 /// attribute value. The token signs the destination as a browser reads it,
 /// with character references decoded, so `?a=1&amp;b=2` is signed and later
 /// redirected as `?a=1&b=2`.
@@ -37,7 +38,10 @@ pub(super) fn rewrite_links(
             .bytes()
             .next_back()
             .is_some_and(|byte| byte.is_ascii_whitespace());
-        if in_anchor && is_href && (target.starts_with("http://") || target.starts_with("https://"))
+        if in_anchor
+            && is_href
+            && (target.starts_with("http://") || target.starts_with("https://"))
+            && passes_pipeline_checks(&target)
         {
             output.push_str(tracker_base);
             output.push_str("/track/click/");
@@ -49,6 +53,15 @@ pub(super) fn rewrite_links(
     }
     output.push_str(&html[last_index..]);
     Ok(output)
+}
+
+/// Whether the mandatory pipeline would accept `target` unchanged. That
+/// pipeline later sees only the tracker URL, so a destination it would reject
+/// (homograph host) or redact (credentials) keeps its original `href`, where
+/// the pipeline then rejects or redacts it as it does for untracked mail.
+fn passes_pipeline_checks(target: &str) -> bool {
+    crate::security::scan_content_security(target).is_ok()
+        && crate::action::redact_body_secrets(target) == target
 }
 
 /// Whether an attribute that follows `gap` still sits inside an `<a>` start

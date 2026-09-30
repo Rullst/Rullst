@@ -344,7 +344,9 @@ Click tracking rewrites only the double-quoted `href` of `<a>` elements, so a
 `<link>` stylesheet or `<base>` fetched when a message is opened never registers
 as a click. The token signs the destination with HTML character references
 decoded (`?a=1&amp;b=2` is redirected as `?a=1&b=2`), and the tracker base is
-escaped for the attribute it enters.
+escaped for the attribute it enters. A destination that the mandatory pipeline
+would reject (homograph host) or redact (credentials in the URL) is not wrapped,
+so that pipeline still rejects or redacts it.
 
 ```rust
 use rullst_mail::{TrackingEngine, TrackingVerifier, PIXEL_1X1_GIF, Message};
