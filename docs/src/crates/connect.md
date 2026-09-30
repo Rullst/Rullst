@@ -388,7 +388,18 @@ validation fails: provider adapters then return
 `ConnectError::RefreshIncomplete`, whose `IssuedTokens` carry the new tokens
 to direct `Provider::refresh_token` callers, and the session keeps the
 rotation and returns the underlying error. Persist the snapshot after such a
-failure too. Use `access_token_at` in deterministic workers/tests. Seal
+failure too.
+
+Do not cancel `access_token()` while it refreshes. The provider call runs
+inside the caller's future, so dropping that future (a client disconnect, a
+`tower` timeout layer or `tokio::select!`) after the provider accepted the grant
+discards its response: a provider that rotates or consumes refresh tokens has
+then spent the credential this session still holds, and the next refresh fails
+with `invalid_grant` (Auth0 rotation may also revoke the token family). Drive
+refreshes from a task that is not cancelled with the request, or treat such an
+`invalid_grant` as a reauthentication signal.
+
+Use `access_token_at` in deterministic workers/tests. Seal
 `state_snapshot()` with `EncryptedTokenSnapshot` before writing it to a
 dedicated application store:
 

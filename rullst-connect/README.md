@@ -412,8 +412,19 @@ token is still kept and the generation advances, so persist the snapshot after
 that failure too; the next call refreshes with the rotation. If the grant
 succeeds but the follow-up profile or ID-token step fails, adapters return
 `ConnectError::RefreshIncomplete` with the issued tokens (`IssuedTokens`), and
-the session keeps the rotation the same way. Seal `state_snapshot()` with
-`EncryptedTokenSnapshot` before writing it to application-owned storage:
+the session keeps the rotation the same way.
+
+Do not cancel `access_token()` while it refreshes. The provider call runs
+inside the caller's future, so dropping that future (a client disconnect, a
+`tower` timeout layer or `tokio::select!`) after the provider accepted the grant
+discards its response: a provider that rotates or consumes refresh tokens has
+then spent the credential this session still holds, and the next refresh fails
+with `invalid_grant` (Auth0 rotation may also revoke the token family). Drive
+refreshes from a task that is not cancelled with the request, or treat such an
+`invalid_grant` as a reauthentication signal.
+
+Seal `state_snapshot()` with `EncryptedTokenSnapshot` before writing it to
+application-owned storage:
 
 ```rust
 use rullst_connect::{
