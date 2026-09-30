@@ -433,3 +433,35 @@ async fn returned_views_never_carry_the_unkeyed_exercise_digest() {
         .unwrap();
     assert_eq!(cancelled.exercise_digest, first.exercise_digest);
 }
+
+#[tokio::test]
+async fn one_learner_cannot_fill_the_store_wide_job_budget() {
+    let f = Fixture::new(101).await;
+    for n in 0..100 {
+        f.store
+            .submit(
+                &f.policy,
+                &id("alice"),
+                &scope(),
+                submission(&format!("a{n}")),
+            )
+            .await
+            .unwrap();
+    }
+    // Cancelled jobs keep their slot until retention purge.
+    f.store
+        .cancel(&f.policy, &id("alice"), &scope(), &id("a0"), 1)
+        .await
+        .unwrap();
+    assert_eq!(
+        f.store
+            .submit(&f.policy, &id("alice"), &scope(), submission("a100"))
+            .await
+            .unwrap_err(),
+        LabError::Capacity
+    );
+    f.store
+        .submit(&f.policy, &id("bob"), &scope(), submission("b0"))
+        .await
+        .unwrap();
+}

@@ -44,6 +44,11 @@ impl<C: Clock> SqliteLabs<C> {
             }
             let count:i64=sqlx::query_scalar("SELECT COUNT(*) FROM labs_jobs").fetch_one(&mut *tx.tx).await.map_err(storage)?;
             if count>=i64::from(self.config.max_jobs) { return Err(Error::Capacity); }
+            // Terminal jobs keep their slot until retention purge, so bound what
+            // one learner can hold instead of letting one flood the whole store.
+            let own:i64=sqlx::query_scalar("SELECT COUNT(*) FROM labs_jobs WHERE tenant=? AND course=? AND learner=?")
+                .bind(scope.tenant.as_str()).bind(scope.course.as_str()).bind(actor.as_str()).fetch_one(&mut *tx.tx).await.map_err(storage)?;
+            if own>=i64::from(self.config.learner_jobs) { return Err(Error::Capacity); }
             // claim_next expires a job whose remaining lifetime does not exceed
             // the wall limit plus 5 s, so never queue one that could not run.
             let needed=i64::from(exercise.limits().wall_seconds())+5;

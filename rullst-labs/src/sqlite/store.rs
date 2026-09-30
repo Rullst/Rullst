@@ -30,12 +30,20 @@ pub(super) const SCHEMA: &[(&str, &str)] = &[
     ),
 ];
 
+/// Jobs one learner may retain in one course by default.
+const LEARNER_JOBS: u32 = 100;
+
+/// `max_jobs` is store-wide across tenants and counts terminal jobs until
+/// `purge_terminal` (at least 24 hours later), so it bounds submissions per
+/// rolling day. One learner may retain at most 100 jobs per course, or
+/// `max_jobs` when lower, so a single learner cannot fill it.
 #[derive(Debug, Clone)]
 pub struct StoreConfig {
     pub(super) namespace: Reference,
     pub(super) max_jobs: u32,
     pub(super) max_exercises: u32,
     pub(super) profile: ExecutionProfile,
+    pub(super) learner_jobs: u32,
 }
 impl StoreConfig {
     pub fn new(
@@ -52,6 +60,7 @@ impl StoreConfig {
             max_jobs,
             max_exercises,
             profile,
+            learner_jobs: LEARNER_JOBS.min(max_jobs),
         })
     }
     pub(super) fn binding(&self, key: &ContentKey) -> Result<String, Error> {
