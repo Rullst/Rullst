@@ -171,7 +171,8 @@ the same predicate.
 Data-browser mutation forms use database-inspected tables, columns and complete
 primary keys; on PostgreSQL they cover the `public` schema, which every data
 statement names explicitly. SQL values are parameterized; only text, signed integer, finite
-float and Boolean codecs are writable. Primary keys and backend-specific types
+float and Boolean codecs are writable, so MySQL/MariaDB unsigned or zero-filled
+integers stay read-only. Primary keys and backend-specific types
 remain read-only, request bodies are limited to 64 KiB, and deletion requires
 typing `DELETE <table>`. A row offers only the actions whose form (for Edit,
 with a maximum-size value) fits that limit; an empty text key is addressable. A table stays read-only when any primary-key column is

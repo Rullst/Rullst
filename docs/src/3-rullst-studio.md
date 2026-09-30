@@ -92,7 +92,8 @@ overhead.
   Inside the verified debug-loopback/same-origin boundary, it may edit one
   primitive non-key value or delete one complete-primary-key-selected row.
   Inputs are bounded and parameterized; exact deletion confirmation is
-  required and backend-specific types remain read-only. A row offers only the
+  required and backend-specific types, including MySQL/MariaDB unsigned or
+  zero-filled integers, remain read-only. A row offers only the
   actions whose form (for Edit, with a maximum-size value) fits the 64 KiB
   request limit, and an empty text key is addressable. A table is read-only
   when a primary-key column falls outside the ASCII identifier boundary or the

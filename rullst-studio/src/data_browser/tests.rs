@@ -282,6 +282,20 @@ fn test_mutable_column_type_boundary() {
         StudioColumnKind::from_database_type("numeric"),
         StudioColumnKind::Unsupported
     );
+    for unsigned in [
+        "int(10) unsigned",
+        "bigint(20) unsigned",
+        "int unsigned",
+        "tinyint(1) unsigned",
+        "int(10) unsigned zerofill",
+        "double unsigned",
+    ] {
+        assert_eq!(
+            StudioColumnKind::from_database_type(unsigned),
+            StudioColumnKind::Unsupported,
+            "{unsigned}"
+        );
+    }
     assert_eq!(
         StudioColumnKind::from_database_type("jsonb"),
         StudioColumnKind::Unsupported

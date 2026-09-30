@@ -33,6 +33,12 @@ pub(crate) enum StudioColumnKind {
 impl StudioColumnKind {
     pub(crate) fn from_database_type(database_type: &str) -> Self {
         let normalized = database_type.trim().to_ascii_lowercase();
+        // MariaDB and MySQL 5.7 report `int(10) unsigned` (MySQL 8: `int
+        // unsigned`). The signed and floating codecs cannot represent every
+        // unsigned or zero-filled value, so such columns stay read-only.
+        if normalized.contains("unsigned") || normalized.contains("zerofill") {
+            return Self::Unsupported;
+        }
         if matches!(
             normalized.as_str(),
             "text"

@@ -2995,7 +2995,8 @@ sending.
   transaction that commits only for exactly one affected row; zero or several
   rows are rolled back and reported as `404`/`409` (engines without
   transactions, such as MySQL MyISAM, cannot roll back). Primary
-  keys/backend-specific values are read-only, while delete requires
+  keys/backend-specific values (including MySQL/MariaDB unsigned or zero-filled
+  integers) are read-only, while delete requires
   `DELETE <table>`. SQLite, PostgreSQL, MySQL and MariaDB run
   separate mutation contracts; PostgreSQL runs under both the default
   `sqlx::Any` build, where Studio renumbers bind markers and casts
