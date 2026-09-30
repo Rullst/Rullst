@@ -888,6 +888,12 @@ while portability and semantic review remain the model author's responsibility.
   `FOR UPDATE` row locks, quoting and outbox/migration DDL follows the server.
   Any other scheme keeps the SQLite dialect (an unknown scheme fails to
   connect under SQLx `Any`).
+* A DSN that still contains a bracketed template placeholder such as
+  `[your-database-id]` or `[YOUR-PASSWORD]` fails `Orm::init` with
+  `Error::Internal`; `init_with_options` and `init_with_replicas` print a
+  warning instead. A bracketed IPv6 literal host
+  (`postgres://app@[2001:db8::10]:5432/app`, optionally with a `%25` zone
+  identifier) is not a placeholder and is accepted by every entrypoint.
 * ORM defaults retain SQLite, PostgreSQL and MySQL/MariaDB through the explicit
   `drivers-all` convenience feature. A standalone consumer can disable defaults
   and select `strict-postgres`, `strict-mysql` or `strict-sqlite`; each enables

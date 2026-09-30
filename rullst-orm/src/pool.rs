@@ -8,6 +8,7 @@ use crate::{RullstPool, RullstPoolOptions};
 
 const POOL_SLOW_ACQUIRE_THRESHOLD: std::time::Duration = std::time::Duration::from_millis(500);
 
+mod dsn;
 mod placeholders;
 mod savepoint;
 mod telemetry;
@@ -93,24 +94,6 @@ impl Orm {
             .acquire_slow_threshold(POOL_SLOW_ACQUIRE_THRESHOLD)
     }
 
-    /// Classifies the connected backend by the DSN scheme, case-insensitively
-    /// as URL schemes are. `postgresql` is an alias of `postgres`, and SQLx
-    /// registers `mariadb` as an alias of its MySQL driver. Any other scheme
-    /// (or a bare SQLite path under `strict-sqlite`) keeps the SQLite dialect;
-    /// under SQLx `Any` an unknown scheme already fails to connect.
-    fn driver_for_url(database_url: &str) -> &'static str {
-        let scheme = database_url
-            .split_once(':')
-            .map_or("", |(scheme, _)| scheme);
-        if scheme.eq_ignore_ascii_case("postgres") || scheme.eq_ignore_ascii_case("postgresql") {
-            "postgres"
-        } else if scheme.eq_ignore_ascii_case("mysql") || scheme.eq_ignore_ascii_case("mariadb") {
-            "mysql"
-        } else {
-            "sqlite"
-        }
-    }
-
     fn ensure_uninitialized() -> Result<(), crate::Error> {
         if ORM_STATE.get().is_some() {
             Err(crate::Error::AlreadyInitialized)
@@ -132,16 +115,7 @@ impl Orm {
     /// Initialize the global database connection pool using an agnostic URI
     pub async fn init(database_url: &str) -> Result<(), crate::Error> {
         Self::ensure_uninitialized()?;
-        // Reject unconfigured placeholder URLs before they reach the driver
-        // (e.g. Turso template `libsql://[your-database-id].turso.io` whose
-        //  brackets are misinterpreted as an IPv6 literal by URL parsers).
-        if database_url.contains('[') && database_url.contains(']') {
-            return Err(crate::Error::Internal(
-                "DATABASE_URL contains placeholder brackets like [your-database-id]. \
-                Update your .env file with a real connection string."
-                    .to_string(),
-            ));
-        }
+        dsn::ensure_configured_dsn(database_url)?;
 
         Self::validate_dsn(database_url);
 
@@ -161,7 +135,7 @@ impl Orm {
 
         Self::publish(OrmState::new(
             pool,
-            Self::driver_for_url(database_url),
+            dsn::driver_for_url(database_url),
             Vec::new(),
         ))
     }
@@ -192,7 +166,7 @@ impl Orm {
 
         Self::publish(OrmState::new(
             pool,
-            Self::driver_for_url(database_url),
+            dsn::driver_for_url(database_url),
             Vec::new(),
         ))
     }
@@ -201,7 +175,7 @@ impl Orm {
     pub(crate) fn validate_dsn(database_url: &str) {
         // Detect unconfigured placeholder URLs (e.g. the Turso template uses
         // [your-database-id] which the URL parser misreads as an IPv6 address).
-        if database_url.contains('[') && database_url.contains(']') {
+        if dsn::has_placeholder_brackets(database_url) {
             eprintln!(
                 "⚠️ [CONFIG] Rullst ORM: DATABASE_URL still contains placeholder brackets (e.g. [your-database-id]). \
                 Update your .env file with a real connection string before using database features."
@@ -284,7 +258,7 @@ impl Orm {
 
         Self::publish(OrmState::new(
             pool,
-            Self::driver_for_url(primary_url),
+            dsn::driver_for_url(primary_url),
             replicas,
         ))
     }
@@ -472,23 +446,6 @@ mod tests {
         Orm::validate_dsn(&dsn);
 
         assert!(!database_path.exists());
-    }
-
-    #[test]
-    fn driver_follows_the_dsn_scheme_and_its_aliases() {
-        for (dsn, driver) in [
-            ("postgres://app:pw@db/app", "postgres"),
-            ("postgresql://app:pw@db/app", "postgres"),
-            ("POSTGRES://app:pw@db/app", "postgres"),
-            ("mysql://app:pw@db/app", "mysql"),
-            ("mariadb://app:pw@db/app", "mysql"),
-            ("MariaDB://app:pw@db/app", "mysql"),
-            ("sqlite::memory:", "sqlite"),
-            ("sqlite://data/app.db", "sqlite"),
-            ("data/app.db", "sqlite"),
-        ] {
-            assert_eq!(Orm::driver_for_url(dsn), driver, "{dsn}");
-        }
     }
 
     #[test]
