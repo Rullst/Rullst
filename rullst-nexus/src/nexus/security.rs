@@ -10,15 +10,20 @@ const AUDIT_CHAIN_UNAVAILABLE: &str = "Unavailable";
 
 fn event_integrity_badge(verified_hmac: bool) -> (&'static str, &'static str) {
     if verified_hmac {
-        (
-            "HMAC VERIFIED",
-            "background: rgba(52,211,153,0.15); color: #34d399;",
-        )
+        ("HMAC VERIFIED", "nexus-badge-verified")
     } else {
-        (
-            "UNSIGNED LOCAL EVENT",
-            "background: rgba(148,163,184,0.15); color: #94a3b8;",
-        )
+        ("UNSIGNED LOCAL EVENT", "nexus-badge-unsigned")
+    }
+}
+
+/// Maps a metric or event to a CSS tone class; inline colours would need a
+/// relaxed `style-src`.
+fn event_tone(event_type: &str) -> &'static str {
+    match event_type {
+        "HONEYPOT_TRAP_TRIGGERED" => "nexus-tone-rose",
+        "XSS_PAYLOAD_NEUTRALIZED" => "nexus-tone-cyan",
+        "AI_PROMPT_INJECTION_SHIELDED" => "nexus-tone-violet",
+        _ => "nexus-tone-amber",
     }
 }
 
@@ -31,11 +36,12 @@ pub async fn nexus_security_page(
     let (ai_active, provider_name) = detect_ai_provider();
     let ai_status_badge = if ai_active {
         format!(
-            "<span class=\"nexus-badge\" style=\"background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4);\">Active: {}</span>",
+            "<span class=\"nexus-badge nexus-badge-ai-active\">Active: {}</span>",
             provider_name
         )
     } else {
-        "<span class=\"nexus-badge\" style=\"background: rgba(148, 163, 184, 0.2); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.4);\">Offline / Embedded Intelligence</span>".to_string()
+        "<span class=\"nexus-badge nexus-badge-ai-offline\">Offline / Embedded Intelligence</span>"
+            .to_string()
     };
 
     let store = rullst_security::SecurityStore::global();
@@ -66,15 +72,15 @@ pub async fn nexus_security_page(
     let mut banned_ips_html = String::new();
     if store.banned_ips.is_empty() {
         banned_ips_html.push_str(
-            "<div style=\"padding: 12px; color: var(--text-muted); font-size: 13px; text-align: center;\">No IP addresses currently banned by WAF.</div>"
+            "<div class=\"nexus-feed-empty\">No IP addresses currently banned by WAF.</div>",
         );
     } else {
         for ref_multi in store.banned_ips.iter() {
             let rec = ref_multi.value();
             banned_ips_html.push_str(&format!(
-                "<div style=\"display: flex; justify-content: space-between; padding: 8px 12px; background: var(--bg-800); border-radius: 6px;\">\
-                 <span style=\"color: #f43f5e; font-weight: 700;\">{}</span>\
-                 <span style=\"color: var(--text-muted);\">{} ({})</span>\
+                "<div class=\"nexus-feed-row\">\
+                 <span class=\"nexus-tone-rose nexus-event-type\">{}</span>\
+                 <span class=\"nexus-muted\">{} ({})</span>\
                  </div>",
                 rullst_core::html::escape_str(&rec.ip),
                 rullst_core::html::escape_str(&rec.reason),
@@ -112,9 +118,9 @@ pub async fn nexus_security_page(
         ];
         for trap in default_traps {
             honeypot_routes_html.push_str(&format!(
-                "<div style=\"display: flex; justify-content: space-between; padding: 6px 10px; background: var(--bg-800); border-radius: 6px;\">\
-                 <span style=\"color: #fbbf24;\">{}</span>\
-                 <span style=\"color: var(--text-muted);\">Available default; mount middleware to arm</span>\
+                "<div class=\"nexus-feed-row\">\
+                 <span class=\"nexus-tone-amber\">{}</span>\
+                 <span class=\"nexus-muted\">Available default; mount middleware to arm</span>\
                  </div>",
                 trap
             ));
@@ -124,9 +130,9 @@ pub async fn nexus_security_page(
             let path = ref_multi.key();
             let hits = ref_multi.value().load(Ordering::Relaxed);
             honeypot_routes_html.push_str(&format!(
-                "<div style=\"display: flex; justify-content: space-between; padding: 6px 10px; background: var(--bg-800); border-radius: 6px;\">\
-                 <span style=\"color: #fbbf24;\">{}</span>\
-                 <span style=\"color: var(--text-muted);\">{} hits</span>\
+                "<div class=\"nexus-feed-row\">\
+                 <span class=\"nexus-tone-amber\">{}</span>\
+                 <span class=\"nexus-muted\">{} hits</span>\
                  </div>",
                 rullst_core::html::escape_str(path),
                 hits
@@ -139,33 +145,27 @@ pub async fn nexus_security_page(
     if let Ok(events) = store.live_events.lock() {
         if events.is_empty() {
             events_feed_html.push_str(
-                "<div style=\"padding: 16px; color: var(--text-muted); font-size: 13px; text-align: center;\">No in-process security events recorded. This does not prove that every security middleware is mounted.</div>"
+                "<div class=\"nexus-feed-empty\">No in-process security events recorded. This does not prove that every security middleware is mounted.</div>",
             );
         } else {
             for ev in events.iter().take(15) {
-                let badge_color = match ev.event_type.as_str() {
-                    "HONEYPOT_TRAP_TRIGGERED" => "#f43f5e",
-                    "XSS_PAYLOAD_NEUTRALIZED" => "#22d3ee",
-                    "AI_PROMPT_INJECTION_SHIELDED" => "#c084fc",
-                    _ => "#fbbf24",
-                };
-                let (integrity_badge, integrity_style) = event_integrity_badge(ev.verified_hmac);
+                let tone = event_tone(ev.event_type.as_str());
+                let (integrity_badge, integrity_class) = event_integrity_badge(ev.verified_hmac);
                 events_feed_html.push_str(&format!(
-                    "<div style=\"background: var(--bg-800); padding: 10px 14px; border-radius: 6px; border-left: 4px solid {}; display: flex; justify-content: space-between; align-items: center;\">\
+                    "<div class=\"nexus-event {}\">\
                      <div>\
-                         <span style=\"font-weight: 700; color: {};\">{}</span>\
-                         <span style=\"color: var(--text-muted); margin-left: 12px;\">{}</span>\
+                         <span class=\"nexus-event-type\">{}</span>\
+                         <span class=\"nexus-event-detail\">{}</span>\
                      </div>\
-                     <div style=\"display: flex; align-items: center; gap: 12px;\">\
-                         <span class=\"nexus-badge\" style=\"{}\">{}</span>\
-                         <span style=\"color: var(--text-muted); font-size: 11px;\">{}</span>\
+                     <div class=\"nexus-event-meta\">\
+                         <span class=\"nexus-badge {}\">{}</span>\
+                         <span class=\"nexus-event-time\">{}</span>\
                      </div>\
                      </div>",
-                    badge_color,
-                    badge_color,
+                    tone,
                     rullst_core::html::escape_str(&ev.event_type),
                     rullst_core::html::escape_str(&ev.details),
-                    integrity_style,
+                    integrity_class,
                     integrity_badge,
                     rullst_core::html::escape_str(&ev.timestamp_str)
                 ));
@@ -175,152 +175,152 @@ pub async fn nexus_security_page(
 
     let content = format!(
         r#"
-<div class="nexus-card" style="display: flex; flex-direction: column; gap: 24px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 16px;">
+<div class="nexus-card nexus-stack">
+    <div class="nexus-panel-header">
         <div>
-            <h2 style="margin: 0; color: #34d399; display: flex; align-items: center; gap: 10px; font-size: 20px;">
+            <h2 class="nexus-panel-title nexus-tone-emerald">
                 <span>🛡️ Threat Radar & RASP Security SOC</span>
-                <span class="nexus-badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">LIVE IN-PROCESS TELEMETRY</span>
+                <span class="nexus-badge nexus-badge-live">LIVE IN-PROCESS TELEMETRY</span>
             </h2>
-            <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-muted);">In-process RASP, WAF, AI prompt-filter and sanitization counters. Audit integrity is reported only when a verifier source is connected.</p>
+            <p class="nexus-panel-lead">In-process RASP, WAF, AI prompt-filter and sanitization counters. Audit integrity is reported only when a verifier source is connected.</p>
         </div>
         <div>{ai_status_badge}</div>
     </div>
 
     <!-- 4 Primary Metric Cards -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
-        <div style="background: var(--bg-900); padding: 18px; border-radius: 10px; border: 1px solid var(--border);">
-            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Honeypot Traps Triggered</div>
-            <div style="font-size: 32px; font-weight: 800; color: #fbbf24; margin-top: 4px;">{honeypots_count}</div>
-            <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Synthetics (/.env, /admin.php, /wp-login)</div>
+    <div class="nexus-metric-grid">
+        <div class="nexus-metric">
+            <div class="nexus-metric-label">Honeypot Traps Triggered</div>
+            <div class="nexus-metric-value nexus-tone-amber">{honeypots_count}</div>
+            <div class="nexus-metric-hint">Synthetics (/.env, /admin.php, /wp-login)</div>
         </div>
-        <div style="background: var(--bg-900); padding: 18px; border-radius: 10px; border: 1px solid var(--border);">
-            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Active Banned IPs</div>
-            <div style="font-size: 32px; font-weight: 800; color: #f43f5e; margin-top: 4px;">{active_bans_count}</div>
-            <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">DashMap WAF Thread-Safe Active Bans</div>
+        <div class="nexus-metric">
+            <div class="nexus-metric-label">Active Banned IPs</div>
+            <div class="nexus-metric-value nexus-tone-rose">{active_bans_count}</div>
+            <div class="nexus-metric-hint">DashMap WAF Thread-Safe Active Bans</div>
         </div>
-        <div style="background: var(--bg-900); padding: 18px; border-radius: 10px; border: 1px solid var(--border);">
-            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Prompt Injections Blocked</div>
-            <div style="font-size: 32px; font-weight: 800; color: #c084fc; margin-top: 4px;">{prompt_injections_count}</div>
-            <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">AI Prompt Injection Shield Active</div>
+        <div class="nexus-metric">
+            <div class="nexus-metric-label">Prompt Injections Blocked</div>
+            <div class="nexus-metric-value nexus-tone-violet">{prompt_injections_count}</div>
+            <div class="nexus-metric-hint">AI Prompt Injection Shield Active</div>
         </div>
-        <div style="background: var(--bg-900); padding: 18px; border-radius: 10px; border: 1px solid var(--border);">
-            <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">XSS / Sanitizations</div>
-            <div style="font-size: 32px; font-weight: 800; color: #34d399; margin-top: 4px;">{sanitizations_count}</div>
-            <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">In-process sanitization counter</div>
+        <div class="nexus-metric">
+            <div class="nexus-metric-label">XSS / Sanitizations</div>
+            <div class="nexus-metric-value nexus-tone-emerald">{sanitizations_count}</div>
+            <div class="nexus-metric-hint">In-process sanitization counter</div>
         </div>
     </div>
 
     <!-- AI Security Sentinel & Prompt Injection Shield -->
-    <div style="background: rgba(147, 51, 234, 0.05); padding: 20px; border-radius: 10px; border: 1px solid rgba(147, 51, 234, 0.25);">
-        <h3 style="margin: 0 0 12px 0; color: #c084fc; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+    <div class="nexus-section nexus-section-ai">
+        <h3 class="nexus-section-title nexus-tone-violet">
             <span>🤖 AI Security Sentinel & Prompt Injection Shield</span>
         </h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 13px;">
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">Prompts Inspected</span>
-                <span style="font-size: 20px; font-weight: 700; color: #c084fc;">{prompts_inspected}</span>
+        <div class="nexus-mini-grid">
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">Prompts Inspected</span>
+                <span class="nexus-mini-value nexus-tone-violet">{prompts_inspected}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">Injections Blocked</span>
-                <span style="font-size: 20px; font-weight: 700; color: #f43f5e;">{prompt_injections_count}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">Injections Blocked</span>
+                <span class="nexus-mini-value nexus-tone-rose">{prompt_injections_count}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">PII Data Masked</span>
-                <span style="font-size: 20px; font-weight: 700; color: #22d3ee;">{pii_masked}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">PII Data Masked</span>
+                <span class="nexus-mini-value nexus-tone-cyan">{pii_masked}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">Audit Chain Source</span>
-                <span style="font-size: 20px; font-weight: 700; color: #94a3b8;">{AUDIT_CHAIN_UNAVAILABLE}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">Audit Chain Source</span>
+                <span class="nexus-mini-value nexus-tone-slate">{AUDIT_CHAIN_UNAVAILABLE}</span>
             </div>
         </div>
     </div>
 
     <!-- Deep Security & Zero-Trust Defense Primitives -->
-    <div style="background: rgba(16, 185, 129, 0.05); padding: 20px; border-radius: 10px; border: 1px solid rgba(16, 185, 129, 0.25);">
-        <h3 style="margin: 0 0 12px 0; color: #34d399; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+    <div class="nexus-section nexus-section-defense">
+        <h3 class="nexus-section-title nexus-tone-emerald">
             <span>🛡️ Deep Security & Zero-Trust Defenses</span>
         </h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 13px;">
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">Log Secrets Redacted</span>
-                <span style="font-size: 20px; font-weight: 700; color: #fbbf24;">{log_redactions}</span>
+        <div class="nexus-mini-grid">
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">Log Secrets Redacted</span>
+                <span class="nexus-mini-value nexus-tone-amber">{log_redactions}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">Login Jail Bans</span>
-                <span style="font-size: 20px; font-weight: 700; color: #f43f5e;">{login_jail_bans}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">Login Jail Bans</span>
+                <span class="nexus-mini-value nexus-tone-rose">{login_jail_bans}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">DLP Leaks Blocked</span>
-                <span style="font-size: 20px; font-weight: 700; color: #34d399;">{dlp_secrets_masked}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">DLP Leaks Blocked</span>
+                <span class="nexus-mini-value nexus-tone-emerald">{dlp_secrets_masked}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">OWASP Headers Applied</span>
-                <span style="font-size: 20px; font-weight: 700; color: #38bdf8;">{secure_headers_applied}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">OWASP Headers Applied</span>
+                <span class="nexus-mini-value nexus-tone-sky">{secure_headers_applied}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">Zero-Trust Mismatches</span>
-                <span style="font-size: 20px; font-weight: 700; color: #f43f5e;">{zero_trust_mismatches}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">Zero-Trust Mismatches</span>
+                <span class="nexus-mini-value nexus-tone-rose">{zero_trust_mismatches}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">Schema / Bomb Blocked</span>
-                <span style="font-size: 20px; font-weight: 700; color: #818cf8;">{schema_violations}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">Schema / Bomb Blocked</span>
+                <span class="nexus-mini-value nexus-tone-indigo">{schema_violations}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">SRI Signed Assets</span>
-                <span style="font-size: 20px; font-weight: 700; color: #34d399;">{sri_signed_assets}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">SRI Signed Assets</span>
+                <span class="nexus-mini-value nexus-tone-emerald">{sri_signed_assets}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">MFA TOTP Verified</span>
-                <span style="font-size: 20px; font-weight: 700; color: #38bdf8;">{mfa_verifications}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">MFA TOTP Verified</span>
+                <span class="nexus-mini-value nexus-tone-sky">{mfa_verifications}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">Deception Traps Hit</span>
-                <span style="font-size: 20px; font-weight: 700; color: #f43f5e;">{deception_hits}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">Deception Traps Hit</span>
+                <span class="nexus-mini-value nexus-tone-rose">{deception_hits}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">CSWSH Hijacks Blocked</span>
-                <span style="font-size: 20px; font-weight: 700; color: #c084fc;">{cswsh_blocks}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">CSWSH Hijacks Blocked</span>
+                <span class="nexus-mini-value nexus-tone-violet">{cswsh_blocks}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">Rate Limit Drops</span>
-                <span style="font-size: 20px; font-weight: 700; color: #fbbf24;">{rate_limit_blocks}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">Rate Limit Drops</span>
+                <span class="nexus-mini-value nexus-tone-amber">{rate_limit_blocks}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">Local SIEM-Candidate Alerts</span>
-                <span style="font-size: 20px; font-weight: 700; color: #34d399;">{siem_dispatches}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">Local SIEM-Candidate Alerts</span>
+                <span class="nexus-mini-value nexus-tone-emerald">{siem_dispatches}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">IDOR Route Warnings</span>
-                <span style="font-size: 20px; font-weight: 700; color: #fbbf24;">{idor_warnings}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">IDOR Route Warnings</span>
+                <span class="nexus-mini-value nexus-tone-amber">{idor_warnings}</span>
             </div>
-            <div style="background: var(--bg-900); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
-                <span style="color: var(--text-muted); font-size: 11px; display: block;">Anti-Timing Protected</span>
-                <span style="font-size: 20px; font-weight: 700; color: #22d3ee;">{timing_guard_protected}</span>
+            <div class="nexus-mini">
+                <span class="nexus-mini-label">Anti-Timing Protected</span>
+                <span class="nexus-mini-value nexus-tone-cyan">{timing_guard_protected}</span>
             </div>
         </div>
     </div>
 
     <!-- Active Banned IPs List & Honeypot Routes -->
-    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px;">
-        <div style="background: var(--bg-900); padding: 20px; border-radius: 10px; border: 1px solid var(--border);">
-            <h3 style="margin-top: 0; color: var(--text-main); font-size: 15px;">🚫 Active WAF Banned IP Addresses ({active_bans_count})</h3>
-            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px; font-family: var(--font-mono); margin-top: 12px;">
+    <div class="nexus-split">
+        <div class="nexus-box">
+            <h3 class="nexus-box-title">🚫 Active WAF Banned IP Addresses ({active_bans_count})</h3>
+            <div class="nexus-feed">
                 {banned_ips_html}
             </div>
         </div>
-        <div style="background: var(--bg-900); padding: 20px; border-radius: 10px; border: 1px solid var(--border);">
-            <h3 style="margin-top: 0; color: var(--text-main); font-size: 15px;">🍯 Honeypot Routes & Observed Hits</h3>
-            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px; font-family: var(--font-mono); margin-top: 12px;">
+        <div class="nexus-box">
+            <h3 class="nexus-box-title">🍯 Honeypot Routes & Observed Hits</h3>
+            <div class="nexus-feed">
                 {honeypot_routes_html}
             </div>
         </div>
     </div>
 
     <!-- Local security event feed; integrity badges reflect each event's actual source. -->
-    <div style="background: var(--bg-900); padding: 20px; border-radius: 10px; border: 1px solid var(--border);">
-        <h3 style="margin-top: 0; color: var(--text-main); font-size: 15px;">📜 Local Security Event Stream</h3>
-        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px; margin-top: 12px; font-family: var(--font-mono);">
+    <div class="nexus-box">
+        <h3 class="nexus-box-title">📜 Local Security Event Stream</h3>
+        <div class="nexus-feed">
             {events_feed_html}
         </div>
     </div>

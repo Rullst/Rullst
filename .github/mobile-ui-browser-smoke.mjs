@@ -1,15 +1,21 @@
 // Browser contracts over real rendered HTML supplied on stdin. No npm packages.
 // CDN/font/image requests are blocked: these tests cover local UI, not providers.
+// Optional arguments: a CSP template (`{NONCE}` is replaced per response) and a
+// directory whose files are served same-origin under /nexus/assets/.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { once } from "node:events";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { extname, join } from "node:path";
 
 const kind = process.argv[2];
 assert(["nexus", "portfolio"].includes(kind), "expected nexus or portfolio");
+const cspTemplate = process.argv[3] || "";
+const assetDirectory = process.argv[4] || "";
+const assetTypes = { ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
 let html = "";
 for await (const chunk of process.stdin) {
   html += chunk;
@@ -17,9 +23,30 @@ for await (const chunk of process.stdin) {
 }
 assert(html.includes("<html"), "rendered HTML is required");
 const profile = await mkdtemp(join(tmpdir(), "rullst-mobile-browser-"));
-const server = createServer((_request, response) => {
-  response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-  response.end(html);
+const server = createServer(async (request, response) => {
+  const { pathname } = new URL(request.url, "http://127.0.0.1");
+  if (pathname === "/") {
+    const headers = { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" };
+    if (cspTemplate) {
+      headers["Content-Security-Policy"] = cspTemplate.replaceAll("{NONCE}", randomBytes(16).toString("base64"));
+    }
+    response.writeHead(200, headers);
+    response.end(html);
+    return;
+  }
+  const name = pathname.startsWith("/nexus/assets/") ? pathname.slice("/nexus/assets/".length) : "";
+  if (assetDirectory && /^[a-z0-9][a-z0-9.-]*$/.test(name) && assetTypes[extname(name)]) {
+    try {
+      const body = await readFile(join(assetDirectory, name));
+      response.writeHead(200, { "Content-Type": assetTypes[extname(name)], "X-Content-Type-Options": "nosniff" });
+      response.end(body);
+      return;
+    } catch {
+      // Fall through to 404 for a missing asset.
+    }
+  }
+  response.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+  response.end("not found");
 });
 server.listen(0, "127.0.0.1");
 await once(server, "listening");
@@ -89,6 +116,10 @@ try {
   await send("Runtime.enable");
   await send("Network.enable");
   await send("Network.setBlockedURLs", { urls: ["https://*"] });
+  // Record CSP violations from the first document onwards.
+  await send("Page.addScriptToEvaluateOnNewDocument", {
+    source: "window.__cspViolations = []; document.addEventListener('securitypolicyviolation', event => window.__cspViolations.push(event.violatedDirective + ' ' + event.blockedURI));",
+  });
   const settle = () => evaluate("new Promise(resolve => setTimeout(resolve, 250))");
   const resize = async width => {
     await send("Emulation.setDeviceMetricsOverride", { width, height: 844, deviceScaleFactor: 1, mobile: false });
@@ -121,6 +152,10 @@ try {
   await resize(390);
   await navigate();
   if (kind === "nexus") {
+    if (assetDirectory) {
+      assert.equal(await evaluate("typeof window.htmx"), "object", "same-origin htmx loaded");
+      assert.equal(await evaluate("getComputedStyle(document.body).display"), "flex", "same-origin stylesheet applied");
+    }
     const closed = async () => {
       assert.equal(await evaluate("document.querySelector('.nexus-topbar-toggle').getAttribute('aria-expanded')"), "false");
       assert(await evaluate("document.querySelector('#nexus-sidebar').inert"), "closed offscreen links must not remain keyboard-focusable");
@@ -163,6 +198,7 @@ try {
     await closed();
     await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
     assert.equal(await evaluate("getComputedStyle(document.querySelector('#nexus-sidebar')).transitionDuration"), "0s");
+    assert.deepEqual(await evaluate("window.__cspViolations"), [], "Content-Security-Policy violations");
     // Disabled JavaScript must leave ordinary navigation visible, not trapped.
     await send("Emulation.setScriptExecutionDisabled", { value: true });
     await navigate(false);

@@ -195,26 +195,42 @@ pub async fn nexus_chat_page(
     content.push_str("<div class=\"nexus-chat-layout\">");
 
     // Left Control Panel: Schema & Quick Commands
-    content.push_str("<div class=\"nexus-chat-schema\" style=\"display: flex; flex-direction: column; gap: 1rem;\">");
+    content.push_str("<div class=\"nexus-chat-schema\">");
 
     // Quick Preset Commands
-    content.push_str("<div class=\"nexus-card\" style=\"padding: 1rem; margin: 0;\">");
-    content.push_str("<div class=\"nexus-schema-title\" style=\"margin-bottom: 0.75rem;\">&#9889; Quick Commands</div>");
-    content.push_str("<div style=\"display: flex; flex-direction: column; gap: 0.5rem;\">");
-    content.push_str("<button type=\"button\" onclick=\"setAiPrompt('Show all registered database tables')\" class=\"nexus-btn\" style=\"background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #ffffff !important; font-weight: 600; font-size: 0.8rem; text-align: left; justify-content: start;\">&#128202; Show All Tables</button>");
-    content.push_str("<button type=\"button\" onclick=\"setAiPrompt('How many records exist in the database?')\" class=\"nexus-btn\" style=\"background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #ffffff !important; font-weight: 600; font-size: 0.8rem; text-align: left; justify-content: start;\">&#128200; Count Table Rows</button>");
-    content.push_str("<button type=\"button\" onclick=\"setAiPrompt('How do I configure an AI provider key in .env?')\" class=\"nexus-btn\" style=\"background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #ffffff !important; font-weight: 600; font-size: 0.8rem; text-align: left; justify-content: start;\">&#127760; LLM Setup Instructions</button>");
+    content.push_str("<div class=\"nexus-card nexus-chat-card\">");
+    content.push_str("<div class=\"nexus-schema-title\">&#9889; Quick Commands</div>");
+    content.push_str("<div class=\"nexus-quick-commands\">");
+    for (prompt, label) in [
+        (
+            "Show all registered database tables",
+            "&#128202; Show All Tables",
+        ),
+        (
+            "How many records exist in the database?",
+            "&#128200; Count Table Rows",
+        ),
+        (
+            "How do I configure an AI provider key in .env?",
+            "&#127760; LLM Setup Instructions",
+        ),
+    ] {
+        content.push_str(&format!(
+            "<button type=\"button\" class=\"nexus-btn nexus-quick-command\" data-nexus-prompt=\"{prompt}\">{label}</button>"
+        ));
+    }
     content.push_str("</div></div>");
 
     // LLM Provider Setup Banner
-    content.push_str("<div class=\"nexus-card\" style=\"padding: 1rem; margin: 0; background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.2);\">");
-    content.push_str("<div style=\"font-size: 0.85rem; font-weight: 700; color: #f59e0b; margin-bottom: 0.5rem;\">&#127760; Universal LLM Support</div>");
-    content.push_str("<p style=\"font-size: 0.75rem; color: var(--text-200); margin: 0 0 0.5rem 0; line-height: 1.4;\">Connect to <strong>Gemini, OpenAI, Claude, Ollama, DeepSeek, Qwen, or Kimi</strong> via your <code class=\"nexus-code\">.env</code> file:</p>");
-    content.push_str("<pre class=\"nexus-schema-pre\" style=\"font-size: 0.7rem; padding: 0.5rem;\">GEMINI_API_KEY=key\nOPENAI_API_KEY=key\nANTHROPIC_API_KEY=key\nDEEPSEEK_API_KEY=key\nGROQ_API_KEY=key\nGROQ_MODEL=model\nOLLAMA_HOST=http://...\nOPENAI_BASE_URL=https://...\nOPENAI_MODEL=model</pre>");
+    content.push_str("<div class=\"nexus-card nexus-chat-card nexus-chat-banner\">");
+    content
+        .push_str("<div class=\"nexus-chat-banner-title\">&#127760; Universal LLM Support</div>");
+    content.push_str("<p class=\"nexus-chat-banner-text\">Connect to <strong>Gemini, OpenAI, Claude, Ollama, DeepSeek, Qwen, or Kimi</strong> via your <code class=\"nexus-code\">.env</code> file:</p>");
+    content.push_str("<pre class=\"nexus-schema-pre nexus-schema-pre-compact\">GEMINI_API_KEY=key\nOPENAI_API_KEY=key\nANTHROPIC_API_KEY=key\nDEEPSEEK_API_KEY=key\nGROQ_API_KEY=key\nGROQ_MODEL=model\nOLLAMA_HOST=http://...\nOPENAI_BASE_URL=https://...\nOPENAI_MODEL=model</pre>");
     content.push_str("</div>");
 
     // Database Schema Summary
-    content.push_str("<div class=\"nexus-card\" style=\"padding: 1rem; margin: 0;\">");
+    content.push_str("<div class=\"nexus-card nexus-chat-card\">");
     content.push_str("<div class=\"nexus-schema-title\">&#128202; Database Schema</div>");
     content.push_str("<pre class=\"nexus-schema-pre\">");
     content.push_str(&rullst_core::html::escape_str(&schema_summary));
@@ -225,28 +241,15 @@ pub async fn nexus_chat_page(
     content.push_str("<div class=\"nexus-chat-messages\" id=\"nexus-chat-messages\">");
     content.push_str("<div class=\"nexus-chat-bubble nexus-chat-assistant\">");
     content.push_str("<span class=\"nexus-chat-avatar\">&#129302;</span>");
-    content.push_str("<div class=\"nexus-chat-text\">Hello! I have full offline intelligence about your database schema. Ask me anything &mdash; for example:<br><em>\"List all courses\"</em>, <em>\"Show tables\"</em>, or <em>\"How do I setup DeepSeek/Qwen?\"</em><br><br><small style=\"color: var(--text-300);\">&#128161; <b>Tip:</b> Click any Quick Command on the left or type your query below.</small></div>");
+    content.push_str("<div class=\"nexus-chat-text\">Hello! I have full offline intelligence about your database schema. Ask me anything &mdash; for example:<br><em>\"List all courses\"</em>, <em>\"Show tables\"</em>, or <em>\"How do I setup DeepSeek/Qwen?\"</em><br><br><small class=\"nexus-chat-tip\">&#128161; <b>Tip:</b> Click any Quick Command on the left or type your query below.</small></div>");
     content.push_str("</div></div>");
-    content.push_str("<form class=\"nexus-chat-form\" hx-post=\"/nexus/chat/query\" hx-target=\"#nexus-chat-messages\" hx-swap=\"beforeend\" hx-on:htmx:after-request=\"this.reset(); document.getElementById(&quot;nexus-chat-messages&quot;).scrollTop = 99999;\">");
+    // nexus.js resets the form and scrolls the transcript after each answer.
+    content.push_str("<form class=\"nexus-chat-form\" hx-post=\"/nexus/chat/query\" hx-target=\"#nexus-chat-messages\" hx-swap=\"beforeend\">");
     content.push_str("<input type=\"text\" name=\"message\" id=\"nexus-chat-input\" class=\"nexus-chat-input\" placeholder=\"Ask about your data...\" aria-label=\"Ask the AI assistant\" autocomplete=\"off\" required />");
     content.push_str(
         "<button type=\"submit\" class=\"nexus-btn nexus-btn-ai\">Send &#9992;&#65039;</button>",
     );
     content.push_str("</form></div></div>");
-
-    content.push_str(
-        r#"
-<script>
-function setAiPrompt(text) {
-  const input = document.getElementById('nexus-chat-input');
-  if (input) {
-    input.value = text;
-    input.focus();
-  }
-}
-</script>
-"#,
-    );
 
     if headers.contains_key("hx-request") {
         Html(content)

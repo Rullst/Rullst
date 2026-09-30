@@ -148,6 +148,30 @@ that loopback-only policy, while release builds require the validated
 environment credentials above. Applications can always select either policy
 explicitly when testing a production topology.
 
+## Browser assets and Content Security Policy
+
+The panel loads only same-origin files served by the Nexus router under
+`/nexus/assets/`: `nexus.css`, `nexus.js` and a vendored htmx. Pages contain no
+inline `<script>`/`<style>` blocks, no `on*`/`hx-on` handler attributes and no
+`style` attributes, and they do not contact a CDN, Google Fonts or GitHub. The
+default production CSP (`script-src 'self' 'nonce-…'; style-src 'self' 'nonce-…'`)
+therefore runs Nexus unchanged; do not add `'unsafe-inline'`, `'unsafe-eval'` or a
+CDN to `security.csp` for Nexus. A custom policy must keep `'self'` in
+`script-src`, `style-src` and `connect-src`, and `data:` in `img-src`. htmx runs
+with `allowEval`, `allowScriptTags` and `includeIndicatorStyles` disabled.
+The asset routes sit behind the same authentication policy as the panel.
+
+`assets/htmx-2.0.4.min.js` is the unmodified upstream
+[`dist/htmx.min.js`](https://github.com/bigskysoftware/htmx/blob/b82cf843e47e575dd8c2ad8fee547d8e2c3bb87f/dist/htmx.min.js)
+of htmx 2.0.4 (tag `v2.0.4`, commit `b82cf843e47e575dd8c2ad8fee547d8e2c3bb87f`),
+the same bytes previously loaded from `unpkg.com/htmx.org@2.0.4`. Its
+[Zero-Clause BSD license](https://github.com/bigskysoftware/htmx/blob/b82cf843e47e575dd8c2ad8fee547d8e2c3bb87f/LICENSE)
+is kept as `assets/HTMX-LICENSE`. SHA-256
+`e209dda5c8235479f3166defc7750e1dbcd5a5c1808b7792fc2e6733768fb447`; SRI
+`sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+`.
+The file is outside Cargo dependency scanning: an update needs upstream
+provenance, a license and digest review, and the Nexus CSP browser check.
+
 ## Security boundaries
 
 Nexus includes CSRF protection, validates registered semantic form values, and

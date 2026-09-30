@@ -131,8 +131,7 @@ pub async fn render_table_rows(
                  <td class=\"nexus-td nexus-td-actions\">\
                  <button type=\"button\" class=\"nexus-action-btn nexus-action-edit\" \
                  hx-get=\"/nexus/table/{table_path}/{row_path}/edit\" \
-                 hx-target=\"#nexus-modal-body\" \
-                 hx-on:htmx:after-request=\"document.getElementById(&apos;nexus-modal&apos;).showModal()\">&#9999;&#65039;</button>\
+                 hx-target=\"#nexus-modal-body\">&#9999;&#65039;</button>\
                  <button type=\"button\" class=\"nexus-action-btn nexus-action-delete\" data-nexus-delete=\"true\" \
                  data-nexus-table=\"{}\" data-nexus-record=\"{safe_row_id}\">&#128465;&#65039;</button>\
                  </td></tr>"
@@ -175,7 +174,7 @@ pub async fn render_table_view(
             "<th class=\"nexus-th\">\
              <a href=\"/nexus/table/{table_path}?sort_by={column_param}&amp;order={order_param}&amp;q={query_param}\" \
              hx-get=\"/nexus/table/{table_path}?sort_by={column_param}&amp;order={order_param}&amp;q={query_param}\" \
-             hx-target=\"#nexus-content\" hx-push-url=\"true\" style=\"color: inherit; text-decoration: none;\">\
+             hx-target=\"#nexus-content\" hx-push-url=\"true\" class=\"nexus-th-link\">\
              {label}{arrow}</a></th>"
         );
         acc
@@ -201,14 +200,14 @@ pub async fn render_table_view(
          <div><h1 class=\"nexus-page-title\">{safe_label}</h1>\
          <p class=\"nexus-page-subtitle\">Manage <code>{safe_table}</code> collection records.</p></div>\
          <button type=\"button\" class=\"nexus-btn nexus-btn-primary\" \
-         hx-get=\"/nexus/table/{table_path}/new\" hx-target=\"#nexus-modal-body\" \
-         hx-on:htmx:after-request=\"document.getElementById('nexus-modal').showModal()\">\
+         hx-get=\"/nexus/table/{table_path}/new\" hx-target=\"#nexus-modal-body\">\
          &#43; New {safe_label}</button></div>"
     );
 
     let _ = write!(
         out,
-        "<form id=\"batch-form-{table_path}\" method=\"POST\" action=\"/nexus/table/{table_path}/batch\">\
+        "<form id=\"batch-form-{table_path}\" method=\"POST\" action=\"/nexus/table/{table_path}/batch\" \
+         data-nexus-confirm=\"Apply bulk action?\">\
          <div class=\"nexus-toolbar\">\
          <div class=\"nexus-search-wrap\">\
          <span class=\"nexus-search-icon\">&#128269;</span>\
@@ -216,17 +215,18 @@ pub async fn render_table_view(
          hx-get=\"/nexus/table/{table_path}/search\" hx-trigger=\"keyup changed delay:300ms\" \
          hx-target=\"#nexus-table-body\" hx-include=\"[name='q']\" />\
          </div>\
-         <select name=\"action\" class=\"nexus-btn nexus-btn-ghost\" style=\"padding: 8px 12px; font-size: 12px;\">\
+         <select name=\"action\" class=\"nexus-btn nexus-btn-ghost nexus-bulk-select\">\
          <option value=\"\">Bulk Actions</option>\
          <option value=\"delete\">Delete Selected</option>\
          {deactivate_option}\
          </select>\
-         <button type=\"submit\" class=\"nexus-btn nexus-btn-ghost\" onclick=\"return confirm('Apply bulk action?')\">Apply</button>\
+         <button type=\"submit\" class=\"nexus-btn nexus-btn-ghost\">Apply</button>\
          </div>\
          <div class=\"nexus-table-wrap\">\
          <table class=\"nexus-table\">\
          <thead><tr class=\"nexus-thead-row\">\
-         <th class=\"nexus-th text-center\" style=\"width: 40px;\"><input type=\"checkbox\" onclick=\"document.querySelectorAll('.nexus-batch-check').forEach(c => c.checked = this.checked)\" /></th>\
+         <th class=\"nexus-th nexus-th-check text-center\">\
+         <input type=\"checkbox\" data-nexus-select-all=\"true\" aria-label=\"Select all rows\" /></th>\
          {th_cells}\
          <th class=\"nexus-th nexus-th-actions\">Actions</th>\
          </tr></thead>\
@@ -247,7 +247,7 @@ pub async fn render_table_view(
         out,
         "<div class=\"nexus-pagination\">\
          <div class=\"nexus-page-indicator\">Page {page}</div>\
-         <div style=\"display: flex; gap: 8px;\">\
+         <div class=\"nexus-pagination-links\">\
          <a href=\"/nexus/table/{table_path}?page={prev_page}&amp;q={query_param}{sort_param}{order_param}\" \
          class=\"nexus-btn nexus-btn-ghost\" hx-get=\"/nexus/table/{table_path}?page={prev_page}&amp;q={query_param}{sort_param}{order_param}\" \
          hx-target=\"#nexus-content\" hx-push-url=\"true\">&larr; Prev</a>\
@@ -259,8 +259,8 @@ pub async fn render_table_view(
 
     out.push_str(
         "<dialog id=\"nexus-modal\" class=\"nexus-modal\">\
-         <button type=\"button\" class=\"nexus-modal-close\" onclick=\"document.getElementById('nexus-modal').close()\">&times;</button>\
-         <div class=\"nexus-modal-inner\" id=\"nexus-modal-body\" hx-on:htmx:after-swap=\"document.getElementById('nexus-modal').showModal()\"></div>\
+         <button type=\"button\" class=\"nexus-modal-close\" data-nexus-modal-close=\"true\" aria-label=\"Close\">&times;</button>\
+         <div class=\"nexus-modal-inner\" id=\"nexus-modal-body\"></div>\
          </dialog>",
     );
 
@@ -370,7 +370,7 @@ pub async fn render_record_form(
 
         let is_readonly = f.readonly || (is_edit && fname == pk);
         let readonly_attr = if is_readonly {
-            " readonly style=\"opacity: 0.6; cursor: not-allowed;\""
+            " readonly"
         } else {
             ""
         };
@@ -391,7 +391,7 @@ pub async fn render_record_form(
                 let checked = if cur_val == "1" || cur_val == "true" { " checked" } else { "" };
                 format!(
                     "<input type=\"hidden\"{name_attr} value=\"0\" />\
-                     <input type=\"checkbox\"{name_attr} value=\"1\"{checked}{readonly_attr} style=\"width: 20px; height: 20px; accent-color: var(--accent);\" />"
+                     <input type=\"checkbox\"{name_attr} value=\"1\"{checked}{readonly_attr} class=\"nexus-checkbox\" />"
                 )
             }
             FieldKind::Enum { options } => {
@@ -441,11 +441,10 @@ pub async fn render_record_form(
 
     format!(
         "<h3 class=\"nexus-modal-title\">{safe_title}</h3>\
-         <form id=\"nexus-record-form\" data-nexus-action=\"{safe_action_url}\" autocomplete=\"off\" onsubmit=\"return false;\">\
+         <form id=\"nexus-record-form\" data-nexus-action=\"{safe_action_url}\" autocomplete=\"off\" data-nexus-no-submit=\"true\">\
          <div class=\"nexus-fields-grid\">{fields_html}</div>\
          <div class=\"nexus-form-actions\">\
-         <button type=\"button\" class=\"nexus-btn nexus-btn-ghost\" \
-         onclick=\"document.getElementById(&apos;nexus-modal&apos;).close()\">Cancel</button>\
+         <button type=\"button\" class=\"nexus-btn nexus-btn-ghost\" data-nexus-modal-close=\"true\">Cancel</button>\
          <button type=\"button\" class=\"nexus-btn nexus-btn-primary\" data-nexus-save=\"true\">Save Record</button>\
          </div></form>"
     )
