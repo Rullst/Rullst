@@ -33,7 +33,9 @@ pub fn format_cef_event(event: &LiveSecurityEvent) -> String {
     let severity = match event.event_type.as_str() {
         "HONEYPOT_TRAP_TRIGGERED" => "8",
         "AI_PROMPT_INJECTION_SHIELDED" => "9",
-        "XSS_PAYLOAD_NEUTRALIZED" => "7",
+        // `HtmlSanitizer` reports XSS_SANITIZED; the telemetry helper reports
+        // XSS_PAYLOAD_NEUTRALIZED. Both are the same neutralized XSS payload.
+        "XSS_PAYLOAD_NEUTRALIZED" | "XSS_SANITIZED" => "7",
         _ => "5",
     };
 
@@ -94,6 +96,29 @@ mod tests {
             env!("CARGO_PKG_VERSION")
         )));
         assert!(cef.contains("src=10.0.0.1"));
+    }
+
+    #[test]
+    fn both_xss_event_names_export_the_xss_severity() {
+        crate::sanitizer::HtmlSanitizer::sanitize("<script>alert(1)</script><p>x</p>");
+        let sanitized = crate::telemetry::SecurityStore::global()
+            .live_events
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|event| event.event_type == "XSS_SANITIZED")
+            .cloned()
+            .expect("the sanitizer records an event");
+        for event in [
+            sanitized,
+            LiveSecurityEvent::local("XSS_PAYLOAD_NEUTRALIZED", "x", "unknown"),
+        ] {
+            let cef = format_cef_event(&event);
+            assert!(
+                cef.contains(&format!("|{0}|{0}|7|", event.event_type)),
+                "{cef}"
+            );
+        }
     }
 
     #[test]
