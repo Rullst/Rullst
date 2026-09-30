@@ -276,3 +276,31 @@ fn tracking_errors_have_stable_non_secret_messages() {
         assert!(!display.contains("rullst-mail-test-key"));
     }
 }
+
+#[test]
+fn click_tokens_sign_the_decoded_destination_and_escape_the_tracker() {
+    let html = r#"<a href="https://shop.example/p?id=1&amp;utm=mail&amp;token=a1">x</a>"#;
+    let rewritten = TrackingEngine::try_rewrite_links(
+        html,
+        "https://t.example/c\"onmouseover=\"alert(1)",
+        SECRET,
+        "user@example.com",
+        NOW,
+    )
+    .expect("valid tracker");
+    assert!(!rewritten.contains("\"onmouseover"));
+    assert!(
+        rewritten.contains("https://t.example/c&quot;onmouseover=&quot;alert(1)/track/click/v2.")
+    );
+    let token = rewritten
+        .split("/track/click/")
+        .nth(1)
+        .and_then(|rest| rest.split('"').next())
+        .expect("token");
+    let event = TrackingEngine::verify_click_token_at(SECRET, token, NOW, Duration::from_secs(60))
+        .expect("valid click token");
+    assert_eq!(
+        event.target_url,
+        "https://shop.example/p?id=1&utm=mail&token=a1"
+    );
+}
