@@ -2377,7 +2377,10 @@ sending.
   is not a `BillingProvider` webhook. It accepts only an explicit `mock_*` API
   token as an offline fixture; an empty token returns `ConfigurationError` and a
   live token returns `UnsupportedOperation` before reading the body. Its result
-  must never drive a payout, refund or release decision.
+  must never drive a payout, refund or release decision. The fixture requires
+  a positive transfer ID, recipient, ISO 4217 currency, amount and documented
+  transfer state instead of inventing defaults, and scales exact decimal
+  amounts to the currency's minor units without floating point.
 * The Axum and opt-in Actix middleware adapters call one canonical bounded
   verifier before dispatch. Built-in provider adapters that accept live
   deliveries use provider-appropriate cryptographic verification; legacy

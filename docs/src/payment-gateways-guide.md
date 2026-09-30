@@ -275,7 +275,9 @@ transfer-status read does not provide that missing transfer workflow.
 fixture limited to an explicit `mock_*` API token; an empty token is a
 configuration error and a live token returns `UnsupportedOperation` before the
 body is read. A forged `funds_refunded` or `outgoing_payment_sent` body must
-never trigger a payout, refund or release.
+never trigger a payout, refund or release. The fixture requires every field it
+reports and scales exact decimal amounts to ISO 4217 minor units without
+floating point.
 
 ---
 

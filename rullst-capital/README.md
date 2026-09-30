@@ -114,6 +114,11 @@ cannot distinguish a Wise delivery from a forged request. It is an offline
 fixture restricted to an explicit `mock_*` API token: an empty token returns
 `ConfigurationError` and a live token returns `UnsupportedOperation` before
 the body is read. Do not re-issue, release or reconcile payouts from it.
+The fixture requires a positive transfer ID, recipient, ISO 4217 currency,
+amount and a documented transfer state; nothing missing is replaced with a
+default. Amounts are exact decimals scaled to the currency's minor units
+without floating point, and negative, zero, over-precise or overflowing
+values are rejected.
 
 Lemon Squeezy live checkout uses the merchant's explicit positive numeric store
 ID: `LemonSqueezyProvider::new(key, webhook_secret).with_store_id(store_id)?`.
