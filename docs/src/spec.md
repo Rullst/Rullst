@@ -1646,7 +1646,9 @@ The `Orm` derive grammar is fail-closed. Model and field attributes are parsed
 as structured nested metadata; unknown or duplicate options are compile
 errors. Every SQLx model requires a persisted named `id` field. Explicit
 table/column/relation identifiers use the 1–64 byte portable ASCII identifier
-grammar, and declared hook, scope, policy, relation-model, tenant, soft-delete,
+grammar; the derived `<struct>s` default table name must match it only when
+no explicit `table` replaces it (for example for a non-ASCII struct name), and
+declared hook, scope, policy, relation-model, tenant, soft-delete,
 and embedding references are validated before code generation. A relation
 field accepts exactly one relation declaration; options that do not apply to
 that relation fail compilation. `belongs_to_many` requires `pivot_table` and

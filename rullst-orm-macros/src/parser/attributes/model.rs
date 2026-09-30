@@ -22,9 +22,7 @@ pub(in crate::parser) struct ModelAttributes {
 
 impl ModelAttributes {
     pub fn parse(input: &DeriveInput) -> Result<Self, syn::Error> {
-        let table_name = format!("{}s", input.ident.to_string().to_lowercase());
-        validate_sql_identifier(&table_name, "default table name", input.ident.span())?;
-        let mut parsed = Self::new(table_name);
+        let mut parsed = Self::new(format!("{}s", input.ident.to_string().to_lowercase()));
         let mut seen = HashSet::new();
         for attribute in input
             .attrs
@@ -32,6 +30,11 @@ impl ModelAttributes {
             .filter(|attribute| attribute.path().is_ident("orm"))
         {
             attribute.parse_nested_meta(|meta| parsed.apply(meta, &mut seen))?;
+        }
+        // The derived `<struct>s` name must be portable only when no explicit
+        // `table` replaces it (a non-ASCII or 64-byte struct name, say).
+        if !seen.contains("table") {
+            validate_sql_identifier(&parsed.table_name, "default table name", input.ident.span())?;
         }
         Ok(parsed)
     }
@@ -193,6 +196,30 @@ mod tests {
                 crate::parser::parse(&input).is_err(),
                 "accepted non-portable column: {column}"
             );
+        }
+    }
+
+    #[test]
+    fn an_explicit_table_replaces_an_unportable_default_table_name() {
+        for struct_name in ["Usuário".to_string(), "A".repeat(64)] {
+            let ident = syn::parse_str::<syn::Ident>(&struct_name).expect("valid Rust identifier");
+            let explicit: syn::DeriveInput = syn::parse_quote! {
+                #[orm(table = "usuarios")]
+                struct #ident { id: i32, nome: String }
+            };
+            let parsed = crate::parser::parse(&explicit).unwrap_or_else(|error| {
+                panic!("explicit table rejected for {struct_name}: {error}")
+            });
+            assert_eq!(parsed.table_name, "usuarios");
+
+            let implicit: syn::DeriveInput = syn::parse_quote! {
+                struct #ident { id: i32, nome: String }
+            };
+            let error = match crate::parser::parse(&implicit) {
+                Ok(_) => panic!("unportable default table accepted for {struct_name}"),
+                Err(error) => error,
+            };
+            assert!(error.to_string().contains("default table name"), "{error}");
         }
     }
 
