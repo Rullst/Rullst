@@ -22,6 +22,14 @@ struct QueryCacheLiveSecret {
     pub cpf: rullst_orm::SecretString,
 }
 
+#[derive(Debug, Clone, FromRow, rullst_orm::Orm)]
+#[orm(table = "query_cache_live_vault")]
+struct QueryCacheLiveVault {
+    pub id: i32,
+    #[orm(encrypted)]
+    pub note: String,
+}
+
 const LIVE_CPF: &str = "123.456.789-00";
 
 #[tokio::test]
@@ -288,6 +296,7 @@ async fn redis_cache_is_live_bounded_and_never_replaces_transaction_state() {
         .expect("remove isolated live cache key");
     exercise_tenant_scoped_invalidation(&mut redis).await;
     exercise_secret_string_cache(&mut redis).await;
+    exercise_undecodable_entries_fail_open(&mut redis).await;
     let _ = std::fs::remove_file(database_path);
 }
 
@@ -404,4 +413,71 @@ async fn exercise_secret_string_cache(redis: &mut rullst_orm::_redis::aio::Conne
         .del(&cache_key)
         .await
         .expect("remove isolated secret cache key");
+}
+
+/// A cached value that is not a JSON array of rows, or whose rows no longer
+/// decrypt (for example after key retirement), is a miss: the read falls back
+/// to the database, which rewrites the entry.
+async fn exercise_undecodable_entries_fail_open(
+    redis: &mut rullst_orm::_redis::aio::ConnectionManager,
+) {
+    let query = QueryCacheLiveRecord::query().where_id(1).limit(1);
+    let cache_key = rullst_orm::query_cache::query_key(
+        "query_cache_live_records",
+        &query.to_sql(),
+        &query.bindings,
+    )
+    .expect("derive cache key");
+    for corrupt in ["null", "{\"id\":1}", "\"rows\""] {
+        let _: () = redis
+            .set_ex(&cache_key, corrupt, 30)
+            .await
+            .expect("install non-array cache entry");
+        let row = query
+            .clone()
+            .remember(30)
+            .first()
+            .await
+            .expect("a non-array entry must fall back to the database");
+        assert!(row.is_some(), "entry {corrupt} was served as an empty hit");
+    }
+    let _: usize = redis
+        .del(&cache_key)
+        .await
+        .expect("remove record cache key");
+
+    Schema::create("query_cache_live_vault", |table: &mut Blueprint| {
+        table.id();
+        table.string("note").not_null();
+    })
+    .await
+    .expect("create live vault table");
+    let mut vault = QueryCacheLiveVault {
+        id: 0,
+        note: "current key".to_string(),
+    };
+    vault.save().await.expect("insert encrypted vault fixture");
+    let query = QueryCacheLiveVault::query().where_id(vault.id).limit(1);
+    let cache_key = rullst_orm::query_cache::query_key(
+        "query_cache_live_vault",
+        &query.to_sql(),
+        &query.bindings,
+    )
+    .expect("derive vault cache key");
+    let retired = format!(
+        r#"[{{"id":{},"note":"RULLST:v2:retired-2020:AAAAAAAAAAAAAAAA:AAAAAAAAAAAAAAAAAAAAAAAA"}}]"#,
+        vault.id
+    );
+    let _: () = redis
+        .set_ex(&cache_key, retired, 30)
+        .await
+        .expect("install entry under a retired key");
+    let row = query
+        .remember(30)
+        .first()
+        .await
+        .expect("an entry that no longer decrypts must fall back to the database")
+        .expect("vault fixture should exist");
+    assert_eq!(row.note, "current key");
+    let _: usize = redis.del(&cache_key).await.expect("remove vault cache key");
 }

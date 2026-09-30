@@ -55,7 +55,7 @@ pub fn generate_execution_methods(
             ));
         }
     };
-    let cache_read = super::query_cache::generate_cache_read(name, table_name, &decrypt_results);
+    let cache_read = super::query_cache::generate_cache_read(parsed);
     let cache_write = super::query_cache::generate_cache_write(name);
 
     vec![quote! {

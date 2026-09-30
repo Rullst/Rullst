@@ -2036,7 +2036,11 @@ while portability and semantic review remain the model author's responsibility.
   transactions, so cached state cannot replace the transaction's own view.
   `remember(0)` is invalid. Outside transactions, explicitly requesting cache
   without initializing Redis fails closed as a configuration error; transport
-  failures and corrupt cached JSON fail open to the authoritative database.
+  failures and corrupt cached values fail open to the authoritative database,
+  whose result replaces the entry. Only a JSON array whose rows all decode and
+  decrypt is a hit: `null`, an object or a row whose encrypted or
+  `SecretString` field no longer decrypts (for example after key retirement)
+  is a miss, not an empty result or an error.
 * Cache writes occur only after a successful database read and retain encrypted
   model fields as ciphertext; `SecretString` fields are cached as serde
   envelopes and decrypted on a cache hit, and a result that cannot be
