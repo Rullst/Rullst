@@ -5,6 +5,7 @@ use super::super::layout::*;
 use super::super::limits::{
     MAX_CELL_BYTES, MAX_DISPLAY_CHARS, MAX_SEARCH_BYTES, bounded_text_expression,
 };
+use super::super::portable::build_for_driver;
 use super::mutations::build_mutable_rows_html;
 use axum::{
     extract::{Path, Query},
@@ -166,7 +167,7 @@ pub async fn handle_table(
     qb.push(" OFFSET ");
     qb.push_bind(offset as i64);
 
-    let records = match qb.build().fetch_all(pool).await {
+    let records = match async { build_for_driver(&mut qb, driver)?.fetch_all(pool).await }.await {
         Ok(records) => records,
         Err(error) => {
             return table_error_response(

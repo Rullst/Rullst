@@ -75,6 +75,14 @@ impl fmt::Display for StudioBuildError {
 
 impl std::error::Error for StudioBuildError {}
 
+/// Referrer policy stamped on Studio responses.
+///
+/// Browsers derive a form POST's `Origin` from the submitting document's
+/// policy: under `no-referrer` even a same-origin POST carries `Origin: null`,
+/// which the check below cannot verify. `same-origin` keeps the real origin on
+/// Studio's own form submissions and still sends no referrer to other origins.
+const STUDIO_REFERRER_POLICY: &str = "same-origin";
+
 async fn loopback_only_middleware(mut request: Request, next: Next) -> Response {
     let is_loopback = request
         .extensions()
@@ -85,7 +93,10 @@ async fn loopback_only_middleware(mut request: Request, next: Next) -> Response 
     let origin_valid = request
         .headers()
         .get(header::ORIGIN)
-        .map(|origin| same_origin(origin, local_host.as_deref()))
+        .map(|origin| {
+            same_origin(origin, local_host.as_deref())
+                || opaque_origin_from_same_origin_document(origin, request.headers())
+        })
         .unwrap_or(true);
     let unsafe_method = !matches!(
         *request.method(),
@@ -111,7 +122,7 @@ async fn loopback_only_middleware(mut request: Request, next: Next) -> Response 
         response
             .headers_mut()
             .entry(header::REFERRER_POLICY)
-            .or_insert(axum::http::HeaderValue::from_static("no-referrer"));
+            .or_insert(axum::http::HeaderValue::from_static(STUDIO_REFERRER_POLICY));
         response
     } else {
         let mut response = Response::new(Body::empty());
@@ -137,6 +148,23 @@ fn local_host_authority(headers: &HeaderMap) -> Option<String> {
             .parse::<std::net::IpAddr>()
             .is_ok_and(|address| address.is_loopback());
     is_local.then(|| authority.as_str().to_ascii_lowercase())
+}
+
+/// Accepts `Origin: null` only when Fetch Metadata proves that a document of
+/// this exact origin sent the request. Browsers send that combination for a
+/// same-origin form POST when a host layer replaces Studio's referrer policy
+/// with `no-referrer`. `Sec-Fetch-Site` is a forbidden request header that page
+/// scripts cannot set; cross-site and same-site documents (for example another
+/// local port) receive `cross-site` or `same-site` and stay rejected, as does a
+/// bare `Origin: null`.
+fn opaque_origin_from_same_origin_document(
+    origin: &axum::http::HeaderValue,
+    headers: &HeaderMap,
+) -> bool {
+    origin.as_bytes() == b"null"
+        && headers
+            .get("sec-fetch-site")
+            .is_some_and(|site| site.as_bytes() == b"same-origin")
 }
 
 fn same_origin(origin: &axum::http::HeaderValue, local_authority: Option<&str>) -> bool {
@@ -270,6 +298,137 @@ mod tests {
                 .expect("denied Studio response");
             assert_eq!(response.status(), StatusCode::FORBIDDEN);
         }
+    }
+
+    /// Headers a browser attaches to a plain HTML form POST: the Fetch
+    /// standard's "append a request `Origin` header" step plus Fetch Metadata.
+    /// Chrome 154 was observed to send exactly these values for each case.
+    #[cfg(debug_assertions)]
+    fn browser_form_post(
+        referrer_policy: &str,
+        document_origin: &str,
+        studio_origin: &str,
+    ) -> (String, &'static str) {
+        let host = |origin: &str| {
+            let authority = origin.split_once("://").map_or(origin, |(_, rest)| rest);
+            authority.split(':').next().unwrap_or(authority).to_string()
+        };
+        let same = document_origin == studio_origin;
+        let downgrade = document_origin.starts_with("https:") && studio_origin.starts_with("http:");
+        let origin = match referrer_policy {
+            "no-referrer" => "null",
+            "same-origin" if !same => "null",
+            "no-referrer-when-downgrade" | "strict-origin" | "strict-origin-when-cross-origin"
+                if downgrade =>
+            {
+                "null"
+            }
+            _ => document_origin,
+        };
+        let site = if same {
+            "same-origin"
+        } else if host(document_origin) == host(studio_origin) {
+            "same-site"
+        } else {
+            "cross-site"
+        };
+        (origin.to_string(), site)
+    }
+
+    #[cfg(debug_assertions)]
+    #[tokio::test]
+    // TM-STUDIO-06: Studio's own forms stay writable in a real browser, while
+    // cross-origin documents stay rejected whatever referrer policy they pick.
+    async fn browser_form_posts_follow_the_served_referrer_policy() {
+        let router = LocalStudioAccess::loopback_only()
+            .protect_router(
+                Router::new()
+                    .route("/page", get(|| async { StatusCode::OK }))
+                    .route("/mutate", axum::routing::post(|| async { StatusCode::OK })),
+            )
+            .expect("debug Studio access");
+        let studio = "http://127.0.0.1:5555";
+        let send = |method: Method, path: &str, origin: Option<&str>, site: Option<&str>| {
+            let mut builder = Request::builder()
+                .method(method)
+                .uri(path)
+                .header(header::HOST, "127.0.0.1:5555");
+            if let Some(origin) = origin {
+                builder = builder.header(header::ORIGIN, origin);
+            }
+            if let Some(site) = site {
+                builder = builder.header("sec-fetch-site", site);
+            }
+            let mut request = builder.body(Body::empty()).expect("valid request");
+            request.extensions_mut().insert(ConnectInfo(
+                "127.0.0.1:42000"
+                    .parse::<SocketAddr>()
+                    .expect("loopback peer"),
+            ));
+            router.clone().oneshot(request)
+        };
+
+        let page = send(Method::GET, "/page", None, None)
+            .await
+            .expect("Studio page response");
+        let served_policy = page
+            .headers()
+            .get(header::REFERRER_POLICY)
+            .and_then(|value| value.to_str().ok())
+            .expect("Studio pages declare a referrer policy")
+            .to_string();
+        assert_eq!(served_policy, "same-origin");
+
+        // A form on a Studio page, under the policy Studio serves and under a
+        // host layer that replaced it with `no-referrer`.
+        for policy in [served_policy.as_str(), "no-referrer"] {
+            let (origin, site) = browser_form_post(policy, studio, studio);
+            let response = send(Method::POST, "/mutate", Some(&origin), Some(site))
+                .await
+                .expect("Studio form response");
+            assert_eq!(
+                response.status(),
+                StatusCode::OK,
+                "Studio form under {policy}"
+            );
+        }
+
+        // Other documents, including another local port (same-site), choose
+        // their own policy; none of their form posts may reach a handler.
+        for document in ["http://attacker.example", "http://127.0.0.1:3000"] {
+            for policy in [
+                "no-referrer",
+                "same-origin",
+                "strict-origin-when-cross-origin",
+            ] {
+                let (origin, site) = browser_form_post(policy, document, studio);
+                let response = send(Method::POST, "/mutate", Some(&origin), Some(site))
+                    .await
+                    .expect("foreign form response");
+                assert_eq!(
+                    response.status(),
+                    StatusCode::FORBIDDEN,
+                    "{document} under {policy}"
+                );
+            }
+        }
+
+        // `Origin: null` is never proof on its own, nor with weaker metadata.
+        for site in [None, Some("same-site"), Some("cross-site"), Some("none")] {
+            let response = send(Method::POST, "/mutate", Some("null"), site)
+                .await
+                .expect("opaque-origin response");
+            assert_eq!(response.status(), StatusCode::FORBIDDEN, "{site:?}");
+        }
+        let response = send(
+            Method::POST,
+            "/mutate",
+            Some("http://attacker.example"),
+            Some("same-origin"),
+        )
+        .await
+        .expect("mismatched-origin response");
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
     }
 
     #[cfg(not(debug_assertions))]

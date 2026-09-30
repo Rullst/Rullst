@@ -179,6 +179,10 @@ and MariaDB. Its fixed schema uses a monotonically increasing even revision;
 the update and both message inserts share one transaction. A stale concurrent
 writer receives `ChatMemoryError::RevisionConflict` instead of silently
 reordering history or automatically repeating a billable provider call.
+Tenant and conversation IDs are case-sensitive on every backend: MySQL and
+MariaDB tables declare both key columns `CHARACTER SET ascii COLLATE ascii_bin`,
+and every tenant-scoped MySQL/MariaDB statement also compares the key
+byte-exactly.
 
 ```rust,no_run
 # use rullst_ai::{AiClient, ChatMemoryConfig, ConversationId, SqlChatMemory, StatefulChat, providers::openai::OpenAiProvider};
@@ -208,6 +212,37 @@ tenant, provider-call audit, backups, and conflict retry UX remain host
 responsibilities. The generated `make:chat-session` scaffold remains useful
 when the application wants to own or customize its models, migrations, or the
 Turso-primary implementation.
+
+### Upgrading MySQL/MariaDB chat-memory tables
+
+`prepare_schema` creates missing tables but never alters existing ones. Tables
+created by an earlier release use the server's default, case-insensitive
+collation. On such a table, an ID that differs from a stored one only by letter
+case fails closed: `ensure_conversation` returns
+`ChatMemoryError::InvalidConfiguration`, reads report
+`ConversationNotFound`, and writes report `RevisionConflict`. Earlier releases
+could already have merged such conversations; review them before migrating,
+because the migration cannot split them. Stop chat-memory writers, back up both
+tables, look up the foreign-key name, then convert the key columns. MariaDB
+refuses to change foreign-key columns even with `FOREIGN_KEY_CHECKS = 0`, so
+the constraint is dropped and recreated:
+
+```sql
+SELECT CONSTRAINT_NAME FROM information_schema.REFERENTIAL_CONSTRAINTS
+ WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'rullst_ai_chat_messages';
+-- Replace rullst_ai_chat_messages_ibfk_1 with the name returned above.
+ALTER TABLE rullst_ai_chat_messages DROP FOREIGN KEY rullst_ai_chat_messages_ibfk_1;
+ALTER TABLE rullst_ai_chat_sessions
+  MODIFY tenant_id VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY conversation_id VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL;
+ALTER TABLE rullst_ai_chat_messages
+  MODIFY tenant_id VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  MODIFY conversation_id VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  ADD FOREIGN KEY (tenant_id, conversation_id)
+    REFERENCES rullst_ai_chat_sessions (tenant_id, conversation_id) ON DELETE CASCADE;
+```
+
+The MySQL 8.0 and MariaDB matrices run this migration against legacy tables.
 
 ## Tenant-aware RAG pipeline
 

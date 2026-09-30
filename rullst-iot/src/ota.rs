@@ -176,6 +176,13 @@ impl OtaCommit {
 /// Fail-closed verifier and boot-selection state machine for signed firmware.
 #[non_exhaustive]
 pub struct OtaManager {
+    /// Bank the device is running from. [`Self::new_with_running_partition`]
+    /// takes it explicitly; the other constructors assume
+    /// [`BootPartition::PartitionA`], so platform code must then set the bank
+    /// reported by its bootloader before verifying an update, for example after
+    /// the device rebooted into [`BootPartition::PartitionB`]. A commit does not
+    /// change it: the receipt names the bank selected for the next boot, which
+    /// runs only after the platform reboots into it.
     pub current_partition: BootPartition,
     pub status: OtaStatus,
     pub firmware_version: String,
@@ -245,6 +252,30 @@ impl OtaManager {
         )
     }
 
+    /// Creates a verifier for a device running from `running_partition`, with
+    /// the last committed counter loaded from a platform store.
+    ///
+    /// `running_partition` must be the bank the platform bootloader started,
+    /// so that [`Self::verified_target_partition`] names the inactive bank.
+    /// [`Self::new_with_counter_store`] instead assumes
+    /// [`BootPartition::PartitionA`]. Added in 13.0.
+    pub fn new_with_running_partition<S: RollbackCounterStore>(
+        target: impl Into<String>,
+        current_version: impl Into<String>,
+        running_partition: BootPartition,
+        trusted_public_key: [u8; 32],
+        counter_store: &mut S,
+    ) -> Result<Self, OtaError> {
+        let mut manager = Self::new_with_counter_store(
+            target,
+            current_version,
+            trusted_public_key,
+            counter_store,
+        )?;
+        manager.current_partition = running_partition;
+        Ok(manager)
+    }
+
     /// Returns the last committed monotonic counter.
     #[must_use]
     pub fn rollback_counter(&self) -> u64 {
@@ -258,7 +289,9 @@ impl OtaManager {
     }
 
     /// Returns the inactive bank selected for a cryptographically verified
-    /// update, without changing any state.
+    /// update, without changing any state. This is always the bank opposite
+    /// [`Self::current_partition`], never the running one, including for a
+    /// further update verified before the platform reboots.
     ///
     /// Platform code can flash and read back this bank before committing the
     /// durable rollback counter.
@@ -383,8 +416,10 @@ impl OtaManager {
     }
 
     fn apply_verified_manifest(&mut self, manifest: OtaManifest) -> OtaCommit {
+        // The device keeps running from `current_partition` until the platform
+        // reboots into the selected bank, so a later update in this process
+        // must still target the inactive bank.
         let target_partition = self.current_partition.opposite();
-        self.current_partition = target_partition;
         self.firmware_version.clone_from(&manifest.version);
         self.rollback_counter = manifest.rollback_counter;
         self.pending_manifest = None;

@@ -2731,7 +2731,7 @@ sending.
 ### 8.1. Ed25519 OTA Firmware Gate
 * **Firmware Verification:** Strict Ed25519 signature validation over a cryptographic manifest `[target, version, rollback_counter, firmware_len, firmware_sha256]`.
 * **Anti-Rollback Protection:** Verification rejects any counter lower than or equal to the state loaded into the manager. The recommended `RollbackCounterStore` path additionally performs an exact compare-and-set and may report success only after a strictly increasing value is durably committed across reset. A retry after an ambiguous store failure completes only when the store reports, and a fresh load confirms, exactly the verified manifest's counter. Atomicity, integrity, wear-leveling and power-loss behavior are obligations of the caller's platform adapter and require hardware-specific evidence.
-* **Commit Invariant:** In-memory partition selection and store-backed counter commit are blocked until full cryptographic verification succeeds. `verified_target_partition` exposes the inactive bank for platform flash/read-back before commit. The compatibility `commit_verified_update` path is process-local and does not claim persistence, flash or bootloader control.
+* **Commit Invariant:** In-memory partition selection and store-backed counter commit are blocked until full cryptographic verification succeeds. `verified_target_partition` exposes the inactive bank (opposite `current_partition`) for platform flash/read-back before commit. The v13 `new_with_running_partition` constructor takes the bank the bootloader started, while the older constructors assume `PartitionA` and require platform code to set `current_partition`; a commit selects the other bank for the next boot but does not change `current_partition`, so an update verified again before reboot never targets the running bank. The compatibility `commit_verified_update` path is process-local and does not claim persistence, flash or bootloader control.
 
 ### 8.2. Embedded Sensor Frames (`#![no_std]`)
 * `rullst-iot` core models compile under bare-metal `#![no_std]` targets (STM32, ESP32-C3, Cortex-M).
@@ -2819,7 +2819,13 @@ sending.
   messages in the same transaction. A compare-and-swap predicate rejects stale
   cross-process writers; Rullst deliberately does not retry the provider call.
   History reads bind the tenant/conversation and never include rows newer than
-  the revision observed by that read.
+  the revision observed by that read. Tenant and conversation IDs compare
+  case-sensitively on every backend: MySQL/MariaDB tables declare the key
+  columns `CHARACTER SET ascii COLLATE ascii_bin`, and each tenant-scoped
+  MySQL/MariaDB statement also compares the key byte-exactly. `prepare_schema`
+  never alters an existing table; a legacy case-insensitive table fails closed
+  for IDs that differ only by case (`InvalidConfiguration` on
+  `ensure_conversation`) until the operator applies the documented migration.
 * Message text is not encrypted by this adapter. Authenticated conversation
   ownership within a tenant, retention/erasure, provider audit, backups,
   migration governance, and user-facing conflict retry remain host policy. The
@@ -2872,7 +2878,10 @@ sending.
 * Generated applications start the standalone Studio only in debug builds and
   bind it to loopback. Its local capability verifies the direct loopback peer,
   accepts only a local `Host` authority, requires same-origin `Origin` on unsafe
-  methods, and rejects missing origins on mutations. This is a local
+  methods, and rejects missing origins on mutations. Responses carry
+  `Referrer-Policy: same-origin` so that browser form posts keep the real
+  origin; `Origin: null` is accepted only with `Sec-Fetch-Site: same-origin`,
+  never alone or from a same-site document. This is a local
   DNS-rebinding/CSRF boundary, not production authentication.
 * Queue, revenue, security and telemetry pages report only values supplied by
   their configured process-local source. Unsupported driver operations and
@@ -2898,7 +2907,10 @@ sending.
   transactions, such as MySQL MyISAM, cannot roll back). Primary
   keys/backend-specific values are read-only, while delete requires
   `DELETE <table>`. SQLite, PostgreSQL, MySQL and MariaDB run
-  separate mutation contracts. This is not application authorization, tenant
+  separate mutation contracts; PostgreSQL runs under both the default
+  `sqlx::Any` build, where Studio renumbers bind markers and casts
+  information-schema identifiers to `VARCHAR`, and `strict-postgres`. This is
+  not application authorization, tenant
   scoping, audit, rollback or shared-production administration. The ER diagram
   inspects the same relational backends with bound lookup values and strict
   normalized Mermaid identifiers. Swagger requires an application-supplied
