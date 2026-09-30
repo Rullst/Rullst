@@ -383,3 +383,26 @@ async fn xfa_forms_and_other_active_pdf_actions_are_rejected() {
         }
     }
 }
+
+#[tokio::test]
+// TM-MAIL-01: universal macOS binaries are executable magic under both policies.
+async fn universal_mach_o_binaries_are_rejected() {
+    for inspector in [
+        LocalAttachmentInspector::strict(),
+        LocalAttachmentInspector::allowing_opaque(),
+    ] {
+        for magic in [
+            [0xca, 0xfe, 0xba, 0xbe],
+            [0xbe, 0xba, 0xfe, 0xca],
+            [0xca, 0xfe, 0xba, 0xbf],
+            [0xbf, 0xba, 0xfe, 0xca],
+        ] {
+            let content = [magic.as_slice(), &[0, 0, 0, 2, 1, 2, 3]].concat();
+            let attachment = Attachment::new("Updater", content, "application/octet-stream");
+            assert_eq!(
+                inspector.inspect(&attachment).await,
+                Err(AttachmentInspectionError::Rejected("executable_content"))
+            );
+        }
+    }
+}
