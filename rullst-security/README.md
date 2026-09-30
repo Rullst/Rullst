@@ -61,6 +61,9 @@
   `RateLimiter` per policy. The legacy global `is_rate_limited` helper keeps a
   separate budget per `(key, max_requests, window)`, so policies on the same
   key neither share a count nor reset each other, but they share its capacity.
+  `rate_limit_middleware` keys the verified socket peer per IPv4 address and
+  per IPv6 /64 (IPv4-mapped IPv6 counts as IPv4), so rotating addresses inside
+  one delegated prefix shares a budget instead of filling the identity table.
 
 ### 🔎 7. Bounded Payload, Log & Asset Guards
 
