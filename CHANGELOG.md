@@ -338,6 +338,26 @@ A prepared version section does not establish that its tag or crates exist.
 - `#[derive(Nexus)]` accepts models that use any `#[derive(Orm)]` option, reads
   `table_name` and omits relation fields.
 
+### Mail review fixes
+
+- The pre-flight pipeline rejects subjects over 2 KiB and HTML or text bodies
+  over 2 MiB, and its DLP and URL scans run in linear time.
+- Recipients are parsed to one bare address shared by the pipeline, the
+  disposable check, feedback and suppression stores, so display-name
+  recipients (`Name <a@b>`) can no longer bypass suppression. The public
+  address validators are stricter.
+- The AWS SES bearer-proxy transport sends attachments and inline CID assets
+  instead of silently dropping them, and applies the native size limits.
+- The local attachment inspector no longer trusts the declared MIME type: it
+  combines extension and content sniffing to reject active PDF, SVG, HTML and
+  script payloads.
+- The PostgreSQL suppression store tolerates up to 300 seconds of cross-host
+  clock skew instead of intermittently failing closed.
+- A real SMTP host without credentials is a real relay, partial SMTP
+  credentials are rejected, and the offline mock is used only for empty or
+  `mock_*` settings. SMTP uses STARTTLS on every port except 465, so the common
+  587 and 25 configurations deliver.
+
 ### Nexus stored-value escaping maintenance
 
 - Forward-port unconditional escaping of stored Nexus table values, including
