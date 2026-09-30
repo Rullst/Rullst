@@ -63,6 +63,13 @@ When a handler finishes while its timeout or a graceful shutdown is being
 processed, the worker records the handler's own result: only a handler that
 was actually cancelled is failed as timed out or requeued, so a success is
 never reported as a timeout or run again.
+Stalled-lease recovery runs when a worker starts and then every
+`min(stalled_after, 60 s)`, and it is queue-wide: it returns every processing
+lease in the shared SQLite table or Redis namespace that is older than the
+recovering worker's `stalled_after`, including leases of other workers. Every
+worker that shares a queue must therefore use a `stalled_after` longer than the
+longest `job_timeout` of any of them; otherwise a worker with a short
+`stalled_after` requeues a slower pool's running job and it runs concurrently.
 Worker transitions are fenced by the claim's attempt number. The SQLite and
 Redis drivers complete, fail or requeue a job only while it is still processing
 under the attempt that `pop` returned, so a worker whose lease was recovered and
