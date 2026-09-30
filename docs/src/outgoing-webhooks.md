@@ -57,7 +57,9 @@ and optionally an owned test CA; production configuration rejects that mode.
 record and subscribes its private delivery group. The encrypted control record
 binds destination, key identity/fingerprint, mode, retention quota and delivery
 window. Configuration/key drift fails instead of sending old payloads to a new
-receiver. Changing destination or signing key requires an explicitly new namespace
+receiver: reopening with a changed destination, signing key, window, mode or
+retention, or with a storage keyring that cannot open the namespace, returns
+`WebhookError::Configuration`. Changing destination or signing key requires an explicitly new namespace
 and an application-owned drain/cutover policy; receiver key overlap is managed by
 the host. Storage keyrings can retain old decryption keys while new writes use a
 new primary. Do not remove keys while retained records depend on them.

@@ -44,7 +44,7 @@ impl<C: Clock> WebhookOutbox<C> {
                 clock.clone(),
             )
             .await
-            .map_err(map)?;
+            .map_err(map_open)?;
             let setup = async {
                 let control = PublishRequest::try_new(
                     CONTROL,
@@ -53,7 +53,7 @@ impl<C: Clock> WebhookOutbox<C> {
                     config.binding(&key)?,
                 )
                 .map_err(map)?;
-                broker.publish(control).await.map_err(map)?;
+                broker.publish(control).await.map_err(map_open)?;
                 broker
                     .subscribe(
                         SubscriptionRequest::try_new(EVENTS, GROUP, StartPosition::Earliest)
@@ -173,6 +173,17 @@ impl<C: Clock> WebhookOutbox<C> {
 impl<C> std::fmt::Debug for WebhookOutbox<C> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("WebhookOutbox([REDACTED])")
+    }
+}
+/// Opening compares the immutable configuration and the storage keyring with
+/// persisted state, so a mismatch there is configuration drift rather than an
+/// event conflict or a storage outage.
+fn map_open(error: MessagingError) -> WebhookError {
+    match error {
+        MessagingError::IdempotencyConflict
+        | MessagingError::StorageKeyUnavailable
+        | MessagingError::StorageAuthenticationFailed => WebhookError::Configuration,
+        other => map(other),
     }
 }
 pub(super) fn map(error: MessagingError) -> WebhookError {
