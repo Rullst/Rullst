@@ -228,6 +228,7 @@ where
 
     /// Adds one equality predicate after validating the model column. A value
     /// that encodes as `NULL` (such as `Option::None`) matches `IS NULL`.
+    /// Encrypted (opaque) columns cannot be filtered.
     pub fn where_eq<Value>(mut self, column: &str, value: &Value) -> Result<Self, PolyglotError>
     where
         Value: TursoCodec,
@@ -238,14 +239,15 @@ where
                 reason: "a query accepts at most 64 filters",
             });
         }
-        let column = model_column::<Model>(column)?;
+        let column = comparable_column::<Model>(column)?;
         self.filters.push((column, value.encode_turso()?));
         Ok(self)
     }
 
     /// Selects one validated model column for deterministic ordering.
+    /// Encrypted (opaque) columns cannot be ordered.
     pub fn order_by(mut self, column: &str, order: TursoOrder) -> Result<Self, PolyglotError> {
-        self.order = Some((model_column::<Model>(column)?, order));
+        self.order = Some((comparable_column::<Model>(column)?, order));
         Ok(self)
     }
 
@@ -409,6 +411,23 @@ where
             kind: "Turso model column",
             reason: "column is not declared by the model",
         })
+}
+
+/// A declared column whose stored value compares like the model value. An
+/// encrypted column holds randomized ciphertext, so filtering or ordering on
+/// it would silently match nothing or sort meaninglessly.
+fn comparable_column<Model>(requested: &str) -> Result<&'static str, PolyglotError>
+where
+    Model: TursoModel,
+{
+    let column = model_column::<Model>(requested)?;
+    if Model::opaque_columns().contains(&column) {
+        return Err(PolyglotError::InvalidIdentifier {
+            kind: "Turso model column",
+            reason: "encrypted columns store randomized ciphertext and cannot be filtered or ordered",
+        });
+    }
+    Ok(column)
 }
 
 fn quoted(identifier: &str) -> String {
