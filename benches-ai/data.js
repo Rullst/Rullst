@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790776094272,
+  "lastUpdate": 1790786381023,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -11265,6 +11265,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 364,
             "range": "± 9",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd639f3d488732b423743a0652c319f44b3cabfc",
+          "message": "Merge pull request #348 from Rullst/fix/v13-studio-ai-iot-tail-fixes\n\nfix(studio,ai,iot): Studio form origins, Studio on PostgreSQL, case-exact MySQL chat memory and OTA bank selection",
+          "timestamp": "2026-09-30T13:15:41-03:00",
+          "tree_id": "5d38b619a63e463761ac2c24573241fdc66711c6",
+          "url": "https://github.com/Rullst/Rullst/commit/bd639f3d488732b423743a0652c319f44b3cabfc"
+        },
+        "date": 1790786380083,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1572,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 358,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 375,
+            "range": "± 3",
             "unit": "ns/iter"
           }
         ]
