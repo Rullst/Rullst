@@ -1,6 +1,6 @@
 //! Table-view byte bounds shared by the Studio mutation matrix.
 
-use super::response_text;
+use super::{fixture, response_text};
 use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -30,8 +30,7 @@ pub(super) async fn exercise_bounded_table_view(
     create
         .push(&quoted_table)
         .push(" (id BIGINT PRIMARY KEY, body TEXT NOT NULL)");
-    create
-        .build()
+    fixture(&mut create, driver)
         .execute(pool)
         .await
         .expect("create Studio wide-cell table");
@@ -45,8 +44,7 @@ pub(super) async fn exercise_bounded_table_view(
         .push(", ")
         .push_bind(long_body)
         .push(")");
-    insert
-        .build()
+    fixture(&mut insert, driver)
         .execute(pool)
         .await
         .expect("insert Studio wide-cell row");

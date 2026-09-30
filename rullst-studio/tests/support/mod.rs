@@ -5,6 +5,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
+use rullst_orm::_sqlx::{self, Database, Execute, QueryBuilder, query::Query};
 use rullst_studio::{LocalStudioAccess, Studio};
 use std::net::SocketAddr;
 use tower::ServiceExt;
@@ -13,12 +14,36 @@ mod bounded_view;
 mod feature_flags;
 mod incomplete_key;
 
-#[cfg(any(feature = "strict-postgres", feature = "strict-mysql"))]
+// The SQLite matrix binary under the default build compiles this unused.
+#[cfg(not(feature = "strict-sqlite"))]
+#[allow(dead_code)]
 pub fn handle_container_start_error(provider: &str, error: impl std::fmt::Display) {
     if std::env::var("RULLST_REQUIRE_TESTCONTAINERS").as_deref() == Ok("true") {
         panic!("{provider} testcontainer is required but failed to start: {error}");
     }
     eprintln!("skipping {provider} Studio mutation matrix: {error}");
+}
+
+type FixtureQuery<'q> =
+    Query<'q, rullst_orm::RullstDatabase, <rullst_orm::RullstDatabase as Database>::Arguments>;
+
+/// Builds a fixture statement for the matrix backend. Under the default
+/// `sqlx::Any` build, `QueryBuilder` writes `?` markers that PostgreSQL rejects,
+/// so they are renumbered in textual order, which is also the binding order.
+pub(crate) fn fixture<'q>(
+    builder: &'q mut QueryBuilder<rullst_orm::RullstDatabase>,
+    driver: &str,
+) -> FixtureQuery<'q> {
+    if driver != "postgres" {
+        return builder.build();
+    }
+    let sql = rullst_orm::replace_placeholders(builder.sql().as_str());
+    let arguments = builder
+        .build()
+        .take_arguments()
+        .expect("encodable fixture arguments")
+        .unwrap_or_default();
+    _sqlx::query_with(_sqlx::AssertSqlSafe(sql), arguments)
 }
 
 async fn inject_loopback(mut request: AxumRequest, next: Next) -> axum::response::Response {
@@ -75,43 +100,36 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
     } else {
         format!("\"{parent_table}\"")
     };
-    let mut create_parent =
-        rullst_orm::_sqlx::QueryBuilder::<rullst_orm::RullstDatabase>::new("CREATE TABLE ");
+    let mut create_parent = QueryBuilder::<rullst_orm::RullstDatabase>::new("CREATE TABLE ");
     create_parent
         .push(&quoted_parent)
         .push(" (id BIGINT PRIMARY KEY)");
-    create_parent
-        .build()
+    fixture(&mut create_parent, driver)
         .execute(pool)
         .await
         .expect("create Studio matrix parent table");
-    let mut insert_parent =
-        rullst_orm::_sqlx::QueryBuilder::<rullst_orm::RullstDatabase>::new("INSERT INTO ");
+    let mut insert_parent = QueryBuilder::<rullst_orm::RullstDatabase>::new("INSERT INTO ");
     insert_parent
         .push(&quoted_parent)
         .push(" (id) VALUES (")
         .push_bind(1_i64)
         .push(")");
-    insert_parent
-        .build()
+    fixture(&mut insert_parent, driver)
         .execute(pool)
         .await
         .expect("insert Studio matrix parent row");
-    let mut create =
-        rullst_orm::_sqlx::QueryBuilder::<rullst_orm::RullstDatabase>::new("CREATE TABLE ");
+    let mut create = QueryBuilder::<rullst_orm::RullstDatabase>::new("CREATE TABLE ");
     create.push(&quoted_table).push(
         " (id BIGINT PRIMARY KEY, name VARCHAR(255) NOT NULL, active BOOLEAN NOT NULL, \
          score DOUBLE PRECISION NULL, parent_id BIGINT NOT NULL, FOREIGN KEY (parent_id) \
          REFERENCES ",
     );
     create.push(&quoted_parent).push(" (id))");
-    create
-        .build()
+    fixture(&mut create, driver)
         .execute(pool)
         .await
         .expect("create Studio matrix table");
-    let mut insert =
-        rullst_orm::_sqlx::QueryBuilder::<rullst_orm::RullstDatabase>::new("INSERT INTO ");
+    let mut insert = QueryBuilder::<rullst_orm::RullstDatabase>::new("INSERT INTO ");
     insert
         .push(&quoted_table)
         .push(" (id, name, active, score, parent_id) VALUES (")
@@ -125,8 +143,7 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
         .push(", ")
         .push_bind(1_i64)
         .push(")");
-    insert
-        .build()
+    fixture(&mut insert, driver)
         .execute(pool)
         .await
         .expect("insert Studio matrix row");
@@ -266,16 +283,15 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
         .expect("Studio update response");
     assert!(update.status().is_redirection());
 
-    let mut select =
-        rullst_orm::_sqlx::QueryBuilder::<rullst_orm::RullstDatabase>::new("SELECT name FROM ");
+    let mut select = QueryBuilder::<rullst_orm::RullstDatabase>::new("SELECT name FROM ");
     select
         .push(&quoted_table)
         .push(" WHERE id = ")
         .push_bind(7_i64);
-    let name: String = select
-        .build_query_scalar()
+    let name: String = fixture(&mut select, driver)
         .fetch_one(pool)
         .await
+        .and_then(|row| _sqlx::Row::try_get(&row, 0))
         .expect("read Studio-updated row");
     assert_eq!(name, "after");
 
@@ -296,22 +312,21 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
         .expect("Studio nullable update response");
     assert!(null_update.status().is_redirection());
 
-    let mut typed_select = rullst_orm::_sqlx::QueryBuilder::<rullst_orm::RullstDatabase>::new(
+    let mut typed_select = QueryBuilder::<rullst_orm::RullstDatabase>::new(
         "SELECT CASE WHEN active THEN 'true' ELSE 'false' END AS active_text, score FROM ",
     );
     typed_select
         .push(&quoted_table)
         .push(" WHERE id = ")
         .push_bind(7_i64);
-    let typed_row = typed_select
-        .build()
+    let typed_row = fixture(&mut typed_select, driver)
         .fetch_one(pool)
         .await
         .expect("read Studio typed updates");
     let active: String =
-        rullst_orm::_sqlx::Row::try_get(&typed_row, 0).expect("Studio-updated boolean projection");
+        _sqlx::Row::try_get(&typed_row, 0).expect("Studio-updated boolean projection");
     let score: Option<f64> =
-        rullst_orm::_sqlx::Row::try_get(&typed_row, 1).expect("Studio-updated nullable value");
+        _sqlx::Row::try_get(&typed_row, 1).expect("Studio-updated nullable value");
     assert_eq!(active, "false");
     assert_eq!(score, None);
 
@@ -395,16 +410,15 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
         .expect("Studio delete response");
     assert!(response.status().is_redirection());
 
-    let mut count =
-        rullst_orm::_sqlx::QueryBuilder::<rullst_orm::RullstDatabase>::new("SELECT COUNT(*) FROM ");
+    let mut count = QueryBuilder::<rullst_orm::RullstDatabase>::new("SELECT COUNT(*) FROM ");
     count
         .push(&quoted_table)
         .push(" WHERE id = ")
         .push_bind(7_i64);
-    let remaining: i64 = count
-        .build_query_scalar()
+    let remaining: i64 = fixture(&mut count, driver)
         .fetch_one(pool)
         .await
+        .and_then(|row| _sqlx::Row::try_get(&row, 0))
         .expect("read Studio deletion result");
     assert_eq!(remaining, 0);
 

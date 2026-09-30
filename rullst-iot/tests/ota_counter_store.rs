@@ -126,6 +126,78 @@ fn durable_counter_is_reloaded_after_restart_and_rejects_replay() {
 }
 
 #[test]
+fn a_manager_rebuilt_after_rebooting_into_b_targets_a() {
+    let mut store = MemoryCounterStore::new(50);
+    let (manifest, firmware, signature) = signed_update(51);
+    let mut first_boot = manager(&mut store);
+    first_boot
+        .verify_update(&manifest, &firmware, &signature)
+        .unwrap();
+    let receipt = first_boot
+        .commit_verified_update_with_store(&mut store)
+        .unwrap();
+    assert_eq!(receipt.target_partition(), BootPartition::PartitionB);
+
+    // The platform reboots into B and reports the running bank.
+    let mut after_reboot = manager(&mut store);
+    after_reboot.current_partition = receipt.target_partition();
+    let (next, next_firmware, next_signature) = signed_update(52);
+    after_reboot
+        .verify_update(&next, &next_firmware, &next_signature)
+        .unwrap();
+    assert_eq!(
+        after_reboot.verified_target_partition().unwrap(),
+        BootPartition::PartitionA
+    );
+    let next_receipt = after_reboot
+        .commit_verified_update_with_store(&mut store)
+        .unwrap();
+    assert_eq!(next_receipt.target_partition(), BootPartition::PartitionA);
+    assert_eq!(after_reboot.current_partition, BootPartition::PartitionB);
+}
+
+#[test]
+fn the_explicit_running_partition_selects_the_other_bank() {
+    for (running, target) in [
+        (BootPartition::PartitionA, BootPartition::PartitionB),
+        (BootPartition::PartitionB, BootPartition::PartitionA),
+    ] {
+        let mut store = MemoryCounterStore::new(60);
+        let mut ota = OtaManager::new_with_running_partition(
+            "counter-test-board",
+            "12.0.0",
+            running,
+            signing_key().verifying_key().to_bytes(),
+            &mut store,
+        )
+        .unwrap();
+        assert_eq!(ota.current_partition, running);
+        assert_eq!(ota.rollback_counter(), 60);
+        let (manifest, firmware, signature) = signed_update(61);
+        ota.verify_update(&manifest, &firmware, &signature).unwrap();
+        assert_eq!(ota.verified_target_partition().unwrap(), target);
+        let receipt = ota.commit_verified_update_with_store(&mut store).unwrap();
+        assert_eq!(receipt.target_partition(), target);
+        assert_eq!(ota.current_partition, running);
+    }
+
+    let mut store = MemoryCounterStore::new(70);
+    store.load_error = Some(RollbackCounterError::CorruptState);
+    assert!(matches!(
+        OtaManager::new_with_running_partition(
+            "counter-test-board",
+            "12.0.0",
+            BootPartition::PartitionB,
+            signing_key().verifying_key().to_bytes(),
+            &mut store,
+        ),
+        Err(OtaError::RollbackCounterStore(
+            RollbackCounterError::CorruptState
+        ))
+    ));
+}
+
+#[test]
 fn unavailable_store_preserves_verified_state_and_allows_retry() {
     let mut store = MemoryCounterStore::new(20);
     let (manifest, firmware, signature) = signed_update(21);
