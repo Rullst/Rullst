@@ -193,6 +193,28 @@ A prepared version section does not establish that its tag or crates exist.
   with AWS `UriEncode`, fixing `SignatureDoesNotMatch` for keys or tenant IDs
   that contain characters such as `:`, `=`, `+`, `(`, `)` or `$`.
 
+### Trusted-proxy client resolution
+
+- Add `rullst_core::security::TrustedProxyLayer` and
+  `Server::trusted_proxies(TrustedProxyConfig)`, or `[security]`
+  `trusted_proxies`, `trusted_proxy_header` and `trust_forwarded_proto` in
+  `Rullst.toml`. Only a socket peer inside at most 64 validated networks may
+  report the client, through `X-Forwarded-For` (default) or RFC 7239
+  `Forwarded`, never both; `/0`, host bits and duplicates are rejected.
+- The chain is walked right to left, examining at most 4 KiB and 32 entries,
+  and text left of the client entry is never parsed. Missing or malformed
+  chains keep the peer and log without header contents.
+- On success `ConnectInfo` becomes the client IP with port 0, so the Core and
+  Security rate limiters, honeypots, the error console and the Nexus lockout
+  isolate clients behind a proxy without application middleware. A
+  `ClientAddr` extension records the client, the original peer and the opt-in
+  forwarded scheme.
+- The layer is mounted outside the security baseline, lifecycle, Traffic
+  Shield and rate limiter, and health probes keep their exemption behind it.
+  The hot-reload server now also supplies `ConnectInfo`.
+- Nexus Basic Auth accepts a trusted proxy's HTTPS report as TLS evidence, and
+  `deploy:doctor` reviews configured networks (threat case `CORE-03`).
+
 ### Connect and core second-pass review fixes
 
 - Connect keeps a rotated refresh token when a refresh response is rejected or
