@@ -25,8 +25,12 @@ impl OidcProvider {
         expected_nonce: Option<&str>,
     ) -> Result<ConnectUser, ConnectError> {
         let token_res = self
-            .http_client
-            .post(self.token_url())
+            .client_authentication
+            .authorize(
+                self.http_client.post(self.token_url()),
+                &self.client_id,
+                secrecy::ExposeSecret::expose_secret(&self.client_secret),
+            )
             .form(form_data)
             .send()
             .await?
@@ -194,7 +198,9 @@ impl Provider for OidcProvider {
     ) -> Result<ConnectUser, ConnectError> {
         let form_data = crate::provider::TokenExchangeForm {
             client_id: self.client_id.as_str(),
-            client_secret: Some(secrecy::ExposeSecret::expose_secret(&self.client_secret)),
+            client_secret: self
+                .client_authentication
+                .body_secret(secrecy::ExposeSecret::expose_secret(&self.client_secret)),
             code: params.auth_code,
             grant_type: Some("authorization_code"),
             redirect_uri: self.redirect_url.as_str(),
@@ -238,15 +244,15 @@ impl Provider for OidcProvider {
     }
 
     async fn refresh_token(&self, refresh_token: &str) -> Result<ConnectUser, ConnectError> {
-        let form_data = [
-            ("client_id", self.client_id.as_str()),
-            (
-                "client_secret",
-                secrecy::ExposeSecret::expose_secret(&self.client_secret),
-            ),
-            ("refresh_token", refresh_token),
-            ("grant_type", "refresh_token"),
-        ];
+        let mut form_data = vec![("client_id", self.client_id.as_str())];
+        if let Some(secret) = self
+            .client_authentication
+            .body_secret(secrecy::ExposeSecret::expose_secret(&self.client_secret))
+        {
+            form_data.push(("client_secret", secret));
+        }
+        form_data.push(("refresh_token", refresh_token));
+        form_data.push(("grant_type", "refresh_token"));
         self.get_user_from_form(&form_data, None).await
     }
 }
