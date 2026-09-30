@@ -1,6 +1,11 @@
 use crate::{OpaqueId, SupervisionError as Error};
 
-/// Hard capacities apply to the whole local store, across all tenants.
+/// Retained sessions one learner (tenant and subject) may hold by default.
+pub(crate) const SUBJECT_SESSIONS: i64 = 64;
+
+/// Hard capacities apply to the whole local store, across all tenants. One
+/// learner may additionally retain at most 64 sessions (or `sessions`, when
+/// lower), so a single subject cannot fill the store-wide session budget.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Limits {
@@ -10,6 +15,7 @@ pub struct Limits {
     pub(crate) managed: i64,
     pub(crate) events_per_session: i64,
     pub(crate) event_interval: i64,
+    pub(crate) subject_sessions: i64,
 }
 
 impl Limits {
@@ -28,6 +34,7 @@ impl Limits {
             managed: managed.into(),
             events_per_session: 1024,
             event_interval: 1,
+            subject_sessions: SUBJECT_SESSIONS.min(sessions.into()),
         })
     }
 

@@ -47,3 +47,157 @@ async fn an_older_retained_session_stays_latest_after_a_shorter_newer_one_leaves
         .await
         .unwrap();
 }
+
+async fn bounded(limits: Limits) -> (tempfile::TempDir, SqliteSupervision<TestClock>, TestClock) {
+    let temp = tempfile::tempdir().unwrap();
+    let clock = TestClock::new();
+    let store = SqliteSupervision::initialize(
+        temp.path().join("bounded.sqlite"),
+        StoreConfig::new("epoch", limits, 3600, 600).unwrap(),
+        clock.clone(),
+    )
+    .await
+    .unwrap();
+    (temp, store, clock)
+}
+
+#[tokio::test]
+async fn one_learner_cannot_fill_the_store_wide_session_budget_by_start_end_loops() {
+    let (_temp, store, clock) = bounded(Limits::new(16, 128, 128, 16).unwrap()).await;
+    let actor = context("learner-a");
+    let mut previous = None;
+    for _ in 0..64 {
+        let started = store
+            .start_exam(&actor, &scope(), &policy(), &acknowledgement(), previous)
+            .await
+            .unwrap();
+        let ended = store
+            .end_exam(&actor, &scope(), started.id(), started.revision())
+            .await
+            .unwrap();
+        previous = Some(ended.revision());
+    }
+    assert!(matches!(
+        store
+            .start_exam(&actor, &scope(), &policy(), &acknowledgement(), previous)
+            .await,
+        Err(Error::Capacity)
+    ));
+    let other_resource = Scope::new("school-a", "learner-a", "resource-b").unwrap();
+    assert!(matches!(
+        store
+            .start_exam(&actor, &other_resource, &policy(), &acknowledgement(), None)
+            .await,
+        Err(Error::Capacity)
+    ));
+    // Other learners, in this tenant or another, still start sessions.
+    let classmate = Scope::new("school-a", "learner-b", "resource-a").unwrap();
+    store
+        .start_exam(
+            &context("learner-b"),
+            &classmate,
+            &policy(),
+            &acknowledgement(),
+            None,
+        )
+        .await
+        .unwrap();
+    let elsewhere = Scope::new("school-b", "learner-a", "resource-a").unwrap();
+    store
+        .start_exam(
+            &Context::new("school-b", "learner-a").unwrap(),
+            &elsewhere,
+            &policy(),
+            &acknowledgement(),
+            None,
+        )
+        .await
+        .unwrap();
+    // The learner's slots return once those sessions leave retention.
+    clock.set(1000 + 300 + 3600);
+    store
+        .start_exam(&actor, &scope(), &policy(), &acknowledgement(), None)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn sessions_past_retention_never_block_admission_in_another_tenant() {
+    let (_temp, store, clock) = bounded(Limits::new(16, 1, 128, 16).unwrap()).await;
+    let actor = context("learner-a");
+    let session = store
+        .start_exam(&actor, &scope(), &policy(), &acknowledgement(), None)
+        .await
+        .unwrap();
+    store
+        .record_visibility(
+            &actor,
+            &scope(),
+            session.id(),
+            session.revision(),
+            1,
+            VisibilityEvent::PageHidden,
+        )
+        .await
+        .unwrap();
+    let other = Scope::new("school-b", "learner-b", "resource-a").unwrap();
+    let other_context = Context::new("school-b", "learner-b").unwrap();
+    assert!(matches!(
+        store
+            .start_exam(&other_context, &other, &policy(), &acknowledgement(), None)
+            .await,
+        Err(Error::Capacity)
+    ));
+    // Only school-a's operator could purge this row; admission reclaims it
+    // once it is past retention instead of failing for every tenant.
+    clock.set(session.retain_until());
+    store
+        .start_exam(&other_context, &other, &policy(), &acknowledgement(), None)
+        .await
+        .unwrap();
+    assert!(matches!(
+        store.session(&actor, &scope(), session.id()).await,
+        Err(Error::Forbidden)
+    ));
+    // Its expired events went with it; the tenant's operator finds nothing left.
+    let receipt = store.purge_expired(&operator(), 100).await.unwrap();
+    assert_eq!((receipt.events, receipt.sessions), (0, 0));
+}
+
+#[tokio::test]
+async fn expired_events_never_block_new_observations() {
+    let (_temp, store, clock) = bounded(Limits::new(16, 16, 1, 16).unwrap()).await;
+    let actor = context("learner-a");
+    let first = store
+        .start_exam(&actor, &scope(), &policy(), &acknowledgement(), None)
+        .await
+        .unwrap();
+    let receipt = store
+        .record_visibility(
+            &actor,
+            &scope(),
+            first.id(),
+            first.revision(),
+            1,
+            VisibilityEvent::PageHidden,
+        )
+        .await
+        .unwrap();
+    clock.set(receipt.expires_at());
+    let other = Scope::new("school-a", "learner-a", "resource-b").unwrap();
+    let second = store
+        .start_exam(&actor, &other, &policy(), &acknowledgement(), None)
+        .await
+        .unwrap();
+    store
+        .record_visibility(
+            &actor,
+            &other,
+            second.id(),
+            second.revision(),
+            1,
+            VisibilityEvent::PageVisible,
+        )
+        .await
+        .unwrap();
+}
