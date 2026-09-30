@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790742018345,
+  "lastUpdate": 1790746976774,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -12458,6 +12458,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "83f7c8d3907ceded210608f7309174bd974a43ce",
+          "message": "Merge pull request #338 from Rullst/fix/v13-storage-macros-low-fixes\n\nfix(storage,macros): encode URLs, harden uploads, bound memoize, safe html! URL attributes",
+          "timestamp": "2026-09-30T02:21:51-03:00",
+          "tree_id": "07ec03c47a36d889a280b27a91eaaf958bf5d049",
+          "url": "https://github.com/Rullst/Rullst/commit/83f7c8d3907ceded210608f7309174bd974a43ce"
+        },
+        "date": 1790746976157,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5469,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 704,
+            "range": "± 20",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 30,
             "range": "± 0",
             "unit": "ns/iter"
           }
