@@ -17,6 +17,7 @@ use std::collections::BTreeMap;
 use std::fmt::Write;
 
 use super::super::limits::{MAX_CELL_BYTES, display_cell};
+use super::super::portable::build_for_driver;
 
 const MAX_FORM_FIELDS: usize = 260;
 
@@ -121,7 +122,7 @@ async fn update_row(table: &str, fields: Vec<(String, String)>) -> Result<(), Mu
     query.push(" = ");
     push_bound_value(&mut query, value);
     push_primary_key_predicate(&mut query, driver, primary_key);
-    execute_single_row_mutation(pool, &mut query).await
+    execute_single_row_mutation(pool, driver, &mut query).await
 }
 
 async fn delete_row(table: &str, fields: Vec<(String, String)>) -> Result<(), MutationFailure> {
@@ -141,7 +142,7 @@ async fn delete_row(table: &str, fields: Vec<(String, String)>) -> Result<(), Mu
     let mut query = QueryBuilder::<rullst_orm::RullstDatabase>::new("DELETE FROM ");
     query.push(quote_table_name(driver, table));
     push_primary_key_predicate(&mut query, driver, primary_key);
-    execute_single_row_mutation(pool, &mut query).await
+    execute_single_row_mutation(pool, driver, &mut query).await
 }
 
 /// Runs one row mutation in a transaction and commits it only when exactly one
@@ -149,10 +150,15 @@ async fn delete_row(table: &str, fields: Vec<(String, String)>) -> Result<(), Mu
 /// so a predicate that unexpectedly matches several rows changes none of them.
 async fn execute_single_row_mutation(
     pool: &rullst_orm::RullstPool,
+    driver: &str,
     query: &mut QueryBuilder<rullst_orm::RullstDatabase>,
 ) -> Result<(), MutationFailure> {
     let mut transaction = pool.begin().await.map_err(|_| MutationFailure::Database)?;
-    let affected = match query.build().execute(&mut *transaction).await {
+    let executed = match build_for_driver(query, driver) {
+        Ok(statement) => statement.execute(&mut *transaction).await,
+        Err(error) => Err(error),
+    };
+    let affected = match executed {
         Ok(result) => result.rows_affected(),
         Err(_) => {
             let _ = transaction.rollback().await;

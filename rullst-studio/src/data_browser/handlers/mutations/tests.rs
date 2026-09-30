@@ -188,14 +188,14 @@ async fn row_mutations_commit_only_when_exactly_one_row_changes() {
 
     let mut shared_group = update(1);
     assert!(matches!(
-        execute_single_row_mutation(pool, &mut shared_group).await,
+        execute_single_row_mutation(pool, "sqlite", &mut shared_group).await,
         Err(MutationFailure::Conflict)
     ));
     assert_eq!(snapshot().await, original);
 
     let mut missing_group = update(9);
     assert!(matches!(
-        execute_single_row_mutation(pool, &mut missing_group).await,
+        execute_single_row_mutation(pool, "sqlite", &mut missing_group).await,
         Err(MutationFailure::NotFound)
     ));
 
@@ -204,14 +204,14 @@ async fn row_mutations_commit_only_when_exactly_one_row_changes() {
     );
     delete_shared.push_bind(1_i64);
     assert!(matches!(
-        execute_single_row_mutation(pool, &mut delete_shared).await,
+        execute_single_row_mutation(pool, "sqlite", &mut delete_shared).await,
         Err(MutationFailure::Conflict)
     ));
     assert_eq!(snapshot().await, original);
 
     let mut single_group = update(2);
     assert!(
-        execute_single_row_mutation(pool, &mut single_group)
+        execute_single_row_mutation(pool, "sqlite", &mut single_group)
             .await
             .is_ok()
     );

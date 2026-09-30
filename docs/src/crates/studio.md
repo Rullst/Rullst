@@ -16,7 +16,8 @@ views from the sources explicitly supplied by the application.
   a column outside the ASCII identifier boundary stay read-only, and each write
   commits only when exactly one row changed. Views show 25 rows, cut cell text
   to 256 characters in the database and accept search terms up to 256 bytes. SQLite, PostgreSQL, MySQL and
-  MariaDB run executable mutation contracts.
+  MariaDB run executable mutation contracts; PostgreSQL runs under both the
+  default `sqlx::Any` build and `strict-postgres`.
 - **API playground:** Mount interactive Swagger UI from an `OpenApi` document
   explicitly supplied by the application; Studio does not infer arbitrary Axum
   routes.

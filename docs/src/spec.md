@@ -2847,7 +2847,10 @@ sending.
   transactions, such as MySQL MyISAM, cannot roll back). Primary
   keys/backend-specific values are read-only, while delete requires
   `DELETE <table>`. SQLite, PostgreSQL, MySQL and MariaDB run
-  separate mutation contracts. This is not application authorization, tenant
+  separate mutation contracts; PostgreSQL runs under both the default
+  `sqlx::Any` build, where Studio renumbers bind markers and casts
+  information-schema identifiers to `VARCHAR`, and `strict-postgres`. This is
+  not application authorization, tenant
   scoping, audit, rollback or shared-production administration. The ER diagram
   inspects the same relational backends with bound lookup values and strict
   normalized Mermaid identifiers. Swagger requires an application-supplied

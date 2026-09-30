@@ -96,7 +96,11 @@ overhead.
   runs in a transaction that commits only when exactly one row changed; any
   other count is rolled back and fails (non-transactional engines such as
   MySQL MyISAM cannot roll back). SQLite, PostgreSQL, MySQL, and MariaDB run
-  separate executable contracts. This does not supply application tenant/RBAC,
+  separate executable contracts. With the default `sqlx::Any` build, Studio
+  renumbers bind markers to `$n` for PostgreSQL and reads information-schema
+  identifiers as `VARCHAR`, so the table view, search, row actions and ER
+  diagram also work there; the PostgreSQL contract runs under that build and
+  under `strict-postgres`. This does not supply application tenant/RBAC,
   audit history, undo, or a shared-production database administrator.
 - Swagger UI appears only when the application supplies its `OpenApi` document
   with `Studio::with_openapi`; Studio does not reverse-engineer arbitrary Axum
