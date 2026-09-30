@@ -246,26 +246,12 @@ impl CacheDriver for MemoryDriver {
 // ─── Global Memoize Cache ───────────────────────────────────────────────────
 
 /// Global memory cache functions used by the `#[memoize]` macro.
-pub mod memory {
-    use super::MemoryDriver;
-    use std::sync::OnceLock;
-
-    static GLOBAL_MEMO_CACHE: OnceLock<MemoryDriver> = OnceLock::new();
-
-    fn get_cache() -> &'static MemoryDriver {
-        GLOBAL_MEMO_CACHE.get_or_init(MemoryDriver::new)
-    }
-
-    /// Retrieve a value from the global memoize cache.
-    pub fn get(key: &str) -> Option<String> {
-        get_cache().get_sync(key).map(|value| value.to_string())
-    }
-
-    /// Store a value in the global memoize cache.
-    pub fn set(key: &str, value: &str) {
-        get_cache().put_sync(key, value, Some(3600));
-    }
-}
+///
+/// The process-wide store is bounded: at most 4,096 entries and 32 MiB of key
+/// plus value bytes, each entry at most 256 KiB and one hour old. Oversized
+/// entries are not cached, and the oldest entries are evicted when a bound
+/// would be exceeded.
+pub mod memory;
 
 // ─── Redis Driver (behind feature flag) ─────────────────────────────────────
 

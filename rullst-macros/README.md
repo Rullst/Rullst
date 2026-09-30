@@ -8,7 +8,7 @@ generated paths and matching runtime features stay aligned.
 
 | Macro | Contract | Important boundary |
 | :--- | :--- | :--- |
-| `html!` | Parses an HTML-shaped token tree, escapes dynamic text and attribute values, and rejects mismatched tags at compile time. | `rullst::html::RawHtml` is an explicit trust boundary; never wrap untrusted text in it. Static literals are author-owned source code. |
+| `html!` | Parses an HTML-shaped token tree, escapes dynamic text and attribute values, and rejects mismatched tags at compile time. Dynamic URL attributes (`href`, `src`, `action`, `formaction`, `poster`, `data`, …) render `#` instead of a `javascript:`/`vbscript:` URL, or a `data:` URL outside media elements (`img`, `audio`, `video`, `source`, `track`, `image`). | `rullst::html::RawHtml` is an explicit trust boundary; never wrap untrusted text in it (its entity references are not decoded before the URL check). Static literals are author-owned source code. Dynamic event-handler values (`on*`, `hx-on`, `hx-on-*`, also `data-` prefixed) are rejected at compile time; static handler strings remain allowed. Dynamic `style` values are only escaped: untrusted CSS can still restyle the page or load remote resources, so `style` is a trusted-only context. |
 | `#[require_role("Role")]` | Requires an async handler binding named `user`, checks `HasRole` before the body, and returns HTTP 403 on denial. | Authentication, user extraction, role persistence, tenant policy, and ownership checks remain application responsibilities. |
 | `#[derive(Billable)]` | Implements the bounded Capital `Billable` facade for a named-field struct containing `email: String`; optional subscription, tier, and paired grace-period fields are recognized. | It does not charge by itself or invent provider/payment/authorization data. |
 | `#[server_function]` | Generates one concrete `RpcResult<T>` function for native and Wasm targets plus a matching `<name>_rpc_router()`. Arguments and results use the bounded, versioned `rullst.client` v1 JSON envelope. | Parameters and output must be owned Serde types. The generated router supplies transport, not identity: mount it inside the production security, authentication, tenant, authorization, rate-limit, and application idempotency policies. |
@@ -18,19 +18,31 @@ generated paths and matching runtime features stay aligned.
 
 - `#[island]` emits the current native/Wasm island wrapper. It is not a
   complete hydration/RPC protocol and should not be treated as a stable ABI.
+  Arguments that cannot be serialized to JSON leave `data-props` empty, so the
+  server HTML renders without hydration instead of panicking.
 - `#[live_component]` and `#[live_event]` generate the bounded process-local
   Live component bridge. Authentication, reconnect, ordering, backpressure,
-  and browser interoperability belong to the host contract.
+  and browser interoperability belong to the host contract. Dispatch reads the
+  event name only from the first present `rullst_event`, `action` or `event`
+  string field (for example `<button name="rullst_event" value="save">`) and
+  runs at most one handler per message; other payload keys and values, such as
+  form inputs, never select a handler.
 - `#[memoize]` uses Rullst's process-local memory cache. Keys combine the
   function's `module_path!()`, name and attribute location (`file!()`,
   `line!()`, `column!()`) with the JSON-serialized arguments, so same-named
   functions in different modules, crates or `impl` blocks never share entries.
+  The store is bounded to 4,096 entries and 32 MiB of key plus value bytes;
+  an entry larger than 256 KiB is not cached, and the oldest entries are
+  evicted first. Entries expire after one hour. Arguments that cannot be
+  serialized to JSON (for example a `u128` above `u64::MAX`) run uncached
+  instead of panicking.
   It is not tenant-aware, distributed, invalidation-aware, or suitable for
   secrets/authorization decisions.
 
 ## Compile-time diagnostics
 
-The UI test suite checks malformed HTML, unknown/duplicate `server_function`
+The UI test suite checks malformed HTML, dynamic event-handler attributes,
+unknown/duplicate `server_function`
 options, unsafe RPC paths, synchronous/generic/method server functions,
 borrowed and destructured RPC parameters, invalid return types, missing role
 identity bindings, invalid legacy route arguments, and invalid `Billable`

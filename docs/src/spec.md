@@ -1136,7 +1136,11 @@ No automatic durability or upgrade of legacy `LiveComponent` code is implied.
 The legacy `live_ws_handler` bounds incoming WebSocket frames and messages to
 64 KiB before JSON parsing; its origin, admission and idle policy stay with the
 application route. `ws::WebSocket::recv` skips Ping/Pong control frames, so
-client or proxy keepalives do not end a legacy Live session.
+client or proxy keepalives do not end a legacy Live session. A
+`#[live_component]` dispatches only on the first present `rullst_event`,
+`action` or `event` string field and runs at most one `#[live_event]` handler
+per message; other payload keys and values, including form inputs, never
+select a handler.
 The implementation and its local protocol/Chromium acceptance are recorded in
 [the recovery guide](live-recovery.md). Hosted workspace/platform/package
 admission passed in PR #236; final release admission remains separate.
@@ -1356,11 +1360,36 @@ the same server-authoritative controls.
   its existing evaluation order and escaping behavior.
 * **XSS Protection:** Dynamic display values in the supported `{expr}` syntax
   are HTML-escaped by the generated code.
+* **URL attributes:** Dynamic values of `href`, `src`, `action`, `formaction`,
+  `poster`, `data`, `cite`, `background`, `codebase`, `icon`, `longdesc`,
+  `manifest` and `usemap` (names matched case-insensitively) are also checked
+  at runtime. A `javascript:` or `vbscript:` scheme, or `data:` outside `img`,
+  `audio`, `video`, `source`, `track` and `image`, renders as `#`. Leading C0
+  controls or spaces and embedded tab/LF/CR are ignored while reading the
+  scheme, as browsers do. Static attribute strings are author-owned and
+  unchanged; entity references inside an explicit `RawHtml` value are not
+  decoded before the check.
+* **Event-handler attributes:** A dynamic value for an `on*` attribute or
+  htmx's `hx-on`/`hx-on-*` (also `data-` prefixed) is a compile-time error,
+  because the browser runs it as JavaScript and escaping cannot make
+  interpolated data safe there. Static handler strings remain allowed; attach
+  data-driven listeners from a nonce'd script and pass values in `data-*`.
+* **Trusted-only `style`:** Dynamic `style` values are only HTML-escaped.
+  They cannot leave the attribute and supported browsers do not run script
+  from CSS, but untrusted CSS can restyle or overlay the page and load remote
+  resources, so pass only trusted or validated values.
 * **Raw Unescaped HTML:** Explicitly bypassed using the wrapper `rullst::html::RawHtml(String)`.
 * **Memoize keys:** `#[memoize]` keys its process-local cache entries by the
   function's `module_path!()`, name and attribute location plus the serialized
   arguments, so same-named functions in different modules, crates or `impl`
   blocks never share results. It remains tenant- and invalidation-unaware.
+  The process-wide store is bounded: at most 4,096 entries and 32 MiB of key
+  plus value bytes, each entry at most 256 KiB and one hour old. Oversized
+  entries run uncached; otherwise expired and then the oldest entries are
+  evicted. Arguments that `serde_json` cannot represent (a failing `Serialize`
+  impl, or a `u128`/`i128` outside the 64-bit range) also run uncached instead
+  of panicking; an `#[island]` with such props renders its server HTML with an
+  empty `data-props`, so hydration is skipped.
 * **Example:**
   ```rust
   use rullst::html;
@@ -1399,6 +1428,17 @@ default permissions, so permissions or hard links of the previous file are not
 carried over. The directory is not fsynced, so a power loss can roll a
 completed put back to the previous version. On Windows a replacement fails
 while another process holds the object open without delete sharing.
+
+### Public object URLs
+
+`Storage::url` and `LocalDriver::url` percent-encode every byte of each key
+segment except the unreserved `A-Z a-z 0-9 - . _ ~`, so `#`, `?`, `%`, spaces
+and non-ASCII characters stay part of the object key. Local storage returns the
+root-relative `/storage/<key>` path whatever its base directory, so the
+filesystem path is never disclosed; the application must serve that directory
+at `/storage` (Rullst does not mount it). Unconfigured S3/R2 drivers return the
+provider's unsigned object URL; a configured private backend rejects `url()`
+and requires a signed download.
 
 ---
 
