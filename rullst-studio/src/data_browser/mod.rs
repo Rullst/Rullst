@@ -5,6 +5,7 @@
 pub mod db;
 pub mod handlers;
 pub mod layout;
+mod pool;
 
 #[cfg(test)]
 mod tests;

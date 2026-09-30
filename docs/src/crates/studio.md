@@ -55,6 +55,12 @@ the router manually must preserve Axum `ConnectInfo<SocketAddr>`. The access
 capability also rejects DNS-rebinding-style non-local `Host` values,
 cross-origin requests, and unsafe requests without an `Origin` header.
 
+Studio uses the ORM pool that the application initialized. When none exists,
+its first database view initializes one from the resolver shared by `Server`
+and Artisan (process `DATABASE_URL`, then `./.env`, then `[database].url` in
+`Rullst.toml`). Without a configured database it reports the database tools as
+unavailable and creates nothing; there is no SQLite fallback.
+
 The earlier `StudioLayer` embedded-production idea was never implemented.
 Keeping an authenticated shared Studio is worthwhile, but it needs its own
 explicit identity/RBAC/TLS policy before it can become a supported mode.

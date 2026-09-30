@@ -55,6 +55,18 @@ Data-browser writes additionally require a crate-private marker created only by
 that verified access middleware, so importing the raw browser router cannot
 turn its mutation handlers into an unprotected database API.
 
+**Database selection:** Studio uses the process-wide ORM pool that the
+application initialized (`Server`, Artisan or an explicit `Orm::init`). When no
+pool exists yet, the first database view initializes it once with the resolver
+shared by `Server` and Artisan: the process `DATABASE_URL`, then `DATABASE_URL`
+from `./.env` (which never overrides the process environment), then
+`[database].url` parsed from `./Rullst.toml`. Without a configured database,
+Studio reports that its database tools are unavailable and creates nothing;
+there is no `sqlite://db.sqlite` fallback. Error messages never echo
+configuration content. An application that calls `Orm::init` with its own URL
+should do so before Studio serves requests. `data_browser::resolve_db_url`
+remains only for API compatibility; Studio no longer uses it.
+
 The earlier `StudioLayer` embedded-production idea was never implemented.
 Keeping an authenticated shared Studio is worthwhile, but it needs its own
 explicit identity/RBAC/TLS policy before it can become a supported mode.

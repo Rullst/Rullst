@@ -1343,6 +1343,10 @@ the same server-authoritative controls.
   seeder registry, so a `db:*` command it intercepts (because the application
   never called `artisan!`) exits with status 1 and names `rullst::artisan!`
   instead of reporting success for an empty registry; `studio` still runs.
+  Rullst Studio reuses an existing ORM pool; only when none exists does its
+  first database view resolve the current directory with this same resolver
+  and initialize the pool once. Without a configured database Studio reports
+  its database tools as unavailable and creates nothing.
 
 ### 4.2. Server-Side Rendering (`rullst::macros`)
 * **Macro:** `html!` expands supported HTML trees into ordinary Rust `String`
@@ -2774,6 +2778,10 @@ sending.
   disconnected integrations remain errors or `Unavailable`. The standalone
   migration surface provides CLI guidance and returns `501` from legacy
   mutation handlers because no migration/seeder registry is installed.
+* Studio's database views use the application's ORM pool or, when none
+  exists, the shared `Server`/Artisan database URL resolver (section 4.1). There
+  is no implicit SQLite fallback; resolution errors never echo configuration
+  content.
 * The database browser accepts a deliberately narrow ASCII SQL-identifier
   boundary. Reads are bounded; writes require the crate-private proof inserted
   by the verified local middleware, database-inspected table/column/complete-PK

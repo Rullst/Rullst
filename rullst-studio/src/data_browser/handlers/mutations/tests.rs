@@ -154,9 +154,7 @@ fn mutation_failures_have_stable_non_secret_statuses() {
 // TM-STUDIO-06: a predicate that matches several rows is rolled back, so the
 // conflict response never follows an already committed multi-row change.
 async fn row_mutations_commit_only_when_exactly_one_row_changes() {
-    let pool = ensure_pool_initialized()
-        .await
-        .expect("pool should be initialized");
+    let pool = crate::data_browser::pool::test_sqlite_pool().await;
     sqlx::query("DROP TABLE IF EXISTS studio_single_row_probe")
         .execute(pool)
         .await
@@ -226,9 +224,7 @@ async fn row_mutations_commit_only_when_exactly_one_row_changes() {
 // SQLite accepts NULL in a non-integer key. Its cell renders as `NULL`, which
 // would bind as the text key 'NULL', so such rows must not offer row actions.
 async fn rows_with_a_null_key_value_stay_read_only() {
-    let pool = ensure_pool_initialized()
-        .await
-        .expect("pool should be initialized");
+    let pool = crate::data_browser::pool::test_sqlite_pool().await;
     sqlx::query("DROP TABLE IF EXISTS studio_null_key_probe")
         .execute(pool)
         .await

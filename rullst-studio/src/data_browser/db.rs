@@ -4,6 +4,8 @@ use serde::Deserialize;
 use sqlx::{QueryBuilder, Row};
 use std::fmt::Write;
 
+pub use super::pool::{ensure_pool_initialized, resolve_db_url};
+
 /// Query parameters for the Studio table viewer, supporting pagination and live search.
 #[derive(Deserialize, Debug)]
 pub struct TableQuery {
@@ -165,49 +167,6 @@ pub fn build_fetch_tables_query(driver: &str) -> &'static str {
         _ => {
             "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC"
         }
-    }
-}
-
-pub fn resolve_db_url(provided: &str) -> String {
-    if !provided.trim().is_empty() {
-        return provided.trim().to_string();
-    }
-    if let Ok(env_url) = std::env::var("DATABASE_URL")
-        && !env_url.trim().is_empty()
-    {
-        return env_url.trim().to_string();
-    }
-    if let Ok(toml_content) = std::fs::read_to_string("Rullst.toml") {
-        for line in toml_content.lines() {
-            let trimmed = line.trim();
-            if (trimmed.starts_with("url =") || trimmed.starts_with("url="))
-                && let Some(val) = trimmed.split('=').nth(1)
-            {
-                let clean = val.trim().trim_matches('"').trim_matches('\'');
-                if !clean.is_empty() {
-                    return clean.to_string();
-                }
-            }
-        }
-    }
-    if std::path::Path::new("db.sqlite").exists() {
-        return "sqlite://db.sqlite".to_string();
-    }
-    if std::path::Path::new("rullst.db").exists() {
-        return "sqlite://rullst.db".to_string();
-    }
-    "sqlite://db.sqlite".to_string()
-}
-
-pub async fn ensure_pool_initialized() -> Result<&'static rullst_core::db::RullstPool, sqlx::Error>
-{
-    if let Some(pool) = rullst_core::db::safe_pool() {
-        Ok(pool)
-    } else {
-        let db_url = resolve_db_url("");
-        let _ = rullst_orm::Orm::init(&db_url).await;
-        rullst_core::db::safe_pool()
-            .ok_or_else(|| sqlx::Error::Configuration("Database pool not initialized".into()))
     }
 }
 

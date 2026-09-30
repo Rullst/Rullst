@@ -70,9 +70,7 @@ fn test_build_headers_html() {
 #[cfg(not(miri))]
 #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 async fn test_db_operations() {
-    let pool = ensure_pool_initialized()
-        .await
-        .expect("pool should be initialized");
+    let pool = super::pool::test_sqlite_pool().await;
 
     let _ = sqlx::query("DROP TABLE IF EXISTS test_users")
         .execute(pool)
@@ -124,9 +122,7 @@ async fn test_db_operations() {
 // TM-STUDIO-06: a key column outside the identifier boundary or the column cap
 // makes the table read-only instead of reducing the key to a prefix.
 async fn primary_keys_outside_the_identifier_boundary_disable_mutations() {
-    let pool = ensure_pool_initialized()
-        .await
-        .expect("pool should be initialized");
+    let pool = super::pool::test_sqlite_pool().await;
     for table in [
         "studio_skipped_key",
         "studio_capped_key",
@@ -198,9 +194,7 @@ async fn primary_keys_outside_the_identifier_boundary_disable_mutations() {
 #[cfg(not(miri))]
 #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 async fn test_get_any_value_as_string() {
-    let pool = ensure_pool_initialized()
-        .await
-        .expect("pool should be initialized");
+    let pool = super::pool::test_sqlite_pool().await;
 
     let row = sqlx::query("SELECT 'hello' as s, 42 as i, 3.14 as f, NULL as n")
         .fetch_one(pool)
@@ -294,9 +288,7 @@ fn test_query_builders() {
 #[cfg(not(miri))]
 #[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
 async fn test_build_rows_html() {
-    let pool = ensure_pool_initialized()
-        .await
-        .expect("pool should be initialized");
+    let pool = super::pool::test_sqlite_pool().await;
 
     let row = sqlx::query("SELECT 'hello' as s, NULL as n")
         .fetch_one(pool)

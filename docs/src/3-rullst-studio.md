@@ -31,6 +31,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 }
 ```
 
+Studio uses the process-wide ORM pool that the application initialized
+(`Server`, Artisan or an explicit `Orm::init`). If none exists when a database
+view is requested, Studio initializes it once from the current directory with
+the resolver shared by `Server` and Artisan: the process `DATABASE_URL`, then
+`DATABASE_URL` from `./.env` (never overriding the process environment), then
+`[database].url` parsed from `Rullst.toml`. Without a configured database the
+views report that database tools are unavailable and nothing is created; the
+former `sqlite://db.sqlite` fallback is gone, and errors never echo
+configuration content. Applications that call `Orm::init` with their own URL
+should do so before Studio serves requests.
+
 `Studio::new().into_router(LocalStudioAccess::loopback_only())` builds the same
 debug-only router for explicit composition. The serving stack must preserve
 Axum `ConnectInfo<SocketAddr>` or requests fail closed. Optional OpenAPI and
