@@ -192,7 +192,7 @@ async fn nexus_pages_run_under_the_default_production_csp() {
         assert_runs_under_default_csp(route, &html);
         if full_pages.contains(route) {
             for (tag, attributes) in scan_tags(&html) {
-                if matches!(tag.as_str(), "script" | "link") {
+                if matches!(tag.as_str(), "script" | "link" | "img") {
                     asset_paths.extend(attributes.into_iter().filter_map(|(name, value)| {
                         (matches!(name.as_str(), "src" | "href")
                             && value.starts_with("/nexus/assets/"))
@@ -205,7 +205,11 @@ async fn nexus_pages_run_under_the_default_production_csp() {
 
     asset_paths.sort();
     asset_paths.dedup();
-    assert_eq!(asset_paths.len(), 3, "htmx, nexus.js and nexus.css");
+    assert_eq!(
+        asset_paths.len(),
+        4,
+        "htmx, nexus.js, nexus.css and the Rullst logo"
+    );
     for path in asset_paths {
         let response = app
             .clone()
@@ -222,7 +226,9 @@ async fn nexus_pages_run_under_the_default_production_csp() {
             .to_str()
             .expect("ASCII content type");
         assert!(
-            content_type.starts_with("text/javascript") || content_type.starts_with("text/css"),
+            content_type.starts_with("text/javascript")
+                || content_type.starts_with("text/css")
+                || content_type == "image/png",
             "{path}: {content_type}"
         );
     }

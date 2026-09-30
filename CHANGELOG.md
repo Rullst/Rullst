@@ -435,7 +435,8 @@ A prepared version section does not establish that its tag or crates exist.
 - Nexus serves its stylesheet, script and a vendored htmx 2.0.4 (0BSD)
   same-origin under `/nexus/assets` and emits no inline code, handlers or style
   attributes, so the panel works under the default production nonce CSP. The
-  external logo, favicon and fonts are removed.
+  external fonts are removed, and the Rullst logo and favicon are served
+  same-origin from `/nexus/assets/rullst-logo.png`.
 - Nexus never renders stored Password-kind values: list cells are masked and
   not selected or sortable, the edit input is empty, and an empty submission
   keeps the stored value. Nexus does not hash values; the docs describe the

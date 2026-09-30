@@ -1,4 +1,4 @@
-use crate::nexus::assets::{HTMX_PATH, SCRIPT_PATH, STYLESHEET_PATH};
+use crate::nexus::assets::{HTMX_PATH, LOGO_PATH, SCRIPT_PATH, STYLESHEET_PATH};
 use crate::nexus::types::NexusState;
 
 pub(crate) fn safe_icon_html(icon: &str) -> String {
@@ -90,11 +90,11 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
     // `style-src 'self'`, `img-src 'self' data:`) must not need relaxing.
     // htmx must not evaluate code or inject a style element under that policy.
     out.push_str("<meta name=\"htmx-config\" content='{\"allowEval\":false,\"allowScriptTags\":false,\"includeIndicatorStyles\":false}' />\n");
-    out.push_str("<link rel=\"icon\" href=\"data:,\" />\n");
     let _ = std::fmt::Write::write_fmt(
         &mut out,
         format_args!(
-            "<link rel=\"stylesheet\" href=\"{STYLESHEET_PATH}\" />\n\
+            "<link rel=\"icon\" type=\"image/png\" href=\"{LOGO_PATH}\" />\n\
+             <link rel=\"stylesheet\" href=\"{STYLESHEET_PATH}\" />\n\
              <script src=\"{HTMX_PATH}\" defer></script>\n\
              <script src=\"{SCRIPT_PATH}\" defer></script>\n"
         ),
@@ -105,7 +105,12 @@ pub fn render_shell(state: &NexusState, sidebar: &str, content: &str) -> String 
         "<nav class=\"nexus-sidebar\" id=\"nexus-sidebar\" aria-label=\"Nexus navigation\">",
     );
     out.push_str("<div class=\"nexus-brand\">");
-    out.push_str("<span class=\"nexus-brand-mark\" aria-hidden=\"true\">R</span>");
+    let _ = std::fmt::Write::write_fmt(
+        &mut out,
+        format_args!(
+            "<img class=\"nexus-brand-logo\" src=\"{LOGO_PATH}\" alt=\"\" width=\"24\" height=\"24\" />"
+        ),
+    );
     let _ = std::fmt::Write::write_fmt(
         &mut out,
         format_args!("<span class=\"nexus-brand-name\">{brand}</span>"),

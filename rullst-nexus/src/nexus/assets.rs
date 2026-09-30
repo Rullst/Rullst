@@ -1,6 +1,6 @@
 //! Same-origin, build-time Nexus browser assets.
 //!
-//! The admin shell loads only these files, so the production CSP
+//! The admin shell loads only these files (including the Rullst logo), so the production CSP
 //! (`script-src 'self' 'nonce-…'; style-src 'self' 'nonce-…'`) covers the panel
 //! without inline code, a CDN or relaxing the application-wide policy.
 
@@ -17,10 +17,14 @@ pub(crate) const HTMX_PATH: &str = "/nexus/assets/htmx-2.0.4.min.js";
 pub(crate) const SCRIPT_PATH: &str = "/nexus/assets/nexus.js";
 /// Path of the Nexus stylesheet under the Nexus mount point.
 pub(crate) const STYLESHEET_PATH: &str = "/nexus/assets/nexus.css";
+/// Path of the Rullst logo (brand mark and favicon) under the Nexus mount point.
+pub(crate) const LOGO_PATH: &str = "/nexus/assets/rullst-logo.png";
 
 /// Unmodified upstream htmx 2.0.4 (`dist/htmx.min.js`, Zero-Clause BSD).
 const HTMX_JS: &str = include_str!("../../assets/htmx-2.0.4.min.js");
 const NEXUS_JS: &str = include_str!("../../assets/nexus.js");
+/// 64x64 PNG derived from the repository's `Rullst.png`.
+const RULLST_LOGO_PNG: &[u8] = include_bytes!("../../assets/rullst-logo.png");
 
 pub(crate) fn router<S>() -> Router<S>
 where
@@ -30,21 +34,29 @@ where
         .route("/assets/htmx-2.0.4.min.js", get(htmx_js))
         .route("/assets/nexus.js", get(nexus_js))
         .route("/assets/nexus.css", get(nexus_css))
+        .route("/assets/rullst-logo.png", get(rullst_logo))
 }
 
 async fn htmx_js() -> Response {
-    asset_response("text/javascript; charset=utf-8", HTMX_JS)
+    asset_response("text/javascript; charset=utf-8", HTMX_JS.as_bytes())
 }
 
 async fn nexus_js() -> Response {
-    asset_response("text/javascript; charset=utf-8", NEXUS_JS)
+    asset_response("text/javascript; charset=utf-8", NEXUS_JS.as_bytes())
 }
 
 async fn nexus_css() -> Response {
-    asset_response("text/css; charset=utf-8", crate::nexus::ui::NEXUS_CSS)
+    asset_response(
+        "text/css; charset=utf-8",
+        crate::nexus::ui::NEXUS_CSS.as_bytes(),
+    )
 }
 
-fn asset_response(content_type: &'static str, body: &'static str) -> Response {
+async fn rullst_logo() -> Response {
+    asset_response("image/png", RULLST_LOGO_PNG)
+}
+
+fn asset_response(content_type: &'static str, body: &'static [u8]) -> Response {
     (
         StatusCode::OK,
         [
@@ -90,6 +102,21 @@ mod tests {
             assert!(body.contains(marker), "{path}");
             assert!(!body.contains("unpkg.com") && !body.contains("googleapis"));
         }
+        let route = LOGO_PATH.trim_start_matches("/nexus");
+        let response = router::<()>()
+            .oneshot(Request::get(route).body(Body::empty()).expect("request"))
+            .await
+            .expect("logo response");
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers()[header::CONTENT_TYPE], "image/png");
+        assert_eq!(
+            response.headers()[header::X_CONTENT_TYPE_OPTIONS],
+            "nosniff"
+        );
+        let body = axum::body::to_bytes(response.into_body(), 64 * 1024)
+            .await
+            .expect("bounded logo");
+        assert!(body.starts_with(b"\x89PNG\r\n\x1a\n"), "PNG signature");
         // Nexus code must stay runnable under a CSP without 'unsafe-eval'.
         for forbidden in ["eval(", "new Function("] {
             assert!(!NEXUS_JS.contains(forbidden), "{forbidden}");
