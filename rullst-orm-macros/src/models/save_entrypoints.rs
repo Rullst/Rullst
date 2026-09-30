@@ -31,8 +31,9 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                 let original_id = self.id;
                 let mut transaction = rullst_orm::Orm::begin_transaction().await?;
                 let post_commit = rullst_orm::post_commit::PostCommitScope::new();
+                // The whole transaction rolls back on error, so no savepoint.
                 let save_result = post_commit
-                    .run(self.save_with_tx(&mut transaction))
+                    .run(self.__rullst_save_in_tx(&mut transaction))
                     .await;
                 if let Err(save_error) = save_result {
                     self.id = original_id;
@@ -51,6 +52,9 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
 
             /// Saves through a caller-owned transaction.
             ///
+            /// The write runs in a savepoint: if a hook, observer or policy fails,
+            /// the savepoint is rolled back, `id` is restored and the error is
+            /// returned, so the caller's transaction can continue without it.
             /// Strict post-commit effects require this transaction to be managed by
             /// `Orm::transaction`; a raw SQLx transaction cannot expose its later
             /// commit decision to the ORM.
@@ -61,6 +65,30 @@ pub(super) fn generate(parsed: &ParsedModel) -> TokenStream {
                 fields(orm.model = stringify!(#name), orm.table = #table_name, orm.operation = "save_with_tx")
             )]
             pub async fn save_with_tx(&mut self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
+                use rullst_orm::_sqlx::Acquire;
+                let original_id = self.id;
+                let mut savepoint = (&mut **tx).begin().await?;
+                let operation_callbacks = rullst_orm::post_commit::PostCommitScope::new();
+                let save_result = operation_callbacks
+                    .run(self.__rullst_save_in_tx(&mut savepoint))
+                    .await;
+                if let Err(save_error) = save_result {
+                    self.id = original_id;
+                    return match savepoint.rollback().await {
+                        Ok(()) => Err(save_error),
+                        Err(rollback_error) => Err(rullst_orm::Error::DatabaseError(format!(
+                            "save failed: {}; savepoint rollback also failed: {}",
+                            save_error,
+                            rollback_error,
+                        ))),
+                    };
+                }
+                savepoint.commit().await?;
+                operation_callbacks.promote_to_parent().await?;
+                Ok(())
+            }
+
+            async fn __rullst_save_in_tx(&mut self, tx: &mut rullst_orm::db::Transaction<'_>) -> Result<(), rullst_orm::Error> {
                 let is_new = self.id == 0;
                 #tenant_prepare
                 if is_new {
