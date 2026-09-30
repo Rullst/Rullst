@@ -225,3 +225,17 @@ fn test_homograph_detection() {
     assert!(is_homograph_domain("p\u{0430}ypal.com"));
     assert!(!is_homograph_domain("paypal.com"));
 }
+
+#[test]
+fn security_errors_omit_the_unredacted_link() {
+    for body in [
+        "<a href=\"https://p\u{0430}ypal.com/reset?email=alice@example.com&password=hunter2\">x</a>",
+        "<a href=\"javascript:fetch('/x?token=hunter2&to=alice@example.com')\">x</a>",
+    ] {
+        let error = scan_content_security(body).expect_err("unsafe link");
+        let display = error.to_string();
+        for fragment in ["hunter2", "alice@example.com", "ypal.com", "fetch("] {
+            assert!(!display.contains(fragment), "error echoes link content");
+        }
+    }
+}

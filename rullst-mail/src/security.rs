@@ -174,21 +174,24 @@ pub fn is_crlf_safe(header_value: &str) -> bool {
 }
 
 /// Validates that none of the links inside the given content are dangerous or homograph spoofing attempts.
+///
+/// The error names only the violated rule. The offending link is omitted
+/// because this scan runs before secret redaction, so its query can still
+/// carry tokens, addresses or credentials.
 pub fn scan_content_security(content: &str) -> Result<(), MailError> {
     let urls = extract_urls(content);
     for url in urls {
         if is_dangerous_scheme(&url) {
-            return Err(MailError::SendError(format!(
-                "Outbound mail security violation: Dangerous URI scheme detected in link: '{}'",
-                url
-            )));
+            return Err(MailError::SendError(
+                "Outbound mail security violation: a link uses a dangerous URI scheme".to_string(),
+            ));
         }
 
-        if let Some(domain) = homograph::homograph_link_host(&url) {
-            return Err(MailError::SendError(format!(
-                "Outbound mail security violation: Homograph domain spoofing attempt detected: '{}' (domain '{}')",
-                url, domain
-            )));
+        if homograph::homograph_link_host(&url).is_some() {
+            return Err(MailError::SendError(
+                "Outbound mail security violation: a link host is a homograph spoofing attempt"
+                    .to_string(),
+            ));
         }
     }
     Ok(())
