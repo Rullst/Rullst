@@ -48,6 +48,9 @@ pub fn html(input: TokenStream) -> TokenStream {
 /// It compiles dual versions depending on compilation targets:
 /// - On native server compiles, it wraps the component's HTML output in a `<div data-island="..." data-props="...">`
 /// - On wasm32-unknown-unknown compiles, it generates structural props parsing and registers a hydration function
+///
+/// Props that cannot be serialized to JSON leave `data-props` empty, so the
+/// server HTML renders without hydration instead of panicking.
 #[proc_macro_attribute]
 #[allow(clippy::collapsible_if)]
 pub fn island(_attr: TokenStream, item: TokenStream) -> TokenStream {
@@ -83,9 +86,20 @@ pub fn island(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 #body
             };
 
-            let props_json = serde_json::json!({
-                #(stringify!(#arg_names): #arg_names),*
-            }).to_string();
+            // Props that cannot be represented as JSON (for example a u128
+            // above u64::MAX) leave `data-props` empty, so the island renders
+            // without hydration instead of panicking.
+            let props_json = (|| -> ::core::result::Result<String, serde_json::Error> {
+                let mut props = serde_json::Map::new();
+                #(
+                    props.insert(
+                        stringify!(#arg_names).to_string(),
+                        serde_json::to_value(&#arg_names)?,
+                    );
+                )*
+                ::core::result::Result::Ok(serde_json::Value::Object(props).to_string())
+            })()
+            .unwrap_or_default();
 
             let escaped_props = rullst::html::escape_str(&props_json);
 
@@ -163,7 +177,8 @@ pub fn live_event(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// Results live in the bounded process-wide `rullst::cache::memory` store
 /// (4,096 entries, 32 MiB, one hour each; oldest evicted first). A call whose
-/// key plus serialized result exceeds 256 KiB runs uncached.
+/// key plus serialized result exceeds 256 KiB, or whose arguments cannot be
+/// serialized to JSON (e.g. a `u128` above `u64::MAX`), runs uncached.
 #[proc_macro_attribute]
 pub fn memoize(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as syn::ItemFn);
@@ -197,28 +212,40 @@ fn expand_memoize(input_fn: &syn::ItemFn) -> proc_macro2::TokenStream {
             // The key combines a per-function identity with the serialized
             // arguments. `module_path!()` separates modules and crates; the
             // attribute's location separates same-named associated functions.
-            let cache_key = format!(
-                "{}:{}",
-                concat!(
-                    module_path!(),
-                    "::",
-                    stringify!(#name),
-                    "@",
-                    file!(),
-                    ":",
-                    line!(),
-                    ":",
-                    column!()
-                ),
-                serde_json::json!([#(#arg_names),*]).to_string()
-            );
+            // Arguments that cannot be represented as JSON (for example a u128
+            // above u64::MAX) run the body uncached instead of panicking.
+            let cache_key = (|| -> ::core::result::Result<serde_json::Value, serde_json::Error> {
+                ::core::result::Result::Ok(serde_json::Value::Array(vec![
+                    #(serde_json::to_value(&#arg_names)?),*
+                ]))
+            })()
+            .ok()
+            .map(|arguments| {
+                format!(
+                    "{}:{}",
+                    concat!(
+                        module_path!(),
+                        "::",
+                        stringify!(#name),
+                        "@",
+                        file!(),
+                        ":",
+                        line!(),
+                        ":",
+                        column!()
+                    ),
+                    arguments
+                )
+            });
 
             // Check if it exists in the global Rullst memory cache
-            if let Some(cached) = rullst::cache::memory::get(&cache_key) {
-                // If it's a String (HTML output), we can downcast or deserialize it.
-                // For simplicity, we assume String return types.
-                if let Ok(cached_str) = serde_json::from_str::<#output_type>(&cached) {
-                    return cached_str;
+            if let Some(cache_key) = &cache_key {
+                if let Some(cached) = rullst::cache::memory::get(cache_key) {
+                    // If it's a String (HTML output), we can downcast or deserialize it.
+                    // For simplicity, we assume String return types.
+                    if let Ok(cached_str) = serde_json::from_str::<#output_type>(&cached) {
+                        return cached_str;
+                    }
                 }
             }
 
@@ -226,8 +253,10 @@ fn expand_memoize(input_fn: &syn::ItemFn) -> proc_macro2::TokenStream {
             let result: #output_type = { #body };
 
             // Store it in the cache
-            if let Ok(serialized) = serde_json::to_string(&result) {
-                rullst::cache::memory::set(&cache_key, &serialized);
+            if let Some(cache_key) = &cache_key {
+                if let Ok(serialized) = serde_json::to_string(&result) {
+                    rullst::cache::memory::set(cache_key, &serialized);
+                }
             }
 
             result
