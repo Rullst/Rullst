@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790738393213,
+  "lastUpdate": 1790742120515,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -10977,6 +10977,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 176,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "dbe8e82b5a693ce1a6f33ee6d1f92ab5749f904b",
+          "message": "Merge pull request #340 from Rullst/fix/v13-capital-review-fixes\n\nfix(capital): fail closed on unsigned Wise webhooks, tighten Paddle and Razorpay handling",
+          "timestamp": "2026-09-30T00:44:35-03:00",
+          "tree_id": "3de7ba1079519b769c5aae74121b00a73b21643e",
+          "url": "https://github.com/Rullst/Rullst/commit/dbe8e82b5a693ce1a6f33ee6d1f92ab5749f904b"
+        },
+        "date": 1790742119279,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1037,
+            "range": "± 47",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 240,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 1,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 262,
+            "range": "± 11",
             "unit": "ns/iter"
           }
         ]
