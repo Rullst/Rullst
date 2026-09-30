@@ -66,7 +66,7 @@ impl MailDriver for PostmarkDriver {
 
         let client = super::http::client()?;
 
-        let from_addr = message.from.as_deref().unwrap_or("noreply@rullst.dev");
+        let from_addr = super::rest::required_sender(message)?;
 
         let mut headers_vec = Vec::new();
         if let Some(unsub) = message.list_unsubscribe_header() {
@@ -74,7 +74,7 @@ impl MailDriver for PostmarkDriver {
                 "Name": "List-Unsubscribe",
                 "Value": unsub
             }));
-            if message.unsubscribe_url.is_some() {
+            if message.has_one_click_unsubscribe() {
                 headers_vec.push(serde_json::json!({
                     "Name": "List-Unsubscribe-Post",
                     "Value": "List-Unsubscribe=One-Click"

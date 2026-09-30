@@ -46,17 +46,17 @@ larger backwards clock step fails closed as `SuppressionUnavailable`.
   - **Native SMTP** (`SmtpDriver`) — Pure async Lettre transport with implicit TLS on port 465 and mandatory STARTTLS on every other port.
   - **Memory & MailTrap** (`MemoryDriver`, `MailTrap`) — Local zero-I/O in-memory harness, distinct from the hosted Mailtrap service with fluent assertions.
   - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
-- **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. Every attempt keeps the caller's tenant context or delivery ID, so a wrapped `TenantMailResolver` selects the tenant's driver. Structured tracing exposes bounded decision fields without provider bodies.
+- **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. `SuppressionUnavailable` and `AttachmentInspectionUnavailable` are `Transient` (retry later) but never failover-eligible. A fallback that returns such an error ends the chain with it; when every driver fails transiently, the result is a `Transient` error, or `RateLimited` with the bounded `Retry-After` when the last driver was rate limited. Every attempt keeps the caller's tenant context or delivery ID, so a wrapped `TenantMailResolver` selects the tenant's driver. Structured tracing exposes bounded decision fields without provider bodies.
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
 - **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, SendGrid, Postmark, native SES, the SES bearer proxy and SMTP serialize the same owned-byte model; transports copy or Base64-encode as required.
 - **🔬 Opt-in Attachment Inspection (`AttachmentInspectionGuard`):** A strict bounded local policy rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links before transport. Checks follow the case-insensitive declared type, the filename extension and the content signature together, never the declared type alone. A static `AttachmentInspector` adapter boundary supports an independently operated production scanner.
 - **🚫 Durable Recipient Suppression (`sqlite`):** `SuppressionGuard` checks manual, hard-bounce and spam-complaint state before transport. The SQLite store binds verified provider/event identities, detects conflicting replay, enforces immutable quotas transactionally and survives restart or multiple local processes.
 - **📊 Secret-Minimized Delivery Observability:** `ObservedMailDriver` records only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing static observer.
-- **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend/SendGrid delivery uses provider scheduling. Real SMTP, Postmark, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
+- **⏰ Durable Scheduling (`.send_at()`, `.send_in()`):** SQLite and Redis queues persist schedules for up to 366 days and never claim early; direct Resend/SendGrid delivery uses provider scheduling, and direct SendGrid rejects a schedule more than 72 hours ahead (its provider limit) with `ConfigError` before any request. Real SMTP, Postmark, Log and SES paths reject future direct delivery and must use a durable queue; offline fixtures may retain the timestamp for assertions.
 - **🕵️ Outbound Phishing & Homograph URL Interceptor (`.validate_security()`):** Pre-flight detection of mixed-script Unicode IDN spoofed domains (`pаypal.com` with Cyrillic characters), checked per DNS label of the link host and user-info only, so single-script IDNs such as `παράδειγμα.gr` or `пример.com` and non-Latin query text are allowed while all-lookalike Cyrillic labels under a non-Cyrillic TLD are rejected, and dangerous URI schemes (`javascript:`, `data:text/html`).
-- **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`).
+- **📜 RFC 8058 One-Click List-Unsubscribe:** Automatic compliant header injection (`List-Unsubscribe`, plus `List-Unsubscribe-Post: List-Unsubscribe=One-Click` only for an HTTPS unsubscribe URL, as RFC 8058 requires). The unsubscribe email must be one bare address and the URL may not contain whitespace, `<`, `>` or `"`, so neither value can add another header entry.
 - **🔤 Automatic Plain-Text Fallback:** Automatic HTML-to-plain-text conversion without manual duplication.
-- **🔒 Outbound DLP Secret Scanner:** Proactive credential masking (AWS keys, passwords, API tokens, bearer tokens) before emails leave your server.
+- **🔒 Outbound DLP Secret Scanner:** Proactive credential masking (whole-token `AKIA`/`ASIA` AWS access key IDs, passwords, API tokens, bearer tokens and PEM private-key blocks of any `<label>PRIVATE KEY` type, including OpenSSH, EC and encrypted keys) before emails leave your server.
 - **📦 Async Background Worker Queues:** Native non-blocking dispatch via `rullst-core::queue`.
 - **🧪 Explicit offline provider mode:** empty or `mock_*` credentials select `DeliveryMode::OfflineMock`, never perform network I/O, and are inspectable through `OfflineMailMock`.
 - **🛠️ Safe CLI Scaffolding:** Generates registered, facade-based mailables for Welcome, Password Reset, OTP, Invoice, custom, evidence-aware NFS-e/international receipts, and explicit D+1/D+3/D+7 dunning; validates names, refuses collisions and escapes dynamic HTML.
@@ -127,7 +127,17 @@ worker_handle.shutdown().await?;
 
 Execution begins on the first worker poll after the UTC timestamp and remains
 at-least-once. Queue scheduling does not promise exact wall-clock execution,
-exactly-once provider delivery, or provider acceptance.
+exactly-once provider delivery, or provider acceptance. Redis promotes
+scheduled jobs by its server clock, so the worker accepts a claimed job whose
+timestamp is at most 300 seconds ahead of the worker's own clock and fails a
+claim that is earlier than that.
+
+The queue has no handler-requested retry: any delivery error, including a
+`Transient` or `RateLimited` provider failure and its `Retry-After`, marks the
+mail job failed with the error text. Nothing is lost silently, but the job is
+sent again only after `Queue::retry_failed_job`. Automate that for transient
+failures, or deliver through an outbox with its own retry policy (as account
+mail does), when provider blips must be retried without an operator.
 
 Queued jobs store attachment bytes as one base64 string per attachment. Workers
 still accept jobs written with the earlier integer-array encoding, but an older
@@ -239,6 +249,10 @@ explicit stages, while due-date calculation, scheduling, entitlement changes,
 and account state remain application responsibilities. Both templates execute
 the mandatory pre-flight while building and fail on unsafe links.
 
+Generated mailables set no `from`; configure the default sender with
+`MAIL_FROM` (or `from` under `[mail]` in `Rullst.toml`), which new projects
+list in `.env.example`. Staging and production must also select a driver.
+
 For a payment-bound native PDF rather than the scaffolded fiscal template,
 enable `rullst-mail/capital-invoice` (or umbrella `rullst/capital-mail`) and use
 `PaidInvoiceDelivery::prepare`, then set the verified sender with
@@ -339,6 +353,14 @@ Generate versioned, purpose-bound HMAC-SHA256 tracking tokens with a mandatory
 the current token payload contains the recipient address and destination URL in
 base64-readable form. Applications must decide whether to use tracking at all
 and own consent, minimization, retention, redirects and applicable law.
+
+Click tracking rewrites only the double-quoted `href` of `<a>` elements, so a
+`<link>` stylesheet or `<base>` fetched when a message is opened never registers
+as a click. The token signs the destination with HTML character references
+decoded (`?a=1&amp;b=2` is redirected as `?a=1&b=2`), and the tracker base is
+escaped for the attribute it enters. A destination that the mandatory pipeline
+would reject (homograph host) or redact (credentials in the URL) is not wrapped,
+so that pipeline still rejects or redacts it.
 
 ```rust
 use rullst_mail::{TrackingEngine, TrackingVerifier, PIXEL_1X1_GIF, Message};
@@ -478,11 +500,33 @@ quotas can change; consult the providers rather than relying on SDK constants.
 ```toml
 [mail]
 driver = "resend" # "log" | "memory" | "smtp" | "resend" | "sendgrid" | "postmark" | "ses"
+from = "Acme <no-reply@acme.example>" # default sender for messages without `from`
 ```
+
+The `Mail` facade reads each variable below from the process environment first
+and then from the project's `./.env`, which never overrides the environment,
+exactly as `Server` reads `DATABASE_URL`; `driver` and `from` in `Rullst.toml`
+come last. `LogDriver` reads `MAIL_LOG_PATH` the same way. The staging and
+production check uses the `Server` environment precedence (`RULLST_ENV`, then
+`APP_ENV`, from the environment and then `.env`, then `[app] env`). A
+malformed `.env` fails with `MailError::ConfigError` without echoing its
+content.
 
 Environment variables:
 - `MAIL_DRIVER`: Select active driver (`log`, `memory`, `smtp`, `resend`, `sendgrid`, `postmark`, `ses`, `azure-acs`, `sendpulse`, `mailjet`, `mailjet-sandbox`,
-  `mailtrap`, `mailtrap-sandbox`).
+  `mailtrap`, `mailtrap-sandbox`). When neither it nor `[mail] driver` is set,
+  development and test fall back to `log`, while staging and production
+  (`RULLST_ENV`, `APP_ENV` or `[app] env`, as above) return `MailError::ConfigError`
+  instead of logging mail that is never delivered. Select `log` explicitly to
+  keep metadata-only logging there.
+- `MAIL_FROM`: Default sender (v13) for `Mail` facade messages that set no
+  `from`, such as generated mailables. It takes precedence over `[mail] from`;
+  an explicit `from` on the message always wins. Use one address or
+  `Name <address>` that your provider account has verified. An invalid value
+  fails every facade send with `MailError::ConfigError`; call
+  `Mail::default_sender()` at startup to fail fast. Drivers used directly do
+  not read it; the other settings below are read by the facade when it builds
+  a driver, and `MAIL_LOG_PATH` by `LogDriver` itself.
 - `RESEND_API_KEY`: API key for Resend.
 - `SENDGRID_API_KEY`: API key for SendGrid.
 - `POSTMARK_SERVER_TOKEN`: Server API token for Postmark.
@@ -501,7 +545,17 @@ For Resend, SendGrid, Postmark, SendPulse, Mailjet, Mailtrap, ACS and the SES
 fixture/proxy,
 an empty credential or one beginning with `mock_` selects the deterministic
 offline fallback. Use `driver.delivery_mode()` and
-`OfflineMailMock::deliveries()` to assert this explicitly in tests.
+`OfflineMailMock::deliveries()` to assert this explicitly in tests. The
+process-wide capture keeps only the newest 1,000 deliveries and at most 64 MiB
+of their subject, body and attachment bytes, and the first capture in a process
+logs a `mail.offline_mock.active` warning, because an empty production secret
+also selects this fallback.
+
+Every real transport needs a sender that the provider account has verified:
+the message's `from`, or, for `Mail` facade sends, the `MAIL_FROM` /
+`[mail] from` default. Without either, delivery fails with
+`MailError::ConfigError` before any request, and the error names both
+settings. Transports never invent a sender.
 
 SMTP selects the offline fallback only explicitly: an empty or `mock_*`
 `MAIL_HOST`, or a `mock_*` username or password. A real host without
@@ -529,7 +583,11 @@ The security and deliverability checks are bounded heuristics: they help reject
 known disposable domains, CRLF injection, selected dangerous schemes,
 mixed-script host labels and recognized secret patterns. They do not parse every
 valid/hostile HTML or MIME document and cannot guarantee delivery, absence of
-phishing, absence of data leakage or legal compliance.
+phishing, absence of data leakage or legal compliance. The link checks read
+`href` attributes however they are cased, spaced or quoted, decode HTML
+character references first (so `javascript&colon;` and `&#x430;` hosts are
+seen as a browser sees them) and report only the violated rule, never the link.
+Other attributes such as `src` or `action` are not inspected.
 
 Recipients are parsed once by the pre-flight pipeline. It accepts one bare
 address, `<address>` or `Name <address>` (the name may be quoted), and hands the
@@ -537,7 +595,14 @@ bare address to suppression, the disposable-domain check and every transport,
 so a display name is not delivered. Lists, groups, comments, quoted local parts,
 domain literals and malformed brackets are rejected with
 `MailError::ValidationError`. Suppression events and lookups use the same
-parser; anything it rejects fails closed.
+parser; anything it rejects fails closed. Suppression keys compare the domain
+case-insensitively and key an internationalized domain by its IDNA A-label
+(`bücher.de` and `xn--bcher-kva.de` share one entry); a non-ASCII local part
+cannot be keyed, so `SuppressionGuard` rejects it with `ValidationError` rather
+than reporting `SuppressionUnavailable`. The optional `from` sender is parsed
+with it as well and keeps its display name: Resend, Postmark, SES and SMTP send
+it as written, SendGrid, Mailjet, Mailtrap and SendPulse receive the address
+and name as separate fields, and ACS receives only the bare address.
 
 The pre-flight pipeline rejects a subject over 2 KiB, or an HTML or plain-text
 body over 2 MiB each, with `MailError::ValidationError` before any content scan.
@@ -549,8 +614,11 @@ text at the request edge as well.
 The local inspector chooses its checks from the declared MIME type (compared
 case-insensitively), the filename extension and the content signature
 together. Both policies reject executable magic, executable or script-host
-extensions (`.exe`, `.bat`, `.cmd`, `.ps1`, `.vbs`, `.js`, `.hta`, `.lnk` and
-similar), SVG by type, extension or content, active PDF content wherever a
+extensions (`.exe`, `.bat`, `.cmd`, `.ps1`, `.vbs`, `.js`, `.hta`, `.lnk`,
+`.msc`, `.appref-ms`, `.settingcontent-ms`, `.jnlp`, `.vhd` and the other
+executable/script types on Outlook's Level 1 blocked list), SVG by type,
+extension or content, active PDF content (JavaScript, launch, embedded-file,
+XFA form, rich-media, embedded go-to and data-import names) wherever a
 `%PDF-` header appears in the first KiB, and a declared type that disagrees
 with a known extension or signature. `strict()` also rejects HTML extensions,
 HTML/script markup or `javascript:`/`vbscript:` URIs, unknown extensions, any

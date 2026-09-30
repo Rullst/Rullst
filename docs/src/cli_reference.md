@@ -593,8 +593,12 @@ Scaffolds a registered transactional mailable. `--welcome`, `--reset`, `--otp`
 and `--invoice` select the bounded built-in variants; without a flag the command
 generates a custom message type. It enables the umbrella `mailer` feature, uses
 the `rullst::mail` facade, escapes dynamic HTML and refuses invalid identifiers,
-path traversal or an existing target. Delivery credentials, URL semantics,
-tenant policy and provider operation remain application responsibilities.
+path traversal or an existing target. Generated mailables set no `from`, so
+the facade uses the `MAIL_FROM` (or `[mail] from`) default sender, which new
+projects list in `.env.example` next to a `MAIL_DRIVER` hint; staging and
+production must select a driver before sending. Delivery credentials, URL
+semantics, tenant policy and provider operation remain application
+responsibilities.
 
 ### `cargo rullst make:mail-invoice [Name]`
 

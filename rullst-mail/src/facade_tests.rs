@@ -7,12 +7,12 @@ use super::*;
 use async_trait::async_trait;
 use rullst_core::queue::{QueueDriver, QueueError, QueuedJob};
 
-struct EnvironmentGuard {
+pub(super) struct EnvironmentGuard {
     original: BTreeMap<&'static str, Option<String>>,
 }
 
 impl EnvironmentGuard {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self {
             original: BTreeMap::new(),
         }
@@ -24,12 +24,12 @@ impl EnvironmentGuard {
             .or_insert_with(|| std::env::var(key).ok());
     }
 
-    fn set(&mut self, key: &'static str, value: &str) {
+    pub(super) fn set(&mut self, key: &'static str, value: &str) {
         self.remember(key);
         unsafe { std::env::set_var(key, value) };
     }
 
-    fn clear(&mut self, key: &'static str) {
+    pub(super) fn clear(&mut self, key: &'static str) {
         self.remember(key);
         unsafe { std::env::remove_var(key) };
     }
@@ -48,7 +48,7 @@ impl Drop for EnvironmentGuard {
     }
 }
 
-fn clear_provider_environment(environment: &mut EnvironmentGuard) {
+pub(super) fn clear_provider_environment(environment: &mut EnvironmentGuard) {
     for key in [
         "MAIL_HOST",
         "MAIL_PORT",
@@ -318,7 +318,7 @@ async fn explicit_queue_preserves_tenant_and_schedule_and_maps_driver_errors() {
     }));
     assert!(matches!(
         Mail::enqueue(&failing, valid_message()).await,
-        Err(MailError::SendError(message)) if message.contains("offline failure")
+        Err(MailError::TransportError { provider: "queue", message }) if message.contains("offline failure")
     ));
 }
 
@@ -344,5 +344,113 @@ async fn synchronous_tenant_facade_uses_custom_and_resolved_offline_drivers() {
         Mail::send_now_for_tenant("../invalid", valid_message())
             .await
             .is_err()
+    );
+}
+
+#[tokio::test]
+async fn unconfigured_driver_logs_only_outside_staging_and_production() {
+    let _lock = MAIL_ENV_LOCK.lock().await;
+    let mut environment = EnvironmentGuard::new();
+    clear_provider_environment(&mut environment);
+    environment.clear("MAIL_DRIVER");
+    environment.clear("APP_ENV");
+    for production in ["production", "staging"] {
+        environment.set("RULLST_ENV", production);
+        assert!(matches!(
+            Mail::resolve_driver().await,
+            Err(MailError::ConfigError(_))
+        ));
+    }
+    environment.set("RULLST_ENV", "not-an-environment");
+    assert!(matches!(
+        Mail::resolve_driver().await,
+        Err(MailError::ConfigError(_))
+    ));
+    for local in ["development", "test"] {
+        environment.set("RULLST_ENV", local);
+        assert!(Mail::resolve_driver().await.is_ok());
+    }
+    environment.clear("RULLST_ENV");
+    assert!(Mail::resolve_driver().await.is_ok());
+    assert!(matches!(
+        default_driver_name(rullst_core::config::Environment::Production),
+        Err(MailError::ConfigError(_))
+    ));
+
+    // An explicit `log` selection is honoured everywhere.
+    environment.set("RULLST_ENV", "production");
+    environment.set("MAIL_DRIVER", "log");
+    assert!(Mail::resolve_driver().await.is_ok());
+}
+
+#[tokio::test]
+async fn facade_messages_without_from_use_the_configured_default_sender() {
+    let _lock = MAIL_ENV_LOCK.lock().await;
+    let mut environment = EnvironmentGuard::new();
+    clear_provider_environment(&mut environment);
+    environment.clear("MAIL_DRIVER");
+    environment.set("MAIL_FROM", "Acme Billing <billing@acme.example>");
+    let anonymous = Message::new()
+        .to("member@example.com")
+        .subject("Default sender")
+        .text("body");
+
+    let (driver, store) = MemoryDriver::isolated();
+    Mail::set_driver(Box::new(driver));
+    Mail::send_now(anonymous.clone()).await.unwrap();
+    Mail::send_now_for_tenant("tenant_acme", anonymous.clone())
+        .await
+        .unwrap();
+    Mail::send_now(anonymous.clone().from("team@acme.example"))
+        .await
+        .unwrap();
+    assert_eq!(
+        Mail::default_sender().await.unwrap().as_deref(),
+        Some("Acme Billing <billing@acme.example>")
+    );
+    environment.set("MAIL_FROM", "Acme <billing@acme.example");
+    for outcome in [
+        Mail::send_now(anonymous.clone().from("team@acme.example")).await,
+        Mail::default_sender().await.map(|_| ()),
+    ] {
+        assert!(matches!(outcome, Err(MailError::ConfigError(text)) if text.contains("MAIL_FROM")));
+    }
+    Mail::reset_driver();
+    let senders: Vec<Option<String>> = store
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|message| message.from.clone())
+        .collect();
+    assert_eq!(
+        senders,
+        [
+            Some("Acme Billing <billing@acme.example>".to_string()),
+            Some("Acme Billing <billing@acme.example>".to_string()),
+            Some("team@acme.example".to_string()),
+        ]
+    );
+
+    // Queued jobs carry the default, so workers need not share the setting.
+    environment.set("MAIL_FROM", "ops@acme.example");
+    let jobs = Arc::new(Mutex::new(Vec::new()));
+    let queue = Queue::custom(Box::new(CapturedQueue {
+        jobs: jobs.clone(),
+        failure: None,
+    }));
+    Mail::enqueue(&queue, anonymous.clone()).await.unwrap();
+    let queued: QueuedMail = serde_json::from_str(&jobs.lock().unwrap()[0].1).unwrap();
+    assert_eq!(queued.message.from.as_deref(), Some("ops@acme.example"));
+
+    // Without any sender a real transport fails before network and says how
+    // to configure one.
+    environment.clear("MAIL_FROM");
+    environment.set("MAIL_DRIVER", "resend");
+    environment.set("RESEND_API_KEY", "re_live_fixture");
+    assert_eq!(Mail::default_sender().await.unwrap(), None);
+    let error = Mail::send_now(anonymous).await.unwrap_err();
+    assert!(
+        matches!(&error, MailError::ConfigError(text) if text.contains("MAIL_FROM")),
+        "{error}"
     );
 }

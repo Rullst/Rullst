@@ -8,6 +8,11 @@ pub use homograph::is_homograph_domain;
 
 /// Sanitizes all recognized credentials, AWS access keys, and private-key blocks.
 ///
+/// Private-key blocks are recognized by any `-----BEGIN <label>PRIVATE KEY-----`
+/// line (PKCS#8, RSA, EC, DSA, OpenSSH, encrypted and so on) and redacted
+/// through the matching `END` line, or to the end of the input when it is
+/// missing.
+///
 /// Every pass is one forward scan that builds its output incrementally, so the
 /// cost grows linearly with the input instead of with `matches * length`.
 pub fn redact_email_secrets(input: &str) -> String {
@@ -17,7 +22,8 @@ pub fn redact_email_secrets(input: &str) -> String {
     }
     redact_aws_access_keys(&mut output);
     let output = redact_pem_blocks(&output, "PRIVATE KEY");
-    redact_pem_blocks(&output, "RSA PRIVATE KEY")
+    let output = redact_pem_blocks(&output, "RSA PRIVATE KEY");
+    redact_labelled_private_keys(&output)
 }
 
 fn redact_values_after(input: &str, marker: &str, stop_at_ampersand: bool) -> String {
@@ -49,20 +55,38 @@ fn redact_values_after(input: &str, marker: &str, stop_at_ampersand: bool) -> St
     output
 }
 
+/// Redacts long-term (`AKIA`) and temporary (`ASIA`) AWS access key IDs.
+///
+/// A key ID is a whole 20-character alphanumeric token, so the characters on
+/// either side must not be alphanumeric. Base64 data such as inline images or
+/// signed tracking tokens therefore keeps an accidental `AKIA` run intact.
 fn redact_aws_access_keys(output: &mut String) {
-    // Same-length replacement keeps this in-place pass linear.
-    let mut offset = 0usize;
-    while let Some(relative) = output.get(offset..).and_then(|tail| tail.find("AKIA")) {
-        let start = offset + relative;
-        let candidate_end = start.saturating_add(20);
-        let valid = output
-            .get(start..candidate_end)
-            .is_some_and(|candidate| candidate.bytes().all(|byte| byte.is_ascii_alphanumeric()));
-        if valid {
-            output.replace_range(start..candidate_end, "AKIA****************");
-            offset = start + 20;
-        } else {
-            offset = start + 4;
+    for (prefix, replacement) in [
+        ("AKIA", "AKIA****************"),
+        ("ASIA", "ASIA****************"),
+    ] {
+        // Same-length replacement keeps this in-place pass linear.
+        let mut offset = 0usize;
+        while let Some(relative) = output.get(offset..).and_then(|tail| tail.find(prefix)) {
+            let start = offset + relative;
+            let candidate_end = start.saturating_add(20);
+            let bytes = output.as_bytes();
+            let delimited = |index: Option<usize>| {
+                index
+                    .and_then(|index| bytes.get(index))
+                    .is_none_or(|byte| !byte.is_ascii_alphanumeric())
+            };
+            let valid = delimited(start.checked_sub(1))
+                && delimited(Some(candidate_end))
+                && output.get(start..candidate_end).is_some_and(|candidate| {
+                    candidate.bytes().all(|byte| byte.is_ascii_alphanumeric())
+                });
+            if valid {
+                output.replace_range(start..candidate_end, replacement);
+                offset = candidate_end;
+            } else {
+                offset = start + prefix.len();
+            }
         }
     }
 }
@@ -86,45 +110,130 @@ fn redact_pem_blocks(input: &str, label: &str) -> String {
     output
 }
 
-/// Checks if a link uses a forbidden or dangerous URI scheme (e.g. `javascript:`, `vbscript:`, `data:text/html`).
-pub fn is_dangerous_scheme(url: &str) -> bool {
-    let trimmed = url.trim().to_lowercase();
-    trimmed.starts_with("javascript:")
-        || trimmed.starts_with("vbscript:")
-        || trimmed.starts_with("data:text/html")
-        || trimmed.starts_with("file:")
+/// Longest `<label>PRIVATE KEY` label accepted on a BEGIN line.
+const MAX_PEM_LABEL_BYTES: usize = 64;
+
+/// Redacts private-key blocks with any label ending in `PRIVATE KEY`, such as
+/// `OPENSSH PRIVATE KEY`, `EC PRIVATE KEY` or `ENCRYPTED PRIVATE KEY`.
+fn redact_labelled_private_keys(input: &str) -> String {
+    const BEGIN: &str = "-----BEGIN ";
+    let mut output = String::with_capacity(input.len());
+    let mut copied = 0usize;
+    let mut offset = 0usize;
+    while let Some(relative) = input.get(offset..).and_then(|tail| tail.find(BEGIN)) {
+        let start = offset + relative;
+        let label_start = start + BEGIN.len();
+        let label_len = input.as_bytes()[label_start..]
+            .iter()
+            .take(MAX_PEM_LABEL_BYTES + 1)
+            .take_while(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || **byte == b' ')
+            .count();
+        let label = &input[label_start..label_start + label_len];
+        let line_end = label_start + label_len + "-----".len();
+        if label_len > MAX_PEM_LABEL_BYTES
+            || !label.ends_with("PRIVATE KEY")
+            || input.get(label_start + label_len..line_end) != Some("-----")
+        {
+            offset = label_start;
+            continue;
+        }
+        output.push_str(&input[copied..start]);
+        output.push_str("[REDACTED PRIVATE KEY]");
+        let end = format!("-----END {label}-----");
+        let Some(relative_end) = input[line_end..].find(&end) else {
+            // An unterminated block is redacted through the end of the input.
+            return output;
+        };
+        copied = line_end + relative_end + end.len();
+        offset = copied;
+    }
+    output.push_str(&input[copied..]);
+    output
 }
 
-/// Extracts all URL links (`href="..."` and plain `http://` / `https://` occurrences) from HTML/text.
+/// Checks if a link uses a forbidden or dangerous URI scheme (e.g. `javascript:`, `vbscript:`, `data:text/html`).
+///
+/// HTML character references are decoded, and tab/newline characters and
+/// leading whitespace or control characters are ignored, as browsers do when
+/// they resolve an `href`.
+pub fn is_dangerous_scheme(url: &str) -> bool {
+    has_dangerous_scheme(&crate::entities::decode(url))
+}
+
+/// Scheme check for an already decoded link.
+fn has_dangerous_scheme(url: &str) -> bool {
+    let scheme: String = url
+        .trim_start_matches(|c: char| c <= ' ' || c.is_whitespace())
+        .chars()
+        .filter(|c| !matches!(c, '\t' | '\n' | '\r'))
+        .take("data:text/html".len())
+        .flat_map(char::to_lowercase)
+        .collect();
+    scheme.starts_with("javascript:")
+        || scheme.starts_with("vbscript:")
+        || scheme.starts_with("data:text/html")
+        || scheme.starts_with("file:")
+}
+
+/// Returns every `href` attribute value. The name is matched ASCII
+/// case-insensitively, whitespace may surround `=`, and the value may be
+/// double-quoted, single-quoted or unquoted, as HTML allows.
+fn href_values(content: &str) -> Vec<&str> {
+    let bytes = content.as_bytes();
+    let skip_whitespace = |mut index: usize| {
+        while bytes.get(index).is_some_and(u8::is_ascii_whitespace) {
+            index += 1;
+        }
+        index
+    };
+    let mut values = Vec::new();
+    let mut pos = 0;
+    while pos + 4 <= bytes.len() {
+        if !bytes[pos..pos + 4].eq_ignore_ascii_case(b"href") {
+            pos += 1;
+            continue;
+        }
+        let equals = skip_whitespace(pos + 4);
+        if bytes.get(equals) != Some(&b'=') {
+            pos += 4;
+            continue;
+        }
+        let start = skip_whitespace(equals + 1);
+        match bytes.get(start) {
+            Some(&quote @ (b'"' | b'\'')) => {
+                let value_start = start + 1;
+                match bytes[value_start..].iter().position(|byte| *byte == quote) {
+                    Some(length) => {
+                        values.push(&content[value_start..value_start + length]);
+                        pos = value_start + length + 1;
+                    }
+                    // An unterminated value is skipped, as before.
+                    None => pos = value_start,
+                }
+            }
+            Some(_) => {
+                let length = bytes[start..]
+                    .iter()
+                    .position(|byte| byte.is_ascii_whitespace() || *byte == b'>')
+                    .unwrap_or(bytes.len() - start);
+                if length > 0 {
+                    values.push(&content[start..start + length]);
+                }
+                pos = start + length.max(1);
+            }
+            None => break,
+        }
+    }
+    values
+}
+
+/// Extracts all URL links (`href` attribute values and plain `http://` / `https://` occurrences) from HTML/text.
 ///
 /// Plain-text URLs are deduplicated through a hash set, so extraction stays
 /// linear in the content length even when it contains many links.
 pub fn extract_urls(content: &str) -> Vec<String> {
-    let mut urls: Vec<&str> = Vec::new();
-    let bytes = content.as_bytes();
-
-    // 1. Extract href="..." occurrences case-insensitively without full heap clone
-    let mut pos = 0;
-    while pos + 5 <= bytes.len() {
-        if bytes[pos..].starts_with(b"href=")
-            || bytes[pos..].starts_with(b"HREF=")
-            || bytes[pos..].starts_with(b"Href=")
-        {
-            let actual_idx = pos + 5;
-            let rest = &content[actual_idx..];
-            if let Some(quote_char) = rest.chars().next()
-                && (quote_char == '"' || quote_char == '\'')
-                && let Some(end_quote) = rest[1..].find(quote_char)
-            {
-                urls.push(&rest[1..=end_quote]);
-                pos = actual_idx + end_quote + 1;
-                continue;
-            }
-            pos = actual_idx;
-        } else {
-            pos += 1;
-        }
-    }
+    // 1. `href` attribute values, however they are cased, spaced or quoted.
+    let mut urls: Vec<&str> = href_values(content);
 
     // 2. Extract plain https:// and http:// words
     let mut seen: HashSet<&str> = urls.iter().copied().collect();
@@ -174,254 +283,30 @@ pub fn is_crlf_safe(header_value: &str) -> bool {
 }
 
 /// Validates that none of the links inside the given content are dangerous or homograph spoofing attempts.
+///
+/// The error names only the violated rule. The offending link is omitted
+/// because this scan runs before secret redaction, so its query can still
+/// carry tokens, addresses or credentials.
 pub fn scan_content_security(content: &str) -> Result<(), MailError> {
     let urls = extract_urls(content);
     for url in urls {
-        if is_dangerous_scheme(&url) {
-            return Err(MailError::SendError(format!(
-                "Outbound mail security violation: Dangerous URI scheme detected in link: '{}'",
-                url
-            )));
+        // Browsers decode references in attribute values before navigating.
+        let url = crate::entities::decode(&url);
+        if has_dangerous_scheme(&url) {
+            return Err(MailError::SendError(
+                "Outbound mail security violation: a link uses a dangerous URI scheme".to_string(),
+            ));
         }
 
-        if let Some(domain) = homograph::homograph_link_host(&url) {
-            return Err(MailError::SendError(format!(
-                "Outbound mail security violation: Homograph domain spoofing attempt detected: '{}' (domain '{}')",
-                url, domain
-            )));
+        if homograph::homograph_link_host(&url).is_some() {
+            return Err(MailError::SendError(
+                "Outbound mail security violation: a link host is a homograph spoofing attempt"
+                    .to_string(),
+            ));
         }
     }
     Ok(())
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_extract_urls_zero_copy() {
-        let html =
-            r#"<p>Visit <a href="https://example.com/login">here</a> or http://test.org</p>"#;
-        let urls = extract_urls(html);
-        assert_eq!(urls, vec!["https://example.com/login", "http://test.org"]);
-    }
-
-    #[test]
-    fn test_crlf_safety() {
-        assert!(is_crlf_safe("Welcome to Rullst!"));
-        assert!(!is_crlf_safe(
-            "Welcome to Rullst!\r\nBcc: evil@attacker.com"
-        ));
-        assert!(!is_crlf_safe("Subject\nInjected-Header: 123"));
-    }
-
-    /// Deterministic xorshift sequence for reproducible differential inputs.
-    fn tokens(seed: &mut u64, alphabet: &[&str], count: usize) -> String {
-        let mut output = String::new();
-        for _ in 0..count {
-            *seed ^= *seed << 13;
-            *seed ^= *seed >> 7;
-            *seed ^= *seed << 17;
-            output.push_str(alphabet[(*seed % alphabet.len() as u64) as usize]);
-        }
-        output
-    }
-
-    /// The previous quadratic redactor, kept only as a behavioural oracle.
-    fn legacy_redact(input: &str) -> String {
-        fn values_after(output: &mut String, marker: &str, stop_at_ampersand: bool) {
-            let mut offset = 0usize;
-            loop {
-                let lower = output.to_ascii_lowercase();
-                let Some(relative) = lower.get(offset..).and_then(|tail| tail.find(marker)) else {
-                    break;
-                };
-                let start = offset + relative + marker.len();
-                let Some(tail) = output.get(start..) else {
-                    break;
-                };
-                let end = tail
-                    .find(|character: char| {
-                        character.is_whitespace()
-                            || matches!(character, '"' | '\'' | ',' | '<')
-                            || (stop_at_ampersand && character == '&')
-                    })
-                    .map_or(output.len(), |relative_end| start + relative_end);
-                if end <= start {
-                    offset = start;
-                    continue;
-                }
-                if output.get(start..end) != Some("[REDACTED]") {
-                    output.replace_range(start..end, "[REDACTED]");
-                }
-                offset = start + "[REDACTED]".len();
-            }
-        }
-        fn pem(output: &mut String, label: &str) {
-            let begin = format!("-----BEGIN {label}-----");
-            let end = format!("-----END {label}-----");
-            while let Some(start) = output.find(&begin) {
-                let search_start = start + begin.len();
-                let Some(relative_end) =
-                    output.get(search_start..).and_then(|tail| tail.find(&end))
-                else {
-                    output.replace_range(start.., "[REDACTED PRIVATE KEY]");
-                    break;
-                };
-                output.replace_range(
-                    start..search_start + relative_end + end.len(),
-                    "[REDACTED PRIVATE KEY]",
-                );
-            }
-        }
-        let mut output = input.to_string();
-        values_after(&mut output, "bearer ", false);
-        for key in ["password=", "secret=", "api_key=", "key=", "token="] {
-            values_after(&mut output, key, true);
-        }
-        redact_aws_access_keys(&mut output);
-        pem(&mut output, "PRIVATE KEY");
-        pem(&mut output, "RSA PRIVATE KEY");
-        output
-    }
-
-    /// The previous extractor with linear-search deduplication.
-    fn legacy_extract(content: &str) -> Vec<String> {
-        let mut urls: Vec<String> = Vec::new();
-        let bytes = content.as_bytes();
-        let mut pos = 0;
-        while pos + 5 <= bytes.len() {
-            if bytes[pos..].starts_with(b"href=")
-                || bytes[pos..].starts_with(b"HREF=")
-                || bytes[pos..].starts_with(b"Href=")
-            {
-                let actual_idx = pos + 5;
-                let rest = &content[actual_idx..];
-                if let Some(quote_char) = rest.chars().next()
-                    && (quote_char == '"' || quote_char == '\'')
-                    && let Some(end_quote) = rest[1..].find(quote_char)
-                {
-                    urls.push(rest[1..=end_quote].to_string());
-                    pos = actual_idx + end_quote + 1;
-                    continue;
-                }
-                pos = actual_idx;
-            } else {
-                pos += 1;
-            }
-        }
-        for word in content.split_whitespace() {
-            let trimmed = word.trim_matches(|c| c == '"' || c == '\'' || c == '<' || c == '(');
-            let start_pos = if trimmed.starts_with("https://")
-                || trimmed.starts_with("http://")
-                || trimmed.starts_with("HTTPS://")
-                || trimmed.starts_with("HTTP://")
-            {
-                Some(0)
-            } else {
-                trimmed
-                    .find("https://")
-                    .or_else(|| trimmed.find("http://"))
-                    .or_else(|| trimmed.find("HTTPS://"))
-                    .or_else(|| trimmed.find("HTTP://"))
-            };
-            if let Some(url_start) = start_pos {
-                let candidate = &trimmed[url_start..];
-                let end_idx = candidate
-                    .find(['<', '>', '"', '\'', ')', '(', ']', '['])
-                    .unwrap_or(candidate.len());
-                let clean = &candidate[..end_idx];
-                if !clean.is_empty() && !urls.contains(&clean.to_string()) {
-                    urls.push(clean.to_string());
-                }
-            }
-        }
-        urls
-    }
-
-    #[test]
-    fn linear_redaction_matches_the_previous_redactor() {
-        let alphabet = [
-            "key=",
-            "KEY=",
-            "Key=",
-            "password=",
-            "token=",
-            "secret=",
-            "api_key=",
-            "Bearer ",
-            "bearer ",
-            "abc",
-            " ",
-            "&",
-            "\"",
-            "'",
-            ",",
-            "<",
-            "\n",
-            "AKIA",
-            "AKIAABCDEFGHIJKLMNOP",
-            "-----BEGIN PRIVATE KEY-----",
-            "-----END PRIVATE KEY-----",
-            "-----BEGIN RSA PRIVATE KEY-----",
-            "-----END RSA PRIVATE KEY-----",
-            "[REDACTED]",
-            "é",
-            "x",
-            "=",
-        ];
-        let mut seed = 0x9e37_79b9_7f4a_7c15_u64;
-        for round in 0..20_000 {
-            let input = tokens(&mut seed, &alphabet, round % 14);
-            assert_eq!(
-                redact_email_secrets(&input),
-                legacy_redact(&input),
-                "{input:?}"
-            );
-        }
-    }
-
-    #[test]
-    fn hash_set_deduplication_matches_the_previous_extractor() {
-        let alphabet = [
-            "href=\"",
-            "href='",
-            "HREF=\"",
-            "Href='",
-            "\"",
-            "'",
-            "http://a",
-            "https://b",
-            "HTTP://C",
-            "HTTPS://d",
-            " ",
-            "(",
-            ")",
-            "<",
-            ">",
-            "[",
-            "]",
-            "x",
-            "/",
-            "\n",
-            "é",
-        ];
-        let mut seed = 0x2545_f491_4f6c_dd1d_u64;
-        for round in 0..20_000 {
-            let input = tokens(&mut seed, &alphabet, round % 16);
-            assert_eq!(extract_urls(&input), legacy_extract(&input), "{input:?}");
-        }
-        let distinct: String = (0..20_000)
-            .map(|index| format!("http://h{index} "))
-            .collect();
-        assert_eq!(extract_urls(&distinct).len(), 20_000);
-    }
-
-    #[test]
-    fn test_homograph_detection() {
-        // Cyrillic 'а' in paypal
-        assert!(is_homograph_domain("p\u{0430}ypal.com"));
-        assert!(!is_homograph_domain("paypal.com"));
-    }
-}
+mod tests;

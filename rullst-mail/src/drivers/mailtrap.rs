@@ -63,7 +63,7 @@ impl MailDriver for MailtrapDriver {
     }
 }
 fn payload(message: &Message) -> Result<Value, MailError> {
-    let mut mail = json!({"from":{"email":rest::sender(message)?},"to":[{"email":message.to}],
+    let mut mail = json!({"from":rest::mailbox_json(rest::sender(message)?, "email", "name")?,"to":[{"email":message.to}],
         "subject":message.subject,"headers":rest::headers(message)});
     if let Some(html) = &message.body_html {
         mail["html"] = json!(html);

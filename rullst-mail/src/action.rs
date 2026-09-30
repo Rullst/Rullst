@@ -73,8 +73,16 @@ fn safe_url(value: &str) -> Option<reqwest::Url> {
     Some(url)
 }
 
+/// Sentence punctuation that commonly follows a plain-text link, as in
+/// `(https://…).`, `https://…,` or Markdown `[label](https://…)`.
+const TRAILING_PUNCTUATION: [char; 8] = [')', ']', ',', ';', '.', '!', '?', ':'];
+
 /// Keeps opaque `token` query values only inside structurally safe action URLs.
 /// Subjects, errors and telemetry must continue using the strict redactor.
+///
+/// A link counts as an action URL when it starts the text or follows
+/// whitespace, a quote, `>`, `(`, `<` or `[`. Trailing sentence punctuation
+/// is checked apart from the link and written back unchanged.
 pub(crate) fn redact_body_secrets(input: &str) -> String {
     let mut output = String::with_capacity(input.len());
     let mut remaining = input;
@@ -87,15 +95,18 @@ pub(crate) fn redact_body_secrets(input: &str) -> String {
         if remaining[..start]
             .chars()
             .next_back()
-            .is_some_and(|c| !c.is_whitespace() && !matches!(c, '"' | '\'' | '>' | '('))
+            .is_some_and(|c| !c.is_whitespace() && !matches!(c, '"' | '\'' | '>' | '(' | '<' | '['))
         {
             output.push_str(&redact_email_secrets(&remaining[..start + end]));
             remaining = &tail[end..];
             continue;
         }
         output.push_str(&redact_email_secrets(&remaining[..start]));
-        if safe_url(candidate).is_some() {
-            output.push_str(&redact_url(candidate));
+        let (url, trailing) =
+            candidate.split_at(candidate.trim_end_matches(TRAILING_PUNCTUATION).len());
+        if safe_url(url).is_some() {
+            output.push_str(&redact_url(url));
+            output.push_str(trailing);
         } else {
             output.push_str(&redact_email_secrets(candidate));
         }
@@ -158,6 +169,27 @@ fn redact_url(url: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn wrapped_and_punctuated_action_links_keep_their_token() {
+        for text in [
+            "Reset: <https://app.example.com/reset?token=Zx81abc>",
+            "Reset your password (https://app.example.com/reset?token=Zx81abc).",
+            "[Reset](https://app.example.com/reset?token=Zx81abc)",
+            "Open https://app.example.com/reset?token=Zx81abc, then sign in.",
+            "See https://en.example.org/wiki/Rust_(language).",
+        ] {
+            assert_eq!(redact_body_secrets(text), text);
+        }
+        assert_eq!(
+            redact_body_secrets("(https://app.example.com/reset?password=hunter2)."),
+            "(https://app.example.com/reset?password=[REDACTED])."
+        );
+        assert_eq!(
+            redact_body_secrets("x<https://app.example.com/?api_key=k1>"),
+            "x<https://app.example.com/?api_key=[REDACTED]>"
+        );
+    }
 
     #[test]
     fn single_scan_url_search_matches_the_two_scheme_search() {

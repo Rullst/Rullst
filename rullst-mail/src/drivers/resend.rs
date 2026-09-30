@@ -69,7 +69,7 @@ impl ResendDriver {
 
         let client = super::http::client()?;
 
-        let from_addr = message.from.as_deref().unwrap_or("noreply@rullst.dev");
+        let from_addr = super::rest::required_sender(message)?;
         let mut body = serde_json::json!({
             "to": message.to,
             "from": from_addr,
@@ -106,7 +106,7 @@ impl ResendDriver {
             let mut headers_obj = serde_json::json!({
                 "List-Unsubscribe": unsub
             });
-            if message.unsubscribe_url.is_some() {
+            if message.has_one_click_unsubscribe() {
                 headers_obj["List-Unsubscribe-Post"] =
                     serde_json::json!("List-Unsubscribe=One-Click");
             }

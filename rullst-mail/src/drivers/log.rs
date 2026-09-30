@@ -7,6 +7,9 @@ use crate::pipeline::DeliveryPipeline;
 use async_trait::async_trait;
 
 /// A driver that outputs emails to the terminal and logs to storage/logs/mail.log
+///
+/// `MAIL_LOG_PATH` overrides the file. Like the `Mail` facade settings, it is
+/// read from the process environment first and then from `./.env`.
 pub struct LogDriver;
 
 #[async_trait]
@@ -15,8 +18,12 @@ impl MailDriver for LogDriver {
         let prepared = DeliveryPipeline::prepare(message)?;
         let message = prepared.message();
         DeliveryPipeline::require_due("LogDriver", message)?;
-        let path_str =
-            std::env::var("MAIL_LOG_PATH").unwrap_or_else(|_| "storage/logs/mail.log".to_string());
+        let path_str = rullst_core::server::read_project_setting("MAIL_LOG_PATH")
+            .await
+            .map_err(|error| {
+                MailError::ConfigError(format!("mail settings could not be read: {error}"))
+            })?
+            .unwrap_or_else(|| "storage/logs/mail.log".to_string());
         let log_path = std::path::PathBuf::from(path_str);
         if let Some(parent) = log_path.parent() {
             tokio::fs::create_dir_all(parent).await.map_err(|e| {

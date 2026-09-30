@@ -9,6 +9,11 @@ use std::sync::{Arc, RwLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::OnceCell;
 
+mod settings;
+use settings::MailSettings;
+#[cfg(test)]
+use settings::default_driver_name;
+
 static MAIL_QUEUE: OnceCell<Queue> = OnceCell::const_new();
 static CUSTOM_DRIVER: RwLock<Option<Arc<dyn MailDriver>>> = RwLock::new(None);
 #[cfg(test)]
@@ -49,7 +54,12 @@ impl Mail {
 
     /// Send a message. If a background queue is initialized, it pushes to the queue automatically.
     /// Otherwise, it sends synchronously.
+    ///
+    /// A message without a `from` uses the configured default sender (see
+    /// [`Mail::default_sender`]); an explicit `from` always wins.
     pub async fn send(message: Message) -> Result<(), MailError> {
+        let settings = MailSettings::load().await?;
+        let message = settings.apply_default_sender(message)?;
         let message = DeliveryPipeline::prepare(&message)?.into_message();
         if let Some(queue) = MAIL_QUEUE.get() {
             Self::enqueue_prepared(
@@ -63,19 +73,15 @@ impl Mail {
             .await?;
             Ok(())
         } else {
-            Self::send_now(message).await
+            Self::deliver(&settings, None, message).await
         }
     }
 
     /// Forces sending the message synchronously, bypassing the background queue.
     pub async fn send_now(message: Message) -> Result<(), MailError> {
-        let message = DeliveryPipeline::prepare(&message)?.into_message();
-        let custom_driver = Self::custom_driver()?;
-        if let Some(driver) = custom_driver {
-            return driver.send(&message).await;
-        }
-        let driver = Self::resolve_driver().await?;
-        driver.send(&message).await
+        let settings = MailSettings::load().await?;
+        let message = settings.apply_default_sender(message)?;
+        Self::deliver(&settings, None, message).await
     }
 
     /// Sends a message for a specific tenant when using a multi-tenant driver or custom resolver.
@@ -84,6 +90,8 @@ impl Mail {
         message: Message,
     ) -> Result<(), MailError> {
         let tenant_id = tenant_id.into();
+        let settings = MailSettings::load().await?;
+        let message = settings.apply_default_sender(message)?;
         let message = DeliveryPipeline::prepare_for_tenant(&tenant_id, &message)?.into_message();
         if let Some(queue) = MAIL_QUEUE.get() {
             Self::enqueue_prepared(
@@ -98,7 +106,7 @@ impl Mail {
             return Ok(());
         }
 
-        Self::send_now_for_tenant(&tenant_id, message).await
+        Self::deliver(&settings, Some(&tenant_id), message).await
     }
 
     /// Forces tenant-aware synchronous delivery, bypassing the background queue.
@@ -107,18 +115,14 @@ impl Mail {
         message: Message,
     ) -> Result<(), MailError> {
         let tenant_id = tenant_id.into();
-        let message = DeliveryPipeline::prepare_for_tenant(&tenant_id, &message)?.into_message();
-        let custom_driver = Self::custom_driver()?;
-        if let Some(driver) = custom_driver {
-            driver.send_for_tenant(&tenant_id, &message).await
-        } else {
-            let driver = Self::resolve_driver().await?;
-            driver.send_for_tenant(&tenant_id, &message).await
-        }
+        let settings = MailSettings::load().await?;
+        let message = settings.apply_default_sender(message)?;
+        Self::deliver(&settings, Some(&tenant_id), message).await
     }
 
     /// Enqueues a message on an explicit queue, preserving its optional `send_at` timestamp.
     pub async fn enqueue(queue: &Queue, message: Message) -> Result<(), MailError> {
+        let message = MailSettings::load().await?.apply_default_sender(message)?;
         let message = DeliveryPipeline::prepare(&message)?.into_message();
         Self::enqueue_prepared(
             queue,
@@ -138,6 +142,7 @@ impl Mail {
         message: Message,
     ) -> Result<(), MailError> {
         let tenant_id = tenant_id.into();
+        let message = MailSettings::load().await?.apply_default_sender(message)?;
         let message = DeliveryPipeline::prepare_for_tenant(&tenant_id, &message)?.into_message();
         Self::enqueue_prepared(
             queue,
@@ -148,6 +153,42 @@ impl Mail {
             },
         )
         .await
+    }
+
+    /// Returns the validated default sender for facade messages without a
+    /// `from`: `MAIL_FROM` from the process environment, then `./.env`, else
+    /// `from` in the `[mail]` section of `Rullst.toml`. It may be a bare
+    /// address or `Name <address>`.
+    ///
+    /// Every facade send and enqueue validates it and fails with
+    /// [`MailError::ConfigError`] when it is invalid; call this at startup to
+    /// fail fast instead. Drivers used directly do not read it. (v13)
+    pub async fn default_sender() -> Result<Option<String>, MailError> {
+        Ok(MailSettings::load()
+            .await?
+            .default_sender()?
+            .map(str::to_string))
+    }
+
+    /// Runs the pipeline and dispatches through the custom or configured driver.
+    async fn deliver(
+        settings: &MailSettings,
+        tenant_id: Option<&str>,
+        message: Message,
+    ) -> Result<(), MailError> {
+        let message = match tenant_id {
+            Some(tenant_id) => DeliveryPipeline::prepare_for_tenant(tenant_id, &message)?,
+            None => DeliveryPipeline::prepare(&message)?,
+        }
+        .into_message();
+        let driver: Arc<dyn MailDriver> = match Self::custom_driver()? {
+            Some(driver) => driver,
+            None => Arc::from(Self::resolve_driver_from(settings)?),
+        };
+        match tenant_id {
+            Some(tenant_id) => driver.send_for_tenant(tenant_id, &message).await,
+            None => driver.send(&message).await,
+        }
     }
 
     fn custom_driver() -> Result<Option<Arc<dyn MailDriver>>, MailError> {
@@ -174,38 +215,23 @@ impl Mail {
         } else {
             queue.dispatch("rullst_mail_send", payload).await
         };
-        result
-            .map(|_| ())
-            .map_err(|error| MailError::SendError(format!("failed to enqueue mail job: {error}")))
+        result.map(|_| ()).map_err(|error| match error {
+            // A connection or storage outage may clear, so it is retryable.
+            rullst_core::queue::QueueError::Driver(_) => {
+                MailError::transport("queue", format!("failed to enqueue mail job: {error}"))
+            }
+            other => MailError::SendError(format!("failed to enqueue mail job: {other}")),
+        })
+    }
+
+    #[cfg(test)]
+    async fn resolve_driver() -> Result<Box<dyn MailDriver>, MailError> {
+        Self::resolve_driver_from(&MailSettings::load().await?)
     }
 
     #[cfg_attr(mutants, mutants::skip)]
-    async fn resolve_driver() -> Result<Box<dyn MailDriver>, MailError> {
-        // Resolve the driver either from env or Rullst.toml
-        let mut driver_name_opt = std::env::var("MAIL_DRIVER").ok();
-
-        if driver_name_opt.is_none()
-            && let Ok(toml_content) = tokio::fs::read_to_string("Rullst.toml").await
-        {
-            let mut in_mail = false;
-            for line in toml_content.lines() {
-                let trimmed = line.trim();
-                if trimmed.starts_with('[') {
-                    in_mail = trimmed == "[mail]" || trimmed == "[mailer]";
-                    continue;
-                }
-                if in_mail
-                    && trimmed.starts_with("driver")
-                    && let Some(val) = trimmed.split('=').nth(1)
-                {
-                    let clean_val = val.split('#').next().unwrap_or(val).trim();
-                    driver_name_opt =
-                        Some(clean_val.trim_matches('"').trim_matches('\'').to_string());
-                }
-            }
-        }
-
-        let driver_name = driver_name_opt.unwrap_or_else(|| "log".to_string());
+    fn resolve_driver_from(settings: &MailSettings) -> Result<Box<dyn MailDriver>, MailError> {
+        let driver_name = settings.driver_name()?;
 
         match driver_name.as_str() {
             "log" => Ok(Box::new(LogDriver)),
@@ -213,14 +239,15 @@ impl Mail {
             "smtp" => {
                 #[cfg(feature = "mail-smtp")]
                 {
-                    let host =
-                        std::env::var("MAIL_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-                    let port = std::env::var("MAIL_PORT")
-                        .ok()
+                    let host = settings
+                        .value("MAIL_HOST")?
+                        .unwrap_or_else(|| "127.0.0.1".to_string());
+                    let port = settings
+                        .value("MAIL_PORT")?
                         .and_then(|p| p.parse().ok())
                         .unwrap_or(25);
-                    let username = std::env::var("MAIL_USERNAME").ok();
-                    let password = std::env::var("MAIL_PASSWORD").ok();
+                    let username = settings.value("MAIL_USERNAME")?;
+                    let password = settings.value("MAIL_PASSWORD")?;
 
                     Ok(Box::new(SmtpDriver::try_new(
                         host, port, username, password,
@@ -232,16 +259,16 @@ impl Mail {
                 }
             }
             "resend" => {
-                let api_key = std::env::var("RESEND_API_KEY").unwrap_or_default();
+                let api_key = settings.value("RESEND_API_KEY")?.unwrap_or_default();
                 Ok(Box::new(ResendDriver::try_new(api_key)?))
             }
             "sendpulse" => Ok(Box::new(SendPulseDriver::try_new(
-                std::env::var("SENDPULSE_API_KEY").unwrap_or_default(),
+                settings.value("SENDPULSE_API_KEY")?.unwrap_or_default(),
             )?)),
             "mailjet" | "mailjet-sandbox" => {
                 let driver = MailjetDriver::try_new(
-                    std::env::var("MAILJET_API_KEY").unwrap_or_default(),
-                    std::env::var("MAILJET_SECRET_KEY").unwrap_or_default(),
+                    settings.value("MAILJET_API_KEY")?.unwrap_or_default(),
+                    settings.value("MAILJET_SECRET_KEY")?.unwrap_or_default(),
                 )?;
                 Ok(Box::new(if driver_name == "mailjet-sandbox" {
                     driver.with_sandbox()
@@ -250,11 +277,11 @@ impl Mail {
                 }))
             }
             "mailtrap" => Ok(Box::new(MailtrapDriver::try_new(
-                std::env::var("MAILTRAP_API_TOKEN").unwrap_or_default(),
+                settings.value("MAILTRAP_API_TOKEN")?.unwrap_or_default(),
             )?)),
             "mailtrap-sandbox" => {
-                let id = std::env::var("MAILTRAP_SANDBOX_ID")
-                    .ok()
+                let id = settings
+                    .value("MAILTRAP_SANDBOX_ID")?
                     .and_then(|v| v.parse::<u64>().ok())
                     .ok_or_else(|| {
                         MailError::ConfigError(
@@ -262,19 +289,20 @@ impl Mail {
                         )
                     })?;
                 Ok(Box::new(MailtrapDriver::sandbox(
-                    std::env::var("MAILTRAP_API_TOKEN").unwrap_or_default(),
+                    settings.value("MAILTRAP_API_TOKEN")?.unwrap_or_default(),
                     id,
                 )?))
             }
             "sendgrid" => {
-                let api_key = std::env::var("SENDGRID_API_KEY").unwrap_or_default();
+                let api_key = settings.value("SENDGRID_API_KEY")?.unwrap_or_default();
                 Ok(Box::new(SendGridDriver::try_new(api_key)?))
             }
             "postmark" => {
-                let server_token = std::env::var("POSTMARK_SERVER_TOKEN")
-                    .or_else(|_| std::env::var("POSTMARK_API_KEY"))
-                    .unwrap_or_default();
-                let message_stream = std::env::var("POSTMARK_MESSAGE_STREAM").ok();
+                let server_token = match settings.value("POSTMARK_SERVER_TOKEN")? {
+                    Some(token) => token,
+                    None => settings.value("POSTMARK_API_KEY")?.unwrap_or_default(),
+                };
+                let message_stream = settings.value("POSTMARK_MESSAGE_STREAM")?;
                 let mut driver = PostmarkDriver::try_new(server_token)?;
                 if let Some(stream) = message_stream {
                     driver = driver.with_message_stream(stream);
@@ -282,8 +310,9 @@ impl Mail {
                 Ok(Box::new(driver))
             }
             "azure-acs" => {
-                let endpoint =
-                    std::env::var("AZURE_COMMUNICATION_EMAIL_ENDPOINT").unwrap_or_default();
+                let endpoint = settings
+                    .value("AZURE_COMMUNICATION_EMAIL_ENDPOINT")?
+                    .unwrap_or_default();
                 if endpoint.is_empty() || endpoint.starts_with("mock_") {
                     Ok(Box::new(AzureCommunicationDriver::new(
                         endpoint,
@@ -297,11 +326,12 @@ impl Mail {
                 }
             }
             "ses" | "aws_ses" => {
-                let region =
-                    std::env::var("AWS_REGION").unwrap_or_else(|_| "us-east-1".to_string());
-                let endpoint_override = std::env::var("AWS_SES_ENDPOINT").ok();
-                let access_key_id = std::env::var("AWS_ACCESS_KEY_ID").ok();
-                let secret_access_key = std::env::var("AWS_SECRET_ACCESS_KEY").ok();
+                let region = settings
+                    .value("AWS_REGION")?
+                    .unwrap_or_else(|| "us-east-1".to_string());
+                let endpoint_override = settings.value("AWS_SES_ENDPOINT")?;
+                let access_key_id = settings.value("AWS_ACCESS_KEY_ID")?;
+                let secret_access_key = settings.value("AWS_SECRET_ACCESS_KEY")?;
                 let mut driver = match (access_key_id, secret_access_key) {
                     (Some(access_key_id), Some(secret_access_key)) => {
                         #[cfg(feature = "aws-ses")]
@@ -310,7 +340,7 @@ impl Mail {
                                 region,
                                 access_key_id,
                                 secret_access_key,
-                                std::env::var("AWS_SESSION_TOKEN").ok(),
+                                settings.value("AWS_SESSION_TOKEN")?,
                             )?
                         }
                         #[cfg(not(feature = "aws-ses"))]
@@ -323,9 +353,10 @@ impl Mail {
                         }
                     }
                     (None, None) => {
-                        let auth_token = std::env::var("AWS_SES_TOKEN")
-                            .or_else(|_| std::env::var("AWS_SES_BEARER_TOKEN"))
-                            .unwrap_or_default();
+                        let auth_token = match settings.value("AWS_SES_TOKEN")? {
+                            Some(token) => token,
+                            None => settings.value("AWS_SES_BEARER_TOKEN")?.unwrap_or_default(),
+                        };
                         AwsSesDriver::try_new(region, auth_token)?
                     }
                     _ => {
@@ -362,3 +393,7 @@ fn datetime_to_system_time(
 #[cfg(test)]
 #[path = "facade_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "facade_dotenv_tests.rs"]
+mod dotenv_tests;

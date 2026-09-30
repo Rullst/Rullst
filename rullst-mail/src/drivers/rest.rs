@@ -10,9 +10,42 @@ pub(super) fn sender(message: &Message) -> Result<&str, MailError> {
             "email requires nonempty text or HTML".into(),
         ));
     }
+    required_sender(message)
+}
+
+/// The sender every real transport uses. Transports never invent one, which
+/// would claim a domain the application does not control; the `Mail` facade
+/// fills it from `MAIL_FROM` / `[mail] from` before a transport sees it.
+pub(super) fn required_sender(message: &Message) -> Result<&str, MailError> {
     message.from.as_deref().ok_or_else(|| {
-        MailError::ConfigError("provider requires an explicit verified sender".into())
+        MailError::ConfigError(
+            "provider requires a verified sender: set the message's `from`, or MAIL_FROM or \
+             [mail] from in Rullst.toml for the Mail facade"
+                .into(),
+        )
     })
+}
+
+/// Splits a pre-flight-validated sender into its bare address and optional
+/// display name, for providers that take them as separate fields.
+pub(super) fn mailbox(from: &str) -> Result<(&str, Option<String>), MailError> {
+    crate::validator::mailbox_parts(from)
+        .map_err(|_| MailError::ValidationError("sender must be one mailbox".into()))
+}
+
+/// The sender as a provider JSON object such as `{"email": ..., "name": ...}`.
+pub(super) fn mailbox_json(
+    from: &str,
+    email_key: &str,
+    name_key: &str,
+) -> Result<Value, MailError> {
+    let (email, name) = mailbox(from)?;
+    let mut object = serde_json::Map::new();
+    object.insert(email_key.into(), Value::String(email.into()));
+    if let Some(name) = name {
+        object.insert(name_key.into(), Value::String(name));
+    }
+    Ok(Value::Object(object))
 }
 
 pub(super) fn encode(value: &Value) -> Result<Vec<u8>, MailError> {
@@ -29,7 +62,7 @@ pub(super) fn headers(message: &Message) -> Value {
     let mut headers = serde_json::Map::new();
     if let Some(value) = message.list_unsubscribe_header() {
         headers.insert("List-Unsubscribe".into(), Value::String(value));
-        if message.unsubscribe_url.is_some() {
+        if message.has_one_click_unsubscribe() {
             headers.insert(
                 "List-Unsubscribe-Post".into(),
                 Value::String("List-Unsubscribe=One-Click".into()),

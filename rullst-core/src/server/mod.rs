@@ -9,6 +9,7 @@ mod dev_reload;
 pub mod dylib_loader;
 /// Atomic hot-swappable Tower service.
 pub mod hotswap;
+mod project_settings;
 mod scheduler_supervision;
 /// Server-level HTTP middlewares (HMR script injection, static asset compression).
 pub mod server_middleware;
@@ -29,6 +30,8 @@ pub use builder::{Server, ServerError};
 #[doc(hidden)]
 pub use database_url::resolve_project_database_url;
 pub use hotswap::HotSwapService;
+#[doc(hidden)]
+pub use project_settings::{ProjectSettings, read_project_setting};
 pub use server_middleware::{inject_hmr_script, zstd_static_middleware};
 
 // ─── Dependency Shielding cascades (Roadmap Milestone 8) ────────────────────

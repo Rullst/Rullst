@@ -482,6 +482,9 @@ impl __NAME__ {
         )
         .green()
     );
+    println!(
+        "👉 Messages without `from` use MAIL_FROM (or `from` under [mail] in Rullst.toml); staging and production also need MAIL_DRIVER."
+    );
 
     Ok(())
 }

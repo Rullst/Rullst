@@ -231,6 +231,38 @@ pub(crate) fn recipient_address(value: &str) -> Result<&str, DeliverabilityError
     Ok(address)
 }
 
+/// Splits one mailbox accepted by [`recipient_address`] into its bare address
+/// and optional display name, with surrounding quotes and escapes removed.
+pub(crate) fn mailbox_parts(value: &str) -> Result<(&str, Option<String>), DeliverabilityError> {
+    let address = recipient_address(value)?;
+    let name = value
+        .trim()
+        .strip_suffix('>')
+        .and_then(|head| head.rsplit_once('<'))
+        .map(|(name, _)| name.trim())
+        .filter(|name| !name.is_empty())
+        .map(|name| {
+            let Some(quoted) = name
+                .strip_prefix('"')
+                .and_then(|rest| rest.strip_suffix('"'))
+            else {
+                return name.to_string();
+            };
+            let mut unquoted = String::with_capacity(quoted.len());
+            let mut escaped = false;
+            for character in quoted.chars() {
+                if escaped || character != '\\' {
+                    unquoted.push(character);
+                    escaped = false;
+                } else {
+                    escaped = true;
+                }
+            }
+            unquoted
+        });
+    Ok((address, name))
+}
+
 fn validate_display_name(name: &str) -> Result<(), DeliverabilityError> {
     if let Some(quoted) = name
         .strip_prefix('"')
@@ -325,6 +357,24 @@ pub fn validate_email_deliverability(email: &str) -> Result<(), DeliverabilityEr
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mailbox_parts_split_display_names() {
+        assert_eq!(
+            mailbox_parts("Acme Billing <billing@acme.com>"),
+            Ok(("billing@acme.com", Some("Acme Billing".to_string())))
+        );
+        assert_eq!(
+            mailbox_parts(r#""Doe, \"J\"" <j@example.com>"#),
+            Ok(("j@example.com", Some(r#"Doe, "J""#.to_string())))
+        );
+        assert_eq!(mailbox_parts("j@example.com"), Ok(("j@example.com", None)));
+        assert_eq!(
+            mailbox_parts("<j@example.com>"),
+            Ok(("j@example.com", None))
+        );
+        assert!(mailbox_parts("Acme <billing@acme.com").is_err());
+    }
 
     #[test]
     fn test_valid_emails() {
