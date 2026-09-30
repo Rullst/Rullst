@@ -54,3 +54,43 @@ fn test_log_redactor_and_honeypot_deception() {
     assert!(deception_routes.contains("/wp-login.php"));
     assert!(!deception_routes.contains("/api/v1/users"));
 }
+
+#[tokio::test]
+async fn rate_limit_middleware_buckets_clients_behind_core_trusted_proxies() {
+    // TM-CORE-03: Core's trusted-proxy layer supplies the resolved client as
+    // ConnectInfo, so this middleware needs no forwarding-header parsing.
+    use rullst_core::security::{TrustedProxyConfig, TrustedProxyLayer};
+
+    let proxies = TrustedProxyConfig::new(["10.0.0.0/8"]).unwrap();
+    let app = axum::Router::new()
+        .route("/api/ping", axum::routing::get(|| async { "pong" }))
+        .layer(axum::middleware::from_fn(rate_limit_middleware))
+        .layer(TrustedProxyLayer::new(proxies));
+    let send = async |peer: &str, client: &str| {
+        let mut request = Request::builder()
+            .uri("/api/ping")
+            .header("X-Forwarded-For", client)
+            .body(Body::empty())
+            .unwrap();
+        request.extensions_mut().insert(axum::extract::ConnectInfo(
+            peer.parse::<SocketAddr>().unwrap(),
+        ));
+        app.clone().oneshot(request).await.unwrap().status()
+    };
+
+    // The middleware's process-wide default allows 120 requests per minute.
+    for _ in 0..120 {
+        assert_eq!(send("10.0.0.1:443", "203.0.113.41").await, StatusCode::OK);
+    }
+    assert_eq!(
+        send("10.0.0.1:443", "203.0.113.41").await,
+        StatusCode::TOO_MANY_REQUESTS
+    );
+    // Another client behind the same proxy keeps its own bucket.
+    assert_eq!(send("10.0.0.1:443", "203.0.113.42").await, StatusCode::OK);
+    // A direct client's forged header is ignored: it is bucketed by socket.
+    assert_eq!(
+        send("203.0.113.43:1000", "203.0.113.41").await,
+        StatusCode::OK
+    );
+}
