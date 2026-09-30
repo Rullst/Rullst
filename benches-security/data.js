@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790786261258,
+  "lastUpdate": 1790790185235,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -12782,6 +12782,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 26,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "402ce4191277735e3d1f8d5080550156e9b92fd1",
+          "message": "Merge pull request #347 from Rullst/fix/v13-orm-tail-fixes\n\nfix(orm): serialize nested savepoints, typed DDL, transactional enum DDL and indexed cache invalidation",
+          "timestamp": "2026-09-30T14:23:13-03:00",
+          "tree_id": "60a648cd9250c117ce3d247caf4f8b93b260f662",
+          "url": "https://github.com/Rullst/Rullst/commit/402ce4191277735e3d1f8d5080550156e9b92fd1"
+        },
+        "date": 1790790183943,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 3109,
+            "range": "± 96",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 443,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 6,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 3,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 18,
             "range": "± 0",
             "unit": "ns/iter"
           }
