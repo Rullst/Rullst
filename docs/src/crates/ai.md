@@ -115,8 +115,10 @@ semantics until their different wire protocols have equivalent tests.
 `StatefulChat<M>` is a static-dispatch orchestration boundary over
 `ChatMemory`. It binds every conversation to trusted `TenantContext`, loads a
 bounded even history, calls the guarded client, and atomically appends the user
-and assistant halves after successful generation. `InMemoryChatMemory` is a
-bounded deterministic offline store.
+and assistant halves after successful generation. A response that the guardrail
+would block when the history is replayed is rejected as
+`StatefulChatError::Generation(AiError::BlockedByFirewall(_))` and is not
+stored. `InMemoryChatMemory` is a bounded deterministic offline store.
 
 With the opt-in umbrella `ai-sql-memory` feature, `SqlChatMemory` supplies a
 dedicated SQLx Any pool and fixed schema for SQLite, PostgreSQL, MySQL, and

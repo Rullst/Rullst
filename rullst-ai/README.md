@@ -164,7 +164,11 @@ must be protected by the host against adversarial rename races.
 `StatefulChat<M>` uses static dispatch over the `ChatMemory` contract. It loads
 bounded recent history, performs the normal guarded provider call, then appends
 the user and assistant messages atomically. Every conversation is selected by a
-trusted `TenantContext` plus a validated `ConversationId`.
+trusted `TenantContext` plus a validated `ConversationId`. Stored history is
+replayed through the guardrail on every turn, so a response the guardrail would
+block (for example a quoted injection phrase or a Markdown image URL) is
+rejected as `StatefulChatError::Generation(AiError::BlockedByFirewall(_))` and
+neither message is stored.
 
 `InMemoryChatMemory` is a deterministic bounded offline implementation. The
 opt-in `sql-memory` feature adds `SqlChatMemory` for SQLite, PostgreSQL, MySQL,
