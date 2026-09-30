@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790775043430,
+  "lastUpdate": 1790785344270,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -22395,6 +22395,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2219,
             "range": "± 54",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bd639f3d488732b423743a0652c319f44b3cabfc",
+          "message": "Merge pull request #348 from Rullst/fix/v13-studio-ai-iot-tail-fixes\n\nfix(studio,ai,iot): Studio form origins, Studio on PostgreSQL, case-exact MySQL chat memory and OTA bank selection",
+          "timestamp": "2026-09-30T13:15:41-03:00",
+          "tree_id": "5d38b619a63e463761ac2c24573241fdc66711c6",
+          "url": "https://github.com/Rullst/Rullst/commit/bd639f3d488732b423743a0652c319f44b3cabfc"
+        },
+        "date": 1790785341359,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 761,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 993,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 634,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2216,
+            "range": "± 78",
             "unit": "ns/iter"
           }
         ]
