@@ -320,6 +320,19 @@ where
         }
 
         let prompt = build_rag_prompt(&question, &contexts);
+        // The combined prompt is guarded again by the client. A block here comes
+        // from retrieved context taken together, before any generation.
+        if let Err(error) = AiGuardrails::prepare(&prompt) {
+            self.record(
+                tenant,
+                &query_sha256,
+                RagAuditOutcome::ContextRejected,
+                retrieved_count,
+                sources.len(),
+                context_chars,
+            )?;
+            return Err(RagError::Generation(error));
+        }
         let answer = match self.client.prompt(&prompt).await {
             Ok(answer) if !answer.trim().is_empty() && answer.len() <= MAX_ANSWER_BYTES => answer,
             Ok(_) => {
@@ -449,3 +462,6 @@ fn sha256_hex(input: &[u8]) -> String {
     }
     output
 }
+
+#[cfg(test)]
+mod tests;

@@ -256,7 +256,11 @@ The MySQL 8.0 and MariaDB matrices run this migration against legacy tables.
 context budgets, guarded generation, source metadata, and mandatory secret-minimized auditing in one
 typed operation. A trusted `TenantContext` is required and every returned document must carry the
 same tenant tag. Empty retrieval fails with `RagError::NoContext` instead of generating an
-ungrounded answer.
+ungrounded answer. Each passage is guarded on its own and the assembled prompt again; a block
+that only the combined passages trigger returns `RagError::Generation` with the guardrail
+error, is audited as `ContextRejected` and never reaches the provider. The Markdown-image
+heuristic judges each image: a relative inline image such as `![logo](assets/logo.png)` next
+to an unrelated link is not treated as a beacon.
 
 `InMemoryRagRetriever` supplies bounded tenant-partitioned cosine retrieval for tests, local
 development, and small ephemeral datasets. It is not durable or distributed. Production

@@ -2865,7 +2865,8 @@ sending.
 * Retrieved documents carry the trusted tenant tag. The pipeline rejects
   mismatches, over-return, injection heuristics, empty context, non-finite
   embeddings, and unavailable mandatory audit evidence rather than silently
-  generating an ungrounded response.
+  generating an ungrounded response. A guardrail block of the assembled prompt
+  is audited as `ContextRejected` before any provider call.
 * Context limits count Unicode scalar values per document and in total. The
   audit event omits raw question, context, embeddings, provider bodies, and
   answer; its SHA-256 query digest is correlation metadata, not encryption.
