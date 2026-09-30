@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790755841919,
+  "lastUpdate": 1790758473011,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -12561,6 +12561,60 @@ window.BENCHMARK_DATA = {
             "name": "rbac_guard/authorize_owner_or_role",
             "value": 12,
             "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 30,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e3b9e079eaa5aac12ab674c20d8f766309e9c3d2",
+          "message": "Merge pull request #344 from Rullst/fix/v13-ai-iot-review-fixes\n\nfix(ai,iot): CPF/CNPJ masking, system messages, replay-safe chat memory and block 5 lows",
+          "timestamp": "2026-09-30T05:33:59-03:00",
+          "tree_id": "eefd617604fc918e10594dfc3e03c54b1e2fb573",
+          "url": "https://github.com/Rullst/Rullst/commit/e3b9e079eaa5aac12ab674c20d8f766309e9c3d2"
+        },
+        "date": 1790758472037,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5394,
+            "range": "± 48",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 707,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 12,
+            "range": "± 0",
             "unit": "ns/iter"
           },
           {
