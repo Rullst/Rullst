@@ -8,6 +8,9 @@ builders, deterministic edge helpers, and a fail-closed signed firmware gate.
 - `SensorTelemetry` and `DigitalTwin` in-memory state models.
 - Modbus frame/CRC helpers, BLE GATT data structures, I2C frame builders, and
   simulated GPIO state. These are not operating-system or hardware drivers.
+  `I2cHelper::try_build_read_frame` rejects reserved or non-7-bit addresses and
+  reads above `MAX_I2C_READ_BYTES` (8,192) with a typed `I2cFrameError`;
+  `build_read_frame` returns an empty frame in those cases.
 - Bounded `no_std` MQTT 5 PUBLISH and RFC 7252 CoAP request encoders. They
   produce protocol bytes only; the application still owns sockets, TLS/DTLS,
   broker limits, acknowledgements, retries, congestion control, and identity.
