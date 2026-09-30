@@ -1,13 +1,20 @@
-//! `Mail` facade configuration: a `MAIL_*` variable wins, then `Rullst.toml`.
+//! `Mail` facade configuration with the `Server` precedence: the process
+//! environment, then the project's `.env` (which never overrides it), then
+//! `Rullst.toml`.
 
 use crate::error::MailError;
 use crate::message::Message;
 use crate::security::is_crlf_safe;
 use crate::validator::recipient_address;
+use rullst_core::config::Environment;
+use rullst_core::server::{ProjectSettings, ServerError};
+use std::path::Path;
 
 /// Facade settings read once per facade call.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone)]
 pub(super) struct MailSettings {
+    /// Process environment and `.env` values; `Debug` never shows them.
+    project: ProjectSettings,
     /// `MAIL_DRIVER`, else `[mail] driver`.
     driver: Option<String>,
     /// `MAIL_FROM`, else `[mail] from`; validated when it is used.
@@ -17,23 +24,40 @@ pub(super) struct MailSettings {
 }
 
 impl MailSettings {
-    /// Reads the process environment, then `Rullst.toml` in the working
-    /// directory for anything the environment leaves unset. An empty
-    /// `MAIL_FROM` counts as unset.
-    pub(super) async fn load() -> Self {
+    /// Reads the settings of the project in the working directory.
+    pub(super) async fn load() -> Result<Self, MailError> {
+        Self::load_from(Path::new(".")).await
+    }
+
+    /// Reads `MAIL_DRIVER` and `MAIL_FROM` from the process environment, then
+    /// `project_dir/.env`, then `project_dir/Rullst.toml`. An empty
+    /// `MAIL_FROM` counts as unset. A malformed `.env` fails without its
+    /// content appearing in the error.
+    pub(super) async fn load_from(project_dir: &Path) -> Result<Self, MailError> {
+        let project = ProjectSettings::load(project_dir)
+            .await
+            .map_err(settings_error)?;
         let mut settings = Self {
-            driver: std::env::var("MAIL_DRIVER").ok(),
-            from: std::env::var("MAIL_FROM")
-                .ok()
+            driver: project.get("MAIL_DRIVER").map_err(settings_error)?,
+            from: project
+                .get("MAIL_FROM")
+                .map_err(settings_error)?
                 .filter(|from| !from.trim().is_empty()),
             app_env: None,
+            project,
         };
         if (settings.driver.is_none() || settings.from.is_none())
-            && let Ok(content) = tokio::fs::read_to_string("Rullst.toml").await
+            && let Ok(content) = tokio::fs::read_to_string(project_dir.join("Rullst.toml")).await
         {
             settings.fill_from_rullst_toml(&content);
         }
-        settings
+        Ok(settings)
+    }
+
+    /// Another facade setting, such as a provider credential: the process
+    /// environment, then `.env`.
+    pub(super) fn value(&self, name: &str) -> Result<Option<String>, MailError> {
+        self.project.get(name).map_err(settings_error)
     }
 
     /// Fills unset values from `[mail]`/`[mailer]` `driver` and `from` and
@@ -92,13 +116,25 @@ impl MailSettings {
         Ok(message)
     }
 
-    /// The configured driver, or the default for this environment.
+    /// The configured driver, or the default for the environment that
+    /// `Server` would resolve (`RULLST_ENV`, `APP_ENV`, `.env`, `[app] env`).
     pub(super) fn driver_name(&self) -> Result<String, MailError> {
         match &self.driver {
             Some(driver) => Ok(driver.clone()),
-            None => default_driver_name(self.app_env.as_deref()).map(str::to_string),
+            None => {
+                let environment = self
+                    .project
+                    .environment(self.app_env.as_deref())
+                    .map_err(settings_error)?;
+                default_driver_name(environment).map(str::to_string)
+            }
         }
     }
+}
+
+/// Core reports `.env` and environment problems without file content.
+fn settings_error(error: ServerError) -> MailError {
+    MailError::ConfigError(format!("mail settings could not be read: {error}"))
 }
 
 /// The driver used when neither `MAIL_DRIVER` nor `[mail] driver` is set.
@@ -106,10 +142,7 @@ impl MailSettings {
 /// Logging is only a development/test default. In staging or production an
 /// unconfigured facade would report success for mail it never sends, so it
 /// fails closed unless `log` is selected explicitly.
-pub(super) fn default_driver_name(configured_env: Option<&str>) -> Result<&'static str, MailError> {
-    let environment = rullst_core::config::Environment::detect(configured_env).map_err(|_| {
-        MailError::ConfigError("RULLST_ENV, APP_ENV or [app].env is invalid".to_string())
-    })?;
+pub(super) fn default_driver_name(environment: Environment) -> Result<&'static str, MailError> {
     if environment.requires_secure_defaults() {
         return Err(MailError::ConfigError(format!(
             "no mail driver is configured for the {environment} environment; set MAIL_DRIVER \
@@ -127,7 +160,7 @@ mod tests {
         MailSettings {
             driver: driver.map(str::to_string),
             from: from.map(str::to_string),
-            app_env: None,
+            ..MailSettings::default()
         }
     }
 

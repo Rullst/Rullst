@@ -462,6 +462,15 @@ driver = "resend" # "log" | "memory" | "smtp" | "resend" | "sendgrid" | "postmar
 from = "Acme <no-reply@acme.example>" # default sender for messages without `from`
 ```
 
+The `Mail` facade reads each variable below from the process environment first
+and then from the project's `./.env`, which never overrides the environment,
+exactly as `Server` reads `DATABASE_URL`; `driver` and `from` in `Rullst.toml`
+come last. `LogDriver` reads `MAIL_LOG_PATH` the same way. The staging and
+production check uses the `Server` environment precedence (`RULLST_ENV`, then
+`APP_ENV`, from the environment and then `.env`, then `[app] env`). A
+malformed `.env` fails with `MailError::ConfigError` without echoing its
+content.
+
 Environment variables:
 - `MAIL_DRIVER`: Select active driver (`log`, `memory`, `smtp`, `resend`, `sendgrid`, `postmark`, `ses`).
 - `MAIL_FROM`: Default sender (v13) for `Mail` facade messages that set no
@@ -470,7 +479,8 @@ Environment variables:
   `Name <address>` that your provider account has verified. An invalid value
   fails every facade send with `MailError::ConfigError`; call
   `Mail::default_sender()` at startup to fail fast. Drivers used directly do
-  not read it.
+  not read it; the other settings below are read by the facade when it builds
+  a driver, and `MAIL_LOG_PATH` by `LogDriver` itself.
 - `RESEND_API_KEY`: API key for Resend.
 - `SENDGRID_API_KEY`: API key for SendGrid.
 - `POSTMARK_SERVER_TOKEN`: Server API token for Postmark.

@@ -7,12 +7,12 @@ use super::*;
 use async_trait::async_trait;
 use rullst_core::queue::{QueueDriver, QueueError, QueuedJob};
 
-struct EnvironmentGuard {
+pub(super) struct EnvironmentGuard {
     original: BTreeMap<&'static str, Option<String>>,
 }
 
 impl EnvironmentGuard {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self {
             original: BTreeMap::new(),
         }
@@ -24,12 +24,12 @@ impl EnvironmentGuard {
             .or_insert_with(|| std::env::var(key).ok());
     }
 
-    fn set(&mut self, key: &'static str, value: &str) {
+    pub(super) fn set(&mut self, key: &'static str, value: &str) {
         self.remember(key);
         unsafe { std::env::set_var(key, value) };
     }
 
-    fn clear(&mut self, key: &'static str) {
+    pub(super) fn clear(&mut self, key: &'static str) {
         self.remember(key);
         unsafe { std::env::remove_var(key) };
     }
@@ -48,7 +48,7 @@ impl Drop for EnvironmentGuard {
     }
 }
 
-fn clear_provider_environment(environment: &mut EnvironmentGuard) {
+pub(super) fn clear_provider_environment(environment: &mut EnvironmentGuard) {
     for key in [
         "MAIL_HOST",
         "MAIL_PORT",
@@ -373,7 +373,7 @@ async fn unconfigured_driver_logs_only_outside_staging_and_production() {
     environment.clear("RULLST_ENV");
     assert!(Mail::resolve_driver().await.is_ok());
     assert!(matches!(
-        default_driver_name(Some("production")),
+        default_driver_name(rullst_core::config::Environment::Production),
         Err(MailError::ConfigError(_))
     ));
 
