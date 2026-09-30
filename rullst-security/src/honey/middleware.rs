@@ -3,7 +3,7 @@ use crate::error::SecurityError;
 use axum::{
     body::Body,
     extract::ConnectInfo,
-    http::{Request, Response, StatusCode},
+    http::{HeaderMap, Request, Response, StatusCode, header},
     response::IntoResponse,
 };
 use std::collections::HashSet;
@@ -194,6 +194,26 @@ fn is_valid_trap_path(path: &str) -> bool {
         && !path.chars().any(char::is_control)
 }
 
+/// Whether the request shows that a web page initiated it.
+///
+/// Browsers label every request they send to a potentially trustworthy origin
+/// with `Sec-Fetch-Site`: `none` for a user-typed URL or bookmark, and
+/// `same-origin`, `same-site` or `cross-site` when a document started the
+/// load, such as an `<img>` on another site, Markdown in user content or a
+/// scripted navigation. Browsers without fetch metadata still name the
+/// initiating page in `Origin` or `Referer`. A page can make its visitors'
+/// browsers request a trap path, so such a hit must not ban the visitor's
+/// address. The headers are client-controlled: a scanner that sends them
+/// avoids the ban, but not the refusal.
+fn is_page_initiated(headers: &HeaderMap) -> bool {
+    match headers.get("sec-fetch-site") {
+        Some(site) => ["same-origin", "same-site", "cross-site"]
+            .iter()
+            .any(|initiator| site.as_bytes().eq_ignore_ascii_case(initiator.as_bytes())),
+        None => headers.contains_key(header::ORIGIN) || headers.contains_key(header::REFERER),
+    }
+}
+
 #[derive(Clone)]
 pub struct HoneypotLayer {
     state: HoneypotState,
@@ -257,15 +277,19 @@ where
             let client_ip = peer_ip
                 .map(|ip| ip.to_string())
                 .unwrap_or_else(|| "unknown".to_string());
-            if let Some(ip) = peer_ip {
-                self.state.ban_peer(ip);
+            // Refuse every trap hit, but ban only a direct request: a page
+            // can make any visitor's browser load a trap URL.
+            let page_initiated = is_page_initiated(req.headers());
+            let telemetry = crate::telemetry::SecurityStore::global();
+            if page_initiated {
+                telemetry.record_honeypot_observation(&client_ip, &path);
+            } else {
+                if let Some(ip) = peer_ip {
+                    self.state.ban_peer(ip);
+                }
+                telemetry.record_honeypot_trap_with_ttl(&client_ip, &path, self.state.ban_ttl);
             }
-            tracing::warn!(target: "rullst_security::honey", ip = %client_ip, path = %path, "Honeypot trap triggered");
-            crate::telemetry::SecurityStore::global().record_honeypot_trap_with_ttl(
-                &client_ip,
-                &path,
-                self.state.ban_ttl,
-            );
+            tracing::warn!(target: "rullst_security::honey", ip = %client_ip, path = %path, page_initiated, "Honeypot trap triggered");
             let response = (
                 StatusCode::FORBIDDEN,
                 "Access Denied: Honeypot Trap Triggered",
@@ -280,173 +304,4 @@ where
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use axum::{Router, routing::get};
-    use std::thread;
-    use tower::ServiceExt;
-
-    #[test]
-    fn traps_use_exact_paths_and_bans_expire() {
-        let state =
-            HoneypotState::try_with_limits(vec!["/.env".to_string()], Duration::from_millis(10), 2)
-                .expect("valid honeypot state");
-
-        assert!(state.is_trap("/.env"));
-        assert!(!state.is_trap("/download/.env"));
-        assert!(!state.is_trap("/.environment"));
-
-        state.ban_ip("192.0.2.1".to_string());
-        assert!(state.is_banned("192.0.2.1"));
-        thread::sleep(Duration::from_millis(20));
-        assert!(!state.is_banned("192.0.2.1"));
-    }
-
-    #[test]
-    fn ban_cardinality_is_bounded_and_invalid_ips_are_ignored() {
-        let state =
-            HoneypotState::try_with_limits(vec!["/.env".to_string()], Duration::from_secs(60), 2)
-                .expect("valid honeypot state");
-
-        state.ban_ip("not-an-ip".to_string());
-        state.ban_ip("192.0.2.1".to_string());
-        state.ban_ip("192.0.2.2".to_string());
-        state.ban_ip("192.0.2.3".to_string());
-        assert_eq!(state.banned_count(), 2);
-    }
-
-    #[test]
-    fn request_lookup_touches_only_the_requested_peer() {
-        let state =
-            HoneypotState::try_with_limits(vec!["/.env".to_string()], Duration::from_secs(60), 4)
-                .expect("valid honeypot state");
-        state.ban_ip("192.0.2.3".to_string());
-        let expired = Instant::now() - Duration::from_secs(1);
-        {
-            let mut bans = state.banned_ips.lock().unwrap();
-            for index in 1..=2 {
-                bans.insert(IpAddr::from([192, 0, 2, index]), expired, state.max_bans);
-            }
-        }
-
-        assert!(state.is_banned("192.0.2.3"));
-        assert!(!state.is_banned("198.51.100.1"));
-        assert_eq!(state.banned_ips.lock().unwrap().len(), 3);
-
-        assert!(!state.is_banned("192.0.2.1"));
-        assert_eq!(state.banned_ips.lock().unwrap().len(), 2);
-
-        assert_eq!(state.banned_count(), 1);
-    }
-
-    #[test]
-    fn full_ban_list_evicts_the_soonest_expiring_ban_and_refreshes_existing_peers() {
-        let state =
-            HoneypotState::try_with_limits(vec!["/.env".to_string()], Duration::from_secs(60), 2)
-                .expect("valid honeypot state");
-        let now = Instant::now();
-        {
-            let mut bans = state.banned_ips.lock().unwrap();
-            let first = IpAddr::from([192, 0, 2, 1]);
-            bans.insert(first, now + Duration::from_secs(10), state.max_bans);
-            bans.insert(
-                IpAddr::from([192, 0, 2, 2]),
-                now + Duration::from_secs(20),
-                state.max_bans,
-            );
-            // Refreshing an existing peer moves it behind the other ban.
-            bans.insert(first, now + Duration::from_secs(30), state.max_bans);
-        }
-        assert_eq!(state.banned_count(), 2);
-
-        state.ban_ip("192.0.2.3".to_string());
-        assert_eq!(state.banned_count(), 2);
-        assert!(state.is_banned("192.0.2.1"));
-        assert!(!state.is_banned("192.0.2.2"));
-        assert!(state.is_banned("192.0.2.3"));
-    }
-
-    #[test]
-    fn strict_configuration_rejects_unsafe_or_unbounded_values() {
-        let valid_path = vec!["/.env".to_string()];
-        assert!(HoneypotState::try_with_limits(valid_path.clone(), Duration::ZERO, 1).is_err());
-        assert!(HoneypotState::try_with_limits(valid_path, Duration::from_secs(1), 0).is_err());
-        assert!(
-            HoneypotState::try_with_limits(
-                vec!["relative/path".to_string()],
-                Duration::from_secs(1),
-                1,
-            )
-            .is_err()
-        );
-        assert!(HoneypotState::try_with_limits(Vec::new(), Duration::from_secs(1), 1).is_err());
-
-        let too_many_paths = (0..=MAX_HONEYPOT_TRAP_PATHS)
-            .map(|index| format!("/trap-{index}"))
-            .collect();
-        assert!(HoneypotState::try_with_limits(too_many_paths, Duration::from_secs(1), 1).is_err());
-    }
-
-    #[test]
-    fn compatibility_constructor_filters_invalid_and_duplicate_paths() {
-        let state = HoneypotState::new(vec![
-            "/Trap".to_string(),
-            "/trap".to_string(),
-            "relative".to_string(),
-            "/bad?query=true".to_string(),
-        ]);
-        assert!(state.is_trap("/trap"));
-        assert_eq!(state.trap_paths.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn middleware_ignores_forwarded_identity_and_uses_socket_peer() {
-        let state = HoneypotState::new(vec!["/.env".to_string()]);
-        let app = Router::new()
-            .route("/{*path}", get(|| async { StatusCode::OK }))
-            .layer(HoneypotLayer::new(state.clone()));
-
-        let forged = Request::builder()
-            .uri("/.env")
-            .header("x-forwarded-for", "198.51.100.99")
-            .body(Body::empty())
-            .expect("valid request");
-        let response = app.clone().oneshot(forged).await.expect("response");
-        assert_eq!(response.status(), StatusCode::FORBIDDEN);
-        assert!(!state.is_banned("198.51.100.99"));
-
-        let mut verified = Request::builder()
-            .uri("/.env")
-            .header("x-forwarded-for", "198.51.100.99")
-            .body(Body::empty())
-            .expect("valid request");
-        verified.extensions_mut().insert(ConnectInfo(
-            "192.0.2.25:443"
-                .parse::<SocketAddr>()
-                .expect("valid socket address"),
-        ));
-        let response = app.clone().oneshot(verified).await.expect("response");
-        assert_eq!(response.status(), StatusCode::FORBIDDEN);
-        assert!(state.is_banned("192.0.2.25"));
-        assert!(!state.is_banned("198.51.100.99"));
-
-        let mut banned_peer = Request::builder()
-            .uri("/safe")
-            .body(Body::empty())
-            .expect("valid request");
-        banned_peer.extensions_mut().insert(ConnectInfo(
-            "192.0.2.25:8443"
-                .parse::<SocketAddr>()
-                .expect("valid socket address"),
-        ));
-        let response = app.clone().oneshot(banned_peer).await.expect("response");
-        assert_eq!(response.status(), StatusCode::FORBIDDEN);
-
-        let lookalike = Request::builder()
-            .uri("/download/.env")
-            .body(Body::empty())
-            .expect("valid request");
-        let response = app.oneshot(lookalike).await.expect("response");
-        assert_eq!(response.status(), StatusCode::OK);
-    }
-}
+mod tests;
