@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790792701498,
+  "lastUpdate": 1790793484956,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -22611,6 +22611,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1695,
             "range": "± 36",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1bb72ddeba6eea38f4571ee6585b63bc52d56a73",
+          "message": "Merge pull request #349 from Rullst/fix/v13-mail-capital-messaging-tail-fixes\n\nfix(mail,capital,messaging): ACS sends, IDN homograph check, base64 queued attachments, Wise status and replay claims",
+          "timestamp": "2026-09-30T15:29:18-03:00",
+          "tree_id": "ea9f0ee221bb6ce03bd7d5065db521ca95301a4e",
+          "url": "https://github.com/Rullst/Rullst/commit/1bb72ddeba6eea38f4571ee6585b63bc52d56a73"
+        },
+        "date": 1790793481174,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 758,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 971,
+            "range": "± 21",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 589,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2216,
+            "range": "± 133",
             "unit": "ns/iter"
           }
         ]
