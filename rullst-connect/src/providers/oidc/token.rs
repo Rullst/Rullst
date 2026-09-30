@@ -18,7 +18,7 @@ impl OidcProvider {
             .await
     }
 
-    #[tracing::instrument(skip(self, form_data))]
+    #[tracing::instrument(skip_all, fields(has_nonce = expected_nonce.is_some()))]
     pub(crate) async fn get_user_from_form(
         &self,
         form_data: &(impl serde::Serialize + Sync),

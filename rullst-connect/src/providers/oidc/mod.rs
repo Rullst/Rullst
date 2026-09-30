@@ -4,6 +4,8 @@ pub mod token;
 #[cfg(test)]
 mod client_auth_tests;
 #[cfg(test)]
+mod span_tests;
+#[cfg(test)]
 mod tests;
 
 #[cfg(kani)]
