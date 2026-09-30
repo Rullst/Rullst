@@ -67,6 +67,12 @@ one database transaction. Make every migration reversible, test both directions
 against each supported database, and use backend-appropriate transactional DDL
 inside the migration when atomicity is required.
 
+Each migration's tracking row is removed as soon as its `down()` succeeds. If a
+later `down()` fails, the rollback stops with that error: the migrations it
+already reverted are no longer recorded as applied, while the failed migration
+and the rest of the batch stay recorded. Fix the cause and run `db:rollback`
+again to continue from that point.
+
 ---
 
 ## Step 3: Define and register a seeder
