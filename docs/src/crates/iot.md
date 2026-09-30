@@ -92,10 +92,13 @@ fn process_incoming_ota<S: RollbackCounterStore>(
 ```
 
 The store contract requires power-loss-safe persistence before returning
-success. The framework tests restart/replay, transient retry, corruption and
-stale-writer conflict at the adapter boundary, but those tests do not certify a
-particular flash, secure element or board. A failure after the durable counter
-advances can require platform recovery and a newer signed update.
+success. If a store reports a failure after committing, for example because an
+acknowledgement was lost, a retry completes the commit once the store reports,
+and a fresh `load` confirms, exactly the manifest's counter. The framework tests
+restart/replay, transient retry, corruption and stale-writer conflict at the
+adapter boundary, but those tests do not certify a particular flash, secure
+element or board. A failure after the durable counter advances can require
+platform recovery and a newer signed update.
 
 ---
 

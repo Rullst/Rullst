@@ -2676,7 +2676,7 @@ sending.
 
 ### 8.1. Ed25519 OTA Firmware Gate
 * **Firmware Verification:** Strict Ed25519 signature validation over a cryptographic manifest `[target, version, rollback_counter, firmware_len, firmware_sha256]`.
-* **Anti-Rollback Protection:** Verification rejects any counter lower than or equal to the state loaded into the manager. The recommended `RollbackCounterStore` path additionally performs an exact compare-and-set and may report success only after a strictly increasing value is durably committed across reset. Atomicity, integrity, wear-leveling and power-loss behavior are obligations of the caller's platform adapter and require hardware-specific evidence.
+* **Anti-Rollback Protection:** Verification rejects any counter lower than or equal to the state loaded into the manager. The recommended `RollbackCounterStore` path additionally performs an exact compare-and-set and may report success only after a strictly increasing value is durably committed across reset. A retry after an ambiguous store failure completes only when the store reports, and a fresh load confirms, exactly the verified manifest's counter. Atomicity, integrity, wear-leveling and power-loss behavior are obligations of the caller's platform adapter and require hardware-specific evidence.
 * **Commit Invariant:** In-memory partition selection and store-backed counter commit are blocked until full cryptographic verification succeeds. `verified_target_partition` exposes the inactive bank for platform flash/read-back before commit. The compatibility `commit_verified_update` path is process-local and does not claim persistence, flash or bootloader control.
 
 ### 8.2. Embedded Sensor Frames (`#![no_std]`)
@@ -2689,8 +2689,8 @@ sending.
 * `MqttPublish` encodes one bounded MQTT 5 PUBLISH packet with validated topic,
   minimal Remaining Length, QoS/packet-identifier invariants and an empty
   property section. `CoapRequest` encodes bounded RFC 7252 base requests with
-  a token, ordered URI-Path/Content-Format options and a non-empty payload
-  marker. Both compile under `no_std`; neither opens a socket or owns protocol
+  a token, ordered URI-Path (1-255 bytes per segment)/Content-Format options
+  and a non-empty payload marker. Both compile under `no_std`; neither opens a socket or owns protocol
   session state.
 * 🔵 **`[Roadmap]` MQTT/CoAP Transport:** Async connections, TLS/DTLS, broker
   negotiation, acknowledgements, retransmission/congestion control, block-wise
@@ -2714,7 +2714,7 @@ sending.
   HTTPS/Bearer, and unrelated protocols implement the public `AiProvider`
   boundary rather than passing through arbitrary HTTP.
 * **Prompt Injection Firewall:** Real-time token heuristics intercepting prompt exfiltration, instruction overrides (`DAN mode`), and delimiter injection attacks.
-* **Automated PII Masking:** Scrubs sensitive data (CPF/CNPJ, credit cards, emails) prior to outbound LLM dispatch.
+* **Automated PII Masking:** Scrubs check-digit-valid CPF/CNPJ numbers (canonical formatted or unformatted), card-like digit runs and email usernames prior to outbound LLM dispatch. Alphanumeric CNPJs and other identifiers are not recognized.
 
 ### 9.2. Bounded Streaming and Cancellation
 * `StreamingAiClient<P>` preserves static dispatch, reapplies the mandatory
@@ -2755,7 +2755,9 @@ sending.
 * `StatefulChat<M>` uses static dispatch over `ChatMemory`, requires a trusted
   `TenantContext` and validated `ConversationId`, loads only the configured even
   number of recent messages, applies the guarded `AiClient`, and persists the
-  user/assistant exchange only after generation succeeds.
+  user/assistant exchange only after generation succeeds. A response that the
+  guardrail would block on replay is rejected as a generation failure and not
+  persisted.
 * `InMemoryChatMemory` is deterministic, tenant-partitioned, cardinality-bound,
   and intended for tests/local use. The opt-in `sql-memory` adapter supports
   SQLite, PostgreSQL, MySQL, and MariaDB through a dedicated SQLx Any pool.

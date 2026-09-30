@@ -7,6 +7,8 @@ use core::fmt;
 
 /// Conservative datagram ceiling intended to avoid IP fragmentation.
 pub const MAX_COAP_DATAGRAM_BYTES: usize = 1152;
+/// RFC 7252 section 5.10 limits one Uri-Path option value to 255 bytes.
+const MAX_URI_PATH_SEGMENT_BYTES: usize = 255;
 
 /// CoAP message type accepted by the request helper.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -57,7 +59,8 @@ pub enum CoapCodecError {
     TokenTooLong,
     /// A simplified URI path segment is empty, contains `/`, or has controls.
     InvalidPathSegment,
-    /// An option cannot be represented by the base option encoding.
+    /// An option value exceeds its RFC 7252 length limit or cannot be
+    /// represented by the base option encoding.
     OptionTooLarge,
     /// The encoded request exceeds the bounded datagram ceiling.
     DatagramTooLarge,
@@ -114,7 +117,9 @@ impl CoapRequest {
     }
 
     /// Appends one decoded URI-Path segment. `/` separators are not accepted
-    /// inside a segment; callers should append each segment separately.
+    /// inside a segment; callers should append each segment separately. A
+    /// segment longer than the RFC 7252 limit of 255 bytes is rejected with
+    /// [`CoapCodecError::OptionTooLarge`].
     pub fn path_segment(mut self, segment: impl Into<String>) -> Result<Self, CoapCodecError> {
         let segment = segment.into();
         if segment.is_empty()
@@ -123,7 +128,7 @@ impl CoapRequest {
         {
             return Err(CoapCodecError::InvalidPathSegment);
         }
-        if segment.len() > MAX_COAP_DATAGRAM_BYTES {
+        if segment.len() > MAX_URI_PATH_SEGMENT_BYTES {
             return Err(CoapCodecError::OptionTooLarge);
         }
         let existing_path_bytes = self.path.iter().try_fold(0usize, |total, current| {
@@ -333,6 +338,32 @@ mod tests {
             .and_then(|request| request.encode()),
             Err(CoapCodecError::DatagramTooLarge)
         );
+    }
+
+    #[test]
+    fn uri_path_segments_follow_the_rfc_7252_length_limit() {
+        let request = || {
+            CoapRequest::new(
+                CoapMessageType::Confirmable,
+                CoapMethod::Get,
+                1,
+                Vec::<u8>::new(),
+            )
+        };
+        let datagram = request()
+            .and_then(|request| request.path_segment("a".repeat(255)))
+            .and_then(|request| request.encode())
+            .expect("a 255-byte Uri-Path segment should encode");
+        assert_eq!(datagram.len(), 4 + 2 + 255);
+        assert_eq!(datagram[4], 0xbd);
+        assert_eq!(datagram[5], 255 - 13);
+
+        for length in [256, 300, 1_000] {
+            assert_eq!(
+                request().and_then(|request| request.path_segment("a".repeat(length))),
+                Err(CoapCodecError::OptionTooLarge)
+            );
+        }
     }
 
     #[test]

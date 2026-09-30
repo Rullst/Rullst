@@ -2,6 +2,14 @@
 
 use super::{AiError, Message, StructuredOutputSchema};
 
+/// Deepest schema nesting the offline structured-output fixture follows.
+const MAX_MOCK_SCHEMA_DEPTH: usize = 16;
+/// Most items generated for one array, whatever its `minItems`.
+const MAX_MOCK_ARRAY_ITEMS: u64 = 32;
+/// Most JSON values generated for one fixture. Nested arrays multiply, so the
+/// depth and per-array limits alone would allow 32^16 values.
+const MAX_MOCK_SCHEMA_VALUES: usize = 4_096;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ProviderMode {
     Live,
@@ -76,7 +84,8 @@ pub(crate) fn embedding(text: &str) -> Vec<f32> {
 }
 
 pub(crate) fn structured_response(schema: &StructuredOutputSchema) -> Result<String, AiError> {
-    let value = canonicalize_json(value_for_schema(schema.schema(), 0)?);
+    let mut remaining_values = MAX_MOCK_SCHEMA_VALUES;
+    let value = canonicalize_json(value_for_schema(schema.schema(), 0, &mut remaining_values)?);
     serde_json::to_string(&value).map_err(AiError::from)
 }
 
@@ -105,12 +114,18 @@ fn canonicalize_json(value: serde_json::Value) -> serde_json::Value {
 fn value_for_schema(
     schema: &serde_json::Value,
     depth: usize,
+    remaining_values: &mut usize,
 ) -> Result<serde_json::Value, AiError> {
-    if depth > 16 {
-        return Err(AiError::InvalidSchema(
-            "mock schema nesting exceeds 16 levels".to_string(),
-        ));
+    if depth > MAX_MOCK_SCHEMA_DEPTH {
+        return Err(AiError::InvalidSchema(format!(
+            "mock schema nesting exceeds {MAX_MOCK_SCHEMA_DEPTH} levels"
+        )));
     }
+    *remaining_values = remaining_values.checked_sub(1).ok_or_else(|| {
+        AiError::InvalidSchema(format!(
+            "mock schema generates more than {MAX_MOCK_SCHEMA_VALUES} values"
+        ))
+    })?;
     if let Some(value) = schema.get("const") {
         return Ok(value.clone());
     }
@@ -130,7 +145,7 @@ fn value_for_schema(
         .and_then(serde_json::Value::as_array)
         .and_then(|branches| branches.first())
     {
-        return value_for_schema(branch, depth + 1);
+        return value_for_schema(branch, depth + 1, remaining_values);
     }
 
     let schema_type = schema
@@ -160,7 +175,10 @@ fn value_for_schema(
                 })?;
             let mut object = serde_json::Map::new();
             for (name, property_schema) in properties {
-                object.insert(name.clone(), value_for_schema(property_schema, depth + 1)?);
+                object.insert(
+                    name.clone(),
+                    value_for_schema(property_schema, depth + 1, remaining_values)?,
+                );
             }
             Ok(serde_json::Value::Object(object))
         }
@@ -172,10 +190,10 @@ fn value_for_schema(
                 .get("minItems")
                 .and_then(serde_json::Value::as_u64)
                 .unwrap_or(0)
-                .min(32) as usize;
+                .min(MAX_MOCK_ARRAY_ITEMS) as usize;
             let mut items = Vec::with_capacity(item_count);
             for _ in 0..item_count {
-                items.push(value_for_schema(item_schema, depth + 1)?);
+                items.push(value_for_schema(item_schema, depth + 1, remaining_values)?);
             }
             Ok(serde_json::Value::Array(items))
         }
@@ -218,5 +236,40 @@ mod tests {
         .expect("valid test schema");
         let response = structured_response(&schema).expect("fixture should be generated");
         assert_eq!(response, r#"{"items":["mock_string"],"ok":false}"#);
+    }
+
+    fn nested_string_arrays(levels: usize) -> serde_json::Value {
+        (0..levels).fold(
+            serde_json::json!({"type": "string"}),
+            |items, _| serde_json::json!({"type": "array", "minItems": 32, "items": items}),
+        )
+    }
+
+    #[test]
+    fn nested_arrays_are_bounded_by_a_total_value_budget() {
+        let schema = |levels| {
+            StructuredOutputSchema::new(
+                "grid",
+                serde_json::json!({
+                    "type": "object",
+                    "properties": {"grid": nested_string_arrays(levels)}
+                }),
+            )
+            .expect("valid test schema")
+        };
+
+        let within_budget = structured_response(&schema(2)).expect("32 x 32 fixture");
+        let value: serde_json::Value =
+            serde_json::from_str(&within_budget).expect("fixture is JSON");
+        assert_eq!(value["grid"].as_array().map(Vec::len), Some(32));
+        assert_eq!(value["grid"][31].as_array().map(Vec::len), Some(32));
+
+        // 32^3 strings exceed the budget; six levels would be about 10^9.
+        for levels in [3, 6] {
+            assert!(matches!(
+                structured_response(&schema(levels)),
+                Err(AiError::InvalidSchema(_))
+            ));
+        }
     }
 }

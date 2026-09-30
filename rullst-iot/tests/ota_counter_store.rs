@@ -10,6 +10,10 @@ struct MemoryCounterStore {
     value: u64,
     load_error: Option<RollbackCounterError>,
     commit_error: Option<RollbackCounterError>,
+    /// Reported after a successful durable commit, as when an acknowledgement is lost.
+    lost_acknowledgement: Option<RollbackCounterError>,
+    /// Checks monotonicity before the expected value, as some adapters do.
+    monotonic_first: bool,
 }
 
 impl MemoryCounterStore {
@@ -18,6 +22,8 @@ impl MemoryCounterStore {
             value,
             load_error: None,
             commit_error: None,
+            lost_acknowledgement: None,
+            monotonic_first: false,
         }
     }
 }
@@ -38,6 +44,12 @@ impl RollbackCounterStore for MemoryCounterStore {
         if let Some(error) = self.commit_error.take() {
             return Err(error);
         }
+        if self.monotonic_first && proposed <= self.value {
+            return Err(RollbackCounterError::NonMonotonic {
+                current: self.value,
+                proposed,
+            });
+        }
         if self.value != expected {
             return Err(RollbackCounterError::Conflict {
                 expected,
@@ -51,7 +63,10 @@ impl RollbackCounterStore for MemoryCounterStore {
             });
         }
         self.value = proposed;
-        Ok(())
+        match self.lost_acknowledgement.take() {
+            Some(error) => Err(error),
+            None => Ok(()),
+        }
     }
 }
 
@@ -187,4 +202,40 @@ fn load_and_transition_failures_are_typed_and_bounded() {
         }
     );
     assert!(!error.to_string().is_empty());
+}
+
+#[test]
+fn retry_completes_a_commit_whose_acknowledgement_was_lost() {
+    for monotonic_first in [false, true] {
+        let mut store = MemoryCounterStore::new(20);
+        store.monotonic_first = monotonic_first;
+        let (manifest, firmware, signature) = signed_update(21);
+        let mut ota = manager(&mut store);
+        ota.verify_update(&manifest, &firmware, &signature).unwrap();
+        store.lost_acknowledgement = Some(RollbackCounterError::Unavailable);
+
+        assert_eq!(
+            ota.commit_verified_update_with_store(&mut store),
+            Err(OtaError::RollbackCounterStore(
+                RollbackCounterError::Unavailable
+            ))
+        );
+        assert_eq!(store.value, 21);
+        assert_eq!(ota.status, OtaStatus::Verified);
+        assert_eq!(ota.rollback_counter(), 20);
+
+        // A retry whose store read confirms this manifest's counter completes.
+        store.load_error = Some(RollbackCounterError::Unavailable);
+        assert!(ota.commit_verified_update_with_store(&mut store).is_err());
+        assert_eq!(ota.status, OtaStatus::Verified);
+        assert_eq!(ota.pending_manifest(), Some(&manifest));
+
+        let receipt = ota.commit_verified_update_with_store(&mut store).unwrap();
+        assert_eq!(receipt.rollback_counter(), 21);
+        assert_eq!(receipt.target_partition(), BootPartition::PartitionB);
+        assert_eq!(ota.rollback_counter(), 21);
+        assert_eq!(ota.status, OtaStatus::Idle);
+        assert!(ota.pending_manifest().is_none());
+        assert_eq!(store.value, 21);
+    }
 }

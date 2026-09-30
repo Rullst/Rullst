@@ -14,6 +14,12 @@ untrusted input. The only execution entry point requires all of these controls:
 The application authenticates the principal and approver. Rullst does not infer
 authorization from model output, a prompt, a role string, or tool registration.
 
+A call to an unregistered tool is denied with `ToolExecutionError::ToolNotFound`
+and audited. When the requested name is not a 1-64 byte `[A-Za-z0-9_-]`
+identifier, the denial and the error carry `invalid-tool-` plus the first 16 hex
+digits of the name's SHA-256 digest instead, so every sink accepts the record
+and the untrusted text is neither stored nor echoed.
+
 ## Minimal read-only dispatch
 
 ```rust
@@ -109,6 +115,15 @@ let result = registry.execute(
 The approval is consumed once. Its approver and bounded reason are recorded in
 authorized/success/failure audit events, while the payload itself is omitted to
 avoid duplicating secrets or personal data in the audit trail.
+
+The sink is called before and after execution. If it rejects the `Authorized`
+record, the tool does not run and the call returns
+`ToolExecutionError::AuditUnavailable`. If it rejects the outcome record after
+the tool ran, for example because a durable trail reached its record quota, the
+call returns `ToolExecutionError::OutcomeUnaudited` with the unrecorded outcome
+and discards the tool output. The side effect may have happened in that case:
+make destructive and financial tools idempotent, or reconcile with the tool's
+own records before approving the same operation again.
 
 ## Durable local evidence
 

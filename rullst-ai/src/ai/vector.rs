@@ -46,6 +46,9 @@ impl VectorIndex {
     }
 
     /// Searches the index returning the top matches sorted by cosine similarity descending.
+    ///
+    /// Scores come from [`cosine_similarity`], so a document whose similarity is
+    /// not finite scores `0.0`. Ranking uses a total order and never panics.
     #[cfg_attr(mutants, mutants::skip)]
     pub fn search(&self, query_vector: &[f32], limit: usize) -> Vec<(f32, &VectorDocument)> {
         if query_vector.is_empty() || self.documents.is_empty() {
@@ -57,18 +60,17 @@ impl VectorIndex {
             .values()
             .map(|document| (cosine_similarity(query_vector, &document.vector), document))
             .collect();
-        results.sort_by(|left, right| {
-            right
-                .0
-                .partial_cmp(&left.0)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        results.sort_by(|left, right| right.0.total_cmp(&left.0));
         results.truncate(limit);
         results
     }
 }
 
 /// Calculates the cosine similarity score between two float vectors.
+///
+/// Returns `0.0` when the lengths differ, a vector is empty or has zero norm,
+/// or the result is not finite (a NaN or infinite component, or components
+/// whose squares overflow `f32`).
 pub fn cosine_similarity(left: &[f32], right: &[f32]) -> f32 {
     if left.len() != right.len() || left.is_empty() {
         return 0.0;
@@ -84,7 +86,12 @@ pub fn cosine_similarity(left: &[f32], right: &[f32]) -> f32 {
     if norm_left == 0.0 || norm_right == 0.0 {
         return 0.0;
     }
-    dot_product / (norm_left.sqrt() * norm_right.sqrt())
+    let similarity = dot_product / (norm_left.sqrt() * norm_right.sqrt());
+    if similarity.is_finite() {
+        similarity
+    } else {
+        0.0
+    }
 }
 
 #[cfg(test)]
@@ -107,5 +114,28 @@ mod tests {
         let results = index.search(&[0.9, 0.1], 1);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].1.id, "x");
+    }
+
+    #[test]
+    fn non_finite_similarities_score_zero_and_rank_with_a_total_order() {
+        assert_eq!(cosine_similarity(&[f32::NAN, 1.0], &[1.0, 0.0]), 0.0);
+        assert_eq!(cosine_similarity(&[f32::INFINITY, 0.0], &[1.0, 0.0]), 0.0);
+        // Finite components whose squares overflow f32 give inf / inf.
+        assert_eq!(cosine_similarity(&[1e20, 1e20], &[1e20, 1e20]), 0.0);
+
+        let mut index = VectorIndex::new();
+        for position in 0..64_u8 {
+            let vector = if position % 3 == 0 {
+                vec![f32::NAN, 1.0]
+            } else {
+                vec![1.0, f32::from(position)]
+            };
+            index.add(format!("doc-{position}"), vector, serde_json::json!({}));
+        }
+        let results = index.search(&[1.0, 0.0], 64);
+        assert_eq!(results.len(), 64);
+        assert!(results.iter().all(|(score, _)| score.is_finite()));
+        assert!(results.windows(2).all(|pair| pair[0].0 >= pair[1].0));
+        assert_eq!(results[0].1.id, "doc-1");
     }
 }

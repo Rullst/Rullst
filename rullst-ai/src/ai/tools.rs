@@ -19,7 +19,7 @@ pub use audit::{
     ToolAuditOutcome, ToolAuditSink,
 };
 pub use policy::{HumanApproval, ToolExecutionContext, ToolExecutionPolicy};
-use validation::{serialized_size, validate_payload, validate_tool};
+use validation::{audited_tool_name, serialized_size, validate_payload, validate_tool};
 
 /// Representation of a parameter in an AI tool's bounded JSON schema.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -64,6 +64,8 @@ pub enum ToolExecutionError {
     InvalidPolicy(String),
     #[error("tool '{0}' is already registered")]
     DuplicateTool(String),
+    /// Carries the requested name, or an `invalid-tool-<digest>` placeholder
+    /// when the requested name is not a valid tool identifier.
     #[error("tool '{0}' is not registered")]
     ToolNotFound(String),
     #[error("principal is not authorized to execute tool '{tool}'")]
@@ -84,6 +86,18 @@ pub enum ToolExecutionError {
     ExecutionFailed { tool: String },
     #[error("tool audit trail is unavailable: {0}")]
     AuditUnavailable(String),
+    /// The tool was executed, but the audit sink rejected its outcome record.
+    ///
+    /// Unlike [`ToolExecutionError::AuditUnavailable`], any side effect may
+    /// already have happened. `outcome` is the record that could not be stored
+    /// and `reason` is the sink's diagnostic. The tool output is discarded; do
+    /// not repeat the call without reconciling with the tool's own records.
+    #[error("tool '{tool}' ran but its {outcome:?} outcome could not be audited: {reason}")]
+    OutcomeUnaudited {
+        tool: String,
+        outcome: ToolAuditOutcome,
+        reason: String,
+    },
 }
 
 /// Registry of locally implemented tools. Every execution requires a policy,
@@ -161,12 +175,13 @@ impl ToolRegistry {
         let tool = match self.tools.get(name) {
             Some(tool) => tool,
             None => {
+                let recorded = audited_tool_name(name);
                 return Err(deny(
                     audit,
                     context,
-                    name,
+                    &recorded,
                     None,
-                    ToolExecutionError::ToolNotFound(name.to_string()),
+                    ToolExecutionError::ToolNotFound(recorded.clone()),
                 ));
             }
         };
@@ -239,16 +254,23 @@ impl ToolRegistry {
         ))?;
         context.remaining_calls -= 1;
 
-        let output = match tool.execute(payload) {
-            Ok(output) => output,
-            Err(_) => {
-                audit.record(audit_event(
+        // From here on the tool has run, so an audit failure must not look
+        // like the pre-execution `AuditUnavailable` denial.
+        let record_outcome = |outcome| {
+            audit
+                .record(audit_event(
                     context,
                     name,
                     Some(risk),
                     approval.as_ref(),
-                    ToolAuditOutcome::Failed,
-                ))?;
+                    outcome,
+                ))
+                .map_err(|error| unaudited_outcome(name, outcome, error))
+        };
+        let output = match tool.execute(payload) {
+            Ok(output) => output,
+            Err(_) => {
+                record_outcome(ToolAuditOutcome::Failed)?;
                 return Err(ToolExecutionError::ExecutionFailed {
                     tool: name.to_string(),
                 });
@@ -256,25 +278,13 @@ impl ToolRegistry {
         };
         let output_size = serialized_size(&output, name)?;
         if output_size > policy.max_output_bytes {
-            audit.record(audit_event(
-                context,
-                name,
-                Some(risk),
-                approval.as_ref(),
-                ToolAuditOutcome::Failed,
-            ))?;
+            record_outcome(ToolAuditOutcome::Failed)?;
             return Err(ToolExecutionError::OutputTooLarge {
                 actual: output_size,
                 limit: policy.max_output_bytes,
             });
         }
-        audit.record(audit_event(
-            context,
-            name,
-            Some(risk),
-            approval.as_ref(),
-            ToolAuditOutcome::Succeeded,
-        ))?;
+        record_outcome(ToolAuditOutcome::Succeeded)?;
         Ok(output)
     }
 
@@ -301,6 +311,22 @@ fn audit_event(
         approved_by: approval.map(|approval| approval.approver().to_string()),
         approval_reason: approval.map(|approval| approval.reason().to_string()),
         outcome,
+    }
+}
+
+fn unaudited_outcome(
+    tool: &str,
+    outcome: ToolAuditOutcome,
+    error: ToolExecutionError,
+) -> ToolExecutionError {
+    let reason = match error {
+        ToolExecutionError::AuditUnavailable(reason) => reason,
+        other => other.to_string(),
+    };
+    ToolExecutionError::OutcomeUnaudited {
+        tool: tool.to_string(),
+        outcome,
+        reason,
     }
 }
 

@@ -1,6 +1,6 @@
 //! Tenant-aware conversational memory with optimistic cross-process ordering.
 
-use super::{AiClient, AiError, Message};
+use super::{AiClient, AiError, AiGuardrails, Message};
 use async_trait::async_trait;
 use rullst_core::security::TenantContext;
 use std::{
@@ -450,6 +450,12 @@ where
     ///
     /// A competing writer causes `RevisionConflict`; Rullst does not automatically
     /// repeat the provider call because that could duplicate cost or side effects.
+    ///
+    /// Stored history is replayed through the mandatory guardrail on every later
+    /// turn. A provider response that the guardrail would block is therefore
+    /// rejected with [`StatefulChatError::Generation`] carrying
+    /// [`AiError::BlockedByFirewall`] and neither half of the exchange is
+    /// persisted, so one response cannot make the conversation unusable.
     pub async fn send(
         &self,
         tenant: &TenantContext,
@@ -473,6 +479,7 @@ where
             .await
             .map_err(StatefulChatError::Generation)?;
         validate_content(&response)?;
+        AiGuardrails::prepare(&response).map_err(StatefulChatError::Generation)?;
         let revision = self
             .memory
             .append_exchange(tenant, conversation, history.revision(), &user, &response)

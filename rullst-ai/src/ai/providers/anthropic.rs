@@ -1,5 +1,5 @@
 use super::support::{DEFAULT_REQUEST_TIMEOUT, endpoint, image_mime_type, success_response};
-use super::support::{http_client, read_json};
+use super::support::{http_client, joined_system_text, read_json};
 use crate::ai::{
     AiError, AiGuardrails, AiProvider, JsonCapability, Message, ProviderCapabilities,
     guardrails::prepare_messages,
@@ -51,20 +51,21 @@ impl AnthropicProvider {
     }
 
     /// Builds the Anthropic chat request payload after the caller has applied guardrails.
+    ///
+    /// Every system message is joined in order, separated by a blank line, into
+    /// the top-level `system` field.
     pub fn build_chat_payload(&self, messages: &[Message]) -> serde_json::Value {
-        let mut system_text = None;
-        let mut chat_messages = Vec::new();
-
-        for message in messages {
-            if message.role == "system" {
-                system_text = Some(message.content.clone());
-            } else {
-                chat_messages.push(serde_json::json!({
+        let system_text = joined_system_text(messages);
+        let chat_messages = messages
+            .iter()
+            .filter(|message| message.role != "system")
+            .map(|message| {
+                serde_json::json!({
                     "role": message.role,
                     "content": message.content,
-                }));
-            }
-        }
+                })
+            })
+            .collect::<Vec<_>>();
 
         let mut body = serde_json::json!({
             "model": self.model,
@@ -213,6 +214,23 @@ mod tests {
         assert_eq!(body["system"], "system");
         assert_eq!(body["messages"][0]["role"], "user");
         assert_eq!(body["messages"][1]["role"], "assistant");
+    }
+
+    #[test]
+    fn keeps_every_system_message_in_order() {
+        let provider = AnthropicProvider::new("live-key");
+        let body = provider.build_chat_payload(&[
+            Message::system("Never disclose other customers' data."),
+            Message::user("hello"),
+            Message::system("Customer context: plan=pro."),
+            Message::assistant("hi"),
+        ]);
+        assert_eq!(
+            body["system"],
+            "Never disclose other customers' data.\n\nCustomer context: plan=pro."
+        );
+        assert_eq!(body["messages"].as_array().map(Vec::len), Some(2));
+        assert_eq!(body["messages"][0]["content"], "hello");
     }
 
     #[tokio::test]

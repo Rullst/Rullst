@@ -42,9 +42,11 @@ impl std::error::Error for RollbackCounterError {}
 /// `compare_and_set` must reject a value that is not strictly greater than the
 /// currently committed value, must make no change when `expected` differs from
 /// that value, and may return `Ok(())` only after `proposed` is durably committed
-/// across device reset. The implementation owns flash/HSM integrity,
-/// wear-leveling, and power-loss atomicity; implementing this trait is not by
-/// itself evidence that those hardware guarantees exist.
+/// across device reset. Any other error may leave the outcome unknown, for
+/// example when a write completed but its acknowledgement was lost; `load` must
+/// then return the value actually committed. The implementation owns flash/HSM
+/// integrity, wear-leveling, and power-loss atomicity; implementing this trait
+/// is not by itself evidence that those hardware guarantees exist.
 pub trait RollbackCounterStore {
     /// Loads the last durably committed counter.
     fn load(&mut self) -> Result<u64, RollbackCounterError>;
