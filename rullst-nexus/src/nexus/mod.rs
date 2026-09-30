@@ -1,5 +1,6 @@
 mod access;
 pub mod ai_chat;
+mod assets;
 pub mod audit;
 pub mod crud;
 mod metadata;
@@ -167,6 +168,8 @@ impl Nexus {
             .route("/chat/query", post(nexus_chat_query))
             .route("/security", get(nexus_security_page))
             .route("/telemetry", get(nexus_telemetry_page))
+            // rullst-access: admin — same-origin shell assets behind the same policy.
+            .merge(assets::router())
             .layer(axum::middleware::from_fn(
                 rullst_core::security::csrf_middleware,
             ));

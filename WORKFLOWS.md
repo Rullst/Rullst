@@ -135,7 +135,9 @@ Missing browser prerequisites or a missing Portfolio execution receipt fail
 those shards. Other platforms still run the render assertions and the complete
 existing project matrix; they do not claim Chromium evidence. Local runs opt in
 with the same flag and an absolute `RULLST_UI_BROWSER_SCRIPT` path. CDN resources
-are blocked in this UI fixture; this is not live-provider, WebKit/Firefox,
+are blocked in this UI fixture. The Nexus run serves the shell with the default
+production CSP and its real same-origin assets, and fails on a CSP violation;
+this is not live-provider, WebKit/Firefox,
 hardware-device, or WCAG certification. No extra Rust compilation matrix is added.
 
 GitHub executes `schedule` events from the repository's default branch, so
