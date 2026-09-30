@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790802564119,
+  "lastUpdate": 1790811751917,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -9980,6 +9980,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "357ece88edcfdb0665de8bfe06c1f6527a68ee1e",
+          "message": "Merge pull request #360 from Rullst/fix/v13-orm-low-fixes\n\nfix(orm): low-severity migration, pool, outbox, enum, Turso and SurrealDB review fixes",
+          "timestamp": "2026-09-30T20:20:53-03:00",
+          "tree_id": "606672ba8b6554c896df8b23319f71e82d90d570",
+          "url": "https://github.com/Rullst/Rullst/commit/357ece88edcfdb0665de8bfe06c1f6527a68ee1e"
+        },
+        "date": 1790811751288,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 16,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 18,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 5,
             "range": "± 0",
             "unit": "ns/iter"
           }
