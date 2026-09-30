@@ -170,6 +170,86 @@ async fn crud_contracts_hold_on_sqlite() {
     numeric_keys_are_canonical_in_sql_and_audit(&app, pool).await;
     unrepresentable_keys_do_not_block_required_audit(&app, pool).await;
     null_and_unreadable_list_values_are_not_fabricated(&app, pool).await;
+    browser_forms_carry_the_csrf_body_token(&app, pool).await;
+}
+
+/// The bulk-action form is a plain browser POST without the `X-CSRF-Token`
+/// header, so it must carry the rendered `_token` field (NEXUS-06), which
+/// create also accepts (NX2-10).
+async fn browser_forms_carry_the_csrf_body_token(app: &axum::Router, pool: &RullstPool) {
+    let response = app
+        .clone()
+        .oneshot(
+            local_request()
+                .uri("/table/nexus_counters")
+                .body(Body::empty())
+                .expect("valid list request"),
+        )
+        .await
+        .expect("list response");
+    let cookie = response
+        .headers()
+        .get("set-cookie")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.split(';').next())
+        .expect("CSRF cookie issued to a new browser")
+        .to_owned();
+    let token = cookie
+        .strip_prefix("rullst_csrf=")
+        .expect("rullst_csrf cookie")
+        .to_owned();
+    let html = body_text(response).await;
+    let form = html
+        .split("<form id=\"batch-form-nexus_counters\"")
+        .nth(1)
+        .and_then(|rest| rest.split("</form>").next())
+        .expect("bulk-action form");
+    assert!(
+        form.contains(&format!(
+            "<input type=\"hidden\" name=\"_token\" value=\"{token}\" />"
+        )),
+        "the bulk form must carry the request's CSRF token"
+    );
+
+    let browser_post = |uri: &'static str, body: String| {
+        local_request()
+            .method("POST")
+            .uri(uri)
+            .header("content-type", "application/x-www-form-urlencoded")
+            .header("cookie", cookie.as_str())
+            .body(Body::from(body))
+            .expect("valid browser form POST")
+    };
+    let created = app
+        .clone()
+        .oneshot(browser_post(
+            "/table/nexus_counters",
+            format!("_token={token}&label=via-body-token"),
+        ))
+        .await
+        .expect("create response");
+    assert_eq!(created.status(), StatusCode::OK);
+    let (id,): (i64,) =
+        sqlx::query_as("SELECT id FROM nexus_counters WHERE label = 'via-body-token'")
+            .fetch_one(pool)
+            .await
+            .expect("created through the body token");
+
+    let batch = app
+        .clone()
+        .oneshot(browser_post(
+            "/table/nexus_counters/batch",
+            format!("_token={token}&action=delete&selected_ids={id}"),
+        ))
+        .await
+        .expect("batch response");
+    assert_eq!(batch.status(), StatusCode::SEE_OTHER);
+    let (remaining,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM nexus_counters WHERE label = 'via-body-token'")
+            .fetch_one(pool)
+            .await
+            .expect("count remaining rows");
+    assert_eq!(remaining, 0);
 }
 
 /// NULL and undecodable numbers, Booleans and relations are not shown as `0`

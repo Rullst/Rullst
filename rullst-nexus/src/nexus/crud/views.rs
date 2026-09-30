@@ -201,6 +201,40 @@ pub async fn render_table_view(
     order: Option<&str>,
     tenant_id: Option<&str>,
 ) -> String {
+    let view = TableView {
+        page,
+        q,
+        sort_by,
+        order,
+        tenant_id,
+        csrf_token: None,
+    };
+    table_view(entry, &view).await
+}
+
+/// Request state for one rendering of the table view.
+pub(crate) struct TableView<'a> {
+    pub(crate) page: u32,
+    pub(crate) q: &'a str,
+    pub(crate) sort_by: Option<&'a str>,
+    pub(crate) order: Option<&'a str>,
+    pub(crate) tenant_id: Option<&'a str>,
+    /// The request's double-submit token. The bulk-action form is a plain
+    /// browser POST that cannot send the `X-CSRF-Token` header, so it carries
+    /// the token as the `_token` field Core's CSRF middleware accepts.
+    pub(crate) csrf_token: Option<&'a str>,
+}
+
+/// Renders the table view for one request.
+pub(crate) async fn table_view(entry: &RegistryEntry, view: &TableView<'_>) -> String {
+    let TableView {
+        page,
+        q,
+        sort_by,
+        order,
+        tenant_id,
+        csrf_token,
+    } = *view;
     let visible_fields: Vec<&FieldMeta> = entry.fields.iter().filter(|f| !f.hidden).collect();
 
     let th_cells = visible_fields.iter().fold(String::new(), |mut acc, f| {
@@ -245,6 +279,14 @@ pub async fn render_table_view(
     } else {
         ""
     };
+    let token_field = csrf_token
+        .map(|token| {
+            format!(
+                "<input type=\"hidden\" name=\"_token\" value=\"{}\" />",
+                rullst_core::html::escape_str(token)
+            )
+        })
+        .unwrap_or_default();
 
     let mut out = String::new();
     let _ = write!(
@@ -260,7 +302,7 @@ pub async fn render_table_view(
     let _ = write!(
         out,
         "<form id=\"batch-form-{table_path}\" method=\"POST\" action=\"/nexus/table/{table_path}/batch\" \
-         data-nexus-confirm=\"Apply bulk action?\">\
+         data-nexus-confirm=\"Apply bulk action?\">{token_field}\
          <div class=\"nexus-toolbar\">\
          <div class=\"nexus-search-wrap\">\
          <span class=\"nexus-search-icon\">&#128269;</span>\
