@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790785344270,
+  "lastUpdate": 1790789358583,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -22449,6 +22449,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2216,
             "range": "± 78",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "402ce4191277735e3d1f8d5080550156e9b92fd1",
+          "message": "Merge pull request #347 from Rullst/fix/v13-orm-tail-fixes\n\nfix(orm): serialize nested savepoints, typed DDL, transactional enum DDL and indexed cache invalidation",
+          "timestamp": "2026-09-30T14:23:13-03:00",
+          "tree_id": "60a648cd9250c117ce3d247caf4f8b93b260f662",
+          "url": "https://github.com/Rullst/Rullst/commit/402ce4191277735e3d1f8d5080550156e9b92fd1"
+        },
+        "date": 1790789355791,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 442,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 638,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 4,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 442,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1215,
+            "range": "± 10",
             "unit": "ns/iter"
           }
         ]
