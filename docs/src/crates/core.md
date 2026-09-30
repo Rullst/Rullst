@@ -92,6 +92,10 @@ exercises this boundary through a real proxy; full hosted admission remains pend
   and other subsystems expose their own typed errors. Applications may compose
   those into an application-owned `AppError`; Core does not define one global
   application error type.
+- **Redacted configuration `Debug`:** `DatabaseConfig` (and therefore
+  `RullstConfig`) prints only the database URL scheme, such as
+  `postgres://<redacted>`; `db::ReplicationConfig` redacts `auth_token` and
+  prints only the `sync_url` scheme. Fields stay public and unchanged.
 - **Durable scheduled queues:** SQLite and Redis persist bounded due timestamps;
   the live Redis CI contract proves that an immediate job remains claimable
   while a future job stays unavailable.
