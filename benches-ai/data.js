@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790742120515,
+  "lastUpdate": 1790747094477,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -11025,6 +11025,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 262,
             "range": "± 11",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "83f7c8d3907ceded210608f7309174bd974a43ce",
+          "message": "Merge pull request #338 from Rullst/fix/v13-storage-macros-low-fixes\n\nfix(storage,macros): encode URLs, harden uploads, bound memoize, safe html! URL attributes",
+          "timestamp": "2026-09-30T02:21:51-03:00",
+          "tree_id": "07ec03c47a36d889a280b27a91eaaf958bf5d049",
+          "url": "https://github.com/Rullst/Rullst/commit/83f7c8d3907ceded210608f7309174bd974a43ce"
+        },
+        "date": 1790747093893,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1662,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 376,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 3,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 396,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
