@@ -79,6 +79,36 @@ mod tests {
     }
 
     #[test]
+    fn queued_attachments_decode_from_base64_and_legacy_arrays() {
+        let message =
+            Message::new()
+                .to("user@example.com")
+                .text("safe")
+                .attach(crate::Attachment::new(
+                    "a.bin",
+                    vec![0, 1, 255],
+                    "application/octet-stream",
+                ));
+        let payload = serde_json::to_value(QueuedMail {
+            schema_version: MAIL_JOB_SCHEMA_VERSION,
+            tenant_id: None,
+            message,
+        })
+        .expect("serialize queue envelope");
+        assert_eq!(payload["message"]["attachments"][0]["content"], "AAH/");
+        let mut legacy = payload.clone();
+        legacy["message"]["attachments"][0]["content"] = serde_json::json!([0, 1, 255]);
+        for payload in [payload, legacy] {
+            let decoded: MailJobPayload =
+                serde_json::from_value(payload).expect("deserialize queue envelope");
+            let MailJobPayload::Current(decoded) = decoded else {
+                panic!("versioned envelope must not decode as legacy");
+            };
+            assert_eq!(decoded.message.attachments[0].content, vec![0, 1, 255]);
+        }
+    }
+
+    #[test]
     fn claimed_schedule_is_enforced_then_consumed_by_the_queue() {
         let future = Message::new()
             .to("future@example.com")
