@@ -152,6 +152,53 @@ async fn middleware_rejects_deep_and_oversized_json() {
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
+#[tokio::test]
+async fn bodiless_requests_with_a_json_content_type_pass_both_guards() {
+    let global = Router::new()
+        .route(
+            "/",
+            axum::routing::get(|| async { "list" })
+                .delete(|| async { "deleted" })
+                .post(|body: String| async move { body }),
+        )
+        .layer(middleware::from_fn(schema_guard_middleware));
+    let policy =
+        JsonSchemaPolicy::from_schema(serde_json::json!({"type": "object"})).expect("route schema");
+    let scoped = Router::new().route(
+        "/",
+        axum::routing::get(|| async { "list" })
+            .post(|body: String| async move { body })
+            .layer(middleware::from_fn_with_state(
+                policy,
+                json_schema_guard_middleware,
+            )),
+    );
+    let request = |method: &str, body: &'static str| {
+        Request::builder()
+            .method(method)
+            .uri("/")
+            .header(axum::http::header::CONTENT_TYPE, "application/json")
+            .body(Body::from(body))
+            .expect("request should be valid")
+    };
+    for (app, method, body, expected) in [
+        (&global, "GET", "", StatusCode::OK),
+        (&global, "DELETE", "", StatusCode::OK),
+        (&global, "POST", "", StatusCode::BAD_REQUEST),
+        (&global, "GET", "{", StatusCode::BAD_REQUEST),
+        (&scoped, "GET", "", StatusCode::OK),
+        (&scoped, "POST", "", StatusCode::BAD_REQUEST),
+        (&scoped, "GET", "[]", StatusCode::UNPROCESSABLE_ENTITY),
+    ] {
+        let response = app
+            .clone()
+            .oneshot(request(method, body))
+            .await
+            .expect("middleware request should complete");
+        assert_eq!(response.status(), expected, "{method} {body:?}");
+    }
+}
+
 fn schema_bound_app() -> Router {
     let policy = JsonSchemaPolicy::from_schema(serde_json::json!({
         "$schema": "https://json-schema.org/draft/2020-12/schema",

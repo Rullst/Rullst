@@ -73,7 +73,9 @@
   compile one bounded JSON Schema 2020-12 document or one explicit OpenAPI 3.1
   component into route-scoped middleware. References stay local, pattern
   matching uses the linear-time regex engine, and schema construction performs
-  no filesystem or network retrieval.
+  no filesystem or network retrieval. An empty `GET`, `HEAD` or `OPTIONS`
+  body (and, for the global guard, `DELETE`) passes even when the client sends
+  a JSON `Content-Type`.
 - **Response DLP:** `mask_response_payload` and `DlpResponseLayer` mask
   complete PEM private-key blocks (PKCS#8 plain or encrypted, RSA, EC, DSA,
   OpenSSH and OpenPGP), AWS access-key IDs and `postgres`/`postgresql`/`mysql`/`redis`/`rediss`

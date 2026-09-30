@@ -156,7 +156,20 @@ fn is_json_content_type(value: &str) -> bool {
     crate::media_type::is_json(crate::media_type::essence(value))
 }
 
+/// Methods whose requests normally carry no body. Clients and fetch wrappers
+/// often send a JSON `Content-Type` on them anyway, so an empty body is passed
+/// through instead of being rejected as invalid JSON.
+fn is_bodiless_method(method: &axum::http::Method, include_delete: bool) -> bool {
+    matches!(
+        *method,
+        axum::http::Method::GET | axum::http::Method::HEAD | axum::http::Method::OPTIONS
+    ) || (include_delete && *method == axum::http::Method::DELETE)
+}
+
 /// Middleware that inspects application/json request payloads for JSON bombs and depth limits.
+///
+/// An empty `GET`, `HEAD`, `DELETE` or `OPTIONS` body passes through even with
+/// a JSON `Content-Type`; a handler that requires a body still rejects it.
 pub async fn schema_guard_middleware(req: Request, next: Next) -> Response {
     let content_type = req
         .headers()
@@ -180,8 +193,9 @@ pub async fn schema_guard_middleware(req: Request, next: Next) -> Response {
             }
         };
 
-        if let Err(err_msg) =
-            inspect_json_payload(&bytes, DEFAULT_MAX_NESTING_DEPTH, DEFAULT_MAX_PAYLOAD_BYTES)
+        if !(bytes.is_empty() && is_bodiless_method(&parts.method, true))
+            && let Err(err_msg) =
+                inspect_json_payload(&bytes, DEFAULT_MAX_NESTING_DEPTH, DEFAULT_MAX_PAYLOAD_BYTES)
         {
             return (StatusCode::BAD_REQUEST, err_msg).into_response();
         }
@@ -198,7 +212,8 @@ pub async fn schema_guard_middleware(req: Request, next: Next) -> Response {
 ///
 /// Mount this with `axum::middleware::from_fn_with_state`. The policy disables
 /// filesystem and network reference resolution and accepts only local `$ref`
-/// and `$dynamicRef` values.
+/// and `$dynamicRef` values. `GET`, `HEAD` and `OPTIONS` requests pass through
+/// without a JSON `Content-Type` or with an empty body.
 pub async fn json_schema_guard_middleware(
     axum::extract::State(policy): axum::extract::State<JsonSchemaPolicy>,
     req: Request,
@@ -210,10 +225,7 @@ pub async fn json_schema_guard_middleware(
         .and_then(|value| value.to_str().ok())
         .unwrap_or("");
     if !is_json_content_type(content_type) {
-        if matches!(
-            *req.method(),
-            axum::http::Method::GET | axum::http::Method::HEAD | axum::http::Method::OPTIONS
-        ) {
+        if is_bodiless_method(req.method(), false) {
             return next.run(req).await;
         }
         SecurityStore::global().inc_schema_violations();
@@ -236,6 +248,11 @@ pub async fn json_schema_guard_middleware(
                 .into_response();
         }
     };
+    if bytes.is_empty() && is_bodiless_method(&parts.method, false) {
+        return next
+            .run(Request::from_parts(parts, Body::from(bytes)))
+            .await;
+    }
     if let Err(message) =
         inspect_json_payload(&bytes, DEFAULT_MAX_NESTING_DEPTH, DEFAULT_MAX_PAYLOAD_BYTES)
     {
