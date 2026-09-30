@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790795729052,
+  "lastUpdate": 1790796918034,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Security Benchmark": [
@@ -12890,6 +12890,60 @@ window.BENCHMARK_DATA = {
           {
             "name": "vault_secret/vault_secret_new_and_drop",
             "value": 28,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "21154a65f98aa479f30ea05ad24c9e67d3de35a7",
+          "message": "Merge pull request #355 from Rullst/fix/v13-auth-ai-iot-low-fixes\n\nfix(auth,ai,iot): low-severity review fixes for stores, cookies, fallbacks and CoAP/OTA edges",
+          "timestamp": "2026-09-30T16:14:48-03:00",
+          "tree_id": "1a2c1c91c3287e0792f9619522d82e38d33c82c2",
+          "url": "https://github.com/Rullst/Rullst/commit/21154a65f98aa479f30ea05ad24c9e67d3de35a7"
+        },
+        "date": 1790796917218,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "html_sanitizer/sanitize_html_xss",
+            "value": 5393,
+            "range": "± 126",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_sanitizer/sanitize_text_escape",
+            "value": 673,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_role",
+            "value": 14,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "rbac_guard/authorize_owner_or_role",
+            "value": 13,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "vault_secret/vault_secret_new_and_drop",
+            "value": 26,
             "range": "± 0",
             "unit": "ns/iter"
           }
