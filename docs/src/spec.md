@@ -2708,7 +2708,7 @@ sending.
   HTTPS/Bearer, and unrelated protocols implement the public `AiProvider`
   boundary rather than passing through arbitrary HTTP.
 * **Prompt Injection Firewall:** Real-time token heuristics intercepting prompt exfiltration, instruction overrides (`DAN mode`), and delimiter injection attacks.
-* **Automated PII Masking:** Scrubs sensitive data (CPF/CNPJ, credit cards, emails) prior to outbound LLM dispatch.
+* **Automated PII Masking:** Scrubs check-digit-valid CPF/CNPJ numbers (canonical formatted or unformatted), card-like digit runs and email usernames prior to outbound LLM dispatch. Alphanumeric CNPJs and other identifiers are not recognized.
 
 ### 9.2. Bounded Streaming and Cancellation
 * `StreamingAiClient<P>` preserves static dispatch, reapplies the mandatory

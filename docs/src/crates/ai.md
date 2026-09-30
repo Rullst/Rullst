@@ -53,10 +53,11 @@ Call custom `AiProvider` implementations through `AiClient` when the application
 mandatory boundary.
 
 The current guardrail blocks deterministic injection patterns, provider delimiter tokens, external
-Markdown beacons, and selected invisible Unicode controls. Supported PII classes are masked before
-outbound transmission. This is a bounded heuristic control, not proof that arbitrary input or model
-output is safe; authorization, tool permissions, output encoding, and domain validation remain
-application responsibilities.
+Markdown beacons, and selected invisible Unicode controls. Check-digit-valid CPF/CNPJ numbers
+(canonical formatted or unformatted), card-like digit runs and email usernames are masked before
+outbound transmission; alphanumeric CNPJs and other identifiers are not recognized. This is a
+bounded heuristic control, not proof that arbitrary input or model output is safe; authorization,
+tool permissions, output encoding, and domain validation remain application responsibilities.
 
 ## Adaptive evaluation runner
 

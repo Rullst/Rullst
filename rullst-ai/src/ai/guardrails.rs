@@ -6,6 +6,8 @@
 use super::{AiError, Message};
 use rullst_core::security::mask_pii;
 
+mod tax_ids;
+
 /// A prompt-injection class detected before an outbound provider request.
 #[non_exhaustive]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -120,9 +122,12 @@ impl AiGuardrails {
     ];
 
     /// Inspects injection heuristics and masks PII without performing I/O.
+    ///
+    /// Check-digit-valid CPF and CNPJ numbers are masked first, then card-like
+    /// digit runs and email usernames.
     pub fn inspect(text: &str) -> GuardrailReport {
         let threat = detect_threat(text);
-        let redacted_text = mask_pii(text);
+        let redacted_text = mask_pii(&tax_ids::mask_tax_ids(text));
         let pii_was_masked = redacted_text != text;
 
         GuardrailReport {
@@ -243,6 +248,22 @@ mod tests {
         assert!(report.pii_was_masked());
         assert!(!report.redacted_text().contains("alice@example.com"));
         assert!(!report.redacted_text().contains("4242 4242 4242 4242"));
+    }
+
+    #[test]
+    fn masks_valid_cpf_and_cnpj_before_dispatch() {
+        let report = AiGuardrails::inspect(
+            "Cliente CPF 123.456.789-09, CNPJ 12.345.678/0001-95, 12345678909 e 12345678000195.",
+        );
+        assert!(report.passed_heuristics());
+        assert!(report.pii_was_masked());
+        assert_eq!(
+            report.redacted_text(),
+            "Cliente CPF ***.***.***-**, CNPJ **.***.***/****-**, *********** e **************."
+        );
+
+        let invalid = "Pedido 123.456.789-00 e protocolo 12345678900";
+        assert_eq!(AiGuardrails::inspect(invalid).redacted_text(), invalid);
     }
 
     #[test]

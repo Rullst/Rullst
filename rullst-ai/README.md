@@ -73,9 +73,11 @@ async fn answer(api_key: String, user_text: &str) -> Result<String, AiError> {
 same guardrail stage before provider dispatch. Built-in providers repeat that check on direct trait
 calls. Custom `AiProvider` implementations should be called through `AiClient` in application code.
 
-The guardrail blocks deterministic injection patterns and invisible Unicode controls. Supported PII
-classes are masked before outbound transmission. Like all heuristic filters, this is one boundary in
-a defense-in-depth design; it is not a proof that arbitrary model output is safe.
+The guardrail blocks deterministic injection patterns and invisible Unicode controls.
+Check-digit-valid CPF/CNPJ numbers (canonical formatted or unformatted), card-like digit runs and
+email usernames are masked before outbound transmission; alphanumeric CNPJs and other identifiers
+are not recognized. Like all heuristic filters, this is one boundary in a defense-in-depth design;
+it is not a proof that arbitrary model output is safe.
 
 ## Bounded streaming and explicit cancellation
 
