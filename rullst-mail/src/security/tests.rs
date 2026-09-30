@@ -280,3 +280,24 @@ fn private_key_blocks_are_redacted_whatever_their_label() {
         assert_eq!(redact_email_secrets(kept), kept);
     }
 }
+
+#[test]
+fn aws_key_ids_are_redacted_only_as_whole_tokens() {
+    for (input, expected) in [
+        ("key AKIA1234567890ABCDEF.", "key AKIA****************."),
+        ("id=ASIA1234567890ABCDEF", "id=ASIA****************"),
+        ("AKIA1234567890ABCDEF", "AKIA****************"),
+        ("\"ASIAABCDEFGHIJKLMNOP\"", "\"ASIA****************\""),
+    ] {
+        assert_eq!(redact_email_secrets(input), expected);
+    }
+    // Base64 runs in data: images and tracking tokens are not key IDs.
+    for kept in [
+        "data:image/png;base64,iVBORw0KGgoAKIA1234567890ABCDEFxyz",
+        "v2.eyJhIjoxfQAKIA1234567890ABCDEF9.c2ln",
+        "xASIA1234567890ABCDEF",
+        "AKIA1234567890ABCDEFG",
+    ] {
+        assert_eq!(redact_email_secrets(kept), kept);
+    }
+}

@@ -55,20 +55,38 @@ fn redact_values_after(input: &str, marker: &str, stop_at_ampersand: bool) -> St
     output
 }
 
+/// Redacts long-term (`AKIA`) and temporary (`ASIA`) AWS access key IDs.
+///
+/// A key ID is a whole 20-character alphanumeric token, so the characters on
+/// either side must not be alphanumeric. Base64 data such as inline images or
+/// signed tracking tokens therefore keeps an accidental `AKIA` run intact.
 fn redact_aws_access_keys(output: &mut String) {
-    // Same-length replacement keeps this in-place pass linear.
-    let mut offset = 0usize;
-    while let Some(relative) = output.get(offset..).and_then(|tail| tail.find("AKIA")) {
-        let start = offset + relative;
-        let candidate_end = start.saturating_add(20);
-        let valid = output
-            .get(start..candidate_end)
-            .is_some_and(|candidate| candidate.bytes().all(|byte| byte.is_ascii_alphanumeric()));
-        if valid {
-            output.replace_range(start..candidate_end, "AKIA****************");
-            offset = start + 20;
-        } else {
-            offset = start + 4;
+    for (prefix, replacement) in [
+        ("AKIA", "AKIA****************"),
+        ("ASIA", "ASIA****************"),
+    ] {
+        // Same-length replacement keeps this in-place pass linear.
+        let mut offset = 0usize;
+        while let Some(relative) = output.get(offset..).and_then(|tail| tail.find(prefix)) {
+            let start = offset + relative;
+            let candidate_end = start.saturating_add(20);
+            let bytes = output.as_bytes();
+            let delimited = |index: Option<usize>| {
+                index
+                    .and_then(|index| bytes.get(index))
+                    .is_none_or(|byte| !byte.is_ascii_alphanumeric())
+            };
+            let valid = delimited(start.checked_sub(1))
+                && delimited(Some(candidate_end))
+                && output.get(start..candidate_end).is_some_and(|candidate| {
+                    candidate.bytes().all(|byte| byte.is_ascii_alphanumeric())
+                });
+            if valid {
+                output.replace_range(start..candidate_end, replacement);
+                offset = candidate_end;
+            } else {
+                offset = start + prefix.len();
+            }
         }
     }
 }
