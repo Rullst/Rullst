@@ -5,13 +5,15 @@ use crate::telemetry::SecurityStore;
 use connection::SharedConnection;
 use dashmap::DashMap;
 use sha2::{Digest, Sha256};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 mod connection;
 
 const MAX_WINDOW: Duration = Duration::from_secs(24 * 60 * 60);
 const MAX_CLIENT_KEY_BYTES: usize = 1024;
+/// Most client keys the process-local offline mode tracks at once.
+const MAX_OFFLINE_KEYS: usize = 16_384;
 const REDIS_FIXED_WINDOW_SCRIPT: &str = r#"
 local current = redis.call('INCR', KEYS[1])
 if current == 1 then
@@ -45,7 +47,47 @@ pub struct RateLimitDecision {
 enum Backend {
     /// One lazily opened multiplexed connection shared by every clone.
     Redis(Arc<SharedConnection>),
-    OfflineMock(Arc<DashMap<String, (Instant, u64)>>),
+    OfflineMock(Arc<OfflineStore>),
+}
+
+/// Bounded process-local counters of the offline mode.
+struct OfflineStore {
+    entries: DashMap<String, (Instant, u64)>,
+    /// Serializes admission of new keys and records the last expiry sweep.
+    last_sweep: Mutex<Instant>,
+}
+
+impl OfflineStore {
+    fn new() -> Self {
+        Self {
+            entries: DashMap::new(),
+            last_sweep: Mutex::new(Instant::now()),
+        }
+    }
+
+    /// Admits `key` into the table. While it is full, expired windows are
+    /// reclaimed at most once per `min(window, 1 s)`; a new key is refused
+    /// when no slot is free.
+    fn admit(&self, key: &str, now: Instant, window: Duration) -> bool {
+        let Ok(mut last_sweep) = self.last_sweep.lock() else {
+            return false;
+        };
+        if self.entries.contains_key(key) {
+            return true;
+        }
+        if self.entries.len() >= MAX_OFFLINE_KEYS
+            && now.saturating_duration_since(*last_sweep) >= window.min(Duration::from_secs(1))
+        {
+            self.entries
+                .retain(|_, (start, _)| now.saturating_duration_since(*start) < window);
+            *last_sweep = now;
+        }
+        if self.entries.len() >= MAX_OFFLINE_KEYS {
+            return false;
+        }
+        self.entries.insert(key.to_string(), (now, 0));
+        true
+    }
 }
 
 /// Atomic fixed-window limiter shared through Redis.
@@ -53,8 +95,10 @@ enum Backend {
 /// A limiter and its clones share one lazily opened multiplexed connection
 /// and reconnect after a connection-level failure instead of opening a
 /// connection per check. Empty and `mock_*` URLs select an explicit process-local fallback so offline
-/// tests remain deterministic. Production startup should call
-/// [`Self::require_distributed`] to reject that mode.
+/// tests remain deterministic. That fallback tracks at most 16,384 client keys
+/// and denies a new key while every tracked window is still active.
+/// Production startup should call [`Self::require_distributed`] to reject
+/// that mode.
 #[derive(Clone)]
 pub struct RedisRateLimiter {
     max_requests: u64,
@@ -101,7 +145,7 @@ impl RedisRateLimiter {
 
         let redis_url = redis_url.into();
         let backend = if redis_url.is_empty() || redis_url.starts_with("mock_") {
-            Backend::OfflineMock(Arc::new(DashMap::new()))
+            Backend::OfflineMock(Arc::new(OfflineStore::new()))
         } else {
             Backend::Redis(Arc::new(SharedConnection::new(
                 redis::Client::open(redis_url)
@@ -181,13 +225,19 @@ impl RedisRateLimiter {
         Ok(self.decision(current as u64, Duration::from_millis(ttl_ms as u64)))
     }
 
-    fn check_offline(
-        &self,
-        store: &DashMap<String, (Instant, u64)>,
-        redis_key: &str,
-    ) -> RateLimitDecision {
+    fn check_offline(&self, store: &OfflineStore, redis_key: &str) -> RateLimitDecision {
         let now = Instant::now();
-        let mut entry = store.entry(redis_key.to_string()).or_insert((now, 0));
+        if !store.entries.contains_key(redis_key) && !store.admit(redis_key, now, self.window) {
+            return RateLimitDecision {
+                allowed: false,
+                remaining: 0,
+                retry_after: self.window,
+            };
+        }
+        let mut entry = store
+            .entries
+            .entry(redis_key.to_string())
+            .or_insert((now, 0));
         if now.saturating_duration_since(entry.0) >= self.window {
             *entry = (now, 0);
         }
@@ -258,6 +308,35 @@ mod tests {
         assert!(!key.contains("sensitive@example.com"));
         assert!(REDIS_FIXED_WINDOW_SCRIPT.contains("redis.call('INCR'"));
         assert!(REDIS_FIXED_WINDOW_SCRIPT.contains("redis.call('PEXPIRE'"));
+    }
+
+    #[tokio::test]
+    async fn offline_mode_tracks_a_bounded_number_of_client_keys() {
+        let limiter =
+            RedisRateLimiter::new("", "rullst:test", 5, Duration::from_secs(60)).expect("mock");
+        let Backend::OfflineMock(store) = &limiter.backend else {
+            panic!("empty URL selects the offline mode");
+        };
+        assert!(limiter.check("tracked").await.expect("check").allowed);
+        for index in 1..MAX_OFFLINE_KEYS {
+            store
+                .entries
+                .insert(format!("active-{index}"), (Instant::now(), 1));
+        }
+        let denied = limiter.check("new-client").await.expect("check");
+        assert!(!denied.allowed);
+        assert_eq!(store.entries.len(), MAX_OFFLINE_KEYS);
+        // Keys that are already tracked keep their own budget.
+        assert!(limiter.check("tracked").await.expect("check").allowed);
+
+        // Expired windows are reclaimed for new keys.
+        let expired = Instant::now() - Duration::from_secs(120);
+        for mut entry in store.entries.iter_mut() {
+            entry.value_mut().0 = expired;
+        }
+        *store.last_sweep.lock().unwrap() = expired;
+        assert!(limiter.check("new-client").await.expect("check").allowed);
+        assert_eq!(store.entries.len(), 1);
     }
 
     #[test]
