@@ -201,6 +201,10 @@ Typed subqueries passed to `where_exists`, `or_where_exists`, `with_cte` and
 `with_recursive` are embedded with portable `?` markers; on PostgreSQL the
 final statement is numbered once, in textual order, so nested scopes, CTEs and
 joins keep every tenant and caller binding at its own `$n` position.
+Caller-owned raw CTEs and select lists pass their values with
+`with_raw_bindings`, `with_recursive_raw_bindings` or `select_raw_bindings`;
+those values are bound at the fragment's own position (before JOIN, scope and
+WHERE values) and a marker/binding count mismatch fails with `Validation`.
 Only PostgreSQL statements are renumbered: `delete_all()`, the child `UPDATE`
 issued by `cascade_soft_delete`, and instance `restore()`/`force_delete()`
 receive `$n` there and keep `?` markers on MySQL/MariaDB and SQLite.

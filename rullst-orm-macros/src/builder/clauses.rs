@@ -54,6 +54,7 @@ pub fn generate_builder_struct(
             pub has_recursive_cte: bool,
             pub with_trashed: bool,
             pub only_trashed: bool,
+            select_raw_bound: Option<(String, Vec<rullst_orm::RullstValue>)>,
             #redis_cfg
             pub remember_ttl: Option<usize>,
             #(#relation_flags)*
@@ -102,14 +103,32 @@ pub fn generate_builder_struct(
                 }
             }
 
+            /// Bindings of a `select_raw_bindings` fragment while it is still the
+            /// rendered select list; replacing the select list drops them.
+            fn __rullst_select_raw_bindings(&self) -> &[rullst_orm::RullstValue] {
+                match &self.select_raw_bound {
+                    Some((sql, bindings)) if self.selects.as_deref() == Some(sql.as_str()) => bindings,
+                    _ => &[],
+                }
+            }
+
             fn select_bindings(&self) -> Vec<rullst_orm::RullstValue> {
                 self.cte_bindings
                     .iter()
+                    .chain(self.__rullst_select_raw_bindings().iter())
                     .chain(self.join_bindings.iter())
                     .chain(self.scope_bindings.iter())
                     .chain(self.bindings.iter())
                     .chain(self.order_bindings.iter())
                     .cloned()
+                    .collect()
+            }
+
+            /// `to_pluck_sql` replaces the select list, so its fragment's bindings go too.
+            fn __rullst_pluck_bindings(&self) -> Vec<rullst_orm::RullstValue> {
+                self.count_bindings()
+                    .into_iter()
+                    .chain(self.order_bindings.iter().cloned())
                     .collect()
             }
 
@@ -145,6 +164,7 @@ pub fn generate_builder_struct(
                     has_recursive_cte: false,
                     with_trashed: false,
                     only_trashed: false,
+                    select_raw_bound: None,
                     #redis_cfg
                     remember_ttl: None,
                     #(#relation_inits)*
@@ -192,6 +212,20 @@ pub fn generate_builder_struct(
 
             pub fn select_raw(mut self, query: &str) -> Self {
                 self.selects = Some(query.to_string());
+                self
+            }
+
+            /// Sets a caller-owned raw select list whose `?` markers take
+            /// `bindings` in order; they are bound after the CTEs and before
+            /// JOIN, scope and WHERE values. A marker/binding mismatch fails closed.
+            pub fn select_raw_bindings<V: Into<rullst_orm::RullstValue>>(mut self, query: &str, bindings: Vec<V>) -> Self {
+                match rullst_orm::raw_fragment(query, bindings.into_iter().map(Into::into).collect()) {
+                    Ok((sql, ordered)) => {
+                        self.selects = Some(sql.clone());
+                        self.select_raw_bound = Some((sql, ordered));
+                    }
+                    Err(error) => self.errors.push(error),
+                }
                 self
             }
 

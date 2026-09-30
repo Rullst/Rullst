@@ -64,6 +64,39 @@ pub fn generate_subquery_methods() -> TokenStream {
                 self
             }
 
+            /// Adds a caller-owned raw CTE whose `?` (or `$n`) markers take
+            /// `bindings`; they are bound at the CTE's textual position.
+            pub fn with_raw_bindings<V: Into<rullst_orm::RullstValue>>(mut self, cte_name: &str, query: &str, bindings: Vec<V>) -> Self {
+                self.__rullst_push_raw_cte("with_raw_bindings", cte_name, query, bindings.into_iter().map(Into::into).collect());
+                self
+            }
+
+            /// Recursive variant of [`Self::with_raw_bindings`].
+            pub fn with_recursive_raw_bindings<V: Into<rullst_orm::RullstValue>>(mut self, cte_name: &str, query: &str, bindings: Vec<V>) -> Self {
+                self.__rullst_push_raw_cte("with_recursive_raw_bindings", cte_name, query, bindings.into_iter().map(Into::into).collect());
+                self.has_recursive_cte = true;
+                self
+            }
+
+            fn __rullst_push_raw_cte(
+                &mut self,
+                method: &str,
+                cte_name: &str,
+                query: &str,
+                bindings: Vec<rullst_orm::RullstValue>,
+            ) {
+                if let Err(e) = rullst_orm::schema::validate_identifier(cte_name) {
+                    self.errors.push(rullst_orm::Error::Validation(format!("{}() — invalid CTE identifier: {}", method, e)));
+                }
+                match rullst_orm::raw_fragment(query, bindings) {
+                    Ok((sql, ordered)) => {
+                        self.ctes.push(format!("{} AS ({})", cte_name, sql));
+                        self.cte_bindings.extend(ordered);
+                    }
+                    Err(error) => self.errors.push(error),
+                }
+            }
+
             pub fn with_cte<B: rullst_orm::schema::SubqueryBuilder>(mut self, cte_name: &str, subquery: B) -> Self {
                 let fragment = self.__rullst_portable_subquery(&subquery);
                 if let Err(e) = rullst_orm::schema::validate_identifier(cte_name) {

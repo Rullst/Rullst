@@ -1602,9 +1602,14 @@ while portability and semantic review remain the model author's responsibility.
   and building the schema rejects such text when it contains a backslash
   (an escape character in MySQL/MariaDB's default SQL mode) or a control
   character.
-* Generated builders assemble bindings by emitted clause position (CTE, JOIN,
-  WHERE/HAVING, ORDER BY), not by the order in which fluent methods were
-  called. Nested typed subqueries export that ordered binding sequence.
+* Generated builders assemble bindings by emitted clause position (CTE,
+  SELECT, JOIN, WHERE/HAVING, ORDER BY), not by the order in which fluent
+  methods were called. Nested typed subqueries export that ordered binding
+  sequence. Caller-owned raw CTE and select fragments supply their own values
+  through `with_raw_bindings`, `with_recursive_raw_bindings` and
+  `select_raw_bindings` (v13); a marker/binding count mismatch fails closed,
+  and `$n` markers are rewritten like typed subqueries. Pluck and count replace
+  the select list and therefore omit its values.
 * Generated builders start with the global row cap from
   `Orm::set_max_query_limit` (1,000 by default; `0` disables it). `limit()`
   clamps to it and `unsafe_unlimited()` removes it for one query.

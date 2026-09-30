@@ -90,6 +90,30 @@ pub fn portable_subquery(
     Ok((portable, ordered))
 }
 
+/// Pairs a caller-owned raw SQL fragment with exactly its own bindings.
+///
+/// `$n` fragments are rewritten to portable markers like typed subqueries;
+/// a `?` fragment must carry one binding per marker. Any mismatch fails
+/// closed, so a fragment can never consume a binding of another clause.
+#[doc(hidden)]
+pub fn raw_fragment(
+    sql: &str,
+    bindings: Vec<RullstValue>,
+) -> Result<(String, Vec<RullstValue>), Error> {
+    let scan = scan_sql(sql.as_bytes());
+    if !scan.numbered.is_empty() {
+        return portable_subquery(sql, bindings);
+    }
+    if scan.placeholders.len() != bindings.len() {
+        return Err(Error::Validation(format!(
+            "raw SQL fragment has {} bind marker(s) but {} binding(s)",
+            scan.placeholders.len(),
+            bindings.len()
+        )));
+    }
+    Ok((sql.to_string(), bindings))
+}
+
 struct NumberedParameter {
     start: usize,
     length: usize,
@@ -360,8 +384,20 @@ fn next_non_whitespace(sql: &[u8], after: usize) -> Option<u8> {
 
 #[cfg(test)]
 mod tests {
-    use super::{portable_subquery, replace_placeholders};
+    use super::{portable_subquery, raw_fragment, replace_placeholders};
     use crate::RullstValue;
+
+    #[test]
+    fn raw_fragments_carry_exactly_their_own_bindings() {
+        let sql = "SELECT id FROM notes WHERE body = ? AND tag <> '?'";
+        assert!(raw_fragment(sql, vec![text("x")]).is_ok());
+        assert!(raw_fragment(sql, Vec::new()).is_err());
+        assert!(raw_fragment(sql, vec![text("x"), text("y")]).is_err());
+        let (portable, ordered) =
+            raw_fragment("SELECT $2, $1", vec![text("a"), text("b")]).expect("numbered");
+        assert_eq!(portable, "SELECT ?, ?");
+        assert_eq!(described(&ordered), described(&[text("b"), text("a")]));
+    }
 
     fn text(value: &str) -> RullstValue {
         RullstValue::String(value.to_string())
