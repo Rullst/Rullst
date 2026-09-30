@@ -96,3 +96,25 @@ fn caller_mutations_evaluate_once_in_attribute_then_child_order() {
     );
     assert_eq!(s, 3);
 }
+
+#[test]
+fn url_attributes_keep_caller_bindings_temporaries_and_evaluation_order() {
+    let s = Label { text: "caller" };
+    assert_eq!(
+        html! { <a href={s.text} title={s.text}>{s.text}</a> },
+        "<a href=\"attr:caller\" title=\"attr:caller\">text:caller</a>"
+    );
+    assert_eq!(
+        html! { <img src={format!("/{}", s.text)} /> },
+        "<img src=\"attr:/caller\" />"
+    );
+
+    let mut s = 0;
+    let output = html! {
+        <a href={{ s += 1; s }} data-index={{ s += 1; s }}>{{ s += 1; s }}</a>
+    };
+    assert_eq!(
+        output,
+        "<a href=\"attr:1\" data-index=\"attr:2\">text:3</a>"
+    );
+}

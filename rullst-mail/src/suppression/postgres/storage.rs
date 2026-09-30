@@ -1,6 +1,23 @@
 use super::*;
 use sqlx::Row;
 
+/// Largest backwards step of a host clock, relative to the namespace's
+/// recorded time, that is treated as cross-host skew rather than a clock or
+/// database regression. It matches the event future-skew allowance.
+const MAX_CLOCK_SKEW_SECONDS: i64 = 300;
+
+/// Advances the shared namespace clock monotonically. Hosts sharing one
+/// namespace cross each whole-second boundary at slightly different instants,
+/// so a lagging host inside the tolerance adopts the recorded time instead of
+/// failing; a larger regression still fails closed.
+fn advance_clock(local: i64, last: i64, minimum: i64) -> Result<i64, SuppressionError> {
+    let floor = last.max(minimum);
+    if local.saturating_add(MAX_CLOCK_SKEW_SECONDS) < floor {
+        return Err(SuppressionError::InvalidConfiguration("server clock"));
+    }
+    Ok(local.max(floor))
+}
+
 const SCHEMA: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS rullst_mail_pg_suppression_control (
         namespace TEXT PRIMARY KEY, binding BYTEA NOT NULL CHECK(octet_length(binding) = 32),
@@ -143,10 +160,7 @@ impl PostgresSuppressionStore {
         {
             return Err(SuppressionError::InvalidConfiguration("namespace binding"));
         }
-        let current = now()?;
-        if current < last || current < minimum {
-            return Err(SuppressionError::InvalidConfiguration("server clock"));
-        }
+        let current = advance_clock(now()?, last, minimum)?;
         sqlx::query(
             "UPDATE rullst_mail_pg_suppression_control SET last_now = $1 WHERE namespace = $2",
         )
@@ -166,9 +180,7 @@ impl PostgresSuppressionStore {
         tx.commit()
             .await
             .map_err(|_| unavailable("commit operation"))?;
-        if now()? < finished {
-            return Err(SuppressionError::InvalidConfiguration("server clock"));
-        }
+        advance_clock(now()?, finished, finished)?;
         Ok(())
     }
     async fn durable(&self, tx: &mut Transaction<'_, Postgres>) -> Result<(), SuppressionError> {
@@ -218,5 +230,27 @@ impl PostgresSuppressionStore {
             return Err(SuppressionError::CorruptStorage("state quota"));
         }
         Ok((recipients, events))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shared_clock_tolerates_bounded_skew_and_stays_monotonic() {
+        // A host 1 s behind the recorded time (a second-boundary race) and one
+        // at the tolerance edge adopt the recorded time instead of failing.
+        assert_eq!(advance_clock(1_000, 1_000, 1_000), Ok(1_000));
+        assert_eq!(advance_clock(999, 1_000, 999), Ok(1_000));
+        assert_eq!(advance_clock(700, 1_000, 700), Ok(1_000));
+        assert_eq!(advance_clock(1_005, 1_000, 1_005), Ok(1_005));
+        assert_eq!(advance_clock(990, 900, 1_000), Ok(1_000));
+        for (local, last, minimum) in [(699, 1_000, 699), (600, 500, 901)] {
+            assert_eq!(
+                advance_clock(local, last, minimum),
+                Err(SuppressionError::InvalidConfiguration("server clock"))
+            );
+        }
     }
 }

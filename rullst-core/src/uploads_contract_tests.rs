@@ -198,3 +198,55 @@ fn active_content_variants_and_scan_evidence_fail_closed() {
         ));
     }
 }
+
+#[test]
+// TM-ACADEMY-09
+fn markup_hidden_behind_a_bom_prolog_or_comment_is_denied() {
+    let policy = UploadPolicy::try_new(1_024, [UploadKind::PlainText]).expect("valid text policy");
+    for content in [
+        "\u{FEFF}<svg xmlns='http://www.w3.org/2000/svg' onload='alert(1)'/>",
+        "\u{FEFF}\u{FEFF} \n<svg onload=alert(1)>",
+        "\u{200B}<svg onload=alert(1)>",
+        "<?xml version=\"1.0\"?><svg onload=alert(1)>",
+        "\u{FEFF}<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg onload=alert(1)>",
+        "<!-- note --><svg onload=alert(1)>",
+        "<![CDATA[x]]><svg onload=alert(1)>",
+        "<body onload=alert(1)>",
+        "<img src=x onerror=alert(1)>",
+        "</p><iframe srcdoc=x>",
+        "\t\r\n<IFRAME>",
+    ] {
+        assert_eq!(
+            policy.admit("tenant", "note.txt", "text/plain", content.as_bytes()),
+            Err(UploadError::ActiveContentDenied),
+            "{content:?}"
+        );
+    }
+
+    // UTF-16 text (with either byte-order mark) is not UTF-8 plain text.
+    for content in [
+        b"\xFF\xFE<\0s\0v\0g\0>\0".as_slice(),
+        b"\xFE\xFF\0<\0s\0v\0g\0>".as_slice(),
+    ] {
+        assert_eq!(
+            policy.admit("tenant", "note.txt", "text/plain", content),
+            Err(UploadError::MediaTypeDenied)
+        );
+    }
+
+    // A leading `<` that cannot open markup is still ordinary text.
+    for content in [
+        "<3 plain text",
+        "< not a tag",
+        "1 < 2 and 3 > 2",
+        "\u{FEFF}plain",
+    ] {
+        assert_eq!(
+            policy
+                .admit("tenant", "note.txt", "text/plain", content.as_bytes())
+                .map(|upload| upload.kind()),
+            Ok(UploadKind::PlainText),
+            "{content:?}"
+        );
+    }
+}

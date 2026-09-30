@@ -263,7 +263,7 @@ async fn test_sendgrid_driver() {
 #[tokio::test]
 #[cfg_attr(miri, ignore)]
 async fn test_smtp_driver() {
-    let driver = SmtpDriver::try_new("smtp.example.com", 587, None, None).unwrap();
+    let driver = SmtpDriver::try_new("mock_smtp", 587, None, None).unwrap();
     let msg = Message::new().to("test@rullst.dev").subject("offline-smtp");
     let res = driver.send(&msg).await;
     assert!(res.is_ok());

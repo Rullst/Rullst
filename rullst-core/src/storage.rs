@@ -9,6 +9,7 @@ pub use tenant::TenantStorage;
 pub mod cloud;
 mod operations;
 pub use operations::ObjectMetadata;
+mod public_url;
 
 /// Strongly-typed error domain for Rullst Storage operations.
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
@@ -170,7 +171,14 @@ impl Storage {
         }
     }
 
-    /// Public URL resolution helper for uploaded asset
+    /// Public URL resolution helper for uploaded asset.
+    ///
+    /// Each key segment is percent-encoded (every byte except the unreserved
+    /// `A-Z a-z 0-9 - . _ ~`), so `#`, `?`, `%`, spaces and non-ASCII names
+    /// stay part of the object key. Local storage returns the root-relative
+    /// `/storage/<key>` path, exactly like [`LocalDriver::url`]; the
+    /// application serves its base directory at `/storage`. The filesystem
+    /// base path never appears in the URL.
     pub fn url(&self, relative_path: &str) -> Result<String, StorageError> {
         #[cfg(feature = "storage-s3")]
         if self.cloud.is_some() {
@@ -178,24 +186,14 @@ impl Storage {
                 "private cloud storage requires an explicit signed download".to_string(),
             ));
         }
-        let relative_path = normalized_object_key(relative_path)?;
+        let path = public_url::encode_key_path(&normalized_object_key(relative_path)?);
         match &self.driver {
-            StorageDriver::Local { base_path } => Ok(format!(
-                "{}/{}",
-                base_path.trim_end_matches('/'),
-                relative_path
-            )),
-            StorageDriver::S3 { bucket, region } => Ok(format!(
-                "https://{}.s3.{}.amazonaws.com/{}",
-                bucket,
-                region,
-                relative_path.trim_start_matches('/')
-            )),
+            StorageDriver::Local { .. } => Ok(format!("/storage/{path}")),
+            StorageDriver::S3 { bucket, region } => {
+                Ok(format!("https://{bucket}.s3.{region}.amazonaws.com/{path}"))
+            }
             StorageDriver::R2 { bucket, account_id } => Ok(format!(
-                "https://{}.r2.cloudflarestorage.com/{}/{}",
-                account_id,
-                bucket,
-                relative_path.trim_start_matches('/')
+                "https://{account_id}.r2.cloudflarestorage.com/{bucket}/{path}"
             )),
         }
     }
@@ -306,9 +304,13 @@ impl LocalDriver {
             .map_err(|e| StorageError::Io(e.to_string()))
     }
 
-    /// Resolve public URL path
+    /// Resolve the root-relative public URL path `/storage/<key>`.
+    ///
+    /// Each key segment is percent-encoded; serve the base directory at
+    /// `/storage` for the URL to resolve.
     pub async fn url(&self, path: &str) -> Result<String, StorageError> {
-        Ok(format!("/storage/{}", normalized_object_key(path)?))
+        let path = public_url::encode_key_path(&normalized_object_key(path)?);
+        Ok(format!("/storage/{path}"))
     }
 
     /// Delete file from target path
@@ -414,7 +416,7 @@ mod tests {
 
         assert_eq!(
             local.url("courses/1/lesson.txt").unwrap(),
-            "storage/courses/1/lesson.txt"
+            "/storage/courses/1/lesson.txt"
         );
         assert_eq!(
             s3.url("courses/1/lesson.txt").unwrap(),
