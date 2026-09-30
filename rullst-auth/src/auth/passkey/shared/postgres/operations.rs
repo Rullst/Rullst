@@ -6,6 +6,26 @@ use crate::auth::passkey::shared::{
 use sqlx::{Postgres, Transaction};
 use subtle::ConstantTimeEq;
 
+/// Largest step, in seconds, by which this host's clock may trail the shared
+/// high-water mark and still be treated as cross-host skew. Hosts cross each
+/// whole-second boundary at slightly different instants, so an NTP-synchronized
+/// host can read one second less than the time another host just recorded.
+const MAX_CLOCK_SKEW_SECONDS: i64 = 5;
+
+/// Advances the shared ceremony time monotonically. A host within the skew
+/// tolerance adopts the recorded time, so time never moves backwards and no
+/// lifetime is extended; a larger regression fails closed as a clock
+/// configuration fault rather than storage corruption.
+fn advance_clock(local: i64, floor: i64) -> Result<i64, Error> {
+    if !(0..=MAX_TIME).contains(&local) {
+        return Err(Error::Corrupt);
+    }
+    if local.saturating_add(MAX_CLOCK_SKEW_SECONDS) < floor {
+        return Err(Error::Configuration);
+    }
+    Ok(local.max(floor))
+}
+
 pub(super) struct Operation<'a, C> {
     store: &'a PostgresCeremonyStore<C>,
     tx: Transaction<'a, Postgres>,
@@ -33,10 +53,10 @@ impl<C: CeremonyClock> PostgresCeremonyStore<C> {
         {
             return Err(Error::Configuration);
         }
-        let now = self.clock.now()?;
-        if !(0..=MAX_TIME).contains(&now) || last_now < 0 || now < last_now {
+        if !(0..=MAX_TIME).contains(&last_now) {
             return Err(Error::Corrupt);
         }
+        let now = advance_clock(self.clock.now()?, last_now)?;
         Ok(Operation {
             store: self,
             tx,
@@ -64,10 +84,7 @@ impl<C: CeremonyClock> Operation<'_, C> {
         Ok(())
     }
     fn current(&self) -> Result<i64, Error> {
-        let now = self.store.clock.now()?;
-        if now < self.now || now > MAX_TIME {
-            return Err(Error::Corrupt);
-        }
+        let now = advance_clock(self.store.clock.now()?, self.now)?;
         if self.deadline.is_some_and(|deadline| now >= deadline) {
             return Err(Error::Expired);
         }
@@ -82,11 +99,13 @@ impl<C: CeremonyClock> Operation<'_, C> {
             .map_err(|_| Error::Unavailable)?;
         self.current()?;
         self.tx.commit().await.map_err(|_| Error::UncertainCommit)?;
-        let after = self.store.clock.now().map_err(|_| Error::UncertainCommit)?;
-        if after < now
-            || after > MAX_TIME
-            || self.deadline.is_some_and(|deadline| after >= deadline)
-        {
+        let after = self
+            .store
+            .clock
+            .now()
+            .and_then(|after| advance_clock(after, now))
+            .map_err(|_| Error::UncertainCommit)?;
+        if self.deadline.is_some_and(|deadline| after >= deadline) {
             return Err(Error::UncertainCommit);
         }
         Ok(())
@@ -198,4 +217,22 @@ async fn bounded<T: Send>(
     tokio::time::timeout(std::time::Duration::from_secs(12), operation)
         .await
         .map_err(|_| Error::UncertainCommit)?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shared_clock_tolerates_bounded_skew_and_stays_monotonic() {
+        // A host one second behind the recorded time (a boundary race) and
+        // one at the tolerance edge adopt the recorded time.
+        assert_eq!(advance_clock(1_000, 1_000), Ok(1_000));
+        assert_eq!(advance_clock(999, 1_000), Ok(1_000));
+        assert_eq!(advance_clock(995, 1_000), Ok(1_000));
+        assert_eq!(advance_clock(1_007, 1_000), Ok(1_007));
+        assert_eq!(advance_clock(994, 1_000), Err(Error::Configuration));
+        assert_eq!(advance_clock(-1, 0), Err(Error::Corrupt));
+        assert_eq!(advance_clock(MAX_TIME + 1, 0), Err(Error::Corrupt));
+    }
 }

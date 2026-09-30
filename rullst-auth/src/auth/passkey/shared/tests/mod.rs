@@ -122,6 +122,7 @@ async fn postgres_contract() {
     journey::credential_snapshot_and_parallel_completion(&url).await;
     journey::completion_rechecks_expiry_after_cryptography(&url).await;
     storage::quotas_expiry_configuration_and_corruption(&url).await;
+    storage::cross_host_clock_skew(&url).await;
     storage::lock_wait_expiry_cancellation_and_process(&url).await;
     transport::stalled_transport_has_a_whole_operation_deadline(&url).await;
     browser::run(&url).await;
