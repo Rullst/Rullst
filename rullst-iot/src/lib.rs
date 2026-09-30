@@ -46,7 +46,7 @@ pub use coap::{CoapCodecError, CoapMessageType, CoapMethod, CoapRequest, MAX_COA
 pub use gpio::{GpioPin, PinMode, PinState};
 #[cfg(feature = "experimental-simulators")]
 pub use hsm::{SimulatedHsmDevice, SimulatedHsmProfile};
-pub use i2c::I2cHelper;
+pub use i2c::{I2cFrameError, I2cHelper, MAX_I2C_READ_BYTES};
 pub use mesh::{MeshNode, MeshTopology, NodeStatus};
 pub use modbus::{ModbusFrame, ModbusFunction};
 #[cfg(feature = "experimental-simulators")]

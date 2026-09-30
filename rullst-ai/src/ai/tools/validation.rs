@@ -1,5 +1,6 @@
 use super::{AiTool, ToolExecutionError, ToolParam};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 
 const MAX_TOOL_NAME_BYTES: usize = 64;
@@ -103,6 +104,27 @@ pub(super) fn validate_identifier(label: &str, value: &str) -> Result<(), ToolEx
     }
     Ok(())
 }
+
+/// Returns the identifier recorded and reported for a requested tool name.
+///
+/// A valid identifier is kept. Any other model-chosen name becomes
+/// `invalid-tool-` plus the first 16 hex digits of its SHA-256 digest, so the
+/// denial still passes audit validation and the untrusted text is neither
+/// stored nor echoed.
+pub(super) fn audited_tool_name(name: &str) -> String {
+    if validate_identifier("tool name", name).is_ok() {
+        return name.to_string();
+    }
+    let digest = Sha256::digest(name.as_bytes());
+    let mut placeholder = String::from("invalid-tool-");
+    for byte in digest.iter().take(8) {
+        placeholder.push(char::from(HEX_DIGITS[usize::from(byte >> 4)]));
+        placeholder.push(char::from(HEX_DIGITS[usize::from(byte & 0x0f)]));
+    }
+    placeholder
+}
+
+const HEX_DIGITS: &[u8; 16] = b"0123456789abcdef";
 
 pub(super) fn validate_non_empty_bounded(
     label: &str,

@@ -263,7 +263,12 @@ impl OpenAiCompatibleProvider {
         path: &str,
         body: serde_json::Value,
     ) -> Result<serde_json::Value, AiError> {
-        let response = self.request(path).json(&body).send().await?;
+        let response = self
+            .request(path)
+            .json(&body)
+            .send()
+            .await
+            .map_err(redacted_transport_error)?;
         if !response.status().is_success() {
             return Err(AiError::ApiError(format!(
                 "{} returned HTTP {}",
@@ -281,7 +286,7 @@ impl OpenAiCompatibleProvider {
         let mut bytes = Vec::new();
         let mut stream = response.bytes_stream();
         while let Some(chunk) = stream.next().await {
-            let chunk = chunk?;
+            let chunk = chunk.map_err(redacted_transport_error)?;
             if bytes.len().saturating_add(chunk.len()) > MAX_RESPONSE_BYTES {
                 return Err(response_size_error());
             }
@@ -463,6 +468,12 @@ fn response_size_error() -> AiError {
     AiError::ApiError(format!(
         "OpenAI-compatible response exceeds {MAX_RESPONSE_BYTES} bytes"
     ))
+}
+
+/// Drops the configured endpoint from a transport error, matching the native
+/// providers and the redacted `Debug` output of this adapter.
+fn redacted_transport_error(error: reqwest::Error) -> AiError {
+    AiError::RequestError(error.without_url())
 }
 
 #[cfg(test)]

@@ -1,6 +1,7 @@
 use rullst_ai::{
     AiClient, DurableAuditError, DurableToolAuditTrail, ToolAuditEvent, ToolAuditOutcome,
-    ToolAuditSink, ToolExecutionError, ToolRisk,
+    ToolAuditSink, ToolExecutionContext, ToolExecutionError, ToolExecutionPolicy, ToolRegistry,
+    ToolRisk,
     ai::{
         providers::openai::OpenAiProvider,
         rag::{
@@ -263,4 +264,53 @@ fn symlink_targets_are_rejected() {
     ));
     std::fs::remove_file(link).expect("remove link");
     std::fs::remove_file(target).expect("remove target");
+}
+
+#[test]
+// TM-AI-03: a model-chosen name that is not a tool identifier is still denied and audited.
+fn invalid_model_tool_names_are_denied_and_durably_audited() {
+    let path = temporary_audit("invalid-tool-name");
+    let audit = DurableToolAuditTrail::try_open(&path).expect("open tool audit");
+    let registry = ToolRegistry::new();
+    let policy = ToolExecutionPolicy::new(["echo"]).expect("valid policy");
+    let mut context = ToolExecutionContext::new("user-17", ["echo"], 2).expect("valid context");
+    let long_name = "x".repeat(200);
+    let requested = [
+        "functions.transfer_funds",
+        "rm -rf /",
+        long_name.as_str(),
+        "line\nbreak",
+        "functions.transfer_funds",
+        "missing_tool",
+    ];
+
+    let mut reported = Vec::new();
+    for name in requested {
+        match registry.execute(name, serde_json::json!({}), &mut context, &policy, &audit) {
+            Err(ToolExecutionError::ToolNotFound(tool)) => reported.push(tool),
+            other => panic!("unexpected result for an unknown tool: {other:?}"),
+        }
+    }
+    for tool in &reported[..5] {
+        assert!(tool.starts_with("invalid-tool-"));
+        assert!(tool.len() <= 64);
+        assert!(
+            tool.bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
+        );
+    }
+    assert_eq!(reported[0], reported[4]);
+    assert_ne!(reported[0], reported[1]);
+    assert_eq!(reported[5], "missing_tool");
+    assert_eq!(context.remaining_calls(), 2);
+
+    let entries = audit.entries().expect("read tool audit");
+    assert_eq!(entries.len(), requested.len());
+    for (entry, tool) in entries.iter().zip(&reported) {
+        assert_eq!(entry.event.outcome, ToolAuditOutcome::Denied);
+        assert_eq!(entry.event.risk, None);
+        assert_eq!(&entry.event.tool, tool);
+    }
+    drop(audit);
+    std::fs::remove_file(path).expect("remove audit");
 }

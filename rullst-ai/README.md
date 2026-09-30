@@ -73,9 +73,14 @@ async fn answer(api_key: String, user_text: &str) -> Result<String, AiError> {
 same guardrail stage before provider dispatch. Built-in providers repeat that check on direct trait
 calls. Custom `AiProvider` implementations should be called through `AiClient` in application code.
 
-The guardrail blocks deterministic injection patterns and invisible Unicode controls. Supported PII
-classes are masked before outbound transmission. Like all heuristic filters, this is one boundary in
-a defense-in-depth design; it is not a proof that arbitrary model output is safe.
+The guardrail blocks deterministic injection patterns and invisible Unicode controls, including
+zero-width, bidirectional embedding/isolate, tag and other default-ignorable characters with no
+ordinary use in text. Soft hyphens, bidirectional marks and emoji variation selectors are removed
+before phrase matching instead of being blocked. Check-digit-valid CPF/CNPJ numbers (canonical
+formatted or unformatted), card-like digit runs and email usernames are masked before outbound
+transmission; alphanumeric CNPJs and other identifiers are not recognized. Like all heuristic
+filters, this is one boundary in a defense-in-depth design; it is not a proof that arbitrary model
+output is safe.
 
 ## Bounded streaming and explicit cancellation
 
@@ -162,7 +167,11 @@ must be protected by the host against adversarial rename races.
 `StatefulChat<M>` uses static dispatch over the `ChatMemory` contract. It loads
 bounded recent history, performs the normal guarded provider call, then appends
 the user and assistant messages atomically. Every conversation is selected by a
-trusted `TenantContext` plus a validated `ConversationId`.
+trusted `TenantContext` plus a validated `ConversationId`. Stored history is
+replayed through the guardrail on every turn, so a response the guardrail would
+block (for example a quoted injection phrase or a Markdown image URL) is
+rejected as `StatefulChatError::Generation(AiError::BlockedByFirewall(_))` and
+neither message is stored.
 
 `InMemoryChatMemory` is a deterministic bounded offline implementation. The
 opt-in `sql-memory` feature adds `SqlChatMemory` for SQLite, PostgreSQL, MySQL,
@@ -398,4 +407,6 @@ let value: serde_json::Value = client
 ```
 
 The schema is enforced by the provider API and the returned value is deserialized again in Rust.
-Application-specific semantic validation is still required.
+Application-specific semantic validation is still required. In offline mock mode the deterministic
+fixture follows at most 16 nesting levels, 32 items per array and 4,096 generated values; larger
+schemas fail with `AiError::InvalidSchema`.

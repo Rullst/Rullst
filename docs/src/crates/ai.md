@@ -53,10 +53,14 @@ Call custom `AiProvider` implementations through `AiClient` when the application
 mandatory boundary.
 
 The current guardrail blocks deterministic injection patterns, provider delimiter tokens, external
-Markdown beacons, and selected invisible Unicode controls. Supported PII classes are masked before
-outbound transmission. This is a bounded heuristic control, not proof that arbitrary input or model
-output is safe; authorization, tool permissions, output encoding, and domain validation remain
-application responsibilities.
+Markdown beacons, and invisible Unicode controls, including zero-width, bidirectional
+embedding/isolate, tag and other default-ignorable characters with no ordinary use in text. Soft
+hyphens, bidirectional marks and emoji variation selectors are removed before phrase matching
+instead of being blocked. Check-digit-valid CPF/CNPJ numbers (canonical formatted or unformatted),
+card-like digit runs and email usernames are masked before outbound transmission; alphanumeric CNPJs
+and other identifiers are not recognized. This is a bounded heuristic control, not proof that
+arbitrary input or model output is safe; authorization, tool permissions, output encoding, and
+domain validation remain application responsibilities.
 
 ## Adaptive evaluation runner
 
@@ -114,8 +118,10 @@ semantics until their different wire protocols have equivalent tests.
 `StatefulChat<M>` is a static-dispatch orchestration boundary over
 `ChatMemory`. It binds every conversation to trusted `TenantContext`, loads a
 bounded even history, calls the guarded client, and atomically appends the user
-and assistant halves after successful generation. `InMemoryChatMemory` is a
-bounded deterministic offline store.
+and assistant halves after successful generation. A response that the guardrail
+would block when the history is replayed is rejected as
+`StatefulChatError::Generation(AiError::BlockedByFirewall(_))` and is not
+stored. `InMemoryChatMemory` is a bounded deterministic offline store.
 
 With the opt-in umbrella `ai-sql-memory` feature, `SqlChatMemory` supplies a
 dedicated SQLx Any pool and fixed schema for SQLite, PostgreSQL, MySQL, and
@@ -218,7 +224,9 @@ let value: serde_json::Value = client
 ```
 
 Provider-side schema enforcement and Rust deserialization do not replace application-specific
-semantic validation.
+semantic validation. In offline mock mode the deterministic fixture follows at most 16 nesting
+levels, 32 items per array and 4,096 generated values; larger schemas fail with
+`AiError::InvalidSchema`.
 
 ## Current boundaries
 

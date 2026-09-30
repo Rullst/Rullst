@@ -451,6 +451,32 @@ A prepared version section does not establish that its tag or crates exist.
 - Add HTTP contracts and Linux Chromium/software-GPU acceptance. No framework
   GPU dependency, real-device performance or universal browser support is implied.
 
+### AI and IoT review fixes
+
+- `rullst-ai` masks CPF and CNPJ numbers with valid check digits, formatted or
+  unformatted, before provider dispatch.
+- Anthropic and Gemini send every system message, joined in order, instead of
+  only the last one.
+- `StatefulChat` rejects and does not store a response that the guardrail would
+  block on replay, so one answer can no longer lock a conversation.
+- OpenAI-compatible transport errors no longer include the configured endpoint
+  URL, and the SSE decoder runs in linear time however the stream is chunked.
+- Offline structured-output fixtures are capped at 4,096 generated values.
+- The prompt guardrail blocks tag characters, VS17-256, invisible operators and
+  Hangul fillers, and ignores soft hyphens, bidi marks and variation selectors
+  when matching phrases.
+- Calls to invalid tool names are denied and durably audited under a digest
+  placeholder instead of reporting an audit outage. The new
+  `ToolExecutionError::OutcomeUnaudited` reports a tool that ran but whose
+  outcome could not be audited.
+- `VectorIndex::search` ranks with a total order and scores non-finite
+  similarities as 0.0.
+- `rullst-iot`: retrying a rollback-counter commit whose acknowledgement was
+  lost now completes it; CoAP Uri-Path segments are limited to 255 bytes; and
+  `I2cHelper::build_read_frame` returns an empty frame for reserved or
+  non-7-bit addresses and reads above 8,192 bytes, with the new
+  `try_build_read_frame` reporting why.
+
 ### v13 Paddle customer portal
 
 - Add `create_bound_customer_portal`: verify active customer ownership and the

@@ -10,12 +10,13 @@ extern crate alloc;
 
 use alloc::string::String;
 use alloc::vec::Vec;
-use core::fmt;
 use ed25519_dalek::{Signature, VerifyingKey};
 use sha2::{Digest, Sha256};
 
 mod counter;
+mod error;
 pub use counter::{RollbackCounterError, RollbackCounterStore};
+pub use error::OtaError;
 
 const MANIFEST_DOMAIN: &[u8] = b"RULLST-OTA-MANIFEST-V1\0";
 
@@ -48,77 +49,6 @@ pub enum OtaStatus {
     Verified,
     Committing,
     Failed,
-}
-
-/// Errors returned by the signed OTA gate.
-#[non_exhaustive]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum OtaError {
-    EmptyTarget,
-    EmptyVersion,
-    EmptyFirmware,
-    ManifestFieldTooLong,
-    FirmwareTooLarge,
-    InvalidTrustedKey,
-    InvalidSignatureEncoding,
-    SignatureInvalid,
-    FirmwareLengthMismatch { expected: u64, actual: u64 },
-    FirmwareHashMismatch,
-    TargetMismatch,
-    RollbackDetected { current: u64, proposed: u64 },
-    RollbackCounterStore(RollbackCounterError),
-    NoVerifiedUpdate,
-    LegacyApiUnsupported { replacement: &'static str },
-}
-
-impl fmt::Display for OtaError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::EmptyTarget => formatter.write_str("OTA target must not be empty"),
-            Self::EmptyVersion => formatter.write_str("firmware version must not be empty"),
-            Self::EmptyFirmware => formatter.write_str("firmware payload must not be empty"),
-            Self::ManifestFieldTooLong => {
-                formatter.write_str("OTA manifest target or version exceeds the encoded limit")
-            }
-            Self::FirmwareTooLarge => {
-                formatter.write_str("firmware length cannot be represented by this platform")
-            }
-            Self::InvalidTrustedKey => formatter.write_str("trusted Ed25519 public key is invalid"),
-            Self::InvalidSignatureEncoding => {
-                formatter.write_str("Ed25519 signature must contain exactly 64 bytes")
-            }
-            Self::SignatureInvalid => formatter.write_str("Ed25519 signature is invalid"),
-            Self::FirmwareLengthMismatch { expected, actual } => write!(
-                formatter,
-                "firmware length mismatch: manifest declares {expected} bytes, received {actual}"
-            ),
-            Self::FirmwareHashMismatch => {
-                formatter.write_str("firmware SHA-256 digest does not match the signed manifest")
-            }
-            Self::TargetMismatch => {
-                formatter.write_str("firmware manifest targets a different device class")
-            }
-            Self::RollbackDetected { current, proposed } => write!(
-                formatter,
-                "rollback counter must increase: current {current}, proposed {proposed}"
-            ),
-            Self::RollbackCounterStore(error) => write!(formatter, "{error}"),
-            Self::NoVerifiedUpdate => formatter.write_str("no verified firmware update is pending"),
-            Self::LegacyApiUnsupported { replacement } => write!(
-                formatter,
-                "legacy OTA API is fail-closed; use {replacement}"
-            ),
-        }
-    }
-}
-
-#[cfg(feature = "std")]
-impl std::error::Error for OtaError {}
-
-impl From<RollbackCounterError> for OtaError {
-    fn from(error: RollbackCounterError) -> Self {
-        Self::RollbackCounterStore(error)
-    }
 }
 
 /// Canonical metadata signed by a firmware publisher.
@@ -417,11 +347,16 @@ impl OtaManager {
     /// Atomically advances a platform rollback counter before committing the
     /// verified manifest to this manager's in-memory state.
     ///
-    /// A store failure leaves the manifest verified and available for a safe
-    /// retry. A conflict means this manager is stale and should be reconstructed
-    /// from the store before another update is verified. Platform code should
-    /// flash and validate [`Self::verified_target_partition`] before calling
-    /// this method, then coordinate the returned receipt with its bootloader.
+    /// A store failure leaves the manifest verified and available for retry.
+    /// A store may report a failure after it durably committed the counter, for
+    /// example when an acknowledgement is lost. When a retry's compare-and-set
+    /// then reports that the store already holds exactly this manifest's
+    /// counter, and a fresh [`RollbackCounterStore::load`] confirms it, the
+    /// earlier commit is completed and the receipt is returned. Any other
+    /// conflict means this manager is stale and should be reconstructed from
+    /// the store before another update is verified. Platform code should flash
+    /// and validate [`Self::verified_target_partition`] before calling this
+    /// method, then coordinate the returned receipt with its bootloader.
     pub fn commit_verified_update_with_store<S: RollbackCounterStore>(
         &mut self,
         counter_store: &mut S,
@@ -435,6 +370,11 @@ impl OtaManager {
         if let Err(error) =
             counter_store.compare_and_set(self.rollback_counter, manifest.rollback_counter)
         {
+            if reports_committed_counter(error, manifest.rollback_counter)
+                && counter_store.load() == Ok(manifest.rollback_counter)
+            {
+                return Ok(self.apply_verified_manifest(manifest));
+            }
             self.status = OtaStatus::Verified;
             return Err(error.into());
         }
@@ -477,6 +417,17 @@ impl OtaManager {
         Err(OtaError::LegacyApiUnsupported {
             replacement: "OtaManager::commit_verified_update",
         })
+    }
+}
+
+/// Reports whether a rejected compare-and-set says the store already holds
+/// `counter`, whichever of the expected-value or monotonicity checks the
+/// adapter applied first.
+fn reports_committed_counter(error: RollbackCounterError, counter: u64) -> bool {
+    match error {
+        RollbackCounterError::Conflict { actual, .. } => actual == counter,
+        RollbackCounterError::NonMonotonic { current, .. } => current == counter,
+        _ => false,
     }
 }
 

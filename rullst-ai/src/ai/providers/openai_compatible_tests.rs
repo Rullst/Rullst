@@ -352,3 +352,81 @@ async fn explicit_cancellation_aborts_an_in_flight_stream_request() {
     trigger.await.expect("cancellation task completes");
     server.join().expect("fixture finishes");
 }
+
+/// Accepts one request and closes the connection without a response.
+fn serve_and_close() -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("loopback fixture binds");
+    let address = listener.local_addr().expect("fixture address resolves");
+    thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("fixture accepts request");
+        stream
+            .set_read_timeout(Some(Duration::from_millis(200)))
+            .expect("fixture read timeout");
+        let mut buffer = [0_u8; 4_096];
+        let _ = stream.read(&mut buffer);
+    });
+    format!("http://{address}/v1/private-gateway")
+}
+
+fn assert_endpoint_redacted(error: AiError, base_url: &str) {
+    let AiError::RequestError(error) = error else {
+        panic!("expected a transport error, got {error:?}");
+    };
+    assert!(error.url().is_none());
+    let rendered = format!("{error} {error:?}");
+    assert!(!rendered.contains(base_url.trim_start_matches("http://")));
+    assert!(!rendered.contains("private-gateway"));
+}
+
+#[tokio::test]
+async fn transport_errors_never_expose_the_configured_endpoint() {
+    let mut sink = |_: &str| -> Result<(), AiError> { Ok(()) };
+    for streaming in [false, true] {
+        let capabilities = if streaming {
+            OpenAiCompatibleCapabilities::chat_only().with_streaming()
+        } else {
+            OpenAiCompatibleCapabilities::chat_only()
+        };
+
+        // The request fails while it is being sent.
+        let base_url = serve_and_close();
+        let provider = OpenAiCompatibleProvider::try_local(base_url.clone(), "local-model")
+            .expect("valid loopback provider")
+            .with_capabilities(capabilities);
+        let error = if streaming {
+            StreamingAiClient::new(provider)
+                .stream_prompt("hello", &AiCancellation::new(), &mut sink)
+                .await
+                .expect_err("closed connection fails the stream request")
+        } else {
+            provider
+                .prompt("hello")
+                .await
+                .expect_err("closed connection fails the request")
+        };
+        assert_endpoint_redacted(error, &base_url);
+
+        // The response body is truncated after its headers.
+        let content_type = if streaming {
+            "text/event-stream"
+        } else {
+            "application/json"
+        };
+        let (base_url, _) = serve_once_with_content_type("{\"partial", Some(512), content_type);
+        let provider = OpenAiCompatibleProvider::try_local(base_url.clone(), "local-model")
+            .expect("valid loopback provider")
+            .with_capabilities(capabilities);
+        let error = if streaming {
+            StreamingAiClient::new(provider)
+                .stream_prompt("hello", &AiCancellation::new(), &mut sink)
+                .await
+                .expect_err("truncated stream body fails")
+        } else {
+            provider
+                .prompt("hello")
+                .await
+                .expect_err("truncated body fails")
+        };
+        assert_endpoint_redacted(error, &base_url);
+    }
+}

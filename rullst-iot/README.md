@@ -8,6 +8,9 @@ builders, deterministic edge helpers, and a fail-closed signed firmware gate.
 - `SensorTelemetry` and `DigitalTwin` in-memory state models.
 - Modbus frame/CRC helpers, BLE GATT data structures, I2C frame builders, and
   simulated GPIO state. These are not operating-system or hardware drivers.
+  `I2cHelper::try_build_read_frame` rejects reserved or non-7-bit addresses and
+  reads above `MAX_I2C_READ_BYTES` (8,192) with a typed `I2cFrameError`;
+  `build_read_frame` returns an empty frame in those cases.
 - Bounded `no_std` MQTT 5 PUBLISH and RFC 7252 CoAP request encoders. They
   produce protocol bytes only; the application still owns sockets, TLS/DTLS,
   broker limits, acknowledgements, retries, congestion control, and identity.
@@ -75,9 +78,10 @@ let coap = CoapRequest::new(
 `MqttPublish` emits one MQTT 5 PUBLISH packet with an empty property section and
 a 1 MiB local ceiling. It does not implement CONNECT, broker negotiation,
 PUBACK/PUBREC/PUBREL/PUBCOMP, or retries. `CoapRequest` emits base GET/POST/PUT/
-DELETE requests with ordered URI-Path and Content-Format options under a
-conservative 1152-byte datagram ceiling; token uniqueness, message correlation,
-retransmission, block-wise transfer, UDP and DTLS remain caller responsibilities.
+DELETE requests with ordered URI-Path (at most 255 bytes per segment, as RFC
+7252 requires) and Content-Format options under a conservative 1152-byte
+datagram ceiling; token uniqueness, message correlation, retransmission,
+block-wise transfer, UDP and DTLS remain caller responsibilities.
 
 ## Signed OTA gate
 
@@ -122,12 +126,16 @@ Ok(receipt)
 ```
 
 `RollbackCounterStore::compare_and_set` must make no change on an expected-value
-conflict, reject non-increasing values, and return success only after persistence
-survives reset. Advancing the counter before a later bootloader failure is
-security-safe but can require platform recovery and a newer signed counter; the
-framework cannot make counter storage and boot selection one hardware-atomic
-operation. `commit_verified_update` remains available for process-local state,
-but it does not provide persistent anti-rollback protection.
+conflict, reject non-increasing values, and return success only after
+persistence survives reset. Another error may leave the outcome unknown, such as
+a completed write whose acknowledgement was lost. A retry of
+`commit_verified_update_with_store` then completes the commit when the store
+reports, and a fresh `load` confirms, exactly this manifest's counter. Advancing
+the counter before a later bootloader failure is security-safe but can require
+platform recovery and a newer signed counter; the framework cannot make counter
+storage and boot selection one hardware-atomic operation.
+`commit_verified_update` remains available for process-local state, but it does
+not provide persistent anti-rollback protection.
 
 `OtaManager::new`, `verify_signature`, and `commit_update` are deprecated
 migration APIs. All three always return `OtaError` because keyless construction,
