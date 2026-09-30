@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790735060983,
+  "lastUpdate": 1790738461658,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Capital Benchmark": [
@@ -9476,6 +9476,48 @@ window.BENCHMARK_DATA = {
           {
             "name": "capital_subscription/status_as_str",
             "value": 6,
+            "range": "± 0",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "745f3e61239ebf76417e858f9008464dccee530b",
+          "message": "Merge pull request #337 from Rullst/test/v13-codeql-test-logging\n\ntest(orm): keep protected test values out of assertion messages",
+          "timestamp": "2026-09-29T23:54:00-03:00",
+          "tree_id": "22d18a96558f001e66b97f17e1d89dacff8590a8",
+          "url": "https://github.com/Rullst/Rullst/commit/745f3e61239ebf76417e858f9008464dccee530b"
+        },
+        "date": 1790738460601,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "capital_subscription/parse_status_active",
+            "value": 11,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/parse_status_past_due",
+            "value": 12,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "capital_subscription/status_as_str",
+            "value": 3,
             "range": "± 0",
             "unit": "ns/iter"
           }
