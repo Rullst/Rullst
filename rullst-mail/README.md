@@ -586,8 +586,9 @@ text at the request edge as well.
 The local inspector chooses its checks from the declared MIME type (compared
 case-insensitively), the filename extension and the content signature
 together. Both policies reject executable magic, executable or script-host
-extensions (`.exe`, `.bat`, `.cmd`, `.ps1`, `.vbs`, `.js`, `.hta`, `.lnk` and
-similar), SVG by type, extension or content, active PDF content wherever a
+extensions (`.exe`, `.bat`, `.cmd`, `.ps1`, `.vbs`, `.js`, `.hta`, `.lnk`,
+`.msc`, `.appref-ms`, `.settingcontent-ms`, `.jnlp`, `.vhd` and the other
+executable/script types on Outlook's Level 1 blocked list), SVG by type, extension or content, active PDF content wherever a
 `%PDF-` header appears in the first KiB, and a declared type that disagrees
 with a known extension or signature. `strict()` also rejects HTML extensions,
 HTML/script markup or `javascript:`/`vbscript:` URIs, unknown extensions, any

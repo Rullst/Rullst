@@ -316,3 +316,46 @@ async fn inspection_sniffs_content_and_extension_instead_of_trusting_the_declare
         );
     }
 }
+
+#[tokio::test]
+// TM-MAIL-01: executable and script-host extensions fail under both policies.
+async fn windows_launchable_extensions_are_rejected_under_every_policy() {
+    for inspector in [
+        LocalAttachmentInspector::strict(),
+        LocalAttachmentInspector::allowing_opaque(),
+    ] {
+        for extension in [
+            "msc",
+            "wsc",
+            "sct",
+            "appref-ms",
+            "application",
+            "settingcontent-ms",
+            "gadget",
+            "inf",
+            "ins",
+            "isp",
+            "mst",
+            "ps1xml",
+            "psc1",
+            "psd1",
+            "vhd",
+            "vhdx",
+            "xbap",
+            "website",
+            "jnlp",
+            "wsb",
+            "msh",
+        ] {
+            let filename = format!("invoice.{extension}");
+            for mime in ["application/octet-stream", "text/plain"] {
+                let attachment = Attachment::new(&filename, b"<xml/>".to_vec(), mime);
+                assert_eq!(
+                    inspector.inspect(&attachment).await,
+                    Err(AttachmentInspectionError::Rejected("executable_content")),
+                    "{filename} as {mime}"
+                );
+            }
+        }
+    }
+}
