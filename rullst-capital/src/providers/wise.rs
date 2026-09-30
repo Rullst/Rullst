@@ -125,8 +125,16 @@ impl PayoutProvider for WiseProvider {
 }
 
 impl WiseProvider {
-    /// Normalizes a webhook payload from Wise into a `PayoutEvent`.
+    /// Normalizes an **unauthenticated** Wise webhook fixture into a `PayoutEvent`.
+    ///
+    /// This parser performs no signature verification, so it cannot distinguish
+    /// a Wise delivery from a forged request. It is restricted to deterministic
+    /// offline fixtures selected by an explicit `mock_*` API token. An empty
+    /// token returns `ConfigurationError` and any other token returns
+    /// `UnsupportedOperation` before the body is read. Never re-issue, release
+    /// or reconcile money from its result.
     pub fn parse_webhook_payload(&self, payload: &[u8]) -> Result<PayoutEvent, CapitalError> {
+        self.require_webhook_fixture_mode()?;
         let json: Value = serde_json::from_slice(payload)
             .map_err(|e| CapitalError::PayloadParseError(format!("Invalid JSON payload: {}", e)))?;
 
@@ -162,6 +170,22 @@ impl WiseProvider {
             currency,
             status,
         })
+    }
+
+    // Unlike payout fixtures, an unset token must not enable an unauthenticated
+    // webhook parser: only an explicitly named `mock_*` token selects it.
+    fn require_webhook_fixture_mode(&self) -> Result<(), CapitalError> {
+        if self.api_token.starts_with("mock_") {
+            return Ok(());
+        }
+        if self.api_token.trim().is_empty() {
+            return Err(CapitalError::ConfigurationError(
+                "Wise webhook fixture parsing requires an explicit mock_* API token".into(),
+            ));
+        }
+        Err(CapitalError::UnsupportedOperation(
+            "Wise webhook payload parsing is unauthenticated; live deliveries require X-Signature-SHA256 verification".into(),
+        ))
     }
 }
 

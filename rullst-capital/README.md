@@ -61,7 +61,7 @@ Updating Capital does not rewrite existing controllers or apply new migrations.
 | **Coinbase Commerce** | Billing | Signed-webhook foundation; live plan-only checkout is unsupported without authoritative pricing. |
 | **PicPay** | Billing | Offline checkout fixture; live plan-only checkout is unsupported without authoritative pricing. |
 | **Alipay** | Billing | Explicit mock credentials only; live checkout and RSA2 webhook verification are unsupported. |
-| **Wise** | Payout | Status/webhook foundation; legacy email-based live transfer is unsupported. |
+| **Wise** | Payout | Transfer-status read; legacy email-based live transfer and the unauthenticated webhook parser are unsupported with live credentials. |
 
 The shared `create_customer_portal(email, return_url)` methods do not have a
 reviewed live provider-session contract and return `UnsupportedOperation` for
@@ -108,6 +108,12 @@ identity, and transfer creation is not funding. Their offline mocks remain
 available. Polar and Paddle supply the explicit typed replacements below.
 Wise still requires a dedicated recipient/quote/transfer/funding contract.
 Provider-account sandbox acceptance remains separate from protocol tests.
+
+`WiseProvider::parse_webhook_payload` performs no signature verification and
+cannot distinguish a Wise delivery from a forged request. It is an offline
+fixture restricted to an explicit `mock_*` API token: an empty token returns
+`ConfigurationError` and a live token returns `UnsupportedOperation` before
+the body is read. Do not re-issue, release or reconcile payouts from it.
 
 Lemon Squeezy live checkout uses the merchant's explicit positive numeric store
 ID: `LemonSqueezyProvider::new(key, webhook_secret).with_store_id(store_id)?`.

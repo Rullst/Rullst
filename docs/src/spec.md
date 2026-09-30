@@ -2373,10 +2373,16 @@ sending.
   as subscription snapshots. This legacy event does not retain account/mode or
   causal identity, so durable owner/scope binding and reconciliation remain
   application responsibilities.
+* Wise's legacy `parse_webhook_payload` performs no signature verification and
+  is not a `BillingProvider` webhook. It accepts only an explicit `mock_*` API
+  token as an offline fixture; an empty token returns `ConfigurationError` and a
+  live token returns `UnsupportedOperation` before reading the body. Its result
+  must never drive a payout, refund or release decision.
 * The Axum and opt-in Actix middleware adapters call one canonical bounded
-  verifier before dispatch. Built-in provider adapters use provider-appropriate
-  cryptographic verification; equality checks for derived signatures are
-  constant-time where applicable.
+  verifier before dispatch. Built-in provider adapters that accept live
+  deliveries use provider-appropriate cryptographic verification; legacy
+  parsers without a reviewed live contract fail closed. Equality checks for
+  derived signatures are constant-time where applicable.
 * Timestamped protocols enforce a bounded freshness window. The default replay
   store is bounded and process-local and fails closed instead of evicting an
   unexpired proof when full.

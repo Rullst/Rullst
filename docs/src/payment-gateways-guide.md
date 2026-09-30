@@ -269,7 +269,13 @@ email-based operation remains an offline fixture and returns
 `UnsupportedOperation` with real credentials before network dispatch. A usable
 transfer needs a real recipient account, authenticated quote UUID and durable
 UUID idempotency identity; funding is a separate operation. The existing
-status/webhook foundation does not provide that missing transfer workflow.
+transfer-status read does not provide that missing transfer workflow.
+
+`parse_webhook_payload` performs no signature verification. It is an offline
+fixture limited to an explicit `mock_*` API token; an empty token is a
+configuration error and a live token returns `UnsupportedOperation` before the
+body is read. A forged `funds_refunded` or `outgoing_payment_sent` body must
+never trigger a payout, refund or release.
 
 ---
 
