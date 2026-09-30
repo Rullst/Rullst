@@ -269,7 +269,7 @@ fn pending_recovery_and_conflicting_transitions_fail_closed() {
     );
     assert_eq!(
         journal.record_response_at("invoice:one", request(), &rejection(), 9),
-        Err(FiscalJournalError::ResponseMismatch)
+        Err(FiscalJournalError::ClockRegression)
     );
 
     journal
@@ -357,6 +357,32 @@ fn authentication_tampering_capacity_and_competing_writers_are_explicit() {
     assert_eq!(
         bounded.status("contains whitespace"),
         Err(FiscalJournalError::InvalidCommandId)
+    );
+}
+
+#[test]
+fn backward_wall_clock_step_is_clamped_not_a_response_mismatch() {
+    let file = TempJournal::new("clock");
+    let journal = FiscalCommandJournal::try_open(file.path(), key(14)).expect("open journal");
+    // Preparation observed one day ahead of the current wall clock.
+    let prepared_at = unix_now_ms().expect("clock") + 86_400_000;
+    journal
+        .prepare_at(
+            "invoice:clock",
+            NfseEnvironment::Homologation,
+            request(),
+            prepared_at,
+        )
+        .expect("prepare");
+    let receipt = journal
+        .record_response("invoice:clock", request(), &authorization())
+        .expect("system-time response is clamped to the preparation time");
+    assert_eq!(receipt.status(), FiscalCommandStatus::Authorized);
+    drop(journal);
+    let reopened = FiscalCommandJournal::try_open(file.path(), key(14)).expect("reopen");
+    assert_eq!(
+        reopened.status("invoice:clock").expect("status"),
+        Some(FiscalCommandStatus::Authorized)
     );
 }
 

@@ -952,6 +952,10 @@ an independently retained exact-tip checkpoint detects valid-prefix
 truncation. The file contains only the opaque application command ID,
 request/result digests, environment, state, and bounded timestamps—not XML,
 access keys, certificate material, provider bodies, or processing messages.
+`record_response` records a wall-clock step backwards as the preparation time,
+while `record_response_at` with an earlier explicit time returns
+`ClockRegression`; a selected environment that differs from the signed `tpAmb`
+returns `EnvironmentMismatch` (both v13).
 
 This is preparation for homologation, not live issuance. `Homologation` and
 `Production` still return `FiscalError::Unsupported` without network I/O until

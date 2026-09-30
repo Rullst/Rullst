@@ -68,6 +68,10 @@ pub enum FiscalJournalError {
     /// Earlier releases reported this as `ResponseMismatch`. New in 13.0.
     #[error("fiscal command environment does not match the signed DPS tpAmb")]
     EnvironmentMismatch,
+    /// An explicit observation time precedes the command's preparation.
+    /// Earlier releases reported this as `ResponseMismatch`. New in 13.0.
+    #[error("fiscal command observation time precedes its preparation")]
+    ClockRegression,
 }
 
 /// A named 256-bit HMAC key used to authenticate a local fiscal journal.

@@ -108,22 +108,38 @@ impl FiscalCommandJournal {
     }
 
     /// Synchronizes one parsed terminal response using the current system time.
+    ///
+    /// The wall clock is not monotonic: if it stepped back below the
+    /// preparation time, the observation is recorded at the preparation time.
     pub fn record_response(
         &self,
         command_id: &str,
         request: &NfseIssueRequest,
         response: &NfseIssueResponse,
     ) -> Result<FiscalCommandReceipt, FiscalJournalError> {
-        self.record_response_at(command_id, request, response, unix_now_ms()?)
+        self.record_terminal(command_id, request, response, unix_now_ms()?, true)
     }
 
     /// Synchronizes one parsed terminal response with an explicit trusted time.
+    ///
+    /// A time before the command's preparation returns `ClockRegression`.
     pub fn record_response_at(
         &self,
         command_id: &str,
         request: &NfseIssueRequest,
         response: &NfseIssueResponse,
         observed_at_unix_ms: i64,
+    ) -> Result<FiscalCommandReceipt, FiscalJournalError> {
+        self.record_terminal(command_id, request, response, observed_at_unix_ms, false)
+    }
+
+    fn record_terminal(
+        &self,
+        command_id: &str,
+        request: &NfseIssueRequest,
+        response: &NfseIssueResponse,
+        observed_at_unix_ms: i64,
+        clamp_to_preparation: bool,
     ) -> Result<FiscalCommandReceipt, FiscalJournalError> {
         validate_command_id(command_id)?;
         validate_observed_at(observed_at_unix_ms)?;
@@ -146,9 +162,13 @@ impl FiscalCommandJournal {
             }
             return Err(FiscalJournalError::CommandConflict);
         }
-        if observed_at_unix_ms < existing.prepared_at_unix_ms {
-            return Err(FiscalJournalError::ResponseMismatch);
-        }
+        let observed_at_unix_ms = if observed_at_unix_ms >= existing.prepared_at_unix_ms {
+            observed_at_unix_ms
+        } else if clamp_to_preparation {
+            existing.prepared_at_unix_ms
+        } else {
+            return Err(FiscalJournalError::ClockRegression);
+        };
         if state.file.records >= MAX_FISCAL_JOURNAL_RECORDS {
             return Err(FiscalJournalError::RecordCapacityExceeded);
         }
