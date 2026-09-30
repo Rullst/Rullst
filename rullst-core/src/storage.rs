@@ -178,7 +178,9 @@ impl Storage {
     /// stay part of the object key. Local storage returns the root-relative
     /// `/storage/<key>` path, exactly like [`LocalDriver::url`]; the
     /// application serves its base directory at `/storage`. The filesystem
-    /// base path never appears in the URL.
+    /// base path never appears in the URL. S3 uses the `amazonaws.com.cn`
+    /// partition for `cn-*` regions and path-style URLs for bucket names that
+    /// contain `.`, as the signed cloud client does.
     pub fn url(&self, relative_path: &str) -> Result<String, StorageError> {
         #[cfg(feature = "storage-s3")]
         if self.cloud.is_some() {
@@ -190,7 +192,7 @@ impl Storage {
         match &self.driver {
             StorageDriver::Local { .. } => Ok(format!("/storage/{path}")),
             StorageDriver::S3 { bucket, region } => {
-                Ok(format!("https://{bucket}.s3.{region}.amazonaws.com/{path}"))
+                Ok(public_url::s3_object_url(bucket, region, &path))
             }
             StorageDriver::R2 { bucket, account_id } => Ok(format!(
                 "https://{account_id}.r2.cloudflarestorage.com/{bucket}/{path}"

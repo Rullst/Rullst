@@ -1495,8 +1495,9 @@ and non-ASCII characters stay part of the object key. Local storage returns the
 root-relative `/storage/<key>` path whatever its base directory, so the
 filesystem path is never disclosed; the application must serve that directory
 at `/storage` (Rullst does not mount it). Unconfigured S3/R2 drivers return the
-provider's unsigned object URL; a configured private backend rejects `url()`
-and requires a signed download.
+provider's unsigned object URL; S3 follows the cloud client's endpoint rules
+(`amazonaws.com.cn` for `cn-*` regions, path style for dotted bucket names). A
+configured private backend rejects `url()` and requires a signed download.
 
 ---
 
