@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790725270554,
+  "lastUpdate": 1790727929201,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst Connect Benchmark": [
@@ -7995,6 +7995,36 @@ window.BENCHMARK_DATA = {
             "name": "github_provider_creation",
             "value": 424,
             "range": "± 15",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2918d6c117aae0103e8650bd6afde5cca2efc073",
+          "message": "Merge pull request #331 from Rullst/fix/v13-core-runtime-fixes\n\nfix(core): artisan database resolution, atomic local puts, memoize keys, S3 path signing",
+          "timestamp": "2026-09-29T21:04:49-03:00",
+          "tree_id": "122ec91f08c8b95dd1082417bcea1104cb8469eb",
+          "url": "https://github.com/Rullst/Rullst/commit/2918d6c117aae0103e8650bd6afde5cca2efc073"
+        },
+        "date": 1790727928602,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "github_provider_creation",
+            "value": 540,
+            "range": "± 5",
             "unit": "ns/iter"
           }
         ]
