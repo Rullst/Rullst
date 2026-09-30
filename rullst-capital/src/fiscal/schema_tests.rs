@@ -31,8 +31,12 @@ fn sha256(bytes: &[u8]) -> String {
 
 fn validator() -> NfseDpsSchemaValidator {
     let xsd = concat!(
-        r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">"#,
-        r#"<xs:element name="DPS" type="xs:string"/>"#,
+        r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema""#,
+        r#" targetNamespace="http://www.sped.fazenda.gov.br/nfse" elementFormDefault="qualified">"#,
+        r#"<xs:element name="DPS"><xs:complexType><xs:simpleContent>"#,
+        r#"<xs:extension base="xs:string"><xs:attribute name="versao" type="xs:string" use="required"/>"#,
+        r#"</xs:extension></xs:simpleContent></xs:complexType></xs:element>"#,
+        r#"<xs:element name="Other" type="xs:string"/>"#,
         "</xs:schema>"
     );
     let mut set = SchemaSet::new();
@@ -117,7 +121,7 @@ fn resolver_is_catalogue_only_and_rejects_path_like_locations() {
 fn compiled_validator_bounds_input_and_returns_structured_diagnostics() {
     let validator = validator();
     assert_eq!(validator.profile(), "synthetic-test");
-    assert!(validator.validate("<DPS>valid</DPS>").is_ok());
+    assert!(validator.validate(&dps("valid")).is_ok());
 
     for invalid in ["", "<!DOCTYPE DPS><DPS>invalid</DPS>"] {
         assert!(matches!(
@@ -137,8 +141,44 @@ fn compiled_validator_bounds_input_and_returns_structured_diagnostics() {
         })
     ));
 
-    let error = validator.validate("<Other/>").unwrap_err();
+    let error = validator.validate(&dps("<nested/>")).unwrap_err();
     assert!(matches!(error, FiscalError::XmlValidation { .. }));
+}
+
+fn dps(content: &str) -> String {
+    format!("<DPS xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.01\">{content}</DPS>")
+}
+
+#[test]
+fn only_an_official_dps_root_is_accepted() {
+    let validator = validator();
+    for document in [
+        "<DPS>unqualified</DPS>".to_string(),
+        format!("<Other xmlns=\"{NFSE_NAMESPACE}\">declared but not a DPS</Other>"),
+        format!("<DPS xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.00\">old</DPS>"),
+        concat!(
+            r#"<Foo xmlns:xs="http://www.w3.org/2001/XMLSchema""#,
+            r#" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="xs:anyType">"#,
+            "<anything/></Foo>"
+        )
+        .to_string(),
+        format!(
+            "<DPS xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.01\" xmlns:xs=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:type=\"xs:anyType\"><x/></DPS>"
+        ),
+        r#"<Signature xmlns="http://www.w3.org/2000/09/xmldsig#"/>"#.to_string(),
+        "<DPS".to_string(),
+    ] {
+        assert!(
+            matches!(
+                validator.validate(&document),
+                Err(FiscalError::InvalidInput {
+                    field: "dps.xml",
+                    ..
+                })
+            ),
+            "{document}"
+        );
+    }
 }
 
 #[test]
