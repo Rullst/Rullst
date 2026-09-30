@@ -502,6 +502,14 @@ region, data processing terms, bounce/complaint handling, retention, cost, and
 failover tests. Rullst publishes no universal latency, price, or feature
 comparison against commercial platforms.
 
+Recipients are parsed once by the pre-flight pipeline. It accepts one bare
+address, `<address>` or `Name <address>` (the name may be quoted), and hands the
+bare address to suppression, the disposable-domain check and every transport,
+so a display name is not delivered. Lists, groups, comments, quoted local parts,
+domain literals and malformed brackets are rejected with
+`MailError::ValidationError`. Suppression events and lookups use the same
+parser; anything it rejects fails closed.
+
 The pre-flight pipeline rejects a subject over 2 KiB, or an HTML or plain-text
 body over 2 MiB each, with `MailError::ValidationError` before any content scan.
 Oversized content is rejected, never truncated. The link, homograph and

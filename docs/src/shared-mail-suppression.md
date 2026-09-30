@@ -52,8 +52,11 @@ secure headers, WAF and ingress limits.
 observation time. Identical replay is idempotent; conflicting reuse is rejected
 without changing state. Reason precedence only increases: manual suppression,
 hard bounce, then spam complaint. Earlier events can strengthen a reason but
-cannot undo a complaint. Recipient normalization preserves the local part and
-lowercases the domain, matching the existing stores; it does not infer aliases.
+cannot undo a complaint. Recipient normalization uses the delivery pipeline's
+recipient parser: `Name <address>` and `<address>` reduce to the bare address,
+and lists, groups, comments, padding or other unparseable forms are rejected so
+the guard fails closed. It then preserves the local part and lowercases the
+domain, matching the existing stores; it does not infer aliases.
 
 The database stores HMAC-derived recipient/event identifiers and fingerprints,
 the authoritative bounded provider/reason and first/last observation times.

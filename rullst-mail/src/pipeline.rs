@@ -4,7 +4,7 @@ use crate::attachment::validate_attachment_set;
 use crate::error::MailError;
 use crate::message::Message;
 use crate::security::is_crlf_safe;
-use crate::validator::{validate_email_deliverability, validate_email_syntax};
+use crate::validator::{recipient_address, validate_email_deliverability, validate_email_syntax};
 
 const MAX_TENANT_ID_LEN: usize = 128;
 const MAX_SCHEDULE_DAYS: i64 = 366;
@@ -110,7 +110,12 @@ impl DeliveryPipeline {
         validate_content_size(message)?;
         validate_header("To", &message.to)?;
         validate_header("Subject", &message.subject)?;
-        validate_email_deliverability(&message.to)
+        // Suppression, the disposable check and every transport use this one
+        // bare address, so a display-name form cannot be looked up differently.
+        let recipient = recipient_address(&message.to)
+            .map_err(|error| MailError::ValidationError(error.to_string()))?
+            .to_owned();
+        validate_email_deliverability(&recipient)
             .map_err(|error| MailError::ValidationError(error.to_string()))?;
 
         if let Some(from) = message.from.as_deref() {
@@ -142,8 +147,10 @@ impl DeliveryPipeline {
 
         message.validate_security()?;
 
+        let mut message = message.clone();
+        message.to = recipient;
         Ok(PreparedMessage {
-            message: message.clone().sanitize_secrets(),
+            message: message.sanitize_secrets(),
             context,
         })
     }
@@ -258,6 +265,30 @@ mod tests {
             DeliveryPipeline::prepare(&dangerous),
             Err(MailError::SendError(_))
         ));
+    }
+
+    #[test]
+    fn normalizes_display_name_recipients_to_the_bare_address() {
+        for recipient in [
+            "Alice <alice@example.com>",
+            "\"Doe, Alice\" <alice@example.com>",
+            " <alice@example.com> ",
+        ] {
+            let message = Message::new().to(recipient).text("safe");
+            let prepared = DeliveryPipeline::prepare(&message).expect("parseable recipient");
+            assert_eq!(prepared.message().to, "alice@example.com");
+        }
+        for recipient in [
+            "x <x@mailinator.com>",
+            "Alice <alice@example.com",
+            "alice@example.com, bob@example.com",
+        ] {
+            let message = Message::new().to(recipient).text("safe");
+            assert!(matches!(
+                DeliveryPipeline::prepare(&message),
+                Err(MailError::ValidationError(_))
+            ));
+        }
     }
 
     #[test]

@@ -206,3 +206,25 @@ fn signatures_bind_raw_body_identity_and_freshness() {
     ));
     assert!(ResendFeedbackVerifier::new("whsec_bad").is_err());
 }
+
+#[test]
+fn display_name_feedback_recipient_is_reduced_to_the_bare_address() {
+    let key: [u8; 32] = rand::random();
+    let now = chrono::Utc::now().timestamp() as u64;
+    let payload = serde_json::to_vec(&json!({"type":"email.complained",
+        "created_at":chrono::Utc::now().to_rfc3339(),
+        "data":{"email_id":"email_opaque","to":["Member <member@example.com>"]}}))
+    .unwrap();
+    let verified = verifier(&key)
+        .verify(
+            &payload,
+            "msg_named",
+            &now.to_string(),
+            &sign(&key, &payload, "msg_named", now),
+            now,
+        )
+        .unwrap();
+    assert_eq!(verified.recipient(), "member@example.com");
+    let event = verified.suppression_event().unwrap().unwrap();
+    assert_eq!(event.recipient(), "member@example.com");
+}
