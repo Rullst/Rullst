@@ -2664,6 +2664,13 @@ sending.
 * Timestamped protocols enforce a bounded freshness window. The default replay
   store is bounded and process-local and fails closed instead of evicting an
   unexpired proof when full.
+* Razorpay, Coinbase Commerce and Lemon Squeezy sign only the body, and their
+  adapters check no delivery timestamp (provider retries can span hours or
+  days). An exact captured body therefore verifies again after its replay claim
+  expires (24 hours by default, at most 30 days) or, with the process-local
+  store, after a restart. Hosts must record the provider's event or
+  subscription state durably and reject stale or repeated transitions instead
+  of relying on the replay window alone.
 * The opt-in `webhook-sql` store shares bounded payload-digest or semantic-event
   claims across processes on SQLite, PostgreSQL, MySQL, and MariaDB. Its schema
   profile is immutable, claims serialize through one configuration lock, expiry
