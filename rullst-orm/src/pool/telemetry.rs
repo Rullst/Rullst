@@ -3,7 +3,7 @@
 use futures::future::BoxFuture;
 
 use super::Orm;
-use super::savepoint::{ManagedSavepoint, SharedTransaction};
+use super::savepoint::{self, ManagedSavepoint, SharedTransaction};
 use crate::post_commit::PostCommitScope;
 
 impl Orm {
@@ -29,6 +29,13 @@ impl Orm {
     /// the outer transaction. `after_commit` callbacks registered inside it
     /// are promoted to the outer commit boundary on success and discarded on
     /// failure. Do not hold the shared handle's lock across a nested call.
+    ///
+    /// Sibling nested calls (for example futures joined on one task) take
+    /// turns: each opens its savepoint only after the previous sibling's
+    /// savepoint was released or rolled back. A savepoint left open, for
+    /// example by a nested future cancelled while another operation held the
+    /// connection, makes the enclosing level fail closed: the managed
+    /// transaction then rolls back and returns an error instead of committing.
     ///
     /// The returned future is `Send` when `R` and `E` are, so the call can be
     /// nested in another transaction closure or run in a spawned task.
@@ -70,12 +77,14 @@ impl Orm {
         };
 
         let post_commit = PostCommitScope::new();
+        // Each closure runs as a level whose own nested calls take turns.
+        let closure = savepoint::run_level(transaction.clone(), f(transaction.clone()));
         let result = match savepoint {
             // The nested closure already runs inside the outer task scope.
-            Some(_) => post_commit.scope(f(transaction.clone())).await,
+            Some(_) => post_commit.scope(closure).await,
             None => {
                 post_commit
-                    .scope(crate::CURRENT_TX.scope(transaction.clone(), f(transaction.clone())))
+                    .scope(crate::CURRENT_TX.scope(transaction.clone(), closure))
                     .await
             }
         };
@@ -112,7 +121,7 @@ fn finish_transaction(
 ) -> BoxFuture<'static, Result<(), crate::Error>> {
     Box::pin(async move {
         let owned = transaction.lock_owned().await.take();
-        let Some(owned) = owned else {
+        let Some(mut owned) = owned else {
             let (outcome, action) = if failure.is_some() {
                 ("rollback_ownership_missing", "rollback")
             } else {
@@ -122,6 +131,22 @@ fn finish_transaction(
             return Err(crate::Error::Internal(format!(
                 "managed transaction ownership was removed before automatic {action}"
             )));
+        };
+        // SQLx commits or rolls back only the innermost open level, so a
+        // savepoint left open would return the connection to the pool inside
+        // the transaction. Its partial work is discarded, never committed.
+        let leaked = match savepoint::unwind_leaked(&mut owned).await {
+            Ok(leaked) => leaked,
+            Err(unwind_error) => {
+                // Dropping `owned` queues the remaining rollback, and the pool
+                // closes a connection that is still inside a transaction.
+                drop(owned);
+                record_outcome("rollback_failed");
+                let failure = failure.map_or_else(String::new, |error| format!("{error}; "));
+                return Err(crate::Error::DatabaseError(format!(
+                    "Transaction failed: {failure}rolling back a nested savepoint left open also failed: {unwind_error}",
+                )));
+            }
         };
         if let Some(error) = failure {
             if let Err(rollback_error) = owned.rollback().await {
@@ -134,6 +159,19 @@ fn finish_transaction(
             return Err(crate::Error::DatabaseError(format!(
                 "Transaction failed: {error}",
             )));
+        }
+        if leaked {
+            if let Err(rollback_error) = owned.rollback().await {
+                record_outcome("rollback_failed");
+                return Err(crate::Error::DatabaseError(format!(
+                    "a nested savepoint was left open and the transaction rollback failed: {rollback_error}",
+                )));
+            }
+            record_outcome("rolled_back_unbalanced");
+            return Err(crate::Error::Internal(
+                "a nested transaction savepoint was left open, so the managed transaction was rolled back instead of committed"
+                    .to_string(),
+            ));
         }
         if let Err(error) = owned.commit().await {
             record_outcome("commit_failed");
