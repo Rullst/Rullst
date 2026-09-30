@@ -24,17 +24,21 @@ fn signed_dps() -> &'static str {
     })
 }
 
+// Shaped like a SEFIN NFS-e: infNFSe embeds the submitted signed DPS, and the
+// authority adds its own root signature, so the document has two signatures.
 fn authorized_nfse() -> &'static str {
     static AUTHORIZED_NFSE: OnceLock<String> = OnceLock::new();
-    AUTHORIZED_NFSE.get_or_init(|| {
-        let id = format!("NFS{ACCESS_KEY}");
-        sign_fixture(
-            &format!(
-                "<NFSe xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.01\"><infNFSe Id=\"{id}\"><xLocEmi>São Paulo</xLocEmi></infNFSe></NFSe>"
-            ),
-            &id,
-        )
-    })
+    AUTHORIZED_NFSE.get_or_init(|| sign_nfse(signed_dps()))
+}
+
+fn sign_nfse(embedded: &str) -> String {
+    let id = format!("NFS{ACCESS_KEY}");
+    sign_fixture(
+        &format!(
+            "<NFSe xmlns=\"{NFSE_NAMESPACE}\" versao=\"1.01\"><infNFSe Id=\"{id}\"><xLocEmi>São Paulo</xLocEmi>{embedded}</infNFSe></NFSe>"
+        ),
+        &id,
+    )
 }
 
 fn sign_fixture(xml: &str, id: &str) -> String {
@@ -293,4 +297,40 @@ fn parser_rejects_confused_tampered_malformed_and_amplified_responses() {
             )
             .is_err()
     );
+}
+
+#[test]
+fn authority_signature_is_verified_beside_the_embedded_dps_signature() {
+    let request = NfseIssueRequest::try_from_signed_dps(signed_dps()).expect("request");
+    assert_eq!(
+        authorized_nfse().matches("<Signature xmlns").count(),
+        2,
+        "fixture must carry the embedded DPS and the root signature"
+    );
+    validate_authorized_nfse(authorized_nfse(), ACCESS_KEY).expect("genuine NFS-e shape");
+    assert!(
+        request
+            .parse_response(201, NfseEnvironment::Homologation, &success_body())
+            .is_ok()
+    );
+
+    let signature_start = signed_dps().find("<Signature xmlns").expect("DPS signature");
+    let dps_signature = &signed_dps()[signature_start..signed_dps().len() - "</DPS>".len()];
+    let root_signature_start = authorized_nfse()
+        .rfind("<Signature xmlns")
+        .expect("root signature");
+    let root_signature =
+        &authorized_nfse()[root_signature_start..authorized_nfse().len() - "</NFSe>".len()];
+    for invalid in [
+        // A second authority signature on the root.
+        authorized_nfse().replace("</NFSe>", &format!("{root_signature}</NFSe>")),
+        // A signature outside the embedded DPS.
+        authorized_nfse().replace("<xLocEmi>", &format!("{dps_signature}<xLocEmi>")),
+        // Two signatures inside the embedded DPS.
+        authorized_nfse().replacen("</DPS>", &format!("{dps_signature}</DPS>"), 1),
+        // A tampered embedded DPS breaks the authority's digest.
+        authorized_nfse().replacen("<tpAmb>2</tpAmb>", "<tpAmb>1</tpAmb>", 1),
+    ] {
+        assert!(validate_authorized_nfse(&invalid, ACCESS_KEY).is_err());
+    }
 }

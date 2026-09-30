@@ -82,8 +82,22 @@ pub fn sign_dps_xml(xml: &str, certificate: &FiscalCertificate) -> Result<String
 
 #[cfg(feature = "nfse")]
 pub(crate) fn verify_embedded_xml_signature(xml: &str) -> Result<(), FiscalError> {
+    verify_xml_signature(xml, VerifyContext::new())
+}
+
+/// Verifies the first XMLDSig `Signature` in document order.
+///
+/// Callers must have checked the document's signature layout first, because
+/// this selection does not require the signature to be unique.
+#[cfg(feature = "nfse")]
+pub(crate) fn verify_first_xml_signature(xml: &str) -> Result<(), FiscalError> {
+    verify_xml_signature(xml, VerifyContext::new().first_document_signature())
+}
+
+#[cfg(feature = "nfse")]
+fn verify_xml_signature(xml: &str, context: VerifyContext<'_>) -> Result<(), FiscalError> {
     let resolver = DefaultKeyResolver::default();
-    let verification = VerifyContext::new()
+    let verification = context
         .key_resolver(&resolver)
         .verify(xml)
         .map_err(|error| signing_error("cannot verify embedded XMLDSig", &error))?;

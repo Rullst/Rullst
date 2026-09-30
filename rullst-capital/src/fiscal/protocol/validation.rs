@@ -1,6 +1,8 @@
 use crate::fiscal::{
-    MAX_DPS_XML_BYTES, MAX_SEFIN_RESPONSE_BYTES, NFSE_NAMESPACE, contract::XMLDSIG_NAMESPACE,
-    models::FiscalError, signer::verify_embedded_xml_signature,
+    MAX_DPS_XML_BYTES, MAX_SEFIN_RESPONSE_BYTES, NFSE_NAMESPACE,
+    contract::XMLDSIG_NAMESPACE,
+    models::FiscalError,
+    signer::{verify_embedded_xml_signature, verify_first_xml_signature},
 };
 
 use super::{NfseApiEnvironment, invalid_dps, response_error};
@@ -105,17 +107,101 @@ pub(super) fn validate_authorized_nfse(xml: &str, access_key: &str) -> Result<()
     });
     let first_information = information.next();
     let has_extra_information = information.next().is_some();
-    if first_information.and_then(|node| node.attribute("Id")) != Some(expected_id.as_str())
-        || has_extra_information
-    {
+    let Some(information) = first_information.filter(|node| {
+        node.attribute("Id") == Some(expected_id.as_str()) && !has_extra_information
+    }) else {
         return Err(response_error(
             "infNFSe Id does not bind the returned access key",
         ));
+    };
+    if document
+        .descendants()
+        .filter(|node| node.attribute("Id") == Some(expected_id.as_str()))
+        .count()
+        != 1
+    {
+        return Err(response_error("infNFSe Id must be unique in the NFS-e"));
     }
-    validate_signature_binding(&document, root, &expected_id)?;
-    verify_embedded_xml_signature(xml)
+    let signature = validate_nfse_signature_layout(&document, root, information, &expected_id)?;
+    // SEFIN embeds the submitted signed DPS inside infNFSe, so a genuine
+    // NFS-e has two signatures. Verify the authority's own root signature by
+    // moving it to the front (sibling order does not change what it signs)
+    // and selecting the first document signature explicitly.
+    let verification_xml = root_signature_first(xml, root, signature)?;
+    verify_first_xml_signature(&verification_xml)
         .map_err(|_| response_error("authorized NFS-e XMLDSig did not verify"))?;
     Ok(())
+}
+
+// Requires one authority signature as a direct child of the NFSe root that
+// references infNFSe. The only other signature allowed is the embedded signed
+// DPS's own, as a direct child of infNFSe/DPS; it is covered by the root
+// signature's digest and is not verified separately.
+fn validate_nfse_signature_layout<'a, 'input>(
+    document: &'a roxmltree::Document<'input>,
+    root: roxmltree::Node<'a, 'input>,
+    information: roxmltree::Node<'a, 'input>,
+    expected_id: &str,
+) -> Result<roxmltree::Node<'a, 'input>, FiscalError> {
+    let layout_error = || response_error("NFS-e must contain one root XMLDSig Signature");
+    let mut direct = root.children().filter(|node| is_xml_signature(*node));
+    let signature = direct.next().ok_or_else(layout_error)?;
+    if direct.next().is_some() {
+        return Err(layout_error());
+    }
+    let mut embedded = 0_usize;
+    for node in document
+        .descendants()
+        .filter(|node| is_xml_signature(*node))
+    {
+        if node == signature {
+            continue;
+        }
+        let parent = node.parent_element();
+        let in_embedded_dps = parent.is_some_and(|dps| {
+            dps.tag_name().name() == "DPS"
+                && dps.tag_name().namespace() == Some(NFSE_NAMESPACE)
+                && dps.parent_element() == Some(information)
+        });
+        embedded += 1;
+        if !in_embedded_dps || embedded > 1 {
+            return Err(response_error(
+                "NFS-e XMLDSig is only allowed on the root and the embedded DPS",
+            ));
+        }
+    }
+    validate_reference(signature, expected_id)?;
+    Ok(signature)
+}
+
+fn root_signature_first(
+    xml: &str,
+    root: roxmltree::Node<'_, '_>,
+    signature: roxmltree::Node<'_, '_>,
+) -> Result<String, FiscalError> {
+    let reorder_error = || response_error("cannot isolate the NFS-e root signature");
+    let first = root
+        .children()
+        .find(|node| node.is_element())
+        .ok_or_else(reorder_error)?;
+    if first == signature {
+        return Ok(xml.to_owned());
+    }
+    let insert_at = first.range().start;
+    let moved = signature.range();
+    if moved.start < insert_at {
+        return Err(reorder_error());
+    }
+    let mut reordered = String::with_capacity(xml.len());
+    for part in [
+        xml.get(..insert_at),
+        xml.get(moved.clone()),
+        xml.get(insert_at..moved.start),
+        xml.get(moved.end..),
+    ] {
+        reordered.push_str(part.ok_or_else(reorder_error)?);
+    }
+    Ok(reordered)
 }
 
 fn validate_signature_binding(
@@ -138,8 +224,15 @@ fn validate_signature_binding(
             "XML must contain one direct XMLDSig Signature",
         ));
     }
+    validate_reference(direct_signatures[0], target_id)
+}
+
+fn validate_reference(
+    signature: roxmltree::Node<'_, '_>,
+    target_id: &str,
+) -> Result<(), FiscalError> {
     let expected_reference = format!("#{target_id}");
-    let references = direct_signatures[0]
+    let references = signature
         .descendants()
         .filter(|node| {
             node.is_element()
