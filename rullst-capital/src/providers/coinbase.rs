@@ -98,6 +98,15 @@ impl BillingProvider for CoinbaseCommerceProvider {
         ))
     }
 
+    /// Verifies and normalizes a signed one-off charge notification.
+    ///
+    /// A Coinbase charge is not a subscription: `subscription_id` carries the
+    /// charge ID and `ends_at` is always `None`, because the charge's
+    /// `expires_at` is its payment window, not an entitlement period. A
+    /// confirmed or resolved charge requires the application's own
+    /// `metadata.customer_id` and `metadata.plan_id`; nothing is defaulted. The
+    /// settled amount and currency are not bound here, so the host must check
+    /// `pricing`/`payments` against its own order before granting access.
     fn handle_webhook(
         &self,
         payload: &[u8],
@@ -115,22 +124,6 @@ impl BillingProvider for CoinbaseCommerceProvider {
         let event = &json["event"];
         let data = &event["data"];
 
-        let subscription_id = data["id"].as_str().unwrap_or("").to_string();
-        let customer_id = data["metadata"]["customer_id"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
-
-        let customer_email = data["metadata"]["customer_email"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
-
-        let plan_id = data["metadata"]["plan_id"]
-            .as_str()
-            .unwrap_or("default")
-            .to_string();
-
         let status = match event["type"].as_str() {
             Some("charge:confirmed" | "charge:resolved") => SubscriptionStatus::Active,
             Some("charge:failed") => SubscriptionStatus::Unpaid,
@@ -140,11 +133,21 @@ impl BillingProvider for CoinbaseCommerceProvider {
                 ));
             }
         };
-
-        let ends_at = data["expires_at"]
-            .as_str()
-            .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-            .map(|dt| dt.timestamp());
+        let metadata = &data["metadata"];
+        let subscription_id = charge_identity(&data["id"], "charge ID")?;
+        let (customer_id, plan_id) = if status == SubscriptionStatus::Active {
+            (
+                charge_identity(&metadata["customer_id"], "metadata.customer_id")?,
+                charge_identity(&metadata["plan_id"], "metadata.plan_id")?,
+            )
+        } else {
+            (
+                optional_charge_identity(&metadata["customer_id"], "metadata.customer_id")?,
+                optional_charge_identity(&metadata["plan_id"], "metadata.plan_id")?,
+            )
+        };
+        let customer_email =
+            optional_charge_identity(&metadata["customer_email"], "metadata.customer_email")?;
 
         Ok(WebhookEvent {
             subscription_id,
@@ -152,7 +155,7 @@ impl BillingProvider for CoinbaseCommerceProvider {
             customer_email,
             plan_id,
             status,
-            ends_at,
+            ends_at: None,
         })
     }
 
@@ -224,6 +227,34 @@ impl BillingProvider for CoinbaseCommerceProvider {
     }
 }
 
+const MAX_CHARGE_IDENTITY_BYTES: usize = 255;
+
+fn charge_identity(value: &Value, field: &str) -> Result<String, CapitalError> {
+    let text = optional_charge_identity(value, field)?;
+    if text.is_empty() {
+        return Err(CapitalError::PayloadParseError(format!(
+            "Coinbase charge {field} is required"
+        )));
+    }
+    Ok(text)
+}
+
+fn optional_charge_identity(value: &Value, field: &str) -> Result<String, CapitalError> {
+    match value {
+        Value::Null => Ok(String::new()),
+        Value::String(text)
+            if !text.trim().is_empty()
+                && text.len() <= MAX_CHARGE_IDENTITY_BYTES
+                && !text.chars().any(char::is_control) =>
+        {
+            Ok(text.clone())
+        }
+        _ => Err(CapitalError::PayloadParseError(format!(
+            "Coinbase charge {field} must be a bounded non-empty string"
+        ))),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -287,7 +318,7 @@ mod tests {
 
         // 6. Signature verification
         let secret = "sec_coin123";
-        let payload = br#"{"event":{"type":"charge:confirmed","data":{"id":"ch_123","metadata":{"customer_email":"crypto@user.com","plan_id":"crypto_plan"}}}}"#;
+        let payload = br#"{"event":{"type":"charge:confirmed","data":{"id":"ch_123","expires_at":"2026-01-01T01:00:00Z","metadata":{"customer_id":"cust_9","customer_email":"crypto@user.com","plan_id":"crypto_plan"}}}}"#;
 
         let key = hmac::Key::new(hmac::HMAC_SHA256, secret.as_bytes());
         let sig = hmac::sign(&key, payload);
@@ -317,8 +348,12 @@ mod tests {
 
         let event = provider.handle_webhook(payload, &headers).unwrap();
         assert_eq!(event.subscription_id, "ch_123");
+        assert_eq!(event.customer_id, "cust_9");
         assert_eq!(event.customer_email, "crypto@user.com");
+        assert_eq!(event.plan_id, "crypto_plan");
         assert_eq!(event.status, SubscriptionStatus::Active);
+        // The charge's payment window is not an entitlement period.
+        assert_eq!(event.ends_at, None);
 
         // Charge failed event
         let failed_payload = br#"{"event":{"type":"charge:failed","data":{"id":"ch_fail"}}}"#;
@@ -329,6 +364,23 @@ mod tests {
             .handle_webhook(failed_payload, &failed_headers)
             .unwrap();
         assert_eq!(failed_event.status, SubscriptionStatus::Unpaid);
+        assert_eq!(failed_event.plan_id, "");
+
+        // Confirmed charges never activate an invented plan or identity.
+        for confirmed in [
+            &br#"{"event":{"type":"charge:confirmed","data":{"id":"ch_1","metadata":{"customer_id":"c"}}}}"#[..],
+            &br#"{"event":{"type":"charge:confirmed","data":{"id":"ch_1","metadata":{"plan_id":"p"}}}}"#[..],
+            &br#"{"event":{"type":"charge:resolved","data":{"metadata":{"customer_id":"c","plan_id":"p"}}}}"#[..],
+            &br#"{"event":{"type":"charge:confirmed","data":{"id":"","metadata":{"customer_id":"c","plan_id":"p"}}}}"#[..],
+            &br#"{"event":{"type":"charge:confirmed","data":{"id":7,"metadata":{"customer_id":"c","plan_id":"p"}}}}"#[..],
+        ] {
+            let signature = hex::encode(hmac::sign(&key, confirmed).as_ref());
+            let headers = HashMap::from([("x-cc-webhook-signature".to_string(), signature)]);
+            assert!(matches!(
+                provider.handle_webhook(confirmed, &headers),
+                Err(CapitalError::PayloadParseError(_))
+            ));
+        }
 
         // Webhook error paths
         let empty_headers = HashMap::new();

@@ -2567,6 +2567,14 @@ sending.
   `status`; enabling it requires an authoritative payment-status lookup bound to
   the stored order, amount and currency. The explicit `mock_*` fixture never
   uses the buyer's CPF as `customer_id`.
+* Coinbase Commerce `charge:confirmed`, `charge:resolved` and `charge:failed`
+  are one-off charge notifications, not subscription snapshots: the bounded
+  charge ID fills `subscription_id` and `ends_at` is always `None`, because the
+  charge's `expires_at` is its payment window. A confirmed or resolved charge
+  requires the application's `metadata.customer_id` and `metadata.plan_id`
+  instead of defaulting them. The adapter does not bind the settled
+  `pricing`/`payments` amount and currency; the host must match them to its own
+  order before granting access.
 * The additive `StripeProvider::verify_subscription_event` returns an immutable
   `StripeSubscriptionEvent` after the existing signature/freshness check and
   bounded subscription normalization. It retains event ID/type/API version,
