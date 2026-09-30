@@ -236,10 +236,12 @@ the mandatory pre-flight while building and fail on unsafe links.
 
 For a payment-bound native PDF rather than the scaffolded fiscal template,
 enable `rullst-mail/capital-invoice` (or umbrella `rullst/capital-mail`) and use
-`PaidInvoiceDelivery::prepare`. It rejects non-final/mock payment evidence and
-recipient/amount/currency substitution before sending. The host must atomically
-claim its stable delivery key in durable state; webhook orchestration,
-provider acceptance and exactly-once delivery are not implied.
+`PaidInvoiceDelivery::prepare`, then set the verified sender with
+`.from(sender)?` (13.0), which re-runs pre-flight. It rejects non-final/mock
+payment evidence and recipient/amount/currency substitution before sending.
+The host must atomically claim its stable delivery key in durable state;
+webhook orchestration, provider acceptance and exactly-once delivery are not
+implied.
 
 ---
 

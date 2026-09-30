@@ -243,8 +243,9 @@ and reject unsafe links; tax provenance, billing state, scheduling, and policy
 remain application-owned.
 
 For native payment-bound PDF delivery, enable `rullst-mail/capital-invoice` (or
-umbrella `rullst/capital-mail`) and use `PaidInvoiceDelivery::prepare`. It
-rejects non-final/mock evidence and recipient/amount/currency substitution.
+umbrella `rullst/capital-mail`) and use `PaidInvoiceDelivery::prepare`, then
+set the verified sender with `.from(sender)?` (13.0), which re-runs pre-flight.
+It rejects non-final/mock evidence and recipient/amount/currency substitution.
 Applications still reconcile webhooks and atomically claim the stable delivery
 key; provider acceptance and exactly-once delivery are not promised.
 

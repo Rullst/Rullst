@@ -48,6 +48,21 @@ impl PaidInvoiceDelivery {
         })
     }
 
+    /// Sets the application-owned verified sender and re-runs the pre-flight
+    /// pipeline, which rejects a header-breaking or malformed address.
+    ///
+    /// Real providers require a sender from a verified domain; without one,
+    /// some drivers fail with a configuration error and others fall back to a
+    /// placeholder address that providers reject. New in 13.0.
+    pub fn from(self, sender: impl Into<String>) -> Result<Self, MailError> {
+        let mut message = self.prepared.into_message();
+        message.from = Some(sender.into());
+        Ok(Self {
+            delivery_key: self.delivery_key,
+            prepared: DeliveryPipeline::prepare(&message)?,
+        })
+    }
+
     /// Stable non-secret key for the application's durable delivery outbox.
     pub fn delivery_key(&self) -> &str {
         &self.delivery_key
@@ -148,6 +163,28 @@ mod tests {
         for status in [ChargeStatus::Processing, ChargeStatus::Mock] {
             assert!(paid_invoice(status).is_err());
         }
+    }
+
+    #[tokio::test]
+    async fn verified_sender_is_validated_and_delivered() {
+        let paid = paid_invoice(ChargeStatus::Succeeded).expect("paid invoice");
+        let delivery = PaidInvoiceDelivery::prepare(&paid).expect("prepared delivery");
+        assert!(delivery.message().from.is_none());
+        for invalid in [
+            "billing@example.com\r\nBcc: other@example.com",
+            "not-an-address",
+        ] {
+            assert!(delivery.clone().from(invalid).is_err());
+        }
+        let delivery = delivery
+            .from("billing@example.com")
+            .expect("verified sender");
+        assert_eq!(delivery.delivery_key(), paid.delivery_key());
+        let (driver, messages) = MemoryDriver::isolated();
+        delivery.send_with(&driver).await.expect("offline delivery");
+        let messages = messages.lock().expect("message store");
+        assert_eq!(messages[0].from.as_deref(), Some("billing@example.com"));
+        assert!(messages[0].attachments[0].content.starts_with(b"%PDF-"));
     }
 
     #[tokio::test]
