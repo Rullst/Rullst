@@ -1265,6 +1265,14 @@ builder emits `DEFAULT (CURRENT_TIMESTAMP)` and parenthesizes every other
 non-`NULL` default on those column types (MySQL 8.0.13+, MariaDB 10.2.1+).
 The columns stay `TEXT` so SQLx's `Any` driver can decode them as strings.
 
+`Blueprint::float` is an `f64` column on every driver: `DOUBLE PRECISION` on
+PostgreSQL (whose `REAL` is single precision and cannot decode as `f64`),
+`DOUBLE` on MySQL/MariaDB and `REAL` (8-byte) on SQLite. `Column::col_type`
+still reads `REAL` before the schema is built; an explicitly replaced
+`col_type` is emitted unchanged. This affects DDL built from now on; columns
+created by earlier versions keep their type until a reviewed migration alters
+them (for example `ALTER TABLE t ALTER COLUMN c TYPE DOUBLE PRECISION`).
+
 The Capital row also includes one implemented, feature-gated quota boundary:
 `BillingSubject` binds a shared team/workspace counter to trusted tenant state,
 `Billable::quota_request` derives the limit from the subscription owner, and

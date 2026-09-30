@@ -51,6 +51,12 @@ expression form `DEFAULT (CURRENT_TIMESTAMP)`, which those servers require for
 text columns (MySQL 8.0.13+, MariaDB 10.2.1+); SQLite and PostgreSQL use the
 plain `DEFAULT CURRENT_TIMESTAMP`.
 
+`table.float(...)` maps to an `f64` model field: it emits `DOUBLE PRECISION` on
+PostgreSQL, `DOUBLE` on MySQL/MariaDB and `REAL` on SQLite. PostgreSQL columns
+created by earlier Rullst versions were single-precision `REAL`; migrate them
+explicitly (`ALTER TABLE products ALTER COLUMN price TYPE DOUBLE PRECISION`)
+before relying on `f64` precision.
+
 Text defaults (`ColumnDefault::Text`) and `table.enum_col(...)` variants are
 embedded in the DDL as single-quoted literals with doubled single quotes.
 `Schema::create` rejects such text when it contains a backslash or a control

@@ -5,6 +5,7 @@
 #![allow(clippy::expect_used, clippy::unwrap_used)]
 
 mod bulk_delete;
+mod column_types;
 mod nested_transaction;
 mod soft_delete_lifecycle;
 mod timestamps;
@@ -15,4 +16,5 @@ pub async fn exercise() {
     bulk_delete::exercise().await;
     soft_delete_lifecycle::exercise().await;
     nested_transaction::exercise().await;
+    column_types::exercise().await;
 }

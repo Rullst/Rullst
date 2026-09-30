@@ -9,6 +9,32 @@ pub struct Blueprint {
     /// `enum_col` columns with a variant that is not a safe DDL literal;
     /// reported by `build` because `enum_col` itself cannot fail.
     invalid_enum_columns: Vec<String>,
+    /// Columns whose DDL type is chosen per driver when the schema is built.
+    driver_typed_columns: Vec<(String, DriverType)>,
+}
+
+/// A logical column type whose DDL spelling differs between drivers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DriverType {
+    /// An `f64` column: `REAL` is only single precision on PostgreSQL.
+    Double,
+}
+
+impl DriverType {
+    /// The type recorded in [`Column::col_type`] when the column is added.
+    fn portable(self) -> &'static str {
+        match self {
+            Self::Double => "REAL",
+        }
+    }
+
+    fn for_driver(self, driver: &str) -> &'static str {
+        match (self, driver) {
+            (Self::Double, "postgres") => "DOUBLE PRECISION",
+            (Self::Double, "mysql") => "DOUBLE",
+            (Self::Double, _) => "REAL",
+        }
+    }
 }
 
 impl Default for Blueprint {
@@ -23,7 +49,24 @@ impl Blueprint {
             columns: vec![],
             native_enum_columns: vec![],
             invalid_enum_columns: vec![],
+            driver_typed_columns: vec![],
         }
+    }
+
+    fn add_driver_typed_column(&mut self, name: &str, kind: DriverType) -> &mut Column {
+        self.driver_typed_columns.push((name.to_string(), kind));
+        self.add_column(name, kind.portable())
+    }
+
+    /// The driver-specific type of a column added by a typed helper, unless
+    /// the caller has since replaced its `col_type`.
+    fn driver_type(&self, col: &Column) -> Option<DriverType> {
+        self.driver_typed_columns
+            .iter()
+            .rev()
+            .find(|(name, _)| name == &col.name)
+            .map(|(_, kind)| *kind)
+            .filter(|kind| col.col_type == kind.portable())
     }
 
     pub fn id(&mut self) -> &mut Column {
@@ -58,8 +101,13 @@ impl Blueprint {
         self.add_column(name, "BIGINT")
     }
 
+    /// Adds an `f64` column: `DOUBLE PRECISION` on PostgreSQL, `DOUBLE` on
+    /// MySQL/MariaDB and `REAL` (8-byte) on SQLite.
+    ///
+    /// [`Column::col_type`] reads `REAL` until the schema is built; replacing
+    /// it keeps the replacement on every driver.
     pub fn float(&mut self, name: &str) -> &mut Column {
-        self.add_column(name, "REAL")
+        self.add_driver_typed_column(name, DriverType::Double)
     }
 
     pub fn boolean(&mut self, name: &str) -> &mut Column {
@@ -170,6 +218,8 @@ impl Blueprint {
                     "mysql" => format!("ENUM({labels})"),
                     _ => format!("TEXT CHECK({} IN ({labels}))", col.name),
                 }
+            } else if let Some(kind) = self.driver_type(col) {
+                kind.for_driver(driver).to_string()
             } else {
                 col.col_type.clone()
             };
