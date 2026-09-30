@@ -76,3 +76,58 @@ fn read_only_and_read_write_dsns_never_create_a_missing_database() {
         assert!(!database_path.exists(), "mode={mode} created the database");
     }
 }
+
+#[test]
+fn in_memory_sqlite_pools_keep_their_database_connection() {
+    let short = || {
+        Orm::pool_options()
+            .idle_timeout(Some(std::time::Duration::from_secs(1)))
+            .max_lifetime(Some(std::time::Duration::from_secs(2)))
+    };
+    for dsn in [
+        "sqlite::memory:",
+        "sqlite://:memory:",
+        "sqlite:file:shared?mode=memory&cache=shared",
+    ] {
+        let options = Orm::retain_memory_database(short(), dsn);
+        assert_eq!(options.get_min_connections(), 1, "{dsn}");
+        assert_eq!(options.get_idle_timeout(), None, "{dsn}");
+        assert_eq!(options.get_max_lifetime(), None, "{dsn}");
+    }
+    let file = Orm::retain_memory_database(short(), "sqlite:data/app.db");
+    assert_eq!(file.get_min_connections(), 0);
+    assert_eq!(
+        file.get_idle_timeout(),
+        Some(std::time::Duration::from_secs(1))
+    );
+}
+
+/// With the idle reaper active, an in-memory database would be dropped with
+/// its last connection; the retained pool keeps its schema and rows.
+#[cfg(not(any(
+    feature = "strict-postgres",
+    feature = "strict-mysql",
+    feature = "strict-sqlite"
+)))]
+#[tokio::test]
+async fn in_memory_sqlite_schema_survives_the_idle_reaper() {
+    sqlx::any::install_default_drivers();
+    let options = Orm::pool_options()
+        .idle_timeout(Some(std::time::Duration::from_millis(500)))
+        .max_lifetime(Some(std::time::Duration::from_secs(1)));
+    let pool = Orm::retain_memory_database(options, "sqlite::memory:")
+        .connect("sqlite::memory:")
+        .await
+        .expect("connect in-memory pool");
+    sqlx::query("CREATE TABLE retained (id INTEGER PRIMARY KEY)")
+        .execute(&pool)
+        .await
+        .expect("create table");
+    tokio::time::sleep(std::time::Duration::from_millis(2_500)).await;
+    let (rows,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM retained")
+        .fetch_one(&pool)
+        .await
+        .expect("the in-memory schema must survive idle periods");
+    assert_eq!(rows, 0);
+    pool.close().await;
+}

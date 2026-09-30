@@ -99,6 +99,20 @@ impl Orm {
             .after_release(savepoint::release_outside_transaction)
     }
 
+    /// An in-memory SQLite database exists only while one of its connections
+    /// is open, so its pool keeps one connection and never reaps it for being
+    /// idle or old. Other DSNs keep `options` unchanged.
+    fn retain_memory_database(options: RullstPoolOptions, database_url: &str) -> RullstPoolOptions {
+        if dsn::is_sqlite_memory(database_url) {
+            options
+                .min_connections(1)
+                .idle_timeout(None)
+                .max_lifetime(None)
+        } else {
+            options
+        }
+    }
+
     fn ensure_uninitialized() -> Result<(), crate::Error> {
         if ORM_STATE.get().is_some() {
             Err(crate::Error::AlreadyInitialized)
@@ -131,10 +145,11 @@ impl Orm {
         )))]
         install_default_drivers();
 
-        let pool = Self::pool_options()
+        let options = Self::pool_options()
             .acquire_timeout(std::time::Duration::from_secs(10))
             .idle_timeout(Some(std::time::Duration::from_secs(300)))
-            .max_lifetime(Some(std::time::Duration::from_secs(1800)))
+            .max_lifetime(Some(std::time::Duration::from_secs(1800)));
+        let pool = Self::retain_memory_database(options, database_url)
             .connect(database_url)
             .await?;
 
@@ -170,11 +185,12 @@ impl Orm {
         )))]
         install_default_drivers();
 
-        let pool = Self::pool_options()
+        let options = Self::pool_options()
             .max_connections(max_connections)
             .acquire_timeout(std::time::Duration::from_secs(acquire_timeout_secs))
             .idle_timeout(Some(std::time::Duration::from_secs(300)))
-            .max_lifetime(Some(std::time::Duration::from_secs(1800)))
+            .max_lifetime(Some(std::time::Duration::from_secs(1800)));
+        let pool = Self::retain_memory_database(options, database_url)
             .connect(database_url)
             .await?;
 
@@ -230,10 +246,11 @@ impl Orm {
         )))]
         install_default_drivers();
 
-        let pool = Self::pool_options()
+        let options = Self::pool_options()
             .acquire_timeout(std::time::Duration::from_secs(10))
             .idle_timeout(Some(std::time::Duration::from_secs(300)))
-            .max_lifetime(Some(std::time::Duration::from_secs(1800)))
+            .max_lifetime(Some(std::time::Duration::from_secs(1800)));
+        let pool = Self::retain_memory_database(options, primary_url)
             .connect(primary_url)
             .await?;
 
@@ -242,7 +259,9 @@ impl Orm {
         // dropped locally and initialization remains retryable.
         let replica_futures: Vec<_> = replica_urls
             .into_iter()
-            .map(|replica_url| Self::pool_options().connect(replica_url))
+            .map(|replica_url| {
+                Self::retain_memory_database(Self::pool_options(), replica_url).connect(replica_url)
+            })
             .collect();
         let replicas = futures::future::try_join_all(replica_futures).await?;
 

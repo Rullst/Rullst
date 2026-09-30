@@ -2174,6 +2174,10 @@ while portability and semantic review remain the model author's responsibility.
   `Error::Internal` before connecting. A bracketed IPv6 literal host
   (`postgres://app@[2001:db8::10]:5432/app`, optionally with a `%25` zone
   identifier) is not a placeholder and is accepted by every entrypoint.
+* An in-memory SQLite DSN (`sqlite::memory:` or `mode=memory`) exists only
+  while one of its connections is open, so its pool keeps one connection and
+  never closes it for idleness or age (the Turso offline in-memory fallback
+  does the same).
 * A SQLite file DSN without a `mode` parameter, or with `mode=rwc`, has its
   missing database file (and directory) created before connecting. An explicit
   `mode=ro` or `mode=rw` never creates one, so a wrong or unmounted path fails

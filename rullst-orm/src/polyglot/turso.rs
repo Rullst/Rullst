@@ -263,6 +263,7 @@ impl TursoStore {
     pub async fn connect(config: TursoConfig) -> Result<Self, PolyglotError> {
         config.validate()?;
         if config.is_mock() {
+            let in_memory = config.offline_path.is_none();
             let options = match config.offline_path {
                 Some(path) => sqlx::sqlite::SqliteConnectOptions::new()
                     .filename(path)
@@ -271,8 +272,16 @@ impl TursoStore {
                     .filename(":memory:")
                     .in_memory(true),
             };
-            let pool = sqlx::sqlite::SqlitePoolOptions::new()
-                .max_connections(1)
+            let mut pool_options = sqlx::sqlite::SqlitePoolOptions::new().max_connections(1);
+            if in_memory {
+                // The private in-memory database lives only as long as its one
+                // connection, so that connection is never reaped or recycled.
+                pool_options = pool_options
+                    .min_connections(1)
+                    .idle_timeout(None)
+                    .max_lifetime(None);
+            }
+            let pool = pool_options
                 .connect_with(options)
                 .await
                 .map_err(|error| PolyglotError::driver("Turso offline", error))?;
