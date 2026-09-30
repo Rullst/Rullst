@@ -35,6 +35,10 @@ applies); text, textarea, e-mail and URL fields store `''`. Date-times may carry
 a `Z` or `±HH:MM` offset. API clients should send only the fields they intend to
 change.
 
+In the list, a NULL or undecodable number, relation or Boolean shows a `NULL`
+or `unreadable` marker rather than `0` or `No`, and a row whose key is NULL or
+cannot be decoded exactly has no batch checkbox or edit/delete actions.
+
 Opening the edit form of a missing, other-tenant or misspelled key returns
 `404` (and a failed query `500`) instead of an empty editable form. The form
 reads only the registered visible, non-password columns.

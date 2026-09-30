@@ -55,6 +55,39 @@ impl NexusModel for Counter {
     }
 }
 
+/// Nullable number, Boolean and relation columns with a text key.
+struct Metric;
+
+impl NexusModel for Metric {
+    fn nexus_table() -> &'static str {
+        "nexus_metrics"
+    }
+
+    fn nexus_label() -> &'static str {
+        "Metrics"
+    }
+
+    fn nexus_pk() -> &'static str {
+        "code"
+    }
+
+    fn nexus_fields() -> Vec<FieldMeta> {
+        vec![
+            FieldMeta::new("code", "Code", FieldKind::Text),
+            FieldMeta::new("amount", "Amount", FieldKind::Number),
+            FieldMeta::new("approved", "Approved", FieldKind::Boolean),
+            FieldMeta::new(
+                "owner_id",
+                "Owner",
+                FieldKind::ForeignKey {
+                    table: "owners",
+                    label_col: "name",
+                },
+            ),
+        ]
+    }
+}
+
 const CSRF: &str = "crud_contract_csrf_fixture";
 
 async fn body_text(response: axum::response::Response) -> String {
@@ -114,6 +147,8 @@ async fn crud_contracts_hold_on_sqlite() {
     for ddl in [
         "CREATE TABLE nexus_pages (slug TEXT PRIMARY KEY, title TEXT NOT NULL)",
         "CREATE TABLE nexus_counters (id INTEGER PRIMARY KEY, label TEXT NOT NULL)",
+        "CREATE TABLE nexus_metrics (code TEXT PRIMARY KEY, amount INTEGER, \
+         approved INTEGER, owner_id INTEGER)",
     ] {
         sqlx::query(ddl)
             .execute(pool)
@@ -127,12 +162,41 @@ async fn crud_contracts_hold_on_sqlite() {
         Nexus::new()
             .register::<Page>()
             .register::<Counter>()
+            .register::<Metric>()
             .with_required_audit(),
     );
 
     search_matches_wildcards_literally(&app, pool).await;
     numeric_keys_are_canonical_in_sql_and_audit(&app, pool).await;
     unrepresentable_keys_do_not_block_required_audit(&app, pool).await;
+    null_and_unreadable_list_values_are_not_fabricated(&app, pool).await;
+}
+
+/// NULL and undecodable numbers, Booleans and relations are not shown as `0`
+/// or `No`, and a row without a usable key gets no actions (NX2-06).
+async fn null_and_unreadable_list_values_are_not_fabricated(app: &axum::Router, pool: &RullstPool) {
+    // SQLite keeps text in INTEGER-affinity columns and allows a NULL text key.
+    sqlx::query(
+        "INSERT INTO nexus_metrics (code, amount, approved, owner_id) VALUES \
+         ('m1', NULL, NULL, NULL), ('m2', 'n/a', 'maybe', 'x'), (NULL, 5, 1, 7)",
+    )
+    .execute(pool)
+    .await
+    .expect("insert metric fixtures");
+    let (status, html) = get(app, "/table/nexus_metrics/search?q=").await;
+    assert_eq!(status, StatusCode::OK);
+
+    let null = "<td class=\"nexus-td nexus-muted\">NULL</td>";
+    let unreadable = "<td class=\"nexus-td nexus-muted\">unreadable</td>";
+    assert_eq!(html.matches(null).count(), 3, "{html}");
+    assert_eq!(html.matches(unreadable).count(), 3, "{html}");
+    assert!(!html.contains("<td class=\"nexus-td\">0</td>"), "{html}");
+    assert!(!html.contains("No</td>"), "{html}");
+
+    assert_eq!(html.matches("data-nexus-row-id=").count(), 2, "{html}");
+    assert!(!html.contains("data-nexus-row-id=\"0\""));
+    assert!(html.contains("No usable key"));
+    assert_eq!(html.matches("nexus-batch-check").count(), 2);
 }
 
 /// A numeric key spelled `+1`, `01` or `1e3` must not change record 1 or

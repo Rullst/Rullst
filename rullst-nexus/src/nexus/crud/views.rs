@@ -81,52 +81,52 @@ pub async fn render_table_rows(
     db_rows.into_iter().fold(
         String::with_capacity(2048),
         |mut out, row| {
-            let row_id: String = if let Ok(v) = row.try_get::<i64, _>(pk) {
-                v.to_string()
-            } else if let Ok(v) = row.try_get::<i32, _>(pk) {
-                v.to_string()
-            } else if let Ok(v) = row.try_get::<f64, _>(pk) {
-                (v as i64).to_string()
-            } else {
-                row.try_get::<String, _>(pk).unwrap_or_else(|_| "0".to_string())
-            };
-
             let cells = visible_fields.iter().fold(String::new(), |mut cells, f| {
-                let val_str: String = match &f.kind {
-                    FieldKind::Boolean => {
-                        let b = row.try_get::<bool, _>(f.name)
-                            .or_else(|_| row.try_get::<i64, _>(f.name).map(|v| v != 0))
-                            .unwrap_or(false);
-                        if b {
-                            "✅ Yes".to_string()
-                        } else {
-                            "❌ No".to_string()
-                        }
-                    }
-                    FieldKind::Number | FieldKind::ForeignKey { .. } => {
-                        if let Ok(v) = row.try_get::<i64, _>(f.name) {
-                            v.to_string()
-                        } else if let Ok(v) = row.try_get::<f64, _>(f.name) {
-                            v.to_string()
-                        } else if let Ok(v) = row.try_get::<i32, _>(f.name) {
-                            v.to_string()
-                        } else {
-                            "0".to_string()
-                        }
-                    }
+                let cell = match &f.kind {
                     // Password columns are not selected; never render them.
-                    FieldKind::Password => PASSWORD_MASK.to_string(),
-                    _ => row
-                        .try_get::<String, _>(f.name)
-                        .unwrap_or_else(|_| "-".to_string()),
+                    FieldKind::Password => Cell::Value(PASSWORD_MASK.to_string()),
+                    FieldKind::Boolean => decode_cell(&row, f.name, |row| {
+                        row.try_get::<bool, _>(f.name)
+                            .or_else(|_| row.try_get::<i64, _>(f.name).map(|v| v != 0))
+                            .ok()
+                            .map(|b| if b { "✅ Yes" } else { "❌ No" }.to_string())
+                    }),
+                    FieldKind::Number | FieldKind::ForeignKey { .. } => decode_cell(&row, f.name, |row| {
+                        row.try_get::<i64, _>(f.name)
+                            .map(|v| v.to_string())
+                            .or_else(|_| row.try_get::<f64, _>(f.name).map(|v| v.to_string()))
+                            .or_else(|_| row.try_get::<i32, _>(f.name).map(|v| v.to_string()))
+                            .ok()
+                    }),
+                    _ => Cell::Value(
+                        row.try_get::<String, _>(f.name)
+                            .unwrap_or_else(|_| "-".to_string()),
+                    ),
                 };
-
-                let clean_val = rullst_core::html::escape_str(&val_str);
-
-                let _ = std::fmt::Write::write_fmt(&mut cells, format_args!("<td class=\"nexus-td\">{}</td>", clean_val));
+                let _ = match cell {
+                    Cell::Value(value) => write!(
+                        cells,
+                        "<td class=\"nexus-td\">{}</td>",
+                        rullst_core::html::escape_str(&value)
+                    ),
+                    Cell::Missing(marker) => write!(
+                        cells,
+                        "<td class=\"nexus-td nexus-muted\">{marker}</td>"
+                    ),
+                };
                 cells
             });
 
+            // A row whose key is NULL or undecodable has no address, so it
+            // gets neither a batch checkbox nor edit/delete actions.
+            let Some(row_id) = decode_row_key(&row, pk) else {
+                let _ = write!(
+                    out,
+                    "<tr class=\"nexus-tr\"><td class=\"nexus-td\"></td>{cells}\
+                     <td class=\"nexus-td nexus-td-actions nexus-muted\">No usable key</td></tr>"
+                );
+                return out;
+            };
             let safe_row_id = rullst_core::html::escape_str(&row_id);
             let row_path = urlencoding::encode(&row_id);
             let checkbox_cell = format!("<td class=\"nexus-td text-center\"><input type=\"checkbox\" name=\"selected_ids\" value=\"{safe_row_id}\" class=\"nexus-batch-check\" /></td>");
@@ -147,6 +147,47 @@ pub async fn render_table_rows(
             out
         }
     )
+}
+
+/// A list cell: a decoded value, or a marker for NULL or undecodable data.
+enum Cell {
+    Value(String),
+    Missing(&'static str),
+}
+
+type ListRow = <rullst_orm::RullstDatabase as rullst_orm::_sqlx::Database>::Row;
+
+/// Distinguishes SQL NULL and undecodable values from real ones instead of
+/// showing a fabricated `0` or `No`.
+fn decode_cell(row: &ListRow, column: &str, decode: impl Fn(&ListRow) -> Option<String>) -> Cell {
+    use rullst_orm::_sqlx::{Row, ValueRef};
+    match row.try_get_raw(column) {
+        Ok(raw) if raw.is_null() => Cell::Missing("NULL"),
+        Ok(_) => decode(row).map_or(Cell::Missing("unreadable"), Cell::Value),
+        Err(_) => Cell::Missing("unreadable"),
+    }
+}
+
+/// The record key of a listed row, or `None` when it is NULL or cannot be
+/// decoded exactly (a fractional or out-of-range floating-point key would
+/// otherwise point the actions at a different record).
+fn decode_row_key(row: &ListRow, pk: &str) -> Option<String> {
+    use rullst_orm::_sqlx::{Row, ValueRef};
+    if row.try_get_raw(pk).map_or(true, |raw| raw.is_null()) {
+        return None;
+    }
+    if let Ok(value) = row.try_get::<i64, _>(pk) {
+        return Some(value.to_string());
+    }
+    if let Ok(value) = row.try_get::<i32, _>(pk) {
+        return Some(value.to_string());
+    }
+    if let Ok(value) = row.try_get::<f64, _>(pk) {
+        // Exactly representable integers only; `as` saturates otherwise.
+        let integral = value.fract() == 0.0 && value.abs() < 9_007_199_254_740_992.0;
+        return integral.then(|| (value as i64).to_string());
+    }
+    row.try_get::<String, _>(pk).ok()
 }
 
 /// Renders the complete HTML table view container including search toolbar and pagination.
