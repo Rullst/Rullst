@@ -185,7 +185,7 @@ impl NfseDpsSchemaValidator {
         Err(FiscalError::XmlValidation {
             code: bounded(error.code(), 96),
             path: bounded(error.path(), 256),
-            message: bounded(error.message(), 512),
+            message: bounded(&redact_quoted_values(error.message()), 512),
         })
     }
 }
@@ -305,6 +305,22 @@ fn schema_assembly_error(error: oxixml_schema::SchemaError) -> FiscalError {
         bounded(error.code(), 96),
         bounded(error.message(), 512)
     ))
+}
+
+// oxixml quotes offending instance values in backticks, for example
+// "`529.982.247-25` does not match the pattern ...". Those can be a taker's
+// CPF, phone or address, so every quoted span is replaced; the constraint
+// code and element path still identify the failure.
+fn redact_quoted_values(message: &str) -> String {
+    let mut redacted = String::with_capacity(message.len());
+    for (index, part) in message.split('`').enumerate() {
+        if index % 2 == 0 {
+            redacted.push_str(part);
+        } else {
+            redacted.push_str("`[redacted]`");
+        }
+    }
+    redacted
 }
 
 fn bounded(value: &str, maximum: usize) -> String {

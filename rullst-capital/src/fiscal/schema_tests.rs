@@ -207,3 +207,37 @@ fn compatibility_and_diagnostics_are_bounded() {
         matches!(mapped, FiscalError::Artifact(message) if message.contains("assembly failed"))
     );
 }
+
+#[test]
+fn diagnostics_do_not_echo_instance_values() {
+    let xsd = concat!(
+        r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema""#,
+        r#" xmlns:t="http://www.sped.fazenda.gov.br/nfse""#,
+        r#" targetNamespace="http://www.sped.fazenda.gov.br/nfse" elementFormDefault="qualified">"#,
+        r#"<xs:simpleType name="CPF"><xs:restriction base="xs:string">"#,
+        r#"<xs:pattern value="[0-9]{11}"/></xs:restriction></xs:simpleType>"#,
+        r#"<xs:element name="DPS"><xs:complexType><xs:simpleContent>"#,
+        r#"<xs:extension base="t:CPF"><xs:attribute name="versao" type="xs:string" use="required"/>"#,
+        r#"</xs:extension></xs:simpleContent></xs:complexType></xs:element>"#,
+        "</xs:schema>"
+    );
+    let mut set = SchemaSet::new();
+    set.add_document(Some("pinned://DPS.xsd"), xsd).unwrap();
+    let validator = NfseDpsSchemaValidator {
+        schema: set.compile().unwrap(),
+        profile: "synthetic-pattern",
+    };
+    assert!(validator.validate(&dps("52998224725")).is_ok());
+    let error = validator.validate(&dps("529.982.247-25")).unwrap_err();
+    let FiscalError::XmlValidation { message, .. } = &error else {
+        panic!("expected a schema diagnostic");
+    };
+    assert!(message.contains("[redacted]"));
+    assert!(!format!("{error} {error:?}").contains("529.982.247-25"));
+
+    assert_eq!(
+        redact_quoted_values("`a` then `b` and `open"),
+        "`[redacted]` then `[redacted]` and `[redacted]`"
+    );
+    assert_eq!(redact_quoted_values("no quotes"), "no quotes");
+}
