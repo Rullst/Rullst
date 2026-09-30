@@ -1975,7 +1975,11 @@ while portability and semantic review remain the model author's responsibility.
   that token may acknowledge or fail the event; expiration permits another
   worker to reclaim it. Failure schedules a bounded retry or moves the event to
   `dead_letter` at the configured attempt limit, including a worker that dies
-  while holding its final lease.
+  while holding its final lease. `claim_next`, `acknowledge` and `fail` are
+  independent lease operations that commit on their own connection; inside an
+  active `Orm::transaction` they return `Validation` instead of committing
+  before, and regardless of, the handler's work. Acknowledge after that work
+  has committed.
 * Delivery is **at least once**, not exactly once. A worker may perform its
   external effect and crash before acknowledgement, so consumers must use the
   stable stream/event key as their own idempotency key. Ordering across retries

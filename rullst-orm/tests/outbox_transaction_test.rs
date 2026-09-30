@@ -147,6 +147,28 @@ async fn outbox_is_atomic_idempotent_and_safely_claimed() {
     assert!(!replay.inserted);
     assert_eq!(replay.id, original.id);
 
+    // Lease operations commit on their own, so a managed transaction (whose
+    // rollback would otherwise leave the event acknowledged) refuses them. On
+    // SQLite they would also wait on the transaction's write lock.
+    let refused = tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        Orm::transaction(|_| {
+            Box::pin(async {
+                let claim = Outbox::claim_next("tenant-b", "worker-b", 30, 3).await;
+                let acknowledge = Outbox::acknowledge(1, "claim-token").await;
+                let fail = Outbox::fail(1, "claim-token", "retry later", 3, 5).await;
+                let claim_refused = matches!(claim, Err(Error::Validation(_)));
+                Ok::<_, Error>((claim_refused, acknowledge, fail))
+            })
+        }),
+    )
+    .await
+    .expect("lease operations must not wait on the managed transaction")
+    .expect("the managed transaction commits");
+    assert!(refused.0);
+    assert!(matches!(refused.1, Err(Error::Validation(_))));
+    assert!(matches!(refused.2, Err(Error::Validation(_))));
+
     let tenant_b = Outbox::claim_next("tenant-b", "worker-b", 30, 3)
         .await
         .expect("claim tenant-b event")

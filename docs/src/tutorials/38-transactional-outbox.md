@@ -139,6 +139,11 @@ claim token. A failed delivery becomes pending after the bounded delay, or
 final claim, the next claim sweep moves that expired event to dead-letter
 instead of retrying forever.
 
+Claims, acknowledgements and failures commit on their own. Calling them inside
+`Orm::transaction` returns a validation error, because an acknowledgement there
+would already be durable if the handler's transaction later rolled back. Commit
+the handler's database work first, then acknowledge.
+
 ## 4. Understand the guarantee
 
 The delivery guarantee is **at least once**:

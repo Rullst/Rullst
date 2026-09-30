@@ -1,7 +1,7 @@
 //! Claim-token-guarded outbox state transitions (acknowledge and fail).
 
 use super::sql::*;
-use super::{MAX_ERROR_LEN, unix_now, validate_key};
+use super::{MAX_ERROR_LEN, ensure_outside_managed_transaction, unix_now, validate_key};
 use crate::{Error, Orm};
 
 pub(super) enum Transition<'a> {
@@ -19,6 +19,7 @@ pub(super) async fn transition(
     claim_key: &str,
     transition: Transition<'_>,
 ) -> Result<bool, Error> {
+    ensure_outside_managed_transaction()?;
     if id <= 0 {
         return Err(Error::Validation("outbox id must be positive".to_string()));
     }

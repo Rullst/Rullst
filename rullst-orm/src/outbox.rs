@@ -235,6 +235,9 @@ impl Outbox {
     }
 
     /// Claims one pending or lease-expired event for a stream.
+    ///
+    /// The claim commits independently, so it is refused (`Validation`)
+    /// inside an active [`Orm::transaction`].
     pub async fn claim_next(
         stream: impl Into<String>,
         worker_id: impl Into<String>,
@@ -280,6 +283,7 @@ impl Outbox {
         lease_seconds: i64,
         max_attempts: i32,
     ) -> Result<Option<ClaimedOutboxEvent>, Error> {
+        ensure_outside_managed_transaction()?;
         validate_key("stream", stream)?;
         validate_key("worker_id", worker_id)?;
         if now_epoch_seconds <= 0
@@ -378,12 +382,19 @@ impl Outbox {
     }
 
     /// Marks an event delivered only when the exact claim token still owns it.
+    ///
+    /// Acknowledge after the handler's own work has committed: the update
+    /// commits independently and is refused inside an active
+    /// [`Orm::transaction`].
     pub async fn acknowledge(id: i64, claim_key: impl Into<String>) -> Result<bool, Error> {
         let claim_key = claim_key.into();
         transition(id, &claim_key, Transition::Delivered).await
     }
 
     /// Releases an event for retry or dead-letters it at the attempt limit.
+    ///
+    /// Like [`Self::acknowledge`], it is refused inside an active
+    /// [`Orm::transaction`].
     pub async fn fail(
         id: i64,
         claim_key: impl Into<String>,
@@ -445,6 +456,28 @@ fn unix_now() -> Result<i64, Error> {
         .map_err(|_| Error::Internal("system clock is before the Unix epoch".to_string()))?;
     i64::try_from(elapsed.as_secs())
         .map_err(|_| Error::Internal("Unix timestamp exceeds i64".to_string()))
+}
+
+/// Claims, acknowledgements and failures are independent lease operations
+/// that commit on their own connection. Inside a managed `Orm::transaction`
+/// they would commit before, and regardless of, the handler's work (a
+/// rolled-back handler would leave its event acknowledged), and on SQLite
+/// they would wait on that transaction's own write lock, so they are refused.
+fn ensure_outside_managed_transaction() -> Result<(), Error> {
+    let active = crate::CURRENT_TX
+        .try_with(|transaction| match transaction.try_lock() {
+            Ok(guard) => guard.is_some(),
+            // A held handle belongs to a transaction that is still running.
+            Err(_) => true,
+        })
+        .unwrap_or(false);
+    if active {
+        return Err(Error::Validation(
+            "Outbox::claim_next, acknowledge and fail are independent lease operations; call them outside Orm::transaction, after the handler's work has committed"
+                .to_string(),
+        ));
+    }
+    Ok(())
 }
 
 fn missing_transaction_error() -> Error {
