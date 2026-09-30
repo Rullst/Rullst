@@ -1,9 +1,8 @@
 use crate::Router;
-use crate::lifecycle::{ApplicationLifecycle, apply_lifecycle};
+use crate::lifecycle::ApplicationLifecycle;
 use crate::scheduler::{Scheduler, SchedulerHandle};
 use crate::server::dylib_loader::load_dylib_router;
-use crate::server::hotswap::HotSwapService;
-use crate::server::server_middleware::zstd_static_middleware;
+use crate::server::hotswap::{HotSwapService, PeerAwareHotSwap};
 #[cfg(feature = "orm")]
 use rullst_orm::Orm;
 use std::collections::HashMap;
@@ -88,6 +87,7 @@ pub struct Server {
     pub(crate) limiter: Option<crate::resilience::RateLimiter>,
     pub(crate) lifecycle: Option<ApplicationLifecycle>,
     pub(crate) machine_endpoints: Option<crate::security::MachineEndpointPolicy>,
+    pub(crate) trusted_proxy: Option<crate::security::TrustedProxyConfig>,
 }
 
 impl Server {
@@ -103,6 +103,7 @@ impl Server {
             limiter: None,
             lifecycle: None,
             machine_endpoints: None,
+            trusted_proxy: None,
         }
     }
 
@@ -119,6 +120,7 @@ impl Server {
             limiter: None,
             lifecycle: None,
             machine_endpoints: None,
+            trusted_proxy: None,
         }
     }
 
@@ -189,6 +191,32 @@ impl Server {
         self
     }
 
+    /// Resolves the client address behind the listed reverse proxies.
+    ///
+    /// Installs [`crate::security::TrustedProxyLayer`] outside every other
+    /// framework layer (security baseline, lifecycle, Traffic Shield and rate
+    /// limiting), matching [`crate::ProductionPreset::MIDDLEWARE_ORDER`], in both
+    /// the static and the development hot-reload server. This policy replaces
+    /// the `[security]` `trusted_proxies` settings of `Rullst.toml`; an empty
+    /// policy disables forwarded-address resolution. List only the networks
+    /// your own proxies connect from.
+    ///
+    /// ```rust,no_run
+    /// use rullst_core::{Server, routes, routing::get, security::TrustedProxyConfig};
+    ///
+    /// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    /// Server::new(routes![get("/" => || async { "OK" })])
+    ///     .trusted_proxies(TrustedProxyConfig::new(["10.0.0.0/8"])?)
+    ///     .run(3000)
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn trusted_proxies(mut self, config: crate::security::TrustedProxyConfig) -> Self {
+        self.trusted_proxy = Some(config);
+        self
+    }
+
     /// Start the HTTP server on the specified port
     #[cfg_attr(mutants, mutants::skip)]
     pub async fn run(self, port: u16) -> Result<(), ServerError> {
@@ -225,6 +253,7 @@ impl Server {
         let _ = crate::telemetry::init_telemetry();
         let app_config = Self::load_config().await?;
         let environment = resolve_environment(&app_config, &dotenv)?;
+        self.resolve_trusted_proxy(&app_config.security)?;
 
         self.init_database(&app_config, &dotenv).await?;
         let addr = Self::setup_networking(port, app_config.app.port, environment, &dotenv)?;
@@ -439,9 +468,10 @@ impl Server {
             reload_token,
             lib_path: lib_path.clone(),
             is_dev,
-            shield: self.shield,
-            limiter: self.limiter,
+            shield: self.shield.clone(),
+            limiter: self.limiter.clone(),
             lifecycle: self.lifecycle.clone(),
+            trusted_proxy: self.trusted_proxy_layer(),
         };
 
         println!(
@@ -456,7 +486,7 @@ impl Server {
         let listener = tokio::net::TcpListener::bind(addr).await?;
         mark_lifecycle_ready(self.lifecycle.as_ref())?;
         let lifecycle = self.lifecycle.clone();
-        let result = axum::serve(listener, hotswap_service)
+        let result = axum::serve(listener, PeerAwareHotSwap(hotswap_service))
             .with_graceful_shutdown(shutdown_with_lifecycle(shutdown, lifecycle.clone()))
             .await
             .map_err(ServerError::from);
@@ -475,79 +505,8 @@ impl Server {
     where
         F: std::future::Future<Output = ()> + Send + 'static,
     {
-        let is_dev = environment.allows_development_tools();
-        let mut app = self.router.into_axum();
-        app = super::dev_reload::mount(app, is_dev, std::env::var("RULLST_DEV_GENERATION").ok());
-
-        app = app.layer(axum::middleware::from_fn(
-            |req: axum::extract::Request, next: axum::middleware::Next| async move {
-                let method = req.method().to_string();
-                let path = req.uri().path().to_string();
-                let start = std::time::Instant::now();
-                let res = next.run(req).await;
-                let status = res.status().as_u16();
-                let elapsed = start.elapsed().as_secs_f64() * 1000.0;
-                if !path.starts_with("/_rullst_hmr") {
-                    println!(
-                        "[HTTP] {} {} -> {} ({:.2} ms)",
-                        method, path, status, elapsed
-                    );
-                }
-                res
-            },
-        ));
-
-        if std::path::Path::new("static").exists() {
-            app = app
-                .nest_service(
-                    "/static",
-                    tower_http::services::ServeDir::new("static").precompressed_br(),
-                )
-                .layer(axum::middleware::from_fn(zstd_static_middleware));
-        }
-
-        if development_console_enabled(cfg!(debug_assertions), environment) {
-            app = app
-                .route(
-                    "/_rullst/explain",
-                    axum::routing::get(crate::error_console::handle_explain),
-                )
-                .route(
-                    "/_rullst/autofix",
-                    axum::routing::post(crate::error_console::handle_autofix),
-                )
-                .layer(axum::middleware::from_fn(
-                    crate::error_console::catch_panic_middleware,
-                ));
-        }
-
-        if let Some(limiter) = self.limiter {
-            app = app.layer(axum::middleware::from_fn(move |req, next| {
-                crate::resilience::rate_limit_middleware(limiter.clone(), req, next)
-            }));
-        }
-
-        if let Some(shield) = self.shield {
-            app = app.layer(axum::middleware::from_fn(move |req, next| {
-                crate::resilience::backpressure_middleware(shield.clone(), req, next)
-            }));
-        }
-
-        if let Some(lifecycle) = self.lifecycle.clone() {
-            app = apply_lifecycle(app, lifecycle);
-        }
-
-        app = if let Some(policy) = self.machine_endpoints {
-            crate::security::apply_security_baseline_with_machine_endpoints(
-                app,
-                app_config.security,
-                environment,
-                policy,
-            )
-        } else {
-            crate::security::apply_security_baseline(app, app_config.security, environment)
-        }
-        .map_err(|error| ServerError::Configuration(error.to_string()))?;
+        let lifecycle = self.lifecycle.clone();
+        let app = self.into_static_app(app_config.security, environment)?;
 
         println!("Rullst framework serving on http://{}", addr);
         println!(
@@ -556,8 +515,7 @@ impl Server {
         );
 
         let listener = tokio::net::TcpListener::bind(addr).await?;
-        mark_lifecycle_ready(self.lifecycle.as_ref())?;
-        let lifecycle = self.lifecycle.clone();
+        mark_lifecycle_ready(lifecycle.as_ref())?;
         let result = axum::serve(
             listener,
             app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
@@ -590,7 +548,10 @@ pub fn read_optional_environment_variable(name: &str) -> Result<Option<String>, 
 /// in debug builds running in Development, like hot reload and the generation
 /// probe. An unset environment resolves to Development, so a release binary must
 /// not rely on the environment alone.
-fn development_console_enabled(debug_build: bool, environment: crate::config::Environment) -> bool {
+pub(super) fn development_console_enabled(
+    debug_build: bool,
+    environment: crate::config::Environment,
+) -> bool {
     debug_build && environment.allows_development_tools()
 }
 
