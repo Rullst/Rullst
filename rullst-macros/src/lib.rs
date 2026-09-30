@@ -19,7 +19,7 @@ mod server_function;
 /// and automatically escapes dynamic variables to prevent XSS.
 ///
 /// Dynamic URL attributes (`href`, `src`, `action`, …) render `#` for script or
-/// non-media `data:` URLs; dynamic `style`/`on*` values are trusted-only.
+/// non-media `data:` URLs; dynamic `on*`/`hx-on*` values do not compile.
 ///
 /// # Example
 ///

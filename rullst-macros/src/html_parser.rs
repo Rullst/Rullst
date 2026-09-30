@@ -233,10 +233,22 @@ impl HtmlDocument {
     }
 }
 
+/// Attributes whose value is run as JavaScript: `on*` event handlers and
+/// htmx's `hx-on`/`hx-on-*` (also with a `data-` prefix).
+fn is_event_handler_attribute(name: &str) -> bool {
+    let name = name.to_ascii_lowercase();
+    let htmx = name.strip_prefix("data-").unwrap_or(&name);
+    (name.len() > 2 && name.starts_with("on") && !name.contains('-'))
+        || htmx == "hx-on"
+        || htmx.starts_with("hx-on-")
+}
+
 impl Parse for HtmlAttribute {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut name_parts = Vec::new();
-        name_parts.push(Ident::parse_any(input)?.to_string());
+        let first = Ident::parse_any(input)?;
+        let name_span = first.span();
+        name_parts.push(first.to_string());
 
         while input.peek(Token![-]) {
             input.parse::<Token![-]>()?;
@@ -254,6 +266,17 @@ impl Parse for HtmlAttribute {
             let lit = input.parse::<LitStr>()?;
             HtmlAttrValue::Static(lit)
         };
+        if matches!(value, HtmlAttrValue::Dynamic(_)) && is_event_handler_attribute(&name) {
+            return Err(syn::Error::new(
+                name_span,
+                format!(
+                    "dynamic `{name}` values are not allowed in html!: event-handler attributes \
+                     run their value as JavaScript, which HTML escaping cannot make safe; use a \
+                     static handler string, or attach the listener from a nonce'd script and \
+                     pass data through a `data-*` attribute"
+                ),
+            ));
+        }
         Ok(HtmlAttribute { name, value })
     }
 }
@@ -390,6 +413,10 @@ impl HtmlElement {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "html_parser_tests.rs"]
+mod tests;
 
 #[allow(unexpected_cfgs)]
 #[cfg(kani)]

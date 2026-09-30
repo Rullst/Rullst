@@ -1361,12 +1361,15 @@ the same server-authoritative controls.
   scheme, as browsers do. Static attribute strings are author-owned and
   unchanged; entity references inside an explicit `RawHtml` value are not
   decoded before the check.
-* **Trusted-only attribute contexts:** Dynamic `style` values are only
-  HTML-escaped. They cannot leave the attribute and supported browsers do not
-  run script from CSS, but untrusted CSS can restyle or overlay the page and
-  load remote resources, so pass only trusted or validated values. Dynamic
-  event-handler (`on*`) values are JavaScript and escaping cannot make
-  interpolated data safe there.
+* **Event-handler attributes:** A dynamic value for an `on*` attribute or
+  htmx's `hx-on`/`hx-on-*` (also `data-` prefixed) is a compile-time error,
+  because the browser runs it as JavaScript and escaping cannot make
+  interpolated data safe there. Static handler strings remain allowed; attach
+  data-driven listeners from a nonce'd script and pass values in `data-*`.
+* **Trusted-only `style`:** Dynamic `style` values are only HTML-escaped.
+  They cannot leave the attribute and supported browsers do not run script
+  from CSS, but untrusted CSS can restyle or overlay the page and load remote
+  resources, so pass only trusted or validated values.
 * **Raw Unescaped HTML:** Explicitly bypassed using the wrapper `rullst::html::RawHtml(String)`.
 * **Memoize keys:** `#[memoize]` keys its process-local cache entries by the
   function's `module_path!()`, name and attribute location plus the serialized

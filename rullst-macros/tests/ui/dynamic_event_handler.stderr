@@ -1,0 +1,5 @@
+error: dynamic `onclick` values are not allowed in html!: event-handler attributes run their value as JavaScript, which HTML escaping cannot make safe; use a static handler string, or attach the listener from a nonce'd script and pass data through a `data-*` attribute
+ --> tests/ui/dynamic_event_handler.rs:5:17
+  |
+5 |         <button onclick={"alert(1)"}>"Go"</button>
+  |                 ^^^^^^^

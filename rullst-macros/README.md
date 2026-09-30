@@ -8,7 +8,7 @@ generated paths and matching runtime features stay aligned.
 
 | Macro | Contract | Important boundary |
 | :--- | :--- | :--- |
-| `html!` | Parses an HTML-shaped token tree, escapes dynamic text and attribute values, and rejects mismatched tags at compile time. Dynamic URL attributes (`href`, `src`, `action`, `formaction`, `poster`, `data`, …) render `#` instead of a `javascript:`/`vbscript:` URL, or a `data:` URL outside media elements (`img`, `audio`, `video`, `source`, `track`, `image`). | `rullst::html::RawHtml` is an explicit trust boundary; never wrap untrusted text in it (its entity references are not decoded before the URL check). Static literals are author-owned source code. Dynamic `style` and `on*` values are only escaped: untrusted CSS can still restyle the page or load remote resources, and handler values are script, so both are trusted-only contexts. |
+| `html!` | Parses an HTML-shaped token tree, escapes dynamic text and attribute values, and rejects mismatched tags at compile time. Dynamic URL attributes (`href`, `src`, `action`, `formaction`, `poster`, `data`, …) render `#` instead of a `javascript:`/`vbscript:` URL, or a `data:` URL outside media elements (`img`, `audio`, `video`, `source`, `track`, `image`). | `rullst::html::RawHtml` is an explicit trust boundary; never wrap untrusted text in it (its entity references are not decoded before the URL check). Static literals are author-owned source code. Dynamic event-handler values (`on*`, `hx-on`, `hx-on-*`, also `data-` prefixed) are rejected at compile time; static handler strings remain allowed. Dynamic `style` values are only escaped: untrusted CSS can still restyle the page or load remote resources, so `style` is a trusted-only context. |
 | `#[require_role("Role")]` | Requires an async handler binding named `user`, checks `HasRole` before the body, and returns HTTP 403 on denial. | Authentication, user extraction, role persistence, tenant policy, and ownership checks remain application responsibilities. |
 | `#[derive(Billable)]` | Implements the bounded Capital `Billable` facade for a named-field struct containing `email: String`; optional subscription, tier, and paired grace-period fields are recognized. | It does not charge by itself or invent provider/payment/authorization data. |
 | `#[server_function]` | Generates one concrete `RpcResult<T>` function for native and Wasm targets plus a matching `<name>_rpc_router()`. Arguments and results use the bounded, versioned `rullst.client` v1 JSON envelope. | Parameters and output must be owned Serde types. The generated router supplies transport, not identity: mount it inside the production security, authentication, tenant, authorization, rate-limit, and application idempotency policies. |
@@ -41,7 +41,8 @@ generated paths and matching runtime features stay aligned.
 
 ## Compile-time diagnostics
 
-The UI test suite checks malformed HTML, unknown/duplicate `server_function`
+The UI test suite checks malformed HTML, dynamic event-handler attributes,
+unknown/duplicate `server_function`
 options, unsafe RPC paths, synchronous/generic/method server functions,
 borrowed and destructured RPC parameters, invalid return types, missing role
 identity bindings, invalid legacy route arguments, and invalid `Billable`

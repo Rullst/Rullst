@@ -117,6 +117,11 @@ fn safe_urls_and_other_attributes_keep_plain_escaping() {
         crate::html! { <a href="javascript:void(0)">"x"</a> },
         "<a href=\"javascript:void(0)\">x</a>"
     );
+    // Static event handlers remain available (dynamic ones do not compile).
+    assert_eq!(
+        crate::html! { <button onclick="go()" hx-on-click="go()">"x"</button> },
+        "<button onclick=\"go()\" hx-on-click=\"go()\">x</button>"
+    );
 }
 
 #[test]
