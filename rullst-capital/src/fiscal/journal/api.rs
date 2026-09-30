@@ -271,6 +271,10 @@ impl FiscalCommandJournal {
     }
 
     /// Requires the current journal tip to equal an independently retained checkpoint.
+    ///
+    /// A crash after an append but before the new checkpoint is persisted makes
+    /// an intact journal fail this exact check; see
+    /// [`Self::verify_checkpoint_prefix`].
     pub fn verify_checkpoint(
         &self,
         expected: &FiscalJournalCheckpoint,
@@ -289,6 +293,34 @@ impl FiscalCommandJournal {
             return Err(FiscalJournalError::CheckpointMismatch);
         }
         Ok(())
+    }
+
+    /// Verifies that an independently retained checkpoint is an authenticated
+    /// prefix of the current journal and returns how many events follow it.
+    ///
+    /// `Ok(0)` means the checkpoint is the exact tip. A positive count covers a
+    /// crash after an append was synchronized but before its new checkpoint
+    /// was persisted; truncation or substitution still returns
+    /// `CheckpointMismatch`. New in 13.0.
+    pub fn verify_checkpoint_prefix(
+        &self,
+        expected: &FiscalJournalCheckpoint,
+    ) -> Result<u64, FiscalJournalError> {
+        let mut state = self.lock_and_refresh()?;
+        let boundaries = format::chain_boundaries(&mut state.file, self.max_bytes, &self.key)?;
+        let (end_offset, tag) = usize::try_from(expected.sequence)
+            .ok()
+            .and_then(|index| boundaries.get(index))
+            .ok_or(FiscalJournalError::CheckpointMismatch)?;
+        let commitment_matches = hex::encode(tag)
+            .as_bytes()
+            .ct_eq(expected.commitment.as_bytes())
+            .unwrap_u8()
+            == 1;
+        if *end_offset != expected.end_offset || !commitment_matches {
+            return Err(FiscalJournalError::CheckpointMismatch);
+        }
+        Ok((state.file.records as u64).saturating_sub(expected.sequence))
     }
 
     fn lock_and_refresh(

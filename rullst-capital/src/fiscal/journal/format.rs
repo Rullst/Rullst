@@ -62,7 +62,7 @@ pub(super) fn open(
         ));
     }
 
-    let (bytes, events, last_tag) = decode_file(&mut file, max_bytes, key)?;
+    let (bytes, events, last_tag) = decode_file(&mut file, max_bytes, key, None)?;
     Ok((
         JournalFileState {
             file,
@@ -91,11 +91,27 @@ pub(super) fn verify_and_read(
     if length != state.bytes {
         return Err(FiscalJournalError::ExternalModification);
     }
-    let (bytes, events, last_tag) = decode_file(&mut state.file, max_bytes, key)?;
+    let (bytes, events, last_tag) = decode_file(&mut state.file, max_bytes, key, None)?;
     if bytes != state.bytes || events.len() != state.records || last_tag != state.last_tag {
         return Err(FiscalJournalError::ExternalModification);
     }
     Ok(events)
+}
+
+/// Returns `(end_offset, tag)` after the header (index 0) and after each
+/// authenticated frame, so a retained checkpoint can be matched to a prefix.
+pub(super) fn chain_boundaries(
+    state: &mut JournalFileState,
+    max_bytes: u64,
+    key: &FiscalJournalKey,
+) -> Result<Vec<(u64, [u8; 32])>, FiscalJournalError> {
+    let mut boundaries = Vec::with_capacity(state.records.saturating_add(1));
+    let (bytes, events, last_tag) =
+        decode_file(&mut state.file, max_bytes, key, Some(&mut boundaries))?;
+    if bytes != state.bytes || events.len() != state.records || last_tag != state.last_tag {
+        return Err(FiscalJournalError::ExternalModification);
+    }
+    Ok(boundaries)
 }
 
 pub(super) fn append(
@@ -160,11 +176,14 @@ pub(super) fn frame_bytes(event: &JournalEvent) -> Result<u64, FiscalJournalErro
         .ok_or(FiscalJournalError::RecordTooLarge)
 }
 
+type DecodedFile = (u64, Vec<JournalEvent>, [u8; 32]);
+
 fn decode_file(
     file: &mut File,
     max_bytes: u64,
     key: &FiscalJournalKey,
-) -> Result<(u64, Vec<JournalEvent>, [u8; 32]), FiscalJournalError> {
+    mut boundaries: Option<&mut Vec<(u64, [u8; 32])>>,
+) -> Result<DecodedFile, FiscalJournalError> {
     let length = file
         .metadata()
         .map_err(|error| io_failure("metadata", &error))?
@@ -193,6 +212,9 @@ fn decode_file(
     let mut cursor = header_end
         .checked_add(1)
         .ok_or_else(|| corrupt(0, "invalid header offset"))?;
+    if let Some(boundaries) = boundaries.as_deref_mut() {
+        boundaries.push((cursor as u64, previous_tag));
+    }
     let mut events = Vec::new();
     while cursor < bytes.len() {
         if events.len() >= super::MAX_FISCAL_JOURNAL_RECORDS {
@@ -211,6 +233,9 @@ fn decode_file(
         cursor = end
             .checked_add(1)
             .ok_or_else(|| corrupt(events.len(), "invalid frame offset"))?;
+        if let Some(boundaries) = boundaries.as_deref_mut() {
+            boundaries.push((cursor as u64, tag));
+        }
     }
     Ok((length, events, previous_tag))
 }

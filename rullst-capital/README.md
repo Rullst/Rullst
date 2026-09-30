@@ -951,7 +951,10 @@ HMAC key authenticates the header and a chain of at most 4,096 frames/16 MiB;
 a preparation is refused unless room remains for the terminal result of it and
 of every other pending command;
 an independently retained exact-tip checkpoint detects valid-prefix
-truncation. Creating a journal also syncs its parent directory on Unix. A power
+truncation, and the v13 `verify_checkpoint_prefix` accepts a retained
+checkpoint that is an authenticated prefix of the chain (returning how many
+events follow it) so a crash before the new checkpoint was saved is not
+mistaken for tampering. Creating a journal also syncs its parent directory on Unix. A power
 loss during an append can leave an unacknowledged torn final frame, which
 `try_open` rejects as `CorruptRecord` until an operator restores a backup or
 truncates after the last complete frame. The file contains only the opaque application command ID,
