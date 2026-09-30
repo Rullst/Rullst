@@ -95,7 +95,11 @@ recurring publications keep their documented `cron`-crate projection.
 the buffer is full, newer errors are dropped, counted by `dropped_errors()` and
 emitted as `tracing` warnings, so a handle that is kept alive but never drained
 does not grow memory. Drain `next_error` (for example from a supervising task)
-to observe every failure.
+to observe every failure. A scheduler attached with `Server::schedule` is
+drained by the server: each task failure is logged as a `tracing` error on the
+`rullst::scheduler` target when reported, and a past task failure no longer
+turns a clean shutdown into `Err(ServerError::Scheduler)`; only a failed
+scheduler loop does.
 Custom drivers return `QueueError::Unsupported` for future timestamps unless
 they explicitly implement durable scheduling.
 

@@ -143,6 +143,11 @@ impl Server {
 
     /// Attach a task scheduler that runs alongside the HTTP server.
     ///
+    /// The server owns the scheduler handle: every task failure is logged as
+    /// a `tracing` error on the `rullst::scheduler` target when it is
+    /// reported, and task failures never make a clean shutdown fail. Only a
+    /// failed scheduler loop is returned as [`ServerError::Scheduler`].
+    ///
     /// # Example
     /// ```rust,no_run
     /// use rullst_core::{Server, Scheduler, routes, routing::get};
@@ -232,24 +237,28 @@ impl Server {
 
         self.init_database(&app_config, &dotenv).await?;
         let addr = Self::setup_networking(port, app_config.app.port, environment, &dotenv)?;
-        let scheduler_handle = self.start_scheduler()?;
+        let mut scheduler_handle = self.start_scheduler()?;
         let shield_lifecycle = self.start_traffic_shield()?;
 
-        let server_result = if let Some(lib_path) = self.hot_reload_lib.take() {
-            self.run_hot_reload(lib_path, addr, environment, shutdown)
-                .await
-        } else {
-            self.run_static(app_config, addr, environment, shutdown)
-                .await
+        let server = async move {
+            if let Some(lib_path) = self.hot_reload_lib.take() {
+                self.run_hot_reload(lib_path, addr, environment, shutdown)
+                    .await
+            } else {
+                self.run_static(app_config, addr, environment, shutdown)
+                    .await
+            }
         };
+        // The server owns the only scheduler handle: log task failures as
+        // they happen and keep them out of the clean-shutdown result.
+        let server_result =
+            super::scheduler_supervision::serve_while_draining(server, scheduler_handle.as_mut())
+                .await;
 
         if let Some(shield) = shield_lifecycle {
             shield.shutdown();
         }
-        let scheduler_result = match scheduler_handle {
-            Some(handle) => handle.shutdown().await.map_err(ServerError::from),
-            None => Ok(()),
-        };
+        let scheduler_result = super::scheduler_supervision::stop_scheduler(scheduler_handle).await;
 
         match server_result {
             Err(error) => Err(error),

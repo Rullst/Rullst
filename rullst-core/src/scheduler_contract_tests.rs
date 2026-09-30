@@ -19,6 +19,25 @@ where
         .remove(0)
 }
 
+/// A scheduler with one task that fires every second, for lifecycle tests
+/// that cannot wait for a whole cron minute.
+pub(crate) fn every_second<F, Fut>(timeout: Duration, handler: F) -> Scheduler
+where
+    F: Fn() -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = ()> + Send + 'static,
+{
+    let handler: ScheduledHandler = Arc::new(Box::new(move || Box::pin(handler())));
+    Scheduler {
+        tasks: vec![ScheduledTask {
+            label: "every second".to_string(),
+            schedule: CronSchedule::every_second(),
+            handler,
+        }],
+        task_timeout: timeout,
+        failure_policy: SchedulerFailurePolicy::Continue,
+    }
+}
+
 fn handle_with(
     loops: Vec<(String, JoinHandle<()>)>,
     errors: ErrorBuffer<SchedulerError>,

@@ -9,6 +9,7 @@ mod dev_reload;
 pub mod dylib_loader;
 /// Atomic hot-swappable Tower service.
 pub mod hotswap;
+mod scheduler_supervision;
 /// Server-level HTTP middlewares (HMR script injection, static asset compression).
 pub mod server_middleware;
 mod traffic;
