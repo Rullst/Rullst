@@ -137,6 +137,77 @@ async fn test_tenant_layer_header_and_query() {
     assert_eq!(rejected.status(), StatusCode::FORBIDDEN);
 }
 
+async fn subdomain_tenant(
+    config: TenantConfig,
+    membership: crate::security::TenantMembership,
+    request: axum::http::Request<axum::body::Body>,
+) -> (axum::http::StatusCode, String) {
+    use tower::ServiceExt;
+
+    let app = axum::Router::new()
+        .route(
+            "/test",
+            axum::routing::get(|| async { current_tenant_id().unwrap_or_default() }),
+        )
+        .layer(tenant_layer(config))
+        .layer(axum::Extension(membership));
+    let response = app.oneshot(request).await.unwrap();
+    let status = response.status();
+    let body = axum::body::to_bytes(response.into_body(), 1000)
+        .await
+        .unwrap();
+    (status, String::from_utf8(body.to_vec()).unwrap())
+}
+
+#[tokio::test]
+async fn http2_subdomain_requests_use_the_uri_authority() {
+    use axum::http::{Request, StatusCode, Version};
+
+    let membership = || {
+        crate::security::TenantMembership::try_new(["school-a", "school-b"])
+            .unwrap()
+            .with_default("school-a")
+            .unwrap()
+    };
+    let h2 = |uri: &str| {
+        Request::builder()
+            .version(Version::HTTP_2)
+            .uri(uri)
+            .body(axum::body::Body::empty())
+            .unwrap()
+    };
+    let subdomain = || TenantConfig::new(TenantStrategy::Subdomain);
+
+    assert_eq!(
+        subdomain_tenant(
+            subdomain(),
+            membership(),
+            h2("https://school-b.example.com/test")
+        )
+        .await,
+        (StatusCode::OK, "school-b".to_string())
+    );
+    // A Host header still takes precedence over the URI authority.
+    let mut with_host = h2("https://school-b.example.com/test");
+    with_host
+        .headers_mut()
+        .insert("host", "school-a.example.com".parse().unwrap());
+    assert_eq!(
+        subdomain_tenant(subdomain(), membership(), with_host).await,
+        (StatusCode::OK, "school-a".to_string())
+    );
+    // Without any host, the configured fallback applies, not the default.
+    assert_eq!(
+        subdomain_tenant(
+            subdomain().with_domain_fallback("school-b"),
+            membership(),
+            h2("/test")
+        )
+        .await,
+        (StatusCode::OK, "school-b".to_string())
+    );
+}
+
 /// Inner service that accepts a call only on the instance that was
 /// readied, like tower's `ConcurrencyLimit`, `RateLimit` and `Buffer`.
 #[derive(Default)]

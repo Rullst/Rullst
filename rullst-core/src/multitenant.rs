@@ -5,7 +5,9 @@ use std::cell::RefCell;
 /// Strategy used to extract the active tenant ID from an incoming request.
 pub enum TenantStrategy {
     /// Select a tenant from the request host subdomain (e.g. `tenant.example.com`).
-    /// The selection is accepted only when authenticated membership allows it.
+    /// The host is the `Host` header or, when it is absent (HTTP/2), the
+    /// request `:authority`. The selection is accepted only when authenticated
+    /// membership allows it.
     Subdomain,
     /// Select a tenant from a custom HTTP header. The header is an untrusted
     /// hint and is accepted only when authenticated membership allows it.
@@ -89,6 +91,16 @@ pub fn set_tenant_id(tenant_id: Option<String>) {
     let _ = TENANT_CONTEXT.try_with(|ctx| {
         *ctx.borrow_mut() = tenant_id;
     });
+}
+
+/// Target host of a request: the `Host` header or, when it is absent (as in
+/// HTTP/2, where hyper exposes `:authority` only through the URI), the URI
+/// authority's host. A present `Host` header always takes precedence.
+fn request_host<B>(req: &axum::http::Request<B>) -> Option<&str> {
+    match req.headers().get(axum::http::header::HOST) {
+        Some(value) => value.to_str().ok(),
+        None => req.uri().authority().map(|authority| authority.host()),
+    }
 }
 
 /// Helper function to extract subdomain from Host header
@@ -177,18 +189,9 @@ where
                     .get(&config.header_name)
                     .and_then(|v| v.to_str().ok())
                     .map(|s| s.to_string()),
-                TenantStrategy::Subdomain => req
-                    .headers()
-                    .get(axum::http::header::HOST)
-                    .and_then(|v| v.to_str().ok())
-                    .and_then(|host| {
-                        let sub = extract_subdomain(host);
-                        if sub.is_none() {
-                            config.domain_fallback.clone()
-                        } else {
-                            sub
-                        }
-                    }),
+                TenantStrategy::Subdomain => request_host(&req)
+                    .and_then(extract_subdomain)
+                    .or_else(|| config.domain_fallback.clone()),
                 TenantStrategy::Parameter => {
                     let query = req.uri().query().unwrap_or("");
                     serde_urlencoded::from_str::<std::collections::HashMap<String, String>>(query)
