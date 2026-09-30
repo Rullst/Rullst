@@ -72,6 +72,8 @@ fn generated_id_uses_the_official_zero_padded_layout() {
 fn preview_declares_homologation_utc_offset_and_official_tax_codes() {
     let xml = build_dps_xml(&emitter(TaxRegime::SimplesNacional), &customer(), &dps());
     assert!(xml.contains("<tpAmb>2</tpAmb>"));
+    assert!(xml.contains(&format!("<verAplic>{APPLICATION_VERSION}</verAplic>")));
+    assert!(!xml.contains("Rullst-12.0"));
     assert!(xml.contains("<dhEmi>2026-01-01T12:00:00+00:00</dhEmi>"));
     assert!(xml.contains("<opSimpNac>3</opSimpNac><regApTribSN>1</regApTribSN>"));
     assert!(xml.contains("<tribISSQN>1</tribISSQN><tpRetISSQN>1</tpRetISSQN>"));

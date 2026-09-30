@@ -1,4 +1,4 @@
-use crate::fiscal::dps_v101::tax_regime_codes;
+use crate::fiscal::dps_v101::{APPLICATION_VERSION, tax_regime_codes};
 use crate::fiscal::models::{FiscalCustomer, FiscalEmitter, NfseDps};
 
 /// Generates the legacy floating-point DPS preview.
@@ -36,7 +36,7 @@ pub fn build_dps_xml(emitter: &FiscalEmitter, customer: &FiscalCustomer, dps: &N
     let retention = if dps.iss_retained { 2 } else { 1 };
 
     format!(
-        r#"<DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.00"><infDPS Id="{dps_id}"><tpAmb>2</tpAmb><dhEmi>{issued_at}</dhEmi><verAplic>Rullst-12.0</verAplic><serie>{serie}</serie><nDPS>{ndps}</nDPS><dCompet>{date_str}</dCompet><tpEmit>1</tpEmit><cLocEmi>{ibge}</cLocEmi><prest><CNPJ>{cnpj}</CNPJ><IM>{im}</IM><xNome>{xnome}</xNome><regTrib><opSimpNac>{simple_status}</opSimpNac>{assessment_xml}<regEspTrib>0</regEspTrib></regTrib></prest><toma><{doc_tag}>{doc_val}</{doc_tag}><xNome>{cust_name}</xNome><email>{cust_email}</email></toma><serv><cServ><cTribNac>{serv_code}</cTribNac><xDescServ>{serv_desc}</xDescServ></cServ></serv><valores><vServPrest><vServ>{vserv:.2}</vServ></vServPrest><trib><tribMun><tribISSQN>1</tribISSQN><tpRetISSQN>{retention}</tpRetISSQN><cLocIncid>{serv_city}</cLocIncid><pAliq>{aliq:.2}</pAliq></tribMun></trib></valores></infDPS></DPS>"#,
+        r#"<DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.00"><infDPS Id="{dps_id}"><tpAmb>2</tpAmb><dhEmi>{issued_at}</dhEmi><verAplic>{APPLICATION_VERSION}</verAplic><serie>{serie}</serie><nDPS>{ndps}</nDPS><dCompet>{date_str}</dCompet><tpEmit>1</tpEmit><cLocEmi>{ibge}</cLocEmi><prest><CNPJ>{cnpj}</CNPJ><IM>{im}</IM><xNome>{xnome}</xNome><regTrib><opSimpNac>{simple_status}</opSimpNac>{assessment_xml}<regEspTrib>0</regEspTrib></regTrib></prest><toma><{doc_tag}>{doc_val}</{doc_tag}><xNome>{cust_name}</xNome><email>{cust_email}</email></toma><serv><cServ><cTribNac>{serv_code}</cTribNac><xDescServ>{serv_desc}</xDescServ></cServ></serv><valores><vServPrest><vServ>{vserv:.2}</vServ></vServPrest><trib><tribMun><tribISSQN>1</tribISSQN><tpRetISSQN>{retention}</tpRetISSQN><cLocIncid>{serv_city}</cLocIncid><pAliq>{aliq:.2}</pAliq></tribMun></trib></valores></infDPS></DPS>"#,
         dps_id = escape_xml(&dps_id),
         issued_at = issued_at,
         date_str = date_str,
