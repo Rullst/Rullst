@@ -92,7 +92,9 @@ overhead.
   Inputs are bounded and parameterized; exact deletion confirmation is
   required and backend-specific types remain read-only. A table is read-only
   when a primary-key column falls outside the ASCII identifier boundary or the
-  256-column cap, and rows with a `NULL` key value offer no actions. Each write
+  256-column cap or uses a floating-point type (its rendered text is rounded),
+  and rows whose key is `NULL`, is not decodable as text or contains a line
+  break or NUL offer no actions. Each write
   runs in a transaction that commits only when exactly one row changed; any
   other count is rolled back and fails (non-transactional engines such as
   MySQL MyISAM cannot roll back). SQLite, PostgreSQL, MySQL, and MariaDB run

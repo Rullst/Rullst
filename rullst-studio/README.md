@@ -171,8 +171,10 @@ primary keys. SQL values are parameterized; only text, signed integer, finite
 float and Boolean codecs are writable. Primary keys and backend-specific types
 remain read-only, request bodies are limited to 64 KiB, and deletion requires
 typing `DELETE <table>`. A table stays read-only when any primary-key column is
-outside Studio's ASCII identifier boundary or beyond its 256-column cap, and a
-row whose key value is `NULL` offers no actions. Each write runs in a database
+outside Studio's ASCII identifier boundary or beyond its 256-column cap, or
+uses a floating-point type whose rendered text is rounded. A row whose key value
+is `NULL`, is not decodable as text or contains a line break or NUL (which
+browsers rewrite in form values) offers no actions. Each write runs in a database
 transaction that commits only when exactly one row changed; otherwise it is
 rolled back and reported as `404` (no row) or `409` (several rows). Storage
 engines without transactions, such as MySQL MyISAM, cannot provide that

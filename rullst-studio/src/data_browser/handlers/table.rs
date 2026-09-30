@@ -130,7 +130,7 @@ pub async fn handle_table(
     let mutation_notice = if supports_mutations {
         "Inspect rows; primitive values may be changed only through the verified local Studio boundary"
     } else {
-        "Read-only: row changes need a complete primary key whose columns use primitive types and Studio's ASCII identifier boundary"
+        "Read-only: row changes need a complete primary key whose columns use text, integer or Boolean types and Studio's ASCII identifier boundary"
     };
 
     let quoted_table = quote_table_name(driver, &clean_table);

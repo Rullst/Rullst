@@ -2980,8 +2980,10 @@ sending.
   by the verified local middleware, database-inspected table/column/complete-PK
   metadata, a 64 KiB request limit, primitive typed binds and exactly one
   affected row. A primary-key column outside the identifier boundary or the
-  256-column cap makes the table read-only instead of shortening the key, and
-  rows with a `NULL` key value offer no actions. Each write runs in a
+  256-column cap makes the table read-only instead of shortening the key, as
+  does a floating-point key column, whose rendered text is rounded. Rows whose
+  key is `NULL`, is not decodable as text or contains a line break or NUL
+  (which browsers rewrite in form values) offer no actions. Each write runs in a
   transaction that commits only for exactly one affected row; zero or several
   rows are rolled back and reported as `404`/`409` (engines without
   transactions, such as MySQL MyISAM, cannot roll back). Primary

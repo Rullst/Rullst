@@ -300,3 +300,72 @@ async fn rows_with_keys_longer_than_a_mutation_accepts_stay_read_only() {
     assert!(!html.contains("tail-marker"));
     assert!(html.contains(&format!("{}…", "x".repeat(MAX_DISPLAY_CHARS))));
 }
+
+#[tokio::test]
+#[cfg(not(miri))]
+#[cfg(not(any(feature = "strict-postgres", feature = "strict-mysql")))]
+// A key whose rendered text does not bind back to the same value could make a
+// row's action change a different row, so such keys offer no actions.
+async fn keys_whose_text_does_not_bind_back_stay_read_only() {
+    let pool = crate::data_browser::pool::test_sqlite_pool().await;
+    // SQLite renders REAL values with 15 significant digits.
+    let (rounded, exact) =
+        sqlx::query_as::<_, (String, String)>("SELECT CAST(0.3 AS TEXT), CAST(0.1 + 0.2 AS TEXT)")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    assert_eq!(rounded, exact);
+    for table in ["studio_real_key_probe", "studio_line_key_probe"] {
+        QueryBuilder::<rullst_orm::RullstDatabase>::new(format!("DROP TABLE IF EXISTS {table}"))
+            .build()
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+    sqlx::query("CREATE TABLE studio_real_key_probe (k REAL PRIMARY KEY, note TEXT)")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO studio_real_key_probe VALUES (0.3, 'a'), (0.1 + 0.2, 'b')")
+        .execute(pool)
+        .await
+        .unwrap();
+    let real_key = fetch_table_schema(pool, "sqlite", "studio_real_key_probe")
+        .await
+        .unwrap();
+    assert_eq!(real_key.columns[0].kind, StudioColumnKind::Float);
+    assert!(!real_key.supports_mutations());
+
+    sqlx::query("CREATE TABLE studio_line_key_probe (code TEXT PRIMARY KEY, label TEXT)")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query(
+        "INSERT INTO studio_line_key_probe VALUES ('x' || char(10) || 'y', 'a-lf'), \
+         ('x' || char(13) || 'y', 'b-cr'), ('x' || char(13, 10) || 'y', 'c-crlf'), \
+         ('plain', 'd-plain')",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    let schema = fetch_table_schema(pool, "sqlite", "studio_line_key_probe")
+        .await
+        .unwrap();
+    assert!(schema.supports_mutations());
+    let rows = sqlx::query(
+        "SELECT CAST(code AS TEXT) AS code, CAST(label AS TEXT) AS label \
+         FROM studio_line_key_probe ORDER BY label",
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap();
+
+    let html = build_mutable_rows_html(&rows, &schema, "studio_line_key_probe");
+    assert_eq!(
+        html.matches("Read-only: key contains a line break or NUL")
+            .count(),
+        3
+    );
+    assert_eq!(html.matches("/rows/delete").count(), 1);
+    assert!(html.contains("name=\"pk_code\" value=\"plain\""));
+}

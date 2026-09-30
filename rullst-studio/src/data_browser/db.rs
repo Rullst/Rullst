@@ -77,6 +77,13 @@ impl StudioColumnKind {
     pub(crate) const fn is_editable(self) -> bool {
         !matches!(self, Self::Unsupported)
     }
+
+    /// Whether a key value's rendered text binds back to exactly that value.
+    /// Floating-point text is rounded (SQLite renders both `0.3` and
+    /// `0.1 + 0.2` as `0.3`), so it cannot address one row.
+    pub(crate) const fn round_trips_as_key(self) -> bool {
+        matches!(self, Self::Text | Self::Integer | Self::Boolean)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -102,12 +109,13 @@ pub(crate) struct StudioTableSchema {
 
 impl StudioTableSchema {
     /// Row mutations need the complete primary key, and every key column must
-    /// use a primitive codec that Studio can bind back unchanged.
+    /// use an exact text, integer or Boolean codec whose rendered text Studio
+    /// can bind back unchanged.
     pub(crate) fn supports_mutations(&self) -> bool {
         let mut key_columns = self.columns.iter().filter(|column| column.primary_key);
         self.primary_key_complete
             && key_columns.clone().next().is_some()
-            && key_columns.all(|column| column.kind.is_editable())
+            && key_columns.all(|column| column.kind.round_trips_as_key())
     }
 
     pub(crate) fn primary_key_indices(&self) -> Vec<usize> {

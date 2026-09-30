@@ -210,7 +210,7 @@ async fn mutation_context(
         .map_err(|_| MutationFailure::Database)?;
     if !schema.supports_mutations() {
         return Err(MutationFailure::Invalid(
-            "Mutations require a complete primitive-valued primary key",
+            "Mutations require a complete text, integer or Boolean primary key",
         ));
     }
     Ok((pool, driver, schema.columns))
@@ -358,6 +358,33 @@ fn mutation_error_response(error: MutationFailure) -> Response {
     }
 }
 
+/// Returns the text of each key cell when a form can submit it back to the same
+/// row, or why the row must stay read-only. A NULL or undecodable key has no
+/// exact text (it would render as `NULL`), a key longer than a mutation accepts
+/// could not be submitted, and browsers rewrite line breaks (CR and LF become
+/// CRLF) and NUL in form values, which could address a different row.
+fn submittable_key(
+    row: &<rullst_orm::RullstDatabase as sqlx::Database>::Row,
+    primary_keys: &[usize],
+) -> Result<Vec<String>, &'static str> {
+    let mut values = Vec::with_capacity(primary_keys.len());
+    for index in primary_keys {
+        let value = match row.try_get::<Option<String>, _>(*index) {
+            Ok(Some(value)) => value,
+            Ok(None) => return Err("NULL key"),
+            Err(_) => return Err("key is not decodable as text"),
+        };
+        if value.len() > MAX_CELL_BYTES {
+            return Err("key longer than 16 KiB");
+        }
+        if value.contains(['\r', '\n', '\0']) {
+            return Err("key contains a line break or NUL");
+        }
+        values.push(value);
+    }
+    Ok(values)
+}
+
 pub(crate) fn build_mutable_rows_html(
     records: &[<rullst_orm::RullstDatabase as sqlx::Database>::Row],
     schema: &StudioTableSchema,
@@ -397,37 +424,19 @@ pub(crate) fn build_mutable_rows_html(
             );
         }
 
-        // A NULL key cell renders as the text `NULL`, which would bind as a
-        // different text key, and a key longer than a mutation accepts could
-        // not be submitted. Such rows stay read-only.
-        let key_values = primary_keys
-            .iter()
-            .map(|index| match row.try_get::<Option<String>, _>(*index) {
-                Ok(None) => None,
-                _ => Some(get_any_value_as_string(row, *index)),
-            })
-            .collect::<Vec<_>>();
-        let read_only = if key_values.iter().any(Option::is_none) {
-            Some("NULL key")
-        } else if key_values
-            .iter()
-            .flatten()
-            .any(|value| value.len() > MAX_CELL_BYTES)
-        {
-            Some("key longer than 16 KiB")
-        } else {
-            None
+        let key_values = match submittable_key(row, &primary_keys) {
+            Ok(values) => values,
+            Err(reason) => {
+                let _ = write!(
+                    html,
+                    "<td class=\"px-6 py-4 text-xs text-slate-500\">Read-only: {reason}</td></tr>"
+                );
+                continue;
+            }
         };
-        if let Some(reason) = read_only {
-            let _ = write!(
-                html,
-                "<td class=\"px-6 py-4 text-xs text-slate-500\">Read-only: {reason}</td></tr>"
-            );
-            continue;
-        }
 
         let mut primary_inputs = String::new();
-        for (index, value) in primary_keys.iter().zip(key_values.iter().flatten()) {
+        for (index, value) in primary_keys.iter().zip(&key_values) {
             let column = &columns[*index];
             let _ = write!(
                 primary_inputs,
