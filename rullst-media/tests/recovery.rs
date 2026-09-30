@@ -20,7 +20,7 @@ async fn service(
 }
 
 #[tokio::test]
-async fn learner_and_webhook_retry_only_expired_refresh_intents() {
+async fn learner_reads_hold_no_lease_and_webhooks_retry_only_expired_refresh_intents() {
     let fixture = Fixture::new().await;
     let dir = tempfile::tempdir().unwrap();
     let clock = TestClock::new();
@@ -58,13 +58,8 @@ async fn learner_and_webhook_retry_only_expired_refresh_intents() {
         MediaError::Unavailable
     );
     fixture.remote.lock().unwrap().fail_reads = false;
-    assert_eq!(
-        app.playback(&auth, &learner, &scope, &id, 60, PlaybackKind::Embed)
-            .await
-            .unwrap_err(),
-        MediaError::Busy
-    );
-    clock.advance(46);
+    // A failed learner read journals nothing, so no viewer waits for a lease.
+    assert!(!app.get(&auth, &teacher, &scope, &id).await.unwrap().pending);
     app.playback(&auth, &learner, &scope, &id, 60, PlaybackKind::Embed)
         .await
         .unwrap();

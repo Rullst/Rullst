@@ -245,7 +245,7 @@ async fn course_scoping_revision_and_provider_failures_never_grant_access() {
         .unwrap_err(),
         MediaError::Unavailable
     );
-    assert!(app.get(&auth, &teacher, &scope, &id).await.unwrap().pending);
+    assert!(!app.get(&auth, &teacher, &scope, &id).await.unwrap().pending);
     fixture.remote.lock().unwrap().fail_reads = false;
     clock.advance(46);
     app.reconcile(&auth, &teacher, &scope, &id).await.unwrap();
@@ -303,7 +303,8 @@ async fn withdrawing_during_a_provider_read_fences_its_late_result() {
         .await
         .unwrap();
     let pending = app.get(auth.as_ref(), &teacher, &scope, &id).await.unwrap();
-    assert!(pending.pending);
+    // Playback is a read: its in-flight provider call journals no intent.
+    assert!(!pending.pending);
     app.withdraw(auth.as_ref(), &teacher, &scope, &id, pending.revision)
         .await
         .unwrap();

@@ -183,7 +183,9 @@ or playback entitlement through a checked authorization trait. Local asset IDs
 bind an immutable tenant/course/provider-library scope; provider IDs and signed
 webhooks never establish that ownership. Service operations recheck permission
 and local revision/state after external work and use bounded durable leases to
-reject concurrent/stale results. SQLite state binds its schema, provider mode,
+reject concurrent/stale mutation results. Playback is a read: it takes no lease,
+so concurrent viewers never serialize and an abandoned request leaves no intent;
+it fences withdrawal/deletion in the transaction that issues the grant. SQLite state binds its schema, provider mode,
 library and capacity, refuses clock rollback and requires trusted local files,
 backup policy and operator-owned keys. Multi-host replication is separate work.
 Only confirmed-deleted local tombstones may be purged, in batches up to 100 and

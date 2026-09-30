@@ -104,8 +104,13 @@ is independent of TUS byte acceptance. Show processing/failure state, allow
 `refresh` for missed notifications, and require the instructor's explicit
 `publish` after the API reports Ready. Completion webhooks never publish.
 
-`playback` checks current entitlement, refreshes provider readiness, fences local
-revision and issues a grant bounded by permission expiry and at most 900 seconds.
+`playback` checks current entitlement, reads current provider readiness and
+fences local withdrawal/deletion in the transaction that issues a grant bounded
+by permission expiry and at most 900 seconds. It is a read, not a leased
+mutation: concurrent viewers never block one another, and a failed, timed-out
+or dropped request leaves no durable intent. It records a changed observation
+only when the revision is unchanged and no lease is live; a video that is no
+longer ready withdraws publication. Rate-limit the playback route per actor.
 Supported kinds are `Embed`, directory-protected `Hls`, and `Mp4_720p` only when
 the current API reports both MP4 fallback and that resolution. Return the grant
 using a private `Cache-Control: no-store` response and `Referrer-Policy: no-referrer`;
@@ -154,7 +159,7 @@ ledger. API and webhook numeric status mappings differ and are handled separatel
 | `Busy` | Respect the in-flight lease; retry with bounded backoff |
 | `Unavailable`, `Uncertain`, timeout or process death | Inspect persisted intent; `reconcile` after its 45-second lease, rechecking management authorization |
 | Unknown create result | Search the persisted opaque marker; zero or multiple matches remain uncertain; never generate another create request automatically |
-| Pending refresh | Upload/playback or the same notification can resume it after lease expiry; they cannot take over pending update/delete/create |
+| Pending refresh | Upload or the same notification can resume it after lease expiry; they cannot take over pending update/delete/create. Playback neither takes nor waits for leases |
 | `Denied`, `Expired` | Reauthenticate/recheck entitlement; issue no capability |
 | `Protocol`, `Configuration`, `Storage`, clock rollback | Stop granting access; investigate rather than reset/repair the store |
 | `Capacity` | Review retention/capacity without deleting active or uncertain operations |
