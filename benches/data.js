@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790794536947,
+  "lastUpdate": 1790794892494,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -22719,6 +22719,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 2202,
             "range": "± 62",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4653f9a9873b2347d37353ae16954dc352281e19",
+          "message": "Merge pull request #354 from Rullst/fix/v13-studio-low-fixes\n\nfix(studio): stable paging, exact search counts, safe row actions and honest labels",
+          "timestamp": "2026-09-30T15:55:02-03:00",
+          "tree_id": "b6bdee57860e41446a27ffa186dd154b1ccaadac",
+          "url": "https://github.com/Rullst/Rullst/commit/4653f9a9873b2347d37353ae16954dc352281e19"
+        },
+        "date": 1790794889717,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 762,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 988,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 7,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 655,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 2293,
+            "range": "± 31",
             "unit": "ns/iter"
           }
         ]
