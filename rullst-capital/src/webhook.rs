@@ -38,7 +38,6 @@ const DEFAULT_REPLAY_TTL: Duration = Duration::from_secs(24 * 60 * 60);
 const MAX_REPLAY_CAPACITY: usize = 1_000_000;
 const MAX_REPLAY_TTL: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 
-#[derive(Debug)]
 struct ReplayEntry {
     key: String,
     accepted_at: Instant,
@@ -49,11 +48,21 @@ struct ReplayEntry {
 /// Multi-process applications can select `SqlWebhookReplayStore` through the
 /// `webhook-sql` feature. This process-local variant fails closed at capacity
 /// rather than evicting an active replay proof.
-#[derive(Debug)]
 pub struct InMemoryWebhookReplayStore {
     entries: Mutex<VecDeque<ReplayEntry>>,
     max_entries: usize,
     ttl: Duration,
+}
+
+// Never lock or print the ledger, which can hold a million replay keys.
+impl std::fmt::Debug for InMemoryWebhookReplayStore {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("InMemoryWebhookReplayStore")
+            .field("max_entries", &self.max_entries)
+            .field("ttl", &self.ttl)
+            .finish_non_exhaustive()
+    }
 }
 
 impl InMemoryWebhookReplayStore {

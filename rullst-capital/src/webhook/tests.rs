@@ -184,3 +184,12 @@ async fn canonical_verifier_decodes_stripe_and_lemonsqueezy_and_rejects_mock_in_
         Err(CapitalError::MockWebhookNotAllowed(provider)) if provider == "stripe"
     ));
 }
+
+#[test]
+fn replay_store_debug_does_not_print_the_ledger() {
+    let store = InMemoryWebhookReplayStore::new(4, Duration::from_secs(60)).unwrap();
+    store.check_and_record("evt_debug_fixture").unwrap();
+    let debug = format!("{:?}", WebhookReplayBackend::Memory(Arc::new(store)));
+    assert!(debug.contains("max_entries: 4"));
+    assert!(!debug.contains("evt_debug_fixture"));
+}
