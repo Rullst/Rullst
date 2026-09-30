@@ -26,6 +26,10 @@ bounded method. The live Redis CI/release contract checks metadata, TTL and
 non-disclosure; it does not prove cluster/failover or operator authorization.
 The Redis cache and queue drivers each keep one lazily opened multiplexed
 connection for all operations and replace it after a connection-level failure.
+The memory cache stores a TTL too large for the monotonic clock (such as
+`u64::MAX`) as non-expiring instead of panicking. A read that finds an expired
+entry removes the key only while it still holds that expired value, so a
+concurrent refill is kept.
 
 SQLite deletes successful jobs by default. Applications that need a real
 Studio/operations history can opt in with
@@ -34,6 +38,12 @@ validated limit is 1–100,000 records; status transition and pruning commit in
 one transaction, and `purge_completed_history` removes the retained successes.
 Rows still contain the original payload, so access control and retention policy
 belong to the host. Redis/custom drivers do not inherit this policy implicitly.
+The Redis driver bounds its own failure state instead: failed jobs (with
+payloads) and dead letters are each retained up to 10,000 entries by default,
+the oldest evicted atomically, and
+`RedisDriver::try_with_failure_retention(failed_jobs, dead_letters)` accepts
+1–100,000 for each. Failures recorded before that bound existed are not
+indexed and are never evicted automatically.
 
 `Queue::dispatch_at` persists a due timestamp for at most 366 days through the
 built-in SQLite and Redis drivers. SQLite filters claims by local wall-clock
@@ -43,6 +53,35 @@ worker poll after it becomes due and retains the queue's at-least-once semantics
 `Worker` drives each `pop` to completion instead of racing it against
 completions or shutdown, because both built-in claims commit before the future
 resolves. A job claimed after graceful shutdown was requested is requeued.
+When a handler finishes while its timeout or a graceful shutdown is being
+processed, the worker records the handler's own result: only a handler that
+was actually cancelled is failed as timed out or requeued, so a success is
+never reported as a timeout or run again.
+Worker transitions are fenced by the claim's attempt number. The SQLite and
+Redis drivers complete, fail or requeue a job only while it is still processing
+under the attempt that `pop` returned, so a worker whose lease was recovered and
+claimed again receives a `StateTransition` error instead of finishing, failing
+or deleting the newer claim. The new `QueueDriver::mark_complete_attempt`,
+`mark_failed_attempt` and `requeue_attempt` methods default to the unfenced
+methods, so custom drivers keep their behaviour until they override them. The
+stale handler may still have run its side effects (delivery stays
+at-least-once), and SQLite `retry_failed_job` restarts the attempt counter, so
+a worker that stays stale across a manual retry and a new claim with the same
+attempt number is not fenced.
+A worker that claims a job whose name it has no handler for hands the claim
+back instead of failing it. SQLite and Redis make the job claimable again after
+five seconds, behind jobs that are already due, so a worker that registered the
+name (for example a newer version during a rolling deploy) can run it; the
+delay keeps the claiming worker out of a hot loop, and it still reports
+`HandlerNotFound` each time. A job that no running worker can handle therefore
+stays pending and is re-offered every five seconds instead of being failed.
+Custom drivers that do not implement `QueueDriver::requeue_attempt_after` keep
+the previous behaviour and fail the job.
+`WorkerHandle` and `SchedulerHandle` buffer at most 256 undrained errors. Once
+the buffer is full, newer errors are dropped, counted by `dropped_errors()` and
+emitted as `tracing` warnings, so a handle that is kept alive but never drained
+does not grow memory. Drain `next_error` (for example from a supervising task)
+to observe every failure.
 Custom drivers return `QueueError::Unsupported` for future timestamps unless
 they explicitly implement durable scheduling.
 
@@ -71,7 +110,12 @@ for upgraded connections and detached tasks; supervisors own their shutdown.
   identity, tenant, authorization, idempotency and rate-limit policy.
 - **Rullst Radar (`rullst::radar`):** Collects process RSS/CPU where an OS probe
   is supported, Tokio task/yield observations when a runtime is available, and
-  process uptime. Unsupported probes return `None`.
+  process uptime. Unsupported probes return `None`. On Linux, RSS comes from
+  `VmRSS` in `/proc/self/status` (correct on 16/64 KiB page kernels), and CPU
+  percent is process CPU time over wall time: the host-wide `/proc/stat` delta
+  is scaled by its host CPU count, not by the cgroup-limited
+  `available_parallelism`, so a container saturating a 2-CPU quota reports
+  about 200%.
 - **Prometheus `/metrics` Exporter:** Text-format metrics served at `GET /metrics`; formatting and collection have bounded runtime cost.
 - **Kubernetes probe routes (`rullst::health`):** the simple `health_router`
   reports process availability and uptime. The opt-in
@@ -85,6 +129,10 @@ for upgraded connections and detached tasks; supervisors own their shutdown.
   and other subsystems expose their own typed errors. Applications may compose
   those into an application-owned `AppError`; Core does not define one global
   application error type.
+- **Redacted configuration `Debug`:** `DatabaseConfig` (and therefore
+  `RullstConfig`) prints only the database URL scheme, such as
+  `postgres://<redacted>`; `db::ReplicationConfig` redacts `auth_token` and
+  prints only the `sync_url` scheme. Fields stay public and unchanged.
 - **Durable scheduled queues:** SQLite and Redis persist bounded due timestamps;
   the live Redis CI contract proves that an immediate job remains claimable
   while a future job stays unavailable.
@@ -95,6 +143,15 @@ for upgraded connections and detached tasks; supervisors own their shutdown.
   address and IPv6 peers per /64 by default. It tracks at most 100,000 keys,
   drops fully refilled buckets and evicts the least recently used ones beyond
   that cap; state is process-local, not a distributed limit.
+- **Feature flag buckets:** percentage rollouts and A/B variants in the Env,
+  TOML, Memory and DB drivers use `calculate_hash_bucket`, a versioned
+  SHA-256 hash over a domain tag, the length-prefixed flag and the identifier.
+  It gives every toolchain, platform and replica the same assignment.
+  Earlier releases used `std`'s unspecified `DefaultHasher`, so upgrading
+  reassigns users to buckets once; percentages and variant weights are kept.
+  `TomlFeatureDriver::reload` parses into a new map and swaps it in at once,
+  so concurrent evaluations never see a flag as unset mid-reload, and a
+  `[features] # comment` header is recognized.
 - **Bounded cache metadata:** Memory and Redis expose value length and TTL for
   at most 200 sorted entries, never cached values. Rullst Studio renders keyed
   opaque identifiers and one-entry invalidation rather than exact keys or bulk

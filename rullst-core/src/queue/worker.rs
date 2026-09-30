@@ -1,14 +1,20 @@
 //! Bounded background queue worker and lifecycle handle.
 
 use super::{Queue, QueueDriver, QueueError, QueuedJob};
+use crate::error_buffer::{ERROR_BUFFER_CAPACITY, ErrorBuffer, ErrorReporter, error_buffer};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{mpsc, watch};
+use tokio::sync::watch;
 use tokio::task::{JoinHandle, JoinSet};
+
+mod execution;
+
+/// Delay before a job handed back for lack of a handler can be claimed again.
+pub(crate) const UNHANDLED_JOB_RETRY_DELAY: Duration = Duration::from_secs(5);
 
 /// Type alias for asynchronous job handler closures.
 pub type JobHandler = Box<
@@ -56,6 +62,11 @@ impl Worker {
     }
 
     /// Sets the maximum duration of an individual handler execution.
+    ///
+    /// A handler still running at the deadline is aborted and its job is
+    /// failed as timed out. A handler that cannot be interrupted (for example
+    /// one that blocks its thread) and then returns is recorded from its own
+    /// result instead.
     pub fn job_timeout(mut self, timeout: Duration) -> Self {
         self.job_timeout = timeout;
         self
@@ -103,7 +114,7 @@ impl Worker {
         let runtime =
             tokio::runtime::Handle::try_current().map_err(|_| QueueError::RuntimeUnavailable)?;
         let (shutdown, shutdown_rx) = watch::channel(false);
-        let (errors_tx, errors) = mpsc::unbounded_channel();
+        let (errors_tx, errors) = error_buffer(ERROR_BUFFER_CAPACITY, "queue_worker");
         let task = runtime.spawn(run_worker_loop(
             Arc::clone(&self.driver),
             self.handlers.clone(),
@@ -124,26 +135,40 @@ impl Worker {
 }
 
 /// Owns a running queue worker and exposes asynchronous processing failures.
+///
+/// The handle buffers at most 256 undrained errors. When the buffer is full,
+/// newer errors are dropped, counted by [`Self::dropped_errors`] and emitted as
+/// `tracing` warnings, so a handle that is kept alive but never drained does
+/// not grow memory. Drain [`Self::next_error`] to observe every failure.
 #[must_use = "dropping the worker handle immediately stops queue processing"]
 pub struct WorkerHandle {
     shutdown: watch::Sender<bool>,
     task: Option<JoinHandle<()>>,
-    errors: mpsc::UnboundedReceiver<QueueError>,
+    errors: ErrorBuffer<QueueError>,
 }
 
 impl WorkerHandle {
     /// Waits for the next driver, handler, timeout, or state-transition error.
     pub async fn next_error(&mut self) -> Option<QueueError> {
-        self.errors.recv().await
+        self.errors.next().await
     }
 
     /// Returns an already reported worker error without waiting.
     pub fn try_next_error(&mut self) -> Option<QueueError> {
-        self.errors.try_recv().ok()
+        self.errors.try_next()
+    }
+
+    /// Returns how many errors were dropped because the buffer was full.
+    pub fn dropped_errors(&self) -> u64 {
+        self.errors.dropped()
     }
 
     /// Stops polling, cancels active handlers, and requeues interrupted jobs
     /// when the driver supports recoverable processing states.
+    ///
+    /// Only a handler that was actually cancelled is requeued. A handler that
+    /// finishes before its cancellation takes effect is completed or failed
+    /// from its own result, so a success is not run a second time.
     ///
     /// A claim that is already in flight is allowed to finish, so shutdown can
     /// wait for one `pop` call. A job claimed after shutdown was requested is
@@ -194,12 +219,12 @@ async fn run_worker_loop(
     job_timeout: Duration,
     stalled_after: Duration,
     mut shutdown: watch::Receiver<bool>,
-    errors: mpsc::UnboundedSender<QueueError>,
+    errors: ErrorReporter<QueueError>,
 ) {
     match driver.recover_stalled(stalled_after).await {
         Ok(_) | Err(QueueError::Unsupported(_)) => {}
         Err(error) => {
-            let _ = errors.send(error);
+            errors.report(error);
         }
     }
 
@@ -252,7 +277,7 @@ async fn run_worker_loop(
                 }
             }
             Err(error) => {
-                let _ = errors.send(error);
+                errors.report(error);
                 tokio::select! {
                     _ = tokio::time::sleep(poll_interval) => {}
                     _ = wait_for_shutdown(&mut shutdown) => break,
@@ -267,7 +292,7 @@ async fn run_worker_loop(
     if let Err(error) = (&mut recovery_task.0).await
         && !error.is_cancelled()
     {
-        let _ = errors.send(QueueError::WorkerTask(error.to_string()));
+        errors.report(QueueError::WorkerTask(error.to_string()));
     }
 }
 
@@ -281,7 +306,7 @@ async fn run_worker_loop(
 async fn claim_next(
     driver: &dyn QueueDriver,
     jobs: &mut JoinSet<Result<(), QueueError>>,
-    errors: &mpsc::UnboundedSender<QueueError>,
+    errors: &ErrorReporter<QueueError>,
 ) -> Result<Option<QueuedJob>, QueueError> {
     let mut claim = driver.pop();
     loop {
@@ -297,20 +322,20 @@ async fn claim_next(
 async fn release_claim_after_shutdown(
     popped: Result<Option<QueuedJob>, QueueError>,
     driver: &dyn QueueDriver,
-    errors: &mpsc::UnboundedSender<QueueError>,
+    errors: &ErrorReporter<QueueError>,
 ) {
     match popped {
         Ok(Some(job)) => {
             if let Err(error) = driver
-                .requeue(&job.id, "worker shutdown before dispatch")
+                .requeue_attempt(&job.id, job.attempts, "worker shutdown before dispatch")
                 .await
             {
-                let _ = errors.send(state_error(&job.id, "requeue_claim_after_shutdown", error));
+                errors.report(state_error(&job.id, "requeue_claim_after_shutdown", error));
             }
         }
         Ok(None) => {}
         Err(error) => {
-            let _ = errors.send(error);
+            errors.report(error);
         }
     }
 }
@@ -319,7 +344,7 @@ async fn recovery_loop(
     driver: Arc<Box<dyn QueueDriver>>,
     stale_after: Duration,
     mut shutdown: watch::Receiver<bool>,
-    errors: mpsc::UnboundedSender<QueueError>,
+    errors: ErrorReporter<QueueError>,
 ) {
     let interval = stale_after
         .min(Duration::from_secs(60))
@@ -333,7 +358,7 @@ async fn recovery_loop(
             Ok(_) => {}
             Err(QueueError::Unsupported(_)) => break,
             Err(error) => {
-                let _ = errors.send(error);
+                errors.report(error);
             }
         }
     }
@@ -346,88 +371,55 @@ async fn dispatch_job(
     timeout: Duration,
     shutdown: watch::Receiver<bool>,
     jobs: &mut JoinSet<Result<(), QueueError>>,
-    errors: &mpsc::UnboundedSender<QueueError>,
+    errors: &ErrorReporter<QueueError>,
 ) {
     let Some(handler) = handlers.get(&job.name).cloned() else {
-        let missing = QueueError::HandlerNotFound(job.name.clone());
-        if let Err(error) = driver.mark_failed(&job.id, &missing.to_string()).await {
-            let _ = errors.send(state_error(&job.id, "mark_failed", error));
-        } else {
-            let _ = errors.send(missing);
-        }
+        hand_back_unhandled(&job, &**driver, errors).await;
         return;
     };
 
-    jobs.spawn(execute_job(driver, handler, job, timeout, shutdown));
+    jobs.spawn(execution::execute_job(
+        driver, handler, job, timeout, shutdown,
+    ));
 }
 
-#[cfg_attr(mutants, mutants::skip)]
-async fn execute_job(
-    driver: Arc<Box<dyn QueueDriver>>,
-    handler: Arc<JobHandler>,
-    job: QueuedJob,
-    timeout: Duration,
-    mut shutdown: watch::Receiver<bool>,
-) -> Result<(), QueueError> {
-    let job_id = job.id.clone();
-    let job_name = job.name.clone();
-    let mut execution = AbortOnDrop(tokio::spawn(async move { handler(job.payload).await }));
-    let deadline = tokio::time::sleep(timeout);
-    tokio::pin!(deadline);
-
-    tokio::select! {
-        outcome = &mut execution.0 => match outcome {
-            Ok(Ok(())) => driver.mark_complete(&job_id).await
-                .map_err(|error| state_error(&job_id, "mark_complete", error)),
-            Ok(Err(error)) => {
-                let failure = QueueError::JobFailed(format!("'{job_name}' ({job_id}): {error}"));
-                driver.mark_failed(&job_id, &failure.to_string()).await
-                    .map_err(|error| state_error(&job_id, "mark_failed", error))?;
-                Err(failure)
-            }
-            Err(error) if error.is_panic() => {
-                let failure = QueueError::JobPanicked { job_id: job_id.clone() };
-                driver.mark_failed(&job_id, &failure.to_string()).await
-                    .map_err(|error| state_error(&job_id, "mark_failed_after_panic", error))?;
-                Err(failure)
-            }
-            Err(error) => {
-                let failure = QueueError::WorkerTask(error.to_string());
-                driver.mark_failed(&job_id, &failure.to_string()).await
-                    .map_err(|error| state_error(&job_id, "mark_failed_after_cancel", error))?;
-                Err(failure)
-            }
-        },
-        _ = &mut deadline => {
-            execution.0.abort();
-            let _ = (&mut execution.0).await;
-            let failure = QueueError::JobTimedOut {
-                job_id: job_id.clone(),
-                timeout_ms: duration_millis_u64(timeout),
-            };
-            driver.mark_failed(&job_id, &failure.to_string()).await
-                .map_err(|error| state_error(&job_id, "mark_failed_after_timeout", error))?;
-            Err(failure)
-        }
-        _ = wait_for_shutdown(&mut shutdown) => {
-            execution.0.abort();
-            let _ = (&mut execution.0).await;
-            driver.requeue(&job_id, "worker shutdown interrupted execution").await
-                .map_err(|error| state_error(&job_id, "requeue_after_shutdown", error))
-        }
+/// Returns a job this worker has no handler for to the queue, so a worker
+/// that registered its name can claim it. The delay keeps this worker from
+/// re-claiming the job in a hot loop; `HandlerNotFound` is still reported.
+/// Drivers without delayed requeue keep the previous behaviour and fail it.
+async fn hand_back_unhandled(
+    job: &QueuedJob,
+    driver: &dyn QueueDriver,
+    errors: &ErrorReporter<QueueError>,
+) {
+    let missing = QueueError::HandlerNotFound(job.name.clone());
+    let reason = missing.to_string();
+    let transition = match driver
+        .requeue_attempt_after(&job.id, job.attempts, &reason, UNHANDLED_JOB_RETRY_DELAY)
+        .await
+    {
+        Err(QueueError::Unsupported(_)) => driver
+            .mark_failed_attempt(&job.id, job.attempts, &reason)
+            .await
+            .map_err(|error| state_error(&job.id, "mark_failed", error)),
+        deferred => deferred.map_err(|error| state_error(&job.id, "requeue_unhandled", error)),
+    };
+    match transition {
+        Ok(()) => errors.report(missing),
+        Err(error) => errors.report(error),
     }
 }
 
 fn report_outcome(
     outcome: Option<Result<Result<(), QueueError>, tokio::task::JoinError>>,
-    errors: &mpsc::UnboundedSender<QueueError>,
+    errors: &ErrorReporter<QueueError>,
 ) {
     match outcome {
         Some(Ok(Err(error))) => {
-            let _ = errors.send(error);
+            errors.report(error);
         }
         Some(Err(error)) => {
-            let _ = errors.send(QueueError::WorkerTask(error.to_string()));
+            errors.report(QueueError::WorkerTask(error.to_string()));
         }
         Some(Ok(Ok(()))) | None => {}
     }

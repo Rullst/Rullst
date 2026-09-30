@@ -1,4 +1,4 @@
-use super::column::{Column, ColumnDefault};
+use super::column::{Column, ColumnDefault, validate_text_literal};
 use super::enums::{DatabaseEnum, NativeEnumDefinition, quoted_label, validate_native_enum};
 use super::validation::validate_identifier;
 use crate::Error;
@@ -6,6 +6,9 @@ use crate::Error;
 pub struct Blueprint {
     pub columns: Vec<Column>,
     native_enum_columns: Vec<(String, NativeEnumDefinition)>,
+    /// `enum_col` columns with a variant that is not a safe DDL literal;
+    /// reported by `build` because `enum_col` itself cannot fail.
+    invalid_enum_columns: Vec<String>,
 }
 
 impl Default for Blueprint {
@@ -19,6 +22,7 @@ impl Blueprint {
         Self {
             columns: vec![],
             native_enum_columns: vec![],
+            invalid_enum_columns: vec![],
         }
     }
 
@@ -67,7 +71,17 @@ impl Blueprint {
         self.add_column(name, &col_type)
     }
 
+    /// Adds a `TEXT` column restricted to `variants` by a `CHECK` constraint.
+    ///
+    /// Single quotes in a variant are doubled. A variant containing a
+    /// backslash or a control character makes [`Blueprint::build`] fail.
     pub fn enum_col(&mut self, name: &str, variants: Vec<&str>) -> &mut Column {
+        if variants
+            .iter()
+            .any(|variant| validate_text_literal(variant, name).is_err())
+        {
+            self.invalid_enum_columns.push(name.to_string());
+        }
         // Enforce enum values using a CHECK constraint for safe cross-DB compatibility
         let check_clause = variants
             .iter()
@@ -128,6 +142,11 @@ impl Blueprint {
     }
 
     pub(crate) fn build_for_driver(&self, driver: &str) -> Result<String, Error> {
+        if let Some(column) = self.invalid_enum_columns.first() {
+            return Err(Error::Validation(format!(
+                "enum_col `{column}` variants must not contain backslashes or control characters"
+            )));
+        }
         let mut defs = vec![];
         for col in &self.columns {
             // Defensive re-validation: column names must always be safe
@@ -178,6 +197,9 @@ impl Blueprint {
             }
             if let Some(default) = &col.default_value {
                 use std::fmt::Write;
+                if let ColumnDefault::Text(text) = default {
+                    validate_text_literal(text, &format!("DEFAULT of column `{}`", col.name))?;
+                }
                 if driver == "mysql"
                     && *default != ColumnDefault::Null
                     && mysql_requires_expression_default(&col_type_str)

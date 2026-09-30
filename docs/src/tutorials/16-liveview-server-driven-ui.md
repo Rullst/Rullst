@@ -95,7 +95,9 @@ let app = Router::new().route(
   authorization, reconnect/replay, backpressure and multi-process state remain
   application concerns.
 - `live_ws_handler` accepts WebSocket frames and messages of at most 64 KiB; a
-  larger message closes the session before it is parsed. Origin checks,
-  connection caps and idle timeouts are still route-level policy.
+  larger message closes the session before it is parsed. `ws::WebSocket::recv`
+  skips Ping/Pong control frames, so client or proxy keepalives do not end a
+  legacy Live session. Origin checks, connection caps and idle timeouts are
+  still route-level policy.
 - Include and pin the HTMX WebSocket extension; Rullst does not inject that
   browser dependency automatically.

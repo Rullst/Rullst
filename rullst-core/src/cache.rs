@@ -113,7 +113,9 @@ struct CacheEntry {
 
 /// In-memory cache driver using `DashMap` for lock-free concurrent access.
 ///
-/// Supports TTL-based expiration. Expired entries are lazily cleaned on access.
+/// Supports TTL-based expiration. Expired entries are lazily cleaned on access;
+/// a read removes an expired key only while it still holds that expired value,
+/// so a concurrent refill of the same key is kept.
 /// Perfect for single-instance deployments and development.
 pub struct MemoryDriver {
     store: DashMap<String, CacheEntry>,
@@ -150,16 +152,29 @@ impl MemoryDriver {
             .expires_at
             .is_some_and(|expires_at| Instant::now() >= expires_at)
         {
+            let expired = Arc::clone(&entry.value);
             drop(entry);
-            self.store.remove(key);
+            self.remove_expired(key, &expired);
             return None;
         }
         Some(Arc::clone(&entry.value))
     }
 
+    /// Removes `key` only while it still holds the expired value observed by
+    /// the caller. Every `put` allocates a new `Arc`, so a fresh value written
+    /// after the read guard was released is never deleted here.
+    fn remove_expired(&self, key: &str, expired: &Arc<String>) {
+        self.store
+            .remove_if(key, |_, current| Arc::ptr_eq(&current.value, expired));
+    }
+
+    /// Stores a value. A TTL too large for the monotonic clock to represent
+    /// (for example `u64::MAX`) is treated as "never expires" instead of
+    /// overflowing `Instant`.
     fn put_sync(&self, key: &str, value: &str, ttl_secs: Option<u64>) {
         self.cleanup_if_due();
-        let expires_at = ttl_secs.map(|secs| Instant::now() + std::time::Duration::from_secs(secs));
+        let expires_at = ttl_secs
+            .and_then(|secs| Instant::now().checked_add(std::time::Duration::from_secs(secs)));
         self.store.insert(
             key.to_string(),
             CacheEntry {
@@ -231,26 +246,12 @@ impl CacheDriver for MemoryDriver {
 // ─── Global Memoize Cache ───────────────────────────────────────────────────
 
 /// Global memory cache functions used by the `#[memoize]` macro.
-pub mod memory {
-    use super::MemoryDriver;
-    use std::sync::OnceLock;
-
-    static GLOBAL_MEMO_CACHE: OnceLock<MemoryDriver> = OnceLock::new();
-
-    fn get_cache() -> &'static MemoryDriver {
-        GLOBAL_MEMO_CACHE.get_or_init(MemoryDriver::new)
-    }
-
-    /// Retrieve a value from the global memoize cache.
-    pub fn get(key: &str) -> Option<String> {
-        get_cache().get_sync(key).map(|value| value.to_string())
-    }
-
-    /// Store a value in the global memoize cache.
-    pub fn set(key: &str, value: &str) {
-        get_cache().put_sync(key, value, Some(3600));
-    }
-}
+///
+/// The process-wide store is bounded: at most 4,096 entries and 32 MiB of key
+/// plus value bytes, each entry at most 256 KiB and one hour old. Oversized
+/// entries are not cached, and the oldest entries are evicted when a bound
+/// would be exceeded.
+pub mod memory;
 
 // ─── Redis Driver (behind feature flag) ─────────────────────────────────────
 
@@ -308,7 +309,9 @@ impl Cache {
 
     /// Store a value with an optional TTL in seconds.
     ///
-    /// Pass `None` for TTL to store indefinitely.
+    /// Pass `None` for TTL to store indefinitely. The in-memory driver also
+    /// stores a TTL too large for the monotonic clock (such as `u64::MAX`)
+    /// without expiry.
     pub async fn put(
         &self,
         key: &str,

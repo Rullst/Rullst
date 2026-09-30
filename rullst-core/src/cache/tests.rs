@@ -202,6 +202,21 @@ fn test_memory_cache() {
     assert_eq!(memory::get("non_existent_mem_key"), None);
 }
 
+#[test]
+fn global_memoize_cache_skips_oversized_entries() {
+    let key = "oversized_memo_key";
+    memory::set(key, "small");
+    assert_eq!(memory::get(key).as_deref(), Some("small"));
+
+    // An oversized value is not stored and does not leave the stale one behind.
+    memory::set(key, &"x".repeat(1024 * 1024));
+    assert!(memory::get(key).is_none(), "oversized value was cached");
+    // An oversized key is not stored either.
+    let huge_key = "k".repeat(1024 * 1024);
+    memory::set(&huge_key, "value");
+    assert!(memory::get(&huge_key).is_none(), "oversized key was cached");
+}
+
 #[tokio::test]
 async fn global_memoize_cache_is_safe_inside_a_tokio_runtime() {
     memory::set("runtime_mem_key", "runtime_mem_val");
@@ -262,4 +277,57 @@ fn memoize_never_shares_entries_between_same_named_functions() {
     let calls = memoized_admin::CALLS.load(Ordering::SeqCst);
     assert_eq!(memoized_admin::sidebar(7), "admin sidebar for 7");
     assert_eq!(memoized_admin::CALLS.load(Ordering::SeqCst), calls);
+}
+
+/// A value whose `Serialize` implementation always fails.
+struct Unserializable;
+
+impl serde::Serialize for Unserializable {
+    fn serialize<S: serde::Serializer>(&self, _serializer: S) -> Result<S::Ok, S::Error> {
+        Err(serde::ser::Error::custom("deliberately unserializable"))
+    }
+}
+
+mod memoized_fallible {
+    use super::Unserializable;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    pub(super) static WIDE_CALLS: AtomicUsize = AtomicUsize::new(0);
+    pub(super) static OPAQUE_CALLS: AtomicUsize = AtomicUsize::new(0);
+
+    #[crate::memoize]
+    pub(super) fn wide(id: u128) -> String {
+        WIDE_CALLS.fetch_add(1, Ordering::SeqCst);
+        format!("item {id}")
+    }
+
+    #[crate::memoize]
+    pub(super) fn opaque(value: Unserializable, label: &'static str) -> String {
+        let _ = value;
+        OPAQUE_CALLS.fetch_add(1, Ordering::SeqCst);
+        label.to_string()
+    }
+}
+
+#[test]
+fn memoize_runs_uncached_when_arguments_cannot_be_serialized() {
+    use std::sync::atomic::Ordering;
+
+    // serde_json cannot represent this u128, and `Unserializable` always
+    // fails; both calls run the body instead of panicking.
+    let wide = u128::from(u64::MAX) + 1;
+    for _ in 0..2 {
+        assert_eq!(memoized_fallible::wide(wide), format!("item {wide}"));
+        assert_eq!(
+            memoized_fallible::opaque(Unserializable, "opaque"),
+            "opaque"
+        );
+    }
+    assert_eq!(memoized_fallible::WIDE_CALLS.load(Ordering::SeqCst), 2);
+    assert_eq!(memoized_fallible::OPAQUE_CALLS.load(Ordering::SeqCst), 2);
+
+    // Representable arguments are still cached.
+    assert_eq!(memoized_fallible::wide(7), "item 7");
+    assert_eq!(memoized_fallible::wide(7), "item 7");
+    assert_eq!(memoized_fallible::WIDE_CALLS.load(Ordering::SeqCst), 3);
 }

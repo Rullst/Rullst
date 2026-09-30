@@ -147,12 +147,39 @@ pub struct AppConfig {
     pub port: Option<u16>,
 }
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Clone, Deserialize, Default)]
 #[non_exhaustive]
 /// Database connection configuration.
+///
+/// `Debug` prints only the URL scheme (for example `postgres://<redacted>`),
+/// never credentials, host, path or query parameters.
 pub struct DatabaseConfig {
     /// Database connection URL (e.g., `sqlite://rullst.db`).
     pub url: Option<String>,
+}
+
+impl fmt::Debug for DatabaseConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DatabaseConfig")
+            .field("url", &self.url.as_deref().map(redacted_url))
+            .finish()
+    }
+}
+
+/// Debug form of a connection URL: the scheme only, or `<redacted>` when no
+/// plain scheme is present. Userinfo, host, path and query are never shown.
+pub(crate) fn redacted_url(url: &str) -> String {
+    match url.split_once("://") {
+        Some((scheme, _))
+            if (1..=32).contains(&scheme.len())
+                && scheme
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'-' | b'.')) =>
+        {
+            format!("{scheme}://<redacted>")
+        }
+        _ => "<redacted>".to_string(),
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -474,6 +501,30 @@ cors_allow_origins = ["https://example.com"]
             Ok(_) => assert_eq!(RullstConfig::global().app.env.as_deref(), Some("test_env")),
             Err(c) => assert_eq!(c.app.env.as_deref(), Some("test_env")),
         }
+    }
+
+    #[test]
+    fn database_url_debug_output_is_redacted() {
+        let mut config = RullstConfig::default();
+        config.database.url = Some("postgres://app:S3cr3t@db.internal/prod?sslmode=require".into());
+        let debug = format!("{config:?} {:?}", config.database);
+        assert!(
+            !debug.contains("S3cr3t"),
+            "Debug must redact the URL password"
+        );
+        assert!(
+            !debug.contains("db.internal"),
+            "Debug must redact the URL host"
+        );
+        assert!(
+            debug.contains("postgres://<redacted>"),
+            "Debug must keep the URL scheme"
+        );
+
+        assert_eq!(redacted_url("app:S3cr3t@db/prod"), "<redacted>");
+        assert_eq!(redacted_url("sqlite://rullst.db"), "sqlite://<redacted>");
+        assert_eq!(redacted_url("a b://x"), "<redacted>");
+        assert!(format!("{:?}", DatabaseConfig::default()).contains("url: None"));
     }
 
     #[test]

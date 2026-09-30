@@ -1,97 +1,24 @@
 //! Redis-backed distributed queue driver with recoverable processing leases.
 
+mod scripts;
+
 #[cfg(feature = "queue-redis")]
 /// Redis queue driver implementation and its recoverable lease protocol.
 pub mod redis_driver {
     use super::super::{QueueDriver, QueueError, QueuedJob, unix_timestamp_millis_ceil};
+    use super::scripts::{
+        CLAIM_SCRIPT, COMPLETE_SCRIPT, FAIL_SCRIPT, PENDING_COUNT_SCRIPT, RECOVER_SCRIPT,
+        REJECT_SCRIPT, REQUEUE_AFTER_SCRIPT, REQUEUE_SCRIPT,
+    };
     use crate::redis_connection::{RedisConnection, SharedRedisConnection};
     use async_trait::async_trait;
     use serde::Deserialize;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-    const CLAIM_SCRIPT: &str = r#"
-local now = redis.call('TIME')
-local claimed_at_ms = (tonumber(now[1]) * 1000) + math.floor(tonumber(now[2]) / 1000)
-local due = redis.call('ZRANGEBYSCORE', KEYS[5], '-inf', claimed_at_ms, 'LIMIT', 0, 100)
-for _, scheduled_raw in ipairs(due) do
-    if redis.call('ZREM', KEYS[5], scheduled_raw) == 1 then
-        redis.call('RPUSH', KEYS[1], scheduled_raw)
-    end
-end
-local raw = redis.call('LPOP', KEYS[1])
-if not raw then return nil end
-local ok, envelope = pcall(cjson.decode, raw)
-if ok and type(envelope) == 'table' and type(envelope.attempts) == 'number' then
-    envelope.attempts = envelope.attempts + 1
-    raw = cjson.encode(envelope)
-end
-if ok and type(envelope) == 'table' and type(envelope.id) == 'string' and envelope.id ~= '' then
-    if redis.call('HEXISTS', KEYS[3], envelope.id) == 1 then
-        redis.call('RPUSH', KEYS[4], cjson.encode({ raw = raw, error = 'duplicate processing job id' }))
-        return redis.error_reply('duplicate processing job id')
-    end
-    redis.call('HSET', KEYS[3], envelope.id, raw)
-end
-redis.call('ZADD', KEYS[2], claimed_at_ms, raw)
-return raw
-"#;
-
-    const REJECT_SCRIPT: &str = r#"
-redis.call('ZREM', KEYS[1], ARGV[1])
-local ok, envelope = pcall(cjson.decode, ARGV[1])
-if ok and type(envelope) == 'table' and type(envelope.id) == 'string' then
-    redis.call('HDEL', KEYS[2], envelope.id)
-end
-redis.call('RPUSH', KEYS[3], cjson.encode({ raw = ARGV[1], error = ARGV[2] }))
-return 1
-"#;
-
-    const COMPLETE_SCRIPT: &str = r#"
-local raw = redis.call('HGET', KEYS[2], ARGV[1])
-if not raw then return 0 end
-redis.call('ZREM', KEYS[1], raw)
-redis.call('HDEL', KEYS[2], ARGV[1])
-return 1
-"#;
-
-    const FAIL_SCRIPT: &str = r#"
-local raw = redis.call('HGET', KEYS[2], ARGV[1])
-if not raw then return 0 end
-redis.call('ZREM', KEYS[1], raw)
-redis.call('HDEL', KEYS[2], ARGV[1])
-redis.call('HSET', KEYS[3], ARGV[1], cjson.encode({ raw = raw, error = ARGV[2] }))
-return 1
-"#;
-
-    const REQUEUE_SCRIPT: &str = r#"
-local raw = redis.call('HGET', KEYS[2], ARGV[1])
-if not raw then return 0 end
-redis.call('ZREM', KEYS[1], raw)
-redis.call('HDEL', KEYS[2], ARGV[1])
-redis.call('LPUSH', KEYS[3], raw)
-return 1
-"#;
-
-    const RECOVER_SCRIPT: &str = r#"
-local stalled = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])
-local recovered = 0
-for _, raw in ipairs(stalled) do
-    redis.call('ZREM', KEYS[1], raw)
-    local ok, envelope = pcall(cjson.decode, raw)
-    if ok and type(envelope) == 'table' and type(envelope.id) == 'string' then
-        redis.call('HDEL', KEYS[2], envelope.id)
-        redis.call('RPUSH', KEYS[3], raw)
-        recovered = recovered + 1
-    else
-        redis.call('RPUSH', KEYS[4], cjson.encode({ raw = raw, error = 'invalid stalled job envelope' }))
-    end
-end
-return recovered
-"#;
-
-    const PENDING_COUNT_SCRIPT: &str = r#"
-return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
-"#;
+    /// Failed jobs and dead letters each retained by default (newest kept).
+    pub const DEFAULT_FAILURE_RETENTION: usize = 10_000;
+    /// Upper bound accepted by [`RedisDriver::try_with_failure_retention`].
+    pub const MAX_FAILURE_RETENTION: usize = 100_000;
 
     #[derive(Deserialize)]
     struct RedisJobEnvelope {
@@ -106,6 +33,10 @@ return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
     ///
     /// Operations share one lazily opened multiplexed connection. If it breaks,
     /// the failing operation returns its error and the next one reconnects.
+    ///
+    /// Failed jobs (with their payloads) and dead letters are retained up to
+    /// [`DEFAULT_FAILURE_RETENTION`] each; the oldest are evicted atomically
+    /// when a new one is recorded. See [`Self::try_with_failure_retention`].
     pub struct RedisDriver {
         shared: SharedRedisConnection,
         queue_key: String,
@@ -113,7 +44,10 @@ return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
         processing_index_key: String,
         scheduled_key: String,
         failed_key: String,
+        failed_index_key: String,
         dead_letter_key: String,
+        failed_retention: usize,
+        dead_letter_retention: usize,
     }
 
     impl RedisDriver {
@@ -152,7 +86,32 @@ return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
             self.processing_index_key = format!("{queue_key}:processing:index");
             self.scheduled_key = format!("{queue_key}:scheduled");
             self.failed_key = format!("{queue_key}:failed");
+            self.failed_index_key = format!("{queue_key}:failed:index");
             self.dead_letter_key = format!("{queue_key}:dead-letter");
+            Ok(self)
+        }
+
+        /// Sets how many failed jobs and dead letters are retained, each
+        /// between 1 and [`MAX_FAILURE_RETENTION`].
+        ///
+        /// Recording a failure beyond the limit evicts the oldest failed job
+        /// (by failure time) or dead letter in the same atomic script. Failed
+        /// jobs recorded before this retention index existed are not counted
+        /// or evicted.
+        pub fn try_with_failure_retention(
+            mut self,
+            failed_jobs: usize,
+            dead_letters: usize,
+        ) -> Result<Self, QueueError> {
+            for limit in [failed_jobs, dead_letters] {
+                if !(1..=MAX_FAILURE_RETENTION).contains(&limit) {
+                    return Err(QueueError::InvalidConfiguration(format!(
+                        "Redis failure retention must be between 1 and {MAX_FAILURE_RETENTION}"
+                    )));
+                }
+            }
+            self.failed_retention = failed_jobs;
+            self.dead_letter_retention = dead_letters;
             Ok(self)
         }
 
@@ -162,9 +121,12 @@ return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
                 processing_index_key: format!("{queue_key}:processing:index"),
                 scheduled_key: format!("{queue_key}:scheduled"),
                 failed_key: format!("{queue_key}:failed"),
+                failed_index_key: format!("{queue_key}:failed:index"),
                 dead_letter_key: format!("{queue_key}:dead-letter"),
                 queue_key,
                 shared: SharedRedisConnection::new(client),
+                failed_retention: DEFAULT_FAILURE_RETENTION,
+                dead_letter_retention: DEFAULT_FAILURE_RETENTION,
             }
         }
 
@@ -178,6 +140,7 @@ return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
                 .arg(&self.dead_letter_key)
                 .arg(raw)
                 .arg(reason)
+                .arg(self.dead_letter_retention)
                 .query_async::<i64>(&mut connection)
                 .await
                 .map_err(|error| {
@@ -200,6 +163,7 @@ return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
             arguments: &[&str],
             job_id: &str,
             operation: &'static str,
+            attempt: Option<u32>,
         ) -> Result<(), QueueError> {
             let mut connection = self.connection().await?;
             let mut command = redis::cmd("EVAL");
@@ -219,14 +183,89 @@ return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
                     message: error.to_string(),
                 })?;
             if changed == 1 {
-                Ok(())
-            } else {
-                Err(QueueError::StateTransition {
-                    job_id: job_id.to_string(),
-                    operation,
-                    message: format!("expected one processing job, affected {changed}"),
-                })
+                return Ok(());
             }
+            let message = match attempt {
+                Some(attempt) => format!(
+                    "expected one processing job at claim attempt {attempt}, affected {changed}; \
+                     the lease may have been recovered and claimed again"
+                ),
+                None => format!("expected one processing job, affected {changed}"),
+            };
+            Err(QueueError::StateTransition {
+                job_id: job_id.to_string(),
+                operation,
+                message,
+            })
+        }
+
+        async fn complete_claim(
+            &self,
+            job_id: &str,
+            attempt: Option<u32>,
+        ) -> Result<(), QueueError> {
+            let expected = attempt
+                .map(|attempt| attempt.to_string())
+                .unwrap_or_default();
+            self.transition(
+                COMPLETE_SCRIPT,
+                &[&self.processing_key, &self.processing_index_key],
+                &[job_id, &expected],
+                job_id,
+                "mark_complete",
+                attempt,
+            )
+            .await
+        }
+
+        async fn fail_claim(
+            &self,
+            job_id: &str,
+            attempt: Option<u32>,
+            error: &str,
+        ) -> Result<(), QueueError> {
+            let expected = attempt
+                .map(|attempt| attempt.to_string())
+                .unwrap_or_default();
+            let retention = self.failed_retention.to_string();
+            self.transition(
+                FAIL_SCRIPT,
+                &[
+                    &self.processing_key,
+                    &self.processing_index_key,
+                    &self.failed_key,
+                    &self.failed_index_key,
+                ],
+                &[job_id, error, &expected, &retention],
+                job_id,
+                "mark_failed",
+                attempt,
+            )
+            .await
+        }
+
+        async fn requeue_claim(
+            &self,
+            job_id: &str,
+            attempt: Option<u32>,
+            reason: &str,
+        ) -> Result<(), QueueError> {
+            let expected = attempt
+                .map(|attempt| attempt.to_string())
+                .unwrap_or_default();
+            self.transition(
+                REQUEUE_SCRIPT,
+                &[
+                    &self.processing_key,
+                    &self.processing_index_key,
+                    &self.queue_key,
+                ],
+                &[job_id, reason, &expected],
+                job_id,
+                "requeue",
+                attempt,
+            )
+            .await
         }
     }
 
@@ -286,6 +325,7 @@ return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
                 .arg(&self.processing_index_key)
                 .arg(&self.dead_letter_key)
                 .arg(&self.scheduled_key)
+                .arg(self.dead_letter_retention)
                 .query_async(&mut connection)
                 .await
                 .map_err(|error| {
@@ -313,42 +353,67 @@ return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
         }
 
         async fn mark_complete(&self, job_id: &str) -> Result<(), QueueError> {
-            self.transition(
-                COMPLETE_SCRIPT,
-                &[&self.processing_key, &self.processing_index_key],
-                &[job_id],
-                job_id,
-                "mark_complete",
-            )
-            .await
+            self.complete_claim(job_id, None).await
         }
 
         async fn mark_failed(&self, job_id: &str, error: &str) -> Result<(), QueueError> {
-            self.transition(
-                FAIL_SCRIPT,
-                &[
-                    &self.processing_key,
-                    &self.processing_index_key,
-                    &self.failed_key,
-                ],
-                &[job_id, error],
-                job_id,
-                "mark_failed",
-            )
-            .await
+            self.fail_claim(job_id, None, error).await
         }
 
         async fn requeue(&self, job_id: &str, reason: &str) -> Result<(), QueueError> {
+            self.requeue_claim(job_id, None, reason).await
+        }
+
+        async fn mark_complete_attempt(
+            &self,
+            job_id: &str,
+            attempt: u32,
+        ) -> Result<(), QueueError> {
+            self.complete_claim(job_id, Some(attempt)).await
+        }
+
+        async fn mark_failed_attempt(
+            &self,
+            job_id: &str,
+            attempt: u32,
+            error: &str,
+        ) -> Result<(), QueueError> {
+            self.fail_claim(job_id, Some(attempt), error).await
+        }
+
+        async fn requeue_attempt(
+            &self,
+            job_id: &str,
+            attempt: u32,
+            reason: &str,
+        ) -> Result<(), QueueError> {
+            self.requeue_claim(job_id, Some(attempt), reason).await
+        }
+
+        async fn requeue_attempt_after(
+            &self,
+            job_id: &str,
+            attempt: u32,
+            _reason: &str,
+            delay: Duration,
+        ) -> Result<(), QueueError> {
+            let delay_ms = u64::try_from(delay.as_millis()).map_err(|_| {
+                QueueError::InvalidConfiguration(
+                    "requeue delay exceeds the Redis score range".to_string(),
+                )
+            })?;
+            let expected = attempt.to_string();
             self.transition(
-                REQUEUE_SCRIPT,
+                REQUEUE_AFTER_SCRIPT,
                 &[
                     &self.processing_key,
                     &self.processing_index_key,
-                    &self.queue_key,
+                    &self.scheduled_key,
                 ],
-                &[job_id, reason],
+                &[job_id, &delay_ms.to_string(), &expected],
                 job_id,
-                "requeue",
+                "requeue_after",
+                Some(attempt),
             )
             .await
         }
@@ -367,6 +432,7 @@ return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
                 .arg(&self.queue_key)
                 .arg(&self.dead_letter_key)
                 .arg(cutoff.to_string())
+                .arg(self.dead_letter_retention)
                 .query_async::<u64>(&mut connection)
                 .await
                 .map_err(|error| {
@@ -422,40 +488,5 @@ return redis.call('LLEN', KEYS[1]) + redis.call('ZCARD', KEYS[2])
 
     #[cfg(test)]
     #[allow(clippy::unwrap_used, clippy::expect_used)]
-    mod tests {
-        use super::*;
-
-        #[test]
-        fn claimed_envelope_requires_valid_json_payload() {
-            let result =
-                parse_claimed_job(r#"{"id":"job-1","name":"test","payload":"{bad","attempts":1}"#);
-            assert!(matches!(result, Err(QueueError::Serialization(_))));
-        }
-
-        #[test]
-        fn claimed_envelope_is_strict_and_lossless() {
-            let job = parse_claimed_job(
-                r#"{"id":"job-1","name":"test","payload":"{\"ok\":true}","attempts":2}"#,
-            )
-            .unwrap();
-            assert_eq!(job.id, "job-1");
-            assert_eq!(job.payload["ok"], true);
-            assert_eq!(job.attempts, 2);
-        }
-
-        #[test]
-        fn namespace_is_bounded_and_syntax_checked() {
-            let valid = RedisDriver::new("redis://127.0.0.1/")
-                .unwrap()
-                .try_with_namespace("tenant_42-prod");
-            assert!(valid.is_ok());
-
-            for invalid in ["", "../shared", "contains space"] {
-                let result = RedisDriver::new("redis://127.0.0.1/")
-                    .unwrap()
-                    .try_with_namespace(invalid);
-                assert!(matches!(result, Err(QueueError::InvalidConfiguration(_))));
-            }
-        }
-    }
+    mod tests;
 }

@@ -131,19 +131,59 @@ fn get_windows_memory_mb() -> Option<f64> {
     None
 }
 
+/// Reads `VmRSS` from `/proc/self/status`. It is reported in KiB, so unlike
+/// `statm` pages it does not depend on the kernel page size (4, 16 or 64 KiB).
 #[cfg(target_os = "linux")]
 fn get_linux_memory_mb() -> Option<f64> {
-    if let Ok(statm) = std::fs::read_to_string("/proc/self/statm") {
-        let parts: Vec<&str> = statm.split_whitespace().collect();
-        if parts.len() >= 2 {
-            if let Ok(pages) = parts[1].parse::<u64>() {
-                let bytes = pages * 4096;
-                let mb = (bytes as f64) / (1024.0 * 1024.0);
-                return Some((mb * 10.0).round() / 10.0);
-            }
-        }
+    let status = std::fs::read_to_string("/proc/self/status").ok()?;
+    let mb = parse_vm_rss_kib(&status)? as f64 / 1024.0;
+    Some((mb * 10.0).round() / 10.0)
+}
+
+#[cfg(target_os = "linux")]
+fn parse_vm_rss_kib(status: &str) -> Option<u64> {
+    status
+        .lines()
+        .find_map(|line| line.strip_prefix("VmRSS:"))?
+        .split_whitespace()
+        .next()?
+        .parse()
+        .ok()
+}
+
+/// Sums the aggregate `cpu` line of `/proc/stat` and counts its `cpuN` lines,
+/// the host CPUs that aggregate covers.
+#[cfg(target_os = "linux")]
+fn parse_proc_stat(stat: &str) -> Option<(u64, usize)> {
+    let mut aggregate = stat.lines().next()?.split_whitespace();
+    if aggregate.next()? != "cpu" {
+        return None;
     }
-    None
+    let total = aggregate.try_fold(0_u64, |total, value| {
+        value
+            .parse::<u64>()
+            .ok()
+            .map(|ticks| total.saturating_add(ticks))
+    })?;
+    let cpus = stat
+        .lines()
+        .filter_map(|line| line.split_whitespace().next()?.strip_prefix("cpu"))
+        .filter(|index| !index.is_empty() && index.bytes().all(|byte| byte.is_ascii_digit()))
+        .count();
+    Some((total, cpus.max(1)))
+}
+
+/// Process CPU time over wall time, in percent of one CPU. `total_delta` spans
+/// every host CPU in `/proc/stat`, so it is scaled by the host CPU count, not
+/// by the cgroup- or affinity-limited `available_parallelism`.
+#[cfg(target_os = "linux")]
+fn linux_cpu_percent(process_delta: u64, total_delta: u64, host_cpus: usize) -> Option<f64> {
+    if total_delta == 0 {
+        return None;
+    }
+    let host_cpus = host_cpus.max(1) as f64;
+    let percent = (process_delta as f64 / total_delta as f64) * host_cpus * 100.0;
+    Some(percent.clamp(0.0, host_cpus * 100.0))
 }
 
 #[cfg(target_os = "linux")]
@@ -173,32 +213,16 @@ fn get_linux_process_cpu_usage() -> Option<f64> {
         .saturating_add(fields.get(12)?.parse::<u64>().ok()?);
 
     let system_stat = std::fs::read_to_string("/proc/stat").ok()?;
-    let total_ticks = system_stat
-        .lines()
-        .next()?
-        .split_whitespace()
-        .skip(1)
-        .try_fold(0_u64, |total, value| {
-            value
-                .parse::<u64>()
-                .ok()
-                .map(|ticks| total.saturating_add(ticks))
-        })?;
+    let (total_ticks, host_cpus) = parse_proc_stat(&system_stat)?;
 
     let mut previous = PREVIOUS_CPU_SAMPLE.lock().ok()?;
     let old_sample = previous.replace((process_ticks, total_ticks));
     let (old_process, old_total) = old_sample?;
-    let total_delta = total_ticks.saturating_sub(old_total);
-    if total_delta == 0 {
-        return None;
-    }
-
-    let process_delta = process_ticks.saturating_sub(old_process);
-    let logical_cpus = std::thread::available_parallelism()
-        .map(std::num::NonZeroUsize::get)
-        .unwrap_or(1);
-    let percent = (process_delta as f64 / total_delta as f64) * logical_cpus as f64 * 100.0;
-    Some(percent.clamp(0.0, logical_cpus as f64 * 100.0))
+    linux_cpu_percent(
+        process_ticks.saturating_sub(old_process),
+        total_ticks.saturating_sub(old_total),
+        host_cpus,
+    )
 }
 
 #[cfg(target_os = "windows")]
@@ -386,6 +410,33 @@ mod tests {
         assert!(!empty_metrics.contains("rullst_cpu_usage_percent"));
         assert!(!empty_metrics.contains("rullst_tokio_active_tasks"));
         assert!(!empty_metrics.contains("rullst_tokio_latency_microseconds"));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_probes_do_not_assume_page_size_or_cgroup_cpu_count() {
+        let status = "Name:\tapp\nVmHWM:\t  9000 kB\nVmRSS:\t   65536 kB\n";
+        assert_eq!(parse_vm_rss_kib(status), Some(65_536));
+        assert_eq!(parse_vm_rss_kib("Name:\tapp\n"), None);
+
+        let mut stat = String::from("cpu  3200 0 0 0 0 0 0 0 0 0\n");
+        for cpu in 0..32 {
+            stat.push_str(&format!("cpu{cpu} 100 0 0 0 0 0 0 0 0 0\n"));
+        }
+        stat.push_str("intr 1 2 3\nctxt 4\ncpufreq 5\n");
+        assert_eq!(parse_proc_stat(&stat), Some((3200, 32)));
+        assert_eq!(parse_proc_stat("intr 1\n"), None);
+
+        // Two CPUs saturated for one second on a 32-CPU host at 100 Hz.
+        assert_eq!(linux_cpu_percent(200, 3200, 32), Some(200.0));
+        assert_eq!(linux_cpu_percent(200, 0, 32), None);
+        assert_eq!(linux_cpu_percent(u64::MAX, 1, 2), Some(200.0));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_memory_probe_reads_this_process() {
+        assert!(get_linux_memory_mb().is_some_and(|mb| mb > 0.0));
     }
 
     #[cfg(target_os = "windows")]

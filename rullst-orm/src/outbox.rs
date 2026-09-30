@@ -91,6 +91,12 @@ impl Outbox {
     ///
     /// Release migrations should normally own this DDL. This helper is useful
     /// for explicit application setup and tests; it never runs implicitly.
+    ///
+    /// On MySQL/MariaDB the `stream`, `event_key` and `claim_key` columns use
+    /// the binary `ascii_bin` collation, so keys compare case-sensitively as on
+    /// PostgreSQL and SQLite. An existing table whose key columns still use
+    /// another collation (created by an earlier version) is converted in place
+    /// with `ALTER TABLE`, which rebuilds the table.
     pub async fn install() -> Result<(), Error> {
         let driver = Orm::driver()?;
         let table_sql = match driver {
@@ -99,7 +105,16 @@ impl Outbox {
             _ => SQLITE_TABLE,
         };
         sqlx::query(table_sql).execute(Orm::pool()?).await?;
-        if driver != "mysql" {
+        if driver == "mysql" {
+            let (case_insensitive_keys,): (i64,) = sqlx::query_as(MYSQL_KEY_COLLATION_CHECK)
+                .fetch_one(Orm::pool()?)
+                .await?;
+            if case_insensitive_keys > 0 {
+                sqlx::query(MYSQL_KEY_COLLATION_UPGRADE)
+                    .execute(Orm::pool()?)
+                    .await?;
+            }
+        } else {
             sqlx::query(
                 "CREATE INDEX IF NOT EXISTS rullst_outbox_delivery_idx \
                  ON rullst_outbox (stream, status, available_at_epoch, claim_expires_at_epoch, id)",
@@ -489,7 +504,10 @@ fn missing_transaction_error() -> Error {
 }
 
 const POSTGRES_TABLE: &str = "CREATE TABLE IF NOT EXISTS rullst_outbox (id BIGSERIAL PRIMARY KEY, stream VARCHAR(128) NOT NULL, event_key VARCHAR(128) NOT NULL, event_kind VARCHAR(128) NOT NULL, payload_json TEXT NOT NULL, status VARCHAR(16) NOT NULL, attempts INTEGER NOT NULL, claimed_by VARCHAR(128) NOT NULL, claim_key VARCHAR(128) NOT NULL, claim_expires_at_epoch BIGINT NOT NULL, last_error VARCHAR(512) NOT NULL, available_at_epoch BIGINT NOT NULL, created_at_epoch BIGINT NOT NULL, delivered_at_epoch BIGINT, insert_token VARCHAR(32) NOT NULL, UNIQUE (stream, event_key))";
-const MYSQL_TABLE: &str = "CREATE TABLE IF NOT EXISTS rullst_outbox (id BIGINT AUTO_INCREMENT PRIMARY KEY, stream VARCHAR(128) NOT NULL, event_key VARCHAR(128) NOT NULL, event_kind VARCHAR(128) NOT NULL, payload_json LONGTEXT NOT NULL, status VARCHAR(16) NOT NULL, attempts INT NOT NULL, claimed_by VARCHAR(128) NOT NULL, claim_key VARCHAR(128) NOT NULL, claim_expires_at_epoch BIGINT NOT NULL, last_error VARCHAR(512) NOT NULL, available_at_epoch BIGINT NOT NULL, created_at_epoch BIGINT NOT NULL, delivered_at_epoch BIGINT NULL, insert_token VARCHAR(32) NOT NULL, UNIQUE KEY rullst_outbox_stream_event_unique (stream, event_key), INDEX rullst_outbox_delivery_idx (stream, status, available_at_epoch, claim_expires_at_epoch, id))";
+// MySQL/MariaDB default collations fold case; keys are case-sensitive ASCII.
+const MYSQL_TABLE: &str = "CREATE TABLE IF NOT EXISTS rullst_outbox (id BIGINT AUTO_INCREMENT PRIMARY KEY, stream VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, event_key VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, event_kind VARCHAR(128) NOT NULL, payload_json LONGTEXT NOT NULL, status VARCHAR(16) NOT NULL, attempts INT NOT NULL, claimed_by VARCHAR(128) NOT NULL, claim_key VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, claim_expires_at_epoch BIGINT NOT NULL, last_error VARCHAR(512) NOT NULL, available_at_epoch BIGINT NOT NULL, created_at_epoch BIGINT NOT NULL, delivered_at_epoch BIGINT NULL, insert_token VARCHAR(32) NOT NULL, UNIQUE KEY rullst_outbox_stream_event_unique (stream, event_key), INDEX rullst_outbox_delivery_idx (stream, status, available_at_epoch, claim_expires_at_epoch, id))";
+const MYSQL_KEY_COLLATION_CHECK: &str = "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'rullst_outbox' AND COLUMN_NAME IN ('stream', 'event_key', 'claim_key') AND (COLLATION_NAME IS NULL OR COLLATION_NAME <> 'ascii_bin')";
+const MYSQL_KEY_COLLATION_UPGRADE: &str = "ALTER TABLE rullst_outbox MODIFY stream VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, MODIFY event_key VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, MODIFY claim_key VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL";
 const SQLITE_TABLE: &str = "CREATE TABLE IF NOT EXISTS rullst_outbox (id INTEGER PRIMARY KEY AUTOINCREMENT, stream TEXT NOT NULL, event_key TEXT NOT NULL, event_kind TEXT NOT NULL, payload_json TEXT NOT NULL, status TEXT NOT NULL, attempts INTEGER NOT NULL, claimed_by TEXT NOT NULL, claim_key TEXT NOT NULL, claim_expires_at_epoch BIGINT NOT NULL, last_error TEXT NOT NULL, available_at_epoch BIGINT NOT NULL, created_at_epoch BIGINT NOT NULL, delivered_at_epoch BIGINT, insert_token TEXT NOT NULL, UNIQUE (stream, event_key))";
 
 const POSTGRES_INSERT: &str = "INSERT INTO rullst_outbox (stream, event_key, event_kind, payload_json, status, attempts, claimed_by, claim_expires_at_epoch, last_error, available_at_epoch, created_at_epoch, insert_token, claim_key) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, '') ON CONFLICT (stream, event_key) DO NOTHING";
@@ -509,3 +527,21 @@ const POSTGRES_ACK: &str = "UPDATE rullst_outbox SET status = $1, claimed_by = $
 const PORTABLE_ACK: &str = "UPDATE rullst_outbox SET status = ?, claimed_by = ?, claim_key = ?, claim_expires_at_epoch = ?, delivered_at_epoch = ? WHERE id = ? AND status = ? AND claim_key = ? AND claim_expires_at_epoch > ?";
 const POSTGRES_FAIL: &str = "UPDATE rullst_outbox SET status = CASE WHEN attempts >= $1 THEN $2 ELSE $3 END, available_at_epoch = $4, claimed_by = $5, claim_key = $6, claim_expires_at_epoch = $7, last_error = $8 WHERE id = $9 AND status = $10 AND claim_key = $11 AND claim_expires_at_epoch > $12";
 const PORTABLE_FAIL: &str = "UPDATE rullst_outbox SET status = CASE WHEN attempts >= ? THEN ? ELSE ? END, available_at_epoch = ?, claimed_by = ?, claim_key = ?, claim_expires_at_epoch = ?, last_error = ? WHERE id = ? AND status = ? AND claim_key = ? AND claim_expires_at_epoch > ?";
+
+#[cfg(test)]
+mod tests {
+    use super::{MYSQL_KEY_COLLATION_UPGRADE, MYSQL_TABLE};
+
+    #[test]
+    fn mysql_outbox_keys_compare_case_sensitively() {
+        for column in ["stream", "event_key", "claim_key"] {
+            let declaration =
+                format!("{column} VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL");
+            assert!(MYSQL_TABLE.contains(&declaration), "{column} table DDL");
+            assert!(
+                MYSQL_KEY_COLLATION_UPGRADE.contains(&format!("MODIFY {declaration}")),
+                "{column} upgrade DDL"
+            );
+        }
+    }
+}

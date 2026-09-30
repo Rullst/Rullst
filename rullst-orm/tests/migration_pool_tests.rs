@@ -78,6 +78,55 @@ impl Migration for FailingMigration {
     }
 }
 
+struct FailingDownMigration;
+#[async_trait]
+impl Migration for FailingDownMigration {
+    fn name(&self) -> &'static str {
+        "m20260820_000004_failing_down"
+    }
+
+    async fn up(&self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    async fn down(&self) -> Result<(), Error> {
+        Err(Error::Internal("intentional rollback failure".to_string()))
+    }
+}
+
+struct RevertedBeforeFailureMigration;
+#[async_trait]
+impl Migration for RevertedBeforeFailureMigration {
+    fn name(&self) -> &'static str {
+        "m20260820_000005_reverted_before_failure"
+    }
+
+    async fn up(&self) -> Result<(), Error> {
+        let pool = Orm::pool()?;
+        sqlx::query("CREATE TABLE reverted_before_failure (id INTEGER PRIMARY KEY)")
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+
+    async fn down(&self) -> Result<(), Error> {
+        let pool = Orm::pool()?;
+        sqlx::query("DROP TABLE reverted_before_failure")
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+}
+
+async fn tracked_rows(name: &str) -> i64 {
+    let tracked: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM migrations WHERE migration = ?")
+        .bind(name)
+        .fetch_one(Orm::pool().expect("ORM pool"))
+        .await
+        .expect("read migration tracking row");
+    tracked.0
+}
+
 #[tokio::test]
 async fn test_migration_and_pool_suite() {
     let _ = Orm::init("sqlite:file:migration_suite_db?mode=memory&cache=shared").await;
@@ -113,6 +162,46 @@ async fn test_migration_and_pool_suite() {
     )
     .await
     .expect("rollback tracked successful migration");
+
+    // A rollback that fails part-way must forget every migration whose down()
+    // already ran; otherwise `migrate` would skip the reverted migration and a
+    // repeated rollback would run its down() against a dropped table.
+    let batch = || -> Vec<Box<dyn Migration>> {
+        vec![
+            Box::new(FailingDownMigration),
+            Box::new(RevertedBeforeFailureMigration),
+        ]
+    };
+    run_artisan_with_args(&["artisan".into(), "migrate".into()], batch(), vec![])
+        .await
+        .expect("apply the partial-rollback batch");
+    let partial_rollback = run_artisan_with_args(
+        &["artisan".into(), "migrate:rollback".into()],
+        batch(),
+        vec![],
+    )
+    .await;
+    assert!(partial_rollback.is_err());
+    assert_eq!(
+        tracked_rows(RevertedBeforeFailureMigration.name()).await,
+        0,
+        "a reverted migration must not stay recorded as applied"
+    );
+    assert_eq!(tracked_rows(FailingDownMigration.name()).await, 1);
+    run_artisan_with_args(&["artisan".into(), "migrate".into()], batch(), vec![])
+        .await
+        .expect("re-apply the reverted migration");
+    assert_eq!(tracked_rows(RevertedBeforeFailureMigration.name()).await, 1);
+    sqlx::query("DROP TABLE reverted_before_failure")
+        .execute(Orm::pool().expect("ORM pool"))
+        .await
+        .expect("the re-applied migration recreated its table");
+    sqlx::query("DELETE FROM migrations WHERE migration IN (?, ?)")
+        .bind(FailingDownMigration.name())
+        .bind(RevertedBeforeFailureMigration.name())
+        .execute(Orm::pool().expect("ORM pool"))
+        .await
+        .expect("clear the partial-rollback fixture");
 
     // 2. make:migration without name
     let res =

@@ -29,6 +29,8 @@ pub mod devops;
 /// Type-indexed dependency injection container.
 pub mod di;
 #[cfg(not(target_arch = "wasm32"))]
+mod error_buffer;
+#[cfg(not(target_arch = "wasm32"))]
 /// HTML visual logging and runtime console for development mode.
 pub mod error_console;
 #[cfg(not(target_arch = "wasm32"))]

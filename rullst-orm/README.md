@@ -192,6 +192,9 @@ joins keep every tenant and caller binding at its own `$n` position.
 Only PostgreSQL statements are renumbered: `delete_all()`, the child `UPDATE`
 issued by `cascade_soft_delete`, and instance `restore()`/`force_delete()`
 receive `$n` there and keep `?` markers on MySQL/MariaDB and SQLite.
+The renumbering reads quoted text with PostgreSQL's default
+`standard_conforming_strings = on` rules: a backslash escapes only inside
+`E'...'` strings, so a raw `ESCAPE '\'` does not hide later markers.
 Generated `Model::search()` uses those same model-wide and tenant scopes for
 both its SQL fallback and external Scout result IDs. The SQL fallback never
 matches `#[orm(hidden)]`, `#[orm(encrypted)]`, `#[orm(masked)]` or
@@ -255,7 +258,10 @@ Perform database authorization and any required row locking explicitly within
 the managed transaction before invoking the mutation; the policy can then
 validate trusted context and in-memory model values. Defer only post-commit
 effects to `after_commit`/`committed`, which run outside that callback scope.
-Failure in an `after_save` hook still rolls back the generated mutation.
+Failure in an `after_save` hook still rolls back the generated mutation. Inside
+an existing transaction (`save_with_tx`, or `save()` within `Orm::transaction`)
+the save runs in a savepoint, so catching that error and committing the outer
+transaction does not persist the failed write.
 Independently spawned tasks and separately retained raw connections do not
 inherit this executor contract and must not be used to bypass atomicity.
 
@@ -333,6 +339,11 @@ rullst-orm = { version = "12.1.0", default-features = false, features = ["strict
 
 `strict-mysql` and `strict-sqlite` select their respective backends. The default
 `drivers-all` feature preserves the existing three-driver convenience profile.
+`Orm::driver()` reads the SQL dialect from the DSN scheme, ignoring case:
+`postgres://` and `postgresql://` are PostgreSQL, and `mysql://` and
+`mariadb://` are MySQL/MariaDB. IPv6 literal hosts use brackets
+(`postgres://app@[2001:db8::10]:5432/app`); `Orm::init` rejects any other
+bracketed text, such as an unedited `[your-database-id]` template placeholder.
 If an application previously disabled defaults without choosing a backend,
 enable `drivers-all` explicitly or select a strict backend when upgrading.
 
@@ -464,7 +475,10 @@ if let Some(event) = Outbox::claim_next("tenant-42", "mail-worker-1", 30, 8).awa
 
 `Outbox::install()` is only an explicit setup/test helper. Register
 `OutboxMigration` through the application's normal migration runner in
-production. Generated observers are not silently persisted, and an ACK lost
+production. Streams and event keys are case-sensitive on every backend; on
+MySQL/MariaDB, run `Outbox::install()` once (for example from a new migration)
+to convert a table created by an earlier version, whose key columns used the
+server's case-insensitive default collation. Generated observers are not silently persisted, and an ACK lost
 after the external effect can cause redelivery; see the
 [transactional outbox tutorial](https://github.com/Rullst/Rullst/blob/v12.1.2/docs/src/tutorials/38-transactional-outbox.md).
 
