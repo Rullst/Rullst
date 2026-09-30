@@ -101,6 +101,11 @@ struct CachedRecord {
     #[allow(dead_code)]
     #[sqlx(default, skip)]
     session_cache: String,
+    // `#[orm(skip)]` alone would leave SQLx reading a missing column.
+    #[allow(dead_code)]
+    #[orm(skip)]
+    #[sqlx(skip)]
+    draft: String,
 }
 
 fn rejects_secret_string(query: &SecretCustomerQueryBuilder) -> bool {
@@ -133,6 +138,7 @@ fn secret_string_columns_cannot_be_filtered_ordered_or_grouped() {
     for query in [
         CachedRecord::query().where_eq("SESSION_CACHE", "x"),
         CachedRecord::query().select(&["cached_records.Session_Cache"]),
+        CachedRecord::query().order_by("draft"),
     ] {
         assert!(
             query

@@ -1655,7 +1655,13 @@ that relation fail compilation. `belongs_to_many` requires `pivot_table` and
 defaults omitted owner/related pivot keys from the two model names.
 
 Only `skip`, `default`, `json`, and `json(nullable)` from SQLx field metadata
-are compatible with generated ORM persistence in v12. `rename`, `try_from`,
+are compatible with generated ORM persistence in v12. `#[orm(skip)]` removes
+a field from generated SQL (writes, filters and projections) but not from the
+application's SQLx `FromRow`, which still reads the column from `SELECT *`. A
+field without a table column therefore needs `#[sqlx(skip)]` (alone or
+together with `#[orm(skip)]`, which are distinct options) or
+`#[sqlx(default)]`; `#[orm(skip)]` alone suits a column the table has but
+generated writes must not touch. `rename`, `try_from`,
 `flatten`, and unknown SQLx options fail compilation instead of letting the
 decoded shape drift from generated SQL. Soft-delete sentinel expressions are
 bounded compile-time SQL fragments, not parameterized runtime values: they are

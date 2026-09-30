@@ -72,8 +72,10 @@ impl FieldAttributes {
                 mark_once(seen, "hidden", &meta)?;
                 self.is_hidden = true;
             }
+            // Tracked apart from `#[sqlx(skip)]`: `#[orm(skip)]` does not stop
+            // SQLx's `FromRow` from reading the column, so the two combine.
             "skip" => {
-                mark_once(seen, "skip", &meta)?;
+                mark_once(seen, "orm_skip", &meta)?;
                 self.is_skipped = true;
             }
             "masked" => {
@@ -150,7 +152,7 @@ impl FieldAttributes {
         let key = path_name(&meta)?;
         match key.as_str() {
             "skip" => {
-                mark_once(seen, "skip", &meta)?;
+                mark_once(seen, "sqlx_skip", &meta)?;
                 self.is_skipped = true;
             }
             "default" => mark_once(seen, "sqlx_default", &meta)?,

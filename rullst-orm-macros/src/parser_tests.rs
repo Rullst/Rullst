@@ -193,6 +193,35 @@ mod tests {
     }
 
     #[test]
+    fn orm_and_sqlx_skip_combine_but_each_stays_unique() {
+        use syn::parse_quote;
+
+        let combined: DeriveInput = parse_quote! {
+            struct Account {
+                id: i32,
+                #[orm(skip)]
+                #[sqlx(skip)]
+                session_cache: String,
+            }
+        };
+        let parsed = parse(&combined).expect("orm(skip) with sqlx(skip) should parse");
+        assert!(parsed.skipped_fields.iter().any(|field| field == "session_cache"));
+        assert!(!parsed.normal_fields.iter().any(|field| field == "session_cache"));
+
+        for duplicate in [
+            parse_quote! { struct Account { id: i32, #[orm(skip, skip)] cache: String } },
+            parse_quote! { struct Account { id: i32, #[sqlx(skip)] #[sqlx(skip)] cache: String } },
+        ] {
+            let duplicate: DeriveInput = duplicate;
+            let error = match parse(&duplicate) {
+                Ok(_) => panic!("a repeated skip option must fail"),
+                Err(error) => error,
+            };
+            assert!(error.to_string().contains("duplicate"), "{error}");
+        }
+    }
+
+    #[test]
     fn morph_to_requires_persisted_id_and_string_discriminator() {
         use syn::parse_quote;
 

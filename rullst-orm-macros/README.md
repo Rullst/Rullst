@@ -41,7 +41,10 @@ default to the owner and related model names when omitted; an omitted
 `<owner model>_id` on has-one/has-many (lowercased model names).
 
 The derive recognizes `#[sqlx(skip)]`, `#[sqlx(default)]`, `#[sqlx(json)]`, and
-`#[sqlx(json(nullable))]`. SQLx mappings such as `rename`, `try_from`, and
+`#[sqlx(json(nullable))]`. `#[orm(skip)]` only removes a field from generated
+SQL; the application's `FromRow` still reads it, so a field without a table
+column also needs `#[sqlx(skip)]` (the two may be combined) or
+`#[sqlx(default)]`. SQLx mappings such as `rename`, `try_from`, and
 `flatten` fail compilation because the generated persistence SQL cannot honor
 them safely. The parser also rejects unsupported model shapes, unknown
 backends, missing or unbindable tenant columns, invalid encrypted field types,
