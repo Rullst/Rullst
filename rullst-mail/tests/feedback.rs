@@ -102,9 +102,11 @@ async fn authenticated_permanent_feedback_is_replay_bound_and_suppresses() {
 fn valid_signature_does_not_authorize_malformed_provider_feedback() {
     let key: [u8; 32] = rand::random();
     let now = chrono::Utc::now().timestamp() as u64;
-    let original: serde_json::Value = serde_json::from_slice(&body("email.delivered", "")).unwrap();
+    let original: serde_json::Value =
+        serde_json::from_slice(&body("email.bounced", "Permanent")).unwrap();
     for (pointer, invalid) in [
-        ("/type", json!("email.unreviewed")),
+        ("/type", json!(7)),
+        ("/data/bounce/type", json!("Unreviewed")),
         ("/created_at", json!("2099-01-01T00:00:00Z")),
         ("/created_at", json!("1960-01-01T00:00:00Z")),
         ("/created_at", json!("invalid")),
@@ -227,4 +229,34 @@ fn display_name_feedback_recipient_is_reduced_to_the_bare_address() {
     assert_eq!(verified.recipient(), "member@example.com");
     let event = verified.suppression_event().unwrap().unwrap();
     assert_eq!(event.recipient(), "member@example.com");
+}
+
+#[test]
+fn authentic_unhandled_event_types_are_distinguishable_from_malformed_ones() {
+    let key: [u8; 32] = rand::random();
+    let now = chrono::Utc::now().timestamp() as u64;
+    for kind in [
+        "email.sent",
+        "email.opened",
+        "email.clicked",
+        "contact.created",
+    ] {
+        let payload = body(kind, "");
+        let signature = sign(&key, &payload, "msg_ignored", now);
+        assert_eq!(
+            verifier(&key)
+                .verify(&payload, "msg_ignored", &now.to_string(), &signature, now)
+                .unwrap_err(),
+            MailFeedbackError::UnsupportedEvent,
+            "{kind}"
+        );
+        // Without a valid signature the event is never called authentic.
+        let forged = sign(&[7_u8; 32], &payload, "msg_ignored", now);
+        assert_eq!(
+            verifier(&key)
+                .verify(&payload, "msg_ignored", &now.to_string(), &forged, now)
+                .unwrap_err(),
+            MailFeedbackError::InvalidSignature
+        );
+    }
 }

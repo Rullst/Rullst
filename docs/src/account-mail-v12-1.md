@@ -126,6 +126,12 @@ for delivery by `expose_url`, `expose` or `into_message`.
 
 `ResendFeedbackVerifier` authenticates the exact raw body with Svix v1 HMAC and
 five-minute freshness. Reject duplicate signature headers at the HTTP boundary.
+It classifies `email.delivered`, `email.delivery_delayed`, `email.bounced`,
+`email.complained` and `email.failed`; subscribe the webhook to those. Another
+authentic event type (such as `email.sent` or `email.opened`) returns the v13
+`MailFeedbackError::UnsupportedEvent`, which an adapter can acknowledge without
+acting on it, while malformed or unclassifiable bounce payloads stay
+`InvalidPayload`.
 Use its `suppression_event()` with `MutableSuppressionStore::record`, then place
 `SuppressionGuard` around the worker transport. Permanent bounces and complaints
 suppress delivery; transient failures do not. A durable suppression store is
