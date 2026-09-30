@@ -393,3 +393,27 @@ fn datetime_offsets_validate_and_only_local_values_fill_a_datetime_input() {
     assert!(is_local_date("2024-02-29"));
     assert!(!is_local_date("2024-02-29T00:00"));
 }
+
+#[test]
+fn csrf_form_token_is_not_treated_as_a_model_field() {
+    let entry = entry();
+    let values = validate_form_values(
+        &entry,
+        vec![
+            ("_token".to_string(), "csrf-body-token".to_string()),
+            ("body".to_string(), "text".to_string()),
+        ],
+        FormMode::Create,
+    )
+    .expect("Core's CSRF layer already verified the body token");
+    assert_eq!(values.len(), 1);
+    assert_eq!(values[0].field.name, "body");
+
+    let only_token = validate_form_values(
+        &entry,
+        vec![("_token".to_string(), "csrf-body-token".to_string())],
+        FormMode::Update,
+    )
+    .expect("token-only form");
+    assert!(only_token.is_empty());
+}

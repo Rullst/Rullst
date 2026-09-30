@@ -625,6 +625,28 @@ A prepared version section does not establish that its tag or crates exist.
   `mock_*` settings. SMTP uses STARTTLS on every port except 465, so the common
   587 and 25 configurations deliver.
 
+### Nexus low-severity review fixes
+
+- Nexus create, update and batch work on PostgreSQL integer, numeric and
+  Boolean columns, including Rullst's INTEGER Booleans, and text primary keys
+  that look numeric are no longer bound as BIGINT.
+- Record keys follow the registered key kind: non-canonical numeric spellings
+  (`+1`, `01`, `1e3`) return 404, and the audit records the canonical key or,
+  for a key it cannot store, no key.
+- Tenant scope is byte-exact on MySQL/MariaDB; search treats `%` and `_`
+  literally and is case-insensitive on PostgreSQL; pagination is stable.
+- Bulk Delete and Deactivate work from the browser (CSRF `_token`), the
+  `_token` body field is accepted on create and update, and a hidden
+  `is_active` column is never batch-deactivated.
+- The edit form returns 404 or 500 instead of an empty editable form, the list
+  no longer shows NULL as `0`/`No`, readonly checkboxes and selects are
+  disabled, and multi-line text is no longer silently collapsed.
+- htmx no longer caches admin pages in `localStorage`, and Back or a cache miss
+  reloads the full page.
+- Live search keeps sort and pagination, records keyed `new`, `search` or
+  `batch` are editable through `/table/{t}/record/{id}`, and telemetry shows
+  the newest spans first with accurate wording.
+
 ### Nexus review fixes
 
 - Nexus Basic Auth no longer counts credential-less 401 challenges, buckets

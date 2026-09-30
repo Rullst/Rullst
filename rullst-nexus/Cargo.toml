@@ -44,6 +44,8 @@ urlencoding = { workspace = true }
 
 [dev-dependencies]
 rullst-orm = { workspace = true, features = ["drivers-all"] }
+testcontainers = "0.27.3"
+testcontainers-modules = { version = "0.15.0", features = ["postgres", "mysql"] }
 tower = { workspace = true, features = ["util"] }
 
 [package.metadata.cargo-machete]

@@ -15,7 +15,8 @@ When used through the `rullst` umbrella with its `orm` and `nexus` features,
 are inferred; semantic fields can use `#[nexus(kind = "textarea")]` or
 `#[nexus(kind = "enum", options = "draft, published")]`. Models may also
 implement `NexusModel` manually. Batch deactivation is exposed only for a
-writable Boolean `is_active` or `active` field; batch deletion is bounded to
+writable (neither `hidden` nor `readonly`) Boolean `is_active` or `active`
+field; batch deletion is bounded to
 1,000 explicitly selected records. `try_build()` rejects ambiguous or unsafe
 registered metadata. Mutation forms are pair/byte bounded and reject unknown,
 protected, duplicate or semantically invalid values before executing bound SQL.
@@ -27,12 +28,47 @@ fields the administrator changed. Values a widget cannot show unchanged are neve
 rewritten by an unrelated edit: SQL NULL renders as an empty input marked `NULL`,
 an unregistered enum value stays selected but disabled, a date-time with an offset
 or more than millisecond precision (and any value a number, date, e-mail or URL
-input would alter) is shown in a text input, and an undecodable value renders
+input would alter) is shown in a text input, a single-line value with line
+breaks or other control characters is shown read-only in a text area (declare
+`kind = "textarea"` to edit multi-line text), and an undecodable value renders
 empty with a note. An emptied number, relation, date, date-time, enum or JSON
 field is stored as NULL, never `''` (a new record omits it so the column default
 applies); text, textarea, e-mail and URL fields store `''`. Date-times may carry
 a `Z` or `±HH:MM` offset. API clients should send only the fields they intend to
 change.
+
+In the list, a NULL or undecodable number, relation or Boolean shows a `NULL`
+or `unreadable` marker rather than `0` or `No`, and a row whose key is NULL or
+cannot be decoded exactly has no batch checkbox or edit/delete actions.
+
+Opening the edit form of a missing, other-tenant or misspelled key returns
+`404` (and a failed query `500`) instead of an empty editable form. The form
+reads only the registered visible, non-password columns.
+
+Form values are bound as text. PostgreSQL has no assignment cast from text,
+so there Nexus writes `number` values through `NUMERIC`, relation values that
+are canonical integers (or empty) through `BIGINT`, and Booleans as untyped
+`'0'`/`'1'` literals: integer, numeric, floating-point and `BOOLEAN` columns,
+and the `INTEGER` columns of `Blueprint::boolean`, all accept them. Other kinds
+are written as text, so keep dates, date-times, JSON and enum values in text
+columns, as Rullst's schema builder does; native `DATE`, `TIMESTAMP`, `JSONB`,
+`UUID` or enum columns are not supported by Nexus.
+
+The panel addresses records under `/nexus/table/{table}/record/{key}` (with
+`/edit` for the form), so a key named `new`, `search` or `batch` never collides
+with an action route. The older `/nexus/table/{table}/{key}` routes remain for
+other keys.
+
+Record keys follow the registered primary-key kind: a `number` (or relation)
+key must be a canonical integer, so `+1`, `01` or `1e3` name no record, and any
+other kind is compared as text, even when it looks numeric.
+
+Search matches the typed text literally (`%` and `_` are not wildcards) in the
+visible text, textarea, e-mail and URL columns. It is case-insensitive on
+PostgreSQL (`ILIKE`), ASCII case-insensitive on SQLite and follows the column
+collation on MySQL/MariaDB. Live search keeps the current sort, starts again at
+page 1, rebuilds the sort and pagination links for the new query and records it
+in the URL, so saving a record refreshes the same view.
 
 ## Tenant-scoped CRUD and mutation audit
 
@@ -54,7 +90,9 @@ struct Project {
 ```
 
 Every built-in list, search, edit, create, update, delete and batch operation for
-that model includes the exact tenant predicate. Create injects the trusted
+that model includes the exact tenant predicate; on MySQL/MariaDB, whose default
+collations ignore case, it compares binary strings so `Acme` never matches
+`acme`. Create injects the trusted
 tenant value; a submitted tenant field is rejected. A scoped model fails with
 `403 Forbidden` when no `TenantContext` is present. Models without `tenant`
 metadata deliberately remain global administrator models.
@@ -74,8 +112,10 @@ let nexus = rullst::nexus::Nexus::new()
 
 `rullst_nexus_audits` stores the authenticated Nexus actor, optional tenant,
 table, action, optional known record key, affected-row count, committed outcome,
-bounded correlation ID, timestamp and format version. An unavailable audit
-table rolls the data mutation back and returns a generic error. Use
+bounded correlation ID, timestamp and format version. A record key that does
+not fit 1 to 256 bytes of unpadded text without control characters is recorded
+as absent. An unavailable audit table rolls the data mutation back and returns
+a generic error. Use
 `verify_nexus_audit_table()` as a deployment check and
 `recent_nexus_audits(limit, tenant)` for a bounded, separately authorized
 export.
@@ -189,7 +229,10 @@ default production CSP (`script-src 'self' 'nonce-…'; style-src 'self' 'nonce-
 therefore runs Nexus unchanged; do not add `'unsafe-inline'`, `'unsafe-eval'` or a
 CDN to `security.csp` for Nexus. A custom policy must keep `'self'` in
 `script-src`, `style-src` and `connect-src`, and `data:` in `img-src`. htmx runs
-with `allowEval`, `allowScriptTags` and `includeIndicatorStyles` disabled.
+with `allowEval`, `allowScriptTags` and `includeIndicatorStyles` disabled, and
+with its history cache off (`historyCacheSize: 0`, `refreshOnHistoryMiss: true`):
+admin pages and open edit forms are never snapshotted into origin-wide
+`localStorage`, and Back reloads the page from the server.
 The asset routes sit behind the same authentication policy as the panel.
 
 `assets/htmx-2.0.4.min.js` is the unmodified upstream

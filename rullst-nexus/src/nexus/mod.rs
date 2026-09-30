@@ -164,6 +164,17 @@ impl Nexus {
             .route("/table/{table}/{id}", delete(nexus_delete_record))
             // rullst-access: admin — protected by policy.protect_router below.
             .route("/table/{table}/batch", post(nexus_batch_action))
+            // Record routes under a distinct `record` segment: a key such as
+            // `new`, `search` or `batch` cannot collide with an action route.
+            // rullst-access: admin — protected by policy.protect_router below.
+            .route("/table/{table}/record/{id}/edit", get(nexus_edit_form))
+            .route(
+                // rullst-access: admin — protected by policy.protect_router below.
+                "/table/{table}/record/{id}",
+                put(nexus_update_record)
+                    .post(nexus_update_record)
+                    .delete(nexus_delete_record),
+            )
             .route("/chat", get(nexus_chat_page))
             .route("/chat/query", post(nexus_chat_query))
             .route("/security", get(nexus_security_page))

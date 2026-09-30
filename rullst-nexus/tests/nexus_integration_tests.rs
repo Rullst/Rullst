@@ -118,11 +118,9 @@ async fn test_nexus_dashboard_and_views() {
         "/chat",
         "/table/users",
         "/table/users/new",
-        "/table/users/1/edit",
         "/table/users/search?q=alice",
         "/table/complex_records",
         "/table/complex_records/new",
-        "/table/complex_records/1/edit",
     ];
 
     for route in routes {
@@ -139,6 +137,15 @@ async fn test_nexus_dashboard_and_views() {
             res.status()
         );
     }
+
+    // No `complex_records` table exists (with or without a pool): the edit
+    // form reports the failure instead of rendering an empty editable form.
+    let req = local_request()
+        .uri("/table/complex_records/1/edit")
+        .body(Body::empty())
+        .expect("valid request");
+    let res = app.clone().oneshot(req).await.expect("handler executed");
+    assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
@@ -262,8 +269,27 @@ async fn test_nexus_htmx_partial_headers() {
         .body(Body::empty())
         .unwrap();
 
-    let res = app.oneshot(req).await.unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
+
+    // An htmx history cache miss swaps the response into <body>, so every
+    // page answers it with the complete shell, never a bare fragment.
+    for route in ["/", "/table/users", "/chat", "/security", "/telemetry"] {
+        let req = local_request()
+            .uri(route)
+            .header("hx-request", "true")
+            .header("hx-history-restore-request", "true")
+            .body(Body::empty())
+            .unwrap();
+        let res = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "{route}");
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let html = String::from_utf8_lossy(&body);
+        assert!(html.starts_with("<!DOCTYPE html>"), "{route}");
+        assert!(html.contains("id=\"nexus-content\""), "{route}");
+    }
 }
 
 #[test]

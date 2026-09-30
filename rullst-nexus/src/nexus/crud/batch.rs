@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use crate::nexus::NexusPrincipal;
 use crate::nexus::audit::{MutationAudit, append_mutation, correlation_id};
+use crate::nexus::crud::dialect::{RecordKey, tenant_predicate};
 use crate::nexus::crud::handlers::tenant_for_entry;
 use crate::nexus::crud::query::{BatchActionForm, find_entry, sanitize_identifier};
 use crate::nexus::types::{FieldKind, NexusAuditPolicy, NexusState, RegistryEntry};
@@ -61,6 +62,8 @@ fn parse_batch_form(bytes: &[u8]) -> Result<BatchActionForm, &'static str> {
     })
 }
 
+/// The conventional active flag, only when the form policy would also accept
+/// a write to it: hidden and readonly fields are protected.
 fn deactivation_field(entry: &RegistryEntry) -> Option<&'static str> {
     entry
         .fields
@@ -69,6 +72,7 @@ fn deactivation_field(entry: &RegistryEntry) -> Option<&'static str> {
             matches!(field.kind, FieldKind::Boolean)
                 && matches!(field.name, "is_active" | "active")
                 && !field.readonly
+                && !field.hidden
         })
         .map(|field| field.name)
 }
@@ -110,8 +114,8 @@ fn build_batch_sql(
             "?".to_string()
         };
         format!(
-            " AND {} = {placeholder}",
-            sanitize_identifier(tenant_column)
+            " AND {}",
+            tenant_predicate(tenant_column, &placeholder, driver)
         )
     } else {
         String::new()
@@ -123,8 +127,12 @@ fn build_batch_sql(
         )),
         "deactivate" => deactivation_field(entry).map(|field| {
             let field = sanitize_identifier(field);
+            // PostgreSQL has no assignment cast from `boolean` to the INTEGER
+            // columns `Blueprint::boolean` creates; an untyped '0' literal is
+            // accepted by INTEGER and BOOLEAN columns alike.
+            let inactive = if driver == "postgres" { "'0'" } else { "FALSE" };
             format!(
-                "UPDATE {table} SET {field} = FALSE WHERE {primary_key} IN ({placeholders}){tenant_predicate}"
+                "UPDATE {table} SET {field} = {inactive} WHERE {primary_key} IN ({placeholders}){tenant_predicate}"
             )
         }),
         _ => None,
@@ -166,6 +174,21 @@ pub async fn nexus_batch_action(
             .into_response();
     }
 
+    // Every key must be valid for the primary-key kind; a numeric key is a
+    // canonical integer, never a spelling that selects a different record.
+    let Some(keys) = form
+        .selected_ids
+        .iter()
+        .map(|id| RecordKey::parse(entry, id))
+        .collect::<Option<Vec<_>>>()
+    else {
+        return (
+            StatusCode::BAD_REQUEST,
+            "Batch record IDs must match the primary-key type",
+        )
+            .into_response();
+    };
+
     let Some(pool) = rullst_core::db::safe_pool() else {
         return (StatusCode::INTERNAL_SERVER_ERROR, "Database not configured").into_response();
     };
@@ -185,27 +208,14 @@ pub async fn nexus_batch_action(
         Ok(transaction) => transaction,
         Err(_) => return batch_failure(entry.table),
     };
-    let result = if form.selected_ids.iter().all(|id| id.parse::<i64>().is_ok()) {
-        let mut query = query;
-        for id in &form.selected_ids {
-            if let Ok(id) = id.parse::<i64>() {
-                query = query.bind(id);
-            }
-        }
-        if let Some(tenant_id) = tenant_id {
-            query = query.bind(tenant_id);
-        }
-        query.execute(&mut *transaction).await
-    } else {
-        let mut query = query;
-        for id in &form.selected_ids {
-            query = query.bind(id);
-        }
-        if let Some(tenant_id) = tenant_id {
-            query = query.bind(tenant_id);
-        }
-        query.execute(&mut *transaction).await
-    };
+    let mut query = query;
+    for key in keys {
+        query = key.bind(query);
+    }
+    if let Some(tenant_id) = tenant_id {
+        query = query.bind(tenant_id);
+    }
+    let result = query.execute(&mut *transaction).await;
 
     let result = match result {
         Ok(result) if result.rows_affected() > 0 => result,
@@ -304,6 +314,19 @@ mod tests {
             build_batch_sql(&active, "deactivate", 1, "mysql", false).as_deref(),
             Some("UPDATE users SET is_active = FALSE WHERE id IN (?)")
         );
+        assert_eq!(
+            build_batch_sql(&active, "deactivate", 2, "postgres", false).as_deref(),
+            Some("UPDATE users SET is_active = '0' WHERE id IN ($1,$2)")
+        );
+
+        for protected in [
+            FieldMeta::new("is_active", "Active", FieldKind::Boolean).hidden(),
+            FieldMeta::new("active", "Active", FieldKind::Boolean).readonly(),
+        ] {
+            let protected = entry(vec![protected]);
+            assert!(!supports_deactivation(&protected));
+            assert!(build_batch_sql(&protected, "deactivate", 1, "sqlite", false).is_none());
+        }
 
         let absent = entry(vec![FieldMeta::new("status", "Status", FieldKind::Text)]);
         assert!(!supports_deactivation(&absent));
@@ -331,6 +354,13 @@ mod tests {
         assert_eq!(
             build_batch_sql(&entry, "delete", 2, "sqlite", true).as_deref(),
             Some("DELETE FROM users WHERE id IN (?,?) AND tenant_id = ?")
+        );
+        assert_eq!(
+            build_batch_sql(&entry, "delete", 1, "mysql", true).as_deref(),
+            Some(
+                "DELETE FROM users WHERE id IN (?) \
+                 AND CAST(tenant_id AS BINARY) = CAST(? AS BINARY)"
+            )
         );
     }
 
