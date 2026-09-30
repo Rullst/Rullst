@@ -46,7 +46,10 @@ mod wise_webhook;
 
 pub use alipay::AlipayProvider;
 pub use coinbase::{CoinbaseCommerceProvider, CoinbaseProvider};
-pub use global::{init_payout_provider, init_provider, payout_provider, provider};
+pub use global::{
+    init_payout_provider, init_provider, payout_provider, provider, try_init_payout_provider,
+    try_init_provider,
+};
 pub(crate) use http::validate_checkout_url;
 pub(crate) use http::{execute as execute_http, read_json as read_http_json};
 pub(crate) use http::{send as send_http, send_json as send_http_json};
@@ -476,5 +479,17 @@ mod tests {
         init_payout_provider(Box::new(wise));
         assert!(payout_provider().is_some());
         assert_eq!(payout_provider().unwrap().name(), "wise");
+
+        // A second initialization is reported and never replaces the first.
+        assert!(matches!(
+            try_init_provider(Box::new(PaddleProvider::new("pdl_live", "secret"))),
+            Err(CapitalError::ConfigurationError(_))
+        ));
+        init_provider(Box::new(PaddleProvider::new("pdl_live", "secret")));
+        assert_eq!(provider().unwrap().name(), "stripe");
+        assert!(matches!(
+            try_init_payout_provider(Box::new(WiseProvider::new("live", "profile"))),
+            Err(CapitalError::ConfigurationError(_))
+        ));
     }
 }

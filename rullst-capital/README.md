@@ -826,6 +826,13 @@ fn configure_billing() -> Result<(), std::env::VarError> {
 }
 ```
 
+The global billing and payout providers can be set once per process: a later
+`init_provider`/`init_payout_provider` call is ignored and the first provider
+stays active. The v13 `try_init_provider` and `try_init_payout_provider` return
+`ConfigurationError` in that case, so a live configuration cannot be silently
+shadowed by an earlier mock. Middleware can also take an explicit provider
+through `WebhookMiddlewareState::production_with_provider`.
+
 ### Creating Checkout Sessions
 
 ```rust
