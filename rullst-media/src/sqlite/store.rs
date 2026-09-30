@@ -143,7 +143,9 @@ impl<C: Clock> SqliteMedia<C> {
         })
     }
     async fn validate(&self) -> Result<(), Error> {
-        let rows: Vec<(String,String)> = sqlx::query_as("SELECT substr(name,1,65),substr(sql,1,2049) FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' LIMIT 5")
+        // Only the literal `sqlite_` prefix is reserved; an unescaped `_` would
+        // also skip user objects such as a trigger named `sqliteXhook`.
+        let rows: Vec<(String,String)> = sqlx::query_as("SELECT substr(name,1,65),substr(sql,1,2049) FROM sqlite_schema WHERE name NOT LIKE 'sqlite\\_%' ESCAPE '\\' LIMIT 5")
             .fetch_all(&self.pool).await.map_err(storage)?;
         if rows.len() != SCHEMA.len()
             || SCHEMA

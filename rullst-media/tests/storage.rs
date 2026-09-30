@@ -150,7 +150,12 @@ async fn malformed_records_and_schema_are_rejected_without_repair() {
         .unwrap();
     let configuration = StoreConfig::testing(fixture.provider().binding(), 2).unwrap();
     assert!(matches!(
-        SqliteMedia::open(dir.path().join("video.sqlite"), configuration, clock).await,
+        SqliteMedia::open(
+            dir.path().join("video.sqlite"),
+            configuration,
+            clock.clone()
+        )
+        .await,
         Err(MediaError::Configuration)
     ));
     assert_eq!(
@@ -160,6 +165,27 @@ async fn malformed_records_and_schema_are_rejected_without_repair() {
             .unwrap(),
         1
     );
+    sqlx::query("DROP TRIGGER unrelated")
+        .execute(&mut db)
+        .await
+        .unwrap();
+    // `_` is a LIKE wildcard: only the literal `sqlite_` prefix is exempt.
+    for object in [
+        "CREATE TRIGGER sqliteXrepublish AFTER UPDATE ON media_assets BEGIN SELECT 1; END",
+        "CREATE VIEW sqlite1assets AS SELECT id FROM media_assets",
+    ] {
+        sqlx::query(object).execute(&mut db).await.unwrap();
+        let configuration = StoreConfig::testing(fixture.provider().binding(), 2).unwrap();
+        assert!(matches!(
+            SqliteMedia::open(
+                dir.path().join("video.sqlite"),
+                configuration,
+                clock.clone()
+            )
+            .await,
+            Err(MediaError::Configuration)
+        ));
+    }
     db.close().await.unwrap();
 }
 
