@@ -51,6 +51,12 @@ expression form `DEFAULT (CURRENT_TIMESTAMP)`, which those servers require for
 text columns (MySQL 8.0.13+, MariaDB 10.2.1+); SQLite and PostgreSQL use the
 plain `DEFAULT CURRENT_TIMESTAMP`.
 
+Text defaults (`ColumnDefault::Text`) and `table.enum_col(...)` variants are
+embedded in the DDL as single-quoted literals with doubled single quotes.
+`Schema::create` rejects such text when it contains a backslash or a control
+character, because MySQL/MariaDB treat a backslash inside a quoted literal as an
+escape character by default.
+
 ---
 
 ## Step 2: Run, inspect, and roll back migrations

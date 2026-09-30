@@ -12,13 +12,19 @@ pub enum ColumnDefault {
     Integer(i64),
     /// A non-negative real literal (e.g. `0.0`).
     Float(f64),
-    /// A string literal that will be single-quoted and escaped.
-    /// Only printable ASCII excluding `'` and `\` is accepted.
+    /// A string literal that will be single-quoted, with embedded single
+    /// quotes doubled. Building the schema rejects text containing a
+    /// backslash or a control character: MySQL/MariaDB treat a backslash as an
+    /// escape character inside quoted literals by default, so it could escape
+    /// the closing quote.
     Text(String),
 }
 
 impl ColumnDefault {
-    /// Renders the default value as a safe SQL fragment.
+    /// Renders the default value as a SQL fragment.
+    ///
+    /// This does not validate [`ColumnDefault::Text`]; the schema builder does
+    /// before it emits DDL.
     pub fn to_sql(&self) -> String {
         match self {
             ColumnDefault::CurrentTimestamp => "CURRENT_TIMESTAMP".to_string(),
@@ -30,6 +36,22 @@ impl ColumnDefault {
             ColumnDefault::Text(s) => format!("'{}'", s.replace('\'', "''")),
         }
     }
+}
+
+/// Rejects text that cannot be embedded as a portable single-quoted DDL
+/// literal. Single quotes are doubled by the caller; a backslash would escape
+/// the closing quote on MySQL/MariaDB, and control characters have no portable
+/// literal form.
+pub(super) fn validate_text_literal(value: &str, context: &str) -> Result<(), crate::Error> {
+    if value
+        .chars()
+        .any(|character| character == '\\' || character.is_control())
+    {
+        return Err(crate::Error::Validation(format!(
+            "{context} must not contain backslashes or control characters"
+        )));
+    }
+    Ok(())
 }
 
 pub struct Column {
