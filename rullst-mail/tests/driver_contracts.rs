@@ -27,10 +27,13 @@ async fn real_transports_require_an_explicit_sender_before_network() {
         Box::new(PostmarkDriver::try_new("live-fixture-token").unwrap()),
     ];
     for driver in drivers {
-        assert!(matches!(
-            driver.send(&message).await,
-            Err(MailError::ConfigError(_))
-        ));
+        let error = driver.send(&message).await.expect_err("no sender");
+        // The error names both ways to configure a sender.
+        assert!(
+            matches!(&error, MailError::ConfigError(text)
+                if text.contains("MAIL_FROM") && text.contains("[mail] from")),
+            "{error}"
+        );
     }
 }
 

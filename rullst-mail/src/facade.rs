@@ -9,6 +9,11 @@ use std::sync::{Arc, RwLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::OnceCell;
 
+mod settings;
+use settings::MailSettings;
+#[cfg(test)]
+use settings::default_driver_name;
+
 static MAIL_QUEUE: OnceCell<Queue> = OnceCell::const_new();
 static CUSTOM_DRIVER: RwLock<Option<Arc<dyn MailDriver>>> = RwLock::new(None);
 #[cfg(test)]
@@ -49,7 +54,12 @@ impl Mail {
 
     /// Send a message. If a background queue is initialized, it pushes to the queue automatically.
     /// Otherwise, it sends synchronously.
+    ///
+    /// A message without a `from` uses the configured default sender (see
+    /// [`Mail::default_sender`]); an explicit `from` always wins.
     pub async fn send(message: Message) -> Result<(), MailError> {
+        let settings = MailSettings::load().await;
+        let message = settings.apply_default_sender(message)?;
         let message = DeliveryPipeline::prepare(&message)?.into_message();
         if let Some(queue) = MAIL_QUEUE.get() {
             Self::enqueue_prepared(
@@ -63,19 +73,15 @@ impl Mail {
             .await?;
             Ok(())
         } else {
-            Self::send_now(message).await
+            Self::deliver(&settings, None, message).await
         }
     }
 
     /// Forces sending the message synchronously, bypassing the background queue.
     pub async fn send_now(message: Message) -> Result<(), MailError> {
-        let message = DeliveryPipeline::prepare(&message)?.into_message();
-        let custom_driver = Self::custom_driver()?;
-        if let Some(driver) = custom_driver {
-            return driver.send(&message).await;
-        }
-        let driver = Self::resolve_driver().await?;
-        driver.send(&message).await
+        let settings = MailSettings::load().await;
+        let message = settings.apply_default_sender(message)?;
+        Self::deliver(&settings, None, message).await
     }
 
     /// Sends a message for a specific tenant when using a multi-tenant driver or custom resolver.
@@ -84,6 +90,8 @@ impl Mail {
         message: Message,
     ) -> Result<(), MailError> {
         let tenant_id = tenant_id.into();
+        let settings = MailSettings::load().await;
+        let message = settings.apply_default_sender(message)?;
         let message = DeliveryPipeline::prepare_for_tenant(&tenant_id, &message)?.into_message();
         if let Some(queue) = MAIL_QUEUE.get() {
             Self::enqueue_prepared(
@@ -98,7 +106,7 @@ impl Mail {
             return Ok(());
         }
 
-        Self::send_now_for_tenant(&tenant_id, message).await
+        Self::deliver(&settings, Some(&tenant_id), message).await
     }
 
     /// Forces tenant-aware synchronous delivery, bypassing the background queue.
@@ -107,18 +115,14 @@ impl Mail {
         message: Message,
     ) -> Result<(), MailError> {
         let tenant_id = tenant_id.into();
-        let message = DeliveryPipeline::prepare_for_tenant(&tenant_id, &message)?.into_message();
-        let custom_driver = Self::custom_driver()?;
-        if let Some(driver) = custom_driver {
-            driver.send_for_tenant(&tenant_id, &message).await
-        } else {
-            let driver = Self::resolve_driver().await?;
-            driver.send_for_tenant(&tenant_id, &message).await
-        }
+        let settings = MailSettings::load().await;
+        let message = settings.apply_default_sender(message)?;
+        Self::deliver(&settings, Some(&tenant_id), message).await
     }
 
     /// Enqueues a message on an explicit queue, preserving its optional `send_at` timestamp.
     pub async fn enqueue(queue: &Queue, message: Message) -> Result<(), MailError> {
+        let message = MailSettings::load().await.apply_default_sender(message)?;
         let message = DeliveryPipeline::prepare(&message)?.into_message();
         Self::enqueue_prepared(
             queue,
@@ -138,6 +142,7 @@ impl Mail {
         message: Message,
     ) -> Result<(), MailError> {
         let tenant_id = tenant_id.into();
+        let message = MailSettings::load().await.apply_default_sender(message)?;
         let message = DeliveryPipeline::prepare_for_tenant(&tenant_id, &message)?.into_message();
         Self::enqueue_prepared(
             queue,
@@ -148,6 +153,41 @@ impl Mail {
             },
         )
         .await
+    }
+
+    /// Returns the validated default sender for facade messages without a
+    /// `from`: `MAIL_FROM`, else `from` in the `[mail]` section of
+    /// `Rullst.toml`. It may be a bare address or `Name <address>`.
+    ///
+    /// Every facade send and enqueue validates it and fails with
+    /// [`MailError::ConfigError`] when it is invalid; call this at startup to
+    /// fail fast instead. Drivers used directly do not read it. (v13)
+    pub async fn default_sender() -> Result<Option<String>, MailError> {
+        Ok(MailSettings::load()
+            .await
+            .default_sender()?
+            .map(str::to_string))
+    }
+
+    /// Runs the pipeline and dispatches through the custom or configured driver.
+    async fn deliver(
+        settings: &MailSettings,
+        tenant_id: Option<&str>,
+        message: Message,
+    ) -> Result<(), MailError> {
+        let message = match tenant_id {
+            Some(tenant_id) => DeliveryPipeline::prepare_for_tenant(tenant_id, &message)?,
+            None => DeliveryPipeline::prepare(&message)?,
+        }
+        .into_message();
+        let driver: Arc<dyn MailDriver> = match Self::custom_driver()? {
+            Some(driver) => driver,
+            None => Arc::from(Self::resolve_driver_from(settings)?),
+        };
+        match tenant_id {
+            Some(tenant_id) => driver.send_for_tenant(tenant_id, &message).await,
+            None => driver.send(&message).await,
+        }
     }
 
     fn custom_driver() -> Result<Option<Arc<dyn MailDriver>>, MailError> {
@@ -183,41 +223,14 @@ impl Mail {
         })
     }
 
-    #[cfg_attr(mutants, mutants::skip)]
+    #[cfg(test)]
     async fn resolve_driver() -> Result<Box<dyn MailDriver>, MailError> {
-        // Resolve the driver either from env or Rullst.toml
-        let mut driver_name_opt = std::env::var("MAIL_DRIVER").ok();
-        let mut configured_env = None;
+        Self::resolve_driver_from(&MailSettings::load().await)
+    }
 
-        if driver_name_opt.is_none()
-            && let Ok(toml_content) = tokio::fs::read_to_string("Rullst.toml").await
-        {
-            let mut in_mail = false;
-            let mut in_app = false;
-            for line in toml_content.lines() {
-                let trimmed = line.trim();
-                if trimmed.starts_with('[') {
-                    in_mail = trimmed == "[mail]" || trimmed == "[mailer]";
-                    in_app = trimmed == "[app]";
-                    continue;
-                }
-                let Some((key, val)) = trimmed.split_once('=') else {
-                    continue;
-                };
-                let clean_val = val.split('#').next().unwrap_or(val).trim();
-                let clean_val = clean_val.trim_matches('"').trim_matches('\'').to_string();
-                if in_mail && trimmed.starts_with("driver") {
-                    driver_name_opt = Some(clean_val);
-                } else if in_app && key.trim() == "env" {
-                    configured_env = Some(clean_val);
-                }
-            }
-        }
-
-        let driver_name = match driver_name_opt {
-            Some(driver_name) => driver_name,
-            None => default_driver_name(configured_env.as_deref())?.to_string(),
-        };
+    #[cfg_attr(mutants, mutants::skip)]
+    fn resolve_driver_from(settings: &MailSettings) -> Result<Box<dyn MailDriver>, MailError> {
+        let driver_name = settings.driver_name()?;
 
         match driver_name.as_str() {
             "log" => Ok(Box::new(LogDriver)),
@@ -358,24 +371,6 @@ impl Mail {
             ))),
         }
     }
-}
-
-/// The driver used when neither `MAIL_DRIVER` nor `[mail] driver` is set.
-///
-/// Logging is only a development/test default. In staging or production an
-/// unconfigured facade would report success for mail it never sends, so it
-/// fails closed unless `log` is selected explicitly.
-fn default_driver_name(configured_env: Option<&str>) -> Result<&'static str, MailError> {
-    let environment = rullst_core::config::Environment::detect(configured_env).map_err(|_| {
-        MailError::ConfigError("RULLST_ENV, APP_ENV or [app].env is invalid".to_string())
-    })?;
-    if environment.requires_secure_defaults() {
-        return Err(MailError::ConfigError(format!(
-            "no mail driver is configured for the {environment} environment; set MAIL_DRIVER \
-             or [mail] driver (MAIL_DRIVER=log only logs metadata and delivers nothing)"
-        )));
-    }
-    Ok("log")
 }
 
 fn datetime_to_system_time(

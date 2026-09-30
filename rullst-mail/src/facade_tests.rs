@@ -382,3 +382,75 @@ async fn unconfigured_driver_logs_only_outside_staging_and_production() {
     environment.set("MAIL_DRIVER", "log");
     assert!(Mail::resolve_driver().await.is_ok());
 }
+
+#[tokio::test]
+async fn facade_messages_without_from_use_the_configured_default_sender() {
+    let _lock = MAIL_ENV_LOCK.lock().await;
+    let mut environment = EnvironmentGuard::new();
+    clear_provider_environment(&mut environment);
+    environment.clear("MAIL_DRIVER");
+    environment.set("MAIL_FROM", "Acme Billing <billing@acme.example>");
+    let anonymous = Message::new()
+        .to("member@example.com")
+        .subject("Default sender")
+        .text("body");
+
+    let (driver, store) = MemoryDriver::isolated();
+    Mail::set_driver(Box::new(driver));
+    Mail::send_now(anonymous.clone()).await.unwrap();
+    Mail::send_now_for_tenant("tenant_acme", anonymous.clone())
+        .await
+        .unwrap();
+    Mail::send_now(anonymous.clone().from("team@acme.example"))
+        .await
+        .unwrap();
+    assert_eq!(
+        Mail::default_sender().await.unwrap().as_deref(),
+        Some("Acme Billing <billing@acme.example>")
+    );
+    environment.set("MAIL_FROM", "Acme <billing@acme.example");
+    for outcome in [
+        Mail::send_now(anonymous.clone().from("team@acme.example")).await,
+        Mail::default_sender().await.map(|_| ()),
+    ] {
+        assert!(matches!(outcome, Err(MailError::ConfigError(text)) if text.contains("MAIL_FROM")));
+    }
+    Mail::reset_driver();
+    let senders: Vec<Option<String>> = store
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|message| message.from.clone())
+        .collect();
+    assert_eq!(
+        senders,
+        [
+            Some("Acme Billing <billing@acme.example>".to_string()),
+            Some("Acme Billing <billing@acme.example>".to_string()),
+            Some("team@acme.example".to_string()),
+        ]
+    );
+
+    // Queued jobs carry the default, so workers need not share the setting.
+    environment.set("MAIL_FROM", "ops@acme.example");
+    let jobs = Arc::new(Mutex::new(Vec::new()));
+    let queue = Queue::custom(Box::new(CapturedQueue {
+        jobs: jobs.clone(),
+        failure: None,
+    }));
+    Mail::enqueue(&queue, anonymous.clone()).await.unwrap();
+    let queued: QueuedMail = serde_json::from_str(&jobs.lock().unwrap()[0].1).unwrap();
+    assert_eq!(queued.message.from.as_deref(), Some("ops@acme.example"));
+
+    // Without any sender a real transport fails before network and says how
+    // to configure one.
+    environment.clear("MAIL_FROM");
+    environment.set("MAIL_DRIVER", "resend");
+    environment.set("RESEND_API_KEY", "re_live_fixture");
+    assert_eq!(Mail::default_sender().await.unwrap(), None);
+    let error = Mail::send_now(anonymous).await.unwrap_err();
+    assert!(
+        matches!(&error, MailError::ConfigError(text) if text.contains("MAIL_FROM")),
+        "{error}"
+    );
+}

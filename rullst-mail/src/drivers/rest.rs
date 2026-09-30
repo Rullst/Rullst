@@ -13,11 +13,16 @@ pub(super) fn sender(message: &Message) -> Result<&str, MailError> {
     required_sender(message)
 }
 
-/// The explicit sender every real transport uses. No default address is
-/// substituted: it would claim a domain the application does not control.
+/// The sender every real transport uses. Transports never invent one, which
+/// would claim a domain the application does not control; the `Mail` facade
+/// fills it from `MAIL_FROM` / `[mail] from` before a transport sees it.
 pub(super) fn required_sender(message: &Message) -> Result<&str, MailError> {
     message.from.as_deref().ok_or_else(|| {
-        MailError::ConfigError("provider requires an explicit verified sender".into())
+        MailError::ConfigError(
+            "provider requires a verified sender: set the message's `from`, or MAIL_FROM or \
+             [mail] from in Rullst.toml for the Mail facade"
+                .into(),
+        )
     })
 }
 

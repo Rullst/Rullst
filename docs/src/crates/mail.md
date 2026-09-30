@@ -459,10 +459,18 @@ delta-seconds `Retry-After` for failover/retry policy.
 ```toml
 [mail]
 driver = "resend" # "log" | "memory" | "smtp" | "resend" | "sendgrid" | "postmark" | "ses"
+from = "Acme <no-reply@acme.example>" # default sender for messages without `from`
 ```
 
 Environment variables:
 - `MAIL_DRIVER`: Select active driver (`log`, `memory`, `smtp`, `resend`, `sendgrid`, `postmark`, `ses`).
+- `MAIL_FROM`: Default sender (v13) for `Mail` facade messages that set no
+  `from`, such as generated mailables. It takes precedence over `[mail] from`;
+  an explicit `from` on the message always wins. Use one address or
+  `Name <address>` that your provider account has verified. An invalid value
+  fails every facade send with `MailError::ConfigError`; call
+  `Mail::default_sender()` at startup to fail fast. Drivers used directly do
+  not read it.
 - `RESEND_API_KEY`: API key for Resend.
 - `SENDGRID_API_KEY`: API key for SendGrid.
 - `POSTMARK_SERVER_TOKEN`: Server API token for Postmark.
@@ -481,6 +489,12 @@ For Resend, SendGrid, Postmark and the SES fixture/proxy,
 an empty credential or one beginning with `mock_` selects the deterministic
 offline fallback. Use `driver.delivery_mode()` and
 `OfflineMailMock::deliveries()` to assert this explicitly in tests.
+
+Every real transport needs a sender that the provider account has verified:
+the message's `from`, or, for `Mail` facade sends, the `MAIL_FROM` /
+`[mail] from` default. Without either, delivery fails with
+`MailError::ConfigError` before any request, and the error names both
+settings. Transports never invent a sender.
 
 SMTP selects the offline fallback only explicitly: an empty or `mock_*`
 `MAIL_HOST`, or a `mock_*` username or password. A real host without
