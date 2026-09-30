@@ -62,7 +62,11 @@ lawful basis, guardian authority or a certificate of worldwide compliance.
 - Grant expiry is an explicit server choice, bounded to at most 365 days as an
   engineering limit. It is not a legal retention period or a default grant.
   Clock checks reject rollback and expiry during storage; stores retain a clock
-  high-water mark. Records and debug output do not expose application profiles.
+  high-water mark. Each operation samples time before waiting for the store's
+  serialized lock, so a request can lose that wait to one from the next second.
+  The gate then repeats it, at most twice, with a fresh sample that has advanced
+  past the rejected one; a clock that has not advanced still fails closed.
+  Records and debug output do not expose application profiles.
 
 `ConsentGate::new` requires shared durable state. `MemoryConsentStore` is bounded
 development-only storage, accepted by `for_development`. The `consent-sqlite`
@@ -362,9 +366,11 @@ a hostile filesystem race. Capacity bounds rows, not total filesystem use.
 Logical expiry deletion is not physical erasure of WAL pages or backups.
 
 Cancelled or uncertain writes grant no access and may have consumed the proof.
-Request fresh evidence after an uncertain outcome. Clock rollback fails closed;
-out-of-order requests or skewed processes may need a retry with current server
-time. Do not lower the persisted clock or clear state to work around this error.
+Request fresh evidence after an uncertain outcome. Clock rollback fails closed.
+A claim rejected because a concurrent request committed a later second consumed
+nothing; the verifier repeats it, at most twice, once its trusted clock has
+advanced past the rejected sample. Skewed processes can still see this error.
+Do not lower the persisted clock or clear state to work around it.
 Network filesystems, cross-host replication and PostgreSQL are outside this
 SQLite adapter's scope. Storage hardware must honor SQLite's durability guarantees.
 

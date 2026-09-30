@@ -251,6 +251,9 @@ binding, risk/legal assessment and durable shared state.
 The v13 persistence contract uses static-dispatch asynchronous nonce claims.
 Verification samples a trusted server clock before validation and after the
 claim; expiry or clock rollback during storage cannot return permission.
+A claim that the high-water check rejected only because a concurrent request
+committed a later second is repeated, at most twice, with a fresh sample that
+has advanced past the rejected one; the check itself is never relaxed.
 The optional `sqlite` adapter is shared-local only: a private file-backed pool,
 WAL with full synchronization, serialized quota/expiry/claim transactions and
 persisted configuration/clock high-water state. It stores only domain-separated
@@ -377,7 +380,8 @@ are server-owned inputs, never browser identity fields. The explicit submission
 also binds the displayed purpose/notice version to current server configuration,
 so a policy change cannot borrow an old form's unchanged revision. A bounded store must
 serialize reads/updates against a persisted clock high-water mark and preserve
-withdrawal tombstones; production rejects process-local state. Permission must
+withdrawal tombstones; production rejects process-local state. The gate retries
+an operation that lost the lock to a later second the same bounded way. Permission must
 be checked immediately before each processing action, including deferred jobs.
 Already-started external effects are not cancelled retroactively by a later
 withdrawal, and consent does not authorize essential processing or establish
