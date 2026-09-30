@@ -3,6 +3,10 @@
 use super::*;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+fn errors() -> (ErrorReporter<SchedulerError>, ErrorBuffer<SchedulerError>) {
+    error_buffer(ERROR_BUFFER_CAPACITY, "test")
+}
+
 fn task_for_test<F, Fut>(handler: F) -> ScheduledTask
 where
     F: Fn() -> Fut + Send + Sync + 'static,
@@ -17,7 +21,7 @@ where
 
 fn handle_with(
     loops: Vec<(String, JoinHandle<()>)>,
-    errors: mpsc::UnboundedReceiver<SchedulerError>,
+    errors: ErrorBuffer<SchedulerError>,
 ) -> SchedulerHandle {
     let (shutdown, _) = watch::channel(false);
     SchedulerHandle {
@@ -50,13 +54,11 @@ async fn completed_handler_and_closed_shutdown_channel_are_observable() {
 
 #[tokio::test]
 async fn handle_reports_queued_and_join_failures_but_ignores_cancellation() {
-    let (errors_tx, errors_rx) = mpsc::unbounded_channel();
-    errors_tx
-        .send(SchedulerError::TaskTimedOut {
-            label: "queued".to_string(),
-            timeout_ms: 5,
-        })
-        .expect("error receiver alive");
+    let (errors_tx, errors_rx) = errors();
+    errors_tx.report(SchedulerError::TaskTimedOut {
+        label: "queued".to_string(),
+        timeout_ms: 5,
+    });
     drop(errors_tx);
     let queued = handle_with(vec![], errors_rx).shutdown().await;
     assert!(matches!(
@@ -64,7 +66,7 @@ async fn handle_reports_queued_and_join_failures_but_ignores_cancellation() {
         Err(SchedulerError::TaskTimedOut { timeout_ms: 5, .. })
     ));
 
-    let (_errors_tx, errors_rx) = mpsc::unbounded_channel();
+    let (_errors_tx, errors_rx) = errors();
     let panicking = tokio::spawn(async { panic!("isolated loop panic") });
     let joined = handle_with(vec![("panic-loop".to_string(), panicking)], errors_rx)
         .shutdown()
@@ -74,7 +76,7 @@ async fn handle_reports_queued_and_join_failures_but_ignores_cancellation() {
         Err(SchedulerError::LoopFailed { label, .. }) if label == "panic-loop"
     ));
 
-    let (_errors_tx, errors_rx) = mpsc::unbounded_channel();
+    let (_errors_tx, errors_rx) = errors();
     let cancelled = tokio::spawn(std::future::pending::<()>());
     cancelled.abort();
     assert!(
@@ -87,12 +89,10 @@ async fn handle_reports_queued_and_join_failures_but_ignores_cancellation() {
 
 #[tokio::test]
 async fn next_error_and_drop_abort_have_deterministic_lifecycles() {
-    let (errors_tx, errors_rx) = mpsc::unbounded_channel();
-    errors_tx
-        .send(SchedulerError::TaskPanicked {
-            label: "task".to_string(),
-        })
-        .expect("error receiver alive");
+    let (errors_tx, errors_rx) = errors();
+    errors_tx.report(SchedulerError::TaskPanicked {
+        label: "task".to_string(),
+    });
     drop(errors_tx);
     let mut handle = handle_with(vec![], errors_rx);
     assert!(matches!(
@@ -120,7 +120,7 @@ async fn next_error_and_drop_abort_have_deterministic_lifecycles() {
     while !started.load(Ordering::SeqCst) {
         tokio::task::yield_now().await;
     }
-    let (_errors_tx, errors_rx) = mpsc::unbounded_channel();
+    let (_errors_tx, errors_rx) = errors();
     drop(handle_with(vec![("pending".to_string(), task)], errors_rx));
     tokio::time::timeout(Duration::from_millis(100), async {
         while !dropped.load(Ordering::SeqCst) {
@@ -129,6 +129,24 @@ async fn next_error_and_drop_abort_have_deterministic_lifecycles() {
     })
     .await
     .expect("dropping handle aborts its tasks");
+}
+
+#[tokio::test]
+async fn undrained_failures_are_bounded_and_counted() {
+    let (errors_tx, errors_rx) = errors();
+    for _ in 0..ERROR_BUFFER_CAPACITY + 3 {
+        errors_tx.report(SchedulerError::TaskPanicked {
+            label: "task".to_string(),
+        });
+    }
+    let mut handle = handle_with(vec![], errors_rx);
+    assert_eq!(handle.dropped_errors(), 3);
+
+    let mut buffered = 0;
+    while handle.try_next_error().is_some() {
+        buffered += 1;
+    }
+    assert_eq!(buffered, ERROR_BUFFER_CAPACITY);
 }
 
 #[test]

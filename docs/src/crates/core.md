@@ -14,7 +14,13 @@ listing all jobs, retrying failures and purging failures return
 `QueueError::Unsupported`; they never fabricate an empty snapshot or successful
 mutation. `purge_failed_jobs` is the canonical facade method. The deprecated
 `purge_completed_jobs` name is retained only as a source-compatibility alias for
-the historical operation, which actually removed failed jobs.
+the historical operation, which actually removed failed jobs. The Redis driver
+implements all three: `list_all_jobs` returns at most 1,000 rows (failed jobs
+and dead letters newest first, then processing, pending and scheduled jobs, read
+without one atomic snapshot; `created_at` is empty because Redis does not record
+it), `retry_failed_job` moves a failed job to the tail of the pending list while
+keeping its attempt counter, and `purge_failed_jobs` deletes every failed job
+and dead letter.
 
 Cache diagnostics are driver-specific too. `Cache::inspect(limit)` accepts
 1–200 and returns sorted logical-key, UTF-8 value-length and remaining-TTL
@@ -26,6 +32,10 @@ bounded method. The live Redis CI/release contract checks metadata, TTL and
 non-disclosure; it does not prove cluster/failover or operator authorization.
 The Redis cache and queue drivers each keep one lazily opened multiplexed
 connection for all operations and replace it after a connection-level failure.
+The memory cache stores a TTL too large for the monotonic clock (such as
+`u64::MAX`) as non-expiring instead of panicking. A read that finds an expired
+entry removes the key only while it still holds that expired value, so a
+concurrent refill is kept.
 
 SQLite deletes successful jobs by default. Applications that need a real
 Studio/operations history can opt in with
@@ -34,6 +44,12 @@ validated limit is 1–100,000 records; status transition and pruning commit in
 one transaction, and `purge_completed_history` removes the retained successes.
 Rows still contain the original payload, so access control and retention policy
 belong to the host. Redis/custom drivers do not inherit this policy implicitly.
+The Redis driver bounds its own failure state instead: failed jobs (with
+payloads) and dead letters are each retained up to 10,000 entries by default,
+the oldest evicted atomically, and
+`RedisDriver::try_with_failure_retention(failed_jobs, dead_letters)` accepts
+1–100,000 for each. Failures recorded before that bound existed are not
+indexed and are never evicted automatically.
 
 `Queue::dispatch_at` persists a due timestamp for at most 366 days through the
 built-in SQLite and Redis drivers. SQLite filters claims by local wall-clock
@@ -43,6 +59,35 @@ worker poll after it becomes due and retains the queue's at-least-once semantics
 `Worker` drives each `pop` to completion instead of racing it against
 completions or shutdown, because both built-in claims commit before the future
 resolves. A job claimed after graceful shutdown was requested is requeued.
+When a handler finishes while its timeout or a graceful shutdown is being
+processed, the worker records the handler's own result: only a handler that
+was actually cancelled is failed as timed out or requeued, so a success is
+never reported as a timeout or run again.
+Worker transitions are fenced by the claim's attempt number. The SQLite and
+Redis drivers complete, fail or requeue a job only while it is still processing
+under the attempt that `pop` returned, so a worker whose lease was recovered and
+claimed again receives a `StateTransition` error instead of finishing, failing
+or deleting the newer claim. The new `QueueDriver::mark_complete_attempt`,
+`mark_failed_attempt` and `requeue_attempt` methods default to the unfenced
+methods, so custom drivers keep their behaviour until they override them. The
+stale handler may still have run its side effects (delivery stays
+at-least-once), and SQLite `retry_failed_job` restarts the attempt counter, so
+a worker that stays stale across a manual retry and a new claim with the same
+attempt number is not fenced.
+A worker that claims a job whose name it has no handler for hands the claim
+back instead of failing it. SQLite and Redis make the job claimable again after
+five seconds, behind jobs that are already due, so a worker that registered the
+name (for example a newer version during a rolling deploy) can run it; the
+delay keeps the claiming worker out of a hot loop, and it still reports
+`HandlerNotFound` each time. A job that no running worker can handle therefore
+stays pending and is re-offered every five seconds instead of being failed.
+Custom drivers that do not implement `QueueDriver::requeue_attempt_after` keep
+the previous behaviour and fail the job.
+`WorkerHandle` and `SchedulerHandle` buffer at most 256 undrained errors. Once
+the buffer is full, newer errors are dropped, counted by `dropped_errors()` and
+emitted as `tracing` warnings, so a handle that is kept alive but never drained
+does not grow memory. Drain `next_error` (for example from a supervising task)
+to observe every failure.
 Custom drivers return `QueueError::Unsupported` for future timestamps unless
 they explicitly implement durable scheduling.
 
