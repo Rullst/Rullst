@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790734967371,
+  "lastUpdate": 1790738393213,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -10929,6 +10929,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 400,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "745f3e61239ebf76417e858f9008464dccee530b",
+          "message": "Merge pull request #337 from Rullst/test/v13-codeql-test-logging\n\ntest(orm): keep protected test values out of assertion messages",
+          "timestamp": "2026-09-29T23:54:00-03:00",
+          "tree_id": "22d18a96558f001e66b97f17e1d89dacff8590a8",
+          "url": "https://github.com/Rullst/Rullst/commit/745f3e61239ebf76417e858f9008464dccee530b"
+        },
+        "date": 1790738392159,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 950,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 198,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 0,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 176,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
