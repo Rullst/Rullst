@@ -92,13 +92,7 @@ fn append_relation(diagram: &mut String, from_table: &str, row: &SchemaRow) {
     diagram.push_str("\"\n");
 }
 
-fn configured_pool() -> Result<&'static rullst_core::db::RullstPool, sqlx::Error> {
-    rullst_core::db::safe_pool()
-        .ok_or_else(|| sqlx::Error::Configuration("Studio database pool is not configured".into()))
-}
-
-async fn get_sqlite_schema() -> Result<String, sqlx::Error> {
-    let pool = configured_pool()?;
+async fn get_sqlite_schema(pool: &rullst_core::db::RullstPool) -> Result<String, sqlx::Error> {
     let tables = rullst_orm::_sqlx::query(
         "SELECT name FROM sqlite_schema WHERE type = 'table' \
          AND name NOT LIKE 'sqlite_%' AND name != '_sqlx_migrations' ORDER BY name",
@@ -131,8 +125,7 @@ async fn get_sqlite_schema() -> Result<String, sqlx::Error> {
 /// PostgreSQL 12+ reports information-schema identifiers as the `name` type,
 /// which the default `sqlx::Any` driver cannot decode, so every text column is
 /// cast to `VARCHAR`. Bind markers are renumbered for the same build.
-async fn get_postgres_schema() -> Result<String, sqlx::Error> {
-    let pool = configured_pool()?;
+async fn get_postgres_schema(pool: &rullst_core::db::RullstPool) -> Result<String, sqlx::Error> {
     let tables = rullst_orm::_sqlx::query(
         "SELECT CAST(table_name AS VARCHAR) AS name FROM information_schema.tables \
          WHERE table_schema = 'public' AND table_name != '_sqlx_migrations' \
@@ -191,8 +184,7 @@ async fn get_postgres_schema() -> Result<String, sqlx::Error> {
     Ok(diagram)
 }
 
-async fn get_mysql_schema() -> Result<String, sqlx::Error> {
-    let pool = configured_pool()?;
+async fn get_mysql_schema(pool: &rullst_core::db::RullstPool) -> Result<String, sqlx::Error> {
     let tables = rullst_orm::_sqlx::query(
         "SELECT table_name AS name FROM information_schema.tables \
          WHERE table_schema = DATABASE() AND table_name != '_sqlx_migrations' \
@@ -231,11 +223,14 @@ async fn get_mysql_schema() -> Result<String, sqlx::Error> {
     Ok(diagram)
 }
 
-async fn schema_for_driver(driver: &str) -> Result<String, sqlx::Error> {
+async fn schema_for_driver(
+    pool: &rullst_core::db::RullstPool,
+    driver: &str,
+) -> Result<String, sqlx::Error> {
     match driver {
-        "postgres" => get_postgres_schema().await,
-        "mysql" | "mariadb" => get_mysql_schema().await,
-        "sqlite" | "libsql" | "turso" => get_sqlite_schema().await,
+        "postgres" => get_postgres_schema(pool).await,
+        "mysql" | "mariadb" => get_mysql_schema(pool).await,
+        "sqlite" | "libsql" | "turso" => get_sqlite_schema(pool).await,
         _ => Err(sqlx::Error::Configuration(
             format!("ER diagram does not support database driver `{driver}`").into(),
         )),
@@ -243,8 +238,15 @@ async fn schema_for_driver(driver: &str) -> Result<String, sqlx::Error> {
 }
 
 async fn render_er_diagram() -> Html<String> {
-    let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    let (diagram, notice) = match schema_for_driver(driver).await {
+    // The first database view initializes the pool with the shared resolver;
+    // the driver is read afterwards so that it describes that pool.
+    let schema = match crate::data_browser::ensure_pool_initialized().await {
+        Ok(pool) => {
+            schema_for_driver(pool, rullst_core::db::safe_driver().unwrap_or("sqlite")).await
+        }
+        Err(error) => Err(error),
+    };
+    let (diagram, notice) = match schema {
         Ok(diagram) => (diagram, String::new()),
         Err(error) => (
             String::from("erDiagram\n"),

@@ -91,12 +91,17 @@ fn render_flag_rows(rows: &[<rullst_orm::RullstDatabase as sqlx::Database>::Row]
 }
 
 async fn render_feature_flags() -> Html<String> {
-    let rows_html = match rullst_core::db::safe_pool() {
-        None => feature_flag_notice(
-            "No database is configured; feature flags are unavailable.",
+    // Like the data browser, the first database view initializes the pool
+    // with the shared resolver; its errors never echo configuration content.
+    let rows_html = match crate::data_browser::ensure_pool_initialized().await {
+        Err(error) => feature_flag_notice(
+            &format!(
+                "Feature flags are unavailable: {}",
+                rullst_core::html::escape_str(&error.to_string())
+            ),
             None,
         ),
-        Some(pool) => match rullst_orm::_sqlx::query(FEATURE_FLAGS_QUERY)
+        Ok(pool) => match rullst_orm::_sqlx::query(FEATURE_FLAGS_QUERY)
             .fetch_all(pool)
             .await
         {
@@ -161,8 +166,9 @@ async fn toggle_feature_flag(
     if verified.is_none() {
         return verified_local_access_required();
     }
+    let pool = crate::data_browser::ensure_pool_initialized().await.ok();
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    toggle_feature_flag_with_pool(&name, rullst_core::db::safe_pool(), driver).await
+    toggle_feature_flag_with_pool(&name, pool, driver).await
 }
 
 async fn toggle_feature_flag_with_pool(
