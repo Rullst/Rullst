@@ -401,8 +401,9 @@ rullst-orm = { version = "12.1.0", default-features = false, features = ["strict
 `Orm::driver()` reads the SQL dialect from the DSN scheme, ignoring case:
 `postgres://` and `postgresql://` are PostgreSQL, and `mysql://` and
 `mariadb://` are MySQL/MariaDB. IPv6 literal hosts use brackets
-(`postgres://app@[2001:db8::10]:5432/app`); `Orm::init` rejects any other
-bracketed text, such as an unedited `[your-database-id]` template placeholder.
+(`postgres://app@[2001:db8::10]:5432/app`); every `Orm::init*` entrypoint
+rejects any other bracketed text, such as an unedited `[your-database-id]`
+template placeholder, before connecting.
 If an application previously disabled defaults without choosing a backend,
 enable `drivers-all` explicitly or select a strict backend when upgrading.
 

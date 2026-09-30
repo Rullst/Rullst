@@ -149,6 +149,7 @@ impl Orm {
         acquire_timeout_secs: u64,
     ) -> Result<(), crate::Error> {
         Self::ensure_uninitialized()?;
+        dsn::ensure_configured_dsn(database_url)?;
         Self::validate_dsn(database_url);
 
         #[cfg(not(any(
@@ -231,6 +232,10 @@ impl Orm {
         replica_urls: Vec<&str>,
     ) -> Result<(), crate::Error> {
         Self::ensure_uninitialized()?;
+        dsn::ensure_configured_dsn(primary_url)?;
+        for replica_url in &replica_urls {
+            dsn::ensure_configured_dsn(replica_url)?;
+        }
         Self::validate_dsn(primary_url);
         for replica_url in &replica_urls {
             Self::validate_dsn(replica_url);
@@ -448,6 +453,24 @@ mod tests {
         Orm::validate_dsn(&dsn);
 
         assert!(!database_path.exists());
+    }
+
+    #[tokio::test]
+    async fn every_initializer_rejects_placeholder_dsns_before_connecting() {
+        let placeholder = "postgres://app:[YOUR-PASSWORD]@db.invalid/app";
+        assert!(matches!(
+            Orm::init_with_options(placeholder, 5, 5).await,
+            Err(crate::Error::Internal(_))
+        ));
+        assert!(matches!(
+            Orm::init_with_replicas(placeholder, Vec::new()).await,
+            Err(crate::Error::Internal(_))
+        ));
+        assert!(matches!(
+            Orm::init_with_replicas("sqlite::memory:", vec![placeholder]).await,
+            Err(crate::Error::Internal(_))
+        ));
+        assert!(matches!(Orm::try_pool(), Err(crate::Error::NotInitialized)));
     }
 
     #[test]
