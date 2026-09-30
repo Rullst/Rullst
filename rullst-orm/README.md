@@ -195,6 +195,9 @@ joins keep every tenant and caller binding at its own `$n` position.
 Only PostgreSQL statements are renumbered: `delete_all()`, the child `UPDATE`
 issued by `cascade_soft_delete`, and instance `restore()`/`force_delete()`
 receive `$n` there and keep `?` markers on MySQL/MariaDB and SQLite.
+The renumbering reads quoted text with PostgreSQL's default
+`standard_conforming_strings = on` rules: a backslash escapes only inside
+`E'...'` strings, so a raw `ESCAPE '\'` does not hide later markers.
 Generated `Model::search()` uses those same model-wide and tenant scopes for
 both its SQL fallback and external Scout result IDs. The SQL fallback never
 matches `#[orm(hidden)]`, `#[orm(encrypted)]`, `#[orm(masked)]` or
