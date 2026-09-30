@@ -189,6 +189,33 @@ fn subject_version_revocation_rejects_only_older_sessions() {
 }
 
 #[test]
+fn sub_second_lifetimes_are_rejected_instead_of_minting_unverifiable_tokens() {
+    let policy = development_policy();
+    for ttl in [Duration::from_nanos(1), Duration::from_millis(999)] {
+        assert_eq!(
+            policy.issue("learner", ["course:read"], 1, ttl),
+            Err(JwtError::InvalidTimeToLive)
+        );
+    }
+    assert!(matches!(
+        ApplicationJwtPolicy::development(
+            "https://auth.example.test",
+            "rullst-academy",
+            Duration::from_millis(900),
+            signing_key("2026-08-a", FIRST_SECRET),
+        ),
+        Err(JwtError::InvalidConfiguration("max_ttl"))
+    ));
+
+    // A fractional lifetime keeps its whole seconds and still verifies.
+    let token = policy
+        .issue("learner", ["course:read"], 1, Duration::from_millis(2_500))
+        .expect("token");
+    let revocations = InMemoryJwtRevocationStore::new(16).expect("revocation store");
+    assert!(policy.verify(&token, &revocations).is_ok());
+}
+
+#[test]
 fn token_policy_rejects_weak_keys_wrong_audience_and_invalid_inputs() {
     assert!(matches!(
         JwtSigningKey::new("weak", b"short"),

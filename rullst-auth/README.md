@@ -133,6 +133,8 @@ scope policy, and `kid`-based key rotation. Every verification receives a
 `JwtRevocationStore`. Production policies reject the bundled bounded in-memory
 store because it is process-local.
 
+Lifetimes are whole seconds: a fractional TTL is truncated, and a TTL or
+`max_ttl` under one second is rejected because it could never verify.
 Token expiration is an exclusive deadline: verification rejects `now >= exp`,
 including when clock skew is configured. Skew only tolerates a future `iat` or
 `nbf`; it cannot revive an expired token after its revocation entry is pruned.

@@ -78,7 +78,8 @@ replicate the database, or replace application device-ownership policy.
 
 The `jwt` feature provides `ApplicationJwtPolicy`, versioned HS256 claims, strong
 key validation, required issuer/audience/subject/time/JTI claims, bounded TTL and
-scope policy, and `kid`-based key rotation. Every verification receives a
+scope policy, and `kid`-based key rotation. Lifetimes are whole seconds; a TTL
+or `max_ttl` under one second is rejected. Every verification receives a
 `JwtRevocationStore`. Production policies reject the bundled bounded in-memory
 store because it is process-local. With `sqlite`,
 `SqliteJwtRevocationStore` persists token IDs and monotonic subject session
