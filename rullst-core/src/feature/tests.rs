@@ -20,6 +20,28 @@ fn test_calculate_hash_bucket() {
 }
 
 #[test]
+fn hash_buckets_are_frozen_and_length_prefixed() {
+    // Frozen v1 vectors: a change here reassigns every rollout and A/B user.
+    for (flag, identifier, bucket) in [
+        ("flag-a", "user-1", 75),
+        ("flag-a", "user-2", 32),
+        ("new-checkout", "42", 33),
+        ("pricing-ab", "user@example.com", 51),
+        ("", "", 72),
+        ("beta", "\u{fc}", 21),
+    ] {
+        assert_eq!(
+            calculate_hash_bucket(flag, identifier),
+            bucket,
+            "{flag}/{identifier}"
+        );
+    }
+    // The flag length prefix keeps ("ab", "c") and ("a", "bc") apart.
+    assert_eq!(calculate_hash_bucket("ab", "c"), 15);
+    assert_eq!(calculate_hash_bucket("a", "bc"), 93);
+}
+
+#[test]
 fn test_parse_rollout() {
     assert_eq!(parse_rollout("30%"), Some(30));
     assert_eq!(parse_rollout("  100% "), Some(100));

@@ -1,17 +1,33 @@
-use std::collections::hash_map::DefaultHasher;
-use std::hash::Hasher;
-
 // ─── Deterministic Hashing & Resolvers ──────────────────────────────────────────
+
+/// Domain separator of the version 1 bucket hash.
+const BUCKET_DOMAIN_V1: &[u8] = b"rullst.feature-bucket.v1\0";
 
 /// Deterministically calculates a bucket index from 0 to 99 for a given flag and identifier.
 /// This ensures a stable user-to-flag assignment without persistent storage.
+///
+/// The bucket is the first eight bytes of
+/// `SHA-256("rullst.feature-bucket.v1\0" || u64_le(len(flag)) || flag || identifier)`,
+/// read big-endian, modulo 100. It is identical across Rust toolchains,
+/// platforms and replicas. Releases before this hash used `std`'s unspecified
+/// `DefaultHasher` without a length prefix, so upgrading reassigns buckets once.
 #[cfg_attr(mutants, mutants::skip)]
 pub fn calculate_hash_bucket(flag: &str, identifier: &str) -> u32 {
-    let mut hasher = DefaultHasher::new();
-    hasher.write(flag.as_bytes());
-    hasher.write(identifier.as_bytes());
-    let hash_val = hasher.finish();
-    (hash_val % 100) as u32
+    let hash = bucket_hash(flag, identifier);
+    // `hash % 100` is below 100, so the narrowing is lossless.
+    (hash % 100) as u32
+}
+
+fn bucket_hash(flag: &str, identifier: &str) -> u64 {
+    let mut context = ring::digest::Context::new(&ring::digest::SHA256);
+    context.update(BUCKET_DOMAIN_V1);
+    context.update(&(flag.len() as u64).to_le_bytes());
+    context.update(flag.as_bytes());
+    context.update(identifier.as_bytes());
+    let digest = context.finish();
+    let mut prefix = [0_u8; 8];
+    prefix.copy_from_slice(&digest.as_ref()[..8]);
+    u64::from_be_bytes(prefix)
 }
 
 /// Parses a rollout percentage string (e.g. "30%") into a number.
