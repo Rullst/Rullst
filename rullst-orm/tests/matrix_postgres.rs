@@ -36,11 +36,26 @@ struct TenantComment {
     pub status: String,
 }
 
+#[derive(Debug, Clone, FromRow, Orm)]
+#[orm(table = "pg_flags")]
+struct Flag {
+    pub id: i32,
+    pub active: bool,
+}
+
 #[derive(rullst_orm::Enum, Debug, Clone, Copy, PartialEq, Eq)]
 #[rullst_enum(type_name = "pg_account_status", rename_all = "snake_case")]
 enum AccountStatus {
     AwaitingReview,
     Active,
+}
+
+#[cfg(feature = "strict-postgres")]
+#[derive(rullst_orm::Enum, Debug, Clone, Copy, PartialEq, Eq)]
+#[rullst_enum(type_name = "pg_tx_account_status", rename_all = "snake_case")]
+enum TransactionalAccountStatus {
+    Pending,
+    Settled,
 }
 
 #[cfg(feature = "strict-postgres")]
@@ -146,14 +161,60 @@ async fn test_matrix_postgres_crud() {
     assert!(not_found.is_none());
 
     support::exercise_outbox().await;
+    support::exercise_large_audit_payload().await;
     partial_update_contract::exercise().await;
     exercise_tenant_subqueries().await;
+    exercise_boolean_columns().await;
 
     #[cfg(feature = "strict-postgres")]
     exercise_native_enum().await;
     #[cfg(not(feature = "strict-postgres"))]
     exercise_dynamic_pool_enum_refusal().await;
     driver_contract::exercise().await;
+}
+
+/// `Blueprint::boolean` creates a native PostgreSQL boolean, so `bool` model
+/// fields insert, decode, filter and take their default.
+async fn exercise_boolean_columns() {
+    Schema::create("pg_flags", |table: &mut Blueprint| {
+        table.id();
+        table
+            .boolean("active")
+            .not_null()
+            .default(rullst_orm::schema::ColumnDefault::Integer(0));
+    })
+    .await
+    .expect("create PostgreSQL boolean table");
+
+    let mut flag = Flag {
+        id: 0,
+        active: true,
+    };
+    flag.save().await.expect("PostgreSQL bool insert");
+    let stored = Flag::find(flag.id)
+        .await
+        .expect("PostgreSQL bool decode")
+        .expect("stored flag");
+    assert!(stored.active);
+    sqlx::query("INSERT INTO pg_flags DEFAULT VALUES")
+        .execute(Orm::pool().expect("PostgreSQL pool"))
+        .await
+        .expect("insert the boolean default");
+    let active = Flag::query()
+        .where_eq("active", true)
+        .count()
+        .await
+        .expect("PostgreSQL bool filter");
+    let inactive = Flag::query()
+        .where_eq("active", false)
+        .count()
+        .await
+        .expect("PostgreSQL bool default filter");
+    assert_eq!((active, inactive), (1, 1));
+
+    Schema::drop_if_exists("pg_flags")
+        .await
+        .expect("drop PostgreSQL boolean table");
 }
 
 /// Tenant scope, typed CTEs and EXISTS subqueries must share one `$n` sequence.
@@ -256,12 +317,53 @@ async fn exercise_native_enum() {
         "an existing PostgreSQL enum with different labels must fail closed"
     );
 
-    Schema::drop_if_exists("pg_native_enum_accounts")
+    // Enum DDL joins the managed transaction: a rollback also removes the
+    // type, and dropping it after its table in one transaction cannot wait on
+    // that transaction's own table lock from a second connection.
+    let rolled_back = rullst_orm::Orm::transaction(|_| {
+        Box::pin(async {
+            Schema::create("pg_tx_enum_accounts", |table: &mut Blueprint| {
+                table.id();
+                table
+                    .native_enum::<TransactionalAccountStatus>("status")
+                    .not_null();
+            })
+            .await?;
+            Err::<(), rullst_orm::Error>(rullst_orm::Error::Validation(
+                "roll back the enum schema".to_string(),
+            ))
+        })
+    })
+    .await;
+    assert!(rolled_back.is_err());
+    assert_eq!(
+        postgres_type_count("pg_tx_account_status").await,
+        0,
+        "a rolled-back Schema::create must not leave its enum type behind"
+    );
+
+    let dropped = tokio::time::timeout(
+        std::time::Duration::from_secs(20),
+        rullst_orm::Orm::transaction(|_| {
+            Box::pin(async {
+                Schema::drop_if_exists("pg_native_enum_accounts").await?;
+                Schema::drop_native_enum::<AccountStatus>().await
+            })
+        }),
+    )
+    .await
+    .expect("dropping the enum after its table in one transaction must not hang");
+    dropped.expect("PostgreSQL enum table and type should be dropped together");
+    assert_eq!(postgres_type_count("pg_account_status").await, 0);
+}
+
+#[cfg(feature = "strict-postgres")]
+async fn postgres_type_count(type_name: &str) -> i64 {
+    sqlx::query_scalar("SELECT COUNT(*) FROM pg_type WHERE typname = $1")
+        .bind(type_name)
+        .fetch_one(Orm::pool().expect("PostgreSQL pool"))
         .await
-        .expect("PostgreSQL enum table should be dropped");
-    Schema::drop_native_enum::<AccountStatus>()
-        .await
-        .expect("unused PostgreSQL enum type should be dropped");
+        .expect("inspect PostgreSQL types")
 }
 
 #[cfg(not(feature = "strict-postgres"))]

@@ -129,7 +129,9 @@ generated API.
   idempotent; generated observers are not silently converted into events.
   A nested `Orm::transaction` joins the active transaction through a
   savepoint, so a helper that enqueues inside its own transaction stays atomic
-  with its caller. See
+  with its caller. Concurrent sibling nested transactions take turns on the
+  shared connection, and a savepoint left open makes the enclosing transaction
+  roll back instead of committing. See
   the [transactional outbox tutorial](../tutorials/38-transactional-outbox.md).
 - **Database-first introspection:** `cargo rullst generate:models` reads SQLite,
   PostgreSQL, or MySQL metadata using bound schema/table parameters, normalizes
@@ -263,7 +265,10 @@ the exact same ordered labels or schema creation fails. MySQL/MariaDB store the
 labels in the table's inline `ENUM`; SQLite enforces them through `TEXT CHECK`.
 Adding, removing or reordering labels is an explicit reviewed migration. Drop
 every dependent table before calling `Schema::drop_native_enum::<T>()` on
-PostgreSQL; the method is a validated no-op on the other backends.
+PostgreSQL; the method is a validated no-op on the other backends. The enum
+type creation, its label check and `drop_native_enum` use the active
+`Orm::transaction` or test sandbox like the table DDL, so they roll back with it
+and the type can be dropped right after its tables in the same transaction.
 
 `table.timestamps()` adds nullable `created_at`/`updated_at` `TEXT` columns
 that default to the current timestamp. MySQL/MariaDB reject a literal default
@@ -271,6 +276,15 @@ on `TEXT`, `BLOB`, `JSON` and `GEOMETRY` columns, so on that driver the
 builder emits `DEFAULT (CURRENT_TIMESTAMP)` and wraps other non-`NULL`
 defaults on those types in parentheses (MySQL 8.0.13+, MariaDB 10.2.1+).
 SQLite and PostgreSQL DDL is unchanged.
+
+`table.float(...)` and `table.boolean(...)` map to `f64` and `bool` model
+fields. PostgreSQL receives `DOUBLE PRECISION` and `BOOLEAN` (an integer
+`ColumnDefault` of `0`/`1` becomes `FALSE`/`TRUE`); MySQL/MariaDB receive
+`DOUBLE` and an `INTEGER` 0/1 flag; SQLite keeps `REAL` and `INTEGER`. This
+applies to newly built DDL only: PostgreSQL columns created by earlier versions
+remain `REAL`/`INTEGER` until a reviewed migration alters them, and a model that
+paired `boolean()` with an integer field on PostgreSQL must switch to `bool`
+(or use `integer()`) for new tables.
 
 ---
 

@@ -345,6 +345,28 @@ A prepared version section does not establish that its tag or crates exist.
   This forward-ports the compatible stable maintenance correction; it adds no
   new macro syntax or v13-only rendering behavior.
 
+### ORM second-pass review fixes
+
+- Concurrent nested `Orm::transaction` calls take turns on the shared
+  connection, and a savepoint left open rolls the transaction back instead of
+  returning a pooled connection still inside `BEGIN`.
+- `Outbox::enqueue` on MySQL/MariaDB reuses an idempotency key committed by a
+  concurrent transaction instead of failing with `RecordNotFound`.
+- New MySQL/MariaDB `rullst_audits` tables store payloads as `LONGTEXT` (`TEXT`
+  capped them at 64 KiB); existing tables need the documented `ALTER TABLE`
+  migration.
+- `Blueprint::float` emits `DOUBLE PRECISION` on PostgreSQL and `DOUBLE` on
+  MySQL/MariaDB, and `Blueprint::boolean` emits `BOOLEAN` on PostgreSQL with
+  0/1 defaults rendered as `FALSE`/`TRUE` (new migrations only).
+- PostgreSQL enum creation, drift checks and `Schema::drop_native_enum` run in
+  the active transaction, so they roll back with it and no longer deadlock
+  after `drop_if_exists`.
+- Audit restore patches no longer store plaintext values of sensitive keys that
+  an update adds or removes inside JSON fields.
+- Generated query-cache invalidation follows a per-table Redis key index
+  instead of scanning the whole keyspace, and a failed invalidation no longer
+  suppresses `orm:events` publication.
+
 ### ORM review fixes
 
 - Typed subqueries in `where_exists`, `or_where_exists`, `with_cte` and

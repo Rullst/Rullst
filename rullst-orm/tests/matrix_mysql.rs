@@ -128,6 +128,7 @@ async fn test_matrix_mysql_crud() {
     assert!(not_found.is_none());
 
     support::exercise_outbox().await;
+    support::exercise_large_audit_payload().await;
     partial_update_contract::exercise().await;
     exercise_native_enum().await;
     driver_contract::exercise().await;

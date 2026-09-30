@@ -76,9 +76,10 @@ When the application already owns a raw SQLx transaction, use
 `enqueue_with_tx(&mut transaction, ...)`.
 
 `(stream, event_key)` is unique. Repeating the same kind and serialized JSON
-payload returns the existing event ID with `inserted == false`. Reusing that
-key for different content is an error; it does not overwrite the original
-event.
+payload returns the existing event ID with `inserted == false`, also when a
+concurrent transaction committed that key after your transaction's first read
+(MySQL/MariaDB read the row back with a locking read). Reusing that key for
+different content is an error; it does not overwrite the original event.
 
 Streams and event keys are case-sensitive on every backend: `order:aB3x` and
 `order:Ab3X` are different keys, and a worker for `tenant-a` does not claim

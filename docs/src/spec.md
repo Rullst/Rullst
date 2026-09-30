@@ -1255,6 +1255,11 @@ use the documented bounded ASCII allowlists. `Blueprint::native_enum` emits:
 - an inline `ENUM` for MySQL/MariaDB; and
 - a `TEXT CHECK` constraint for SQLite.
 
+PostgreSQL enum creation, its label drift check and
+`Schema::drop_native_enum` run through the task-scoped transaction when one is
+active, exactly like the table DDL: they roll back with it, and dropping the
+type after its tables in one transaction cannot block on that transaction's
+own locks from a second pooled connection.
 PostgreSQL through SQLx Any must fail before DDL because that driver cannot
 decode custom PostgreSQL types. Adding, removing or reordering variants,
 deployment order, dependent-object removal and rollback remain explicit,
@@ -1268,6 +1273,24 @@ on `TEXT`, `BLOB`, `JSON` or `GEOMETRY` columns only as an expression, so the
 builder emits `DEFAULT (CURRENT_TIMESTAMP)` and parenthesizes every other
 non-`NULL` default on those column types (MySQL 8.0.13+, MariaDB 10.2.1+).
 The columns stay `TEXT` so SQLx's `Any` driver can decode them as strings.
+
+`Blueprint::float` is an `f64` column on every driver: `DOUBLE PRECISION` on
+PostgreSQL (whose `REAL` is single precision and cannot decode as `f64`),
+`DOUBLE` on MySQL/MariaDB and `REAL` (8-byte) on SQLite. `Column::col_type`
+still reads `REAL` before the schema is built; an explicitly replaced
+`col_type` is emitted unchanged. This affects DDL built from now on; columns
+created by earlier versions keep their type until a reviewed migration alters
+them (for example `ALTER TABLE t ALTER COLUMN c TYPE DOUBLE PRECISION`).
+
+`Blueprint::boolean` is a `bool` column: `BOOLEAN` on PostgreSQL, which has
+no implicit integer/boolean casts for bound parameters or decoding, and an
+`INTEGER` 0/1 flag on MySQL/MariaDB and SQLite. On PostgreSQL an integer
+`ColumnDefault` of `0`/`1` renders as `FALSE`/`TRUE` and any other integer
+default fails the build. `Column::col_type` still reads `INTEGER` before the
+schema is built. Only newly built DDL changes: an existing PostgreSQL column
+stays `INTEGER` until migrated (`ALTER COLUMN c TYPE BOOLEAN USING c <> 0`),
+and a model that paired `boolean()` with an integer field on PostgreSQL must
+use `bool` for new tables.
 
 The Capital row also includes one implemented, feature-gated quota boundary:
 `BillingSubject` binds a shared team/workspace counter to trusted tenant state,
@@ -1714,10 +1737,17 @@ while portability and semantic review remain the model author's responsibility.
   active `with_tenant(...)` scope. The host remains responsible for deriving
   both contexts from authenticated authority rather than client assertions.
 * `create_audit_table` creates the v2 schema and adds its columns to a legacy
-  table without presenting legacy rows as v2 evidence. JSON payloads are
-  bounded and recursively mask sensitive names for create, update, and delete;
-  audit/debug output does not expose principal, tenant, correlation, reason, or
-  payload values.
+  table without presenting legacy rows as v2 evidence. On MySQL/MariaDB a new
+  table (or a newly added `restore_patch` column) stores `old_values`,
+  `new_values` and `restore_patch` as `LONGTEXT`, because `TEXT` (64 KiB)
+  cannot hold the bounded 5 MiB payloads. An existing table is never altered
+  implicitly; while those columns are still `TEXT`, the call logs a warning
+  naming the reviewed `ALTER TABLE ... MODIFY ... LONGTEXT` migration. JSON payloads are
+  bounded and recursively mask sensitive names for create, update, and delete.
+  The reverse patch records only the presence of a sensitive key, including a
+  nested JSON key that an update adds or removes, and such an operation is not
+  restorable. Audit/debug output does not expose principal, tenant,
+  correlation, reason, or payload values.
 * An auditable model exposes `restore_revision(audit_id, reason)` and its
   caller-owned transaction variant. Only a bounded v2 update patch for the
   exact model, ID, and active tenant is eligible. The current row must still
@@ -1772,6 +1802,17 @@ while portability and semantic review remain the model author's responsibility.
   The returned future is `Send` for `Send` results and errors, so it can be
   nested in a transaction closure or spawned. Holding the shared handle's lock
   across a nested call deadlocks, as it does for generated model methods.
+* Savepoints on one connection close in LIFO order. Sibling nested
+  transactions started concurrently on one task take turns: each holds its
+  level's turn from `SAVEPOINT` until its release or rollback, while a
+  transaction nested inside it uses its own level and never waits for it.
+  Plain statements from a sibling future are not serialized and run inside
+  whichever savepoint is open. A savepoint left open (a deeper level still
+  open at release, a failed release/rollback, or a nested future cancelled
+  while the connection was busy) never commits partial work: the enclosing
+  savepoint rolls back instead of releasing, a managed transaction rolls back
+  and returns an error instead of committing, and the ORM pool closes a
+  connection returned while SQLx still reports an open transaction.
 * `Orm::transaction` and direct generated model `save()`/`delete()`/
   `restore()`/`force_delete()` operations own a post-commit callback scope. `after_commit` callbacks registered within
   it run only after SQLx confirms commit and are discarded on rollback. When no
@@ -1824,7 +1865,10 @@ while portability and semantic review remain the model author's responsibility.
   for a caller-owned SQLx transaction. No implicit independent commit is
   permitted.
 * `(stream, event_key)` is the database uniqueness boundary. Replaying the same
-  key and exact event kind/payload returns the existing `i64` identifier;
+  key and exact event kind/payload returns the existing `i64` identifier,
+  including a key committed by a concurrent enqueue after the caller's read
+  snapshot (MySQL/MariaDB read it back with a locking `FOR UPDATE` read, as
+  InnoDB's default `REPEATABLE READ` would hide it from a plain `SELECT`);
   reusing the key with different content fails closed. `stream`, event key,
   event kind and worker identifiers use a bounded ASCII grammar, and serialized
   payloads are limited to one MiB. Streams, event keys and claim tokens compare
@@ -1864,9 +1908,19 @@ while portability and semantic review remain the model author's responsibility.
 * Cache writes occur only after a successful database read and retain encrypted
   model fields as ciphertext; `SecretString` fields are cached as serde
   envelopes and decrypted on a cache hit, and a result that cannot be
-  serialized (for example without an encryption key) is not cached. Generated model `save()`/`delete()` operations
-  invalidate the active tenant/table's versioned keys only after commit through
-  a bounded Redis `SCAN` plus asynchronous `UNLINK`; rollback preserves existing entries.
+  serialized (for example without an encryption key) is not cached. Each
+  generated cache write also records its key in a per-namespace/tenant/table
+  Redis set in the same `EVAL` script, extending that set's TTL to the longest
+  entry TTL. Generated model `save()`/`delete()`/`restore()`/`force_delete()`
+  operations invalidate the active tenant/table only after commit by popping
+  that index in batches of 500 and `UNLINK`ing its keys (at most 10,000 per
+  write); they never `SCAN` the Redis keyspace, so their cost does not grow
+  with unrelated keys in a shared database. Beyond the cap the write reports
+  `PostCommit`, the remaining keys stay indexed for the next write, and the
+  generated `orm:events:*` publication still happens. Entries written by
+  earlier versions are not indexed and expire through their TTL; rollback
+  preserves existing entries. The scripts address keys they were not passed
+  and are therefore outside Redis Cluster, like the rest of this contract.
   Raw SQL, bulk builders, caller-owned raw transactions and writes from other
   processes cannot be inferred. Callers must retain a defensive TTL and treat
   Redis cluster/failover and durable invalidation delivery as separate

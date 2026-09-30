@@ -36,6 +36,24 @@ impl ValueState {
         }
     }
 
+    /// A present value that must not be retained.
+    fn withheld() -> Self {
+        Self {
+            present: true,
+            value: None,
+        }
+    }
+
+    /// The state of `value` stored under `key`: a sensitive key keeps only
+    /// its presence, like the audit diff's `"***"`, and is never restorable.
+    fn from_keyed_value(key: &str, value: &Value) -> (Self, bool) {
+        if diff::is_sensitive(key) {
+            (Self::withheld(), false)
+        } else {
+            Self::from_value(value)
+        }
+    }
+
     fn from_value(value: &Value) -> (Self, bool) {
         let value = diff::mask_nested(value.clone());
         let restorable = !contains_redaction(&value);
@@ -81,14 +99,10 @@ pub(crate) fn build_reverse_patch_with_redacted(
     let mut operations = Vec::new();
     collect_operations(&old, &new, &mut Vec::new(), 0, &mut operations)?;
     for field in redacted_changes {
-        let withheld = || ValueState {
-            present: true,
-            value: None,
-        };
         operations.push(ReverseOperation {
             path: vec![(*field).to_string()],
-            before: withheld(),
-            after: withheld(),
+            before: ValueState::withheld(),
+            after: ValueState::withheld(),
             restorable: false,
         });
     }
@@ -136,14 +150,8 @@ fn collect_operations(
                 (Some(_), Some(_)) if diff::is_sensitive(key) => {
                     operations.push(ReverseOperation {
                         path: path.clone(),
-                        before: ValueState {
-                            present: true,
-                            value: None,
-                        },
-                        after: ValueState {
-                            present: true,
-                            value: None,
-                        },
+                        before: ValueState::withheld(),
+                        after: ValueState::withheld(),
                         restorable: false,
                     });
                 }
@@ -151,21 +159,21 @@ fn collect_operations(
                     collect_operations(before, after, path, depth + 1, operations)?;
                 }
                 (Some(before), None) => {
-                    let (before, restorable) = ValueState::from_value(before);
+                    let (before, restorable) = ValueState::from_keyed_value(key, before);
                     operations.push(ReverseOperation {
                         path: path.clone(),
                         before,
                         after: ValueState::absent(),
-                        restorable: restorable && !diff::is_sensitive(key),
+                        restorable,
                     });
                 }
                 (None, Some(after)) => {
-                    let (after, restorable) = ValueState::from_value(after);
+                    let (after, restorable) = ValueState::from_keyed_value(key, after);
                     operations.push(ReverseOperation {
                         path: path.clone(),
                         before: ValueState::absent(),
                         after,
-                        restorable: restorable && !diff::is_sensitive(key),
+                        restorable,
                     });
                 }
                 (None, None) => {}
