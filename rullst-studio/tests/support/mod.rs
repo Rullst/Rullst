@@ -9,6 +9,8 @@ use rullst_studio::{LocalStudioAccess, Studio};
 use std::net::SocketAddr;
 use tower::ServiceExt;
 
+mod incomplete_key;
+
 #[cfg(any(feature = "strict-postgres", feature = "strict-mysql"))]
 pub fn handle_container_start_error(provider: &str, error: impl std::fmt::Display) {
     if std::env::var("RULLST_REQUIRE_TESTCONTAINERS").as_deref() == Ok("true") {
@@ -476,6 +478,7 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
     assert_eq!(remaining, 0);
 
     let empty_table = app
+        .clone()
         .oneshot(
             Request::builder()
                 .uri(format!("/studio/tables/{table}?search=after"))
@@ -490,4 +493,6 @@ pub async fn exercise_mutations(database_url: &str, driver: &str, table: &str) {
             .await
             .contains("No records found")
     );
+
+    incomplete_key::exercise_incomplete_primary_key(&app, pool, driver, table).await;
 }

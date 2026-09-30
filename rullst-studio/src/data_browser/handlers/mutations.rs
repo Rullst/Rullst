@@ -1,8 +1,9 @@
 //! Fail-closed, primitive-value row mutations for the local Studio browser.
 
 use super::super::db::{
-    StudioColumn, StudioColumnKind, ensure_pool_initialized, escape_html_attr, fetch_table_schema,
-    fetch_tables, get_any_value_as_string, is_safe_identifier, quote_table_name,
+    StudioColumn, StudioColumnKind, StudioTableSchema, ensure_pool_initialized, escape_html_attr,
+    fetch_table_schema, fetch_tables, get_any_value_as_string, is_safe_identifier,
+    quote_table_name,
 };
 use crate::access::VerifiedLocalStudioAccess;
 use axum::{
@@ -11,7 +12,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
 };
-use sqlx::QueryBuilder;
+use sqlx::{QueryBuilder, Row};
 use std::collections::BTreeMap;
 use std::fmt::Write;
 
@@ -119,16 +120,7 @@ async fn update_row(table: &str, fields: Vec<(String, String)>) -> Result<(), Mu
     query.push(" = ");
     push_bound_value(&mut query, value);
     push_primary_key_predicate(&mut query, driver, primary_key);
-    let result = query
-        .build()
-        .execute(pool)
-        .await
-        .map_err(|_| MutationFailure::Database)?;
-    match result.rows_affected() {
-        1 => Ok(()),
-        0 => Err(MutationFailure::NotFound),
-        _ => Err(MutationFailure::Conflict),
-    }
+    execute_single_row_mutation(pool, &mut query).await
 }
 
 async fn delete_row(table: &str, fields: Vec<(String, String)>) -> Result<(), MutationFailure> {
@@ -148,16 +140,39 @@ async fn delete_row(table: &str, fields: Vec<(String, String)>) -> Result<(), Mu
     let mut query = QueryBuilder::<rullst_orm::RullstDatabase>::new("DELETE FROM ");
     query.push(quote_table_name(driver, table));
     push_primary_key_predicate(&mut query, driver, primary_key);
-    let result = query
-        .build()
-        .execute(pool)
+    execute_single_row_mutation(pool, &mut query).await
+}
+
+/// Runs one row mutation in a transaction and commits it only when exactly one
+/// row changed. Any other count is rolled back before the failure is reported,
+/// so a predicate that unexpectedly matches several rows changes none of them.
+async fn execute_single_row_mutation(
+    pool: &rullst_orm::RullstPool,
+    query: &mut QueryBuilder<rullst_orm::RullstDatabase>,
+) -> Result<(), MutationFailure> {
+    let mut transaction = pool.begin().await.map_err(|_| MutationFailure::Database)?;
+    let affected = match query.build().execute(&mut *transaction).await {
+        Ok(result) => result.rows_affected(),
+        Err(_) => {
+            let _ = transaction.rollback().await;
+            return Err(MutationFailure::Database);
+        }
+    };
+    let failure = match affected {
+        1 => {
+            return transaction
+                .commit()
+                .await
+                .map_err(|_| MutationFailure::Database);
+        }
+        0 => MutationFailure::NotFound,
+        _ => MutationFailure::Conflict,
+    };
+    transaction
+        .rollback()
         .await
         .map_err(|_| MutationFailure::Database)?;
-    match result.rows_affected() {
-        1 => Ok(()),
-        0 => Err(MutationFailure::NotFound),
-        _ => Err(MutationFailure::Conflict),
-    }
+    Err(failure)
 }
 
 async fn mutation_context(
@@ -183,19 +198,15 @@ async fn mutation_context(
         .await
         .map_err(|_| MutationFailure::Database)?;
     let driver = rullst_core::db::safe_driver().unwrap_or("sqlite");
-    let columns = fetch_table_schema(pool, driver, table)
+    let schema = fetch_table_schema(pool, driver, table)
         .await
         .map_err(|_| MutationFailure::Database)?;
-    let primary_keys = columns
-        .iter()
-        .filter(|column| column.primary_key)
-        .collect::<Vec<_>>();
-    if primary_keys.is_empty() || primary_keys.iter().any(|column| !column.kind.is_editable()) {
+    if !schema.supports_mutations() {
         return Err(MutationFailure::Invalid(
-            "Mutations require primitive-valued primary keys",
+            "Mutations require a complete primitive-valued primary key",
         ));
     }
-    Ok((pool, driver, columns))
+    Ok((pool, driver, schema.columns))
 }
 
 fn unique_fields(
@@ -342,25 +353,18 @@ fn mutation_error_response(error: MutationFailure) -> Response {
 
 pub(crate) fn build_mutable_rows_html(
     records: &[<rullst_orm::RullstDatabase as sqlx::Database>::Row],
-    columns: &[StudioColumn],
+    schema: &StudioTableSchema,
     table: &str,
 ) -> String {
-    let column_names = columns
-        .iter()
-        .map(|column| column.name.clone())
-        .collect::<Vec<_>>();
-    let primary_keys = columns
-        .iter()
-        .enumerate()
-        .filter_map(|(index, column)| column.primary_key.then_some(index))
-        .collect::<Vec<_>>();
-    let supports_mutations = !primary_keys.is_empty()
-        && primary_keys
+    let columns = &schema.columns;
+    if !schema.supports_mutations() {
+        let column_names = columns
             .iter()
-            .all(|index| columns[*index].kind.is_editable());
-    if !supports_mutations {
+            .map(|column| column.name.clone())
+            .collect::<Vec<_>>();
         return super::super::db::build_rows_html(records, &column_names);
     }
+    let primary_keys = schema.primary_key_indices();
     if records.is_empty() {
         return format!(
             "<tr><td colspan=\"{}\" class=\"px-6 py-16 text-center text-sm text-slate-500 font-medium bg-slate-900/20\">No records found inside this table.</td></tr>",
@@ -384,6 +388,18 @@ pub(crate) fn build_mutable_rows_html(
                 "<td class=\"px-6 py-4 text-sm truncate max-w-xs {class}\">{}</td>",
                 escape_html_attr(&value)
             );
+        }
+
+        // A NULL key cell renders as the text `NULL`, which would bind as a
+        // different text key. Such rows stay read-only.
+        if primary_keys
+            .iter()
+            .any(|index| matches!(row.try_get::<Option<String>, _>(*index), Ok(None)))
+        {
+            html.push_str(
+                "<td class=\"px-6 py-4 text-xs text-slate-500\">Read-only: NULL key</td></tr>",
+            );
+            continue;
         }
 
         let mut primary_inputs = String::new();
