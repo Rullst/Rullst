@@ -5,6 +5,13 @@ the request and run `validator` constraints before the handler is called.
 Invalid payloads become bounded `400` or `422` responses; HTMX requests receive
 an HTML error fragment and other clients receive JSON.
 
+A body that cannot be parsed (wrong content type, oversized, malformed or with
+an unknown enum variant) gets a fixed `400` message such as "The submitted data
+could not be read or has an invalid format." The deserializer's own text can
+echo request input, so it is logged at `debug` level on the
+`rullst::validation` target and not returned. Every message and field name in
+the HTMX fragment is HTML-escaped, including custom validator messages.
+
 ---
 
 ## Step 1: Define a validated DTO
