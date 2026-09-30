@@ -167,6 +167,63 @@ async fn redis_queue_exercises_recovery_failure_requeue_and_rejection_contracts(
 }
 
 #[tokio::test]
+async fn redis_stale_claims_cannot_finish_a_reclaimed_job() {
+    let Some((_container, redis_url)) = live_redis().await else {
+        return;
+    };
+    let driver = RedisDriver::new(redis_url)
+        .expect("Redis queue configuration")
+        .try_with_namespace(unique_namespace("fencing"))
+        .expect("isolated queue namespace");
+
+    driver
+        .push("fenced", "job", r#"{"step":1}"#)
+        .await
+        .expect("push fenced job");
+    let stale = driver.pop().await.expect("claim").expect("job");
+    assert_eq!(driver.recover_stalled(Duration::ZERO).await.unwrap(), 1);
+    let current = driver.pop().await.expect("reclaim").expect("job");
+    assert_eq!(current.attempts, stale.attempts + 1);
+
+    assert!(
+        driver
+            .mark_complete_attempt(&stale.id, stale.attempts)
+            .await
+            .is_err()
+    );
+    assert!(
+        driver
+            .mark_failed_attempt(&stale.id, stale.attempts, "stale")
+            .await
+            .is_err()
+    );
+    assert!(
+        driver
+            .requeue_attempt(&stale.id, stale.attempts, "stale")
+            .await
+            .is_err()
+    );
+    driver
+        .requeue_attempt(&current.id, current.attempts, "current")
+        .await
+        .expect("requeue the current claim");
+
+    let latest = driver.pop().await.expect("claim").expect("job");
+    assert!(
+        driver
+            .mark_complete_attempt(&latest.id, current.attempts)
+            .await
+            .is_err()
+    );
+    driver
+        .mark_complete_attempt(&latest.id, latest.attempts)
+        .await
+        .expect("complete the current claim");
+    assert_eq!(driver.pending_count().await.expect("pending count"), 0);
+    assert!(driver.pop().await.expect("empty queue").is_none());
+}
+
+#[tokio::test]
 async fn redis_configuration_and_connection_failures_are_typed() {
     assert!(RedisDriver::new("not a redis URL").is_err());
     let driver = RedisDriver::new("redis://127.0.0.1:1")
