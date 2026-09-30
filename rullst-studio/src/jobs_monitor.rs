@@ -15,6 +15,10 @@ struct HorizonState {
     queue: Queue,
 }
 
+/// Number of most recent queue records in one snapshot. Status counts derived
+/// from it describe this window, not the whole queue.
+const SNAPSHOT_RECORDS: u32 = 50;
+
 /// Raw queue routes, without an access boundary.
 ///
 /// [`crate::Studio::with_horizon`] mounts them behind the verified local
@@ -55,7 +59,7 @@ async fn dashboard_home(State(state): State<Arc<HorizonState>>) -> Response {
 }
 
 async fn jobs_table(State(state): State<Arc<HorizonState>>) -> Response {
-    match state.queue.list_all_jobs(50).await {
+    match state.queue.list_all_jobs(SNAPSHOT_RECORDS).await {
         Ok(jobs) => Html(render_table_rows(&jobs)).into_response(),
         Err(error) => queue_error_response(error),
     }
@@ -102,7 +106,7 @@ async fn purge_completed_history(
 }
 
 async fn load_snapshot(queue: &Queue) -> Result<(Vec<QueuedJobDetail>, u64), QueueError> {
-    let jobs = queue.list_all_jobs(50).await?;
+    let jobs = queue.list_all_jobs(SNAPSHOT_RECORDS).await?;
     let pending = queue.pending_count().await?;
     Ok((jobs, pending))
 }
@@ -140,16 +144,19 @@ fn render_dashboard_layout(
   <h1>Rullst queue snapshot</h1>
   <p>Current values from the queue supplied to this local Studio instance. They do not prove that a worker is running.</p>
   <dl>
-    <dt>Pending jobs</dt><dd>{pending}</dd>
-    <dt>Jobs marked processing</dt><dd>{processing}</dd>
-    <dt>Jobs marked failed</dt><dd>{failed}</dd>
-    <dt>Completed records retained by this backend</dt><dd>{completed}</dd>
+    <dt>Pending jobs in the queue</dt><dd>{pending}</dd>
   </dl>
-  <form method="post" action="/studio/jobs/purge-failed"><button type="submit">Purge failed jobs</button></form>
-  <form method="post" action="/studio/jobs/purge-completed"><button type="submit">Purge completed history</button></form>
+  <p>The status counts below cover only the {SNAPSHOT_RECORDS} most recent records, not the whole queue.</p>
+  <dl>
+    <dt>Marked processing among the {SNAPSHOT_RECORDS} most recent records</dt><dd>{processing}</dd>
+    <dt>Marked failed among the {SNAPSHOT_RECORDS} most recent records</dt><dd>{failed}</dd>
+    <dt>Completed among the {SNAPSHOT_RECORDS} most recent records</dt><dd>{completed}</dd>
+  </dl>
+  <form method="post" action="/studio/jobs/purge-failed"><button type="submit">Purge every failed job</button></form>
+  <form method="post" action="/studio/jobs/purge-completed"><button type="submit">Purge all completed history</button></form>
   <p><a href="/studio/jobs">Refresh snapshot</a> · <a href="/studio">Back to Studio</a></p>
   <table>
-    <caption>Up to 50 recent queue records</caption>
+    <caption>Up to {SNAPSHOT_RECORDS} most recent queue records</caption>
     <thead><tr><th>ID / type</th><th>Payload preview</th><th>Status</th><th>Attempts</th><th>Created</th><th>Action</th></tr></thead>
     <tbody>{table_rows}</tbody>
   </table>
@@ -348,10 +355,10 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         let body = to_bytes(response.into_body(), 128 * 1024).await.unwrap();
         let html = String::from_utf8(body.to_vec()).unwrap();
-        assert!(html.contains("Completed records retained by this backend"));
+        assert!(html.contains("Completed among the 50 most recent records"));
         assert!(html.contains("<code>complete…</code>"));
         assert!(html.contains("<dd>1</dd>"));
-        assert!(html.contains("Purge completed history"));
+        assert!(html.contains("Purge all completed history"));
 
         let purge = app
             .clone()
@@ -390,10 +397,18 @@ mod tests {
     }
 
     #[test]
-    fn dashboard_reports_completed_records_without_inventing_history() {
+    fn dashboard_labels_windowed_status_counts_as_such() {
         let html = render_dashboard_layout(2, 1, 3, 4, String::new());
 
-        assert!(html.contains("Completed records retained by this backend"));
-        assert!(html.contains("<dd>4</dd>"));
+        // Only the pending count covers the whole queue; the status counts
+        // come from the snapshot window, while purges remove every match.
+        assert!(html.contains("<dt>Pending jobs in the queue</dt><dd>2</dd>"));
+        assert!(html.contains("<dt>Marked failed among the 50 most recent records</dt><dd>1</dd>"));
+        assert!(
+            html.contains("<dt>Marked processing among the 50 most recent records</dt><dd>3</dd>")
+        );
+        assert!(html.contains("<dt>Completed among the 50 most recent records</dt><dd>4</dd>"));
+        assert!(html.contains("Purge every failed job"));
+        assert!(!html.contains("<dt>Jobs marked failed</dt>"));
     }
 }

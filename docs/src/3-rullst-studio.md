@@ -115,7 +115,9 @@ overhead.
   routes.
 - The request SSE records method, URI, status and latency. It deliberately does
   not capture bodies or headers, which commonly contain credentials and PII.
-- The jobs view lists the bounded snapshot exposed by a supplied queue. SQLite
+- The jobs view lists the 50 most recent records exposed by a supplied queue;
+  its processing/failed/completed counts describe only that window, while the
+  pending count and the purge actions cover the whole queue. SQLite
   deletes successful rows by default; an application can explicitly select
   `Queue::sqlite_with_completed_history` for bounded, transactionally pruned
   completion history and can purge that history from Studio. Retained payloads

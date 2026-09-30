@@ -2964,7 +2964,9 @@ sending.
   never alone or from a same-site document. This is a local
   DNS-rebinding/CSRF boundary, not production authentication.
 * Queue, revenue, security and telemetry pages report only values supplied by
-  their configured process-local source. Unsupported driver operations and
+  their configured process-local source. The queue page labels its status
+  counts as covering only its 50 most recent records; the pending count and
+  purges cover the whole queue. Unsupported driver operations and
   disconnected integrations remain errors or `Unavailable`. The standalone
   migration surface provides CLI guidance and returns `501` from legacy
   mutation handlers because no migration/seeder registry is installed.
