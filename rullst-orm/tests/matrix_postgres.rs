@@ -44,6 +44,14 @@ enum AccountStatus {
 }
 
 #[cfg(feature = "strict-postgres")]
+#[derive(rullst_orm::Enum, Debug, Clone, Copy, PartialEq, Eq)]
+#[rullst_enum(type_name = "pg_tx_account_status", rename_all = "snake_case")]
+enum TransactionalAccountStatus {
+    Pending,
+    Settled,
+}
+
+#[cfg(feature = "strict-postgres")]
 struct ConflictingAccountStatus;
 
 #[cfg(feature = "strict-postgres")]
@@ -257,12 +265,53 @@ async fn exercise_native_enum() {
         "an existing PostgreSQL enum with different labels must fail closed"
     );
 
-    Schema::drop_if_exists("pg_native_enum_accounts")
+    // Enum DDL joins the managed transaction: a rollback also removes the
+    // type, and dropping it after its table in one transaction cannot wait on
+    // that transaction's own table lock from a second connection.
+    let rolled_back = rullst_orm::Orm::transaction(|_| {
+        Box::pin(async {
+            Schema::create("pg_tx_enum_accounts", |table: &mut Blueprint| {
+                table.id();
+                table
+                    .native_enum::<TransactionalAccountStatus>("status")
+                    .not_null();
+            })
+            .await?;
+            Err::<(), rullst_orm::Error>(rullst_orm::Error::Validation(
+                "roll back the enum schema".to_string(),
+            ))
+        })
+    })
+    .await;
+    assert!(rolled_back.is_err());
+    assert_eq!(
+        postgres_type_count("pg_tx_account_status").await,
+        0,
+        "a rolled-back Schema::create must not leave its enum type behind"
+    );
+
+    let dropped = tokio::time::timeout(
+        std::time::Duration::from_secs(20),
+        rullst_orm::Orm::transaction(|_| {
+            Box::pin(async {
+                Schema::drop_if_exists("pg_native_enum_accounts").await?;
+                Schema::drop_native_enum::<AccountStatus>().await
+            })
+        }),
+    )
+    .await
+    .expect("dropping the enum after its table in one transaction must not hang");
+    dropped.expect("PostgreSQL enum table and type should be dropped together");
+    assert_eq!(postgres_type_count("pg_account_status").await, 0);
+}
+
+#[cfg(feature = "strict-postgres")]
+async fn postgres_type_count(type_name: &str) -> i64 {
+    sqlx::query_scalar("SELECT COUNT(*) FROM pg_type WHERE typname = $1")
+        .bind(type_name)
+        .fetch_one(Orm::pool().expect("PostgreSQL pool"))
         .await
-        .expect("PostgreSQL enum table should be dropped");
-    Schema::drop_native_enum::<AccountStatus>()
-        .await
-        .expect("unused PostgreSQL enum type should be dropped");
+        .expect("inspect PostgreSQL types")
 }
 
 #[cfg(not(feature = "strict-postgres"))]

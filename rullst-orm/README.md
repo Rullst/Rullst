@@ -413,7 +413,10 @@ the exact same ordered labels or schema creation fails. MySQL/MariaDB store the
 labels in the table's inline `ENUM`; SQLite enforces them through `TEXT CHECK`.
 Adding, removing or reordering labels is an explicit reviewed migration. Drop
 every dependent table before calling `Schema::drop_native_enum::<T>()` on
-PostgreSQL; the method is a validated no-op on the other backends.
+PostgreSQL; the method is a validated no-op on the other backends. The enum
+type creation, its label check and `drop_native_enum` use the active
+`Orm::transaction` or test sandbox like the table DDL, so they roll back with it
+and the type can be dropped right after its tables in the same transaction.
 
 `table.timestamps()` adds nullable `created_at`/`updated_at` `TEXT` columns
 that default to the current timestamp. MySQL/MariaDB reject a literal default
