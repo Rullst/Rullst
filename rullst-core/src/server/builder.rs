@@ -484,21 +484,7 @@ impl Server {
         app = super::dev_reload::mount(app, is_dev, std::env::var("RULLST_DEV_GENERATION").ok());
 
         app = app.layer(axum::middleware::from_fn(
-            |req: axum::extract::Request, next: axum::middleware::Next| async move {
-                let method = req.method().to_string();
-                let path = req.uri().path().to_string();
-                let start = std::time::Instant::now();
-                let res = next.run(req).await;
-                let status = res.status().as_u16();
-                let elapsed = start.elapsed().as_secs_f64() * 1000.0;
-                if !path.starts_with("/_rullst_hmr") {
-                    println!(
-                        "[HTTP] {} {} -> {} ({:.2} ms)",
-                        method, path, status, elapsed
-                    );
-                }
-                res
-            },
+            super::console::access_log_middleware,
         ));
 
         if std::path::Path::new("static").exists() {
@@ -642,10 +628,10 @@ pub async fn shutdown_signal() {
 
     tokio::select! {
         _ = ctrl_c => {
-            println!("\n🛑 [Rullst Shutdown] Received SIGINT (Ctrl+C). Draining in-flight requests...");
+            super::console::stdout_line(format_args!("\n🛑 [Rullst Shutdown] Received SIGINT (Ctrl+C). Draining in-flight requests..."));
         },
         _ = terminate => {
-            println!("\n🛑 [Rullst Shutdown] Received SIGTERM. Draining in-flight requests...");
+            super::console::stdout_line(format_args!("\n🛑 [Rullst Shutdown] Received SIGTERM. Draining in-flight requests..."));
         },
     }
 }
