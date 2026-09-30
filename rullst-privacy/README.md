@@ -177,7 +177,9 @@ rights workflows across the rest of an application remain separate.
 - Opt-in authenticated challenge transport with bounded HMAC-SHA256 keys and
   explicit rotation, for restoring challenges on another application instance.
 - At-most-4-KiB versioned JSON attestations, Ed25519 signatures, explicit issuer
-  capabilities and up to eight pinned keys for rotation.
+  capabilities and up to eight pinned keys for rotation. Pinning a small-order
+  or non-canonical key encoding (for example a zeroed or placeholder key) is a
+  configuration error, because such a key would accept forged signatures.
 - Declared, estimated, verified-attribute and offline-mock assurance remain
   distinct. Below-margin facial results require an alternative method.
 - Asynchronous one-use consumption through a static-dispatch replay store; production rejects
