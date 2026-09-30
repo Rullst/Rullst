@@ -260,3 +260,58 @@ async fn reopening_a_symlink_is_rejected_and_initialization_never_overwrites() {
         Err(MediaError::Configuration)
     ));
 }
+
+#[tokio::test]
+async fn tombstones_keep_no_digest_of_the_deleted_metadata() {
+    let fixture = Fixture::new().await;
+    let dir = tempfile::tempdir().unwrap();
+    let app = service(&fixture, &dir, TestClock::new(), 4).await;
+    let auth = Auth::new();
+    let (teacher, scope) = (reference("teacher"), scope());
+    let (deleted, discarded) = (reference("deleted"), reference("discarded"));
+    let created = app
+        .create(&auth, &teacher, &scope, &deleted, metadata())
+        .await
+        .unwrap();
+    app.delete(&auth, &teacher, &scope, &deleted, created.revision)
+        .await
+        .unwrap();
+    fixture.remote.lock().unwrap().reject_create = true;
+    app.create(&auth, &teacher, &scope, &discarded, metadata())
+        .await
+        .unwrap_err();
+    let stopped = app.get(&auth, &teacher, &scope, &discarded).await.unwrap();
+    app.discard_failed(&auth, &teacher, &scope, &discarded, stopped.revision)
+        .await
+        .unwrap();
+    // An unsalted digest of the title and description would let a reader of
+    // the store or a backup confirm guesses of the deleted metadata.
+    let original: String = ring::digest::digest(
+        &ring::digest::SHA256,
+        &serde_json::to_vec(&metadata()).unwrap(),
+    )
+    .as_ref()
+    .iter()
+    .map(|byte| format!("{byte:02x}"))
+    .collect();
+    let mut db = connection(&dir).await;
+    let digests: Vec<String> =
+        sqlx::query_scalar("SELECT json_extract(body,'$.create_digest') FROM media_assets")
+            .fetch_all(&mut db)
+            .await
+            .unwrap();
+    assert_eq!(digests.len(), 2);
+    assert!(digests.iter().all(|digest| *digest != original));
+    db.close().await.unwrap();
+    // Both creation IDs stay retired until purge: a replayed create conflicts.
+    fixture.remote.lock().unwrap().reject_create = false;
+    for id in [&deleted, &discarded] {
+        assert_eq!(
+            app.create(&auth, &teacher, &scope, id, metadata())
+                .await
+                .unwrap_err(),
+            MediaError::Conflict
+        );
+    }
+    app.close().await;
+}

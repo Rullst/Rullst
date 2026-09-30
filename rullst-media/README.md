@@ -201,7 +201,10 @@ an explicit reviewed migration, not silent opening of unrelated state.
 `purge_deleted` removes at most 100 confirmed or discarded local tombstones per
 authorized call, with a cutoff at least 24 hours old. It preserves active and
 pending assets. Once purged, **retire the creation ID**: its idempotency/replay
-memory ends there. Deletion clears local metadata before this retention step.
+memory ends there. Deletion, or discarding a stopped create, clears local
+metadata before this retention step and replaces the creation digest, an
+unsalted hash of the original title and description, with a fixed tombstone
+value. Until purge, `create` with that ID returns `Conflict`.
 This is not proof of physical disk, provider backup or CDN erasure. Restore
 policy must address stale permissions, keys, retired IDs and provider
 reconciliation.

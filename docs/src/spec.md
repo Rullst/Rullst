@@ -190,7 +190,8 @@ library and capacity, refuses clock rollback and requires trusted local files,
 backup policy and operator-owned keys. Multi-host replication is separate work.
 Only confirmed-deleted or explicitly discarded local tombstones may be purged,
 in batches up to 100 and after at least 24 hours; the host must retire purged
-creation IDs because their idempotency memory ends at that point. Provider backups/cache erasure is separate.
+creation IDs because their idempotency memory ends at that point. Tombstones
+keep no digest of the deleted title or description. Provider backups/cache erasure is separate.
 
 Creation is journaled before remote dispatch. Bunny's documented creation API
 does not supply an idempotency key: ambiguous creation must reconcile a persisted
