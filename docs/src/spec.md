@@ -428,6 +428,21 @@ PostgreSQL/MySQL contention evidence also remains open.
   its existing evaluation order and escaping behavior.
 * **XSS Protection:** Dynamic display values in the supported `{expr}` syntax
   are HTML-escaped by the generated code.
+* **URL attributes:** Dynamic values of `href`, `src`, `action`, `formaction`,
+  `poster`, `data`, `cite`, `background`, `codebase`, `icon`, `longdesc`,
+  `manifest` and `usemap` (names matched case-insensitively) are also checked
+  at runtime. A `javascript:` or `vbscript:` scheme, or `data:` outside `img`,
+  `audio`, `video`, `source`, `track` and `image`, renders as `#`. Leading C0
+  controls or spaces and embedded tab/LF/CR are ignored while reading the
+  scheme, as browsers do. Static attribute strings are author-owned and
+  unchanged; entity references inside an explicit `RawHtml` value are not
+  decoded before the check.
+* **Trusted-only attribute contexts:** Dynamic `style` values are only
+  HTML-escaped. They cannot leave the attribute and supported browsers do not
+  run script from CSS, but untrusted CSS can restyle or overlay the page and
+  load remote resources, so pass only trusted or validated values. Dynamic
+  event-handler (`on*`) values are JavaScript and escaping cannot make
+  interpolated data safe there.
 * **Raw Unescaped HTML:** Explicitly bypassed using the wrapper `rullst::html::RawHtml(String)`.
 * **Memoize keys:** `#[memoize]` keys its process-local cache entries by the
   function's `module_path!()`, name and attribute location plus the serialized
