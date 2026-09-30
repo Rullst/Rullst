@@ -571,7 +571,11 @@ bare address to suppression, the disposable-domain check and every transport,
 so a display name is not delivered. Lists, groups, comments, quoted local parts,
 domain literals and malformed brackets are rejected with
 `MailError::ValidationError`. Suppression events and lookups use the same
-parser; anything it rejects fails closed. The optional `from` sender is parsed
+parser; anything it rejects fails closed. Suppression keys compare the domain
+case-insensitively and key an internationalized domain by its IDNA A-label
+(`bücher.de` and `xn--bcher-kva.de` share one entry); a non-ASCII local part
+cannot be keyed, so `SuppressionGuard` rejects it with `ValidationError` rather
+than reporting `SuppressionUnavailable`. The optional `from` sender is parsed
 with it as well and keeps its display name: Resend, Postmark, SES and SMTP send
 it as written, SendGrid, Mailjet, Mailtrap and SendPulse receive the address
 and name as separate fields, and ACS receives only the bare address.
