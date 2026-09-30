@@ -22,6 +22,7 @@ async fn transfer_fixture(Path(id): Path<String>, headers: HeaderMap) -> Json<Va
 }
 
 async fn start_fixture() -> (String, tokio::task::JoinHandle<()>) {
+    // rullst-access: public — loopback Wise API fixture for these tests only.
     let app = Router::new().route("/v1/transfers/{id}", get(transfer_fixture));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
