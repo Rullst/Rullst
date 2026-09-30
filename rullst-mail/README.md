@@ -46,7 +46,7 @@ and pending hosted/package admission. The facade feature is `mail-postgres`.
   - **Log** (`LogDriver`) — Terminal and disk file logging (`storage/logs/mail.log`).
 - **🔀 Typed Circuit Breaker & Automatic Failover (`FailoverDriver`):** Fails over only for transport, HTTP 5xx, provider rate-limit, or transient SMTP failures; permanent message/configuration/provider rejection stays on the original error path. Structured tracing exposes bounded decision fields without provider bodies.
 - **🏢 Auth-bound Multi-Tenancy Resolver (`TenantMailResolver`):** Select isolated in-process drivers directly from a trusted Core `TenantContext`; registry failures and invalid IDs fail closed.
-- **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, SendGrid, Postmark, native SES and SMTP serialize the same owned-byte model; transports copy or Base64-encode as required.
+- **📎 Bounded Attachments & Inline CID Assets:** The shared pre-flight contract caps count and byte size, validates safe basenames/MIME/CID metadata and requires every unique inline CID to be referenced by HTML. Resend, SendGrid, Postmark, native SES, the SES bearer proxy and SMTP serialize the same owned-byte model; transports copy or Base64-encode as required.
 - **🔬 Opt-in Attachment Inspection (`AttachmentInspectionGuard`):** A strict bounded local policy rejects executable magic, spoofed known types, active PDF/SVG, secrets and unsafe text links before transport. A static `AttachmentInspector` adapter boundary supports an independently operated production scanner.
 - **🚫 Durable Recipient Suppression (`sqlite`):** `SuppressionGuard` checks manual, hard-bounce and spam-complaint state before transport. The SQLite store binds verified provider/event identities, detects conflicting replay, enforces immutable quotas transactionally and survives restart or multiple local processes.
 - **📊 Secret-Minimized Delivery Observability:** `ObservedMailDriver` records only a bounded provider label, terminal outcome, latency, attachment count and scheduling/tenant booleans through a non-failing static observer.
@@ -386,7 +386,13 @@ aws-config = "1.11"
 `AWS_SECRET_ACCESS_KEY` exist. `AWS_SESSION_TOKEN` is accepted for temporary
 credentials. Without those variables, the existing empty/`mock_*` token rule
 selects the offline fixture; a real `AWS_SES_BEARER_TOKEN` is usable only with
-an explicit trusted proxy URL.
+an explicit trusted proxy URL. The proxy receives the SES v2 `SendEmail` JSON
+shape, including every attachment and inline CID asset as
+`Content.Simple.Attachments` (Base64 `RawContent`, `FileName`, `ContentType`,
+`ContentDisposition` and `ContentId`). It is checked against the same SES field
+limits and 40 MiB encoded estimate as native mode before any request, and
+failures return `MailError::ValidationError`. The proxy must forward
+attachments or reject the request; Rullst never drops them.
 
 Long-running services should inject a refreshing credential provider or a
 caller-built SDK config instead of freezing credentials:
