@@ -19,6 +19,7 @@ mod paddle_portal;
 mod paddle_subscription;
 #[cfg(test)]
 mod paddle_test_support;
+mod paddle_webhook;
 pub mod picpay;
 pub mod polar;
 mod polar_checkout;

@@ -174,6 +174,15 @@ retry an uncertain creation. `retrieve_bound_customer` and
 `retrieve_transaction_checkout` reconcile independently recovered known IDs
 without mutation or email-based ownership claims.
 
+The legacy `handle_webhook` (used by the canonical middleware) normalizes only
+documented `subscription.*` lifecycle events: created, updated, imported,
+activated, resumed, trialing, past_due, paused and canceled. Transaction,
+adjustment, customer, price, address and other signed events return
+`PayloadParseError` instead of becoming subscription state. It requires Paddle
+`sub_`, `ctm_` and `pri_` identities, maps only Paddle subscription statuses
+and rejects an event whose status disagrees with its type. `plan_id` remains
+the first item's price, and the result carries no owner binding.
+
 `verify_checkout_subscription` binds signed events to the request and persisted
 transaction receipt. The first `subscription.created` must carry the matching
 transaction ID. Later events require a receipt with the already-bound

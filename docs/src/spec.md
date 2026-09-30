@@ -2367,6 +2367,15 @@ sending.
   Email is optional contact data; durable owner binding, event ordering and
   reconciliation remain application responsibilities. Lifecycle activation is
   not a receipt proving settlement of an invoice.
+* Paddle's legacy `handle_webhook`, which the canonical middleware calls,
+  normalizes only documented `subscription.*` lifecycle events (created,
+  updated, imported, activated, resumed, trialing, past_due, paused and
+  canceled). Transaction, adjustment, customer, price, address and other signed
+  events return `PayloadParseError`. It requires Paddle `sub_`, `ctm_` and
+  `pri_` identities, maps only Paddle's subscription statuses, rejects
+  event/status disagreement and validates a present billing-period end.
+  `plan_id` remains the first item's price. This event carries no owner or
+  attempt binding; `verify_checkout_subscription` provides that contract.
 * Lemon Squeezy normalization accepts only explicit subscription lifecycle
   events containing a `subscriptions` object, positive numeric identities and
   a valid provider state. It binds the store when `with_store_id` is configured
