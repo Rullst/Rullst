@@ -210,3 +210,56 @@ async fn global_memoize_cache_is_safe_inside_a_tokio_runtime() {
         Some("runtime_mem_val")
     );
 }
+
+mod memoized_admin {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    pub(super) static CALLS: AtomicUsize = AtomicUsize::new(0);
+
+    #[crate::memoize]
+    pub(super) fn sidebar(user_id: i64) -> String {
+        CALLS.fetch_add(1, Ordering::SeqCst);
+        format!("admin sidebar for {user_id}")
+    }
+}
+
+mod memoized_public {
+    #[crate::memoize]
+    pub(super) fn sidebar(user_id: i64) -> String {
+        format!("public sidebar for {user_id}")
+    }
+}
+
+struct AdminWidget;
+struct PublicWidget;
+
+impl AdminWidget {
+    #[crate::memoize]
+    fn render(id: i64) -> String {
+        format!("admin widget {id}")
+    }
+}
+
+impl PublicWidget {
+    #[crate::memoize]
+    fn render(id: i64) -> String {
+        format!("public widget {id}")
+    }
+}
+
+#[test]
+fn memoize_never_shares_entries_between_same_named_functions() {
+    use std::sync::atomic::Ordering;
+
+    assert_eq!(memoized_admin::sidebar(7), "admin sidebar for 7");
+    assert_eq!(memoized_public::sidebar(7), "public sidebar for 7");
+    // Same module, same name and arguments, different `impl` blocks.
+    let _widgets = (AdminWidget, PublicWidget);
+    assert_eq!(AdminWidget::render(7), "admin widget 7");
+    assert_eq!(PublicWidget::render(7), "public widget 7");
+
+    // Each function still reuses its own cached result.
+    let calls = memoized_admin::CALLS.load(Ordering::SeqCst);
+    assert_eq!(memoized_admin::sidebar(7), "admin sidebar for 7");
+    assert_eq!(memoized_admin::CALLS.load(Ordering::SeqCst), calls);
+}

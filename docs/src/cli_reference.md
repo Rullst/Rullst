@@ -793,6 +793,16 @@ Scaffolds a 2FA TOTP Multi-Factor Authentication controller at `src/controllers/
 
 ## 🗄️ 3. Database and Migrations (`db:*`)
 
+Every `db:*` command (including `cargo run -- db:migrate` and a deployed
+binary's `db:migrate` job) and `studio` select the database exactly like
+`Server`: the process `DATABASE_URL`, then `DATABASE_URL` in `./.env` (which
+never overrides a variable already set in the process), then `[database].url`
+in `Rullst.toml`, read with a TOML parser. A `Server::with_db` URL applies when
+`Server::run` intercepts the command. Without a configured database, a `db:*`
+command exits with status 1 instead of creating a SQLite file. Configuration
+errors (reported without file content) and database initialization failures
+also exit with status 1.
+
 ### `cargo rullst db:migrate`
 Analyzes the internal `_rullst_migrations` table in your database and executes all SQL files in the `migrations/` directory that haven't been run yet.
 

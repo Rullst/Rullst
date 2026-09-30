@@ -9,6 +9,8 @@ mod billable_tests;
 mod html_parser;
 mod live_parser;
 #[cfg(test)]
+mod memoize_tests;
+#[cfg(test)]
 mod require_role_tests;
 mod server_function;
 
@@ -154,9 +156,17 @@ pub fn live_event(_attr: TokenStream, item: TokenStream) -> TokenStream {
 /// A macro for intelligent caching of component renders or database queries.
 /// It wraps a function, caching the returned output based on the function's arguments.
 /// If the function is called again with the same arguments, it returns the cached HTML immediately.
+///
+/// Cache keys identify the annotated function by `module_path!()`, its name and
+/// the attribute's `file!()`/`line!()`/`column!()`, so same-named functions in
+/// different modules, crates or `impl` blocks never share cached results.
 #[proc_macro_attribute]
 pub fn memoize(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input_fn = parse_macro_input!(item as syn::ItemFn);
+    expand_memoize(&input_fn).into()
+}
+
+fn expand_memoize(input_fn: &syn::ItemFn) -> proc_macro2::TokenStream {
     let vis = &input_fn.vis;
     let sig = &input_fn.sig;
     let name = &sig.ident;
@@ -178,10 +188,26 @@ pub fn memoize(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     }
 
-    let expanded = quote::quote! {
+    quote::quote! {
         #vis fn #name(#(#arg_names: #arg_types),*) -> #output_type {
-            // Generate a cache key based on the function name and serialized arguments
-            let cache_key = format!("{}:{}", stringify!(#name), serde_json::json!([#(#arg_names),*]).to_string());
+            // The key combines a per-function identity with the serialized
+            // arguments. `module_path!()` separates modules and crates; the
+            // attribute's location separates same-named associated functions.
+            let cache_key = format!(
+                "{}:{}",
+                concat!(
+                    module_path!(),
+                    "::",
+                    stringify!(#name),
+                    "@",
+                    file!(),
+                    ":",
+                    line!(),
+                    ":",
+                    column!()
+                ),
+                serde_json::json!([#(#arg_names),*]).to_string()
+            );
 
             // Check if it exists in the global Rullst memory cache
             if let Some(cached) = rullst::cache::memory::get(&cache_key) {
@@ -202,9 +228,7 @@ pub fn memoize(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
             result
         }
-    };
-
-    expanded.into()
+    }
 }
 
 /// Legacy compatibility marker that preserves the annotated function unchanged.
