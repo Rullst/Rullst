@@ -164,6 +164,9 @@ impl Message {
     }
 
     /// Reads and attaches a local file from disk.
+    ///
+    /// Like [`Attachment::from_file`], it reads at most `MAX_ATTACHMENT_BYTES`
+    /// and blocks the calling thread while it does.
     pub fn attach_file(
         mut self,
         path: impl AsRef<std::path::Path>,
