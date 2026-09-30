@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790755960310,
+  "lastUpdate": 1790758565763,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Rullst AI Benchmark": [
@@ -11121,6 +11121,54 @@ window.BENCHMARK_DATA = {
             "name": "ai_pii_masking/mask_pii",
             "value": 387,
             "range": "± 1",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e3b9e079eaa5aac12ab674c20d8f766309e9c3d2",
+          "message": "Merge pull request #344 from Rullst/fix/v13-ai-iot-review-fixes\n\nfix(ai,iot): CPF/CNPJ masking, system messages, replay-safe chat memory and block 5 lows",
+          "timestamp": "2026-09-30T05:33:59-03:00",
+          "tree_id": "eefd617604fc918e10594dfc3e03c54b1e2fb573",
+          "url": "https://github.com/Rullst/Rullst/commit/e3b9e079eaa5aac12ab674c20d8f766309e9c3d2"
+        },
+        "date": 1790758564794,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "ai_tool_registry/export_openai_schema",
+            "value": 1588,
+            "range": "± 62",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/message_json_serialization",
+            "value": 369,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_message_context/estimate_context_tokens",
+            "value": 2,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "ai_pii_masking/mask_pii",
+            "value": 373,
+            "range": "± 6",
             "unit": "ns/iter"
           }
         ]
