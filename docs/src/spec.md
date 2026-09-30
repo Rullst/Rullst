@@ -2077,7 +2077,11 @@ Billing adapters implement `BillingProvider`; the Wise payout adapter implements
 the separate `PayoutProvider` contract. Its empty/`mock_*` offline mock issues
 hashed `wise_tr_mock_` transfer IDs that do not embed the recipient email and
 reports status only for those IDs; other transfer IDs fail with
-`UnsupportedOperation` rather than a fabricated `OutgoingPaymentSent`.
+`UnsupportedOperation` rather than a fabricated `OutgoingPaymentSent`. A live
+status read requires a positive decimal transfer ID, binds the response `id` to
+it and parses only documented transfer states: a missing, `unknown` or other
+undocumented state is a provider contract failure, and `bounced_back` or
+`charged_back` returns `UnsupportedOperation` instead of `Processing`.
 Individual billing operations may still return `Unsupported` when a provider
 adapter has no reviewed implementation:
 ```rust,no_run

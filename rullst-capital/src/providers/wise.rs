@@ -1,9 +1,10 @@
-use super::{PayoutEvent, PayoutProvider, PayoutStatus};
-use crate::error::CapitalError;
+use super::{PayoutEvent, PayoutProvider, PayoutStatus, WiseTransferState};
+use crate::error::{CapitalError, ProviderFailure};
 use async_trait::async_trait;
 use serde_json::Value;
 
 const MOCK_TRANSFER_PREFIX: &str = "wise_tr_mock_";
+const WISE_API_BASE: &str = "https://api.wise.com";
 
 // Deterministic offline transfer ID that does not embed the recipient's email.
 fn mock_transfer_id(recipient_email: &str, amount_cents: u64, currency: &str) -> String {
@@ -114,6 +115,12 @@ impl PayoutProvider for WiseProvider {
     }
 
     async fn get_transfer_status(&self, transfer_id: &str) -> Result<PayoutStatus, CapitalError> {
+        legacy_payout_status(self.transfer_state(transfer_id).await?)
+    }
+}
+
+impl WiseProvider {
+    async fn transfer_state(&self, transfer_id: &str) -> Result<WiseTransferState, CapitalError> {
         if transfer_id.trim().is_empty() {
             return Err(CapitalError::SubscriptionError(
                 "Transfer ID cannot be empty".to_string(),
@@ -124,7 +131,7 @@ impl PayoutProvider for WiseProvider {
             // The offline mock reports only on transfers it issued itself; it
             // never claims that a real Wise transfer was sent.
             if transfer_id.starts_with(MOCK_TRANSFER_PREFIX) {
-                return Ok(PayoutStatus::OutgoingPaymentSent);
+                return Ok(WiseTransferState::OutgoingPaymentSent);
             }
             return Err(CapitalError::UnsupportedOperation(
                 "the offline Wise mock cannot report the status of a transfer it did not issue"
@@ -132,25 +139,65 @@ impl PayoutProvider for WiseProvider {
             ));
         }
 
-        crate::subscription::validate_provider_subscription_id(transfer_id)?;
-        let client = crate::providers::http_client()?;
-        let body: Value = crate::providers::send_http_json(
-            client
-                .get(format!("https://api.wise.com/v1/transfers/{}", transfer_id))
-                .bearer_auth(&self.api_token),
+        transfer_state_at(&self.api_token, WISE_API_BASE, transfer_id).await
+    }
+}
+
+/// Reads one transfer and binds the response to the requested numeric ID.
+async fn transfer_state_at(
+    api_token: &str,
+    api_base: &str,
+    transfer_id: &str,
+) -> Result<WiseTransferState, CapitalError> {
+    crate::subscription::validate_provider_subscription_id(transfer_id)?;
+    let transfer_id = transfer_id
+        .parse::<u64>()
+        .ok()
+        .filter(|id| *id > 0 && id.to_string() == transfer_id)
+        .ok_or_else(|| {
+            CapitalError::SubscriptionError(
+                "Wise transfer ID must be a positive decimal number".to_string(),
+            )
+        })?;
+    let client = crate::providers::http_client()?;
+    let body: Value = crate::providers::send_http_json(
+        client
+            .get(format!("{api_base}/v1/transfers/{transfer_id}"))
+            .bearer_auth(api_token),
+        "wise",
+        "get transfer status",
+    )
+    .await?;
+    bind_transfer_state(transfer_id, &body)
+}
+
+/// A response for another transfer, or a missing or undocumented state
+/// (including Wise's `unknown`), is a contract failure, never "processing".
+fn bind_transfer_state(transfer_id: u64, body: &Value) -> Result<WiseTransferState, CapitalError> {
+    let mismatch = || {
+        CapitalError::from(ProviderFailure::contract_mismatch(
             "wise",
             "get transfer status",
-        )
-        .await?;
-
-        let status_str = body["status"].as_str().unwrap_or("processing");
-        match status_str {
-            "outgoing_payment_sent" => Ok(PayoutStatus::OutgoingPaymentSent),
-            "funds_refunded" => Ok(PayoutStatus::FundsRefunded),
-            "cancelled" => Ok(PayoutStatus::Cancelled),
-            _ => Ok(PayoutStatus::Processing),
-        }
+        ))
+    };
+    if body["id"].as_u64() != Some(transfer_id) {
+        return Err(mismatch());
     }
+    body["status"]
+        .as_str()
+        .and_then(WiseTransferState::parse)
+        .ok_or_else(mismatch)
+}
+
+/// Bounced-back and charged-back transfers failed; the coarse legacy status
+/// cannot express that, so they are reported as an error instead of in flight.
+fn legacy_payout_status(state: WiseTransferState) -> Result<PayoutStatus, CapitalError> {
+    state.payout_status().ok_or_else(|| {
+        CapitalError::UnsupportedOperation(format!(
+            "Wise transfer is {}; PayoutStatus cannot represent it and it is not in flight",
+            state.as_str()
+        ))
+    })
 }
 
 impl WiseProvider {
@@ -285,170 +332,9 @@ fn fixture_minor_units(value: &Value, currency: &str) -> Result<u64, CapitalErro
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+#[path = "wise_tests.rs"]
+mod tests;
 
-    #[tokio::test]
-    async fn test_wise_provider_payout_lifecycle() {
-        let provider = WiseProvider::new("mock_wise_token", "sec_wise123");
-        assert_eq!(provider.name(), "wise");
-
-        // 1. Send payout
-        let transfer_id = provider
-            .send_payout("beneficiary@wise.com", 15000, "USD", "Invoice 1234")
-            .await
-            .unwrap();
-        assert!(transfer_id.starts_with("wise_tr_"));
-
-        // 2. Validation errors
-        assert!(provider.send_payout("", 1000, "USD", "desc").await.is_err());
-        assert!(
-            provider
-                .send_payout("a@b.com", 0, "USD", "desc")
-                .await
-                .is_err()
-        );
-        assert!(
-            provider
-                .send_payout("a@b.com", 1000, "", "desc")
-                .await
-                .is_err()
-        );
-
-        // 3. Status
-        let status = provider.get_payout_status(&transfer_id).await.unwrap();
-        assert_eq!(status, PayoutStatus::OutgoingPaymentSent);
-        assert!(provider.get_payout_status("").await.is_err());
-
-        // 4. Webhook payload parsing
-        let payload = r#"{
-            "data": {
-                "resource": {
-                    "id": 987654321,
-                    "recipient_email": "payee@wise.com",
-                    "amount": 250.75,
-                    "currency": "EUR"
-                },
-                "current_state": "outgoing_payment_sent"
-            }
-        }"#;
-        let event = provider.parse_webhook_payload(payload.as_bytes()).unwrap();
-        assert_eq!(event.transfer_id, "987654321");
-        assert_eq!(event.recipient_email, "payee@wise.com");
-        assert_eq!(event.amount_cents, 25075);
-        assert_eq!(event.currency, "EUR");
-        assert_eq!(event.status, PayoutStatus::OutgoingPaymentSent);
-
-        // Other states
-        let fixture = |state: &str| {
-            format!(
-                r#"{{"data":{{"resource":{{"id":1,"recipient_email":"payee@wise.com","amount":"10","currency":"EUR"}},"current_state":"{state}"}}}}"#
-            )
-        };
-        for (state, expected) in [
-            ("funds_refunded", PayoutStatus::FundsRefunded),
-            ("cancelled", PayoutStatus::Cancelled),
-            ("incoming_payment_waiting", PayoutStatus::Processing),
-            ("funds_converted", PayoutStatus::Processing),
-        ] {
-            let event = provider
-                .parse_webhook_payload(fixture(state).as_bytes())
-                .unwrap();
-            assert_eq!(event.status, expected);
-        }
-        for state in ["other", "charged_back", "bounced_back"] {
-            assert!(
-                provider
-                    .parse_webhook_payload(fixture(state).as_bytes())
-                    .is_err()
-            );
-        }
-
-        // Webhook error paths
-        assert!(provider.parse_webhook_payload(b"invalid json").is_err());
-    }
-
-    fn fixture_event(resource: Value, state: Option<&str>) -> Result<PayoutEvent, CapitalError> {
-        let mut body = serde_json::json!({"data": {"resource": resource}});
-        if let Some(state) = state {
-            body["data"]["current_state"] = Value::from(state);
-        }
-        WiseProvider::new("mock_wise_token", "profile")
-            .parse_webhook_payload(&serde_json::to_vec(&body).unwrap())
-    }
-
-    #[test]
-    fn fixture_amounts_are_exact_minor_units_without_float_truncation() {
-        let amount = |amount: Value, currency: &str| {
-            fixture_event(
-                serde_json::json!({"id": 7, "recipient_email": "payee@wise.com", "amount": amount, "currency": currency}),
-                Some("outgoing_payment_sent"),
-            )
-            .map(|event| event.amount_cents)
-        };
-        for (value, currency, expected) in [
-            (serde_json::json!(19.99), "EUR", 1999),
-            (serde_json::json!(0.29), "USD", 29),
-            (serde_json::json!(1.15), "GBP", 115),
-            (serde_json::json!(100.0), "USD", 10000),
-            (serde_json::json!("19.90"), "EUR", 1990),
-            (serde_json::json!(1000), "JPY", 1000),
-            (serde_json::json!(1000.0), "JPY", 1000),
-            (serde_json::json!("1.234"), "KWD", 1234),
-        ] {
-            assert_eq!(
-                amount(value.clone(), currency).unwrap(),
-                expected,
-                "{value} {currency}"
-            );
-        }
-        for (value, currency) in [
-            (serde_json::json!(-1), "USD"),
-            (serde_json::json!(-0.5), "USD"),
-            (serde_json::json!(0), "USD"),
-            (serde_json::json!("19.999"), "USD"),
-            (serde_json::json!(1.5), "JPY"),
-            (serde_json::json!(1e21), "USD"),
-            (serde_json::json!("1."), "USD"),
-            (serde_json::json!(".5"), "USD"),
-            (serde_json::json!("18446744073709551615"), "USD"),
-            (serde_json::json!("ten"), "USD"),
-            (serde_json::json!(true), "USD"),
-        ] {
-            assert!(
-                amount(value.clone(), currency).is_err(),
-                "{value} {currency}"
-            );
-        }
-    }
-
-    #[test]
-    fn fixture_fields_are_required_instead_of_invented() {
-        let complete = serde_json::json!({"id": 7, "recipient_email": "payee@wise.com", "amount": 5, "currency": "EUR"});
-        assert!(fixture_event(complete.clone(), Some("processing")).is_ok());
-        assert!(fixture_event(complete.clone(), None).is_err());
-        for field in ["id", "recipient_email", "amount", "currency"] {
-            let mut resource = complete.clone();
-            resource.as_object_mut().unwrap().remove(field);
-            assert!(
-                fixture_event(resource, Some("processing")).is_err(),
-                "{field}"
-            );
-        }
-        for (field, wrong) in [
-            ("id", serde_json::json!(0)),
-            ("id", serde_json::json!(-3)),
-            ("id", serde_json::json!("7")),
-            ("recipient_email", serde_json::json!("  ")),
-            ("currency", serde_json::json!("usd")),
-            ("currency", serde_json::json!("EURO")),
-        ] {
-            let mut resource = complete.clone();
-            resource[field] = wrong;
-            assert!(
-                fixture_event(resource, Some("processing")).is_err(),
-                "{field}"
-            );
-        }
-    }
-}
+#[cfg(test)]
+#[path = "wise_status_tests.rs"]
+mod status_tests;

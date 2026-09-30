@@ -113,7 +113,12 @@ Wise's empty/`mock_*` transfer mock returns a `wise_tr_mock_` ID derived from a
 hash instead of the recipient email, and its status read reports only those
 mock-issued IDs. Any other transfer ID returns `UnsupportedOperation` instead
 of a fabricated `OutgoingPaymentSent`, so an unset token cannot mark real
-transfers as sent.
+transfers as sent. With a live token, the status read accepts only a positive
+decimal transfer ID and a response whose `id` matches it. A missing, `unknown`
+or undocumented state fails the provider response contract, and a
+`bounced_back` or `charged_back` transfer returns `UnsupportedOperation`
+because `PayoutStatus` cannot express a returned or reversed payout; it is
+never reported as `Processing`.
 
 `WiseProvider::parse_webhook_payload` performs no signature verification and
 cannot distinguish a Wise delivery from a forged request. It is an offline
