@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1790791625832,
+  "lastUpdate": 1790792701498,
   "repoUrl": "https://github.com/Rullst/Rullst",
   "entries": {
     "Benchmark": [
@@ -22557,6 +22557,60 @@ window.BENCHMARK_DATA = {
             "name": "waf_middleware_overhead",
             "value": 1807,
             "range": "± 43",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "37526748+venelouis@users.noreply.github.com",
+            "name": "@venelouis",
+            "username": "venelouis"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "26bec9c3c41018f9ce84088b8fd09e6bc0eb7cee",
+          "message": "Merge pull request #352 from Rullst/fix/v13-connect-core-tail-fixes\n\nfix(connect,core): refresh-token rotation, provider client auth, probe exemptions, POSIX cron and queue lease ceilings",
+          "timestamp": "2026-09-30T15:18:26-03:00",
+          "tree_id": "ba602f871f97f5a6044bf8c0a42d1d135e9d0c72",
+          "url": "https://github.com/Rullst/Rullst/commit/26bec9c3c41018f9ce84088b8fd09e6bc0eb7cee"
+        },
+        "date": 1790792697851,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "router_match_simple",
+            "value": 577,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "router_match_nested_params",
+            "value": 762,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_static",
+            "value": 5,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "html_macro_dynamic",
+            "value": 490,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "waf_middleware_overhead",
+            "value": 1695,
+            "range": "± 36",
             "unit": "ns/iter"
           }
         ]
