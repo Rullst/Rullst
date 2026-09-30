@@ -9,6 +9,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 Publication status is recorded in [the v12 release record](docs/src/v12.md).
 A prepared version section does not establish that its tag or crates exist.
 
+### Low-severity review fixes
+
+Ported from the v13 review's low-severity fixes. Queue fencing, error-buffer and
+retention fixes add a few defaulted trait methods, accessors and constants;
+nothing is removed or changed.
+
+- **Queue:**
+  - SQLite and Redis fence lease transitions on the claimed attempt, so a stale
+    worker cannot finish a re-claimed job.
+  - A worker without a handler hands a job back after 5 seconds instead of
+    failing it.
+  - A handler's own success is no longer recorded as a timeout.
+  - Worker and scheduler error buffers are bounded to 256 errors.
+  - The Redis queue retains at most 10,000 failed jobs and dead letters.
+- **Cache:**
+  - The memory cache no longer panics on huge TTLs or deletes concurrent
+    writes.
+  - The `#[memoize]` store is bounded, and unserializable arguments skip the
+    cache instead of panicking.
+- **ORM:**
+  - Rollback bookkeeping is per migration.
+  - MySQL outbox keys are case-sensitive.
+  - `mariadb://`, uppercase schemes and IPv6 hosts are recognised.
+  - Backslashes in DDL text literals are rejected.
+  - The PostgreSQL backslash handling is standard-conforming.
+  - Non-auditable `save_with_tx` uses a savepoint.
+  - `#[derive(Nexus)]` accepts every `#[orm]` option.
+- **Runtime:**
+  - HTMX validation errors are escaped and generic.
+  - The panic console and `/_rullst/*` routes exist only in debug development
+    builds.
+  - `Server::run` fails `db:*` without `artisan!`.
+  - WebSocket Ping/Pong frames are skipped.
+  - The edge emulator bounds bodies and binds loopback.
+  - Feature buckets use a stable hash, which reassigns users once, and reloads
+    are atomic.
+  - RPC errors echo the request id.
+  - zstd `q=0` is honoured.
+  - Radar RSS and CPU figures are fixed.
+  - Configuration `Debug` output is redacted.
+- **Storage, uploads and macros:**
+  - Storage URLs are percent-encoded, and Local URLs are `/storage/<key>`.
+  - Uploads reject markup hidden behind a BOM or comment.
+  - `#[live_component]` dispatches only from the event field.
+  - `html!` URL attributes neutralise `javascript:`, `vbscript:` and non-media
+    `data:` URLs.
+
 ### Core and ORM review fixes
 
 Ported from the v13 review of rullst-core and the ORM. None adds public API.
