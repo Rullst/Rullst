@@ -124,15 +124,28 @@ impl DeliveryPipeline {
                 .map_err(|error| MailError::ValidationError(error.to_string()))?;
         }
 
+        // Both values are written verbatim inside `<...>` in List-Unsubscribe,
+        // so neither may close its bracket or start another entry.
         if let Some(email) = message.unsubscribe_email.as_deref() {
             validate_header("List-Unsubscribe email", email)?;
             validate_email_syntax(email)
                 .map_err(|error| MailError::ValidationError(error.to_string()))?;
+            if recipient_address(email).ok() != Some(email) {
+                return Err(MailError::ValidationError(
+                    "List-Unsubscribe email must be one bare address".to_string(),
+                ));
+            }
         }
 
         if let Some(url) = message.unsubscribe_url.as_deref() {
             validate_header("List-Unsubscribe URL", url)?;
             validate_http_url("List-Unsubscribe URL", url)?;
+            if url.contains(|c: char| c.is_whitespace() || matches!(c, '<' | '>' | '"')) {
+                return Err(MailError::ValidationError(
+                    "List-Unsubscribe URL must not contain whitespace, '<', '>' or '\"'"
+                        .to_string(),
+                ));
+            }
         }
 
         if message.send_at.as_ref().is_some_and(|send_at| {
@@ -316,6 +329,31 @@ mod tests {
             assert!(DeliveryContext::for_tenant(dots).is_err());
         }
         assert!(DeliveryPipeline::prepare_for_tenant("acme.v2", &message).is_ok());
+    }
+
+    #[test]
+    fn list_unsubscribe_values_cannot_add_entries() {
+        let base = || Message::new().to("member@example.com").text("safe");
+        for message in [
+            base().unsubscribe_email("x@y.com>, <https://evil.example/u"),
+            base().unsubscribe_email("Name <x@y.com>"),
+            base().unsubscribe_url("https://a.example/x>, <mailto:evil@attacker.example"),
+            base().unsubscribe_url("https://a.example/x\"y"),
+            base().unsubscribe_url("https://a.example/x y"),
+        ] {
+            assert!(matches!(
+                DeliveryPipeline::prepare(&message),
+                Err(MailError::ValidationError(_))
+            ));
+        }
+        let valid = base()
+            .unsubscribe_email("unsubscribe@example.com")
+            .unsubscribe_url("https://example.com/unsub?ids=1,2");
+        let prepared = DeliveryPipeline::prepare(&valid).expect("bare values");
+        assert_eq!(
+            prepared.message().list_unsubscribe_header().as_deref(),
+            Some("<mailto:unsubscribe@example.com>, <https://example.com/unsub?ids=1,2>")
+        );
     }
 
     #[test]
